@@ -4,7 +4,8 @@
  * 本番ドメインはコード中に一切登場させない（§3-2・§13-F）。
  */
 import express, { type Express, type NextFunction, type Request, type Response } from 'express'
-import { PREFIX } from './config.ts'
+import { join, resolve } from 'node:path'
+import { PREFIX, SERVE_DIST } from './config.ts'
 import { mockStateMiddleware } from './lib/mock-state.ts'
 import { errorEnvelope } from './lib/envelope.ts'
 import { resetState } from './store/store.ts'
@@ -48,7 +49,10 @@ export function createApp(): Express {
   app.use(mockStateMiddleware)
 
   // ── 採取シンク（隔離ディレクトリへ直接書き出す・§5-1[1]）──
-  app.use(captureSinkRouter)
+  // 本番配信モードでは載せない。公開サーバーに書き込み口を残さないため。
+  if (SERVE_DIST === undefined) {
+    app.use(captureSinkRouter)
+  }
 
   // ── 運用エンドポイント ──
   app.get('/__mock/health', (_req, res) => {
@@ -91,6 +95,22 @@ export function createApp(): Express {
   app.use('/api', (_req, res) => {
     res.status(404).json(errorEnvelope('not_found', 'エンドポイントが見つかりません。'))
   })
+
+  // ── 本番: ビルドしたフロントを配信する（開発時は Vite が担当するので無効）──
+  if (SERVE_DIST !== undefined) {
+    const distDir = resolve(SERVE_DIST)
+    app.use(express.static(distDir))
+    // ハッシュルーティングなので、API以外の全パスは index.html を返す。
+    // Express 5 は文字列ワイルドカード '*' を廃止したので、末尾ミドルウェアで受ける。
+    // API系プレフィックスは上で処理済みなのでここには来ない。
+    app.use((req, res, next) => {
+      if (req.method !== 'GET') {
+        next()
+        return
+      }
+      res.sendFile(join(distDir, 'index.html'))
+    })
+  }
 
   // エラーハンドラ（握りつぶさない・§12）
   app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {

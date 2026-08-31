@@ -3,7 +3,11 @@
  * APIベースURLは localhost 固定。本番ドメインはコード中に一切登場させない（§3-2・§13-F）。
  */
 
-export const MOCK_PORT = Number(process.env['MOCK_PORT'] ?? 4010)
+// Railway 等は待ち受けポートを PORT で渡す。ローカルは MOCK_PORT（既定4010）。
+export const MOCK_PORT = Number(process.env['PORT'] ?? process.env['MOCK_PORT'] ?? 4010)
+
+/** 本番配信モード: ビルド済みフロントの置き場（未設定なら開発モード＝Viteが配信）。 */
+export const SERVE_DIST = process.env['SERVE_DIST']
 
 /** 3系統 + WS を localhost の同一モックにパスプレフィックスで集約（§10-1） */
 export const PREFIX = {

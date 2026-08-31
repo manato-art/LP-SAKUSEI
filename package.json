@@ -20,7 +20,9 @@
     "copy-snippet": "cat tools/capture-console/snippet.js | pbcopy && echo \"採取スニペットをクリップボードにコピーしました。Chrome の DevTools > Console に Cmd+V で貼り付けて Enter を押してください。\"",
     "fetch-assets": "tsx tools/capture-assets/fetch.ts",
     "coverage": "tsx tools/coverage/report.ts",
-    "scrub": "tsx tools/scrub/index.ts && tsx tools/scrub/index.ts --in ~/squadbeyond-capture-quarantine/assets --out capture/assets"
+    "scrub": "tsx tools/scrub/index.ts && tsx tools/scrub/index.ts --in ~/squadbeyond-capture-quarantine/assets --out capture/assets",
+    "build": "vite build",
+    "start": "SERVE_DIST=dist tsx mock-server/index.ts"
   },
   "keywords": [],
   "author": "",
@@ -30,7 +32,8 @@
   "dependencies": {
     "express": "^5.2.1",
     "quill": "^2.0.3",
-    "ws": "^8.21.3"
+    "ws": "^8.21.3",
+    "tsx": "^4.23.13"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -38,7 +41,6 @@
     "@types/node": "^26.4.0",
     "@types/ws": "^8.18.1",
     "eslint": "^10.9.1",
-    "tsx": "^4.23.13",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.68.0",
     "vite": "^8.2.2",

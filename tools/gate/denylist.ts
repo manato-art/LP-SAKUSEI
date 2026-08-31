@@ -120,6 +120,9 @@ export const SELF_EXCLUDE: readonly string[] = [
   'tests/scrub-dom-numbers.test.ts',
   // オーバーレイ除去とトークン判定を試すテスト。合成の長いトークンを意図的に持つ。
   'tests/scrub-automation-overlay.test.ts',
+  // デプロイ設定。$schema の https://railway.app は Railway の設定スキーマURLで、
+  // クローン対象の本番ドメインでも実データでもない。
+  'railway.json',
 ]
 
 /**
