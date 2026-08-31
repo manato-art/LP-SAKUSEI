@@ -430,6 +430,83 @@ Quill の bubble ツールバーに、**独自フォーマット**（`sb-bg-unde
 
 ---
 
+---
+
+# エディタ2種類の実測（editor_version の対応が確定）
+
+## editor_version の対応と実際の利用状況
+
+全176フォルダ・**1016ページ**を API（GETのみ）で走査した結果:
+
+| editor_version | エディタ | 実際の件数 |
+|---|---|---|
+| 1 | （該当なし） | **0件** |
+| **2** | **beyondエディター** | **1013件（99.7%）** |
+| **3** | **HTMLエディター** | **3件（0.3%）** |
+| — | スワイプLPエディター（β） | 0件（作成モーダルには出るが未使用） |
+
+- `editor_version 2 = beyondエディター` は、**自分で作った採取用ページ**で確定（作成時にbeyondエディターを選択→ev=2）
+- `editor_version 3 = HTMLエディター` は、**終了ステータスのページ**の基本情報で `編集タイプ: HTMLエディター` を確認
+
+### ad_status の実際の値（企画書の推測値と違う）
+
+| 値 | 表示 | 件数 |
+|---|---|---|
+| `prepared` | 準備中 | 914 |
+| `delivered` | 配信中 | **52** ←触ってはいけない |
+| `finished` | 終了 | 48 |
+| `stopping` | 停止中 | 2 |
+| （なし） | 未配信 | 0 |
+
+## HTMLエディターの画面（beyondエディターとは全くの別物）
+
+**同じルート `/ab_tests/:uid/articles` だが、レンダされる画面が完全に違う。**
+→ 企画書 §6-2 の「ルート≠画面」がここでも効く。1ルートに**2つの実画面**がある。
+
+### 構成: 4ペインのコードエディタ（全面ダークテーマ）
+
+| ペイン | 内容 |
+|---|---|
+| **HTML** | 行番号 + シンタックスハイライト。ヘッダに画像/ファイル/プレビューの3アイコン |
+| **CSS** | プレースホルダ `.class { color: #000000; ...}` |
+| **Javascript Head** | プレースホルダ `<script>...</script>, <meta/>. <link/> ...` + コピーアイコン |
+| **Javascript Body** | プレースホルダ `<script>...</script>` + コピーアイコン |
+
+- ペイン間に**リサイズハンドル**（`cssEditorResizer` / `jsEditorResizer`）
+- コードエディタは **CodeMirror**（`.CodeMirror` 要素120個・行番号44個を確認）
+- 右レールは **8個**（beyondエディターは9個）
+- 左Versionパネルに**LPのサムネイルプレビュー**が出る（`_articleListPreview_` iframe 195×150）。beyondエディターには無い
+- SPプレビュー iframe 430×640 は共通で存在
+
+### CSS Modules から読めるコンポーネント（HTMLエディター固有）
+
+`htmlEditorWrapper` / `htmlEditor` / `cssEditorWrapper` / `cssEditor` /
+`jsHeadEditorWrapper` / `jsHeadEditor` / `jsBodyEditorWrapper` / `jsBodyEditor` /
+`cssEditorResizer` / `jsEditorResizer` / **`lpDiffEditor`** / **`qrCodePreviewLink`**
+
+- **`lpDiffEditor`** … 差分エディタ。Version間の比較機能があると推定（企画書に無い）
+- **`qrCodePreviewLink`** … QRコードでのスマホ実機プレビュー（企画書に無い）
+
+### 配信LPのHTML先頭に埋まっているトラッキング用div（構造のみ）
+
+`js-t-id` / `js-m-id` / `js-v-id` / `js-a-id` / `js-ab-id` / `js-f-id` /
+`js-asp-session` / `js-folder-form-host` / **`js-has-funnel`**
+
+→ **`js-has-funnel`** がファネル機能のフラグ。LP側に配信時に埋め込まれる。
+→ クローンでLPを再現する際、これらの `js-*` div の**構造は再現し、値は架空**にする必要がある。
+
+また `.article-body { font-size: 15px !important; font-family: Hiragino Sans, Arial, sans-serif !important; }`
+がLP側に注入されている（記事設定の値がここに出る）。
+
+## 再現方針への影響
+
+- **beyondエディター（Quill・9ツール・選択ツールバー16個）** と
+  **HTMLエディター（CodeMirror・4ペイン・8ツール）** は**別画面として2つ作る必要がある**
+- ただし HTMLエディターは実運用で3件（0.3%）しか使われていない
+- 共通部分: 左レール4タブ / 上部バー / Versionパネル / SPプレビュー / 右レールの一部
+
+---
+
 ## 未確認のまま残ったもの（正直な記録）
 
 | 項目 | 理由 |
@@ -438,7 +515,10 @@ Quill の bubble ツールバーに、**独自フォーマット**（`sb-bg-unde
 | 公開（publish）後の画面・状態遷移 | 実LPが外部公開されうるため押していない。確認ダイアログ手前まで |
 | ファネル（`<` `>` `🏠`）の中身 | 未操作 |
 | 右レール「プレビュー」「画像アップロード」の実挙動 | パネル同定のみ |
-| スワイプLPエディター / HTMLエディター | beyondエディターのみ確認。**エディタが3種類あるため残り2種は未確認** |
+| ~~HTMLエディター~~ | **確認済**（4ペインのCodeMirror。上記参照）。ただし**編集操作は未実施**（他者ロックのため閲覧のみ） |
+| スワイプLPエディター（β） | 未確認。実データが0件のため、確認するには新規作成が必要 |
+| `lpDiffEditor`（差分エディタ） | 存在は確認、中身は未確認 |
+| `qrCodePreviewLink`（QRプレビュー） | 存在は確認、中身は未確認 |
 | ヒートマップタブ | レポートタブのサブタブとして存在確認のみ |
 | 分析ボタンの遷移先 | 未確認 |
 | ダッシュボード以外の Tier3/4 ルート | 未確認 |
