@@ -47,7 +47,7 @@
       "user": {
         "id": 10624,
         "name": "サンプル施策295",
-        "company_name": "株式会社サンプル施策407",
+        "company_name": "サンプル施策564",
         "email": "user722@example.test",
         "confirmed_at": null,
         "amazon_cognito_setting": {
@@ -109,7 +109,7 @@
       "user": {
         "id": 9950,
         "name": "サンプル施策111",
-        "company_name": "株式会社サンプル施策407",
+        "company_name": "サンプル施策564",
         "email": "user612@example.test",
         "confirmed_at": null,
         "amazon_cognito_setting": {
@@ -202,7 +202,7 @@
       "user": {
         "id": 7277,
         "name": "サンプル施策327",
-        "company_name": "クローバー",
+        "company_name": "サンプル施策822",
         "email": "user434@example.test",
         "confirmed_at": null,
         "amazon_cognito_setting": {
@@ -233,11 +233,11 @@
       "user": {
         "id": 4898,
         "name": "サンプル施策069",
-        "company_name": "BGテクノロジー株式会社",
+        "company_name": "サンプル施策345",
         "email": "user675@example.test",
         "confirmed_at": null,
         "amazon_cognito_setting": {
-          "unverified_email": "kyohei.mochizuki@sample54.example.test",
+          "unverified_email": "user433@example.test",
           "mfa_configured_at": null
         }
       },
@@ -264,7 +264,7 @@
       "user": {
         "id": 7810,
         "name": "サンプル施策685",
-        "company_name": "個人",
+        "company_name": "サンプル施策611",
         "email": "user790@example.test",
         "confirmed_at": null,
         "amazon_cognito_setting": {
@@ -295,7 +295,7 @@
       "user": {
         "id": 11262,
         "name": "サンプル施策685",
-        "company_name": "個人",
+        "company_name": "サンプル施策611",
         "email": "user818@example.test",
         "confirmed_at": null,
         "amazon_cognito_setting": {
@@ -388,7 +388,7 @@
       "user": {
         "id": 12963,
         "name": "サンプル施策500",
-        "company_name": "インフルエンサーZ",
+        "company_name": "サンプル施策950",
         "email": "user806@example.test",
         "confirmed_at": null,
         "amazon_cognito_setting": {
@@ -419,7 +419,7 @@
       "user": {
         "id": 8571,
         "name": "サンプル施策805",
-        "company_name": "Trigger Holdings",
+        "company_name": "サンプル施策218",
         "email": "user519@example.test",
         "confirmed_at": null,
         "amazon_cognito_setting": {
@@ -481,7 +481,7 @@
       "user": {
         "id": 13104,
         "name": "サンプル施策753",
-        "company_name": "フリー",
+        "company_name": "サンプル施策704",
         "email": "user869@example.test",
         "confirmed_at": null,
         "amazon_cognito_setting": {
@@ -533,7 +533,7 @@
       "user": {
         "id": 4860,
         "name": "サンプル施策147",
-        "company_name": "株式会社オンド",
+        "company_name": "サンプル施策998",
         "email": "user184@example.test",
         "confirmed_at": null,
         "amazon_cognito_setting": {
@@ -564,7 +564,7 @@
       "user": {
         "id": 9073,
         "name": "サンプル施策057",
-        "company_name": "エムエムラボ",
+        "company_name": "サンプル施策690",
         "email": "user805@example.test",
         "confirmed_at": null,
         "amazon_cognito_setting": {
@@ -595,7 +595,7 @@
       "user": {
         "id": 13385,
         "name": "サンプル施策469",
-        "company_name": "合同会社Ad spire",
+        "company_name": "サンプル施策612",
         "email": "user997@example.test",
         "confirmed_at": null,
         "amazon_cognito_setting": {
@@ -626,7 +626,7 @@
       "user": {
         "id": 9069,
         "name": "サンプル施策572",
-        "company_name": "株式会社エムエムラボ",
+        "company_name": "サンプル施策888",
         "email": "user576@example.test",
         "confirmed_at": null,
         "amazon_cognito_setting": {
@@ -657,7 +657,7 @@
       "user": {
         "id": 479,
         "name": "サンプル施策010",
-        "company_name": "株式会社ナハト",
+        "company_name": "サンプル施策949",
         "email": "user531@example.test",
         "confirmed_at": "2020-09-18T19:02:18.000+09:00",
         "amazon_cognito_setting": {
@@ -688,7 +688,7 @@
       "user": {
         "id": 4468,
         "name": "サンプル施策048",
-        "company_name": "株式会社JAPANSOLUTIONS",
+        "company_name": "サンプル施策215",
         "email": "user937@example.test",
         "confirmed_at": null,
         "amazon_cognito_setting": {
@@ -719,7 +719,7 @@
       "user": {
         "id": 14401,
         "name": "サンプル施策319",
-        "company_name": "株式会社サンプル施策994",
+        "company_name": "サンプル施策691",
         "email": "user340@example.test",
         "confirmed_at": null,
         "amazon_cognito_setting": {

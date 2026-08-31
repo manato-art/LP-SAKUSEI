@@ -28,6 +28,15 @@
     -->
     <link rel="stylesheet" href="/clean/ab_tests__UID__articles__exit_popups/default/cssom.css" />
     <!--
+      リンクのドロップダウン（テキスト選択→鎖アイコン）と、文字色・背景色ピッカーのEmotion。
+      editor.css に入っていないため、採取済みの実ファイルを**そのまま**参照する。
+      以前は必要なルールをコード側のCSS文字列へ書き写していたが、
+      再スクラブのたびに実物とズレるうえ、宣言の写し漏れで見た目が変わっていた
+      （ホバー時の影が落ちていた）。写さずに実ファイルを読む。
+    -->
+    <link rel="stylesheet" href="/clean/ab_tests__UID__articles/toolbar-link-open/cssom.css" />
+    <link rel="stylesheet" href="/clean/ab_tests__UID__articles/toolbar-color-open/cssom.css" />
+    <!--
       レポートタブ（/ab_tests/:uid/reports）とヒートマップ
       （/ab_tests/:uid/articles/htmls/heatmaps/comparisons）のCSS。
       この2画面だけ**ダークテーマ**で、配色は CSS Modules の `_darkTheme_*` が持っている。

@@ -48,18 +48,6 @@ const CHROME_PICKER_HTML = `<div class="chrome-picker " style="width: 225px; bac
             }
           </style><div style="position: absolute; left: 0%;"><div style="width: 12px; height: 12px; border-radius: 6px; transform: translate(-6px, -1px); background-color: rgb(248, 248, 248); box-shadow: rgba(0, 0, 0, 0.37) 0px 1px 4px 0px;"></div></div></div></div></div><div style="height: 10px; position: relative; display: none;"><div style="position: absolute; inset: 0px;"><div style="position: absolute; inset: 0px; overflow: hidden;"><div style="position: absolute; inset: 0px; background: url(&quot;data:image/png;base64,sample_token_b5921805/9hAAAAPUlEQVR4AeySywkAMAhDH52h+0/sample_token_cb7c5d12//sample_token_3c96bb24==&quot;) left center;"></div></div><div style="position: absolute; inset: 0px; background: linear-gradient(to right, rgba(0, 0, 0, 0) 0%, rgb(0, 0, 0) 100%);"></div><div style="position: relative; height: 100%; margin: 0px 3px;"><div style="position: absolute; left: 100%;"><div style="width: 12px; height: 12px; border-radius: 6px; transform: translate(-6px, -1px); background-color: rgb(248, 248, 248); box-shadow: rgba(0, 0, 0, 0.37) 0px 1px 4px 0px;"></div></div></div></div></div></div></div><div class="flexbox-fix" style="padding-top: 16px; display: flex;"><div class="flexbox-fix" style="-webkit-box-flex: 1; flex: 1 1 0%; display: flex; margin-left: -6px;"><div style="padding-left: 6px; width: 100%;"><div style="position: relative;"><input id="rc-editable-input-1" spellcheck="false" value="#000000" style="font-size: 11px; color: rgb(51, 51, 51); width: 100%; border-radius: 2px; border-width: medium; border-style: none; border-color: currentcolor; border-image: none; box-shadow: rgb(218, 218, 218) 0px 0px 0px 1px inset; height: 21px; text-align: center;"><label for="rc-editable-input-1" style="text-transform: uppercase; font-size: 11px; line-height: 11px; color: rgb(150, 150, 150); text-align: center; display: block; margin-top: 12px;">hex</label></div></div></div><div style="width: 32px; text-align: right; position: relative;"><div style="margin-right: -4px; margin-top: 12px; cursor: pointer; position: relative;"><svg viewBox="0 0 24 24" style="fill: rgb(51, 51, 51); width: 24px; height: 24px; border: 1px solid transparent; border-radius: 5px;"><path d="M12,18.17L8.83,15L7.42,16.41L12,21L16.59,16.41L15.17,15M12,5.83L15.17,9L16.58,7.59L12,3L7.41,7.59L8.83,9L12,5.83Z"></path></svg></div></div></div></div></div>`
 
-const PICKER_CSS = `
-.css-mwpql5 { position: fixed; inset: 0px; z-index: 100000; }
-.css-esi9ax { position: fixed; display: flex; align-items: center; justify-content: center; inset: 0px; background-color: transparent; -webkit-tap-highlight-color: transparent; z-index: -1; }
-.css-1dmzujt { background-color: rgb(255, 255, 255); color: rgba(0, 0, 0, 0.87); transition: box-shadow 300ms cubic-bezier(0.4, 0, 0.2, 1); border-radius: 4px; box-shadow: rgba(0, 0, 0, 0.2) 0px 5px 5px -3px, rgba(0, 0, 0, 0.14) 0px 8px 10px 1px, rgba(0, 0, 0, 0.12) 0px 3px 14px 2px; position: absolute; overflow: hidden auto; min-width: 16px; min-height: 16px; max-width: calc(100% - 32px); max-height: calc(100% - 32px); outline: 0px; }
-.css-1xyx5ni { width: 235px; }
-.css-1xyx5ni .chrome-picker { width: 235px !important; box-shadow: none !important; border-radius: 2px 2px 0px 0px !important; background: rgb(236, 236, 236) !important; }
-.css-1xyx5ni .github-picker { box-sizing: border-box; border-radius: 0px; box-shadow: none !important; border: none !important; width: 235px !important; background: rgb(236, 236, 236) !important; }
-.css-170de7g { padding: 10px; background-color: rgb(236, 236, 236); border-radius: 0px 0px 2px 2px !important; }
-.css-1yaowxx { display: inline-flex; align-items: center; justify-content: center; position: relative; box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: 0px; border: 0px; margin: 0px; cursor: pointer; user-select: none; vertical-align: middle; appearance: none; text-decoration: none; text-transform: none; font-family: "Hiragino Sans", "Helvetica Neue", Arial, sans-serif; font-size: 0.875rem; line-height: 1.75; min-width: 64px; padding: 6px 16px; color: rgb(255, 255, 255); background-color: rgb(0, 134, 255); width: 100%; box-shadow: none; border-radius: 10px; font-weight: bold; }
-.css-1yaowxx:hover { background-color: rgb(0, 93, 178); }
-.css-w0pj6f { overflow: hidden; pointer-events: none; position: absolute; z-index: 0; inset: 0px; border-radius: inherit; }
-`
 
 /** ポップオーバーの寸法（css-1xyx5ni が 235px 固定） */
 const PICKER_WIDTH = 235
@@ -146,7 +134,6 @@ export function openColorPicker(
   ctx: ToolbarState,
   refresh: () => void,
 ): void {
-  injectPickerCss()
   document.querySelector('.editor-toolbar-color-picker')?.remove()
 
   const rect = anchor.getBoundingClientRect()
@@ -282,11 +269,3 @@ function wireChromePicker(popover: HTMLElement): ChromePicker {
   }
 }
 
-function injectPickerCss(): void {
-  const id = 'sb-editor-toolbar-color-picker-css'
-  if (document.getElementById(id) !== null) return
-  const style = document.createElement('style')
-  style.id = id
-  style.textContent = PICKER_CSS
-  document.head.append(style)
-}

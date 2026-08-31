@@ -195,7 +195,7 @@ URLは `/folders?uid=<folder_uuid>` ―― **パスパラメータではなく�
 
 ## 外部SaaS（企画書 §4-4 の確認・実測で全て確認された）
 
-HubSpot（4本: web-interactives-embed / hs-banner / hs-analytics / feedbackweb-new / hs-scripts）、
+HubSpot（4本: web-interactives-embed / hs-banner / hs-analytics / feedbackweb-new / 〈外部SaaSの計測タグ〉）、
 Pendo、Channel.io、GTM。**クローンには入れない**方針は変更なし（§4-4）。
 画面に見えるのは Channel.io のチャットバブル（右下）と HubSpot のフィードバックUI。
 
@@ -708,7 +708,7 @@ AbTest 1-* Article （＝UI上の「Version」）
 
 ---
 
-# 対象1画面の全操作フロー採取（2026-08-31・複製用のVersionタブ）
+# 対象1画面の全操作フロー採取（2026-08-31・架空名2のVersionタブ）
 
 `docs/触ってよい範囲.md` の1画面に限定して、到達できる状態を採取した。
 

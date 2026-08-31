@@ -7,13 +7,13 @@ describe('URLの形をした実IDの残存を検知する', () => {
   })
 
   it('置換されていないIDを見つける', () => {
-    expect(findUrlIdentifierLeaks('/ab_tests/fyVwpUpEzeEkSQZg/reports')).toEqual([
-      'fyVwpUpEzeEkSQZg',
+    expect(findUrlIdentifierLeaks('/ab_tests/SynthIdAaBbCcDd/reports')).toEqual([
+      'SynthIdAaBbCcDd',
     ])
   })
 
   it('9文字の短いIDも見つける（32文字閾値では取りこぼす）', () => {
-    expect(findUrlIdentifierLeaks('/folders/nobUxTzcQ')).toEqual(['nobUxTzcQ'])
+    expect(findUrlIdentifierLeaks('/folders/SynthShort1')).toEqual(['SynthShort1'])
   })
 
   it('数字を含まない小文字語はルート語として扱う（取りこぼす代わりに誤検知を出さない）', () => {
@@ -45,7 +45,7 @@ describe('ルートの語と実IDの見分け（小文字のみの語はルー�
   })
 
   it('大文字を含むトークンは実IDとして検知する', () => {
-    expect(findUrlIdentifierLeaks('/ab_tests/fyVwpUpEzeEkSQZg')).toEqual(['fyVwpUpEzeEkSQZg'])
+    expect(findUrlIdentifierLeaks('/ab_tests/SynthIdAaBbCcDd')).toEqual(['SynthIdAaBbCcDd'])
   })
 
   it('UUID形（全部小文字）も実IDとして検知する', () => {
@@ -83,12 +83,36 @@ describe('ルート語と実IDの見分け（数字の有無で分ける）', ()
   })
 
   it('大文字を含むトークンは実IDとして検知する', () => {
-    expect(findUrlIdentifierLeaks('/ab_tests/fyVwpUpEzeEkSQZg')).toEqual(['fyVwpUpEzeEkSQZg'])
+    expect(findUrlIdentifierLeaks('/ab_tests/SynthIdAaBbCcDd')).toEqual(['SynthIdAaBbCcDd'])
   })
 
   it('UUID形も実IDとして検知する', () => {
     expect(findUrlIdentifierLeaks('/folders/73401422-01b9-456e-8910-3aa2600cb5a7')).toEqual([
       '73401422-01b9-456e-8910-3aa2600cb5a7',
     ])
+  })
+})
+
+describe('大文字だけの語はプレースホルダとして扱う', () => {
+  it('テストの合成値を実IDと誤認しない', () => {
+    expect(findUrlIdentifierLeaks('/ab_tests/NOT_EXIST /folders/UID')).toEqual([])
+  })
+
+  it('匿名化済みの KIND_0001 形式も引き続き見逃す', () => {
+    expect(findUrlIdentifierLeaks('/folders/FOLDER_0001')).toEqual([])
+  })
+
+  it('小文字が1つでも混ざれば実IDとして検知する', () => {
+    expect(findUrlIdentifierLeaks('/ab_tests/NOT_EXISTa')).toEqual(['NOT_EXISTa'])
+  })
+})
+
+describe('ハイフン区切りの小文字語もルート語として扱う', () => {
+  it('状態名（create-success など）を実IDと誤認しない', () => {
+    expect(findUrlIdentifierLeaks('/ab_tests/create-success /folders/page-last')).toEqual([])
+  })
+
+  it('数字が入れば実IDとして検知する（実在の小文字IDはこの形）', () => {
+    expect(findUrlIdentifierLeaks('/ab_tests/noba2-sn2')).toEqual(['noba2-sn2'])
   })
 })

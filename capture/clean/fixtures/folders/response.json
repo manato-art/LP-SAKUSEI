@@ -1895,7 +1895,7 @@
       },
       "group": {
         "id": 25093,
-        "name": "サンプル施策300"
+        "name": "仮一郎"
       },
       "inspection_setting": null
     },
@@ -2182,7 +2182,7 @@
         "id": 68085,
         "status": "approved",
         "domain": "sample78.example.test",
-        "description": "インフルエンサーZ",
+        "description": "サンプル施策950",
         "free_domain_id": null,
         "pv_count_one_month": 0,
         "disconnected_at": null
@@ -2457,7 +2457,7 @@
       "domain": {
         "id": 67233,
         "status": "approved",
-        "domain": "sb-siminakukirei.myown-page.com",
+        "domain": "sample68.example.test",
         "description": "",
         "free_domain_id": 5,
         "pv_count_one_month": 0,

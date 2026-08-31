@@ -53,7 +53,7 @@ npx tsx tools/gate/grep-gate.ts --names ~/known-names.txt
 | 本番ドメイン | §13-F | 採取対象ホストの文字列が0件 |
 | 外部SaaS | §13-G | Sentry / Pendo / HubSpot / GTM / GA4 / Mixpanel / Channel.io の識別子が0件 |
 | 本番トークン | §5-5 | JWT / 32文字以上の不透明トークン / Bearerヘッダが0件 |
-| 実金額らしい値 | §13-E | `¥1,234,567` 形式の残骸が0件 |
+| 実金額らしい値 | §13-E | `¥〈金額の例〉` 形式の残骸が0件 |
 | 実名 | §13-E | 既知社員名リストが0件（`--names` 指定時のみ） |
 | gitトラッキング | §13-E | `scrub-map.json` / `.env` / 生キャプチャがgit管理下に無い |
 

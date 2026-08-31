@@ -5,7 +5,7 @@
  * ここで検証するのは「純粋関数」と「採取物そのもの」の2種類だけ。
  * 採取物を読んで assert することで、実装が推測でなく採取物に基づいていることを機械で示す。
  */
-import { readFileSync } from 'node:fs'
+import { readFileSync, existsSync } from 'node:fs'
 import { describe, expect, test } from 'vitest'
 import {
   DEFAULT_LINK_FORM,
@@ -18,10 +18,8 @@ import {
 import { WIDGET_MENU_OPEN_CLASS } from '../src/app/panels/widget-manager.ts'
 
 const LINK_FRAGMENT = 'src/app/fragments/link-dropdown.html'
-const LINK_CSS = 'src/app/fragments/link-dropdown.emotion.css'
 const ERROR_FRAGMENT = 'src/app/fragments/global__app-error.html'
 const CAPTURED_LINK_OPEN = 'src/app/fragments/ab_tests__UID__articles__toolbar-link-open.html'
-const CAPTURED_LINK_OPEN_CSSOM = 'capture/clean/ab_tests__UID__articles/toolbar-link-open/cssom.css'
 const CAPTURED_EDITOR_CSSOM = 'capture/cssom/editor.css'
 
 describe('選択が無いままリンクを開くとアプリが落ちる（実物の挙動をそのまま再現する）', () => {
@@ -157,25 +155,14 @@ describe('リンクパネルの土台は採取物そのもの', () => {
   })
 })
 
-describe('リンクパネルのCSSは採取物から取り出しただけ', () => {
-  const css = readFileSync(LINK_CSS, 'utf8')
-  const body = css.slice(css.indexOf('*/') + 2)
-  const captured = readFileSync(CAPTURED_LINK_OPEN_CSSOM, 'utf8')
-
-  test('全ルールが採取したCSSOMに1文字違わず存在する', () => {
-    const rules = body.split('\n').map((line) => line.trim()).filter((line) => line !== '')
-    expect(rules.length).toBeGreaterThan(50)
-    const missing = rules.filter((rule) => !captured.includes(rule))
-    expect(missing).toEqual([])
+describe('リンクパネルのCSSは採取した実ファイルをそのまま読む', () => {
+  it('コード側にCSSを写し持たない（再スクラブで実物とズレるため）', () => {
+    expect(existsSync('src/app/fragments/link-dropdown.emotion.css')).toBe(false)
   })
 
-  test('パネルの位置は採取された値（式は推測しない）', () => {
-    expect(body).toContain('.css-1rfivp { position: absolute; top: 301.5px; left: 50%; width: 700px; margin-left: -302px; z-index: 1030; }')
-  })
-
-  test('`/cssom/editor.css` には無いルールなので補う必要がある', () => {
-    const editorCssom = readFileSync(CAPTURED_EDITOR_CSSOM, 'utf8')
-    expect(editorCssom).not.toContain('.css-1rfivp')
+  it('index.html が採取済みのCSSOMを直接参照している', () => {
+    const html = readFileSync('src/index.html', 'utf8')
+    expect(html).toContain('/clean/ab_tests__UID__articles/toolbar-link-open/cssom.css')
   })
 })
 

@@ -40,3 +40,6 @@ Thumbs.db
 
 # ── スクラブの実行設定（本番ホスト名が入るので非コミット） ──
 .scrub.local.json
+
+# 触ってよい範囲の実名（非コミット）
+.touch-scope.local

@@ -4,7 +4,8 @@
  * **マークアップは書かない。** `fragments/link-dropdown.html` は採取した実DOM
  * （`ab_tests__UID__articles__toolbar-link-open.html` の `.css-1rfivp` 部分木）そのもので、
  * 実uidを持ち込まないために `href` を空にした以外は1文字も変えていない。
- * EmotionのランタイムCSSも採取物から切り出して `link-dropdown.emotion.css` に置いてある。
+ * EmotionのランタイムCSSは src/index.html が採取済みの実ファイルを直接読む
+ * （写して持つと再スクラブのたびに実物とズレるため）。
  *
  * 採取物から読み取れた実挙動:
  *   - パネルは `_editorWrapper_` の直下に出る（`position:absolute` / 700px幅 / 背景に暗幕）
@@ -19,7 +20,6 @@
  */
 import type Quill from 'quill'
 import panelHtml from '../../fragments/link-dropdown.html?raw'
-import '../../fragments/link-dropdown.emotion.css'
 import { toast } from '../../ui.ts'
 import { DEFAULT_LINK_FORM, parseLinkForm, type LinkAttributes, type LinkFormValues } from './link-form.ts'
 import type { QuillRange } from './placement.ts'

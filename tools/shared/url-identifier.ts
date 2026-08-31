@@ -25,9 +25,16 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
  * 小文字でも必ず数字を含むか、大文字を含むか、UUID形だった。
  * 「長さ」でも「小文字かどうか」でもなく、**数字の有無**が両者を分ける。
  */
-const ROUTE_WORD_PATTERN = /^[a-z]+(?:_[a-z]+)*$/
-/** すでに匿名化済みのプレースホルダ（KIND_0001 形式）。二重置換は参照整合を壊す。 */
-const SCRUBBED_PLACEHOLDER_PATTERN = /^[A-Z]+_\d{4}$/
+const ROUTE_WORD_PATTERN = /^[a-z]+(?:[_-][a-z]+)*$/
+/**
+ * プレースホルダ（＝実IDではない）。匿名化後の `KIND_0001` と、
+ * テストの合成値（`NOT_EXIST` / `UID` など）を含む。
+ *
+ * 大文字と数字とアンダースコアだけの語を実IDとみなさないのは、
+ * このアプリの実IDが必ず小文字を含む（base62・UUID・小文字スネーク）ため。
+ * 全部大文字のIDは実在しない。
+ */
+const SCRUBBED_PLACEHOLDER_PATTERN = /^[A-Z][A-Z0-9_]*$/
 
 /**
  * その値を実IDとして扱ってよいか。

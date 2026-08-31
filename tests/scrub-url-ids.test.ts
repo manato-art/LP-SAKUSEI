@@ -5,15 +5,15 @@ import type { ScrubMap } from '../tools/scrub/dictionary.ts'
 describe('URLの形から実IDを見つけて辞書へ入れる', () => {
   it('/ab_tests/<id> の id を拾う', () => {
     const map: ScrubMap = {}
-    collectUrlIdentifiers('<a href="/ab_tests/fyVwpUpEzeEkSQZg/reports">r</a>', map)
-    expect(Object.keys(map)).toEqual(['fyVwpUpEzeEkSQZg'])
-    expect(map['fyVwpUpEzeEkSQZg']?.category).toBe('uid')
+    collectUrlIdentifiers('<a href="/ab_tests/SynthIdAaBbCcDd/reports">r</a>', map)
+    expect(Object.keys(map)).toEqual(['SynthIdAaBbCcDd'])
+    expect(map['SynthIdAaBbCcDd']?.category).toBe('uid')
   })
 
   it('短いIDも拾う（長さでは判定しない）', () => {
     const map: ScrubMap = {}
-    collectUrlIdentifiers('/folders/nobUxTzcQ', map)
-    expect(Object.keys(map)).toEqual(['nobUxTzcQ'])
+    collectUrlIdentifiers('/folders/SynthShort1', map)
+    expect(Object.keys(map)).toEqual(['SynthShort1'])
   })
 
   it('ルートの語（new / edit など）はIDとして扱わない', () => {
@@ -46,8 +46,8 @@ describe('URLの形から実IDを見つけて辞書へ入れる', () => {
 
   it('articles / exit_popups / htmls 配下のIDも拾う', () => {
     const map: ScrubMap = {}
-    collectUrlIdentifiers('/articles/WlEwvKIxLVMYxUqpdkTMA', map)
-    expect(Object.keys(map)).toEqual(['WlEwvKIxLVMYxUqpdkTMA'])
+    collectUrlIdentifiers('/articles/SynthIdEeFfGgHhIiJj', map)
+    expect(Object.keys(map)).toEqual(['SynthIdEeFfGgHhIiJj'])
   })
 
   it('拡張子付きのファイル名をIDと誤認しない', () => {

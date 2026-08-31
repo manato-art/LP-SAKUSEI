@@ -126,6 +126,9 @@ export const STRIP_PATTERNS: readonly { name: string; pattern: RegExp }[] = [
  * **全てのタグを消してしまう**（実際にこのバグを踏んだ。テストが検出）。
  * 土台のscriptを巻き込むと再現が壊れるため、必ず内容を検査してから消す。
  */
+/** 採取に使ったブラウザ自動化が注入する要素の目印。 */
+const AUTOMATION_OVERLAY = /claude-(?:agent|phantom)-/i
+
 export const CONDITIONAL_STRIP_RULES: readonly { name: string; tag: RegExp; mustContain: RegExp }[] = [
   { name: '外部SaaSのscript', tag: /<script\b[\s\S]*?<\/script>/gi, mustContain: SAAS_IDENTIFIER },
   { name: '外部SaaSのnoscript', tag: /<noscript\b[\s\S]*?<\/noscript>/gi, mustContain: SAAS_IDENTIFIER },
@@ -140,6 +143,19 @@ export const CONDITIONAL_STRIP_RULES: readonly { name: string; tag: RegExp; must
   },
   // SaaS関連のHTMLコメント（`<!-- Start of HubSpot Embed Code -->` 等）。描画されないが識別子が残る
   { name: '外部SaaSのコメント', tag: /<!--[\s\S]*?-->/g, mustContain: SAAS_IDENTIFIER },
+  // 採取に使ったブラウザ自動化が注入したオーバーレイ（発光枠・偽カーソル・そのCSS）。
+  // 実物のアプリの一部ではないので土台に残してはいけない。
+  // 残すと (1) 視覚一致率の比較対象が原本と別物になり、(2) AIの名前がDOMに焼き付く。
+  {
+    name: '自動化オーバーレイの要素',
+    tag: /<(div|span)\b[^>]*id="claude-(?:agent|phantom)-[^"]*"[\s\S]*?<\/\1>/gi,
+    mustContain: AUTOMATION_OVERLAY,
+  },
+  {
+    name: '自動化オーバーレイのstyle',
+    tag: /<style\b[^>]*id="claude-[^"]*"[\s\S]*?<\/style>/gi,
+    mustContain: AUTOMATION_OVERLAY,
+  },
 ]
 
 /**
@@ -205,4 +221,44 @@ export const ANY_EXTERNAL_HOST = /(https?:)\/\/([a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)
  * 誤爆を避けるため実在性の高いTLDに限定する。
  */
 export const BARE_HOST =
-  /\b([a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:tokyo|jp|io|net|dev|app|site|shop|info|biz))\b/gi
+  /\b([a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:com|co\.jp|jp|tokyo|io|net|dev|app|site|shop|info|biz|page|link|me|tv|cc|xyz))\b/gi
+
+/**
+ * その値をユーザーデータとして扱うか。
+ *
+ * **既定は「扱う」**。フィールド名の許可リスト方式は4回続けて実データを素通りさせた
+ * （実名 → 実ID → 実ページ名 → 企業名とメールのローカル部）。
+ * 新しいフィールドが出るたびに列挙を足すやり方では、必ず5回目が来る。
+ * だから「知らないフィールドは疑う」に反転し、**素通しするものだけを列挙**する。
+ *
+ * 素通しの条件は「その値の形が構造的だと分かること」に限る。
+ * 過剰な置換は忠実度を殺す（実際にアセットのファイル名を壊した）ので、
+ * 形で構造的と分かるものは残す。
+ */
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}([T ]|$)/
+/** APIの列挙値。小文字の英字とアンダースコアだけで、数字を含まない。 */
+const ENUM_LIKE = /^[a-z]+(?:_[a-z]+)*$/
+const NUMERIC_ONLY = /^-?\d+(?:\.\d+)?$/
+const BOOLEAN_LIKE = /^(?:true|false|null)$/i
+const CSS_VALUE = /^(?:#[0-9a-fA-F]{3,8}|-?\d+(?:\.\d+)?(?:px|%|em|rem|vh|vw|pt))$/
+const HAS_CJK = /[぀-ヿ㐀-鿿]/
+/** ルートのパス（ASCIIのみ）。日本語を含むパスは名前が埋まっている可能性があるので除外しない。 */
+const URL_PATH = /^\/[\w\-./?=&%:]*$/
+
+export function isUserDataValue(field: string, value: string): boolean {
+  if (STRUCTURAL_FIELDS.includes(field)) return false
+  const trimmed = value.trim()
+  // 日本語を含むものは、フィールド名に関わらず必ず対象（人名・企業名・施策名はここに来る）
+  if (HAS_CJK.test(trimmed)) return trimmed.length >= 2
+  if (trimmed.length < 3) return false
+  if (ISO_DATE.test(trimmed)) return false
+  if (NUMERIC_ONLY.test(trimmed)) return false
+  if (BOOLEAN_LIKE.test(trimmed)) return false
+  if (CSS_VALUE.test(trimmed)) return false
+  if (ENUM_LIKE.test(trimmed)) return false
+  // 先頭が `/` の値はルートのパス。名前として置換すると土台のリンクが壊れる
+  // （実際に `/folders` が施策名に置換され、タブの遷移先が消えた）。
+  // パスの中の実IDは URL の形から別途拾う（tools/shared/url-identifier.ts）。
+  if (URL_PATH.test(trimmed)) return false
+  return true
+}

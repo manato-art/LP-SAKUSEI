@@ -249,8 +249,8 @@ describe('実名リストはカテゴリを指定できる（ページ名を人�
   })
 
   it('= の右側でカテゴリを指定できる', () => {
-    expect(parseKnownEntries('複製用 = campaign')).toEqual([
-      { name: '複製用', category: 'campaign' },
+    expect(parseKnownEntries('架空名2 = campaign')).toEqual([
+      { name: '架空名2', category: 'campaign' },
     ])
   })
 
@@ -264,8 +264,8 @@ describe('実名リストはカテゴリを指定できる（ページ名を人�
 
   it('カテゴリ付きで辞書へ入れると、その分類の架空値になる', () => {
     const map: ScrubMap = {}
-    collectKnownEntries(parseKnownEntries('複製用 = campaign'), map)
-    expect(map['複製用']?.category).toBe('campaign')
-    expect(map['複製用']?.replacement).not.toBe('複製用')
+    collectKnownEntries(parseKnownEntries('架空名2 = campaign'), map)
+    expect(map['架空名2']?.category).toBe('campaign')
+    expect(map['架空名2']?.replacement).not.toBe('架空名2')
   })
 })

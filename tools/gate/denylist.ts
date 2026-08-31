@@ -33,7 +33,12 @@ export const EXTERNAL_SAAS_PATTERNS: readonly { name: string; pattern: RegExp }[
  */
 export const PRODUCTION_TOKEN_PATTERNS: readonly { name: string; pattern: RegExp }[] = [
   { name: 'JWT', pattern: /\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b/g },
-  { name: '長い不透明トークン(32文字以上)', pattern: /\b(?![A-Z]+_\d{4}\b)[A-Za-z0-9]{32,}\b/g },
+  {
+    // 数字を1つ以上含むものに限る。含めないと forceConsistentCasingInFileNames のような
+    // 英単語をつないだ識別子を「トークン」と誤検知して、本物の違反が埋もれる。
+    name: '長い不透明トークン(32文字以上)',
+    pattern: /\b(?![A-Z]+_\d{4}\b)(?=[A-Za-z0-9]*\d)[A-Za-z0-9]{32,}\b/g,
+  },
   { name: 'Bearerヘッダ', pattern: /\bBearer\s+(?!sample_token_)[A-Za-z0-9._-]{20,}/g },
 ]
 
@@ -58,14 +63,25 @@ export const EXTERNAL_HOST_ALLOWLIST: readonly RegExp[] = [
 ]
 
 /** 実金額らしいパターン（§13-E 実金額パターン）。合成データは桁が撹拌済みなので通る想定。 */
-export const SUSPICIOUS_MONEY_PATTERN = /[¥￥]\s?\d{1,3}(?:,\d{3}){2,}/g
+export const SUSPICIOUS_MONEY_PATTERN = /[¥￥]\s?\d{1,3}(?:,\d{3})+|[¥￥]\s?\d{4,}/g
 
 /**
  * スキャン対象ディレクトリ（成果物とコミット対象）。
  * `capture` は配下すべて（clean / css / assets / …）を対象にする。
  * 生キャプチャはリポジトリ外の隔離ディレクトリにあるため、ここには含まれない（§3-3）。
  */
-export const SCAN_DIRS: readonly string[] = ['capture', 'src', 'mock-server', 'tools', 'dist']
+export const SCAN_DIRS: readonly string[] = [
+  'capture',
+  'src',
+  'mock-server',
+  'tools',
+  'dist',
+  // 実名は成果物だけでなく、手順書やテストのフィクスチャにも書かれる。
+  // ここを外していたため、実名がコミット済みでもゲートは合格を出していた。
+  'docs',
+  'tests',
+  '.',
+]
 
 /** スキャン対象拡張子 */
 export const SCAN_EXTENSIONS: readonly string[] = [
@@ -83,6 +99,23 @@ export const SELF_EXCLUDE: readonly string[] = [
   // 外部SaaSタグの「除去パターン」の定義元。検出語を持っているのが正しいファイルなので対象外。
   // （実行時にこれらをロードするコードではない。理由は docs/scrub-policy.md §除外一覧）
   'tools/scrub/policy.ts',
+  // 以下は「我々が書いた成果物」ではないので対象外にする。
+  // 走査対象に docs/tests/直下を足した際に、これらが大量の誤検知を出して
+  // 本物の違反が埋もれたため。除外の理由は必ずここに書くこと。
+  'package-lock.json', // npm が生成する整合性ハッシュ。実データではない
+  'scrub-map.json', // 実値→架空値の対応表。実値を持つのが役目・.gitignore 済み
+  '企画書.md', // 依頼元の仕様書そのもの（入力であって成果物ではない）
+  '企画書_v1.0_archive.md',
+  // 「実IDらしき値の検出」自体を試すテスト。合成IDを意図的に書いているので対象外。
+  // 本物の実IDは .gate-names.local に登録して実名スキャンで捕まえる（そちらは全ファイルが対象）。
+  'tests/gate-url-ids.test.ts',
+  'tests/scrub-url-ids.test.ts',
+  // 匿名化そのものを試すテスト。合成の金額・外部SaaSタグを入力として意図的に持つ。
+  'tests/scrub.test.ts',
+  // 金額検出パターン自体を試すテスト。合成の金額を意図的に持つ。
+  'tests/gate-scope.test.ts',
+  // ホスト置換の挙動を試すテスト。合成の外部ホストを入力として意図的に持つ。
+  'tests/scrub-host-only.test.ts',
 ]
 
 /**

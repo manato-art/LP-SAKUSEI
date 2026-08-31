@@ -7,6 +7,7 @@
  */
 import { findUrlIdentifiers } from '../shared/url-identifier.ts'
 import {
+  isUserDataValue,
   NUMERIC_USER_DATA_FIELDS,
   STRUCTURAL_FIELDS,
   USER_DATA_FIELDS,
@@ -120,7 +121,10 @@ function categorize(field: string, value: string): ScrubCategory | null {
   if (field === 'uid') return 'uid'
   if (field.endsWith('token') || field.endsWith('api_key')) return 'token'
   if (NUMERIC_USER_DATA_FIELDS.includes(field)) return 'number'
-  if (!USER_DATA_FIELDS.includes(field)) return null
+  // フィールド名の許可リストは「知っているフィールドだけ」しか守れず、
+  // 実データを4回素通りさせた。既知フィールドはそのまま扱い、
+  // 知らないフィールドは**値の形**で判断する（isUserDataValue が既定で疑う）。
+  if (!USER_DATA_FIELDS.includes(field) && !isUserDataValue(field, value)) return null
 
   if (EMAIL_RE.test(value)) return 'email'
   if (PHONE_RE.test(value)) return 'phone'
@@ -213,6 +217,17 @@ function addNumericVariants(map: ScrubMap, value: number): void {
 }
 
 /** JSON(fixtures) を走査して辞書へ literal を集める */
+/** URLならホスト名だけを返す。ホスト名そのものならそのまま返す。 */
+function hostnameOf(value: string): string {
+  const withScheme = /^https?:\/\//i.test(value) ? value : `https://${value}`
+  try {
+    return new URL(withScheme).hostname
+  } catch {
+    // URLとして解釈できない値は、そのまま辞書へ入れる（取りこぼすより安全側）
+    return value
+  }
+}
+
 export function collectFromJson(node: unknown, map: ScrubMap, field = ''): void {
   if (Array.isArray(node)) {
     for (const item of node) collectFromJson(item, map, field)
@@ -230,7 +245,9 @@ export function collectFromJson(node: unknown, map: ScrubMap, field = ''): void 
     const category = categorize(field, node)
     // html/css は巨大な塊なので辞書には載せず、本文スキャンで処理する
     if (category !== null && field !== 'html' && field !== 'css' && field !== 'body') {
-      addEntry(map, node, category)
+      // URLはホスト名だけを辞書に入れる。URL全体を1つの値として置換すると
+      // パスまで消え、`/api/v1/folders` のようなルートが土台から失われる。
+      addEntry(map, category === 'host' ? hostnameOf(node) : node, category)
     }
   }
 }
