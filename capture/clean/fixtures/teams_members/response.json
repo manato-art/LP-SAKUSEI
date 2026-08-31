@@ -1,0 +1,740 @@
+{
+  "members": [
+    {
+      "id": 30788,
+      "team_id": 1012,
+      "uid": "UID_7450",
+      "email": "user722@example.test",
+      "name": "大山",
+      "role": "owner",
+      "joined": true,
+      "is_admin_user": false,
+      "outside": false,
+      "billing_manager": false,
+      "joined_at": 1744256414,
+      "created_at": 1744248107,
+      "user": {
+        "id": 10600,
+        "name": "大山",
+        "company_name": "user722@example.test",
+        "email": "user722@example.test",
+        "confirmed_at": null,
+        "amazon_cognito_setting": {
+          "unverified_email": "",
+          "mfa_configured_at": null
+        }
+      },
+      "jobs": [
+        {
+          "id": 8,
+          "name": "サンプル施策450"
+        }
+      ]
+    },
+    {
+      "id": 30940,
+      "team_id": 1012,
+      "uid": "UID_7331",
+      "email": "user722@example.test",
+      "name": "サンプル施策295",
+      "role": "owner",
+      "joined": true,
+      "is_admin_user": false,
+      "outside": false,
+      "billing_manager": false,
+      "joined_at": 1744622674,
+      "created_at": 1744618623,
+      "user": {
+        "id": 10624,
+        "name": "サンプル施策295",
+        "company_name": "株式会社サンプル施策407",
+        "email": "user722@example.test",
+        "confirmed_at": null,
+        "amazon_cognito_setting": {
+          "unverified_email": "",
+          "mfa_configured_at": null
+        }
+      },
+      "jobs": [
+        {
+          "id": 3,
+          "name": "サンプル施策403"
+        }
+      ]
+    },
+    {
+      "id": 30941,
+      "team_id": 1012,
+      "uid": "UID_8830",
+      "email": "user523@example.test",
+      "name": "サンプル施策733",
+      "role": "owner",
+      "joined": true,
+      "is_admin_user": false,
+      "outside": false,
+      "billing_manager": false,
+      "joined_at": 1744620630,
+      "created_at": 1744618638,
+      "user": {
+        "id": 10623,
+        "name": "サンプル施策733",
+        "company_name": "user523@example.test",
+        "email": "user523@example.test",
+        "confirmed_at": null,
+        "amazon_cognito_setting": {
+          "unverified_email": "",
+          "mfa_configured_at": null
+        }
+      },
+      "jobs": [
+        {
+          "id": 3,
+          "name": "サンプル施策403"
+        }
+      ]
+    },
+    {
+      "id": 30942,
+      "team_id": 1012,
+      "uid": "UID_3574",
+      "email": "user612@example.test",
+      "name": "サンプル施策111",
+      "role": "owner",
+      "joined": true,
+      "is_admin_user": false,
+      "outside": false,
+      "billing_manager": false,
+      "joined_at": 1744640001,
+      "created_at": 1744618650,
+      "user": {
+        "id": 9950,
+        "name": "サンプル施策111",
+        "company_name": "株式会社サンプル施策407",
+        "email": "user612@example.test",
+        "confirmed_at": null,
+        "amazon_cognito_setting": {
+          "unverified_email": "",
+          "mfa_configured_at": null
+        }
+      },
+      "jobs": [
+        {
+          "id": 3,
+          "name": "サンプル施策403"
+        }
+      ]
+    },
+    {
+      "id": 31106,
+      "team_id": 1012,
+      "uid": "UID_9057",
+      "email": "user851@example.test",
+      "name": "サンプル施策406",
+      "role": "member",
+      "joined": true,
+      "is_admin_user": false,
+      "outside": true,
+      "billing_manager": false,
+      "joined_at": 1745216044,
+      "created_at": 1744938540,
+      "user": {
+        "id": 2293,
+        "name": "サンプル施策406",
+        "company_name": "サンプル施策912",
+        "email": "user851@example.test",
+        "confirmed_at": "2022-02-25T14:56:10.000+09:00",
+        "amazon_cognito_setting": {
+          "unverified_email": "",
+          "mfa_configured_at": null
+        }
+      },
+      "jobs": [
+        {
+          "id": 3,
+          "name": "サンプル施策403"
+        }
+      ]
+    },
+    {
+      "id": 31209,
+      "team_id": 1012,
+      "uid": "UID_6595",
+      "email": "user210@example.test",
+      "name": "サンプル施策090",
+      "role": "member",
+      "joined": true,
+      "is_admin_user": false,
+      "outside": true,
+      "billing_manager": false,
+      "joined_at": 1745223719,
+      "created_at": 1745223698,
+      "user": {
+        "id": 8966,
+        "name": "サンプル施策090",
+        "company_name": "サンプル施策912",
+        "email": "user210@example.test",
+        "confirmed_at": null,
+        "amazon_cognito_setting": {
+          "unverified_email": "",
+          "mfa_configured_at": null
+        }
+      },
+      "jobs": [
+        {
+          "id": 3,
+          "name": "サンプル施策403"
+        }
+      ]
+    },
+    {
+      "id": 32743,
+      "team_id": 1012,
+      "uid": "UID_6437",
+      "email": "user434@example.test",
+      "name": "照屋",
+      "role": "member",
+      "joined": true,
+      "is_admin_user": false,
+      "outside": true,
+      "billing_manager": false,
+      "joined_at": 1749173490,
+      "created_at": 1749172831,
+      "user": {
+        "id": 7277,
+        "name": "照屋",
+        "company_name": "クローバー",
+        "email": "user434@example.test",
+        "confirmed_at": null,
+        "amazon_cognito_setting": {
+          "unverified_email": "",
+          "mfa_configured_at": null
+        }
+      },
+      "jobs": [
+        {
+          "id": 2,
+          "name": "サンプル施策741"
+        }
+      ]
+    },
+    {
+      "id": 32793,
+      "team_id": 1012,
+      "uid": "UID_2481",
+      "email": "user675@example.test",
+      "name": "サンプル施策069",
+      "role": "member",
+      "joined": true,
+      "is_admin_user": false,
+      "outside": true,
+      "billing_manager": false,
+      "joined_at": 1749550811,
+      "created_at": 1749431260,
+      "user": {
+        "id": 4898,
+        "name": "サンプル施策069",
+        "company_name": "BGテクノロジー株式会社",
+        "email": "user675@example.test",
+        "confirmed_at": null,
+        "amazon_cognito_setting": {
+          "unverified_email": "kyohei.mochizuki@sample54.example.test",
+          "mfa_configured_at": null
+        }
+      },
+      "jobs": [
+        {
+          "id": 6,
+          "name": "サンプル施策537"
+        }
+      ]
+    },
+    {
+      "id": 33704,
+      "team_id": 1012,
+      "uid": "UID_9198",
+      "email": "user790@example.test",
+      "name": "サンプル施策685",
+      "role": "guest",
+      "joined": true,
+      "is_admin_user": false,
+      "outside": false,
+      "billing_manager": false,
+      "joined_at": 1751432110,
+      "created_at": 1751425982,
+      "user": {
+        "id": 7810,
+        "name": "サンプル施策685",
+        "company_name": "個人",
+        "email": "user790@example.test",
+        "confirmed_at": null,
+        "amazon_cognito_setting": {
+          "unverified_email": "",
+          "mfa_configured_at": null
+        }
+      },
+      "jobs": [
+        {
+          "id": 3,
+          "name": "サンプル施策403"
+        }
+      ]
+    },
+    {
+      "id": 33705,
+      "team_id": 1012,
+      "uid": "UID_0038",
+      "email": "user818@example.test",
+      "name": "サンプル施策685",
+      "role": "guest",
+      "joined": true,
+      "is_admin_user": false,
+      "outside": false,
+      "billing_manager": false,
+      "joined_at": 1751427019,
+      "created_at": 1751426004,
+      "user": {
+        "id": 11262,
+        "name": "サンプル施策685",
+        "company_name": "個人",
+        "email": "user818@example.test",
+        "confirmed_at": null,
+        "amazon_cognito_setting": {
+          "unverified_email": "",
+          "mfa_configured_at": null
+        }
+      },
+      "jobs": [
+        {
+          "id": 3,
+          "name": "サンプル施策403"
+        }
+      ]
+    },
+    {
+      "id": 33706,
+      "team_id": 1012,
+      "uid": "UID_4567",
+      "email": "user064@example.test",
+      "name": "サンプル施策218",
+      "role": "guest",
+      "joined": true,
+      "is_admin_user": false,
+      "outside": false,
+      "billing_manager": false,
+      "joined_at": 1751452991,
+      "created_at": 1751426023,
+      "user": {
+        "id": 11309,
+        "name": "サンプル施策218",
+        "company_name": "サンプル施策407",
+        "email": "user064@example.test",
+        "confirmed_at": null,
+        "amazon_cognito_setting": {
+          "unverified_email": "",
+          "mfa_configured_at": null
+        }
+      },
+      "jobs": [
+        {
+          "id": 3,
+          "name": "サンプル施策403"
+        }
+      ]
+    },
+    {
+      "id": 38271,
+      "team_id": 1012,
+      "uid": "UID_9255",
+      "email": "user756@example.test",
+      "name": "伊藤",
+      "role": "member",
+      "joined": true,
+      "is_admin_user": false,
+      "outside": true,
+      "billing_manager": false,
+      "joined_at": 1759993078,
+      "created_at": 1759992570,
+      "user": {
+        "id": 9885,
+        "name": "伊藤",
+        "company_name": "ttt",
+        "email": "user756@example.test",
+        "confirmed_at": null,
+        "amazon_cognito_setting": {
+          "unverified_email": "",
+          "mfa_configured_at": null
+        }
+      },
+      "jobs": [
+        {
+          "id": 2,
+          "name": "サンプル施策741"
+        }
+      ]
+    },
+    {
+      "id": 38313,
+      "team_id": 1012,
+      "uid": "UID_0600",
+      "email": "user806@example.test",
+      "name": "サンプル施策500",
+      "role": "member",
+      "joined": true,
+      "is_admin_user": false,
+      "outside": true,
+      "billing_manager": false,
+      "joined_at": 1760413957,
+      "created_at": 1760085172,
+      "user": {
+        "id": 12963,
+        "name": "サンプル施策500",
+        "company_name": "インフルエンサーZ",
+        "email": "user806@example.test",
+        "confirmed_at": null,
+        "amazon_cognito_setting": {
+          "unverified_email": "",
+          "mfa_configured_at": null
+        }
+      },
+      "jobs": [
+        {
+          "id": 3,
+          "name": "サンプル施策403"
+        }
+      ]
+    },
+    {
+      "id": 38419,
+      "team_id": 1012,
+      "uid": "UID_2801",
+      "email": "user519@example.test",
+      "name": "サンプル施策805",
+      "role": "member",
+      "joined": true,
+      "is_admin_user": false,
+      "outside": true,
+      "billing_manager": false,
+      "joined_at": 1760580662,
+      "created_at": 1760578727,
+      "user": {
+        "id": 8571,
+        "name": "サンプル施策805",
+        "company_name": "Trigger Holdings",
+        "email": "user519@example.test",
+        "confirmed_at": null,
+        "amazon_cognito_setting": {
+          "unverified_email": "",
+          "mfa_configured_at": null
+        }
+      },
+      "jobs": [
+        {
+          "id": 3,
+          "name": "サンプル施策403"
+        }
+      ]
+    },
+    {
+      "id": 38420,
+      "team_id": 1012,
+      "uid": "UID_9202",
+      "email": "user582@example.test",
+      "name": "サンプル施策175",
+      "role": "member",
+      "joined": true,
+      "is_admin_user": false,
+      "outside": true,
+      "billing_manager": false,
+      "joined_at": 1760580634,
+      "created_at": 1760578782,
+      "user": {
+        "id": 13021,
+        "name": "サンプル施策175",
+        "company_name": "user789@example.test",
+        "email": "user582@example.test",
+        "confirmed_at": null,
+        "amazon_cognito_setting": {
+          "unverified_email": "",
+          "mfa_configured_at": null
+        }
+      },
+      "jobs": [
+        {
+          "id": 5,
+          "name": "サンプル施策866"
+        }
+      ]
+    },
+    {
+      "id": 38725,
+      "team_id": 1012,
+      "uid": "UID_0478",
+      "email": "user869@example.test",
+      "name": "サンプル施策753",
+      "role": "guest",
+      "joined": true,
+      "is_admin_user": false,
+      "outside": false,
+      "billing_manager": false,
+      "joined_at": 1761552437,
+      "created_at": 1761550906,
+      "user": {
+        "id": 13104,
+        "name": "サンプル施策753",
+        "company_name": "フリー",
+        "email": "user869@example.test",
+        "confirmed_at": null,
+        "amazon_cognito_setting": {
+          "unverified_email": "",
+          "mfa_configured_at": null
+        }
+      },
+      "jobs": [
+        {
+          "id": 3,
+          "name": "サンプル施策403"
+        }
+      ]
+    },
+    {
+      "id": 38727,
+      "team_id": 1012,
+      "uid": "UID_4398",
+      "email": "user633@example.test",
+      "name": null,
+      "role": "guest",
+      "joined": false,
+      "is_admin_user": null,
+      "outside": false,
+      "billing_manager": false,
+      "joined_at": null,
+      "created_at": 1761553417,
+      "user": null,
+      "jobs": [
+        {
+          "id": 3,
+          "name": "サンプル施策403"
+        }
+      ]
+    },
+    {
+      "id": 39367,
+      "team_id": 1012,
+      "uid": "UID_7143",
+      "email": "user184@example.test",
+      "name": "サンプル施策147",
+      "role": "member",
+      "joined": true,
+      "is_admin_user": false,
+      "outside": true,
+      "billing_manager": false,
+      "joined_at": 1763449353,
+      "created_at": 1763446556,
+      "user": {
+        "id": 4860,
+        "name": "サンプル施策147",
+        "company_name": "株式会社オンド",
+        "email": "user184@example.test",
+        "confirmed_at": null,
+        "amazon_cognito_setting": {
+          "unverified_email": "",
+          "mfa_configured_at": null
+        }
+      },
+      "jobs": [
+        {
+          "id": 3,
+          "name": "サンプル施策403"
+        }
+      ]
+    },
+    {
+      "id": 40335,
+      "team_id": 1012,
+      "uid": "UID_2084",
+      "email": "user805@example.test",
+      "name": "サンプル施策057",
+      "role": "member",
+      "joined": true,
+      "is_admin_user": false,
+      "outside": true,
+      "billing_manager": false,
+      "joined_at": 1767688272,
+      "created_at": 1766650659,
+      "user": {
+        "id": 9073,
+        "name": "サンプル施策057",
+        "company_name": "エムエムラボ",
+        "email": "user805@example.test",
+        "confirmed_at": null,
+        "amazon_cognito_setting": {
+          "unverified_email": "",
+          "mfa_configured_at": null
+        }
+      },
+      "jobs": [
+        {
+          "id": 3,
+          "name": "サンプル施策403"
+        }
+      ]
+    },
+    {
+      "id": 40931,
+      "team_id": 1012,
+      "uid": "UID_3254",
+      "email": "user997@example.test",
+      "name": "サンプル施策469",
+      "role": "member",
+      "joined": true,
+      "is_admin_user": false,
+      "outside": true,
+      "billing_manager": false,
+      "joined_at": 1769482763,
+      "created_at": 1769477372,
+      "user": {
+        "id": 13385,
+        "name": "サンプル施策469",
+        "company_name": "合同会社Ad spire",
+        "email": "user997@example.test",
+        "confirmed_at": null,
+        "amazon_cognito_setting": {
+          "unverified_email": "",
+          "mfa_configured_at": null
+        }
+      },
+      "jobs": [
+        {
+          "id": 2,
+          "name": "サンプル施策741"
+        }
+      ]
+    },
+    {
+      "id": 41305,
+      "team_id": 1012,
+      "uid": "UID_2968",
+      "email": "user576@example.test",
+      "name": "サンプル施策572",
+      "role": "member",
+      "joined": true,
+      "is_admin_user": false,
+      "outside": true,
+      "billing_manager": false,
+      "joined_at": 1770624429,
+      "created_at": 1770624292,
+      "user": {
+        "id": 9069,
+        "name": "サンプル施策572",
+        "company_name": "株式会社エムエムラボ",
+        "email": "user576@example.test",
+        "confirmed_at": null,
+        "amazon_cognito_setting": {
+          "unverified_email": "",
+          "mfa_configured_at": null
+        }
+      },
+      "jobs": [
+        {
+          "id": 2,
+          "name": "サンプル施策741"
+        }
+      ]
+    },
+    {
+      "id": 41623,
+      "team_id": 1012,
+      "uid": "UID_9547",
+      "email": "user531@example.test",
+      "name": "サンプル施策010",
+      "role": "member",
+      "joined": true,
+      "is_admin_user": false,
+      "outside": true,
+      "billing_manager": false,
+      "joined_at": 1771907798,
+      "created_at": 1771469043,
+      "user": {
+        "id": 479,
+        "name": "サンプル施策010",
+        "company_name": "株式会社ナハト",
+        "email": "user531@example.test",
+        "confirmed_at": "2020-09-18T19:02:18.000+09:00",
+        "amazon_cognito_setting": {
+          "unverified_email": "",
+          "mfa_configured_at": null
+        }
+      },
+      "jobs": [
+        {
+          "id": 3,
+          "name": "サンプル施策403"
+        }
+      ]
+    },
+    {
+      "id": 43132,
+      "team_id": 1012,
+      "uid": "UID_0836",
+      "email": "user937@example.test",
+      "name": "サンプル施策048",
+      "role": "member",
+      "joined": true,
+      "is_admin_user": false,
+      "outside": true,
+      "billing_manager": false,
+      "joined_at": 1776064455,
+      "created_at": 1776064397,
+      "user": {
+        "id": 4468,
+        "name": "サンプル施策048",
+        "company_name": "株式会社JAPANSOLUTIONS",
+        "email": "user937@example.test",
+        "confirmed_at": null,
+        "amazon_cognito_setting": {
+          "unverified_email": "",
+          "mfa_configured_at": null
+        }
+      },
+      "jobs": [
+        {
+          "id": 2,
+          "name": "サンプル施策741"
+        }
+      ]
+    },
+    {
+      "id": 46409,
+      "team_id": 1012,
+      "uid": "UID_4235",
+      "email": "user340@example.test",
+      "name": "サンプル施策319",
+      "role": "member",
+      "joined": true,
+      "is_admin_user": false,
+      "outside": true,
+      "billing_manager": false,
+      "joined_at": 1787212258,
+      "created_at": 1787209018,
+      "user": {
+        "id": 14401,
+        "name": "サンプル施策319",
+        "company_name": "株式会社サンプル施策994",
+        "email": "user340@example.test",
+        "confirmed_at": null,
+        "amazon_cognito_setting": {
+          "unverified_email": "",
+          "mfa_configured_at": null
+        }
+      },
+      "jobs": [
+        {
+          "id": 1,
+          "name": "サンプル施策577"
+        }
+      ]
+    }
+  ],
+  "invitable_member_count": 0,
+  "team_id": 1012
+}

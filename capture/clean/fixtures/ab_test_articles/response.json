@@ -1,0 +1,181 @@
+[
+  {
+    "id": 11138261,
+    "uid": "UID_6523",
+    "memo": "sample97.example.test",
+    "archived": false,
+    "created_at": "2026-08-31T17:40:56.000+09:00",
+    "body_updated_at": "2026-08-31T17:49:43.000+09:00",
+    "reflected_at": null,
+    "delivery_url": "example.test/articles/UID_6523",
+    "draft_url": "example.test/articles/UID_6523/draft?token=sample_token_12e50b11",
+    "devise_preview_url": "example.test/articles/UID_6523/preview",
+    "creation_timestamp": "2026-08-31T17:40:56.000+09:00",
+    "style_applied": true,
+    "updated_timestamp": "2026-08-31T17:49:43.000+09:00",
+    "editor_type": 2,
+    "is_requesting_inspection": false,
+    "is_under_inspection": false,
+    "team": {
+      "id": 1012,
+      "created_at": 1744093800,
+      "uid": "UID_5188",
+      "name": "サンプル施策407"
+    },
+    "writer": {
+      "id": 30941,
+      "team_id": 1012,
+      "uid": "UID_8830",
+      "email": "user523@example.test",
+      "name": "サンプル施策733",
+      "role": "owner",
+      "joined": true,
+      "is_admin_user": false,
+      "outside": false,
+      "billing_manager": false,
+      "joined_at": 1744620630,
+      "created_at": 1744618638,
+      "user": {
+        "id": 10623,
+        "name": "サンプル施策733",
+        "company_name": "user523@example.test",
+        "email": "user523@example.test",
+        "confirmed_at": null
+      }
+    },
+    "funnel_step": null,
+    "header_photo": null,
+    "ab_test_article": {
+      "id": 11135617,
+      "rate": 1,
+      "prioritized": true,
+      "article_id": 11138261,
+      "position": 1
+    },
+    "ab_test": {
+      "id": 2678600,
+      "team_id": 1012,
+      "uid": "UID_2771",
+      "title": "サンプル施策091",
+      "memo": "",
+      "media_id": 55,
+      "affiliate_service_provider_id": null,
+      "gender_id": null,
+      "folder_id": 182760,
+      "original_ab_test_id": null,
+      "over_age": 0,
+      "under_age": 0,
+      "conversion_unit_price": 0,
+      "published": true,
+      "editor_version": 2,
+      "media": {
+        "attributes": {
+          "id": 55,
+          "name": "サンプル施策892",
+          "icon_name": "nosnsicon",
+          "ad_cooperation": false
+        }
+      },
+      "affiliate_service_provider": null,
+      "ad_status": "finished",
+      "conversion_condition": "click",
+      "delivery_type": "html_rewriting",
+      "created_at": 1788165656,
+      "creation_timestamp": "2026-08-31T17:40:56.000+09:00",
+      "updated_at": 1788166278,
+      "folder": {
+        "id": 182760,
+        "team_id": 1012,
+        "uid": "UID_3737",
+        "name": "サンプル施策870",
+        "is_import_folder": false,
+        "is_importing": false,
+        "domain": {
+          "id": 84941,
+          "status": "approved",
+          "domain": "sample48.example.test",
+          "description": "",
+          "free_domain_id": 3,
+          "pv_count_one_month": 0,
+          "disconnected_at": null
+        }
+      },
+      "redirect_pages": []
+    },
+    "master_style_sheet": {
+      "id": 11011324,
+      "font_size": 17,
+      "font_family": "Hiragino Sans, Arial, sans-serif",
+      "color": "000000",
+      "line_height": 1.8,
+      "letter_spacing": null,
+      "padding_top": 15,
+      "padding_bottom": 15,
+      "padding_right": 20,
+      "padding_left": 20,
+      "img_margin_top": 0,
+      "img_margin_bottom": 0,
+      "outer_background_image": {
+        "url": null,
+        "h265": {
+          "url": null
+        },
+        "webp": {
+          "url": null
+        },
+        "avif": {
+          "url": null
+        }
+      },
+      "outer_background_color": "",
+      "inner_background_image": {
+        "url": null,
+        "h265": {
+          "url": null
+        },
+        "webp": {
+          "url": null
+        },
+        "avif": {
+          "url": null
+        }
+      },
+      "inner_background_color": "",
+      "border_size": null,
+      "border_type": "",
+      "border_color": "",
+      "iframe_height": null,
+      "iframe_height_unit": "",
+      "delivery_version_width": null,
+      "delivery_version_width_unit": ""
+    },
+    "exit_popup_setting": {
+      "id": 10981644,
+      "exit_popup_attached": false,
+      "fixed_popup_attached": false
+    },
+    "html_tags": [
+      {
+        "id": 33128349,
+        "body": "",
+        "tag": "style",
+        "document_property": "body"
+      },
+      {
+        "id": 33128350,
+        "body": null,
+        "tag": "script",
+        "document_property": "header"
+      },
+      {
+        "id": 33128351,
+        "body": null,
+        "tag": "script",
+        "document_property": "body"
+      }
+    ],
+    "funnel_steps": [],
+    "asset_files": [],
+    "inspection_requests": []
+  }
+]

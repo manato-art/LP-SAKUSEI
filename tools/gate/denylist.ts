@@ -51,6 +51,9 @@ export const EXTERNAL_HOST_ALLOWLIST: readonly RegExp[] = [
   /^https?:\/\/quilljs\.com$/,              // ベンダーCSSの帰属コメント
   /^https?:\/\/fontawesome\.com$/,          // 同上
   /^https?:\/\/git\.io$/,                   // 同上
+  // 匿名化後の架空ホスト。example.test は RFC 6761 の予約TLDで**絶対に名前解決されない**
+  // （＝到達不能なので §13-F「localhost以外へのリクエスト0件」を実質的に満たす）
+  /^https?:\/\/([a-z0-9-]+\.)*example\.test$/,
 ]
 
 /** 実金額らしいパターン（§13-E 実金額パターン）。合成データは桁が撹拌済みなので通る想定。 */

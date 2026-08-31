@@ -1,0 +1,20 @@
+[
+  "http://localhost:4010/api/v1/users/setting?locale=<omitted>&referer=<omitted>",
+  "http://localhost:4010/api/v1/teams/member?locale=<omitted>&referer=<omitted>",
+  "http://localhost:4010/api/v1/users/page_settings/ab_test?locale=<omitted>&referer=<omitted>",
+  "http://localhost:4010/api/v2/teams/members/conversions/latest?locale=<omitted>&referer=<omitted>",
+  "http://localhost:4010/api/v1/folders?folder_scope=except_outside&except_group=true&except_inspection_setting=true&except_team=true&locale=<omitted>&referer=<omitted>",
+  "http://localhost:4010/api/v1/teams/members/favorites/folder_groups?locale=<omitted>&referer=<omitted>",
+  "http://localhost:4010/api/v1/folder_groups?include_folders=false&locale=<omitted>&referer=<omitted>",
+  "http://localhost:4010/api/v1/folder_groupings?locale=<omitted>&referer=<omitted>",
+  "http://localhost:4010/api/v1/teams/members/favorites/folders?locale=<omitted>&referer=<omitted>",
+  "http://localhost:4010/api/v1/teams/members/folders/views?locale=<omitted>&referer=<omitted>",
+  "http://localhost:4010/api/v1/teams/members/favorites/ab_tests?locale=<omitted>&referer=<omitted>",
+  "http://localhost:4010/api/v1/teams/members/ab_tests/views?locale=<omitted>&referer=<omitted>",
+  "http://localhost:4010/api/v1/teams/members/internal_notifications/notification_actions?page=1&per_page=10&locale=<omitted>&referer=<omitted>",
+  "http://localhost:4010/api/v1/teams/members/internal_notifications/information_actions?page=1&per_page=10&locale=<omitted>&referer=<omitted>",
+  "http://localhost:4010/api/v1/folders/daily_reports?start_date=2026-08-30&end_date=2026-08-30&locale=<omitted>&referer=<omitted>",
+  "https://sample77.example.test/api/v1/cookie-team-uid?locale=<omitted>&referer=<omitted>",
+  "http://localhost:4010/api/v1/teams/members/UID_8830/folder_permissions?locale=<omitted>&referer=<omitted>",
+  "http://localhost:4010/api/v1/teams/members?locale=<omitted>&referer=<omitted>"
+]

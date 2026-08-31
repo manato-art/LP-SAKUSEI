@@ -136,16 +136,22 @@ async function main(): Promise<void> {
     await verifyEndpoints(),
   ]
 
-  if (!hasCaptures) {
-    const reason = 'capture/clean/ が空（採取フェーズ未完了）。土台となる実DOM/実CSSが無いため判定不能。'
-    results.push(
-      pendingGate('13-A', '視覚一致率（SSIM≥0.98 / 差分≤1.0%）', reason),
-      pendingGate('13-B', '全ルート到達クローラ（#root非空・console error 0）', reason),
-      pendingGate('13-C', '全状態表示（状態インベントリ準拠）', reason),
-      pendingGate('13-D', 'インタラクション & ナビグラフ全走行', `${reason} 一覧応答契約の部分は vitest で検証済み。`),
-      pendingGate('13-F', '巡回中の外部ホストへのリクエスト0件（Playwright記録）', reason),
-    )
-  }
+  /**
+   * 実行時ゲート（§13-A/B/C/D/F）は **Playwrightハーネスと土台化されたクローンの両方**が要る。
+   * どちらも未完成なので、採取物の有無に関わらず必ず「保留」として出す。
+   * 採取が進んだだけで保留が消えると「合格に見える」ため、そうしない。
+   */
+  const captureNote = hasCaptures
+    ? '採取物あり。ただし土台化（rehydrate）が未着手。'
+    : 'capture/clean/ が空（採取フェーズ未完了）。'
+  const reason = `${captureNote} Playwright検証ハーネスも未実装のため判定不能。`
+  results.push(
+    pendingGate('13-A', '視覚一致率（SSIM≥0.98 / 差分≤1.0%）', reason),
+    pendingGate('13-B', '全ルート到達クローラ（#root非空・console error 0）', reason),
+    pendingGate('13-C', '全状態表示（状態インベントリ準拠）', reason),
+    pendingGate('13-D', 'インタラクション & ナビグラフ全走行', `${reason} 一覧応答契約の部分は vitest で検証済み。`),
+    pendingGate('13-F', '巡回中の外部ホストへのリクエスト0件（Playwright記録）', reason),
+  )
 
   const icon = { pass: 'PASS', fail: 'FAIL', pending: 'PEND' } as const
   console.log('\n===== npm run verify（企画書 §13）=====\n')

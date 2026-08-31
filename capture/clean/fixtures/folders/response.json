@@ -1,0 +1,4818 @@
+{
+  "folders": [
+    {
+      "id": 186018,
+      "team_id": 1012,
+      "uid": "UID_7764",
+      "name": "サンプル施策166",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 71280,
+        "status": "approved",
+        "domain": "sample26.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21486,
+        "name": "大山"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 185436,
+      "team_id": 1012,
+      "uid": "UID_8012",
+      "name": "サンプル施策843",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 86214,
+        "status": "approved",
+        "domain": "sample83.example.test",
+        "description": "",
+        "free_domain_id": null,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 28652,
+        "name": "サンプル施策994"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 184723,
+      "team_id": 1012,
+      "uid": "UID_5639",
+      "name": "サンプル施策096",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 84941,
+        "status": "approved",
+        "domain": "sample48.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 25092,
+        "name": "重南"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 184447,
+      "team_id": 1012,
+      "uid": "UID_2302",
+      "name": "サンプル施策791",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 85769,
+        "status": "approved",
+        "domain": "sample80.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21547,
+        "name": "内田"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 184444,
+      "team_id": 1012,
+      "uid": "UID_9277",
+      "name": "サンプル施策395",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 80839,
+        "status": "approved",
+        "domain": "sample01.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 28558,
+        "name": "サンプル施策138"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 182760,
+      "team_id": 1012,
+      "uid": "UID_3737",
+      "name": "サンプル施策870",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 84941,
+        "status": "approved",
+        "domain": "sample48.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 25092,
+        "name": "重南"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 180081,
+      "team_id": 1012,
+      "uid": "UID_7779",
+      "name": "サンプル施策278",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 83568,
+        "status": "approved",
+        "domain": "sample71.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 177227,
+      "team_id": 1012,
+      "uid": "UID_0462",
+      "name": "サンプル施策640",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 80839,
+        "status": "approved",
+        "domain": "sample01.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 176627,
+      "team_id": 1012,
+      "uid": "UID_3467",
+      "name": "サンプル施策859",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 61538,
+        "status": "approved",
+        "domain": "sample36.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 176536,
+      "team_id": 1012,
+      "uid": "UID_9261",
+      "name": "サンプル施策599",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 69463,
+        "status": "approved",
+        "domain": "sample36.example.test",
+        "description": "",
+        "free_domain_id": null,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 176230,
+      "team_id": 1012,
+      "uid": "UID_7542",
+      "name": "サンプル施策911",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 69462,
+        "status": "approved",
+        "domain": "sample54.example.test",
+        "description": "",
+        "free_domain_id": null,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 174876,
+      "team_id": 1012,
+      "uid": "UID_3176",
+      "name": "サンプル施策278",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 80839,
+        "status": "approved",
+        "domain": "sample01.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 174651,
+      "team_id": 1012,
+      "uid": "UID_6148",
+      "name": "サンプル施策746",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 71280,
+        "status": "approved",
+        "domain": "sample26.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21486,
+        "name": "大山"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 173557,
+      "team_id": 1012,
+      "uid": "UID_6972",
+      "name": "サンプル施策158",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 80198,
+        "status": "approved",
+        "domain": "sample81.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 172984,
+      "team_id": 1012,
+      "uid": "UID_0227",
+      "name": "サンプル施策721",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 69462,
+        "status": "approved",
+        "domain": "sample54.example.test",
+        "description": "",
+        "free_domain_id": null,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 172044,
+      "team_id": 1012,
+      "uid": "UID_8260",
+      "name": "サンプル施策688",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 69463,
+        "status": "approved",
+        "domain": "sample36.example.test",
+        "description": "",
+        "free_domain_id": null,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 172041,
+      "team_id": 1012,
+      "uid": "UID_0628",
+      "name": "サンプル施策017",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 69460,
+        "status": "approved",
+        "domain": "sample87.example.test",
+        "description": "",
+        "free_domain_id": null,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 171578,
+      "team_id": 1012,
+      "uid": "UID_5444",
+      "name": "サンプル施策616",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 79277,
+        "status": "approved",
+        "domain": "sample94.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21547,
+        "name": "内田"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 171232,
+      "team_id": 1012,
+      "uid": "UID_3548",
+      "name": "sample15.example.test",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 79170,
+        "status": "approved",
+        "domain": "sample44.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21725,
+        "name": "梅田"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 171188,
+      "team_id": 1012,
+      "uid": "UID_7465",
+      "name": "サンプル施策492",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 79145,
+        "status": "approved",
+        "domain": "sample31.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21725,
+        "name": "梅田"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 169860,
+      "team_id": 1012,
+      "uid": "UID_0699",
+      "name": "サンプル施策204",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": null,
+      "group": null,
+      "inspection_setting": null
+    },
+    {
+      "id": 169622,
+      "team_id": 1012,
+      "uid": "UID_7698",
+      "name": "サンプル施策491",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 56879,
+        "status": "approved",
+        "domain": "sample23.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21486,
+        "name": "大山"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 168779,
+      "team_id": 1012,
+      "uid": "UID_9566",
+      "name": "サンプル施策463",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 78143,
+        "status": "approved",
+        "domain": "sample03.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21547,
+        "name": "内田"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 168567,
+      "team_id": 1012,
+      "uid": "UID_3759",
+      "name": "サンプル施策586",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 77971,
+        "status": "approved",
+        "domain": "sample56.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 167904,
+      "team_id": 1012,
+      "uid": "UID_6410",
+      "name": "サンプル施策639",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": null,
+      "group": {
+        "id": 21725,
+        "name": "梅田"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 167896,
+      "team_id": 1012,
+      "uid": "UID_0796",
+      "name": "サンプル施策984",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 77692,
+        "status": "approved",
+        "domain": "sample68.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 167866,
+      "team_id": 1012,
+      "uid": "UID_0023",
+      "name": "サンプル施策774",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 77674,
+        "status": "approved",
+        "domain": "sample99.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21483,
+        "name": "真"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 167638,
+      "team_id": 1012,
+      "uid": "UID_7107",
+      "name": "サンプル施策312",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 78142,
+        "status": "approved",
+        "domain": "sample91.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21547,
+        "name": "内田"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 167008,
+      "team_id": 1012,
+      "uid": "UID_7085",
+      "name": "サンプル施策774",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 77222,
+        "status": "approved",
+        "domain": "sample48.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 166202,
+      "team_id": 1012,
+      "uid": "UID_7118",
+      "name": "サンプル施策097",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 69460,
+        "status": "approved",
+        "domain": "sample87.example.test",
+        "description": "",
+        "free_domain_id": null,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 166146,
+      "team_id": 1012,
+      "uid": "UID_8050",
+      "name": "サンプル施策674",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 76686,
+        "status": "approved",
+        "domain": "sample99.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 166037,
+      "team_id": 1012,
+      "uid": "UID_8515",
+      "name": "サンプル施策618",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 59713,
+        "status": "approved",
+        "domain": "sample42.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21486,
+        "name": "大山"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 166033,
+      "team_id": 1012,
+      "uid": "UID_7612",
+      "name": "サンプル施策018",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 76638,
+        "status": "approved",
+        "domain": "sample07.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 165160,
+      "team_id": 1012,
+      "uid": "UID_3130",
+      "name": "サンプル施策818",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 76232,
+        "status": "approved",
+        "domain": "sample39.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 163280,
+      "team_id": 1012,
+      "uid": "UID_3258",
+      "name": "サンプル施策997",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 56884,
+        "status": "approved",
+        "domain": "sample86.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21486,
+        "name": "大山"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 163157,
+      "team_id": 1012,
+      "uid": "UID_1480",
+      "name": "サンプル施策549",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 75336,
+        "status": "approved",
+        "domain": "sample87.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21725,
+        "name": "梅田"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 163003,
+      "team_id": 1012,
+      "uid": "UID_1721",
+      "name": "サンプル施策997",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 75281,
+        "status": "approved",
+        "domain": "sample13.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 162920,
+      "team_id": 1012,
+      "uid": "UID_2098",
+      "name": "サンプル施策276",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 75253,
+        "status": "approved",
+        "domain": "sample21.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 26141,
+        "name": "サンプル施策393"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 162877,
+      "team_id": 1012,
+      "uid": "UID_0840",
+      "name": "サンプル施策841",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 75241,
+        "status": "approved",
+        "domain": "sample77.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21547,
+        "name": "内田"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 162736,
+      "team_id": 1012,
+      "uid": "UID_7213",
+      "name": "サンプル施策255",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 75159,
+        "status": "approved",
+        "domain": "sample92.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21725,
+        "name": "梅田"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 162576,
+      "team_id": 1012,
+      "uid": "UID_2491",
+      "name": "サンプル施策917",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 75099,
+        "status": "approved",
+        "domain": "sample42.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21725,
+        "name": "梅田"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 162492,
+      "team_id": 1012,
+      "uid": "UID_0860",
+      "name": "サンプル施策936",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 75078,
+        "status": "approved",
+        "domain": "sample90.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 162174,
+      "team_id": 1012,
+      "uid": "UID_3013",
+      "name": "サンプル施策375",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 74920,
+        "status": "approved",
+        "domain": "sample15.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 162110,
+      "team_id": 1012,
+      "uid": "UID_7532",
+      "name": "サンプル施策870",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 74890,
+        "status": "approved",
+        "domain": "sample27.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21725,
+        "name": "梅田"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 161888,
+      "team_id": 1012,
+      "uid": "UID_7147",
+      "name": "サンプル施策494",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 74800,
+        "status": "approved",
+        "domain": "sample45.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": null,
+      "inspection_setting": null
+    },
+    {
+      "id": 161588,
+      "team_id": 1012,
+      "uid": "UID_1157",
+      "name": "サンプル施策404",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 74637,
+        "status": "approved",
+        "domain": "sample13.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21547,
+        "name": "内田"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 160676,
+      "team_id": 1012,
+      "uid": "UID_7595",
+      "name": "サンプル施策201",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 56205,
+        "status": "approved",
+        "domain": "sample57.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21486,
+        "name": "大山"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 160663,
+      "team_id": 1012,
+      "uid": "UID_1642",
+      "name": "サンプル施策955",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 59333,
+        "status": "approved",
+        "domain": "sample53.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21486,
+        "name": "大山"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 160662,
+      "team_id": 1012,
+      "uid": "UID_5126",
+      "name": "サンプル施策101",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 59713,
+        "status": "approved",
+        "domain": "sample42.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21486,
+        "name": "大山"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 160661,
+      "team_id": 1012,
+      "uid": "UID_9515",
+      "name": "サンプル施策265",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 59713,
+        "status": "approved",
+        "domain": "sample42.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21486,
+        "name": "大山"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 160508,
+      "team_id": 1012,
+      "uid": "UID_4688",
+      "name": "サンプル施策861",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 74170,
+        "status": "approved",
+        "domain": "sample37.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 159882,
+      "team_id": 1012,
+      "uid": "UID_0614",
+      "name": "サンプル施策847",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 73875,
+        "status": "approved",
+        "domain": "sample46.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 159698,
+      "team_id": 1012,
+      "uid": "UID_8351",
+      "name": "サンプル施策998",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 73749,
+        "status": "approved",
+        "domain": "sample53.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 25800,
+        "name": "サンプル施策895"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 159526,
+      "team_id": 1012,
+      "uid": "UID_0649",
+      "name": "サンプル施策561",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 73645,
+        "status": "approved",
+        "domain": "sample68.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21483,
+        "name": "真"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 159383,
+      "team_id": 1012,
+      "uid": "UID_4192",
+      "name": "サンプル施策782",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 73568,
+        "status": "approved",
+        "domain": "sample40.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 159130,
+      "team_id": 1012,
+      "uid": "UID_0571",
+      "name": "サンプル施策623",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 73426,
+        "status": "approved",
+        "domain": "sample15.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 157640,
+      "team_id": 1012,
+      "uid": "UID_2754",
+      "name": "サンプル施策623",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 72797,
+        "status": "approved",
+        "domain": "sample13.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 157110,
+      "team_id": 1012,
+      "uid": "UID_7789",
+      "name": "サンプル施策144",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 72581,
+        "status": "approved",
+        "domain": "sample04.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 157066,
+      "team_id": 1012,
+      "uid": "UID_3119",
+      "name": "サンプル施策597",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 70046,
+        "status": "approved",
+        "domain": "sample39.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 157056,
+      "team_id": 1012,
+      "uid": "UID_8250",
+      "name": "サンプル施策645",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 72567,
+        "status": "approved",
+        "domain": "sample81.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 157010,
+      "team_id": 1012,
+      "uid": "UID_4616",
+      "name": "サンプル施策257",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 69460,
+        "status": "approved",
+        "domain": "sample87.example.test",
+        "description": "",
+        "free_domain_id": null,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 156425,
+      "team_id": 1012,
+      "uid": "UID_8894",
+      "name": "サンプル施策334",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": null,
+      "group": {
+        "id": 24338,
+        "name": "サンプル施策085"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 155041,
+      "team_id": 1012,
+      "uid": "UID_5774",
+      "name": "XG",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 71716,
+        "status": "approved",
+        "domain": "sample61.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": null,
+      "inspection_setting": null
+    },
+    {
+      "id": 154960,
+      "team_id": 1012,
+      "uid": "UID_6675",
+      "name": "サンプル施策269",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 71660,
+        "status": "approved",
+        "domain": "sample89.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 25186,
+        "name": "サンプル施策512"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 154084,
+      "team_id": 1012,
+      "uid": "UID_0117",
+      "name": "サンプル施策449",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 71280,
+        "status": "approved",
+        "domain": "sample26.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21547,
+        "name": "内田"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 153770,
+      "team_id": 1012,
+      "uid": "UID_4451",
+      "name": "サンプル施策221",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 69463,
+        "status": "approved",
+        "domain": "sample36.example.test",
+        "description": "",
+        "free_domain_id": null,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21547,
+        "name": "内田"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 153617,
+      "team_id": 1012,
+      "uid": "UID_7318",
+      "name": "サンプル施策768",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 70587,
+        "status": "approved",
+        "domain": "sample79.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 153533,
+      "team_id": 1012,
+      "uid": "UID_0029",
+      "name": "サンプル施策197",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 70587,
+        "status": "approved",
+        "domain": "sample79.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 25186,
+        "name": "サンプル施策512"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 152535,
+      "team_id": 1012,
+      "uid": "UID_5748",
+      "name": "サンプル施策028",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 70587,
+        "status": "approved",
+        "domain": "sample79.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 25093,
+        "name": "金谷"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 152534,
+      "team_id": 1012,
+      "uid": "UID_4725",
+      "name": "サンプル施策028",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 70586,
+        "status": "approved",
+        "domain": "sample55.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 25092,
+        "name": "重南"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 151992,
+      "team_id": 1012,
+      "uid": "UID_2776",
+      "name": "サンプル施策422",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 70377,
+        "status": "approved",
+        "domain": "sample92.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 151958,
+      "team_id": 1012,
+      "uid": "UID_5991",
+      "name": "サンプル施策593",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 56205,
+        "status": "approved",
+        "domain": "sample57.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21486,
+        "name": "大山"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 151622,
+      "team_id": 1012,
+      "uid": "UID_5211",
+      "name": "サンプル施策028",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 70181,
+        "status": "approved",
+        "domain": "sample05.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21547,
+        "name": "内田"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 151345,
+      "team_id": 1012,
+      "uid": "UID_8326",
+      "name": "サンプル施策569",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 70046,
+        "status": "approved",
+        "domain": "sample39.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21547,
+        "name": "内田"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 151087,
+      "team_id": 1012,
+      "uid": "UID_9365",
+      "name": "サンプル施策285",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 71391,
+        "status": "approved",
+        "domain": "sample28.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": null,
+      "inspection_setting": null
+    },
+    {
+      "id": 151021,
+      "team_id": 1012,
+      "uid": "UID_1556",
+      "name": "サンプル施策018",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 69463,
+        "status": "approved",
+        "domain": "sample36.example.test",
+        "description": "",
+        "free_domain_id": null,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 149390,
+      "team_id": 1012,
+      "uid": "UID_9819",
+      "name": "サンプル施策407",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 69144,
+        "status": "approved",
+        "domain": "sample27.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 149363,
+      "team_id": 1012,
+      "uid": "UID_8567",
+      "name": "サンプル施策711",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 69139,
+        "status": "approved",
+        "domain": "sample29.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": null,
+      "inspection_setting": null
+    },
+    {
+      "id": 147795,
+      "team_id": 1012,
+      "uid": "UID_7688",
+      "name": "サンプル施策680",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": null,
+      "group": {
+        "id": 24557,
+        "name": "サンプル施策163"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 147123,
+      "team_id": 1012,
+      "uid": "UID_4741",
+      "name": "サンプル施策909",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 68085,
+        "status": "approved",
+        "domain": "sample78.example.test",
+        "description": "インフルエンサーZ",
+        "free_domain_id": null,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 24338,
+        "name": "サンプル施策085"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 147010,
+      "team_id": 1012,
+      "uid": "UID_4665",
+      "name": "サンプル施策986",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 56205,
+        "status": "approved",
+        "domain": "sample57.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21486,
+        "name": "大山"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 146931,
+      "team_id": 1012,
+      "uid": "UID_9209",
+      "name": "サンプル施策214",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 59713,
+        "status": "approved",
+        "domain": "sample42.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21486,
+        "name": "大山"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 146345,
+      "team_id": 1012,
+      "uid": "UID_3732",
+      "name": "サンプル施策969",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 67733,
+        "status": "approved",
+        "domain": "sample98.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 145936,
+      "team_id": 1012,
+      "uid": "UID_6561",
+      "name": "サンプル施策733",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": null,
+      "group": {
+        "id": 24338,
+        "name": "サンプル施策085"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 145935,
+      "team_id": 1012,
+      "uid": "UID_8115",
+      "name": "サンプル施策836",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": null,
+      "group": {
+        "id": 24338,
+        "name": "サンプル施策085"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 145934,
+      "team_id": 1012,
+      "uid": "UID_2117",
+      "name": "サンプル施策602",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": null,
+      "group": {
+        "id": 24338,
+        "name": "サンプル施策085"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 145933,
+      "team_id": 1012,
+      "uid": "UID_3040",
+      "name": "サンプル施策246",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": null,
+      "group": {
+        "id": 24338,
+        "name": "サンプル施策085"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 145580,
+      "team_id": 1012,
+      "uid": "UID_8947",
+      "name": "サンプル施策607",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 65359,
+        "status": "approved",
+        "domain": "sample51.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 24338,
+        "name": "サンプル施策085"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 145312,
+      "team_id": 1012,
+      "uid": "UID_2685",
+      "name": "サンプル施策343",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 67273,
+        "status": "approved",
+        "domain": "sample77.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 145263,
+      "team_id": 1012,
+      "uid": "UID_4062",
+      "name": "サンプル施策533",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 67257,
+        "status": "approved",
+        "domain": "sample09.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 24304,
+        "name": "サンプル施策910"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 145183,
+      "team_id": 1012,
+      "uid": "UID_8689",
+      "name": "サンプル施策343",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 67233,
+        "status": "approved",
+        "domain": "sb-siminakukirei.myown-page.com",
+        "description": "",
+        "free_domain_id": 5,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 143549,
+      "team_id": 1012,
+      "uid": "UID_1627",
+      "name": "サンプル施策051",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 66502,
+        "status": "approved",
+        "domain": "sample36.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 142118,
+      "team_id": 1012,
+      "uid": "UID_5921",
+      "name": "サンプル施策356",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 65783,
+        "status": "approved",
+        "domain": "sample56.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 141293,
+      "team_id": 1012,
+      "uid": "UID_4965",
+      "name": "サンプル施策259",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 65359,
+        "status": "approved",
+        "domain": "sample51.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21547,
+        "name": "内田"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 141078,
+      "team_id": 1012,
+      "uid": "UID_3087",
+      "name": "サンプル施策358",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 65234,
+        "status": "approved",
+        "domain": "sample93.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 26778,
+        "name": "サンプル施策263"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 140276,
+      "team_id": 1012,
+      "uid": "UID_8859",
+      "name": "獣王",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 64842,
+        "status": "approved",
+        "domain": "sample73.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21547,
+        "name": "内田"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 139123,
+      "team_id": 1012,
+      "uid": "UID_3313",
+      "name": "サンプル施策852",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 64195,
+        "status": "approved",
+        "domain": "sample38.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21547,
+        "name": "内田"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 139122,
+      "team_id": 1012,
+      "uid": "UID_5785",
+      "name": "サンプル施策845",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 64194,
+        "status": "approved",
+        "domain": "sample39.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21547,
+        "name": "内田"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 138594,
+      "team_id": 1012,
+      "uid": "UID_9420",
+      "name": "サンプル施策449",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 59333,
+        "status": "approved",
+        "domain": "sample53.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21486,
+        "name": "大山"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 137590,
+      "team_id": 1012,
+      "uid": "UID_8432",
+      "name": "サンプル施策086",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 63410,
+        "status": "approved",
+        "domain": "sample90.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21547,
+        "name": "内田"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 137245,
+      "team_id": 1012,
+      "uid": "UID_9620",
+      "name": "サンプル施策744",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 64618,
+        "status": "approved",
+        "domain": "sample20.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 26778,
+        "name": "サンプル施策263"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 137210,
+      "team_id": 1012,
+      "uid": "UID_1867",
+      "name": "サンプル施策758",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 61313,
+        "status": "approved",
+        "domain": "sample79.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 23437,
+        "name": "サンプル施策582"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 136591,
+      "team_id": 1012,
+      "uid": "UID_1838",
+      "name": "サンプル施策939",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": null,
+      "group": {
+        "id": 21486,
+        "name": "大山"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 136067,
+      "team_id": 1012,
+      "uid": "UID_1422",
+      "name": "サンプル施策672",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 62553,
+        "status": "approved",
+        "domain": "sample84.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21547,
+        "name": "内田"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 135270,
+      "team_id": 1012,
+      "uid": "UID_6931",
+      "name": "サンプル施策533",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 62217,
+        "status": "approved",
+        "domain": "sample20.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 133953,
+      "team_id": 1012,
+      "uid": "UID_4504",
+      "name": "サンプル施策433",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 61538,
+        "status": "approved",
+        "domain": "sample36.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21547,
+        "name": "内田"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 133576,
+      "team_id": 1012,
+      "uid": "UID_4603",
+      "name": "サンプル施策605",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 61314,
+        "status": "approved",
+        "domain": "sample54.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21547,
+        "name": "内田"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 133575,
+      "team_id": 1012,
+      "uid": "UID_8944",
+      "name": "サンプル施策361",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 61313,
+        "status": "approved",
+        "domain": "sample79.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21547,
+        "name": "内田"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 133274,
+      "team_id": 1012,
+      "uid": "UID_0086",
+      "name": "サンプル施策568",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 61161,
+        "status": "approved",
+        "domain": "sample94.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 22946,
+        "name": "金澤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 132892,
+      "team_id": 1012,
+      "uid": "UID_5201",
+      "name": "サンプル施策525",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 60971,
+        "status": "approved",
+        "domain": "sample52.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 132780,
+      "team_id": 1012,
+      "uid": "UID_4925",
+      "name": "サンプル施策890",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 60936,
+        "status": "approved",
+        "domain": "sample61.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 131857,
+      "team_id": 1012,
+      "uid": "UID_9162",
+      "name": "サンプル施策343",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 60481,
+        "status": "approved",
+        "domain": "sample29.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 130150,
+      "team_id": 1012,
+      "uid": "UID_1260",
+      "name": "サンプル施策263",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 59761,
+        "status": "approved",
+        "domain": "sample83.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 26778,
+        "name": "サンプル施策263"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 130040,
+      "team_id": 1012,
+      "uid": "UID_8042",
+      "name": "サンプル施策403",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 59713,
+        "status": "approved",
+        "domain": "sample42.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 129844,
+      "team_id": 1012,
+      "uid": "UID_6731",
+      "name": "サンプル施策348",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 59624,
+        "status": "approved",
+        "domain": "sample11.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 129842,
+      "team_id": 1012,
+      "uid": "UID_1568",
+      "name": "サンプル施策192",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 59622,
+        "status": "approved",
+        "domain": "sample06.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21547,
+        "name": "内田"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 129841,
+      "team_id": 1012,
+      "uid": "UID_7169",
+      "name": "サンプル施策947",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 59621,
+        "status": "approved",
+        "domain": "sample89.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21547,
+        "name": "内田"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 129840,
+      "team_id": 1012,
+      "uid": "UID_5401",
+      "name": "サンプル施策557",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": null,
+      "group": null,
+      "inspection_setting": null
+    },
+    {
+      "id": 129751,
+      "team_id": 1012,
+      "uid": "UID_4178",
+      "name": "サンプル施策403",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 59561,
+        "status": "approved",
+        "domain": "sample96.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 22527,
+        "name": "サンプル施策773"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 129529,
+      "team_id": 1012,
+      "uid": "UID_2787",
+      "name": "サンプル施策432",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 59492,
+        "status": "approved",
+        "domain": "sample18.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21547,
+        "name": "内田"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 129527,
+      "team_id": 1012,
+      "uid": "UID_8547",
+      "name": "サンプル施策534",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 59491,
+        "status": "approved",
+        "domain": "sample88.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21547,
+        "name": "内田"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 129346,
+      "team_id": 1012,
+      "uid": "UID_1141",
+      "name": "サンプル施策121",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 59400,
+        "status": "approved",
+        "domain": "sample96.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21547,
+        "name": "内田"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 129192,
+      "team_id": 1012,
+      "uid": "UID_4406",
+      "name": "サンプル施策191",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 59333,
+        "status": "approved",
+        "domain": "sample53.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 22469,
+        "name": "サンプル施策623"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 129114,
+      "team_id": 1012,
+      "uid": "UID_9062",
+      "name": "サンプル施策290",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 59306,
+        "status": "approved",
+        "domain": "sample03.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 26778,
+        "name": "サンプル施策263"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 129073,
+      "team_id": 1012,
+      "uid": "UID_3586",
+      "name": "サンプル施策019",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 59288,
+        "status": "approved",
+        "domain": "sample72.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21547,
+        "name": "内田"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 129070,
+      "team_id": 1012,
+      "uid": "UID_2049",
+      "name": "サンプル施策555",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 59286,
+        "status": "approved",
+        "domain": "sample75.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 129063,
+      "team_id": 1012,
+      "uid": "UID_4404",
+      "name": "サンプル施策612",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 59280,
+        "status": "approved",
+        "domain": "sample82.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 129041,
+      "team_id": 1012,
+      "uid": "UID_4650",
+      "name": "サンプル施策015",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 59268,
+        "status": "approved",
+        "domain": "sample90.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21547,
+        "name": "内田"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 128639,
+      "team_id": 1012,
+      "uid": "UID_6951",
+      "name": "サンプル施策764",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 59094,
+        "status": "approved",
+        "domain": "sample79.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 128582,
+      "team_id": 1012,
+      "uid": "UID_9049",
+      "name": "サンプル施策033",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 59080,
+        "status": "approved",
+        "domain": "sample23.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 128529,
+      "team_id": 1012,
+      "uid": "UID_1049",
+      "name": "サンプル施策951",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 59058,
+        "status": "approved",
+        "domain": "sample06.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21547,
+        "name": "内田"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 128526,
+      "team_id": 1012,
+      "uid": "UID_8178",
+      "name": "サンプル施策601",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 59056,
+        "status": "approved",
+        "domain": "sample28.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21547,
+        "name": "内田"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 128035,
+      "team_id": 1012,
+      "uid": "UID_2862",
+      "name": "サンプル施策151",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 58829,
+        "status": "approved",
+        "domain": "sample31.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21486,
+        "name": "大山"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 127973,
+      "team_id": 1012,
+      "uid": "UID_6497",
+      "name": "漲天",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 58772,
+        "status": "approved",
+        "domain": "sample35.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 127184,
+      "team_id": 1012,
+      "uid": "UID_7502",
+      "name": "サンプル施策884",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 58473,
+        "status": "approved",
+        "domain": "sample16.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 126884,
+      "team_id": 1012,
+      "uid": "UID_8037",
+      "name": "サンプル施策758",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 58277,
+        "status": "approved",
+        "domain": "sample13.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21486,
+        "name": "大山"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 126757,
+      "team_id": 1012,
+      "uid": "UID_0961",
+      "name": "サンプル施策806",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 58223,
+        "status": "approved",
+        "domain": "sample19.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 126615,
+      "team_id": 1012,
+      "uid": "UID_1069",
+      "name": "サンプル施策188",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 58141,
+        "status": "approved",
+        "domain": "sample83.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21547,
+        "name": "内田"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 126614,
+      "team_id": 1012,
+      "uid": "UID_9774",
+      "name": "サンプル施策538",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 58140,
+        "status": "approved",
+        "domain": "sample78.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21547,
+        "name": "内田"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 125907,
+      "team_id": 1012,
+      "uid": "UID_9082",
+      "name": "サンプル施策039",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 57805,
+        "status": "approved",
+        "domain": "sample79.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 125751,
+      "team_id": 1012,
+      "uid": "UID_4821",
+      "name": "サンプル施策774",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 57727,
+        "status": "approved",
+        "domain": "sample08.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21547,
+        "name": "内田"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 125581,
+      "team_id": 1012,
+      "uid": "UID_7302",
+      "name": "サンプル施策238",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 57649,
+        "status": "approved",
+        "domain": "sample85.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21547,
+        "name": "内田"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 124857,
+      "team_id": 1012,
+      "uid": "UID_8907",
+      "name": "サンプル施策054",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 57324,
+        "status": "approved",
+        "domain": "sample71.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21547,
+        "name": "内田"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 124509,
+      "team_id": 1012,
+      "uid": "UID_9513",
+      "name": "サンプル施策468",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 57163,
+        "status": "approved",
+        "domain": "sample43.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 124508,
+      "team_id": 1012,
+      "uid": "UID_4738",
+      "name": "サンプル施策340",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 57162,
+        "status": "approved",
+        "domain": "sample29.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 124398,
+      "team_id": 1012,
+      "uid": "UID_2071",
+      "name": "サンプル施策312",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 57092,
+        "status": "approved",
+        "domain": "sample32.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 124105,
+      "team_id": 1012,
+      "uid": "UID_3819",
+      "name": "サンプル施策806",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 56885,
+        "status": "approved",
+        "domain": "sample92.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21547,
+        "name": "内田"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 124102,
+      "team_id": 1012,
+      "uid": "UID_7867",
+      "name": "サンプル施策590",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 56884,
+        "status": "approved",
+        "domain": "sample86.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21547,
+        "name": "内田"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 124079,
+      "team_id": 1012,
+      "uid": "UID_7450",
+      "name": "サンプル施策799",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 56879,
+        "status": "approved",
+        "domain": "sample23.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21547,
+        "name": "内田"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 124075,
+      "team_id": 1012,
+      "uid": "UID_9863",
+      "name": "サンプル施策201",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 56878,
+        "status": "approved",
+        "domain": "sample64.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21547,
+        "name": "内田"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 124038,
+      "team_id": 1012,
+      "uid": "UID_0368",
+      "name": "サンプル施策640",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 56863,
+        "status": "approved",
+        "domain": "sample02.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21547,
+        "name": "内田"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 123729,
+      "team_id": 1012,
+      "uid": "UID_3541",
+      "name": "サンプル施策227",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 56704,
+        "status": "approved",
+        "domain": "sample21.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21547,
+        "name": "内田"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 123605,
+      "team_id": 1012,
+      "uid": "UID_5758",
+      "name": "サンプル施策976",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 56613,
+        "status": "approved",
+        "domain": "sample43.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21725,
+        "name": "梅田"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 123424,
+      "team_id": 1012,
+      "uid": "UID_4557",
+      "name": "サンプル施策672",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 56531,
+        "status": "approved",
+        "domain": "sample84.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 123391,
+      "team_id": 1012,
+      "uid": "UID_8088",
+      "name": "サンプル施策813",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 56519,
+        "status": "approved",
+        "domain": "sample80.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21547,
+        "name": "内田"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 123300,
+      "team_id": 1012,
+      "uid": "UID_6788",
+      "name": "サンプル施策707",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 56486,
+        "status": "approved",
+        "domain": "sample35.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21547,
+        "name": "内田"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 123289,
+      "team_id": 1012,
+      "uid": "UID_7039",
+      "name": "サンプル施策417",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 56482,
+        "status": "approved",
+        "domain": "sample05.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 26778,
+        "name": "サンプル施策263"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 123050,
+      "team_id": 1012,
+      "uid": "UID_4290",
+      "name": "サンプル施策433",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": null,
+      "group": {
+        "id": 21639,
+        "name": "サンプル施策912"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 122971,
+      "team_id": 1012,
+      "uid": "UID_4577",
+      "name": "サンプル施策294",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 56337,
+        "status": "approved",
+        "domain": "sample80.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21547,
+        "name": "内田"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 122959,
+      "team_id": 1012,
+      "uid": "UID_0263",
+      "name": "サンプル施策108",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 56331,
+        "status": "approved",
+        "domain": "sample93.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 122854,
+      "team_id": 1012,
+      "uid": "UID_0427",
+      "name": "サンプル施策556",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 56304,
+        "status": "approved",
+        "domain": "sample73.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 26778,
+        "name": "サンプル施策263"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 122766,
+      "team_id": 1012,
+      "uid": "UID_4516",
+      "name": "サンプル施策801",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 56269,
+        "status": "approved",
+        "domain": "sample36.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21546,
+        "name": "斎藤"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 122472,
+      "team_id": 1012,
+      "uid": "UID_7994",
+      "name": "サンプル施策664",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 56100,
+        "status": "approved",
+        "domain": "sample17.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21547,
+        "name": "内田"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 122377,
+      "team_id": 1012,
+      "uid": "UID_4631",
+      "name": "サンプル施策942",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 56322,
+        "status": "approved",
+        "domain": "sample50.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 26778,
+        "name": "サンプル施策263"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 122347,
+      "team_id": 1012,
+      "uid": "UID_3756",
+      "name": "サンプル施策359",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 56065,
+        "status": "approved",
+        "domain": "sample72.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 26778,
+        "name": "サンプル施策263"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 122346,
+      "team_id": 1012,
+      "uid": "UID_9034",
+      "name": "サンプル施策422",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 56064,
+        "status": "approved",
+        "domain": "sample78.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 26778,
+        "name": "サンプル施策263"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 122335,
+      "team_id": 1012,
+      "uid": "UID_2925",
+      "name": "サンプル施策502",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 56060,
+        "status": "approved",
+        "domain": "sample54.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 26778,
+        "name": "サンプル施策263"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 122330,
+      "team_id": 1012,
+      "uid": "UID_1966",
+      "name": "サンプル施策160",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 56054,
+        "status": "approved",
+        "domain": "sample84.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 26778,
+        "name": "サンプル施策263"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 122325,
+      "team_id": 1012,
+      "uid": "UID_4826",
+      "name": "サンプル施策215",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 56052,
+        "status": "approved",
+        "domain": "sample16.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 26778,
+        "name": "サンプル施策263"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 122306,
+      "team_id": 1012,
+      "uid": "UID_1470",
+      "name": "サンプル施策187",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 56035,
+        "status": "approved",
+        "domain": "sample83.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21483,
+        "name": "真"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 121990,
+      "team_id": 1012,
+      "uid": "UID_4133",
+      "name": "サンプル施策727",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 55924,
+        "status": "approved",
+        "domain": "sample79.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21483,
+        "name": "真"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 121968,
+      "team_id": 1012,
+      "uid": "UID_9921",
+      "name": "サンプル施策076",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 55913,
+        "status": "approved",
+        "domain": "sample67.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21483,
+        "name": "真"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 121946,
+      "team_id": 1012,
+      "uid": "UID_7347",
+      "name": "サンプル施策354",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 55899,
+        "status": "approved",
+        "domain": "sample31.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21483,
+        "name": "真"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 121937,
+      "team_id": 1012,
+      "uid": "UID_8949",
+      "name": "サンプル施策512",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 55894,
+        "status": "approved",
+        "domain": "sample16.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 21486,
+        "name": "大山"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 121932,
+      "team_id": 1012,
+      "uid": "UID_6091",
+      "name": "サンプル施策467",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": null,
+      "group": {
+        "id": 21486,
+        "name": "大山"
+      },
+      "inspection_setting": null
+    },
+    {
+      "id": 121905,
+      "team_id": 1012,
+      "uid": "UID_5805",
+      "name": "サンプル施策428",
+      "is_import_folder": false,
+      "is_importing": false,
+      "team": {
+        "id": 1012,
+        "created_at": 1744093800,
+        "uid": "UID_5188",
+        "name": "サンプル施策407"
+      },
+      "domain": {
+        "id": 55890,
+        "status": "approved",
+        "domain": "sample58.example.test",
+        "description": "",
+        "free_domain_id": 3,
+        "pv_count_one_month": 0,
+        "disconnected_at": null
+      },
+      "group": {
+        "id": 26778,
+        "name": "サンプル施策263"
+      },
+      "inspection_setting": null
+    }
+  ]
+}

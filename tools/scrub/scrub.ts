@@ -3,14 +3,19 @@
  * 辞書適用 → パターン置換（ドメイン/uid/メール/電話）→ 除去（外部タグ・本番バンドル）の順に適用する。
  */
 import {
+  ANY_EXTERNAL_HOST,
+  BARE_HOST,
+  CONDITIONAL_STRIP_RULES,
   EXTRA_PRODUCTION_HOST_PATTERNS,
+  HOST_ALLOWLIST,
+  RESIDUAL_SAAS_PATTERNS,
   LOCAL_API_ORIGIN,
   LOCAL_APP_ORIGIN,
   NEUTRAL_DOMAIN,
   STRIP_PATTERNS,
 } from './policy.ts'
 import { applyDictionary, type ScrubMap } from './dictionary.ts'
-import { fakeEmail, fakePhone, fakeToken } from './replacers.ts'
+import { fakeEmail, fakeHost, fakePhone, fakeToken } from './replacers.ts'
 
 /**
  * 本番ホストのローカル化（§5-5・§3-2）。
@@ -46,6 +51,18 @@ export function scrubText(input: string, map: ScrubMap, hosts: HostRewrite): Scr
     pattern.lastIndex = 0
   }
 
+  // タグ単位の条件付き除去: 中身にSaaS識別子があるものだけを消す（他のタグは残す）
+  for (const { name, tag, mustContain } of CONDITIONAL_STRIP_RULES) {
+    let removed = false
+    text = text.replace(tag, (match) => {
+      if (!mustContain.test(match)) return match
+      removed = true
+      return ''
+    })
+    tag.lastIndex = 0
+    if (removed) stripped.push(name)
+  }
+
   text = applyDictionary(text, map)
 
   // ホスト書き換え: api系 → localhost、それ以外 → 中立ドメイン
@@ -64,6 +81,26 @@ export function scrubText(input: string, map: ScrubMap, hosts: HostRewrite): Scr
 
   // WebSocket は localhost の /cable へ
   text = text.replace(/wss?:\/\/[^\s"'<>]*\/cable/gi, `ws://localhost:4010/cable`)
+
+  // 残った外部ホストを**全て**中和する（許可リスト以外）。
+  // 顧客のLP配信ドメインや外部SaaSの非script参照は列挙では漏れるため、最後に総当たりで潰す。
+  text = text.replace(ANY_EXTERNAL_HOST, (match, scheme: string, host: string) => {
+    if (HOST_ALLOWLIST.some((re) => re.test(host))) return match
+    return `${scheme}//${fakeHost(host)}`
+  })
+
+  // scheme無しの素のホスト名も中和（顧客のLP配信ドメイン等）
+  text = text.replace(BARE_HOST, (match, host: string) => {
+    if (HOST_ALLOWLIST.some((re) => re.test(host))) return match
+    if (host.endsWith('example.test')) return match
+    return fakeHost(host)
+  })
+
+  // タグ除去後に残ったSaaS識別子（GTMコンテナID等）を掃除（§13-G は0件必須）
+  for (const pattern of RESIDUAL_SAAS_PATTERNS) {
+    text = text.replace(pattern, 'REMOVED')
+    pattern.lastIndex = 0
+  }
 
   text = text.replace(GENERIC_EMAIL_RE, (m) => (m.endsWith('example.test') ? m : fakeEmail(m)))
   text = text.replace(JP_PHONE_RE, (m) => fakePhone(m))

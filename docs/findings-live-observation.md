@@ -507,6 +507,63 @@ Quill の bubble ツールバーに、**独自フォーマット**（`sb-bg-unde
 
 ---
 
+---
+
+# 【最重要】データモデルの根本的な誤り ―― UIの「Version」は API の Article
+
+`GET /api/v1/ab_tests/:uid/articles` の実レスポンスで判明（2026-08-31）。
+
+## 企画書 §2・§10-2 の誤り
+
+企画書は `AbTest 1-* Article 1-* Version` の3階層としていたが、**実際は2階層**:
+
+```
+AbTest 1-* Article （＝UI上の「Version」）
+```
+
+- **UIのVersionパネルに並ぶ「Ver.3872」は Article の `memo` フィールド**
+- **配信割合は `ab_test_article.rate`**（中間テーブル `ab_test_article` に `article_id / position / prioritized / rate`）
+- `Version` というエンティティは API に存在しない
+
+→ モックの `Version` エンティティは**まるごと Article に統合すべき**。
+
+## Article の実フィールド（企画書に無いものが大量）
+
+| フィールド | 内容 |
+|---|---|
+| `memo` | **UI上のVersion名**（例 `Ver.3872`） |
+| `ab_test_article` | `{article_id, position, prioritized, rate}` ← **rate=配信割合 / position=並び順** |
+| `editor_type` (number) | **Article単位のエディタ種別**（「バージョン追加時にエディタを選択可能」の実体） |
+| `master_style_sheet` | **「記事設定」モーダルの全項目**: `font_size` `font_family` `color` `line_height` `letter_spacing` `padding_{top,bottom,left,right}` `img_margin_{top,bottom}` `border_{size,type,color}` `delivery_version_width(_unit)` `iframe_height(_unit)` `inner_background_{color,image}` `outer_background_{color,image}` |
+| `html_tags[]` | **「タグ設定」モーダル**: `{tag, document_property, body}` |
+| `exit_popup_setting` | `{exit_popup_attached, fixed_popup_attached}` |
+| `funnel_step` / `funnel_steps[]` | **ファネル**（企画書に完全欠落） |
+| `header_photo` | ヘッダー画像 |
+| `asset_files[]` | 添付アセット |
+| `delivery_url` / `devise_preview_url` / `draft_url` | **URLが3種類**（配信/プレビュー/下書き） |
+| `inspection_requests[]` / `is_requesting_inspection` / `is_under_inspection` | 審査 |
+| `archived` / `style_applied` / `reflected_at` / `body_updated_at` | 状態 |
+| `writer` | 作成者（role/権限フラグ/参加状態を含むリッチなMember） |
+| `team` | `{id, uid, name, created_at}` |
+
+## AbTest の追加フィールド（記事APIのネスト側でのみ見えるもの）
+
+`published`(boolean・**一覧APIには無いがここにはある**) / `conversion_condition`(フラット) /
+`gender_id` / `over_age` / `under_age` / `original_ab_test_id`（複製元） /
+`creation_timestamp`(string・`created_at`(number)とは別) / `redirect_pages[]` /
+`folder{domain, is_import_folder, is_importing, ...}`（**フォルダはドメインを持つ**）
+
+## media の形はエンドポイントによって違う（重要な罠）
+
+| エンドポイント | media の形 |
+|---|---|
+| `GET /api/v2/folders/:uuid/ab_tests` | **フラット** `{id,name,icon_name,ad_cooperation}` |
+| `GET /api/v1/ab_tests/:uid/articles` | **ネスト** `{attributes:{...}}` |
+
+→ 「どちらかが正しい」のではなく**両方存在する**。モックもエンドポイントごとに出し分ける必要がある。
+
+---
+
 ## 未確認のまま残ったもの（正直な記録）
 
 | 項目 | 理由 |

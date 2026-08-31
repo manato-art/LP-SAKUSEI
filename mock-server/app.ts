@@ -8,6 +8,7 @@ import { PREFIX } from './config.ts'
 import { mockStateMiddleware } from './lib/mock-state.ts'
 import { errorEnvelope } from './lib/envelope.ts'
 import { resetState } from './store/store.ts'
+import { captureSinkRouter } from './capture-sink.ts'
 import { abTestsRouter } from './routes/ab-tests.ts'
 import { conversionsRouter } from './routes/conversions.ts'
 import { dashboardRouter } from './routes/dashboard.ts'
@@ -29,10 +30,13 @@ function resetMiddleware(req: Request, _res: Response, next: NextFunction): void
 
 export function createApp(): Express {
   const app = express()
-  app.use(express.json({ limit: '5mb' }))
+  app.use(express.json({ limit: '64mb' })) // 採取DOMは数MBになりうる
   app.use(express.urlencoded({ extended: true }))
   app.use(resetMiddleware)
   app.use(mockStateMiddleware)
+
+  // ── 採取シンク（隔離ディレクトリへ直接書き出す・§5-1[1]）──
+  app.use(captureSinkRouter)
 
   // ── 運用エンドポイント ──
   app.get('/__mock/health', (_req, res) => {

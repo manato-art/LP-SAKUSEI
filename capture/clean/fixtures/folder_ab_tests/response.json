@@ -1,0 +1,786 @@
+{
+  "pagination": {
+    "total_pages": 1,
+    "total_count": 14,
+    "current_page": 1
+  },
+  "ab_tests": [
+    {
+      "id": 2678600,
+      "team_id": 1012,
+      "uid": "UID_2771",
+      "title": "サンプル施策091",
+      "ad_status": "finished",
+      "created_at": 1788165656,
+      "updated_at": 1788166278,
+      "media": {
+        "id": 55,
+        "name": "サンプル施策892",
+        "icon_name": "nosnsicon",
+        "ad_cooperation": false
+      },
+      "affiliate_service_provider": null,
+      "conversion_unit_price": 0,
+      "delivery_type": "html_rewriting",
+      "editor_version": 2,
+      "reports": null,
+      "creator": {
+        "id": 30941,
+        "team_id": 1012,
+        "uid": "UID_8830",
+        "email": "user523@example.test",
+        "name": "サンプル施策733",
+        "role": "owner",
+        "joined": true,
+        "is_admin_user": false,
+        "outside": false,
+        "billing_manager": false,
+        "joined_at": 1744620630,
+        "created_at": 1744618638,
+        "user": {
+          "id": 10623,
+          "name": "サンプル施策733",
+          "company_name": "user523@example.test",
+          "email": "user523@example.test",
+          "confirmed_at": null
+        }
+      },
+      "conversion_setting": {
+        "id": 2615534,
+        "conversion_condition": "click"
+      },
+      "product_genres": []
+    },
+    {
+      "id": 2665337,
+      "team_id": 1012,
+      "uid": "UID_7595",
+      "title": "サンプル施策454",
+      "ad_status": "prepared",
+      "created_at": 1787304404,
+      "updated_at": 1787304534,
+      "media": {
+        "id": 1,
+        "name": "サンプル施策656",
+        "icon_name": "facebook",
+        "ad_cooperation": true
+      },
+      "affiliate_service_provider": {
+        "id": 11,
+        "name": "サンプル施策850",
+        "session_id": "squadbeyond_uid",
+        "category_id": 2,
+        "faq_link": "example.test/faq/hs_204865272213"
+      },
+      "conversion_unit_price": 0,
+      "delivery_type": "html_rewriting",
+      "editor_version": 2,
+      "reports": null,
+      "creator": {
+        "id": 30940,
+        "team_id": 1012,
+        "uid": "UID_7331",
+        "email": "user722@example.test",
+        "name": "サンプル施策295",
+        "role": "owner",
+        "joined": true,
+        "is_admin_user": false,
+        "outside": false,
+        "billing_manager": false,
+        "joined_at": 1744622674,
+        "created_at": 1744618623,
+        "user": {
+          "id": 10624,
+          "name": "サンプル施策295",
+          "company_name": "株式会社サンプル施策407",
+          "email": "user722@example.test",
+          "confirmed_at": null
+        }
+      },
+      "conversion_setting": {
+        "id": 2602519,
+        "conversion_condition": "click"
+      },
+      "product_genres": []
+    },
+    {
+      "id": 2665129,
+      "team_id": 1012,
+      "uid": "UID_9987",
+      "title": "サンプル施策306",
+      "ad_status": "prepared",
+      "created_at": 1787301775,
+      "updated_at": 1787304392,
+      "media": {
+        "id": 1,
+        "name": "サンプル施策656",
+        "icon_name": "facebook",
+        "ad_cooperation": true
+      },
+      "affiliate_service_provider": {
+        "id": 11,
+        "name": "サンプル施策850",
+        "session_id": "squadbeyond_uid",
+        "category_id": 2,
+        "faq_link": "example.test/faq/hs_204865272213"
+      },
+      "conversion_unit_price": 0,
+      "delivery_type": "html_rewriting",
+      "editor_version": 2,
+      "reports": null,
+      "creator": {
+        "id": 30940,
+        "team_id": 1012,
+        "uid": "UID_7331",
+        "email": "user722@example.test",
+        "name": "サンプル施策295",
+        "role": "owner",
+        "joined": true,
+        "is_admin_user": false,
+        "outside": false,
+        "billing_manager": false,
+        "joined_at": 1744622674,
+        "created_at": 1744618623,
+        "user": {
+          "id": 10624,
+          "name": "サンプル施策295",
+          "company_name": "株式会社サンプル施策407",
+          "email": "user722@example.test",
+          "confirmed_at": null
+        }
+      },
+      "conversion_setting": {
+        "id": 2602311,
+        "conversion_condition": "click"
+      },
+      "product_genres": []
+    },
+    {
+      "id": 2662985,
+      "team_id": 1012,
+      "uid": "UID_5540",
+      "title": "サンプル施策588",
+      "ad_status": "prepared",
+      "created_at": 1787228978,
+      "updated_at": 1787228978,
+      "media": {
+        "id": 1,
+        "name": "サンプル施策656",
+        "icon_name": "facebook",
+        "ad_cooperation": true
+      },
+      "affiliate_service_provider": {
+        "id": 11,
+        "name": "サンプル施策850",
+        "session_id": "squadbeyond_uid",
+        "category_id": 2,
+        "faq_link": "example.test/faq/hs_204865272213"
+      },
+      "conversion_unit_price": 0,
+      "delivery_type": "html_rewriting",
+      "editor_version": 2,
+      "reports": null,
+      "creator": {
+        "id": 30941,
+        "team_id": 1012,
+        "uid": "UID_8830",
+        "email": "user523@example.test",
+        "name": "サンプル施策733",
+        "role": "owner",
+        "joined": true,
+        "is_admin_user": false,
+        "outside": false,
+        "billing_manager": false,
+        "joined_at": 1744620630,
+        "created_at": 1744618638,
+        "user": {
+          "id": 10623,
+          "name": "サンプル施策733",
+          "company_name": "user523@example.test",
+          "email": "user523@example.test",
+          "confirmed_at": null
+        }
+      },
+      "conversion_setting": {
+        "id": 2600285,
+        "conversion_condition": "click"
+      },
+      "product_genres": []
+    },
+    {
+      "id": 2662647,
+      "team_id": 1012,
+      "uid": "UID_7786",
+      "title": "サンプル施策831",
+      "ad_status": "prepared",
+      "created_at": 1787219987,
+      "updated_at": 1787220100,
+      "media": {
+        "id": 1,
+        "name": "サンプル施策656",
+        "icon_name": "facebook",
+        "ad_cooperation": true
+      },
+      "affiliate_service_provider": {
+        "id": 11,
+        "name": "サンプル施策850",
+        "session_id": "squadbeyond_uid",
+        "category_id": 2,
+        "faq_link": "example.test/faq/hs_204865272213"
+      },
+      "conversion_unit_price": 0,
+      "delivery_type": "html_rewriting",
+      "editor_version": 2,
+      "reports": {
+        "ad_spending": 0,
+        "media_click_count": 0,
+        "unique_user_count": 80,
+        "page_view_count": 96,
+        "click_count": 8,
+        "conversion_count": 0,
+        "sales": 0,
+        "click_through_rate": 8.33,
+        "conversion_rate": 0,
+        "ctvr": 0,
+        "cpa": null,
+        "mcpa": 0,
+        "media_ctr": null,
+        "roas": null
+      },
+      "creator": {
+        "id": 30941,
+        "team_id": 1012,
+        "uid": "UID_8830",
+        "email": "user523@example.test",
+        "name": "サンプル施策733",
+        "role": "owner",
+        "joined": true,
+        "is_admin_user": false,
+        "outside": false,
+        "billing_manager": false,
+        "joined_at": 1744620630,
+        "created_at": 1744618638,
+        "user": {
+          "id": 10623,
+          "name": "サンプル施策733",
+          "company_name": "user523@example.test",
+          "email": "user523@example.test",
+          "confirmed_at": null
+        }
+      },
+      "conversion_setting": {
+        "id": 2599947,
+        "conversion_condition": "click"
+      },
+      "product_genres": []
+    },
+    {
+      "id": 2660465,
+      "team_id": 1012,
+      "uid": "UID_3461",
+      "title": "サンプル施策682",
+      "ad_status": "prepared",
+      "created_at": 1787138719,
+      "updated_at": 1787138756,
+      "media": {
+        "id": 1,
+        "name": "サンプル施策656",
+        "icon_name": "facebook",
+        "ad_cooperation": true
+      },
+      "affiliate_service_provider": {
+        "id": 11,
+        "name": "サンプル施策850",
+        "session_id": "squadbeyond_uid",
+        "category_id": 2,
+        "faq_link": "example.test/faq/hs_204865272213"
+      },
+      "conversion_unit_price": 0,
+      "delivery_type": "html_rewriting",
+      "editor_version": 2,
+      "reports": {
+        "ad_spending": 0,
+        "media_click_count": 0,
+        "unique_user_count": 1,
+        "page_view_count": 1,
+        "click_count": 0,
+        "conversion_count": 0,
+        "sales": 0,
+        "click_through_rate": 0,
+        "conversion_rate": null,
+        "ctvr": 0,
+        "cpa": null,
+        "mcpa": null,
+        "media_ctr": null,
+        "roas": null
+      },
+      "creator": {
+        "id": 30940,
+        "team_id": 1012,
+        "uid": "UID_7331",
+        "email": "user722@example.test",
+        "name": "サンプル施策295",
+        "role": "owner",
+        "joined": true,
+        "is_admin_user": false,
+        "outside": false,
+        "billing_manager": false,
+        "joined_at": 1744622674,
+        "created_at": 1744618623,
+        "user": {
+          "id": 10624,
+          "name": "サンプル施策295",
+          "company_name": "株式会社サンプル施策407",
+          "email": "user722@example.test",
+          "confirmed_at": null
+        }
+      },
+      "conversion_setting": {
+        "id": 2597847,
+        "conversion_condition": "click"
+      },
+      "product_genres": []
+    },
+    {
+      "id": 2658391,
+      "team_id": 1012,
+      "uid": "UID_8726",
+      "title": "サンプル施策801",
+      "ad_status": "prepared",
+      "created_at": 1787059918,
+      "updated_at": 1787059944,
+      "media": {
+        "id": 1,
+        "name": "サンプル施策656",
+        "icon_name": "facebook",
+        "ad_cooperation": true
+      },
+      "affiliate_service_provider": {
+        "id": 11,
+        "name": "サンプル施策850",
+        "session_id": "squadbeyond_uid",
+        "category_id": 2,
+        "faq_link": "example.test/faq/hs_204865272213"
+      },
+      "conversion_unit_price": 0,
+      "delivery_type": "html_rewriting",
+      "editor_version": 2,
+      "reports": null,
+      "creator": {
+        "id": 30940,
+        "team_id": 1012,
+        "uid": "UID_7331",
+        "email": "user722@example.test",
+        "name": "サンプル施策295",
+        "role": "owner",
+        "joined": true,
+        "is_admin_user": false,
+        "outside": false,
+        "billing_manager": false,
+        "joined_at": 1744622674,
+        "created_at": 1744618623,
+        "user": {
+          "id": 10624,
+          "name": "サンプル施策295",
+          "company_name": "株式会社サンプル施策407",
+          "email": "user722@example.test",
+          "confirmed_at": null
+        }
+      },
+      "conversion_setting": {
+        "id": 2595774,
+        "conversion_condition": "click"
+      },
+      "product_genres": []
+    },
+    {
+      "id": 2658253,
+      "team_id": 1012,
+      "uid": "UID_7173",
+      "title": "サンプル施策124",
+      "ad_status": "prepared",
+      "created_at": 1787050351,
+      "updated_at": 1787059954,
+      "media": {
+        "id": 1,
+        "name": "サンプル施策656",
+        "icon_name": "facebook",
+        "ad_cooperation": true
+      },
+      "affiliate_service_provider": {
+        "id": 11,
+        "name": "サンプル施策850",
+        "session_id": "squadbeyond_uid",
+        "category_id": 2,
+        "faq_link": "example.test/faq/hs_204865272213"
+      },
+      "conversion_unit_price": 0,
+      "delivery_type": "html_rewriting",
+      "editor_version": 2,
+      "reports": null,
+      "creator": {
+        "id": 30940,
+        "team_id": 1012,
+        "uid": "UID_7331",
+        "email": "user722@example.test",
+        "name": "サンプル施策295",
+        "role": "owner",
+        "joined": true,
+        "is_admin_user": false,
+        "outside": false,
+        "billing_manager": false,
+        "joined_at": 1744622674,
+        "created_at": 1744618623,
+        "user": {
+          "id": 10624,
+          "name": "サンプル施策295",
+          "company_name": "株式会社サンプル施策407",
+          "email": "user722@example.test",
+          "confirmed_at": null
+        }
+      },
+      "conversion_setting": {
+        "id": 2595636,
+        "conversion_condition": "click"
+      },
+      "product_genres": []
+    },
+    {
+      "id": 2654390,
+      "team_id": 1012,
+      "uid": "UID_1189",
+      "title": "サンプル施策754",
+      "ad_status": "prepared",
+      "created_at": 1786892606,
+      "updated_at": 1786892633,
+      "media": {
+        "id": 1,
+        "name": "サンプル施策656",
+        "icon_name": "facebook",
+        "ad_cooperation": true
+      },
+      "affiliate_service_provider": {
+        "id": 11,
+        "name": "サンプル施策850",
+        "session_id": "squadbeyond_uid",
+        "category_id": 2,
+        "faq_link": "example.test/faq/hs_204865272213"
+      },
+      "conversion_unit_price": 0,
+      "delivery_type": "html_rewriting",
+      "editor_version": 2,
+      "reports": null,
+      "creator": {
+        "id": 30940,
+        "team_id": 1012,
+        "uid": "UID_7331",
+        "email": "user722@example.test",
+        "name": "サンプル施策295",
+        "role": "owner",
+        "joined": true,
+        "is_admin_user": false,
+        "outside": false,
+        "billing_manager": false,
+        "joined_at": 1744622674,
+        "created_at": 1744618623,
+        "user": {
+          "id": 10624,
+          "name": "サンプル施策295",
+          "company_name": "株式会社サンプル施策407",
+          "email": "user722@example.test",
+          "confirmed_at": null
+        }
+      },
+      "conversion_setting": {
+        "id": 2591934,
+        "conversion_condition": "click"
+      },
+      "product_genres": []
+    },
+    {
+      "id": 2654389,
+      "team_id": 1012,
+      "uid": "UID_5068",
+      "title": "サンプル施策341",
+      "ad_status": "prepared",
+      "created_at": 1786892542,
+      "updated_at": 1786892584,
+      "media": {
+        "id": 1,
+        "name": "サンプル施策656",
+        "icon_name": "facebook",
+        "ad_cooperation": true
+      },
+      "affiliate_service_provider": {
+        "id": 11,
+        "name": "サンプル施策850",
+        "session_id": "squadbeyond_uid",
+        "category_id": 2,
+        "faq_link": "example.test/faq/hs_204865272213"
+      },
+      "conversion_unit_price": 0,
+      "delivery_type": "html_rewriting",
+      "editor_version": 2,
+      "reports": null,
+      "creator": {
+        "id": 30940,
+        "team_id": 1012,
+        "uid": "UID_7331",
+        "email": "user722@example.test",
+        "name": "サンプル施策295",
+        "role": "owner",
+        "joined": true,
+        "is_admin_user": false,
+        "outside": false,
+        "billing_manager": false,
+        "joined_at": 1744622674,
+        "created_at": 1744618623,
+        "user": {
+          "id": 10624,
+          "name": "サンプル施策295",
+          "company_name": "株式会社サンプル施策407",
+          "email": "user722@example.test",
+          "confirmed_at": null
+        }
+      },
+      "conversion_setting": {
+        "id": 2591933,
+        "conversion_condition": "click"
+      },
+      "product_genres": []
+    },
+    {
+      "id": 2654376,
+      "team_id": 1012,
+      "uid": "UID_4265",
+      "title": "サンプル施策581",
+      "ad_status": "prepared",
+      "created_at": 1786890523,
+      "updated_at": 1786892573,
+      "media": {
+        "id": 1,
+        "name": "サンプル施策656",
+        "icon_name": "facebook",
+        "ad_cooperation": true
+      },
+      "affiliate_service_provider": {
+        "id": 11,
+        "name": "サンプル施策850",
+        "session_id": "squadbeyond_uid",
+        "category_id": 2,
+        "faq_link": "example.test/faq/hs_204865272213"
+      },
+      "conversion_unit_price": 0,
+      "delivery_type": "html_rewriting",
+      "editor_version": 2,
+      "reports": null,
+      "creator": {
+        "id": 30940,
+        "team_id": 1012,
+        "uid": "UID_7331",
+        "email": "user722@example.test",
+        "name": "サンプル施策295",
+        "role": "owner",
+        "joined": true,
+        "is_admin_user": false,
+        "outside": false,
+        "billing_manager": false,
+        "joined_at": 1744622674,
+        "created_at": 1744618623,
+        "user": {
+          "id": 10624,
+          "name": "サンプル施策295",
+          "company_name": "株式会社サンプル施策407",
+          "email": "user722@example.test",
+          "confirmed_at": null
+        }
+      },
+      "conversion_setting": {
+        "id": 2591920,
+        "conversion_condition": "click"
+      },
+      "product_genres": []
+    },
+    {
+      "id": 2623656,
+      "team_id": 1012,
+      "uid": "UID_5542",
+      "title": "サンプル施策514",
+      "ad_status": "prepared",
+      "created_at": 1785130238,
+      "updated_at": 1787138341,
+      "media": {
+        "id": 1,
+        "name": "サンプル施策656",
+        "icon_name": "facebook",
+        "ad_cooperation": true
+      },
+      "affiliate_service_provider": {
+        "id": 11,
+        "name": "サンプル施策850",
+        "session_id": "squadbeyond_uid",
+        "category_id": 2,
+        "faq_link": "example.test/faq/hs_204865272213"
+      },
+      "conversion_unit_price": 0,
+      "delivery_type": "html_rewriting",
+      "editor_version": 2,
+      "reports": {
+        "ad_spending": 0,
+        "media_click_count": 0,
+        "unique_user_count": 86,
+        "page_view_count": 98,
+        "click_count": 0,
+        "conversion_count": 0,
+        "sales": 0,
+        "click_through_rate": 0,
+        "conversion_rate": null,
+        "ctvr": 0,
+        "cpa": null,
+        "mcpa": null,
+        "media_ctr": null,
+        "roas": null
+      },
+      "creator": {
+        "id": 30941,
+        "team_id": 1012,
+        "uid": "UID_8830",
+        "email": "user523@example.test",
+        "name": "サンプル施策733",
+        "role": "owner",
+        "joined": true,
+        "is_admin_user": false,
+        "outside": false,
+        "billing_manager": false,
+        "joined_at": 1744620630,
+        "created_at": 1744618638,
+        "user": {
+          "id": 10623,
+          "name": "サンプル施策733",
+          "company_name": "user523@example.test",
+          "email": "user523@example.test",
+          "confirmed_at": null
+        }
+      },
+      "conversion_setting": {
+        "id": 2562003,
+        "conversion_condition": "click"
+      },
+      "product_genres": [
+        {
+          "id": 380,
+          "name": "サンプル施策476"
+        }
+      ]
+    },
+    {
+      "id": 2623648,
+      "team_id": 1012,
+      "uid": "UID_1508",
+      "title": "サンプル施策416",
+      "ad_status": "finished",
+      "created_at": 1785130141,
+      "updated_at": 1785130188,
+      "media": {
+        "id": 1,
+        "name": "サンプル施策656",
+        "icon_name": "facebook",
+        "ad_cooperation": true
+      },
+      "affiliate_service_provider": {
+        "id": 11,
+        "name": "サンプル施策850",
+        "session_id": "squadbeyond_uid",
+        "category_id": 2,
+        "faq_link": "example.test/faq/hs_204865272213"
+      },
+      "conversion_unit_price": 0,
+      "delivery_type": "html_rewriting",
+      "editor_version": 3,
+      "reports": null,
+      "creator": {
+        "id": 30941,
+        "team_id": 1012,
+        "uid": "UID_8830",
+        "email": "user523@example.test",
+        "name": "サンプル施策733",
+        "role": "owner",
+        "joined": true,
+        "is_admin_user": false,
+        "outside": false,
+        "billing_manager": false,
+        "joined_at": 1744620630,
+        "created_at": 1744618638,
+        "user": {
+          "id": 10623,
+          "name": "サンプル施策733",
+          "company_name": "user523@example.test",
+          "email": "user523@example.test",
+          "confirmed_at": null
+        }
+      },
+      "conversion_setting": {
+        "id": 2561995,
+        "conversion_condition": "click"
+      },
+      "product_genres": []
+    },
+    {
+      "id": 2623632,
+      "team_id": 1012,
+      "uid": "UID_5966",
+      "title": "サンプル施策234",
+      "ad_status": "prepared",
+      "created_at": 1785129696,
+      "updated_at": 1785129696,
+      "media": {
+        "id": 1,
+        "name": "サンプル施策656",
+        "icon_name": "facebook",
+        "ad_cooperation": true
+      },
+      "affiliate_service_provider": {
+        "id": 11,
+        "name": "サンプル施策850",
+        "session_id": "squadbeyond_uid",
+        "category_id": 2,
+        "faq_link": "example.test/faq/hs_204865272213"
+      },
+      "conversion_unit_price": 0,
+      "delivery_type": "html_rewriting",
+      "editor_version": 3,
+      "reports": null,
+      "creator": {
+        "id": 30941,
+        "team_id": 1012,
+        "uid": "UID_8830",
+        "email": "user523@example.test",
+        "name": "サンプル施策733",
+        "role": "owner",
+        "joined": true,
+        "is_admin_user": false,
+        "outside": false,
+        "billing_manager": false,
+        "joined_at": 1744620630,
+        "created_at": 1744618638,
+        "user": {
+          "id": 10623,
+          "name": "サンプル施策733",
+          "company_name": "user523@example.test",
+          "email": "user523@example.test",
+          "confirmed_at": null
+        }
+      },
+      "conversion_setting": {
+        "id": 2561979,
+        "conversion_condition": "click"
+      },
+      "product_genres": [
+        {
+          "id": 380,
+          "name": "サンプル施策476"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,586 @@
+{
+  "id": 2678600,
+  "team_id": 1012,
+  "uid": "UID_2771",
+  "title": "サンプル施策091",
+  "memo": "",
+  "media_id": 55,
+  "affiliate_service_provider_id": null,
+  "gender_id": null,
+  "folder_id": 182760,
+  "original_ab_test_id": null,
+  "over_age": 0,
+  "under_age": 0,
+  "conversion_unit_price": 0,
+  "published": true,
+  "editor_version": 2,
+  "media": {
+    "attributes": {
+      "id": 55,
+      "name": "サンプル施策892",
+      "icon_name": "nosnsicon",
+      "ad_cooperation": false
+    }
+  },
+  "affiliate_service_provider": null,
+  "ad_status": "finished",
+  "conversion_condition": "click",
+  "delivery_type": "html_rewriting",
+  "created_at": 1788165656,
+  "creation_timestamp": "2026-08-31T17:40:56.000+09:00",
+  "updated_at": 1788166278,
+  "folder": {
+    "id": 182760,
+    "team_id": 1012,
+    "uid": "UID_3737",
+    "name": "サンプル施策870",
+    "is_import_folder": false,
+    "is_importing": false,
+    "domain": {
+      "id": 84941,
+      "status": "approved",
+      "domain": "sample48.example.test",
+      "description": "",
+      "free_domain_id": 3,
+      "pv_count_one_month": 0,
+      "disconnected_at": null
+    },
+    "group": {
+      "id": 25092,
+      "name": "重南"
+    },
+    "ab_tests": [
+      {
+        "id": 2623632,
+        "team_id": 1012,
+        "uid": "UID_5966",
+        "title": "サンプル施策234",
+        "memo": "",
+        "media_id": 1,
+        "affiliate_service_provider_id": 11,
+        "gender_id": null,
+        "folder_id": 182760,
+        "original_ab_test_id": null,
+        "over_age": 0,
+        "under_age": 0,
+        "conversion_unit_price": 0,
+        "published": true,
+        "editor_version": 3,
+        "media": {
+          "attributes": {
+            "id": 1,
+            "name": "サンプル施策656",
+            "icon_name": "facebook",
+            "ad_cooperation": true
+          }
+        },
+        "affiliate_service_provider": {
+          "id": 11,
+          "name": "サンプル施策850",
+          "session_id": "squadbeyond_uid",
+          "category_id": 2,
+          "faq_link": "example.test/faq/hs_204865272213"
+        },
+        "ad_status": "prepared",
+        "conversion_condition": "click",
+        "delivery_type": "html_rewriting",
+        "created_at": 1785129696,
+        "creation_timestamp": "2026-07-27T14:21:36.000+09:00",
+        "updated_at": 1785129696
+      },
+      {
+        "id": 2623648,
+        "team_id": 1012,
+        "uid": "UID_1508",
+        "title": "サンプル施策416",
+        "memo": "",
+        "media_id": 1,
+        "affiliate_service_provider_id": 11,
+        "gender_id": null,
+        "folder_id": 182760,
+        "original_ab_test_id": 2623632,
+        "over_age": 0,
+        "under_age": 0,
+        "conversion_unit_price": 0,
+        "published": true,
+        "editor_version": 3,
+        "media": {
+          "attributes": {
+            "id": 1,
+            "name": "サンプル施策656",
+            "icon_name": "facebook",
+            "ad_cooperation": true
+          }
+        },
+        "affiliate_service_provider": {
+          "id": 11,
+          "name": "サンプル施策850",
+          "session_id": "squadbeyond_uid",
+          "category_id": 2,
+          "faq_link": "example.test/faq/hs_204865272213"
+        },
+        "ad_status": "finished",
+        "conversion_condition": "click",
+        "delivery_type": "html_rewriting",
+        "created_at": 1785130141,
+        "creation_timestamp": "2026-07-27T14:29:01.000+09:00",
+        "updated_at": 1785130188
+      },
+      {
+        "id": 2623656,
+        "team_id": 1012,
+        "uid": "UID_5542",
+        "title": "サンプル施策514",
+        "memo": "",
+        "media_id": 1,
+        "affiliate_service_provider_id": 11,
+        "gender_id": null,
+        "folder_id": 182760,
+        "original_ab_test_id": null,
+        "over_age": 0,
+        "under_age": 0,
+        "conversion_unit_price": 0,
+        "published": true,
+        "editor_version": 2,
+        "media": {
+          "attributes": {
+            "id": 1,
+            "name": "サンプル施策656",
+            "icon_name": "facebook",
+            "ad_cooperation": true
+          }
+        },
+        "affiliate_service_provider": {
+          "id": 11,
+          "name": "サンプル施策850",
+          "session_id": "squadbeyond_uid",
+          "category_id": 2,
+          "faq_link": "example.test/faq/hs_204865272213"
+        },
+        "ad_status": "prepared",
+        "conversion_condition": "click",
+        "delivery_type": "html_rewriting",
+        "created_at": 1785130238,
+        "creation_timestamp": "2026-07-27T14:30:38.000+09:00",
+        "updated_at": 1787138341
+      },
+      {
+        "id": 2654376,
+        "team_id": 1012,
+        "uid": "UID_4265",
+        "title": "サンプル施策581",
+        "memo": "",
+        "media_id": 1,
+        "affiliate_service_provider_id": 11,
+        "gender_id": null,
+        "folder_id": 182760,
+        "original_ab_test_id": 2623656,
+        "over_age": 0,
+        "under_age": 0,
+        "conversion_unit_price": 0,
+        "published": true,
+        "editor_version": 2,
+        "media": {
+          "attributes": {
+            "id": 1,
+            "name": "サンプル施策656",
+            "icon_name": "facebook",
+            "ad_cooperation": true
+          }
+        },
+        "affiliate_service_provider": {
+          "id": 11,
+          "name": "サンプル施策850",
+          "session_id": "squadbeyond_uid",
+          "category_id": 2,
+          "faq_link": "example.test/faq/hs_204865272213"
+        },
+        "ad_status": "prepared",
+        "conversion_condition": "click",
+        "delivery_type": "html_rewriting",
+        "created_at": 1786890523,
+        "creation_timestamp": "2026-08-16T23:28:43.000+09:00",
+        "updated_at": 1786892573
+      },
+      {
+        "id": 2654389,
+        "team_id": 1012,
+        "uid": "UID_5068",
+        "title": "サンプル施策341",
+        "memo": "",
+        "media_id": 1,
+        "affiliate_service_provider_id": 11,
+        "gender_id": null,
+        "folder_id": 182760,
+        "original_ab_test_id": 2623656,
+        "over_age": 0,
+        "under_age": 0,
+        "conversion_unit_price": 0,
+        "published": true,
+        "editor_version": 2,
+        "media": {
+          "attributes": {
+            "id": 1,
+            "name": "サンプル施策656",
+            "icon_name": "facebook",
+            "ad_cooperation": true
+          }
+        },
+        "affiliate_service_provider": {
+          "id": 11,
+          "name": "サンプル施策850",
+          "session_id": "squadbeyond_uid",
+          "category_id": 2,
+          "faq_link": "example.test/faq/hs_204865272213"
+        },
+        "ad_status": "prepared",
+        "conversion_condition": "click",
+        "delivery_type": "html_rewriting",
+        "created_at": 1786892542,
+        "creation_timestamp": "2026-08-17T00:02:22.000+09:00",
+        "updated_at": 1786892584
+      },
+      {
+        "id": 2654390,
+        "team_id": 1012,
+        "uid": "UID_1189",
+        "title": "サンプル施策754",
+        "memo": "",
+        "media_id": 1,
+        "affiliate_service_provider_id": 11,
+        "gender_id": null,
+        "folder_id": 182760,
+        "original_ab_test_id": 2623656,
+        "over_age": 0,
+        "under_age": 0,
+        "conversion_unit_price": 0,
+        "published": true,
+        "editor_version": 2,
+        "media": {
+          "attributes": {
+            "id": 1,
+            "name": "サンプル施策656",
+            "icon_name": "facebook",
+            "ad_cooperation": true
+          }
+        },
+        "affiliate_service_provider": {
+          "id": 11,
+          "name": "サンプル施策850",
+          "session_id": "squadbeyond_uid",
+          "category_id": 2,
+          "faq_link": "example.test/faq/hs_204865272213"
+        },
+        "ad_status": "prepared",
+        "conversion_condition": "click",
+        "delivery_type": "html_rewriting",
+        "created_at": 1786892606,
+        "creation_timestamp": "2026-08-17T00:03:26.000+09:00",
+        "updated_at": 1786892633
+      },
+      {
+        "id": 2658253,
+        "team_id": 1012,
+        "uid": "UID_7173",
+        "title": "サンプル施策124",
+        "memo": "",
+        "media_id": 1,
+        "affiliate_service_provider_id": 11,
+        "gender_id": null,
+        "folder_id": 182760,
+        "original_ab_test_id": 2654390,
+        "over_age": 0,
+        "under_age": 0,
+        "conversion_unit_price": 0,
+        "published": true,
+        "editor_version": 2,
+        "media": {
+          "attributes": {
+            "id": 1,
+            "name": "サンプル施策656",
+            "icon_name": "facebook",
+            "ad_cooperation": true
+          }
+        },
+        "affiliate_service_provider": {
+          "id": 11,
+          "name": "サンプル施策850",
+          "session_id": "squadbeyond_uid",
+          "category_id": 2,
+          "faq_link": "example.test/faq/hs_204865272213"
+        },
+        "ad_status": "prepared",
+        "conversion_condition": "click",
+        "delivery_type": "html_rewriting",
+        "created_at": 1787050351,
+        "creation_timestamp": "2026-08-18T19:52:31.000+09:00",
+        "updated_at": 1787059954
+      },
+      {
+        "id": 2658391,
+        "team_id": 1012,
+        "uid": "UID_8726",
+        "title": "サンプル施策801",
+        "memo": "",
+        "media_id": 1,
+        "affiliate_service_provider_id": 11,
+        "gender_id": null,
+        "folder_id": 182760,
+        "original_ab_test_id": 2658253,
+        "over_age": 0,
+        "under_age": 0,
+        "conversion_unit_price": 0,
+        "published": true,
+        "editor_version": 2,
+        "media": {
+          "attributes": {
+            "id": 1,
+            "name": "サンプル施策656",
+            "icon_name": "facebook",
+            "ad_cooperation": true
+          }
+        },
+        "affiliate_service_provider": {
+          "id": 11,
+          "name": "サンプル施策850",
+          "session_id": "squadbeyond_uid",
+          "category_id": 2,
+          "faq_link": "example.test/faq/hs_204865272213"
+        },
+        "ad_status": "prepared",
+        "conversion_condition": "click",
+        "delivery_type": "html_rewriting",
+        "created_at": 1787059918,
+        "creation_timestamp": "2026-08-18T22:31:58.000+09:00",
+        "updated_at": 1787059944
+      },
+      {
+        "id": 2660465,
+        "team_id": 1012,
+        "uid": "UID_3461",
+        "title": "サンプル施策682",
+        "memo": "",
+        "media_id": 1,
+        "affiliate_service_provider_id": 11,
+        "gender_id": null,
+        "folder_id": 182760,
+        "original_ab_test_id": 2623656,
+        "over_age": 0,
+        "under_age": 0,
+        "conversion_unit_price": 0,
+        "published": true,
+        "editor_version": 2,
+        "media": {
+          "attributes": {
+            "id": 1,
+            "name": "サンプル施策656",
+            "icon_name": "facebook",
+            "ad_cooperation": true
+          }
+        },
+        "affiliate_service_provider": {
+          "id": 11,
+          "name": "サンプル施策850",
+          "session_id": "squadbeyond_uid",
+          "category_id": 2,
+          "faq_link": "example.test/faq/hs_204865272213"
+        },
+        "ad_status": "prepared",
+        "conversion_condition": "click",
+        "delivery_type": "html_rewriting",
+        "created_at": 1787138719,
+        "creation_timestamp": "2026-08-19T20:25:19.000+09:00",
+        "updated_at": 1787138756
+      },
+      {
+        "id": 2662647,
+        "team_id": 1012,
+        "uid": "UID_7786",
+        "title": "サンプル施策831",
+        "memo": "",
+        "media_id": 1,
+        "affiliate_service_provider_id": 11,
+        "gender_id": null,
+        "folder_id": 182760,
+        "original_ab_test_id": 2623656,
+        "over_age": 0,
+        "under_age": 0,
+        "conversion_unit_price": 0,
+        "published": true,
+        "editor_version": 2,
+        "media": {
+          "attributes": {
+            "id": 1,
+            "name": "サンプル施策656",
+            "icon_name": "facebook",
+            "ad_cooperation": true
+          }
+        },
+        "affiliate_service_provider": {
+          "id": 11,
+          "name": "サンプル施策850",
+          "session_id": "squadbeyond_uid",
+          "category_id": 2,
+          "faq_link": "example.test/faq/hs_204865272213"
+        },
+        "ad_status": "prepared",
+        "conversion_condition": "click",
+        "delivery_type": "html_rewriting",
+        "created_at": 1787219987,
+        "creation_timestamp": "2026-08-20T18:59:47.000+09:00",
+        "updated_at": 1787220100
+      },
+      {
+        "id": 2662985,
+        "team_id": 1012,
+        "uid": "UID_5540",
+        "title": "サンプル施策588",
+        "memo": "",
+        "media_id": 1,
+        "affiliate_service_provider_id": 11,
+        "gender_id": null,
+        "folder_id": 182760,
+        "original_ab_test_id": 2623656,
+        "over_age": 0,
+        "under_age": 0,
+        "conversion_unit_price": 0,
+        "published": true,
+        "editor_version": 2,
+        "media": {
+          "attributes": {
+            "id": 1,
+            "name": "サンプル施策656",
+            "icon_name": "facebook",
+            "ad_cooperation": true
+          }
+        },
+        "affiliate_service_provider": {
+          "id": 11,
+          "name": "サンプル施策850",
+          "session_id": "squadbeyond_uid",
+          "category_id": 2,
+          "faq_link": "example.test/faq/hs_204865272213"
+        },
+        "ad_status": "prepared",
+        "conversion_condition": "click",
+        "delivery_type": "html_rewriting",
+        "created_at": 1787228978,
+        "creation_timestamp": "2026-08-20T21:29:38.000+09:00",
+        "updated_at": 1787228978
+      },
+      {
+        "id": 2665129,
+        "team_id": 1012,
+        "uid": "UID_9987",
+        "title": "サンプル施策306",
+        "memo": "",
+        "media_id": 1,
+        "affiliate_service_provider_id": 11,
+        "gender_id": null,
+        "folder_id": 182760,
+        "original_ab_test_id": 2660465,
+        "over_age": 0,
+        "under_age": 0,
+        "conversion_unit_price": 0,
+        "published": true,
+        "editor_version": 2,
+        "media": {
+          "attributes": {
+            "id": 1,
+            "name": "サンプル施策656",
+            "icon_name": "facebook",
+            "ad_cooperation": true
+          }
+        },
+        "affiliate_service_provider": {
+          "id": 11,
+          "name": "サンプル施策850",
+          "session_id": "squadbeyond_uid",
+          "category_id": 2,
+          "faq_link": "example.test/faq/hs_204865272213"
+        },
+        "ad_status": "prepared",
+        "conversion_condition": "click",
+        "delivery_type": "html_rewriting",
+        "created_at": 1787301775,
+        "creation_timestamp": "2026-08-21T17:42:55.000+09:00",
+        "updated_at": 1787304392
+      },
+      {
+        "id": 2665337,
+        "team_id": 1012,
+        "uid": "UID_7595",
+        "title": "サンプル施策454",
+        "memo": "",
+        "media_id": 1,
+        "affiliate_service_provider_id": 11,
+        "gender_id": null,
+        "folder_id": 182760,
+        "original_ab_test_id": 2665129,
+        "over_age": 0,
+        "under_age": 0,
+        "conversion_unit_price": 0,
+        "published": true,
+        "editor_version": 2,
+        "media": {
+          "attributes": {
+            "id": 1,
+            "name": "サンプル施策656",
+            "icon_name": "facebook",
+            "ad_cooperation": true
+          }
+        },
+        "affiliate_service_provider": {
+          "id": 11,
+          "name": "サンプル施策850",
+          "session_id": "squadbeyond_uid",
+          "category_id": 2,
+          "faq_link": "example.test/faq/hs_204865272213"
+        },
+        "ad_status": "prepared",
+        "conversion_condition": "click",
+        "delivery_type": "html_rewriting",
+        "created_at": 1787304404,
+        "creation_timestamp": "2026-08-21T18:26:44.000+09:00",
+        "updated_at": 1787304534
+      },
+      {
+        "id": 2678600,
+        "team_id": 1012,
+        "uid": "UID_2771",
+        "title": "サンプル施策091",
+        "memo": "",
+        "media_id": 55,
+        "affiliate_service_provider_id": null,
+        "gender_id": null,
+        "folder_id": 182760,
+        "original_ab_test_id": null,
+        "over_age": 0,
+        "under_age": 0,
+        "conversion_unit_price": 0,
+        "published": true,
+        "editor_version": 2,
+        "media": {
+          "attributes": {
+            "id": 55,
+            "name": "サンプル施策892",
+            "icon_name": "nosnsicon",
+            "ad_cooperation": false
+          }
+        },
+        "affiliate_service_provider": null,
+        "ad_status": "finished",
+        "conversion_condition": "click",
+        "delivery_type": "html_rewriting",
+        "created_at": 1788165656,
+        "creation_timestamp": "2026-08-31T17:40:56.000+09:00",
+        "updated_at": 1788166278
+      }
+    ]
+  },
+  "conversion_setting": {
+    "id": 2615534,
+    "conversion_condition": "click"
+  },
+  "product_genres": []
+}

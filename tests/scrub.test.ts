@@ -105,7 +105,39 @@ describe('除去（§5-5「除去」・§13-G）', () => {
     const { text, stripped } = scrubText(html, {}, HOSTS)
     expect(text).not.toContain('googletagmanager')
     expect(text).toContain('<main>UI</main>')
-    expect(stripped).toContain('Google Tag Manager')
+    expect(stripped).toContain('外部SaaSのscript')
+  })
+})
+
+describe('回帰: SaaS除去が土台を巻き込まないこと（実採取で踏んだバグ）', () => {
+  it('SaaS識別子を含まない script は残す（全script削除にしてはいけない）', () => {
+    const html = '<script>const APP_CONFIG={locale:"ja"};</script><script src="/assets/app.js"></script>'
+    const { text } = scrubText(html, {}, HOSTS)
+    expect(text).toContain('APP_CONFIG')
+    expect(text).toContain('/assets/app.js')
+  })
+
+  it('SaaS識別子を含む script だけを消す（混在時）', () => {
+    const html =
+      '<script>const KEEP=1;</script>' +
+      '<script>window.pendo=window.pendo||{};</script>' +
+      '<script>const ALSO_KEEP=2;</script>'
+    const { text } = scrubText(html, {}, HOSTS)
+    expect(text).toContain('KEEP')
+    expect(text).toContain('ALSO_KEEP')
+    expect(text).not.toContain('pendo')
+  })
+
+  it('SaaS識別子を含まない link / iframe は残す', () => {
+    const html = '<link rel="stylesheet" href="/assets/app.css"><iframe src="/preview"></iframe>'
+    const { text } = scrubText(html, {}, HOSTS)
+    expect(text).toContain('/assets/app.css')
+    expect(text).toContain('/preview')
+  })
+
+  it('GTMのコンテナIDのような識別子は残骸も消す（§13-Gは0件必須）', () => {
+    const { text } = scrubText('<div data-gtm="GTM-ABCD1234">x</div>', {}, HOSTS)
+    expect(text).not.toContain('GTM-ABCD1234')
   })
 })
 
