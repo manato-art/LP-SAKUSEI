@@ -11,6 +11,10 @@ import substrate from '../fragments/ab_tests__UID__articles__editor-target.html?
 import { api, type Version } from '../api.ts'
 import { isStale } from '../main.ts'
 import { toast } from '../ui.ts'
+import { mountVersionSettings } from '../panels/version-settings.ts'
+import { mountTagSettings } from '../panels/tag-settings.ts'
+import { mountLinkReplace } from '../panels/link-replace.ts'
+import { mountHistory } from '../panels/history.ts'
 
 /** 採取DOM内の目印（実物の data-test 属性。採取のたびに増える） */
 const HOOK = {
@@ -35,6 +39,9 @@ const HOOK = {
   funnelNext: '[class*="changeNextFunnelStep"]',
   versionLinkInput: '#versionLink',
 } as const
+
+/** 配線済みのツール（未実装トーストを出さない） */
+const WIRED_TOOLS: readonly number[] = [0, 1, 3, 4, 5]
 
 /** 右レール9ツールの実際の名前（実DOMの tooltip / aria-label より） */
 const SIDE_TOOLS: readonly string[] = [
@@ -261,13 +268,11 @@ async function saveHtml(ctx: EditorContext): Promise<void> {
 function wireSideToolbar(ctx: EditorContext, previewTitle: string, previewFolder: string): void {
   ctx.root.querySelector(HOOK.undo)?.addEventListener('click', () => ctx.quill.history.undo())
   ctx.root.querySelector(HOOK.redo)?.addEventListener('click', () => ctx.quill.history.redo())
-  ctx.root.querySelector(HOOK.tagSettings)?.addEventListener('click', () => {
-    toast('タグ設定は未実装です（採取済みなので次に作れます）', 'error')
-  })
-
-  ctx.root.querySelector(HOOK.versionSettings)?.addEventListener('click', () => {
-    toast('Version設定は未実装です（採取済みなので次に作れます）', 'error')
-  })
+  // ── 各パネルを配線（実装は src/app/panels/ に分かれている）──
+  mountVersionSettings(ctx.root, ctx.articleUid)
+  mountTagSettings(ctx.root, ctx.articleUid)
+  mountLinkReplace(ctx.root, ctx.articleUid)
+  mountHistory(ctx.root, ctx.articleUid)
 
   ctx.root.querySelector(HOOK.preview)?.addEventListener('click', async () => {
     await saveHtml(ctx)
@@ -279,10 +284,7 @@ function wireSideToolbar(ctx: EditorContext, previewTitle: string, previewFolder
   for (let index = 0; index < icons.length; index += 1) {
     const icon = icons[index]
     if (icon === undefined) continue
-    // 既に配線したものは飛ばす。data-test だけでなく aria-label 付き（プレビュー等）も対象。
-    const alreadyWired =
-      icon.querySelector('[data-test]') !== null || icon.querySelector('[aria-label]') !== null
-    if (alreadyWired) continue
+    if (WIRED_TOOLS.includes(index)) continue
     const name = SIDE_TOOLS[index] ?? 'このツール'
     icon.style.cursor = 'pointer'
     icon.addEventListener('click', () => toast(`${name} は未実装です`, 'error'))

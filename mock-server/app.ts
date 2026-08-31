@@ -9,6 +9,10 @@ import { mockStateMiddleware } from './lib/mock-state.ts'
 import { errorEnvelope } from './lib/envelope.ts'
 import { resetState } from './store/store.ts'
 import { captureSinkRouter } from './capture-sink.ts'
+import { versionSettingsRouter } from './routes/panel-version-settings.ts'
+import { tagSettingsRouter } from './routes/panel-tag-settings.ts'
+import { historyRouter } from './routes/panel-history.ts'
+import { resetArticleHistories } from './store/article-history.ts'
 import { abTestsRouter } from './routes/ab-tests.ts'
 import { conversionsRouter } from './routes/conversions.ts'
 import { dashboardRouter } from './routes/dashboard.ts'
@@ -23,8 +27,14 @@ import { usersRouter } from './routes/users.ts'
 import { versionsRouter } from './routes/versions.ts'
 
 /** `?reset=1` で新規アカウント発行直後（空）へ戻す（§10-9） */
+function resetAll(): void {
+  resetState()
+  // 履歴は State の外に持っているので、リセット時に明示的に消す
+  resetArticleHistories()
+}
+
 function resetMiddleware(req: Request, _res: Response, next: NextFunction): void {
-  if (req.query['reset'] === '1') resetState()
+  if (req.query['reset'] === '1') resetAll()
   next()
 }
 
@@ -43,7 +53,7 @@ export function createApp(): Express {
     res.json({ ok: true })
   })
   app.post('/__mock/reset', (_req, res) => {
-    resetState()
+    resetAll()
     res.json({ ok: true })
   })
 
@@ -59,6 +69,10 @@ export function createApp(): Express {
     settingsRouter,
     sbAiRouter,
     miscRouter,
+    // エディタの各パネル（担当ごとに別ファイルに分けて実装したもの）
+    versionSettingsRouter,
+    tagSettingsRouter,
+    historyRouter,
   ]
 
   // [A] メインREST API（実物は v1 / v2 が混在するため両方に同じルーターを載せる）

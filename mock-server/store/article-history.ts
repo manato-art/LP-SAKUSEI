@@ -54,13 +54,21 @@ export function resetArticleHistories(): void {
 /**
  * 記事の同一性キー。
  *
- * uid だけでは足りない: `/__mock/reset` 後に作り直された記事は uid が同じ
- * （`ARTICLE_0001` は決定論採番）になるため、リセット前の履歴が
- * 別物の記事にぶら下がって見えてしまう。id と created_at も混ぜて世代を区別する。
- * （同一秒に作り直された場合だけは区別できない。既知の限界。）
+ * uid や id では足りない: `/__mock/reset` 後に作り直された記事は uid も id も同じ
+ * （どちらも決定論採番）になるため、リセット前の履歴が別物の記事にぶら下がって見えてしまう。
+ * State はイミュータブルだが Article オブジェクトは作成〜削除まで差し替えられない
+ * （actions.ts が触るのは追加と削除だけ）ので、**オブジェクトの同一性**を世代の印にする。
  */
-export function articleKey(article: Pick<Article, 'uid' | 'id' | 'created_at'>): string {
-  return `${article.uid}#${article.id}#${article.created_at}`
+const ARTICLE_KEYS = new WeakMap<Article, string>()
+let keySequence = 0
+
+export function articleKey(article: Article): string {
+  const existing = ARTICLE_KEYS.get(article)
+  if (existing !== undefined) return existing
+  keySequence += 1
+  const key = `${article.uid}@${keySequence}`
+  ARTICLE_KEYS.set(article, key)
+  return key
 }
 
 /** いま実在する記事のキー集合（消えた記事の履歴を捨てるために使う） */
