@@ -4,17 +4,46 @@
 **capture-and-rehydrate は単一ビルドに依存する**ため、採取物のビルドが混ざると
 CSSハッシュとDOM構造がずれ、視覚検証が意味を失う。
 
-## 記録すべきもの（採取係が採取開始時に埋める）
+## 採取済み（第1回: 2026-08-31）
 
-| 項目 | 値 | 備考 |
+| 項目 | 値 |
+|---|---|
+| 採取日 | **2026-08-31** |
+| 対象UI | **旧UI**（`新UIを利用する` トグル OFF・D-010） |
+| メインJSバンドル | **`/assets/index-7a8692d8.js`**（約5.8MB・クローンでは使わない） |
+| 採取アカウント種別 | **既存アカウント**（新規発行は不可・D-009） |
+| 採取方法 | Claude in Chrome（DOM観測）＋ curl（静的アセット・認証不要） |
+
+### CSS（土台。verbatimで使用）
+
+| ファイル | サイズ | sha256(先頭16) |
 |---|---|---|
-| 採取日時 | （未記入） | |
-| メインJSバンドル hash | （未記入） | `/assets/index-<hash>.js` |
-| メインCSS hash | （未記入） | `/assets/index-<hash>.css`（約322KB） |
-| サブCSS hash | （未記入） | 約51KB |
-| アイコンCSS hash | （未記入） | |
-| 採取アカウント種別 | （未記入） | 新規アカウント / 既存アカウント（§5-7 観測フロアに影響） |
-| 採取ブラウザ | （未記入） | Chrome バージョン |
+| `index-cb391eb6.css` | 323,201 bytes | `59b7f2d987181742` |
+| `index-05deeb9d.css` | 49,178 bytes | `fc9b38c227fca128` |
+| `app.css` | 344 bytes | `6aecdb49b713eaee` |
+| `normalize.css` | 7,823 bytes | `aac4be49ef844de2` |
+
+外部由来（自己ホスト化のため取得）: `material-icons.css` / `fontawesome-5.15.4.css`
+
+### アセット
+
+同一オリジンの参照アセット **68ファイル**（SVGアイコン61 / 独自アイコンフォント beyond(woff,ttf,svg) /
+ロゴPNG / Material Icons ttf / Font Awesome woff2 ×3）。
+
+**取得できなかったもの**: `beyond-457b90c5.eot`（IE専用形式。サーバーが200でSPAのHTMLを返すため実体なし。
+現代ブラウザでは不要なので除外）
+
+### 採取時の落とし穴（次回のために記録）
+
+- **SPAは存在しないパスにも 200 で index.html を返す。** HTTPステータスだけでは成否を判定できない。
+  → バイナリ想定の拡張子なのに中身がHTMLでないかを検査すること（`npm run gate` に組み込み済み）
+- CSSには**本番CDN（CloudFront）・外部フォント・計測タグ**の参照が埋まっている。
+  製品ドメインだけを置換しても消えない → `EXTRA_PRODUCTION_HOST_PATTERNS` で中和する
+- SVG内の `http://www.w3.org` 名前空間宣言は**置換してはいけない**（消すとSVGが壊れる）
+
+## まだ採取していないもの
+
+各ルートのレンダ済みDOM / スクリーンショット / APIレスポンスのfixture / LPプレビューのiframe文書。
 
 ## 運用ルール
 

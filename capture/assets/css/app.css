@@ -1,0 +1,28 @@
+html {
+  height: 100vh;
+}
+
+body {
+  margin: 0 auto;
+  height: 100vh;
+  background-color: #ececec;
+  font-family: "Hiragino Sans", sans-serif;
+}
+
+::-webkit-scrollbar {
+  display: none;
+}
+
+body * {
+  scrollbar-width: none;
+}
+
+body a {
+  color: #000;
+  text-decoration: none;
+}
+
+[data-is-disable="true"] {
+  pointer-events: none;
+  opacity: 0.5;
+}

@@ -9,6 +9,8 @@ import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import { extname, join } from 'node:path'
 import {
+  EXTERNAL_HOST_ALLOWLIST,
+  EXTERNAL_HOST_PATTERN,
   EXTERNAL_SAAS_PATTERNS,
   PRODUCTION_HOST_PATTERN,
   PRODUCTION_TOKEN_PATTERNS,
@@ -51,6 +53,49 @@ function scanPattern(files: readonly string[], gate: string, pattern: RegExp): H
       const match = perLine.exec(line)
       if (match !== null) {
         hits.push({ gate, file, line: index + 1, excerpt: match[0].slice(0, 80) })
+      }
+    })
+  }
+  return hits
+}
+
+/**
+ * 採取品質の検査（2026-08-31 の実採取で踏んだ罠）。
+ * SPAは存在しないパスにも 200 で index.html を返すため、
+ * 「ダウンロード成功」に見えて中身がHTMLというアセットが混入する。
+ * バイナリ想定の拡張子なのに中身がHTMLなら不合格にする。
+ */
+const BINARY_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.woff', '.woff2', '.ttf', '.eot', '.otf']
+
+function scanFallbackAssets(): Hit[] {
+  const hits: Hit[] = []
+  for (const dir of SCAN_DIRS) {
+    for (const file of walk(dir)) {
+      if (!BINARY_EXTENSIONS.includes(extname(file).toLowerCase())) continue
+      const head = readFileSync(file).subarray(0, 200).toString('utf8').toLowerCase()
+      if (head.includes('<!doctype html') || head.includes('<html')) {
+        hits.push({
+          gate: '採取品質 SPAフォールバック誤取得',
+          file,
+          line: 0,
+          excerpt: 'バイナリ想定だが中身がHTML（再取得が必要）',
+        })
+      }
+    }
+  }
+  return hits
+}
+
+/** §13-F: 許可リスト外の外部ホストを検出する */
+function scanExternalHosts(files: readonly string[]): Hit[] {
+  const hits: Hit[] = []
+  for (const file of files) {
+    const lines = readFileSync(file, 'utf8').split('\n')
+    lines.forEach((line, index) => {
+      const matches = line.match(EXTERNAL_HOST_PATTERN) ?? []
+      for (const url of new Set(matches)) {
+        if (EXTERNAL_HOST_ALLOWLIST.some((re) => re.test(url))) continue
+        hits.push({ gate: '13-F 外部ホスト', file, line: index + 1, excerpt: url.slice(0, 60) })
       }
     })
   }
@@ -100,6 +145,8 @@ function main(): void {
       scanPattern(files, `5-5 本番トークン(${name})`, pattern),
     ),
     ...scanPattern(files, '13-E 実金額らしい値', SUSPICIOUS_MONEY_PATTERN),
+    ...scanExternalHosts(files),
+    ...scanFallbackAssets(),
     ...scanGitTracked(),
   ]
 

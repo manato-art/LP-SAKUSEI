@@ -109,6 +109,30 @@ export const STRIP_PATTERNS: readonly { name: string; pattern: RegExp }[] = [
   { name: 'Mixpanel', pattern: /<script\b[^>]*mixpanel[^<]*<\/script>/gi },
 ]
 
+/**
+ * 製品ドメイン以外にも中和が必要な本番ホスト（2026-08-31 の実採取で判明）。
+ * 実CSSには画像CDN（CloudFront）や外部フォント/計測タグの参照が埋まっている。
+ *   - CDN         … 本番インフラの識別子なので架空ホストへ置換
+ *   - Googleフォント … 自己ホスト化するのでローカルへ置換（§5-3）
+ *   - 計測タグ      … §13-G により0件でなければならないので中和
+ */
+export const EXTRA_PRODUCTION_HOST_PATTERNS: readonly { name: string; pattern: RegExp; to: string }[] = [
+  { name: 'CloudFront CDN', pattern: /\b[a-z0-9]+\.cloudfront\.net\b/gi, to: 'cdn.example.test' },
+  { name: 'Google Fonts (css)', pattern: /https?:\/\/fonts\.googleapis\.com/gi, to: '/assets/fonts' },
+  { name: 'Google Fonts (static)', pattern: /https?:\/\/fonts\.gstatic\.com/gi, to: '/assets/fonts' },
+  { name: 'Google Tag Manager', pattern: /https?:\/\/(?:www\.)?googletagmanager\.com[^\s"')]*/gi, to: '' },
+  { name: 'unpkg', pattern: /https?:\/\/unpkg\.com/gi, to: '/assets/vendor' },
+  { name: 'cdnjs', pattern: /https?:\/\/cdnjs\.cloudflare\.com/gi, to: '/assets/vendor' },
+]
+
+/**
+ * 置換してはいけないURL（消すと壊れるもの）。
+ * SVGの名前空間宣言は必須。これを置換するとSVGが描画されなくなる。
+ */
+export const HOST_ALLOWLIST: readonly RegExp[] = [
+  /^https?:\/\/www\.w3\.org\//,
+]
+
 /** ホスト書き換え（§5-5・§3-2 本番ドメインをコードに残さない） */
 export const LOCAL_API_ORIGIN = 'http://localhost:4010'
 export const LOCAL_APP_ORIGIN = 'http://localhost:5173'

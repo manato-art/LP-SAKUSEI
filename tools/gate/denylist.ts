@@ -36,11 +36,32 @@ export const PRODUCTION_TOKEN_PATTERNS: readonly { name: string; pattern: RegExp
   { name: 'Bearerヘッダ', pattern: /\bBearer\s+(?!sample_token_)[A-Za-z0-9._-]{20,}/g },
 ]
 
+/**
+ * 外部ホスト検出（§13-F「localhost以外へのリクエスト0件」の静的版）。
+ * 成果物に残ってよいのは localhost と、置換すると壊れるもの（SVG名前空間等）だけ。
+ */
+export const EXTERNAL_HOST_PATTERN = /https?:\/\/(?!localhost|127\.0\.0\.1)[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)+/g
+
+/** 置換すると壊れる／害が無いため許可するホスト。増やすときは docs/scrub-policy.md に理由を書く。 */
+// EXTERNAL_HOST_PATTERN は scheme+host までしか拾わないので、許可リストもホスト単位で書く
+export const EXTERNAL_HOST_ALLOWLIST: readonly RegExp[] = [
+  /^https?:\/\/(www\.)?w3\.org$/,          // SVG/XMLの名前空間宣言。消すとSVGが壊れる
+  /^https?:\/\/svgjs\.com$/,                // SVG書き出しツールのメタデータ（発信しない）
+  /^https?:\/\/(www\.)?sketch(app)?\.com$/, // 同上（デザインツールのメタデータ）
+  /^https?:\/\/quilljs\.com$/,              // ベンダーCSSの帰属コメント
+  /^https?:\/\/fontawesome\.com$/,          // 同上
+  /^https?:\/\/git\.io$/,                   // 同上
+]
+
 /** 実金額らしいパターン（§13-E 実金額パターン）。合成データは桁が撹拌済みなので通る想定。 */
 export const SUSPICIOUS_MONEY_PATTERN = /[¥￥]\s?\d{1,3}(?:,\d{3}){2,}/g
 
-/** スキャン対象ディレクトリ（成果物とコミット対象） */
-export const SCAN_DIRS: readonly string[] = ['capture/clean', 'src', 'mock-server', 'tools', 'dist']
+/**
+ * スキャン対象ディレクトリ（成果物とコミット対象）。
+ * `capture` は配下すべて（clean / css / assets / …）を対象にする。
+ * 生キャプチャはリポジトリ外の隔離ディレクトリにあるため、ここには含まれない（§3-3）。
+ */
+export const SCAN_DIRS: readonly string[] = ['capture', 'src', 'mock-server', 'tools', 'dist']
 
 /** スキャン対象拡張子 */
 export const SCAN_EXTENSIONS: readonly string[] = [

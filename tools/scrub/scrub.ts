@@ -2,7 +2,13 @@
  * スクラブ本体（企画書 §5-5）。
  * 辞書適用 → パターン置換（ドメイン/uid/メール/電話）→ 除去（外部タグ・本番バンドル）の順に適用する。
  */
-import { LOCAL_API_ORIGIN, LOCAL_APP_ORIGIN, NEUTRAL_DOMAIN, STRIP_PATTERNS } from './policy.ts'
+import {
+  EXTRA_PRODUCTION_HOST_PATTERNS,
+  LOCAL_API_ORIGIN,
+  LOCAL_APP_ORIGIN,
+  NEUTRAL_DOMAIN,
+  STRIP_PATTERNS,
+} from './policy.ts'
 import { applyDictionary, type ScrubMap } from './dictionary.ts'
 import { fakeEmail, fakePhone, fakeToken } from './replacers.ts'
 
@@ -49,6 +55,12 @@ export function scrubText(input: string, map: ScrubMap, hosts: HostRewrite): Scr
     if (lower.includes('app')) return LOCAL_APP_ORIGIN
     return NEUTRAL_DOMAIN
   })
+
+  // 製品ドメイン以外の本番ホスト（CDN / 外部フォント / 計測タグ）も中和する
+  for (const { pattern, to } of EXTRA_PRODUCTION_HOST_PATTERNS) {
+    text = text.replace(pattern, to)
+    pattern.lastIndex = 0
+  }
 
   // WebSocket は localhost の /cable へ
   text = text.replace(/wss?:\/\/[^\s"'<>]*\/cable/gi, `ws://localhost:4010/cable`)
