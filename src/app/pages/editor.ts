@@ -18,6 +18,7 @@ import { mountTagSettings } from '../panels/tag-settings.ts'
 import { mountLinkReplace } from '../panels/link-replace.ts'
 import { mountHistory } from '../panels/history.ts'
 import { mountEditorToolbar } from '../panels/editor-toolbar.ts'
+import { createAutosave } from './autosave.ts'
 import { mountWidgetManager } from '../panels/widget-manager.ts'
 import { wireAbTestTabs } from './tab-nav.ts'
 
@@ -48,6 +49,9 @@ const HOOK = {
 } as const
 
 /** 配線済みのツール（未実装トーストを出さない） */
+/** 打ち終わってから保存するまでの待ち時間。1文字ごとに保存すると通信が飽和する。 */
+const AUTOSAVE_DELAY_MS = 900
+
 const WIRED_TOOLS: readonly number[] = [0, 1, 2, 3, 4, 5]
 
 /** 右レール9ツールの実際の名前（実DOMの tooltip / aria-label より） */
@@ -301,11 +305,24 @@ function wireSideToolbar(ctx: EditorContext, previewTitle: string, previewFolder
     icon.addEventListener('click', () => toast(`${name} は未実装です`, 'error'))
   }
 
+  // 本文の自動保存。実物のエディタは自動保存が走る
+  // （docs/findings-live-observation.md「エディタは『開くだけで自動保存』が走る」・DOMに _saveAnimation_）。
+  // これが無いと、打った内容がサーバーに残らない。
+  const autosave = createAutosave({
+    save: () => saveHtml(ctx),
+    delayMs: AUTOSAVE_DELAY_MS,
+    onError: (error) => toast(`保存できませんでした: ${error.message}`, 'error'),
+  })
+  ctx.quill.on('text-change', (_delta, _old, source) => {
+    // 画面を切り替えた直後の再描画で保存が走ると、古い内容を書き戻してしまう。
+    if (source === 'user') autosave.schedule()
+  })
+
   // 保存（実物にはショートカットが無いが、作業用に足している）
   ctx.root.addEventListener('keydown', (e) => {
     if ((e.metaKey || e.ctrlKey) && e.key === 's') {
       e.preventDefault()
-      void saveHtml(ctx).then(() => toast('保存しました'))
+      void autosave.flush().then(() => toast('保存しました'))
     }
   })
 }

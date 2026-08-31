@@ -10,8 +10,8 @@
  *   await crawl({ startRoutes: ['#/folders'], maxDepth: 3 })
  */
 
-const SLEEP_AFTER_CLICK_MS = 420
-const SLEEP_AFTER_ROUTE_MS = 900
+const SLEEP_AFTER_CLICK_MS = 260
+const SLEEP_AFTER_ROUTE_MS = 650
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -65,6 +65,15 @@ function listClickables() {
     }))
 }
 
+/**
+ * 要素をクリックする。
+ * SVG要素には .click() が無い（click は HTMLElement のもの）ので、
+ * どの要素でも動くようイベントを直接送る。
+ */
+function clickElement(element) {
+  element.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }))
+}
+
 async function gotoRoute(hash) {
   location.hash = hash
   window.dispatchEvent(new HashChangeEvent('hashchange'))
@@ -75,14 +84,23 @@ async function gotoRoute(hash) {
  * 幅優先で到達できる画面を辿る。
  * @returns {Promise<{screens: object[], deadEnds: object[], errors: object[]}>}
  */
-export async function crawl({ startRoutes = ['#/folders'], maxDepth = 3, maxScreens = 60 } = {}) {
+export async function crawl({
+  startRoutes = ['#/folders'],
+  maxDepth = 3,
+  maxScreens = 60,
+  maxVisits = 120,
+} = {}) {
   const seen = new Set()
   const screens = []
   const deadEnds = []
   const errors = []
   const queue = startRoutes.map((route) => ({ route, path: [], depth: 0 }))
 
-  while (queue.length > 0 && screens.length < maxScreens) {
+  // 幅優先だと1画面あたり数十の子が積まれ、キューが収束より速く伸びる。
+  // 「新しく見つけた画面の数」だけでなく「試した回数」も必ず頭打ちにする。
+  let visits = 0
+  while (queue.length > 0 && screens.length < maxScreens && visits < maxVisits) {
+    visits += 1
     const { route, path, depth } = queue.shift()
 
     await gotoRoute(route)
@@ -92,7 +110,7 @@ export async function crawl({ startRoutes = ['#/folders'], maxDepth = 3, maxScre
         errors.push({ route, path, missingStep: step, reason: '再訪時に同じ要素が見つからない' })
         break
       }
-      target.element.click()
+      clickElement(target.element)
       await sleep(SLEEP_AFTER_CLICK_MS)
     }
 
@@ -110,5 +128,5 @@ export async function crawl({ startRoutes = ['#/folders'], maxDepth = 3, maxScre
     }
   }
 
-  return { screens, deadEnds, errors, seenCount: seen.size }
+  return { screens, deadEnds, errors, seenCount: seen.size, visits, queueLeft: queue.length }
 }

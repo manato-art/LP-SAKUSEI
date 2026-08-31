@@ -136,15 +136,24 @@ async function main(): Promise<void> {
     await verifyEndpoints(),
   ]
 
+  /** 土台化の進み具合を実際のファイル数で言う（「未着手」と決め打ちすると事実とズレる）。 */
+  function countFragments(): number {
+    try {
+      return readdirSync('src/app/fragments').filter((f) => f.endsWith('.html')).length
+    } catch {
+      return 0
+    }
+  }
+
   /**
    * 実行時ゲート（§13-A/B/C/D/F）は **Playwrightハーネスと土台化されたクローンの両方**が要る。
    * どちらも未完成なので、採取物の有無に関わらず必ず「保留」として出す。
    * 採取が進んだだけで保留が消えると「合格に見える」ため、そうしない。
    */
   const captureNote = hasCaptures
-    ? '採取物あり。ただし土台化（rehydrate）が未着手。'
+    ? `採取物あり・土台化済み（断片 ${countFragments()}件）。`
     : 'capture/clean/ が空（採取フェーズ未完了）。'
-  const reason = `${captureNote} Playwright検証ハーネスも未実装のため判定不能。`
+  const reason = `${captureNote} Playwright検証ハーネスが未実装のため機械判定はできない。`
   results.push(
     pendingGate('13-A', '視覚一致率（SSIM≥0.98 / 差分≤1.0%）', reason),
     pendingGate('13-B', '全ルート到達クローラ（#root非空・console error 0）', reason),
