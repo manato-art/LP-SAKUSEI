@@ -3,6 +3,7 @@
  * サイドバーは**採取した実マークアップ**をそのまま使う（企画書 §11 土台）。
  * リンク先だけクローンのルートへ張り替える。
  */
+import { NAV_ACTIVE_CLASS, NAV_INACTIVE_CLASS } from './shell-nav.ts'
 import sidebarHtml from './templates/sidebar.html?raw'
 
 export interface Route {
@@ -77,6 +78,9 @@ export function markActiveNav(pathPrefix: string): void {
     const text = (item.textContent ?? '').trim()
     const target = NAV_TARGETS.find((t) => text.startsWith(t.label))
     const active = target !== undefined && pathPrefix.startsWith(target.href.slice(1))
-    item.style.background = active ? '#FDF3E3' : ''
+    // 実物はクラスの入れ替えで選択状態を表す。色を直書きすると実物とズレる
+    // （手書きの色は実物の rgb(255, 249, 229) と違っていた）。
+    item.classList.toggle(NAV_ACTIVE_CLASS, active)
+    item.classList.toggle(NAV_INACTIVE_CLASS, !active)
   }
 }
