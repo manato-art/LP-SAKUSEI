@@ -706,6 +706,61 @@ AbTest 1-* Article （＝UI上の「Version」）
 
 ---
 
+---
+
+# 対象1画面の全操作フロー採取（2026-08-31・複製用のVersionタブ）
+
+`docs/触ってよい範囲.md` の1画面に限定して、到達できる状態を採取した。
+
+## 採取できた19状態
+
+| 状態 | 内容 |
+|---|---|
+| `editor-target` | 画面そのもの（DOM + CSSOM + **レイアウト実測** + iframe） |
+| `tool-history` | 変更・復元履歴 |
+| `tool-widget` | Widget管理 |
+| `tool-link-replace` | リンク置換 |
+| `tool-version-settings` | Version設定（＝MasterStyleSheet） |
+| `tool-tag-settings` | タグ設定 |
+| `tool-external-image` | 外部サーバー画像アップロード |
+| `toolbar-expanded` | ツールバーを⋮で展開 |
+| `toolbar-align-open` | 整列ドロップダウン |
+| `toolbar-color-open` | 文字色パレット（DOMが 148KB→166KB に増える＝パレットは動的生成） |
+| `toolbar-bg-open` | 背景色パレット（166KB→183KB） |
+| `global/app-error` | **アプリのエラー画面** |
+
+## 【重要】エディタは「開くだけで自動保存」が走る
+
+対象ページを開いただけで `updated_at` / `body_updated_at` が更新された（19:27→19:41）。
+DOM に `_saveAnimation_` があり、自動保存の仕組みを持つ。
+→ **クローンでも「開いた時点で保存済み扱い」にするのが忠実**。
+→ 採取時の副作用として避けられない。本文・アセット・Version名・配信割合に変化は無かった。
+
+## 【重要】アプリのエラー画面（`global/app-error`）
+
+**テキストを選択していない状態でリンクツール（`LinkDropdown-BtnOpenDropdown`）を押すと、
+アプリ全体がクラッシュしてエラー画面になる。**
+
+- 文言（verbatim）: `何らかのエラーが発生しました。🙇` / `しばらく時間をおいてからもう一度アクセスして下さい。`
+- リロードで復帰する。データは壊れない（本文・アセット・Version名・配信割合すべて無事だった）
+- **これは実物の挙動なので、クローンでも同じ条件で同じエラー画面を出すのが忠実再現**
+  （企画書 §3-5 勝手に直さない）
+
+## レイアウト実測（`editor-target/layout.json`）
+
+| 要素 | サイズ | 備考 |
+|---|---|---|
+| `editorWrapper` | 1085×626 | `display:flex` / `max-width:1100px` / `padding:20px` |
+| Versionパネル | 230×626 | |
+| コンテンツ枠 | 620×500 | |
+| `quillIframe` | 620×486 | |
+| 右レール | 50×506 | `display:flex` / `padding:20px 0` |
+| 上部ナビ | 1085×80 | |
+
+（ビューポート 1210×746 のときの値）
+
+---
+
 ## 未確認のまま残ったもの（正直な記録）
 
 | 項目 | 理由 |
