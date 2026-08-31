@@ -53,6 +53,9 @@ const HOOK = {
 /** 打ち終わってから保存するまでの待ち時間。1文字ごとに保存すると通信が飽和する。 */
 const AUTOSAVE_DELAY_MS = 900
 
+/** 右レールの並び順は SIDE_TOOLS のとおり。プレビューは1番目。 */
+const PREVIEW_TOOL_INDEX = 0
+
 const WIRED_TOOLS: readonly number[] = [0, 1, 2, 3, 4, 5]
 
 /** 右レール9ツールの実際の名前（実DOMの tooltip / aria-label より） */
@@ -281,16 +284,22 @@ function wireSideToolbar(ctx: EditorContext, previewTitle: string, previewFolder
   })
   mountWidgetManager(ctx.root, ctx.quill)
 
-  ctx.root.querySelector(HOOK.preview)?.addEventListener('click', async () => {
-    await saveHtml(ctx)
-    openPreview(ctx, previewTitle, previewFolder)
-  })
 
   const icons = [...ctx.root.querySelectorAll<HTMLElement>('[class*="sideToolbarIcon"]')]
   for (let index = 0; index < icons.length; index += 1) {
     const icon = icons[index]
     if (icon === undefined) continue
     icon.style.cursor = 'pointer'
+
+    if (index === PREVIEW_TOOL_INDEX) {
+      // プレビューは右レールの1番目。aria-label で引くと別の要素に当たっていて、
+      // レールのアイコンを押しても何も起きなかった。位置で引く。
+      icon.addEventListener('click', async () => {
+        await saveHtml(ctx)
+        openPreview(ctx, previewTitle, previewFolder)
+      })
+      continue
+    }
 
     const open = openers[index]
     if (open !== undefined) {
@@ -355,7 +364,15 @@ function replaceBakedValues(root: HTMLElement, values: readonly string[]): void 
 }
 
 /**
- * プレビュー画面（右レール1番目）。実DOMの提供により、実物は**専用の1画面**だと判明した:
+ * プレビュー画面（右レール1番目）。
+ *
+ * ⚠ **この画面だけは採取物が無く、手書きで組み立てている。**
+ * 本案件の方法（採取した実物を土台にする）から外れた唯一の画面なので、
+ * 画面上にもその旨を出して「本物に見えるが本物ではない」状態を避ける。
+ * 採取できたら、他の画面と同じく断片を土台にして作り直すこと。
+ *
+ * 根拠にしているのは採取物ではなく、人間が実機で見た記録
+ * （docs/findings-live-observation.md）だけ。構造は次のとおりと記録されている:
  *   上部ナビ（戻る / ページ切替 / Version編集・オプション設定・中間ページ へのリンク）
  *   URLカード2枚（作成中の確認用URL / 配信URL）＋ それぞれ コピー・QR・別タブ
  *   中央に previewIframe
@@ -430,6 +447,12 @@ function openPreview(ctx: EditorContext, title: string, folderName: string): voi
   frame.style.cssText = 'width:620px;height:70vh;border:none;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.15)'
   stage.append(frame)
 
+  overlay.append(
+    inline(
+      'この画面は採取できていないため、実物と見た目が異なります（クローン独自の暫定表示）',
+      'background:#FFF4E5;color:#7A4B00;font-size:12px;padding:8px 16px;text-align:center',
+    ),
+  )
   overlay.append(nav, cards, stage)
   document.body.append(overlay)
 
