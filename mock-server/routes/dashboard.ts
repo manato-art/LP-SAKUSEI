@@ -3,7 +3,7 @@
  * 新規アカウント（空）では KPI は全て0、series は日付だけ並ぶ空グラフになる（§1-4）。
  */
 import { Router } from 'express'
-import { aggregate, dateRange, deriveKpi, isWithin } from '../store/metrics.ts'
+import { aggregate, dateRange, deriveKpi, isWithin, parseDateKey } from '../store/metrics.ts'
 import { getState } from '../store/store.ts'
 import { serializeAbTest } from '../lib/serialize.ts'
 import { applyEmptyState, isEmptyState } from '../lib/mock-state.ts'
@@ -34,15 +34,15 @@ dashboardRouter.get('/teams/dashboard', (req, res) => {
     return { date, ...kpi }
   })
 
+  // created_at は UNIXタイムスタンプ（秒）なので、期間開始日の 00:00 と比較する
+  const startTs = Math.floor(parseDateKey(startDate).getTime() / 1000)
   const newAbTests = empty
     ? []
-    : state.abTests
-        .filter((t) => t.created_at.slice(0, 10) >= startDate)
-        .map((t) => serializeAbTest(state, t))
+    : state.abTests.filter((t) => t.created_at >= startTs).map((t) => serializeAbTest(state, t))
   const newVersions = empty
     ? []
     : state.versions
-        .filter((v) => v.created_at.slice(0, 10) >= startDate)
+        .filter((v) => v.created_at >= startTs)
         .map((v) => ({ id: v.id, uid: v.uid, name: v.name, created_at: v.created_at }))
 
   res.json({

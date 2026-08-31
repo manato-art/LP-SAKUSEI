@@ -8,6 +8,8 @@ export const MOCK_PORT = Number(process.env['MOCK_PORT'] ?? 4010)
 /** 3系統 + WS を localhost の同一モックにパスプレフィックスで集約（§10-1） */
 export const PREFIX = {
   api: '/api/v1',
+  /** 実APIは v1 と v2 が混在する（フォルダ配下の ab_tests は v2・2026-08-31 実測） */
+  apiV2: '/api/v2',
   workers: '/workers/api/v1',
   report: '/report',
   cable: '/cable',

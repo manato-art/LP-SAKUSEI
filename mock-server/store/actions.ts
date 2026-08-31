@@ -4,7 +4,8 @@
  * 「作成 → 一覧に出る → 詳細/エディタで開ける」が一貫して繋がるよう、
  * 関連エンティティと非正規化カウントの整合をここで一括して保つ。
  */
-import { makeUid } from './ids.ts'
+import { hashString } from './rng.ts'
+import { makeAbTestUid, makeUid } from './ids.ts'
 import { DEFAULT_LP_CSS, DEFAULT_LP_HTML } from './lp-template.ts'
 import { toDateKey } from './metrics.ts'
 import type {
@@ -18,7 +19,8 @@ import type {
   VersionStatus,
 } from './types.ts'
 
-const nowIso = (): string => new Date().toISOString()
+/** 実APIは created_at/updated_at を数値（UNIXタイムスタンプ・秒）で返す（実測） */
+const nowTs = (): number => Math.floor(Date.now() / 1000)
 
 /** そのコレクションの通し番号（uidの連番に使う） */
 function nextSeq(items: readonly unknown[]): number {
@@ -44,8 +46,9 @@ export function createFolder(
     name: input.name,
     parent_id: input.parent_id,
     ab_tests_count: 0,
-    created_at: nowIso(),
-    updated_at: nowIso(),
+    is_favorite: false,
+    created_at: nowTs(),
+    updated_at: nowTs(),
   }
   return { state: { ...state, folders: [...state.folders, folder], nextId: id + 1 }, folder }
 }
@@ -57,7 +60,7 @@ export function updateFolder(
 ): { state: State; folder: Folder | null } {
   const target = state.folders.find((f) => f.uid === uid)
   if (target === undefined) return { state, folder: null }
-  const updated: Folder = { ...target, ...patch, updated_at: nowIso() }
+  const updated: Folder = { ...target, ...patch, updated_at: nowTs() }
   return {
     state: { ...state, folders: state.folders.map((f) => (f.uid === uid ? updated : f)) },
     folder: updated,
@@ -86,6 +89,10 @@ export interface CreateAbTestInput {
   memo: string
   folder_id: number | null
   media_id: number | null
+  /** 2=beyondエディター（既定） / 3=HTMLエディター。作成後は変更不可（実機確認） */
+  editor_version?: number
+  conversion_condition?: 'click' | 'access'
+  conversion_unit_price?: number
 }
 
 /**
@@ -105,16 +112,24 @@ export function createAbTest(
   const abTest: AbTest = {
     id: abTestId,
     team_id: team?.id ?? 1,
-    uid: makeUid('abTest', nextSeq(state.abTests)),
+    // AbTestのuidは18文字の短縮ID（Folderのuuidとは別形式・実機確認）
+    uid: makeAbTestUid(nextSeq(state.abTests)),
     title: input.title,
     memo: input.memo,
     media_id: input.media_id,
     folder_id: input.folder_id,
-    published: false,
-    ad_status: 'none',
-    editor_version: 2,
-    created_at: nowIso(),
-    updated_at: nowIso(),
+    ad_status: 'prepared',
+    editor_version: input.editor_version ?? 2,
+    delivery_type: 'same_url',
+    conversion_unit_price: input.conversion_unit_price ?? 0,
+    conversion_setting: { id: abTestId, conversion_condition: input.conversion_condition ?? 'click' },
+    affiliate_service_provider: null,
+    product_genres: [],
+    gender: null,
+    age_from: null,
+    age_to: null,
+    created_at: nowTs(),
+    updated_at: nowTs(),
     creator_member_id: owner?.id ?? 1,
   }
   const article: Article = {
@@ -124,22 +139,23 @@ export function createAbTest(
     memo: '',
     archived: false,
     style_applied: false,
-    created_at: nowIso(),
+    created_at: nowTs(),
     updated_timestamp: Date.now(),
   }
   const version: Version = {
     id: versionId,
     uid: makeUid('version', nextSeq(state.versions)),
     article_id: articleId,
-    name: 'パターンA',
-    distribution_ratio: 100,
+    name: generateVersionName(nextSeq(state.versions)),
+    // 実機の新規作成直後の配信割合は 1（100ではない）
+    distribution_ratio: 1,
     status: '準備中',
     is_control: true,
     html: DEFAULT_LP_HTML,
     css: DEFAULT_LP_CSS,
     thumbnail_url: null,
-    created_at: nowIso(),
-    updated_at: nowIso(),
+    created_at: nowTs(),
+    updated_at: nowTs(),
   }
 
   return {
@@ -166,7 +182,7 @@ export function updateAbTest(
 ): { state: State; abTest: AbTest | null } {
   const target = state.abTests.find((t) => t.uid === uid)
   if (target === undefined) return { state, abTest: null }
-  const updated: AbTest = { ...target, ...patch, updated_at: nowIso() }
+  const updated: AbTest = { ...target, ...patch, updated_at: nowTs() }
   const folderChanged = patch.folder_id !== undefined && patch.folder_id !== target.folder_id
   return {
     state: {
@@ -208,7 +224,14 @@ export function deleteAbTest(state: State, uid: string): { state: State; deleted
 }
 
 // ── Version（追加 / 配信割合 / LP編集 / 公開）─────────────────
-const VERSION_NAMES = ['パターンA', 'パターンB', 'パターンC', 'パターンD', 'パターンE'] as const
+/**
+ * 実機ではVersion名は `Ver.` + 4桁のランダム数字で自動採番される（例 `Ver.3872`）。
+ * 企画書の「パターンA/B/C」は誤り。決定論を保つため seed から生成する。
+ */
+function generateVersionName(seq: number): string {
+  const n = 1000 + (hashString(`version-name|${seq}`) % 9000)
+  return `Ver.${n}`
+}
 
 export function addVersion(
   state: State,
@@ -216,21 +239,20 @@ export function addVersion(
 ): { state: State; version: Version | null } {
   const article = state.articles.find((a) => a.uid === articleUid)
   if (article === undefined) return { state, version: null }
-  const siblings = state.versions.filter((v) => v.article_id === article.id)
   const id = state.nextId
   const version: Version = {
     id,
     uid: makeUid('version', nextSeq(state.versions)),
     article_id: article.id,
-    name: VERSION_NAMES[siblings.length] ?? `パターン${siblings.length + 1}`,
+    name: generateVersionName(state.versions.length + 1),
     distribution_ratio: 0,
     status: '準備中',
     is_control: false,
     html: DEFAULT_LP_HTML,
     css: DEFAULT_LP_CSS,
     thumbnail_url: null,
-    created_at: nowIso(),
-    updated_at: nowIso(),
+    created_at: nowTs(),
+    updated_at: nowTs(),
   }
   return {
     state: { ...state, versions: [...state.versions, version], nextId: id + 1 },
@@ -245,7 +267,7 @@ export function updateVersion(
 ): { state: State; version: Version | null } {
   const target = state.versions.find((v) => v.uid === uid)
   if (target === undefined) return { state, version: null }
-  const updated: Version = { ...target, ...patch, updated_at: nowIso() }
+  const updated: Version = { ...target, ...patch, updated_at: nowTs() }
   return {
     state: { ...state, versions: state.versions.map((v) => (v.uid === uid ? updated : v)) },
     version: updated,
@@ -261,13 +283,14 @@ export function publishVersion(
   if (target === undefined) return { state, version: null }
   const article = state.articles.find((a) => a.id === target.article_id)
   const status: VersionStatus = '公開中'
-  const updated: Version = { ...target, status, updated_at: nowIso() }
+  void status
+  const updated: Version = { ...target, status, updated_at: nowTs() }
   return {
     state: {
       ...state,
       versions: state.versions.map((v) => (v.uid === uid ? updated : v)),
       abTests: state.abTests.map((t) =>
-        t.id === article?.ab_test_id ? { ...t, published: true, updated_at: nowIso() } : t,
+        t.id === article?.ab_test_id ? { ...t, ad_status: 'delivered' as const, updated_at: nowTs() } : t,
       ),
     },
     version: updated,
@@ -302,7 +325,7 @@ export function createTask(
     assignee_member_id: input.assignee_member_id,
     status: 'todo',
     due_at: input.due_at,
-    created_at: nowIso(),
+    created_at: nowTs(),
   }
   return { state: { ...state, tasks: [...state.tasks, task], nextId: id + 1 }, task }
 }
@@ -334,7 +357,7 @@ export function recordConversion(
     version_uid: input.version_uid,
     media_id: input.media_id,
     amount: input.amount,
-    occurred_at: nowIso(),
+    occurred_at: nowTs(),
     status: '承認',
   }
   const date = toDateKey(new Date())

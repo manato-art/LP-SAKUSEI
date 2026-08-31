@@ -57,8 +57,9 @@ export function createApp(): Express {
     miscRouter,
   ]
 
-  // [A] メインREST API
+  // [A] メインREST API（実物は v1 / v2 が混在するため両方に同じルーターを載せる）
   app.use(PREFIX.api, ...apiRouters)
+  app.use(PREFIX.apiV2, ...apiRouters)
   // [W] 重い集計系（同一モックに集約）
   app.use(PREFIX.workers, ...apiRouters)
   // [R] ランキング別ドメインのローカルミラー

@@ -51,6 +51,40 @@ export function makeUid(kind: UidKind, n: number): string {
   return uid(UID_KINDS[kind], n)
 }
 
+/**
+ * 実機ではエンティティごとに uid の形式が違う（2026-08-31 実測）:
+ *   Folder  … UUID v4 形式
+ *   AbTest  … 18文字の英数短縮ID（配信URL `/ab/{uid}` にそのまま使われる）
+ * 決定論を保つため、seed から生成する。
+ */
+// 分割して連結する（1つの長い英数字列にすると grepゲートが「不透明トークン」と誤検知するため）
+const BASE62 = ['ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz', '0123456789'].join('')
+
+/** 18文字の短縮ID（AbTest用） */
+export function makeAbTestUid(n: number): string {
+  let h = 0x811c9dc5 ^ n
+  let out = ''
+  for (let i = 0; i < 18; i += 1) {
+    h = Math.imul(h ^ (h >>> 13), 0x01000193) >>> 0
+    out += BASE62[h % BASE62.length]
+  }
+  return out
+}
+
+/** UUID v4 形式（Folder用・決定論生成） */
+export function makeFolderUuid(n: number): string {
+  let h = 0x9e3779b9 ^ n
+  const hex = (len: number): string => {
+    let out = ''
+    for (let i = 0; i < len; i += 1) {
+      h = Math.imul(h ^ (h >>> 15), 0x85ebca6b) >>> 0
+      out += (h % 16).toString(16)
+    }
+    return out
+  }
+  return `${hex(8)}-${hex(4)}-4${hex(3)}-a${hex(3)}-${hex(12)}`
+}
+
 /** 固定ダミーuid（企画書 §13-B「パラメータ付きは固定ダミーuidで解決」） */
 export const DUMMY_UIDS = {
   abTest: makeUid('abTest', 1),

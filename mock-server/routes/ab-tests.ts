@@ -10,7 +10,7 @@ import { SPLIT_TEST_DEFAULTS, isSplitTestType } from '../store/split-test-defaul
 import { aggregate, deriveKpi, isWithin } from '../store/metrics.ts'
 import { applyEmptyState } from '../lib/mock-state.ts'
 import { errorEnvelope, pagination } from '../lib/envelope.ts'
-import { dateRangeParams, filterItems, pageParams, paginate, searchItems, sortItems, sortParams } from '../lib/query.ts'
+import { dateRangeParams, filterItems, pageParams, paginate, searchItems, sortItems, sortParams, str } from '../lib/query.ts'
 import { optionalNumber, optionalString, requireString } from '../lib/validate.ts'
 import { serializeAbTest, serializeArticle } from '../lib/serialize.ts'
 import type { AbTest, State } from '../store/types.ts'
@@ -24,6 +24,74 @@ function findAbTest(state: State, uid: string): AbTest | undefined {
 function notFound(res: Parameters<Parameters<Router['get']>[1]>[1], message: string): void {
   res.status(404).json(errorEnvelope('not_found', message))
 }
+
+/**
+ * 実APIの一覧は **フォルダ配下の v2 エンドポイント**（2026-08-31 実測）:
+ *   GET /api/v2/folders/:folder_uuid/ab_tests?include_reports=&target_date=&ad_status=&media_ids=&page=
+ * `ad_status=except_finished` が一覧の既定フィルタ（＝画面の「終了以外」）。
+ */
+abTestsRouter.get('/folders/:folderUid/ab_tests', (req, res) => {
+  const state = getState()
+  const folder = state.folders.find((f) => f.uid === req.params.folderUid)
+  if (folder === undefined) return notFound(res, 'フォルダが見つかりません。')
+
+  const adStatus = str(req.query, 'ad_status') ?? 'except_finished'
+  const inFolder = state.abTests.filter((t) => t.folder_id === folder.id)
+  const byStatus =
+    adStatus === 'all'
+      ? inFolder
+      : adStatus === 'except_finished'
+        ? inFolder.filter((t) => t.ad_status !== 'finished')
+        : inFolder.filter((t) => t.ad_status === adStatus)
+
+  const mediaIds = str(req.query, 'media_ids')
+    ?.split(',')
+    .map(Number)
+    .filter((n) => Number.isFinite(n))
+  const byMedia =
+    mediaIds === undefined || mediaIds.length === 0
+      ? byStatus
+      : byStatus.filter((t) => t.media_id !== null && mediaIds.includes(t.media_id))
+
+  const visible = applyEmptyState(req, searchItems(byMedia, req.query))
+  const page = pageParams(req.query)
+  res.json({
+    pagination: pagination(visible.length, page.perPage, page.page),
+    ab_tests: paginate(visible, page).map((t) => serializeAbTest(state, t)),
+  })
+})
+
+/** 一覧の合計行（実測: GET /api/v2/folders/:uuid/ab_tests/reports_total） */
+abTestsRouter.get('/folders/:folderUid/ab_tests/reports_total', (req, res) => {
+  const state = getState()
+  const folder = state.folders.find((f) => f.uid === req.params.folderUid)
+  if (folder === undefined) return notFound(res, 'フォルダが見つかりません。')
+  const { startDate, endDate } = dateRangeParams(req.query)
+  const uids = state.abTests.filter((t) => t.folder_id === folder.id).map((t) => t.uid)
+  const metrics = state.metrics.filter(
+    (m) => uids.includes(m.entity_uid) && isWithin(m.date, startDate, endDate),
+  )
+  res.json({ reports_total: aggregate(metrics) })
+})
+
+/** 関連数（Version数/ポップアップ数/中間ページ数）。実測: GET /api/v1/.../relation_counts?ids= */
+abTestsRouter.get('/folders/:folderUid/ab_tests/relation_counts', (req, res) => {
+  const state = getState()
+  const ids = (str(req.query, 'ids') ?? '').split(',').map(Number).filter(Number.isFinite)
+  const counts = ids.map((id) => {
+    const abTest = state.abTests.find((t) => t.id === id)
+    const articleIds = state.articles.filter((a) => a.ab_test_id === id).map((a) => a.id)
+    return {
+      id,
+      versions_count: state.versions.filter((v) => articleIds.includes(v.article_id)).length,
+      exit_popups_count: state.exitPopups.filter((p) => p.ab_test_id === id).length,
+      // 中間ページ＝ファネルのステップ（実機で確認した概念。現状は常に0）
+      funnel_steps_count: 0,
+      ab_test_uid: abTest?.uid ?? null,
+    }
+  })
+  res.json({ relation_counts: counts })
+})
 
 // ── 一覧 / 作成 ──────────────────────────────────────────
 abTestsRouter.get('/ab_tests', (req, res) => {
@@ -57,6 +125,8 @@ abTestsRouter.post('/ab_tests', (req, res) => {
       memo: optionalString(req.body, 'memo'),
       folder_id: optionalNumber(req.body, 'folder_id') ?? null,
       media_id: optionalNumber(req.body, 'media_id') ?? null,
+      editor_version: optionalNumber(req.body, 'editor_version') ?? 2,
+      conversion_unit_price: optionalNumber(req.body, 'conversion_unit_price') ?? 0,
     })
     created = out
     return out.state

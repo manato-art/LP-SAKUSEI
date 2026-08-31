@@ -80,7 +80,14 @@ describe('作成フロー（§1-4 creation flow・§10-9 セッション内永�
       name: 'サンプルフォルダ001',
     })
     const created = await postJson<{
-      ab_test: { uid: string; media: { attributes: { name: string } }; folder: { name: string } }
+      ab_test: {
+        uid: string
+        media: { name: string }
+        folder: { name: string }
+        ad_status: string
+        editor_version: number
+        created_at: number
+      }
       article: { uid: string }
       version: { uid: string; name: string; distribution_ratio: number; status: string }
     }>(`${server.api}/ab_tests`, {
@@ -90,12 +97,18 @@ describe('作成フロー（§1-4 creation flow・§10-9 セッション内永�
     })
 
     expect(created.status).toBe(201)
-    expect(created.json.version.name).toBe('パターンA')
-    expect(created.json.version.distribution_ratio).toBe(100)
+    // 実機の初期Version名は `Ver.` + 4桁（企画書の「パターンA」は誤り・2026-08-31 実測）
+    expect(created.json.version.name).toMatch(/^Ver\.\d{4}$/)
+    // 実機の新規作成直後の配信割合は 1（100ではない）
+    expect(created.json.version.distribution_ratio).toBe(1)
     expect(created.json.version.status).toBe('準備中')
-    // FK整合: 媒体とフォルダがネストして解決される（§10-2）
-    expect(created.json.ab_test.media.attributes.name).toBe('Facebook')
+    // 実APIの media はフラット（`media.attributes` ではない・2026-08-31 実測）
+    expect(created.json.ab_test.media.name).toBe('AdAsia')
     expect(created.json.ab_test.folder.name).toBe('サンプルフォルダ001')
+    // 実APIの配信ステータスは prepared 始まり、タイムスタンプは数値
+    expect(created.json.ab_test.ad_status).toBe('prepared')
+    expect(created.json.ab_test.editor_version).toBe(2)
+    expect(typeof created.json.ab_test.created_at).toBe('number')
 
     // フォルダの非正規化カウントが更新される
     const folders = await getJson<{ folders: { ab_tests_count: number }[] }>(`${server.api}/folders`)
@@ -115,7 +128,8 @@ describe('作成フロー（§1-4 creation flow・§10-9 セッション内永�
     )
     expect(versions.versions).toHaveLength(1)
     expect(versions.versions[0]?.html).toContain('lp-root')
-    expect(versions.distribution_total).toBe(100)
+    // 実機の初期配信割合は 1（企画書の100は誤り・2026-08-31 実測）
+    expect(versions.distribution_total).toBe(1)
   })
 })
 
@@ -133,23 +147,27 @@ describe('Version操作（§9-1[2][4]）', () => {
     }
   }
 
-  it('Version追加すると配信割合の合計が100%でなくなり警告が返る', async () => {
+  it('Version追加すると2件になり、合計が100%でないので警告が返る', async () => {
     const { articleUid } = await setupAbTest()
     const added = await postJson<{ version: { name: string; distribution_ratio: number } }>(
       `${server.api}/articles/${articleUid}/versions`,
     )
     expect(added.status).toBe(201)
-    expect(added.json.version.name).toBe('パターンB')
+    expect(added.json.version.name).toMatch(/^Ver\.\d{4}$/)
     expect(added.json.version.distribution_ratio).toBe(0)
 
-    const versions = await getJson<{ distribution_total: number; distribution_warning: string | null }>(
-      `${server.api}/articles/${articleUid}/versions`,
-    )
-    expect(versions.distribution_total).toBe(100)
-    expect(versions.distribution_warning).toBeNull()
+    const versions = await getJson<{
+      versions: unknown[]
+      distribution_total: number
+      distribution_warning: string | null
+    }>(`${server.api}/articles/${articleUid}/versions`)
+    expect(versions.versions).toHaveLength(2)
+    // 初期値1 + 追加分0 = 1% なので100%警告が出る
+    expect(versions.distribution_total).toBe(1)
+    expect(versions.distribution_warning).toContain('100%')
   })
 
-  it('配信割合を変更でき、合計が100%でなければ警告（保存は通る）', async () => {
+  it('配信割合を変更でき、合計が100%になれば警告が消える', async () => {
     const { articleUid, versionUid } = await setupAbTest()
     const changed = await sendJson<{ distribution_total: number; distribution_warning: string | null }>(
       'PATCH',
@@ -209,7 +227,7 @@ describe('Version操作（§9-1[2][4]）', () => {
     expect(preview.preview.html).toBe(edited)
   })
 
-  it('公開すると状態バッジが 準備中→公開中 になり、beyondページも公開済みになる', async () => {
+  it('公開すると Version が公開中になり、beyondページの配信ステータスが delivered になる', async () => {
     const { abTestUid, versionUid } = await setupAbTest()
     const published = await postJson<{ version: { status: string } }>(
       `${server.api}/versions/${versionUid}/publish`,
@@ -217,10 +235,11 @@ describe('Version操作（§9-1[2][4]）', () => {
     expect(published.status).toBe(200)
     expect(published.json.version.status).toBe('公開中')
 
-    const abTest = await getJson<{ ab_test: { published: boolean } }>(
+    // 実機の配信ステータスは prepared / delivered / stopping / finished の4値（実測）
+    const abTest = await getJson<{ ab_test: { ad_status: string } }>(
       `${server.api}/ab_tests/${abTestUid}`,
     )
-    expect(abTest.ab_test.published).toBe(true)
+    expect(abTest.ab_test.ad_status).toBe('delivered')
   })
 })
 

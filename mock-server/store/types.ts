@@ -55,12 +55,38 @@ export interface Folder {
   name: string
   parent_id: number | null
   ab_tests_count: number
-  created_at: string
-  updated_at: string
+  is_favorite: boolean
+  created_at: number
+  updated_at: number
 }
 
-export type AdStatus = 'none' | 'reviewing' | 'approved' | 'rejected'
+/**
+ * 配信ステータス（2026-08-31 実機観測）。
+ * 表示: prepared=準備中 / delivered=配信中 / stopping=停止中 / finished=終了
+ * 一覧の既定フィルタは `except_finished`（＝「終了以外」）。
+ * 企画書の 'none|reviewing|approved|rejected' は誤り。
+ */
+export type AdStatus = 'prepared' | 'delivered' | 'stopping' | 'finished'
 
+export const AD_STATUS_LABELS: Readonly<Record<AdStatus, string>> = {
+  prepared: '準備中',
+  delivered: '配信中',
+  stopping: '停止中',
+  finished: '終了',
+}
+
+/** CV計測条件（基本情報「CV条件」） */
+export type ConversionCondition = 'click' | 'access'
+
+export interface ConversionSetting {
+  id: number
+  conversion_condition: ConversionCondition
+}
+
+/**
+ * beyondページ。2026-08-31 の実APIレスポンス（GET /api/v2/folders/:uuid/ab_tests）に合わせている。
+ * created_at / updated_at は **数値（UNIXタイムスタンプ）**。ISO文字列ではない。
+ */
 export interface AbTest {
   id: number
   team_id: number
@@ -69,11 +95,19 @@ export interface AbTest {
   memo: string
   media_id: number | null
   folder_id: number | null
-  published: boolean
   ad_status: AdStatus
+  /** 1=(該当なし) / 2=beyondエディター / 3=HTMLエディター。作成後は変更不可 */
   editor_version: number
-  created_at: string
-  updated_at: string
+  delivery_type: string
+  conversion_unit_price: number
+  conversion_setting: ConversionSetting
+  affiliate_service_provider: string | null
+  product_genres: readonly string[]
+  gender: string | null
+  age_from: number | null
+  age_to: number | null
+  created_at: number
+  updated_at: number
   creator_member_id: number
 }
 
@@ -84,11 +118,12 @@ export interface Article {
   memo: string
   archived: boolean
   style_applied: boolean
-  created_at: string
+  created_at: number
   updated_timestamp: number
 }
 
 /** 企画書 §9-1[2]: distribution_ratio は 0-100。合計100%でなければ警告（境界バリデーション） */
+/** Versionの状態バッジ。AbTestのad_statusとは別軸（企画書§10-2の混同を是正） */
 export type VersionStatus = '準備中' | '公開中' | '停止'
 
 export interface Version {
@@ -102,8 +137,8 @@ export interface Version {
   html: string
   css: string
   thumbnail_url: string | null
-  created_at: string
-  updated_at: string
+  created_at: number
+  updated_at: number
 }
 
 export interface RedirectPage {
@@ -163,7 +198,7 @@ export interface Conversion {
   version_uid: string
   media_id: number | null
   amount: number
-  occurred_at: string
+  occurred_at: number
   status: string
 }
 
@@ -208,7 +243,7 @@ export interface Task {
   assignee_member_id: number | null
   status: TaskStatus
   due_at: string | null
-  created_at: string
+  created_at: number
 }
 
 export interface Inspection {

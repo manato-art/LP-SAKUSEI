@@ -100,12 +100,12 @@ describe('フィルタ・検索（§10-6）', () => {
     expect(filtered.ab_tests.every((t) => t.media_id === 2)).toBe(true)
   })
 
-  it('published のような真偽フィルタが効く', async () => {
+  it('ad_status で絞り込める（実機の4値: prepared/delivered/stopping/finished）', async () => {
     await seedAbTests(3)
-    const unpublished = await getJson<{ ab_tests: unknown[] }>(`${server.api}/ab_tests?published=false`)
-    expect(unpublished.ab_tests).toHaveLength(3)
-    const published = await getJson<{ ab_tests: unknown[] }>(`${server.api}/ab_tests?published=true`)
-    expect(published.ab_tests).toHaveLength(0)
+    const prepared = await getJson<{ ab_tests: unknown[] }>(`${server.api}/ab_tests?ad_status=prepared`)
+    expect(prepared.ab_tests).toHaveLength(3)
+    const delivered = await getJson<{ ab_tests: unknown[] }>(`${server.api}/ab_tests?ad_status=delivered`)
+    expect(delivered.ab_tests).toHaveLength(0)
   })
 
   it('q / keyword で title の部分一致検索ができる', async () => {
