@@ -35,7 +35,7 @@ import {
 
 const PANEL_FRAGMENT = 'src/app/fragments/ab_tests__UID__articles__tool-link-replace.html'
 const PANEL_SOURCE = 'src/app/panels/link-replace.ts'
-const EDITOR_CSSOM = 'capture/cssom/editor.css'
+const EDITOR_CSSOM = 'capture/clean/ab_tests__UID__articles/editor-target/cssom.css'
 
 /**
  * 採取したDOMには一度も出てこないが、採取したCSSには定義がある「行まわり」のクラス。

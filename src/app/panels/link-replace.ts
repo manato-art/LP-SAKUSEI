@@ -14,7 +14,7 @@
  * `_targetLinkList_`（1行）/ `_linkHref_` / `_trackingLink_` / `_popupList_` /
  * `_popupLinkList_` / `_popupInfo_` / `_popupUrl_` / `_popupName_` / `_popupPreviewTrigger_` /
  * `_btnLinkSelectType_` / `_linkSelectDropDown_` / `_trakingListHeader_` は
- * **CSS（capture/cssom/editor.css）にしか存在せず、採取したDOMには1件も出てこない**。
+ * **CSS（capture/clean/ab_tests__UID__articles/editor-target/cssom.css）にしか存在せず、採取したDOMには1件も出てこない**。
  * → **行のマークアップは不明**。CSSから形を推測して「それらしい行」を描くことはしない。
  *   リンクが在るときは一覧枠を空のままにし、`data-sb-*` に状態だけ出す（下の renderList）。
  *   行が採取できたらここに実マークアップを流し込む。
@@ -218,11 +218,11 @@ export function mountLinkReplace(
   root: HTMLElement,
   articleUid: string,
   currentVersionUid?: () => string,
-): void {
+): HTMLElement | null {
   const panel = resolvePanel(root)
   if (panel === null) {
     toast('リンク置換パネルの土台が見つかりませんでした', 'error')
-    return
+    return null
   }
   panel.setAttribute('data-sb-article-uid', articleUid)
   if (currentVersionUid !== undefined) PANEL_VERSION_SOURCE.set(panel, currentVersionUid)
@@ -235,9 +235,10 @@ export function mountLinkReplace(
 
   const willOpen = !panel.classList.contains(CLS.open)
   panel.classList.toggle(CLS.open, willOpen)
-  if (!willOpen) return
+  if (!willOpen) return panel
   if (panel.getAttribute('style') === null) panel.setAttribute('style', OPEN_STYLE)
   void reload(root, panel)
+  return panel
 }
 
 function resolvePanel(root: HTMLElement): HTMLElement | null {

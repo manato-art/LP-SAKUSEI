@@ -10,9 +10,21 @@
     <link rel="stylesheet" href="/assets/css/material-icons.css" />
     <link rel="stylesheet" href="/assets/css/fontawesome-5.15.4.css" />
     <!-- Emotionのランタイムスタイル（CSSOMから採取したもの。これが無いとサイドバーが無地になる） -->
-    <link rel="stylesheet" href="/cssom/dashboard.css" />
-    <link rel="stylesheet" href="/cssom/editor.css" />
-    <link rel="stylesheet" href="/cssom/folders.css" />
+    <!--
+      いずれも匿名化パイプラインを通した採取物をそのまま参照する。
+      以前は capture/cssom/*.css という手で置いた複製を読んでいたが、
+      これは scrub を通らないため、匿名化を直しても古いままだった
+      （アセットのファイル名がトークンとして潰された参照が2件残っていた）。
+    -->
+    <link rel="stylesheet" href="/clean/folders/empty-selection/cssom.css" />
+    <link rel="stylesheet" href="/clean/ab_tests__UID__articles/editor-beyond-empty/cssom.css" />
+    <!--
+      Emotionは「その状態で描かれた要素の分だけ」ルールを作るので、
+      空アカウントの採取（editor-beyond-empty）にはVersion行のスタイルが入っていない
+      （更新ボタンが無地になっていた）。Version有りの採取も併せて読む。
+      互いに4件/12件ずつしか持たないクラスがあるため、両方必要。
+    -->
+    <link rel="stylesheet" href="/clean/ab_tests__UID__articles/editor-target/cssom.css" />
     <!--
       基本情報タブ（/folders/:uid/ab_tests/:uid/edit）のEmotion。
       dashboard/editor/folders のどれにも入っていない（css-miex0u 等が全滅する）ので、

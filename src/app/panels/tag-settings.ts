@@ -7,7 +7,9 @@
  * クラス名（`_modal_11n4w_1` `_contents_obetg_6` `_settings_5e523_1` …）をそのまま残しているので、
  * `/cssom/editor.css`（採取した実CSS）がそのまま効く。ここでは挙動だけを付ける。
  *
- * 実マークアップから変えている箇所は2つだけ:
+ * 実マークアップから変えている箇所は、CodeMirrorを差し替えた1箇所とオーバーレイの中央寄せの計2つ。
+ * 以前はここに `width:100%` と `role="switch"` も足していたが、どちらも実物に無い。
+ * 実物に無い属性を足すと「実物がそうなっている」と誤読されるので消した。
  *  1. 個別設定のコードエディタ。実物は CodeMirror だが、依存追加は配線担当の判断が要るので
  *     `<textarea>` + 行番号ガターの簡易実装に差し替えた（CodeMirror のクラス名と寸法は踏襲）。
  *  2. オーバーレイの中央寄せ。react-modal が実行時に付けるインラインstyleは採取物に残らないため、
@@ -80,7 +82,7 @@ function scriptFieldMarkup(field: (typeof SCRIPT_FIELDS)[number]): string {
 /** 採取した実マークアップ（コードエディタ部だけ上の簡易実装に差し替え） */
 const MARKUP = `<div class="ReactModalPortal">
 <div class="ReactModal__Overlay ReactModal__Overlay--after-open _overlay_11n4w_118" style="display:flex;align-items:center;justify-content:center">
-<div class="ReactModal__Content ReactModal__Content--after-open _modal_11n4w_1 _darkTheme_11n4w_23" tabindex="-1" role="dialog" aria-modal="true" style="max-width: 1000px; width: 100%;">
+<div class="ReactModal__Content ReactModal__Content--after-open _modal_11n4w_1 _darkTheme_11n4w_23" tabindex="-1" role="dialog" aria-modal="true" style="max-width: 1000px;">
 <div class="_modalWrapper_11n4w_20" data-test="HtmlSettingModal-ModalWrapper">
 <div class="_modalHeader_11n4w_20">
 <div class="_left_11n4w_55"><div data-test="HtmlSettingModal-BtnCloseModal" class="_btnCnacel_1bcs1_140 sample_token_44b6d400"></div></div>
@@ -101,7 +103,7 @@ const MARKUP = `<div class="ReactModalPortal">
 <div class="_setting_5e523_1">
 <div>
 <div class="_toggleSwitchWrapper_bq5w4_1 undefined _blue_bq5w4_124 ">
-<div class="_checked_bq5w4_4" role="switch" aria-checked="true" tabindex="0">
+<div class="_checked_bq5w4_4">
 <div class="_checkedLabel_bq5w4_19"></div>
 <div class="_mark_bq5w4_36"></div>
 <div class="_uncheckedLabel_bq5w4_20"></div>

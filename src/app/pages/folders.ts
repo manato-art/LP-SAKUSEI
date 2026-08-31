@@ -2,22 +2,26 @@
  * ページ（beyondページ）画面。企画書 §1-4 の基準状態＝**新規アカウントの空状態**から始まり、
  * フォルダ作成 → beyondページ作成 → エディタへ、という作成フローが実際に通る。
  */
+import { isStale } from '../main.ts'
+import { EDITOR_CHOICES } from './editor-choices.ts'
 import { api, fetchMedia, type AbTest, type Folder, type Media } from '../api.ts'
 import { T, button, el, emptyState, field, modal, textInput, toast } from '../ui.ts'
 
-const EDITOR_CHOICES: readonly { value: number; label: string; note?: string }[] = [
-  { value: 3, label: 'スワイプLPエディター（β）', note: '今回のクローンでは対象外' },
-  { value: 2, label: 'beyondエディター' },
-  { value: 1, label: 'HTMLエディター', note: '今回のクローンでは未実装' },
-]
 
 let mediaCache: Media[] | null = null
 
-export async function renderFolders(container: HTMLElement, params: URLSearchParams): Promise<void> {
+export async function renderFolders(
+  container: HTMLElement,
+  params: URLSearchParams,
+  generation: number,
+): Promise<void> {
   container.innerHTML = ''
   const selectedUid = params.get('uid')
 
   const { folders } = await api.folders()
+  // 取得を待つ間に別の描画が始まっていたら、ここで捨てる。
+  // これが無いと2本の描画が並走し、レイアウトが2枚積まれる。
+  if (isStale(generation)) return
   const layout = el('div', { style: 'display:flex;height:100vh;font-family:' + T.font })
 
   // ── 左: フォルダツリー ──
@@ -172,7 +176,8 @@ async function openCreatePage(folder: Folder): Promise<void> {
     radio.name = 'editor'
     radio.checked = choice.value === 2
     radio.addEventListener('change', () => {
-      editorValue = choice.value
+      // 値が未観測の選択肢は保存できない（推測の番号を保存すると壊れたデータになる）
+      if (choice.value !== null) editorValue = choice.value
     })
     opt.append(radio, el('span', { text: choice.label }))
     if (choice.note !== undefined) {

@@ -116,6 +116,8 @@ export const SELF_EXCLUDE: readonly string[] = [
   'tests/gate-scope.test.ts',
   // ホスト置換の挙動を試すテスト。合成の外部ホストを入力として意図的に持つ。
   'tests/scrub-host-only.test.ts',
+  // DOM本文の金額置換を試すテスト。合成の金額を入力として意図的に持つ。
+  'tests/scrub-dom-numbers.test.ts',
 ]
 
 /**

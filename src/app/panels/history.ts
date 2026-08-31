@@ -127,11 +127,11 @@ export function restoreArticleHistory(
  * 履歴パネルを開く / 閉じる（右レールのアイコンから呼ばれる想定）。
  * 採取DOMの中に土台があればそれを使い、無いときだけ採取済みmarkupを差し込む。
  */
-export function mountHistory(root: HTMLElement, articleUid: string): void {
+export function mountHistory(root: HTMLElement, articleUid: string): HTMLElement | null {
   const panel = resolvePanel(root)
   if (panel === null) {
     toast('変更・復元履歴パネルの土台が見つかりませんでした', 'error')
-    return
+    return null
   }
   panel.setAttribute('data-sb-article-uid', articleUid)
 
@@ -142,9 +142,10 @@ export function mountHistory(root: HTMLElement, articleUid: string): void {
 
   const willOpen = !panel.classList.contains(CLS.open)
   panel.classList.toggle(CLS.open, willOpen)
-  if (!willOpen) return
+  if (!willOpen) return panel
   if (panel.getAttribute('style') === null) panel.setAttribute('style', OPEN_STYLE)
   void refresh(root, panel)
+  return panel
 }
 
 function resolvePanel(root: HTMLElement): HTMLElement | null {

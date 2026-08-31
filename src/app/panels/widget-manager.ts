@@ -28,7 +28,7 @@ const HOOK = {
 /**
  * 開いたときに足すクラス。**これ1つだけ**で開く。
  *
- * 採取した実CSS（`capture/cssom/editor.css`）が状態を全部持っている:
+ * 採取した実CSS（`capture/clean/ab_tests__UID__articles/editor-target/cssom.css`）が状態を全部持っている:
  *   `._actionDropdown_1ti69_1 ._actionDropdownBody_1ti69_5`
  *       → `position:absolute; display:none; width:200px; z-index:10000;`（top/left は指定なし）
  *   `._actionDropdown_1ti69_1 ._actionDropdownBody_1ti69_5._open_1ti69_52`

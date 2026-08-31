@@ -30,3 +30,15 @@ describe('採取に使ったブラウザ自動化のオーバーレイを土台�
     expect(strip(html)).toBe(html)
   })
 })
+
+describe('アセットのファイル名をトークンと誤認しない', () => {
+  it('長い英数のファイル名を置換しない（参照が切れて画像が出なくなる）', () => {
+    const css = '.x{background:url(/assets/abcdefghijklmnopqrstuvwxyz0123456789.svg)}'
+    expect(strip(css)).toBe(css)
+  })
+
+  it('拡張子が続かない長いトークンはこれまでどおり置換する', () => {
+    const out = strip('token: abcdefghijklmnopqrstuvwxyz0123456789')
+    expect(out).not.toContain('abcdefghijklmnopqrstuvwxyz0123456789')
+  })
+})

@@ -20,7 +20,7 @@ import { WIDGET_MENU_OPEN_CLASS } from '../src/app/panels/widget-manager.ts'
 const LINK_FRAGMENT = 'src/app/fragments/link-dropdown.html'
 const ERROR_FRAGMENT = 'src/app/fragments/global__app-error.html'
 const CAPTURED_LINK_OPEN = 'src/app/fragments/ab_tests__UID__articles__toolbar-link-open.html'
-const CAPTURED_EDITOR_CSSOM = 'capture/cssom/editor.css'
+const CAPTURED_EDITOR_CSSOM = 'capture/clean/ab_tests__UID__articles/editor-target/cssom.css'
 
 describe('選択が無いままリンクを開くとアプリが落ちる（実物の挙動をそのまま再現する）', () => {
   test('選択そのものが無ければ落ちる', () => {

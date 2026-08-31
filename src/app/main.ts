@@ -78,7 +78,7 @@ async function route(): Promise<void> {
       return
     }
     if (path === '/folders') {
-      await renderFolders(content, params)
+      await renderFolders(content, params, generation)
       return
     }
     renderNotBuilt(content, path ?? '')

@@ -2,6 +2,7 @@
  * スクラブ本体（企画書 §5-5）。
  * 辞書適用 → パターン置換（ドメイン/uid/メール/電話）→ 除去（外部タグ・本番バンドル）の順に適用する。
  */
+import { scrubDomNumbers } from './dom-numbers.ts'
 import {
   ANY_EXTERNAL_HOST,
   BARE_HOST,
@@ -124,7 +125,20 @@ export function scrubText(input: string, map: ScrubMap, hosts: HostRewrite): Scr
   text = text.replace(GENERIC_EMAIL_RE, (m) => (m.endsWith('example.test') ? m : fakeEmail(m)))
   text = text.replace(JP_PHONE_RE, (m) => fakePhone(m))
   text = text.replace(BEARER_RE, (m) => `Bearer ${fakeToken(m)}`)
-  text = text.replace(LONG_TOKEN_RE, (m) => (m.startsWith('sample_token_') ? m : fakeToken(m)))
+  // アセットのファイル名（`/assets/xxxx.svg`）はトークンではない。
+  // 置換すると参照が切れて画像が出なくなる（実際に2件壊れていた）。
+  text = text.replace(LONG_TOKEN_RE, (m, ...rest) => {
+    if (m.startsWith('sample_token_')) return m
+    const whole = rest[rest.length - 1] as string
+    const at = rest[rest.length - 2] as number
+    const after = whole.slice(at + m.length)
+    if (/^\.(?:svg|png|jpe?g|gif|webp|woff2?|ttf|eot|css|js)\b/i.test(after)) return m
+    return fakeToken(m)
+  })
+
+  // DOM本文の金額・率を架空値へ。JSONと違いフィールド名の手がかりが無いので、
+  // 辞書ではなく本文の形で見つけて置き換える（実売上がそのまま残っていた）。
+  text = scrubDomNumbers(text)
 
   return { text: protectedAttrs.restore(text), stripped }
 }

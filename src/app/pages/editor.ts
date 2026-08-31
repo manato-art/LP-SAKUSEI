@@ -19,6 +19,7 @@ import { mountLinkReplace } from '../panels/link-replace.ts'
 import { mountHistory } from '../panels/history.ts'
 import { mountEditorToolbar } from '../panels/editor-toolbar.ts'
 import { createAutosave } from './autosave.ts'
+import { createPanelGroup } from '../panels/panel-group.ts'
 import { mountWidgetManager } from '../panels/widget-manager.ts'
 import { wireAbTestTabs } from './tab-nav.ts'
 
@@ -185,23 +186,8 @@ function applyVersionToPanel(ctx: EditorContext): void {
   if (name !== null) name.value = current.name
   if (ratio !== null) ratio.value = String(current.distribution_ratio)
 
-  const total = ctx.versions.reduce((s, v) => s + v.distribution_ratio, 0)
-  showRatioWarning(ctx.root, total)
 }
 
-/** 配信割合の合計が100%でないときの警告（企画書 §9-1[2]） */
-function showRatioWarning(root: HTMLElement, total: number): void {
-  const id = 'sb-ratio-warning'
-  root.querySelector(`#${id}`)?.remove()
-  if (total === 100) return
-  const list = root.querySelector(HOOK.versionList) ?? root
-  const warn = document.createElement('div')
-  warn.id = id
-  warn.textContent = `配信割合の合計が${total}%です。100%になるよう調整してください。`
-  warn.style.cssText =
-    'color:#D0021B;font-size:11px;padding:8px 12px;line-height:1.6;font-family:"Hiragino Sans",sans-serif'
-  list.append(warn)
-}
 
 function wireVersionPanel(ctx: EditorContext): void {
   const name = ctx.root.querySelector<HTMLInputElement>(HOOK.versionName)
@@ -281,8 +267,14 @@ function wireSideToolbar(ctx: EditorContext, previewTitle: string, previewFolder
   mountVersionSettings(ctx.root, ctx.articleUid)
   mountTagSettings(ctx.root, ctx.articleUid)
   // 置換の対象は「いま開いているVersion」。パネルは押されるたびに読み直す
-  mountLinkReplace(ctx.root, ctx.articleUid, () => ctx.currentUid)
-  mountHistory(ctx.root, ctx.articleUid)
+  // サイドパネルは**押したときに開く**。実物は同時に1枚しか開かない
+  // （採取したどの状態も1枚だけ開いた姿で採れている）。
+  // 以前はマウント時点で全部開いており、画面上で重なっていた。
+  const panels = createPanelGroup()
+  const openers: Readonly<Record<number, () => HTMLElement | null>> = {
+    1: () => mountHistory(ctx.root, ctx.articleUid),
+    3: () => mountLinkReplace(ctx.root, ctx.articleUid, () => ctx.currentUid),
+  }
   // リンクパネルの「計測ツールの変更」は、実物と同じ beyondページの編集画面（基本情報タブ）へ。
   mountEditorToolbar(ctx.root, ctx.quill, {
     trackingSettingsHref: `#/folders/${ctx.folderUid}/ab_tests/${ctx.abTestUid}/edit`,
@@ -294,14 +286,26 @@ function wireSideToolbar(ctx: EditorContext, previewTitle: string, previewFolder
     openPreview(ctx, previewTitle, previewFolder)
   })
 
-  // 未実装の右レールツールは、実際の名前を出して「何が未実装か」を分かるようにする
   const icons = [...ctx.root.querySelectorAll<HTMLElement>('[class*="sideToolbarIcon"]')]
   for (let index = 0; index < icons.length; index += 1) {
     const icon = icons[index]
     if (icon === undefined) continue
-    if (WIRED_TOOLS.includes(index)) continue
-    const name = SIDE_TOOLS[index] ?? 'このツール'
     icon.style.cursor = 'pointer'
+
+    const open = openers[index]
+    if (open !== undefined) {
+      // 押すたびに開閉。開くときは他のパネルを閉じる（実物は同時に1枚だけ）。
+      icon.addEventListener('click', () => {
+        const panel = open()
+        if (panel === null) return
+        panels.register(SIDE_TOOLS[index] ?? String(index), panel)
+        panels.toggle(SIDE_TOOLS[index] ?? String(index))
+      })
+      continue
+    }
+    if (WIRED_TOOLS.includes(index)) continue
+    // 未実装の右レールツールは、実際の名前を出して「何が未実装か」を分かるようにする
+    const name = SIDE_TOOLS[index] ?? 'このツール'
     icon.addEventListener('click', () => toast(`${name} は未実装です`, 'error'))
   }
 
@@ -419,11 +423,12 @@ function openPreview(ctx: EditorContext, title: string, folderName: string): voi
   const stage = document.createElement('div')
   stage.style.cssText = 'display:flex;flex-direction:column;align-items:center;padding:0 16px 32px;gap:10px'
 
-  const widthToggle = navButton('SP表示に切替')
+  // 実物にSP/PC切替があるという記録は採取物にも観測メモにも無い。
+  // 「あったら便利」で足すと、実物に無い機能が本物に見えてしまうので置かない。
   const frame = document.createElement('iframe')
   frame.id = 'previewIframe'
   frame.style.cssText = 'width:620px;height:70vh;border:none;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.15)'
-  stage.append(widthToggle, frame)
+  stage.append(frame)
 
   overlay.append(nav, cards, stage)
   document.body.append(overlay)
@@ -437,12 +442,6 @@ function openPreview(ctx: EditorContext, title: string, folderName: string): voi
     doc.close()
   }
 
-  let isSp = false
-  widthToggle.addEventListener('click', () => {
-    isSp = !isSp
-    frame.style.width = isSp ? '430px' : '620px'
-    widthToggle.textContent = isSp ? 'PC表示に切替' : 'SP表示に切替'
-  })
 }
 
 function inline(text: string, style: string): HTMLElement {
