@@ -15,7 +15,8 @@
     "verify": "tsx tools/verify/index.ts",
     "capture-plan": "tsx tools/capture-plan/build.ts",
     "traceability": "tsx tools/traceability/build.ts",
-    "gate": "tsx tools/gate/grep-gate.ts"
+    "gate": "tsx tools/gate/grep-gate.ts",
+    "rehydrate": "tsx tools/rehydrate/build.ts"
   },
   "keywords": [],
   "author": "",

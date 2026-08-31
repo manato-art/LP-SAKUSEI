@@ -88,8 +88,21 @@ export function replacementFor(category: ScrubCategory, value: string): string {
   }
 }
 
-/** 短すぎる値はHTML全体へ literal 置換すると誤爆するため辞書に載せない */
-const MIN_DICTIONARY_LENGTH = 3
+/**
+ * 短すぎる値はHTML全体へ literal 置換すると誤爆するため辞書に載せない。
+ * ただし**日本語は2文字で十分に特定的**（「大山」「内田」等の姓）。
+ * ASCII基準の3文字固定にすると日本語の実名を取りこぼす（実採取でこのバグを踏んだ）。
+ */
+const MIN_LENGTH_ASCII = 3
+const MIN_LENGTH_CJK = 2
+
+/** ひらがな・カタカナ・漢字を含むか */
+const CJK_RE = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/
+
+function isTooShort(value: string): boolean {
+  const min = CJK_RE.test(value) ? MIN_LENGTH_CJK : MIN_LENGTH_ASCII
+  return value.length < min
+}
 
 function addEntry(
   map: ScrubMap,
@@ -97,7 +110,7 @@ function addEntry(
   category: ScrubCategory,
   { override = false }: { override?: boolean } = {},
 ): void {
-  if (value.length < MIN_DICTIONARY_LENGTH) return
+  if (isTooShort(value)) return
   if (!override && Object.prototype.hasOwnProperty.call(map, value)) return
   // eslint-disable-next-line no-param-reassign -- 構築中の辞書への追加（呼び出し側の所有物）
   map[value] = { category, replacement: replacementFor(category, value) }
@@ -113,14 +126,14 @@ function addNumericVariants(map: ScrubMap, value: number): void {
   // 小数（ROAS/ROI/CVR等）は小数桁数を保ったまま撹拌する。§5-5 はこれらも置換対象。
   if (!Number.isInteger(value)) {
     const literal = String(Math.abs(value))
-    if (literal.length < MIN_DICTIONARY_LENGTH) return
+    if (literal.length < MIN_LENGTH_ASCII) return
     // eslint-disable-next-line no-param-reassign -- 構築中の辞書への追加（呼び出し側の所有物）
     map[literal] = { category: 'number', replacement: replacementFor('number', literal) }
     return
   }
 
   const raw = String(Math.trunc(Math.abs(value)))
-  if (raw.length < MIN_DICTIONARY_LENGTH) return
+  if (raw.length < MIN_LENGTH_ASCII) return
 
   const grouped = raw.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
   const fakeGrouped = replacementFor('number', grouped)

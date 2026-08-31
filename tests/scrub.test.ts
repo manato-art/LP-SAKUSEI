@@ -42,6 +42,18 @@ describe('置換辞書の構築（フィールド名を手がかりにする）'
     const map = buildMap({ ab_tests: [{ title: 'あ' }] })
     expect(map['あ']).toBeUndefined()
   })
+
+  it('日本語は2文字でも辞書に載せる（姓が2文字なのを取りこぼさない）', () => {
+    // ASCII基準の3文字固定にすると「大山」「内田」のような実在姓が素通りする（実採取で踏んだバグ）
+    const map = buildMap({ folders: [{ name: '架空山' }], members: [{ name: '仮田' }] })
+    expect(map['仮田']).toBeDefined()
+    expect(map['架空山']).toBeDefined()
+  })
+
+  it('ASCIIは2文字だと一般語すぎるので辞書に載せない', () => {
+    const map = buildMap({ ab_tests: [{ title: 'ab' }] })
+    expect(map['ab']).toBeUndefined()
+  })
 })
 
 describe('参照整合（§5-5「同じ実値は常に同じ架空値へ写す」）', () => {
