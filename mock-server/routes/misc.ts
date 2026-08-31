@@ -3,6 +3,7 @@
  * OAuthは本番へ飛ばさず、結果画面用のステータスだけを返す（§3-2）。
  */
 import { Router } from 'express'
+import { currentTeamId } from '../store/current-team.ts'
 import { getState, setState } from '../store/store.ts'
 import { applyEmptyState } from '../lib/mock-state.ts'
 import { errorEnvelope, pagination } from '../lib/envelope.ts'
@@ -94,7 +95,7 @@ miscRouter.post('/admin/plans', (req, res) => {
   const created = {
     id: state.nextId,
     uid: `PLAN_${String(state.plans.length + 1).padStart(4, '0')}`,
-    team_id: state.teams[0]?.id ?? 1,
+    team_id: currentTeamId(state),
     name: name.value,
     price: 0,
     seats: 1,

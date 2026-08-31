@@ -1,5 +1,6 @@
 /** 設定 / 通知 / レポート除外 / 課金・アドオン（企画書 §10-3）。 */
 import { Router } from 'express'
+import { currentTeamId } from '../store/current-team.ts'
 import { getState, setState } from '../store/store.ts'
 import { applyEmptyState } from '../lib/mock-state.ts'
 import { errorEnvelope } from '../lib/envelope.ts'
@@ -54,7 +55,7 @@ settingsRouter.post('/report-exclusions', (req, res) => {
   const created = {
     id: state.nextId,
     uid: makeUid('reportExclusion', state.reportExclusions.length + 1),
-    team_id: state.teams[0]?.id ?? 1,
+    team_id: currentTeamId(state),
     target: target.value,
     reason: optionalString(req.body, 'reason'),
   }

@@ -1,5 +1,6 @@
 /** チーム / 外部連携（企画書 §10-3）。新規アカウントでは連携0件＝未接続状態が既定。 */
 import { Router } from 'express'
+import { currentTeamId } from '../store/current-team.ts'
 import { getState, setState } from '../store/store.ts'
 import { ASP_ROSTER } from '../store/catalog.ts'
 import { makeUid } from '../store/ids.ts'
@@ -37,7 +38,7 @@ teamsRouter.post('/teams/domains', (req, res) => {
   const created = {
     id: state.nextId,
     uid: makeUid('domain', state.domains.length + 1),
-    team_id: state.teams[0]?.id ?? 1,
+    team_id: currentTeamId(state),
     host: host.value,
     status: 'pending' as const,
     ssl: false,
@@ -60,7 +61,7 @@ teamsRouter.post('/teams/tags', (req, res) => {
   const created = {
     id: state.nextId,
     uid: makeUid('tag', state.tags.length + 1),
-    team_id: state.teams[0]?.id ?? 1,
+    team_id: currentTeamId(state),
     name: name.value,
     color: optionalString(req.body, 'color') || '#0091FF',
   }

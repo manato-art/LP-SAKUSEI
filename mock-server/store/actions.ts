@@ -5,6 +5,7 @@
  * 関連エンティティと非正規化カウントの整合をここで一括して保つ。
  */
 import { hashString } from './rng.ts'
+import { currentTeamId } from './current-team.ts'
 import { makeAbTestUid, makeUid } from './ids.ts'
 import { DEFAULT_LP_CSS, DEFAULT_LP_HTML } from './lp-template.ts'
 import { toDateKey } from './metrics.ts'
@@ -342,7 +343,7 @@ export function createTask(
   const task: Task = {
     id,
     uid: makeUid('task', nextSeq(state.tasks)),
-    team_id: state.teams[0]?.id ?? 1,
+    team_id: currentTeamId(state),
     title: input.title,
     assignee_member_id: input.assignee_member_id,
     status: 'todo',

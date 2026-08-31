@@ -3,6 +3,7 @@
  * 配信割合の更新 / Version追加 / LP(html,css)保存 / 公開 が実際に状態を変える（§10-9）。
  */
 import { Router } from 'express'
+import { currentTeamId } from '../store/current-team.ts'
 import { addVersion, deleteVersion, publishVersion, updateVersion } from '../store/actions.ts'
 import { getState, setState } from '../store/store.ts'
 import { applyEmptyState } from '../lib/mock-state.ts'
@@ -154,7 +155,7 @@ versionsRouter.post('/teams/media_assets', (req, res) => {
   const created = {
     id: state.nextId,
     uid: `ASSET_${String(state.mediaAssets.length + 1).padStart(4, '0')}`,
-    team_id: state.teams[0]?.id ?? 1,
+    team_id: currentTeamId(state),
     url: optionalString(req.body, 'url') || '/capture/assets/placeholder.png',
     width: optionalNumber(req.body, 'width') ?? 600,
     height: optionalNumber(req.body, 'height') ?? 400,
