@@ -12,10 +12,12 @@ import { homedir } from 'node:os'
 import {
   collectFromJson,
   collectKnownEntries,
+  collectUrlIdentifiers,
   mergeMaps,
   parseKnownEntries,
   type ScrubMap,
 } from './dictionary.ts'
+import { loadRouteWordsFromManifest } from '../shared/url-identifier.ts'
 import { scrubJson, scrubText, type HostRewrite } from './scrub.ts'
 
 const SCRUB_MAP_PATH = 'scrub-map.json'
@@ -113,6 +115,17 @@ function main(): void {
       console.warn(`[scrub] JSON解析に失敗（スキップ）: ${file}: ${(error as Error).message}`)
     }
   }
+  // 1-b) fixtures を採っていないページのIDは辞書に載らない。
+  //      DOM/CSS 本文を走査し、URLの形（/ab_tests/<id> 等）から実IDを拾う。
+  const routeWords = loadRouteWordsFromManifest(readFileSync('docs/routes.json', 'utf8'))
+  let urlIdFiles = 0
+  for (const file of files) {
+    if (!TEXT_EXTENSIONS.has(extname(file))) continue
+    collectUrlIdentifiers(readFileSync(file, 'utf8'), collected, routeWords)
+    urlIdFiles += 1
+  }
+  console.log(`[scrub] URL形のID走査: ${urlIdFiles}ファイル`)
+
   if (args.namesFile !== undefined && existsSync(args.namesFile)) {
     const entries = parseKnownEntries(readFileSync(args.namesFile, 'utf8'))
     collectKnownEntries(entries, collected)

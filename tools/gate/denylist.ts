@@ -1,3 +1,4 @@
+import { findUrlIdentifiers } from '../shared/url-identifier.ts'
 /**
  * 静的スキャンのdenylist（企画書 §5-5 grepゲート / §13-E 実データ非混入 / §13-F 本番ドメイン非接続 /
  * §13-G 外部SaaSタグ非ロード）。
@@ -83,3 +84,14 @@ export const SELF_EXCLUDE: readonly string[] = [
   // （実行時にこれらをロードするコードではない。理由は docs/scrub-policy.md §除外一覧）
   'tools/scrub/policy.ts',
 ]
+
+/**
+ * URLの形をした実IDの残存を検知する（企画書 §3 Step0-1）。
+ *
+ * 「32文字以上の不透明トークン」だけでは足りないことが実測で分かった。
+ * 実在のIDには9文字のものもあり、閾値では必ず取りこぼす。
+ * IDは**長さではなくURLの位置と形**で見分ける（判定は tools/shared/url-identifier.ts と共有）。
+ */
+export function findUrlIdentifierLeaks(text: string, routeWords: readonly string[] = []): string[] {
+  return findUrlIdentifiers(text, routeWords)
+}

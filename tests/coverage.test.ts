@@ -67,3 +67,17 @@ describe('被覆率の集計', () => {
     expect(buildCoverage({}, ['A-Btn']).ratio).toBeNull()
   })
 })
+
+describe('data-testid（デザインシステム側の属性）も拾う', () => {
+  it('data-test と data-testid を混同しない', () => {
+    const html = '<div data-test="A"></div><div data-testid="list-menu-item"></div>'
+    const found = extractInteractive(html)
+    expect(found.testIds).toEqual(['A'])
+    expect(found.componentTestIds).toEqual(['list-menu-item'])
+  })
+
+  it('コードが data-testid セレクタで配線していれば拾う', () => {
+    const source = `nav.querySelectorAll('[data-testid="list-menu-item"]')`
+    expect(extractWiredSelectors(source)).toEqual(['list-menu-item'])
+  })
+})

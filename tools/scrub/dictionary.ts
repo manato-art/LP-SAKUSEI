@@ -5,6 +5,7 @@
  * まず fixtures から literal を集めて辞書を作り、その辞書を DOM/CSS/HAR にも適用する。
  * こうするとマイクロコピー（ラベル・エラー文）を巻き込まずに、施策名や人名だけを確実に置換できる。
  */
+import { findUrlIdentifiers } from '../shared/url-identifier.ts'
 import {
   NUMERIC_USER_DATA_FIELDS,
   STRUCTURAL_FIELDS,
@@ -39,6 +40,24 @@ const PHONE_RE = /^0\d{1,4}-?\d{1,4}-?\d{3,4}$/
 const HOST_RE = /^(?:https?:\/\/)?[a-z0-9-]+(?:\.[a-z0-9-]+)+/i
 const UID_RE = /^[A-Za-z0-9_-]{16,}$/
 const MONEY_RE = /^[¥￥]?[\d,]+円?$/
+
+/**
+ * URLの形から実IDを見つけて辞書へ入れる。
+ *
+ * これが必要な理由: 辞書は採取した fixtures(JSON) から作るが、
+ * fixtures を採っていないページのIDが DOM のリンクには出てくる。
+ * 実際、ページ名と ab_test のIDがこの経路で匿名化を素通りしていた。
+ * 長さでは判定できない（9文字のIDも実在する）ので、**URLの形**で見つける。
+ */
+// ドットまで含めて拾う。そうしないと main.css が 'main' として切り出され、
+// 「拡張子付きは除外」の判定をすり抜けてしまう。
+export function collectUrlIdentifiers(
+  text: string,
+  map: ScrubMap,
+  routeWords?: readonly string[],
+): void {
+  for (const value of findUrlIdentifiers(text, routeWords)) addEntry(map, value, 'uid')
+}
 
 /** 実名リストの1行。カテゴリ未指定なら人名として扱う。 */
 export interface KnownEntry {

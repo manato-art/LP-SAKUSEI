@@ -8,8 +8,10 @@
 
 /** 採取した実DOMの断片から見つかった操作可能な要素。 */
 export interface InteractiveElements {
-  /** data-test 属性の値（重複なし・出現順）。配線のフックはこれが正準。 */
+  /** data-test 属性の値（重複なし・出現順）。アプリ側の配線フックはこれが正準。 */
   readonly testIds: readonly string[]
+  /** data-testid 属性の値。デザインシステム側の部品（サイドバー項目など）が使う別系統。 */
+  readonly componentTestIds: readonly string[]
   readonly buttonCount: number
   readonly anchorCount: number
   readonly tabCount: number
@@ -18,6 +20,7 @@ export interface InteractiveElements {
 }
 
 const TEST_ATTR_RE = /data-test=(["'])(.*?)\1/g
+const COMPONENT_TEST_ATTR_RE = /data-testid=(["'])(.*?)\1/g
 const BUTTON_RE = /<button[\s>]/g
 const ANCHOR_RE = /<a[\s>]/g
 const TAB_RE = /role=(["'])tab\1/g
@@ -43,6 +46,7 @@ function countMatches(source: string, pattern: RegExp): number {
 export function extractInteractive(html: string): InteractiveElements {
   return {
     testIds: collectUnique(html, TEST_ATTR_RE, 2),
+    componentTestIds: collectUnique(html, COMPONENT_TEST_ATTR_RE, 2),
     buttonCount: countMatches(html, BUTTON_RE),
     anchorCount: countMatches(html, ANCHOR_RE),
     tabCount: countMatches(html, TAB_RE),
@@ -50,7 +54,7 @@ export function extractInteractive(html: string): InteractiveElements {
   }
 }
 
-const WIRED_SELECTOR_RE = /\[data-test=(?:\\?["'])(.*?)(?:\\?["'])\]/g
+const WIRED_SELECTOR_RE = /\[data-test(?:id)?=(?:\\?["'])(.*?)(?:\\?["'])\]/g
 
 /** クローンのソースコードが参照している data-test を抜き出す。 */
 export function extractWiredSelectors(source: string): readonly string[] {

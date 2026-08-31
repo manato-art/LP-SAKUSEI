@@ -21,11 +21,21 @@ function listFiles(dir: string, ext: string): string[] {
   return found
 }
 
-function readCapturedByState(): Record<string, string[]> {
+type Family = 'app' | 'component'
+
+/**
+ * 状態ごとの要素一覧を作る。
+ *
+ * data-test（アプリ自身の配線フック）と data-testid（デザインシステム側）は**混ぜない**。
+ * 後者はアイコンやフォーカストラップなど押せない要素が大半で、
+ * 一緒に数えると「到達できる画面の被覆率」という意味が壊れるため。
+ */
+function readCapturedByState(family: Family): Record<string, string[]> {
   const byState: Record<string, string[]> = {}
   for (const file of listFiles(FRAGMENT_DIR, '.html')) {
     const state = file.slice(FRAGMENT_DIR.length + 1).replace(/\.html$/, '')
-    const testIds = extractInteractive(readFileSync(file, 'utf8')).testIds
+    const found = extractInteractive(readFileSync(file, 'utf8'))
+    const testIds = family === 'app' ? found.testIds : found.componentTestIds
     if (testIds.length > 0) byState[state] = [...testIds]
   }
   return byState
@@ -43,26 +53,37 @@ function readWiredSelectors(): string[] {
 
 function main(): void {
   const isFull = process.argv.includes('--full')
-  const capturedByState = readCapturedByState()
   const wiredTestIds = readWiredSelectors()
-  const coverage = buildCoverage(capturedByState, wiredTestIds)
+  const appByState = readCapturedByState('app')
+  const componentByState = readCapturedByState('component')
+  const appCoverage = buildCoverage(appByState, wiredTestIds)
+  const componentCoverage = buildCoverage(componentByState, wiredTestIds)
+
+  const percent = (ratio: number | null): string =>
+    ratio === null ? '判定不能（採取物が空）' : `${Math.round(ratio * 100)}%`
 
   console.log('[被覆率] 採取した実物の操作可能要素と、クローンの配線の差分')
-  console.log(`  採取した状態数: ${Object.keys(capturedByState).length}`)
-  console.log(`  実物の要素（重複なし）: ${coverage.total}`)
-  console.log(`  うち配線済み: ${coverage.wired}`)
+  console.log(`  採取した状態数: ${Object.keys(appByState).length}`)
+  console.log('')
+  console.log('  ■ data-test（アプリ自身の配線フック＝到達性の本命）')
+  console.log(`    実物: ${appCoverage.total}件 / 配線済み: ${appCoverage.wired}件 / 被覆率: ${percent(appCoverage.ratio)}`)
+
+  const unwired = [...new Set(appCoverage.unwired.map((element) => element.testId))]
+  console.log(`    未配線: ${unwired.length}件`)
+  for (const name of isFull ? unwired : unwired.slice(0, 15)) console.log(`      - ${name}`)
+  if (!isFull && unwired.length > 15) console.log(`      …ほか ${unwired.length - 15}件（--full で全部）`)
+
+  console.log('')
+  console.log('  ■ data-testid（デザインシステム側・アイコン等の非操作要素を多く含む＝参考値）')
   console.log(
-    `  被覆率: ${coverage.ratio === null ? '判定不能（採取物が空）' : `${Math.round(coverage.ratio * 100)}%`}`,
+    `    実物: ${componentCoverage.total}件 / 配線済み: ${componentCoverage.wired}件 / 被覆率: ${percent(componentCoverage.ratio)}`,
   )
 
-  const unwiredNames = [...new Set(coverage.unwired.map((element) => element.testId))]
-  console.log(`  未配線（重複なし）: ${unwiredNames.length}件`)
-  for (const name of isFull ? unwiredNames : unwiredNames.slice(0, 15)) console.log(`    - ${name}`)
-  if (!isFull && unwiredNames.length > 15) console.log(`    …ほか ${unwiredNames.length - 15}件（--full で全部）`)
-
-  if (coverage.notInCapture.length > 0) {
-    console.log(`  ⚠ 採取物に存在しないのに参照している（推測の疑い）: ${coverage.notInCapture.length}件`)
-    for (const name of coverage.notInCapture) console.log(`    - ${name}`)
+  const ghosts = appCoverage.notInCapture
+  if (ghosts.length > 0) {
+    console.log('')
+    console.log(`  ⚠ 採取物に存在しないのに参照している（推測の疑い）: ${ghosts.length}件`)
+    for (const name of ghosts) console.log(`    - ${name}`)
   }
 }
 

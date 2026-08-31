@@ -44,14 +44,21 @@ function isVisible(element) {
 
 /** 今の画面で押せるものを列挙する。押す順を安定させるため DOM 順のまま返す。 */
 function listClickables() {
-  const selector = '[data-test], button, [role="tab"], a[href^="#/"], [role="button"]'
-  return [...document.querySelectorAll(selector)]
+  // この画面はクリック配線を div に付けている箇所が多い（サイドバー等）。
+  // data-test だけだと取りこぼすので、data-testid と cursor:pointer も拾う。
+  const selector = '[data-test], [data-testid], button, [role="tab"], a[href^="#/"], [role="button"]'
+  const tagged = [...document.querySelectorAll(selector)]
+  const pointer = [...document.querySelectorAll('div, span, li')].filter(
+    (element) => getComputedStyle(element).cursor === 'pointer',
+  )
+  return [...new Set([...tagged, ...pointer])]
     .filter(isVisible)
     .filter((element) => !element.hasAttribute('disabled'))
     .map((element) => ({
       element,
       label:
         element.getAttribute('data-test') ??
+        element.getAttribute('data-testid') ??
         element.getAttribute('href') ??
         element.textContent?.trim().slice(0, 24) ??
         element.tagName.toLowerCase(),

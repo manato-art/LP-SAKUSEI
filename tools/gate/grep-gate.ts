@@ -1,3 +1,4 @@
+import { loadRouteWordsFromManifest } from '../shared/url-identifier.ts'
 /**
  * grepゲート（企画書 §5-5「通過必須」・§13-E/F/G）。
  *
@@ -18,6 +19,7 @@ import {
   SCAN_EXTENSIONS,
   SELF_EXCLUDE,
   SUSPICIOUS_MONEY_PATTERN,
+  findUrlIdentifierLeaks,
 } from './denylist.ts'
 import { parseKnownNames } from '../scrub/dictionary.ts'
 
@@ -144,6 +146,30 @@ function resolveNamesFile(): string | undefined {
   return existsSync(DEFAULT_NAMES_FILE) ? DEFAULT_NAMES_FILE : undefined
 }
 
+/**
+ * ルートの固定語の許可リストを docs/routes.json から作る。
+ * 形（小文字か否か）だけでは全部小文字の実IDを取りこぼすため、
+ * 「ルート表に載っている語だけが構造語」という強い基準に切り替える。
+ */
+function loadRouteWords(): string[] {
+  return loadRouteWordsFromManifest(readFileSync('docs/routes.json', 'utf8'))
+}
+
+/** URLの形をした実IDの残存を走査する。長さ閾値では9文字のIDを取りこぼすため。 */
+function scanUrlIdentifiers(files: readonly string[], routeWords: readonly string[]): Hit[] {
+  return files.flatMap((file) => {
+    const lines = readFileSync(file, 'utf8').split('\n')
+    return lines.flatMap((line, index) =>
+      findUrlIdentifierLeaks(line, routeWords).map((value) => ({
+        gate: '13-E URL形の実ID',
+        file,
+        line: index + 1,
+        excerpt: value,
+      })),
+    )
+  })
+}
+
 function main(): void {
   const namesFile = resolveNamesFile()
   const files = scanFiles()
@@ -158,6 +184,7 @@ function main(): void {
     ),
     ...scanPattern(files, '13-E 実金額らしい値', SUSPICIOUS_MONEY_PATTERN),
     ...scanExternalHosts(files),
+    ...scanUrlIdentifiers(files, loadRouteWords()),
     ...scanFallbackAssets(),
     ...scanGitTracked(),
   ]
