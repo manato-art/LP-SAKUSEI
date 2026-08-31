@@ -118,6 +118,8 @@ export const SELF_EXCLUDE: readonly string[] = [
   'tests/scrub-host-only.test.ts',
   // DOM本文の金額置換を試すテスト。合成の金額を入力として意図的に持つ。
   'tests/scrub-dom-numbers.test.ts',
+  // オーバーレイ除去とトークン判定を試すテスト。合成の長いトークンを意図的に持つ。
+  'tests/scrub-automation-overlay.test.ts',
 ]
 
 /**
