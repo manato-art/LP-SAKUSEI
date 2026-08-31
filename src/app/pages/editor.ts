@@ -9,6 +9,7 @@ import Quill from 'quill'
 import 'quill/dist/quill.bubble.css'
 import substrate from '../fragments/ab_tests__UID__articles__editor-target.html?raw'
 import { api, type Version } from '../api.ts'
+import { isStale } from '../main.ts'
 import { toast } from '../ui.ts'
 
 /** 採取DOM内の目印（実物の data-test 属性。採取のたびに増える） */
@@ -57,7 +58,11 @@ interface EditorContext {
   currentUid: string
 }
 
-export async function renderEditor(container: HTMLElement, abTestUid: string): Promise<void> {
+export async function renderEditor(
+  container: HTMLElement,
+  abTestUid: string,
+  generation?: number,
+): Promise<void> {
   container.innerHTML = ''
 
   const [{ ab_test }, { articles }] = await Promise.all([
@@ -72,6 +77,9 @@ export async function renderEditor(container: HTMLElement, abTestUid: string): P
   const { versions } = await api.versions(articleUid)
   const folders = await api.folders()
   const folderName = folders.folders.find((f) => f.id === ab_test.folder_id)?.name ?? ''
+
+  // API待ちの間に新しい描画が始まっていたら、ここで降りる（二重描画の防止）
+  if (generation !== undefined && isStale(generation)) return
 
   /**
    * 土台を描画（本物のDOMをそのまま）。

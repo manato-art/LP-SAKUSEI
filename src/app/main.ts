@@ -8,8 +8,26 @@ import { renderEditor } from './pages/editor.ts'
 import { T, button, el, emptyState, toast } from './ui.ts'
 import { api } from './api.ts'
 
+/**
+ * 描画の世代。ルートの描画はAPI待ちを含むため、
+ * 連続で呼ばれると**古い描画が後から追記して二重表示**になる（実際にこのバグを踏んだ）。
+ * 各描画は自分の世代が最新かを確認してからDOMに書き込む。
+ */
+let renderGeneration = 0
+
+export function currentGeneration(): number {
+  return renderGeneration
+}
+
+export function isStale(generation: number): boolean {
+  return generation !== renderGeneration
+}
+
 async function route(): Promise<void> {
+  renderGeneration += 1
+  const generation = renderGeneration
   const { content } = mountShell()
+  content.innerHTML = ''
   const raw = location.hash.replace(/^#/, '') || '/folders'
   const [path, query] = raw.split('?')
   const params = new URLSearchParams(query ?? '')
@@ -18,7 +36,7 @@ async function route(): Promise<void> {
   try {
     const editorMatch = /^\/ab_tests\/([^/]+)\/articles$/.exec(path ?? '')
     if (editorMatch !== null) {
-      await renderEditor(content, editorMatch[1] as string)
+      await renderEditor(content, editorMatch[1] as string, generation)
       return
     }
     if (path === '/folders') {
