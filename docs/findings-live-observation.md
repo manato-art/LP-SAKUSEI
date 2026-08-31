@@ -239,6 +239,49 @@ CSS Modules に `darkTheme` / `lightTheme` / `toggleTheme` があり、**テー�
 
 ---
 
+## beyondページ作成フロー（企画書 §10-9 の作成フローの実体）
+
+`新規ページを作成` → 単一モーダル `新規ページ作成`（ヘッダ: `キャンセル` / `作成する`（初期disabled））。
+**番号付き8セクション**の縦長フォーム。
+
+| # | セクション | 内容 |
+|---|---|---|
+| 1 | エディターを選択 **[必須]** | ラジオ3択: `スワイプLPエディター（β）`[NEW][無料] / `beyondエディター` / `HTMLエディター`<br>ヒント: `beyondエディター、HTMLエディター、スワイプLPエディター（β）のバリエーションについてはバージョンを追加する際に選択が可能です。` |
+| 2 | ページ名 | text（`入力してください`）<br>ヒント: `ページ名は未入力のままでも設定可能です。後から変更可能です。` |
+| 3 | 配信URL | 固定プレフィックス `https://<フォルダドメイン>/ab/` + text<br>ヒント: 未入力ならランダム文字列。**`URLは後から変更できません。`** |
+| 4 | 広告媒体 **[必須]** | 約65種の媒体リスト + `媒体名で検索` の絞り込み |
+| 5 | トラッキング設定 | `CV計測条件`（既定`クリック`）+ リンク`クリック / アクセス の違いはこちら` / `計測ツール` / `計測ツール・ASP` |
+| 6 | 商品ジャンル | `商品ジャンルを選択、または新規追加...`（**自由追加できるタグ的UI**） |
+| 7 | 配信タイプ | 既定 `同一URL配信` |
+| 8 | CV単価 | number・ヒント `コンバージョン単価を設定することで売上が表示されます` |
+
+### 【重要】エディターは3種類（企画書の `editor_version` は実際は3値の `editor_type`）
+
+`スワイプLPエディター（β）` / `beyondエディター` / `HTMLエディター`。
+**作成時に選び、後から変更できない**（基本情報タブでも disabled）。
+さらに「バリエーションについては**バージョンを追加する際に選択可能**」＝ Version単位でもエディタ種別を選べる。
+
+→ エディタは1種類ではなく**3種類**あり、それぞれ別UIを持つ可能性が高い。
+企画書 §9-1 は beyondエディター1種類だけを想定していた。**再現範囲の再確認が必要**。
+
+### 【重要】媒体マスタは約65種（企画書は8種）
+
+```
+AdAsia / AdAsia DSP / AdCorsa / Adwords / AkaNe / Amebaインフィード / Bypass / CO3 / Cirqua / Evory / ExAD /
+Googleディスプレイ広告 / Googleデマンドジェネレーション広告 / Google検索広告 / Gunosy Ads / Hike / Instagram /
+Kurashiru Ads / LINE広告 / Locari / Logicad / Lucra / Meta(旧Facebook) / Meta(旧Facebook)ページ(非広告) /
+MS-SymbolLockup / Microsoft広告 / Mintegral / NOIN / Oct-pass / Pangle / Pinterest / Qufooit / RED / RETE /
+ReeMo / SEO / SNS / ScaleOut / Simeji / SmartNews / TRILL / Taboola / TikTok / TopBuzzVideo / UNIQUEST / UZOU /
+X(旧Twitter) / X(旧Twitter)(非広告) / Yahoo!ディスプレイ広告(新) / Yahoo!ディスプレイ広告(旧) / Yahoo!検索広告 /
+YouTube / Zucks / ameba インフィード / docomo Ad Network / fam / ∞log / ly / maio / poets / popIn /
+アイモバイル / アウトブレイン / フルアウト / 媒体/ポストバックなし
+```
+
+→ 企画書 §10-5「媒体ロスター（固定）: Facebook/Instagram/LINE/TikTok/Google/Yahoo/X/その他」は
+実物と大きく違う。カタログなので**全件そのまま再現すべき**（`mock-server/store/catalog.ts` を差し替える）。
+
+---
+
 ## 次にやること（編集ロックの承認待ち）
 
 1. `引き継ぎして編集する` の承認が取れたら: テキスト選択ツールバー全ボタン、右レール9ツール、
