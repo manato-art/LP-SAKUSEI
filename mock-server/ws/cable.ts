@@ -55,7 +55,13 @@ function pickPublishedTarget(tick: number): {
   }
 }
 
-export function attachCable(server: Server): WebSocketServer {
+export interface CableHandle {
+  wss: WebSocketServer
+  /** ping / CV push のタイマーを止め、全接続を閉じる。停止し忘れるとプロセスが終了しない。 */
+  close: () => void
+}
+
+export function attachCable(server: Server): CableHandle {
   const wss = new WebSocketServer({ server, path: PREFIX.cable })
   const clients = new Set<CableClient>()
   let tick = 0
@@ -141,10 +147,20 @@ export function attachCable(server: Server): WebSocketServer {
   }
   let cvTimer = scheduleCv()
 
+  const close = (): void => {
+    clearInterval(pingTimer)
+    clearTimeout(cvTimer)
+    for (const client of clients) client.socket.terminate()
+    clients.clear()
+    wss.close()
+  }
+
+  // HTTPサーバーが閉じたらタイマーも必ず止める（止めないとプロセスが終了しない）
+  server.on('close', close)
   wss.on('close', () => {
     clearInterval(pingTimer)
     clearTimeout(cvTimer)
   })
 
-  return wss
+  return { wss, close }
 }
