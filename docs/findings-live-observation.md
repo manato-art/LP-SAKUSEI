@@ -654,6 +654,58 @@ AbTest 1-* Article （＝UI上の「Version」）
 
 ---
 
+---
+
+# プレビュー画面（右レール1番目を押した先）
+
+実DOMの提供により判明（2026-08-31）。**単なるモーダルではなく、専用の1画面**だった。
+
+## 構成
+
+```
+上部ナビ（_navArticleWrapper_）
+  ├ 戻る            → /folders?uid=<フォルダuid>&folder_scope=
+  ├ フォルダアイコン → ドロップダウン（後述）
+  ├ 現在のbeyondページ（媒体アイコン + ページ名 + ステータスチップ + フォルダ名）
+  └ リンク3つ
+下部 URLカード2枚
+中央 <iframe id="previewIframe">   ← 実際のプレビュー
+```
+
+## フォルダアイコンのドロップダウン（beyondページ切替）
+
+- **MUIタブ6種**: `終了以外`(既定・選択中) / `準備中` / `未配信` / `配信中` / `停止中` / `終了`
+  → 一覧画面の「配信ステータス」フィルタと同じ6値。**`未配信` もタブとして存在する**
+- 検索ボックス: placeholder **`beyondページ検索`**
+- 下にページのリスト（MuiList）
+
+## ナビの3リンク（遷移先が確定）
+
+| アイコンのツールチップ | 遷移先 |
+|---|---|
+| **Version編集** | `/ab_tests/:ab_test_uid/articles#<記事uid>` ← **ハッシュで記事を指定** |
+| **Version<br>オプション設定** | `/ab_tests/:ab_test_uid/articles/split_test_settings/devices` |
+| **中間ページ** | `/folders/:folder_uid/ab_tests/:ab_test_uid/redirect_pages` |
+
+→ 企画書のルート表と整合。**「中間ページ」＝ `redirect_pages`** であることが確定した
+（ファネルとは別物。企画書§10-2 の RedirectPage がこれ）。
+
+## URLカード2枚（それぞれ コピー / QRコード / 別タブで開く の3ボタン）
+
+| カード | 注意文（マイクロコピー・verbatim保持） |
+|---|---|
+| **作成中の確認用URL** | `配信には利用できないURLです。ご注意ください。` |
+| **配信URL** | `正確なレポート計測のため、[レポート除外設定](/report-exclusions)を必ず行ってください。` |
+
+- **作成中の確認用URLは別ドメイン**（`sb-draft-preview.<製品ドメイン>`）で、
+  `/articles/<記事uid>/draft?token=<トークン>` の形。**トークン付き＝実質的な鍵**なので、
+  採取物からは必ず除去する（現在のスクラブは長いトークンを置換するので通過する）
+- QRコードボタンは `radix-*` の dialog を開く（`qrCodePreviewLink` の実体）
+- ステータスチップに `data-trackid="beyond-page-ad-status-chip-preparation"`
+  → **ステータスごとに trackid が変わる**（`-preparation` の部分）
+
+---
+
 ## 未確認のまま残ったもの（正直な記録）
 
 | 項目 | 理由 |

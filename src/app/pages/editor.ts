@@ -24,6 +24,8 @@ const HOOK = {
   redo: '[data-test="SideToolbar-Redo"]',
   tagSettings: '[data-test="HtmlSettingModal-BtnOpenModal"]',
   versionSettings: '[data-test="MasterStyleSheetModal-BtnOpenModal"]',
+  /** 右レール1番目。実DOMでは aria-label で識別できる */
+  preview: '[aria-label="プレビュー"]',
   moreToolbar: '[data-test="EditorToolbar-BtnMoreToolbarOption"]',
   editorWrapper: '[data-test="editor-wrapper"], [data-test="editorWrapper"]',
   /** Version行は記事uidを属性で持っている（実DOMで判明） */
@@ -49,6 +51,7 @@ const SIDE_TOOLS: readonly string[] = [
 interface EditorContext {
   root: HTMLElement
   quill: Quill
+  abTestUid: string
   articleUid: string
   versions: Version[]
   currentUid: string
@@ -81,6 +84,7 @@ export async function renderEditor(container: HTMLElement, abTestUid: string): P
   const ctx: EditorContext = {
     root,
     quill,
+    abTestUid,
     articleUid,
     versions: [...versions],
     currentUid: versions[0]?.uid ?? '',
@@ -88,7 +92,7 @@ export async function renderEditor(container: HTMLElement, abTestUid: string): P
 
   applyVersionToPanel(ctx)
   wireVersionPanel(ctx)
-  wireSideToolbar(ctx)
+  wireSideToolbar(ctx, ab_test.title, folderName)
   wireTopBar(root, ab_test.title, folderName)
   loadVersion(ctx, ctx.currentUid)
 }
@@ -233,7 +237,7 @@ async function saveHtml(ctx: EditorContext): Promise<void> {
   if (v !== undefined) v.html = html
 }
 
-function wireSideToolbar(ctx: EditorContext): void {
+function wireSideToolbar(ctx: EditorContext, previewTitle: string, previewFolder: string): void {
   ctx.root.querySelector(HOOK.undo)?.addEventListener('click', () => ctx.quill.history.undo())
   ctx.root.querySelector(HOOK.redo)?.addEventListener('click', () => ctx.quill.history.redo())
   ctx.root.querySelector(HOOK.tagSettings)?.addEventListener('click', () => {
@@ -244,11 +248,20 @@ function wireSideToolbar(ctx: EditorContext): void {
     toast('Version設定は未実装です（採取済みなので次に作れます）', 'error')
   })
 
+  ctx.root.querySelector(HOOK.preview)?.addEventListener('click', async () => {
+    await saveHtml(ctx)
+    openPreview(ctx, previewTitle, previewFolder)
+  })
+
   // 未実装の右レールツールは、実際の名前を出して「何が未実装か」を分かるようにする
   const icons = [...ctx.root.querySelectorAll<HTMLElement>('[class*="sideToolbarIcon"]')]
   for (let index = 0; index < icons.length; index += 1) {
     const icon = icons[index]
-    if (icon === undefined || icon.querySelector('[data-test]') !== null) continue
+    if (icon === undefined) continue
+    // 既に配線したものは飛ばす。data-test だけでなく aria-label 付き（プレビュー等）も対象。
+    const alreadyWired =
+      icon.querySelector('[data-test]') !== null || icon.querySelector('[aria-label]') !== null
+    if (alreadyWired) continue
     const name = SIDE_TOOLS[index] ?? 'このツール'
     icon.style.cursor = 'pointer'
     icon.addEventListener('click', () => toast(`${name} は未実装です`, 'error'))
@@ -284,6 +297,142 @@ function replaceBakedValues(root: HTMLElement, values: readonly string[]): void 
     if (target === undefined) continue
     target.textContent = values[Math.min(i, values.length - 1)] ?? ''
   }
+}
+
+/**
+ * プレビュー画面（右レール1番目）。実DOMの提供により、実物は**専用の1画面**だと判明した:
+ *   上部ナビ（戻る / ページ切替 / Version編集・オプション設定・中間ページ へのリンク）
+ *   URLカード2枚（作成中の確認用URL / 配信URL）＋ それぞれ コピー・QR・別タブ
+ *   中央に previewIframe
+ * クローンでは外部へ一切出さず、保存済みの html / css を iframe に流し込む（§3-2）。
+ */
+function openPreview(ctx: EditorContext, title: string, folderName: string): void {
+  const version = ctx.versions.find((v) => v.uid === ctx.currentUid)
+  if (version === undefined) return
+
+  const overlay = document.createElement('div')
+  overlay.style.cssText = `position:fixed;inset:0;z-index:9500;background:#ECECEC;overflow:auto;
+    font-family:"Hiragino Sans",sans-serif`
+
+  // ── 上部ナビ ──
+  const nav = document.createElement('div')
+  nav.style.cssText = `background:#fff;border-bottom:1px solid #E5E5E5;padding:10px 16px;
+    display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:2`
+
+  const back = navButton('‹ 戻る')
+  back.addEventListener('click', () => overlay.remove())
+
+  const pageInfo = document.createElement('div')
+  pageInfo.style.cssText = 'display:flex;flex-direction:column;gap:2px;flex:1;min-width:0'
+  pageInfo.append(
+    inline(`${title}`, 'font-size:14px;font-weight:600'),
+    inline(folderName, 'font-size:11px;color:#808080'),
+  )
+
+  // 実物のナビにある3リンク（遷移先は実DOMで確定済み）
+  const links = document.createElement('div')
+  links.style.cssText = 'display:flex;gap:8px'
+  for (const [label, hash] of [
+    ['Version編集', `/ab_tests/${ctx.abTestUid}/articles`],
+    ['Versionオプション設定', `/ab_tests/${ctx.abTestUid}/articles/split_test_settings/devices`],
+    ['中間ページ', `/ab_tests/${ctx.abTestUid}/redirect_pages`],
+  ] as const) {
+    const b = navButton(label)
+    b.addEventListener('click', () => {
+      overlay.remove()
+      location.hash = hash
+    })
+    links.append(b)
+  }
+  nav.append(back, pageInfo, links)
+
+  // ── URLカード2枚 ──
+  const cards = document.createElement('div')
+  cards.style.cssText = 'padding:14px 16px;display:flex;flex-direction:column;gap:10px'
+  cards.append(
+    urlCard(
+      '作成中の確認用URL',
+      `${location.origin}/#/preview/${version.uid}`,
+      '配信には利用できないURLです。ご注意ください。',
+      '#D0021B',
+    ),
+    urlCard(
+      '配信URL',
+      `${location.origin}/#/ab/${ctx.abTestUid}`,
+      '正確なレポート計測のため、レポート除外設定を必ず行ってください。',
+      '#808080',
+    ),
+  )
+
+  // ── プレビュー本体 ──
+  const stage = document.createElement('div')
+  stage.style.cssText = 'display:flex;flex-direction:column;align-items:center;padding:0 16px 32px;gap:10px'
+
+  const widthToggle = navButton('SP表示に切替')
+  const frame = document.createElement('iframe')
+  frame.id = 'previewIframe'
+  frame.style.cssText = 'width:620px;height:70vh;border:none;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.15)'
+  stage.append(widthToggle, frame)
+
+  overlay.append(nav, cards, stage)
+  document.body.append(overlay)
+
+  const doc = frame.contentDocument
+  if (doc !== null) {
+    doc.open()
+    doc.write(`<!doctype html><html lang="ja"><head><meta charset="utf-8">
+<style>body{margin:0;font-family:"Hiragino Sans",sans-serif}${version.css}</style>
+</head><body>${version.html}</body></html>`)
+    doc.close()
+  }
+
+  let isSp = false
+  widthToggle.addEventListener('click', () => {
+    isSp = !isSp
+    frame.style.width = isSp ? '430px' : '620px'
+    widthToggle.textContent = isSp ? 'PC表示に切替' : 'SP表示に切替'
+  })
+}
+
+function inline(text: string, style: string): HTMLElement {
+  const el = document.createElement('div')
+  el.textContent = text
+  el.style.cssText = style
+  return el
+}
+
+function navButton(label: string): HTMLButtonElement {
+  const b = document.createElement('button')
+  b.textContent = label
+  b.style.cssText = `background:#F4F4F4;border:1px solid #DDD;border-radius:4px;padding:6px 12px;
+    cursor:pointer;font-size:12px;font-family:inherit;color:#151515;line-height:1.5;white-space:nowrap`
+  return b
+}
+
+/** URLカード（コピー / 別タブ）。実物にはQRもあるが未実装。 */
+function urlCard(label: string, url: string, note: string, noteColor: string): HTMLElement {
+  const card = document.createElement('div')
+  card.style.cssText = 'background:#fff;border-radius:6px;padding:12px 14px'
+
+  const row = document.createElement('div')
+  row.style.cssText = 'display:flex;align-items:center;gap:10px;flex-wrap:wrap'
+  row.append(inline(label, 'font-size:12px;font-weight:600;white-space:nowrap'))
+
+  const urlText = document.createElement('p')
+  urlText.textContent = url
+  urlText.style.cssText = 'margin:0;font-size:12px;color:#0091FF;flex:1;min-width:0;word-break:break-all'
+  row.append(urlText)
+
+  const copy = navButton('コピー')
+  copy.addEventListener('click', () => {
+    void navigator.clipboard.writeText(url).then(() => toast('URLをコピーしました'))
+  })
+  const open = navButton('別タブで開く')
+  open.addEventListener('click', () => window.open(url, '_blank', 'noopener'))
+  row.append(copy, open)
+
+  card.append(row, inline(note, `font-size:11px;margin-top:8px;color:${noteColor};line-height:1.7`))
+  return card
 }
 
 function wireTopBar(root: HTMLElement, title: string, folderName: string): void {
