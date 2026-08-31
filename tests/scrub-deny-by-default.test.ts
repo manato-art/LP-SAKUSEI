@@ -63,3 +63,40 @@ describe('パスは構造。名前として置換しない', () => {
     expect(isUserDataValue('href', '/folders/秋キャンペーン')).toBe(true)
   })
 })
+
+describe('CSSの値を名前として置換しない（実CSSが壊れる）', () => {
+  it('rgb / rgba を素通しする', () => {
+    expect(isUserDataValue('color', 'rgb(0, 0, 0)')).toBe(false)
+    expect(isUserDataValue('background', 'rgba(0, 0, 0, 0.87)')).toBe(false)
+  })
+
+  it('hsl も素通しする', () => {
+    expect(isUserDataValue('color', 'hsl(210, 50%, 40%)')).toBe(false)
+  })
+
+  it('複合値（影・グラデーション）も素通しする', () => {
+    expect(isUserDataValue('boxShadow', 'rgba(0, 0, 0, 0.3) 0px 0px 40px')).toBe(false)
+    expect(isUserDataValue('font', '14px "Hiragino Sans"')).toBe(false)
+  })
+
+  it('CSSのキーワードを素通しする', () => {
+    expect(isUserDataValue('display', 'inline-block')).toBe(false)
+    expect(isUserDataValue('transform', 'translateY(-50%)')).toBe(false)
+  })
+
+  it('日本語を含む値は引き続き対象にする（誤って緩めていないこと）', () => {
+    expect(isUserDataValue('name', '株式会社サンプル')).toBe(true)
+  })
+})
+
+describe('フォント指定を名前として置換しない', () => {
+  it('フォントスタックを素通しする', () => {
+    expect(isUserDataValue('font', '"Hiragino Sans", sans-serif')).toBe(false)
+    expect(isUserDataValue('x', 'Hiragino Sans, Arial, sans-serif')).toBe(false)
+    expect(isUserDataValue('y', '"Hiragino Sans", "Helvetica Neue", Arial, sans-serif')).toBe(false)
+  })
+
+  it('総称ファミリを含まない普通の文字列は引き続き対象にする', () => {
+    expect(isUserDataValue('name', 'Acme Marketing Inc')).toBe(true)
+  })
+})

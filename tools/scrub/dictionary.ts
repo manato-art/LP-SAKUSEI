@@ -264,9 +264,33 @@ export function collectKnownNames(names: readonly string[], map: ScrubMap): void
 /**
  * 辞書を適用する。長い literal から順に置換して部分一致の取りこぼしを防ぐ。
  */
+/** ASCIIだけで書かれたキーか（＝語の境界を要求すべきか）。 */
+function isAsciiKey(key: string): boolean {
+  return /^[\x20-\x7E]+$/.test(key)
+}
+
+function escapeForRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+/**
+ * 辞書を適用する。長い literal から順に置換して部分一致の取りこぼしを防ぐ。
+ *
+ * ASCIIのキーは**語の境界でだけ**置換する。
+ * 短い実名が無関係な識別子の一部に一致して壊すため
+ * （実際に実ブランド名が FontAwesome の `.fa-bullhorn` の中に一致し、
+ *  `.fサンプル施策861horn` という無効なセレクタになっていた）。
+ * 日本語のキーは語の区切りが無いので境界を要求しない。
+ */
 export function applyDictionary(text: string, map: ScrubMap): string {
   const keys = Object.keys(map).sort((a, b) => b.length - a.length)
-  return keys.reduce((acc, key) => acc.split(key).join(map[key]?.replacement ?? key), text)
+  return keys.reduce((acc, key) => {
+    const replacement = map[key]?.replacement ?? key
+    if (!isAsciiKey(key)) return acc.split(key).join(replacement)
+    // 英数字・ハイフン・アンダースコアが前後に続くときは「語の一部」なので置換しない
+    const pattern = new RegExp(`(?<![\\w-])${escapeForRegExp(key)}(?![\\w-])`, 'g')
+    return acc.replace(pattern, replacement)
+  }, text)
 }
 
 export function mergeMaps(base: ScrubMap, incoming: ScrubMap): ScrubMap {

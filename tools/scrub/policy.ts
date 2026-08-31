@@ -240,7 +240,15 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}([T ]|$)/
 const ENUM_LIKE = /^[a-z]+(?:_[a-z]+)*$/
 const NUMERIC_ONLY = /^-?\d+(?:\.\d+)?$/
 const BOOLEAN_LIKE = /^(?:true|false|null)$/i
-const CSS_VALUE = /^(?:#[0-9a-fA-F]{3,8}|-?\d+(?:\.\d+)?(?:px|%|em|rem|vh|vw|pt))$/
+/**
+ * CSSの値。名前として置換すると**実CSSが壊れる**。
+ * 実際に rgb(0, 0, 0) 等が施策名に置換され、採取CSSの色指定が8,603箇所무効になった。
+ * 色関数・単位つきの数値・CSSキーワード・複合値（影/フォント指定）を含む。
+ */
+const CSS_VALUE =
+  /^(?:#[0-9a-fA-F]{3,8}|(?:rgba?|hsla?|var|calc|translate[XYZ]?|scale|rotate|url)\(|-?\d+(?:\.\d+)?(?:px|%|em|rem|vh|vw|pt|deg|s|ms)?\b)/
+/** ASCIIだけで、CSSの値らしい記号（括弧・カンマ・単位）を含む複合値。 */
+const CSS_COMPOUND = /^[\x20-\x7E"']+$/
 const HAS_CJK = /[぀-ヿ㐀-鿿]/
 /** ルートのパス（ASCIIのみ）。日本語を含むパスは名前が埋まっている可能性があるので除外しない。 */
 const URL_PATH = /^\/[\w\-./?=&%:]*$/
@@ -255,6 +263,14 @@ export function isUserDataValue(field: string, value: string): boolean {
   if (NUMERIC_ONLY.test(trimmed)) return false
   if (BOOLEAN_LIKE.test(trimmed)) return false
   if (CSS_VALUE.test(trimmed)) return false
+  // 影やフォント指定のような複合値。ASCIIのみで、色関数や単位を含むもの。
+  if (CSS_COMPOUND.test(trimmed) && /(?:rgba?\(|hsla?\(|\d(?:px|em|rem|%)\b)/.test(trimmed)) {
+    return false
+  }
+  // CSSのキーワード（inline-block など）。英小文字とハイフンだけ。
+  if (/^[a-z]+(?:-[a-z]+)+$/.test(trimmed)) return false
+  // フォント指定。総称ファミリ（sans-serif 等）で終わるものはCSSの値であって名前ではない。
+  if (/(?:sans-serif|serif|monospace|cursive|fantasy|system-ui)\s*$/.test(trimmed)) return false
   if (ENUM_LIKE.test(trimmed)) return false
   // 先頭が `/` の値はルートのパス。名前として置換すると土台のリンクが壊れる
   // （実際に `/folders` が施策名に置換され、タブの遷移先が消えた）。

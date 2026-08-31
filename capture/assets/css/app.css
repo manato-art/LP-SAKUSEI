@@ -6,7 +6,7 @@ body {
   margin: 0 auto;
   height: 100vh;
   background-color: #ececec;
-  font-family: サンプル施策973;
+  font-family: "Hiragino Sans", sans-serif;
 }
 
 ::-webkit-scrollbar {
