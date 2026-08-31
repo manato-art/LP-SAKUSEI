@@ -3,6 +3,7 @@
  * 辞書適用 → パターン置換（ドメイン/uid/メール/電話）→ 除去（外部タグ・本番バンドル）の順に適用する。
  */
 import { scrubDomNumbers } from './dom-numbers.ts'
+import { dropFolderRows } from './folder-rows.ts'
 import {
   ANY_EXTERNAL_HOST,
   BARE_HOST,
@@ -135,6 +136,10 @@ export function scrubText(input: string, map: ScrubMap, hosts: HostRewrite): Scr
     if (/^\.(?:svg|png|jpe?g|gif|webp|woff2?|ttf|eot|css|js)\b/i.test(after)) return m
     return fakeToken(m)
   })
+
+  // サイドバーのフォルダ一覧は顧客のフォルダ名そのもの。
+  // クローンの基準は新規の空アカウントなので、行の中身は落として枠だけ残す。
+  text = dropFolderRows(text)
 
   // DOM本文の金額・率を架空値へ。JSONと違いフィールド名の手がかりが無いので、
   // 辞書ではなく本文の形で見つけて置き換える（実売上がそのまま残っていた）。
