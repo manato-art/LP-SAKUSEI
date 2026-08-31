@@ -224,11 +224,11 @@ export function mountLinkReplace(
     toast('リンク置換パネルの土台が見つかりませんでした', 'error')
     return null
   }
-  panel.setAttribute('data-sb-article-uid', articleUid)
+  panel.setAttribute('data-clone-article-uid', articleUid)
   if (currentVersionUid !== undefined) PANEL_VERSION_SOURCE.set(panel, currentVersionUid)
 
-  if (panel.getAttribute('data-sb-panel') !== 'link-replace') {
-    panel.setAttribute('data-sb-panel', 'link-replace')
+  if (panel.getAttribute('data-clone-panel') !== 'link-replace') {
+    panel.setAttribute('data-clone-panel', 'link-replace')
     PANEL_STATE.set(panel, INITIAL_STATE)
     wire(root, panel)
   }
@@ -327,7 +327,7 @@ function wire(root: HTMLElement, panel: HTMLElement): void {
  * 中間ページ / 離脱防止ポップアップの件数はサーバーだけが知っているので常にGETする。
  */
 async function reload(root: HTMLElement, panel: HTMLElement): Promise<void> {
-  const articleUid = panel.getAttribute('data-sb-article-uid') ?? ''
+  const articleUid = panel.getAttribute('data-clone-article-uid') ?? ''
   if (articleUid === '') return
   const wanted = PANEL_VERSION_SOURCE.get(panel)?.() ?? ''
   const query = wanted === '' ? '' : `?version_uid=${encodeURIComponent(wanted)}`
@@ -375,22 +375,22 @@ function renderList(panel: HTMLElement): void {
   const visible = filterLinks(state.links, state.sort)
 
   lists.innerHTML = ''
-  lists.setAttribute('data-sb-tab', state.tab)
-  lists.setAttribute('data-sb-link-count', String(visible.length))
-  lists.setAttribute('data-sb-selected-count', String(state.selected.size))
+  lists.setAttribute('data-clone-tab', state.tab)
+  lists.setAttribute('data-clone-link-count', String(visible.length))
+  lists.setAttribute('data-clone-selected-count', String(state.selected.size))
   // 出せていないものを黙って隠さない: 件数だけは属性に出す（描く形が未採取なので描かない）
-  lists.setAttribute('data-sb-exit-popup-count', String(state.exitPopups.length))
-  lists.setAttribute('data-sb-redirect-page-count', String(state.redirectPages.length))
+  lists.setAttribute('data-clone-exit-popup-count', String(state.exitPopups.length))
+  lists.setAttribute('data-clone-redirect-page-count', String(state.redirectPages.length))
 
   if (visible.length === 0) {
     // 採取した空状態（`_noLinksDescription_` + 文言）だけは実物どおりに出す
-    lists.removeAttribute('data-sb-row-markup')
+    lists.removeAttribute('data-clone-row-markup')
     const empty = document.createElement('div')
     empty.className = CLS.noLinks
     empty.textContent = EMPTY_LINKS_MESSAGE
     lists.append(empty)
   } else {
-    lists.setAttribute('data-sb-row-markup', 'uncaptured')
+    lists.setAttribute('data-clone-row-markup', 'uncaptured')
   }
   updateReplaceButton(panel)
 }
@@ -422,7 +422,7 @@ function buildRequest(panel: HTMLElement): ReturnType<typeof buildLinkReplaceReq
 
 async function applyReplacement(root: HTMLElement, panel: HTMLElement): Promise<void> {
   const state = stateOf(panel)
-  const articleUid = panel.getAttribute('data-sb-article-uid') ?? ''
+  const articleUid = panel.getAttribute('data-clone-article-uid') ?? ''
   if (articleUid === '') return
 
   if (state.tab === 'exitPopup') {

@@ -76,11 +76,11 @@ export interface ArticleHistoryRow {
 /**
  * LP本文（Quillの編集領域）。
  * editor.ts は採取DOMのプレビューiframeをQuillへ差し替えているので `.ql-editor` が本文。
- * 差し込み方が変わっても拾えるよう `[data-sb-lp-body]` を先に見る。
+ * 差し込み方が変わっても拾えるよう `[data-clone-lp-body]` を先に見る。
  */
 export function findLpBody(root: HTMLElement): HTMLElement | null {
   return (
-    root.querySelector<HTMLElement>('[data-sb-lp-body]') ??
+    root.querySelector<HTMLElement>('[data-clone-lp-body]') ??
     root.querySelector<HTMLElement>('.ql-editor')
   )
 }
@@ -133,10 +133,10 @@ export function mountHistory(root: HTMLElement, articleUid: string): HTMLElement
     toast('変更・復元履歴パネルの土台が見つかりませんでした', 'error')
     return null
   }
-  panel.setAttribute('data-sb-article-uid', articleUid)
+  panel.setAttribute('data-clone-article-uid', articleUid)
 
-  if (panel.getAttribute('data-sb-panel') !== 'history') {
-    panel.setAttribute('data-sb-panel', 'history')
+  if (panel.getAttribute('data-clone-panel') !== 'history') {
+    panel.setAttribute('data-clone-panel', 'history')
     wire(root, panel)
   }
 
@@ -176,20 +176,20 @@ function wire(root: HTMLElement, panel: HTMLElement): void {
   const restore = document.createElement('div')
   restore.className = `${CLS.btn} ${CLS.btnXSmall} ${CLS.btnRestore}`
   restore.textContent = RESTORE_LABEL
-  restore.setAttribute('data-sb-role', 'restore')
+  restore.setAttribute('data-clone-role', 'restore')
   restore.setAttribute('hidden', '')
   header.insertBefore(restore, cancel)
 
   restore.addEventListener('click', () => {
-    const articleUid = panel.getAttribute('data-sb-article-uid') ?? ''
-    const id = Number(panel.getAttribute('data-sb-selected') ?? '')
+    const articleUid = panel.getAttribute('data-clone-article-uid') ?? ''
+    const id = Number(panel.getAttribute('data-clone-selected') ?? '')
     if (articleUid === '' || !Number.isInteger(id)) return
     void applyRestore(root, panel, articleUid, id)
   })
 }
 
 async function refresh(root: HTMLElement, panel: HTMLElement): Promise<void> {
-  const articleUid = panel.getAttribute('data-sb-article-uid') ?? ''
+  const articleUid = panel.getAttribute('data-clone-article-uid') ?? ''
   if (articleUid === '') return
   const body = findLpBody(root)
   try {
@@ -207,7 +207,7 @@ function renderRows(panel: HTMLElement, histories: readonly ArticleHistoryRow[])
   if (host === null) return
   host.innerHTML = ''
   for (const row of histories) host.append(buildRow(row))
-  panel.setAttribute('data-sb-selected', String(histories.find((h) => h.is_current)?.id ?? ''))
+  panel.setAttribute('data-clone-selected', String(histories.find((h) => h.is_current)?.id ?? ''))
   updateRestoreVisibility(panel)
 }
 
@@ -215,8 +215,8 @@ function renderRows(panel: HTMLElement, histories: readonly ArticleHistoryRow[])
 function buildRow(history: ArticleHistoryRow): HTMLElement {
   const node = document.createElement('div')
   node.className = history.is_current ? `${CLS.list} ${CLS.listActive}` : CLS.list
-  node.setAttribute('data-sb-history-id', String(history.id))
-  node.setAttribute('data-sb-current', String(history.is_current))
+  node.setAttribute('data-clone-history-id', String(history.id))
+  node.setAttribute('data-clone-current', String(history.is_current))
   node.innerHTML =
     `<div class="${CLS.radioControl}">` +
     `<input type="radio" readonly${history.is_current ? ' checked' : ''}>` +
@@ -243,17 +243,17 @@ function select(node: HTMLElement): void {
     const radio = row.querySelector<HTMLInputElement>('input[type="radio"]')
     if (radio !== null) radio.checked = chosen
   }
-  panel.setAttribute('data-sb-selected', node.getAttribute('data-sb-history-id') ?? '')
+  panel.setAttribute('data-clone-selected', node.getAttribute('data-clone-history-id') ?? '')
   updateRestoreVisibility(panel)
 }
 
 /** 選んでいるのが現行版なら復元ボタンは出さない（戻す先が無いので） */
 function updateRestoreVisibility(panel: HTMLElement): void {
-  const restore = panel.querySelector<HTMLElement>('[data-sb-role="restore"]')
+  const restore = panel.querySelector<HTMLElement>('[data-clone-role="restore"]')
   if (restore === null) return
-  const selected = panel.getAttribute('data-sb-selected') ?? ''
-  const row = panel.querySelector<HTMLElement>(`[data-sb-history-id="${selected}"]`)
-  const isCurrent = row === null || row.getAttribute('data-sb-current') === 'true'
+  const selected = panel.getAttribute('data-clone-selected') ?? ''
+  const row = panel.querySelector<HTMLElement>(`[data-clone-history-id="${selected}"]`)
+  const isCurrent = row === null || row.getAttribute('data-clone-current') === 'true'
   restore.toggleAttribute('hidden', isCurrent)
 }
 
