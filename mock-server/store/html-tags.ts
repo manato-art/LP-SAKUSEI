@@ -7,12 +7,16 @@
  * **なぜ types.ts に足さないか**: types.ts は他の担当と共有しているファイルなので触らない。
  * ここでは `State` を「拡張スライス」として持ち、読み書きをこのファイルに閉じ込める。
  * 配線担当が types.ts をまとめる段で `State.htmlTags` へ昇格させればこのファイルの
- * キャストは消える（それ以外の呼び出し側は変更不要）。
+ * htmlTags は State の正式なフィールド。以前は types.ts を触らずに済ませるため
+ * キャストで拡張していたが、フィールド名のtypoを型検査が捕まえられなくなっていた。
  */
-import type { State } from './types.ts'
+import type { State, ArticleHtmlSetting, HtmlTag, HtmlTagDocumentProperty } from './types.ts'
+
+// 型の置き場は types.ts に移した（State の正式なフィールドにするため）。
+// 呼び出し側を壊さないよう、ここからも引き続き見えるようにしておく。
+export type { ArticleHtmlSetting, HtmlTag, HtmlTagDocumentProperty }
 
 /** タグを差し込む先。実APIの `document_property`（head / body） */
-export type HtmlTagDocumentProperty = 'head' | 'body'
 
 export const HTML_TAG_DOCUMENT_PROPERTIES: readonly HtmlTagDocumentProperty[] = ['head', 'body']
 
@@ -24,28 +28,14 @@ export const HTML_TAG_DOCUMENT_PROPERTIES: readonly HtmlTagDocumentProperty[] = 
  *
  * ※ フィールド名は実APIの実測。各値の意味づけは推定（実物のレスポンス本体は未採取）。
  */
-export interface HtmlTag {
-  tag: string
-  document_property: HtmlTagDocumentProperty
-  body: string
-}
 
 /** 1記事ぶんのタグ設定 */
-export interface ArticleHtmlSetting {
-  article_uid: string
-  /** メタタグ設定「noindexを含める」。実機の既定はON（実機観測） */
-  noindex: boolean
-  html_tags: readonly HtmlTag[]
-}
 
 /** 実機観測: 「noindexを含める」トグルの既定はON */
 export const DEFAULT_NOINDEX = true
 
-/** types.ts を触らずに State を拡張するためのスライス（上のコメント参照） */
-type StateWithHtmlTags = State & { readonly htmlTags?: readonly ArticleHtmlSetting[] }
-
 function slice(state: State): readonly ArticleHtmlSetting[] {
-  return (state as StateWithHtmlTags).htmlTags ?? []
+  return state.htmlTags
 }
 
 export function emptyHtmlSetting(articleUid: string): ArticleHtmlSetting {
@@ -68,8 +58,7 @@ export function setHtmlSetting(
 ): State {
   const next: ArticleHtmlSetting = { ...getHtmlSetting(state, articleUid), ...patch }
   const others = slice(state).filter((s) => s.article_uid !== articleUid)
-  const merged: StateWithHtmlTags = { ...state, htmlTags: [...others, next] }
-  return merged
+  return { ...state, htmlTags: [...others, next] }
 }
 
 /** 終了タグを持たない要素（HTML仕様のvoid要素） */

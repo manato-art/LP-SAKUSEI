@@ -101,6 +101,7 @@ export function createEmptyState(): State {
     seminars: SEMINAR_CATALOG,
     introductions: INTRODUCTION_CATALOG,
 
-    nextId: 100,
+    htmlTags: [],
+  nextId: 100,
   }
 }

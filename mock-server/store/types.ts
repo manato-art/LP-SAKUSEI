@@ -395,6 +395,20 @@ export interface Permission {
 }
 
 /** モックの全状態。書き込みのたびに新しいStateを作る（イミュータブル・§12） */
+export type HtmlTagDocumentProperty = 'head' | 'body'
+export interface HtmlTag {
+  tag: string
+  document_property: HtmlTagDocumentProperty
+  body: string
+}
+
+export interface ArticleHtmlSetting {
+  article_uid: string
+  /** メタタグ設定「noindexを含める」。実機の既定はON（実機観測） */
+  noindex: boolean
+  html_tags: readonly HtmlTag[]
+}
+
 export interface State {
   users: readonly User[]
   teams: readonly Team[]
@@ -431,5 +445,7 @@ export interface State {
   introductions: readonly Introduction[]
   permissions: readonly Permission[]
   metrics: readonly DailyMetric[]
+  /** HTML設定モーダル（noindex とタグ）。記事ごとに1件。 */
+  htmlTags: readonly ArticleHtmlSetting[]
   nextId: number
 }
