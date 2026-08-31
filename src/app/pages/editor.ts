@@ -7,7 +7,7 @@
  */
 import Quill from 'quill'
 import 'quill/dist/quill.bubble.css'
-import substrate from '../fragments/ab_tests__UID__articles__editor-beyond-empty.html?raw'
+import substrate from '../fragments/ab_tests__UID__articles__editor-target.html?raw'
 import { api, type Version } from '../api.ts'
 import { toast } from '../ui.ts'
 
@@ -73,10 +73,19 @@ export async function renderEditor(container: HTMLElement, abTestUid: string): P
   const folders = await api.folders()
   const folderName = folders.folders.find((f) => f.id === ab_test.folder_id)?.name ?? ''
 
-  // ── 土台を描画（本物のDOMをそのまま）──
-  // 実CSSは `_editorWrapper_` に `height: calc(100% - 120px); display:flex; padding:20px` を
-  // 当てているため、**差し込み先に高さを与えないとレイアウトが潰れる**（実機のLayout検査で判明）。
-  container.style.height = '100vh'
+  /**
+   * 土台を描画（本物のDOMをそのまま）。
+   * 実機のLayout実測（capture/clean/.../editor-target/layout.json）:
+   *   editorWrapper   1085×626  display:flex  max-width:1100px  padding:20px
+   *   Versionパネル    230×626
+   *   コンテンツ枠      620×500
+   *   quillIframe     620×486
+   *   右レール          50×506   display:flex  padding:20px 0
+   *   上部ナビ         1085×80
+   * 実CSSが `height: calc(100% - 120px)` を前提にしているため、
+   * 差し込み先に高さを与えないとレイアウトが潰れる。
+   */
+  container.style.cssText = 'height:100vh;overflow:hidden'
   const root = document.createElement('div')
   root.style.cssText = 'height:100%'
   root.innerHTML = substrate

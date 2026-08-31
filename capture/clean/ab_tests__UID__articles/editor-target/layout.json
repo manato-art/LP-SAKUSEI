@@ -1,0 +1,72 @@
+{
+  "editorWrapper": {
+    "x": 125,
+    "y": 80,
+    "w": 1085,
+    "h": 626,
+    "display": "flex",
+    "height": "626px",
+    "maxWidth": "1100px",
+    "padding": "20px",
+    "width": "1085px"
+  },
+  "articlesWrapper": {
+    "x": 145,
+    "y": 100,
+    "w": 230,
+    "h": 626,
+    "display": "block",
+    "height": "626px",
+    "maxWidth": "none",
+    "padding": "0px",
+    "width": "230px"
+  },
+  "contentWrapper": {
+    "x": 375,
+    "y": 100,
+    "w": 620,
+    "h": 500,
+    "display": "block",
+    "height": "500px",
+    "maxWidth": "none",
+    "padding": "0px",
+    "width": "620px"
+  },
+  "sideToolbar": {
+    "x": 995,
+    "y": 80,
+    "w": 50,
+    "h": 506,
+    "display": "flex",
+    "height": "506px",
+    "maxWidth": "none",
+    "padding": "20px 0px",
+    "width": "50px"
+  },
+  "quillIframe": {
+    "x": 375,
+    "y": 186,
+    "w": 620,
+    "h": 486,
+    "display": "block",
+    "height": "486px",
+    "maxWidth": "none",
+    "padding": "0px",
+    "width": "620px"
+  },
+  "navArticle": {
+    "x": 125,
+    "y": 0,
+    "w": 1085,
+    "h": 80,
+    "display": "block",
+    "height": "60px",
+    "maxWidth": "none",
+    "padding": "20px 0px 0px",
+    "width": "1085px"
+  },
+  "viewport": {
+    "w": 1210,
+    "h": 746
+  }
+}
