@@ -1,0 +1,16 @@
+/**
+ * デザイントークン（企画書 §4-3 実測値）。
+ * 注意: これは「照合用の基準値」であり、視覚忠実度の本体は採取した実CSS（約386KB・§5）である。
+ * 実CSSを capture/css/ に取り込んだ後も、このファイルは基準値の参照用として残す。
+ */
+:root {
+  --sb-primary: #0091ff;
+  --sb-primary-dark: #0074cc;
+  --sb-bg-page: #ececec;
+  --sb-bg-neutral: #f4f4f4;
+  --sb-surface: #ffffff;
+  --sb-text: #000000;
+  --sb-text-strong: #151515;
+  --sb-text-sub: #808080;
+  --sb-font-base: "Hiragino Sans", sans-serif;
+}

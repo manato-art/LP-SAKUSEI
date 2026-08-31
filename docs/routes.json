@@ -1,0 +1,965 @@
+{
+  "_source": "企画書.md 付録A（機械抽出）。企画書§6-1「未知ルート0」証明の完了後に確定値とする。",
+  "_note": "付録Aの行数は81。うち /cable(WS) と *(404) は非UIルートのため、実UIルートは79。企画書本文の「82」との差はナビ全巡回で確定する。",
+  "total_lines": 81,
+  "ui_routes": 79,
+  "routes": [
+    {
+      "path": "/users/sign_up",
+      "group": "認証 / ユーザー",
+      "note": "",
+      "tier": 1,
+      "slug": "users__sign_up",
+      "is_ui_route": true,
+      "params": [],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/users/confirmation",
+      "group": "認証 / ユーザー",
+      "note": "",
+      "tier": 1,
+      "slug": "users__confirmation",
+      "is_ui_route": true,
+      "params": [],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/users/confirmation/code/new",
+      "group": "認証 / ユーザー",
+      "note": "",
+      "tier": 1,
+      "slug": "users__confirmation__code__new",
+      "is_ui_route": true,
+      "params": [],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/users/forgot_password",
+      "group": "認証 / ユーザー",
+      "note": "",
+      "tier": 1,
+      "slug": "users__forgot_password",
+      "is_ui_route": true,
+      "params": [],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/users/password/edit",
+      "group": "認証 / ユーザー",
+      "note": "",
+      "tier": 1,
+      "slug": "users__password__edit",
+      "is_ui_route": true,
+      "params": [],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/users/edit",
+      "group": "認証 / ユーザー",
+      "note": "",
+      "tier": 3,
+      "slug": "users__edit",
+      "is_ui_route": true,
+      "params": [],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/users/public_api_key",
+      "group": "認証 / ユーザー",
+      "note": "",
+      "tier": 3,
+      "slug": "users__public_api_key",
+      "is_ui_route": true,
+      "params": [],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/users/teams",
+      "group": "認証 / ユーザー",
+      "note": "",
+      "tier": 3,
+      "slug": "users__teams",
+      "is_ui_route": true,
+      "params": [],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/",
+      "group": "ダッシュボード",
+      "note": "",
+      "tier": 1,
+      "slug": "root",
+      "is_ui_route": true,
+      "params": [],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/dashboard",
+      "group": "ダッシュボード",
+      "note": "",
+      "tier": 1,
+      "slug": "dashboard",
+      "is_ui_route": true,
+      "params": [],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/dashboard/:uid",
+      "group": "ダッシュボード",
+      "note": "",
+      "tier": 1,
+      "slug": "dashboard__UID",
+      "is_ui_route": true,
+      "params": [
+        "uid"
+      ],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/ab_tests/:ab_test_uid/articles",
+      "group": "beyondページ（ab_test）",
+      "note": "",
+      "tier": 2,
+      "slug": "ab_tests__UID__articles",
+      "is_ui_route": true,
+      "params": [
+        "ab_test_uid"
+      ],
+      "screen": "LPエディタ本体(3レール)",
+      "capture_iframe": true
+    },
+    {
+      "path": "/ab_tests/:ab_test_uid/articles/:article_uid/previews",
+      "group": "beyondページ（ab_test）",
+      "note": "",
+      "tier": 2,
+      "slug": "ab_tests__UID__articles__UID__previews",
+      "is_ui_route": true,
+      "params": [
+        "ab_test_uid",
+        "article_uid"
+      ],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/ab_tests/:ab_test_uid/articles/exit_popups",
+      "group": "beyondページ（ab_test）",
+      "note": "",
+      "tier": 2,
+      "slug": "ab_tests__UID__articles__exit_popups",
+      "is_ui_route": true,
+      "params": [
+        "ab_test_uid"
+      ],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/ab_tests/:ab_test_uid/articles/htmls/heatmaps/comparisons",
+      "group": "beyondページ（ab_test）",
+      "note": "",
+      "tier": 2,
+      "slug": "ab_tests__UID__articles__htmls__heatmaps__comparisons",
+      "is_ui_route": true,
+      "params": [
+        "ab_test_uid"
+      ],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/ab_tests/:ab_test_uid/articles/split_test_settings/carriers",
+      "group": "beyondページ（ab_test）",
+      "note": "",
+      "tier": 2,
+      "slug": "ab_tests__UID__articles__split_test_settings__carriers",
+      "is_ui_route": true,
+      "params": [
+        "ab_test_uid"
+      ],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/ab_tests/:ab_test_uid/articles/split_test_settings/devices",
+      "group": "beyondページ（ab_test）",
+      "note": "",
+      "tier": 2,
+      "slug": "ab_tests__UID__articles__split_test_settings__devices",
+      "is_ui_route": true,
+      "params": [
+        "ab_test_uid"
+      ],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/ab_tests/:ab_test_uid/articles/split_test_settings/hours",
+      "group": "beyondページ（ab_test）",
+      "note": "",
+      "tier": 2,
+      "slug": "ab_tests__UID__articles__split_test_settings__hours",
+      "is_ui_route": true,
+      "params": [
+        "ab_test_uid"
+      ],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/ab_tests/:ab_test_uid/articles/split_test_settings/oses",
+      "group": "beyondページ（ab_test）",
+      "note": "",
+      "tier": 2,
+      "slug": "ab_tests__UID__articles__split_test_settings__oses",
+      "is_ui_route": true,
+      "params": [
+        "ab_test_uid"
+      ],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/ab_tests/:ab_test_uid/articles/split_test_settings/params",
+      "group": "beyondページ（ab_test）",
+      "note": "",
+      "tier": 2,
+      "slug": "ab_tests__UID__articles__split_test_settings__params",
+      "is_ui_route": true,
+      "params": [
+        "ab_test_uid"
+      ],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/ab_tests/:ab_test_uid/articles/split_test_settings/periods",
+      "group": "beyondページ（ab_test）",
+      "note": "",
+      "tier": 2,
+      "slug": "ab_tests__UID__articles__split_test_settings__periods",
+      "is_ui_route": true,
+      "params": [
+        "ab_test_uid"
+      ],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/ab_tests/:ab_test_uid/creative_report",
+      "group": "beyondページ（ab_test）",
+      "note": "",
+      "tier": 2,
+      "slug": "ab_tests__UID__creative_report",
+      "is_ui_route": true,
+      "params": [
+        "ab_test_uid"
+      ],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/ab_tests/:ab_test_uid/options/devide",
+      "group": "beyondページ（ab_test）",
+      "note": "",
+      "tier": 2,
+      "slug": "ab_tests__UID__options__devide",
+      "is_ui_route": true,
+      "params": [
+        "ab_test_uid"
+      ],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/ab_tests/:ab_test_uid/redirect_pages",
+      "group": "beyondページ（ab_test）",
+      "note": "",
+      "tier": 2,
+      "slug": "ab_tests__UID__redirect_pages",
+      "is_ui_route": true,
+      "params": [
+        "ab_test_uid"
+      ],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/ab_tests/:ab_test_uid/reports",
+      "group": "beyondページ（ab_test）",
+      "note": "",
+      "tier": 2,
+      "slug": "ab_tests__UID__reports",
+      "is_ui_route": true,
+      "params": [
+        "ab_test_uid"
+      ],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/ab_tests/:ab_test_uid/reports/lp",
+      "group": "beyondページ（ab_test）",
+      "note": "",
+      "tier": 2,
+      "slug": "ab_tests__UID__reports__lp",
+      "is_ui_route": true,
+      "params": [
+        "ab_test_uid"
+      ],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/ab_tests/:ab_test_uid/reports/swipe",
+      "group": "beyondページ（ab_test）",
+      "note": "",
+      "tier": 2,
+      "slug": "ab_tests__UID__reports__swipe",
+      "is_ui_route": true,
+      "params": [
+        "ab_test_uid"
+      ],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/ab_tests/:ab_test_uid/versions/swipe",
+      "group": "beyondページ（ab_test）",
+      "note": "",
+      "tier": 2,
+      "slug": "ab_tests__UID__versions__swipe",
+      "is_ui_route": true,
+      "params": [
+        "ab_test_uid"
+      ],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/folders",
+      "group": "フォルダ",
+      "note": "",
+      "tier": 1,
+      "slug": "folders",
+      "is_ui_route": true,
+      "params": [],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/folders/forms",
+      "group": "フォルダ",
+      "note": "",
+      "tier": 2,
+      "slug": "folders__forms",
+      "is_ui_route": true,
+      "params": [],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/folders/:uid/edit",
+      "group": "フォルダ",
+      "note": "",
+      "tier": 2,
+      "slug": "folders__UID__edit",
+      "is_ui_route": true,
+      "params": [
+        "uid"
+      ],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/folders/:folder_uid/ab_tests/:ab_test_uid/edit",
+      "group": "フォルダ",
+      "note": "",
+      "tier": 2,
+      "slug": "folders__UID__ab_tests__UID__edit",
+      "is_ui_route": true,
+      "params": [
+        "folder_uid",
+        "ab_test_uid"
+      ],
+      "screen": "LPエディタ本体(3レール)",
+      "capture_iframe": true
+    },
+    {
+      "path": "/folders/:folder_uid/ab_tests/:ab_test_uid/redirect_pages",
+      "group": "フォルダ",
+      "note": "",
+      "tier": 2,
+      "slug": "folders__UID__ab_tests__UID__redirect_pages",
+      "is_ui_route": true,
+      "params": [
+        "folder_uid",
+        "ab_test_uid"
+      ],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/folders/:folder_uid/conversion_tags",
+      "group": "フォルダ",
+      "note": "",
+      "tier": 2,
+      "slug": "folders__UID__conversion_tags",
+      "is_ui_route": true,
+      "params": [
+        "folder_uid"
+      ],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/folders/:folder_uid/forms/:uid",
+      "group": "フォルダ",
+      "note": "",
+      "tier": 2,
+      "slug": "folders__UID__forms__UID",
+      "is_ui_route": true,
+      "params": [
+        "folder_uid",
+        "uid"
+      ],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/folders/:folder_uid/operator_articles",
+      "group": "フォルダ",
+      "note": "",
+      "tier": 2,
+      "slug": "folders__UID__operator_articles",
+      "is_ui_route": true,
+      "params": [
+        "folder_uid"
+      ],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/folders/:folder_uid/operator_articles/:uid/edit",
+      "group": "フォルダ",
+      "note": "",
+      "tier": 2,
+      "slug": "folders__UID__operator_articles__UID__edit",
+      "is_ui_route": true,
+      "params": [
+        "folder_uid",
+        "uid"
+      ],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/articles/bulk_replaces",
+      "group": "記事一括 / コンバージョン",
+      "note": "",
+      "tier": 2,
+      "slug": "articles__bulk_replaces",
+      "is_ui_route": true,
+      "params": [],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/conversions",
+      "group": "記事一括 / コンバージョン",
+      "note": "",
+      "tier": 2,
+      "slug": "conversions",
+      "is_ui_route": true,
+      "params": [],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/conversion-reports",
+      "group": "記事一括 / コンバージョン",
+      "note": "",
+      "tier": 2,
+      "slug": "conversion_reports",
+      "is_ui_route": true,
+      "params": [],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/tasks",
+      "group": "タスク / 審査",
+      "note": "",
+      "tier": 2,
+      "slug": "tasks",
+      "is_ui_route": true,
+      "params": [],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/inspections",
+      "group": "タスク / 審査",
+      "note": "",
+      "tier": 2,
+      "slug": "inspections",
+      "is_ui_route": true,
+      "params": [],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/inspections/authorities",
+      "group": "タスク / 審査",
+      "note": "",
+      "tier": 2,
+      "slug": "inspections__authorities",
+      "is_ui_route": true,
+      "params": [],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/inspections/folders",
+      "group": "タスク / 審査",
+      "note": "",
+      "tier": 2,
+      "slug": "inspections__folders",
+      "is_ui_route": true,
+      "params": [],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/sb_ai",
+      "group": "AI",
+      "note": "",
+      "tier": 3,
+      "slug": "sb_ai",
+      "is_ui_route": true,
+      "params": [],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/sb_ai/chat",
+      "group": "AI",
+      "note": "",
+      "tier": 3,
+      "slug": "sb_ai__chat",
+      "is_ui_route": true,
+      "params": [],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/sb_ai/chat/:conversationId",
+      "group": "AI",
+      "note": "",
+      "tier": 3,
+      "slug": "sb_ai__chat__CONVERSATIONID",
+      "is_ui_route": true,
+      "params": [
+        "conversationId"
+      ],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/teams/ad_accounts",
+      "group": "チーム / 連携",
+      "note": "",
+      "tier": 3,
+      "slug": "teams__ad_accounts",
+      "is_ui_route": true,
+      "params": [],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/teams/asp_accounts",
+      "group": "チーム / 連携",
+      "note": "",
+      "tier": 3,
+      "slug": "teams__asp_accounts",
+      "is_ui_route": true,
+      "params": [],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/teams/domains",
+      "group": "チーム / 連携",
+      "note": "",
+      "tier": 3,
+      "slug": "teams__domains",
+      "is_ui_route": true,
+      "params": [],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/teams/plans",
+      "group": "チーム / 連携",
+      "note": "",
+      "tier": 3,
+      "slug": "teams__plans",
+      "is_ui_route": true,
+      "params": [],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/teams/product_search_forms",
+      "group": "チーム / 連携",
+      "note": "",
+      "tier": 3,
+      "slug": "teams__product_search_forms",
+      "is_ui_route": true,
+      "params": [],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/teams/tags",
+      "group": "チーム / 連携",
+      "note": "",
+      "tier": 3,
+      "slug": "teams__tags",
+      "is_ui_route": true,
+      "params": [],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/teams/:team_uid/members/:member_uid/invitations/edit",
+      "group": "チーム / 連携",
+      "note": "",
+      "tier": 3,
+      "slug": "teams__UID__members__UID__invitations__edit",
+      "is_ui_route": true,
+      "params": [
+        "team_uid",
+        "member_uid"
+      ],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/redirections/ab_tests/google_postback_setting",
+      "group": "広告OAuthコールバック",
+      "note": "",
+      "tier": 3,
+      "slug": "redirections__ab_tests__google_postback_setting",
+      "is_ui_route": true,
+      "params": [],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/redirections/ad_accounts/facebook",
+      "group": "広告OAuthコールバック",
+      "note": "",
+      "tier": 3,
+      "slug": "redirections__ad_accounts__facebook",
+      "is_ui_route": true,
+      "params": [],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/redirections/ad_accounts/google",
+      "group": "広告OAuthコールバック",
+      "note": "",
+      "tier": 3,
+      "slug": "redirections__ad_accounts__google",
+      "is_ui_route": true,
+      "params": [],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/redirections/ad_accounts/microsoft",
+      "group": "広告OAuthコールバック",
+      "note": "",
+      "tier": 3,
+      "slug": "redirections__ad_accounts__microsoft",
+      "is_ui_route": true,
+      "params": [],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/redirections/ad_accounts/x",
+      "group": "広告OAuthコールバック",
+      "note": "",
+      "tier": 3,
+      "slug": "redirections__ad_accounts__x",
+      "is_ui_route": true,
+      "params": [],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/redirections/ad_accounts/yahoo",
+      "group": "広告OAuthコールバック",
+      "note": "",
+      "tier": 3,
+      "slug": "redirections__ad_accounts__yahoo",
+      "is_ui_route": true,
+      "params": [],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/settings/internal_notifications/member",
+      "group": "設定 / 通知",
+      "note": "",
+      "tier": 3,
+      "slug": "settings__internal_notifications__member",
+      "is_ui_route": true,
+      "params": [],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/settings/internal_notifications/team",
+      "group": "設定 / 通知",
+      "note": "",
+      "tier": 3,
+      "slug": "settings__internal_notifications__team",
+      "is_ui_route": true,
+      "params": [],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/report-exclusions",
+      "group": "設定 / 通知",
+      "note": "",
+      "tier": 3,
+      "slug": "report_exclusions",
+      "is_ui_route": true,
+      "params": [],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/plans/:planUid/payment/checkout",
+      "group": "課金 / アドオン",
+      "note": "",
+      "tier": 3,
+      "slug": "plans__UID__payment__checkout",
+      "is_ui_route": true,
+      "params": [
+        "planUid"
+      ],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/addon/option-list",
+      "group": "課金 / アドオン",
+      "note": "",
+      "tier": 3,
+      "slug": "addon__option_list",
+      "is_ui_route": true,
+      "params": [],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/admin-report",
+      "group": "管理者",
+      "note": "",
+      "tier": 4,
+      "slug": "admin_report",
+      "is_ui_route": true,
+      "params": [],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/admin/articles/html_parts",
+      "group": "管理者",
+      "note": "",
+      "tier": 4,
+      "slug": "admin__articles__html_parts",
+      "is_ui_route": true,
+      "params": [],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/admin/plans",
+      "group": "管理者",
+      "note": "",
+      "tier": 4,
+      "slug": "admin__plans",
+      "is_ui_route": true,
+      "params": [],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/admin/plans/new",
+      "group": "管理者",
+      "note": "",
+      "tier": 4,
+      "slug": "admin__plans__new",
+      "is_ui_route": true,
+      "params": [],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/admin/preset_access_denials",
+      "group": "管理者",
+      "note": "",
+      "tier": 4,
+      "slug": "admin__preset_access_denials",
+      "is_ui_route": true,
+      "params": [],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/admin/product_search_forms",
+      "group": "管理者",
+      "note": "",
+      "tier": 4,
+      "slug": "admin__product_search_forms",
+      "is_ui_route": true,
+      "params": [],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/admin/teams",
+      "group": "管理者",
+      "note": "",
+      "tier": 4,
+      "slug": "admin__teams",
+      "is_ui_route": true,
+      "params": [],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/admin/teams/new",
+      "group": "管理者",
+      "note": "",
+      "tier": 4,
+      "slug": "admin__teams__new",
+      "is_ui_route": true,
+      "params": [],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/admin/teams/:team_uid/members",
+      "group": "管理者",
+      "note": "",
+      "tier": 4,
+      "slug": "admin__teams__UID__members",
+      "is_ui_route": true,
+      "params": [
+        "team_uid"
+      ],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/admin/teams/:team_uid/plans/payments",
+      "group": "管理者",
+      "note": "",
+      "tier": 4,
+      "slug": "admin__teams__UID__plans__payments",
+      "is_ui_route": true,
+      "params": [
+        "team_uid"
+      ],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/permissions",
+      "group": "その他",
+      "note": "",
+      "tier": 4,
+      "slug": "permissions",
+      "is_ui_route": true,
+      "params": [],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/introductions",
+      "group": "その他",
+      "note": "",
+      "tier": 4,
+      "slug": "introductions",
+      "is_ui_route": true,
+      "params": [],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/seminar",
+      "group": "その他",
+      "note": "",
+      "tier": 4,
+      "slug": "seminar",
+      "is_ui_route": true,
+      "params": [],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/terms",
+      "group": "その他",
+      "note": "",
+      "tier": 4,
+      "slug": "terms",
+      "is_ui_route": true,
+      "params": [],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "/cable",
+      "group": "その他",
+      "note": "WebSocket（ActionCable。UIルートではない・WSモックで再現）",
+      "tier": 4,
+      "slug": "cable",
+      "is_ui_route": false,
+      "params": [],
+      "screen": null,
+      "capture_iframe": false
+    },
+    {
+      "path": "*",
+      "group": "その他",
+      "note": "404 キャッチオール",
+      "tier": 4,
+      "slug": "catch_all",
+      "is_ui_route": true,
+      "params": [],
+      "screen": null,
+      "capture_iframe": false
+    }
+  ]
+}

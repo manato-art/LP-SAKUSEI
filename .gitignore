@@ -1,0 +1,36 @@
+# ── 企画書 §3 Step0 最大リスク ── 絶対にコミットしないもの
+# 生キャプチャ（§3-3・隔離ディレクトリはリポジトリ外だが、誤配置の保険で二重に遮断）
+capture/raw/
+capture/quarantine/
+**/quarantine/
+# 匿名化写像（実値→架空値の対応表。実値が入るため非コミット・§5-5）
+scrub-map.json
+tools/scrub/scrub-map.json
+# 認証情報
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials*.json
+
+# ── ビルド/依存 ──
+node_modules/
+dist/
+coverage/
+.vite/
+*.tsbuildinfo
+
+# ── 検証の中間生成物 ──
+capture/diff/
+verify-report/
+test-results/
+playwright-report/
+.playwright/
+
+# ── OS/エディタ ──
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

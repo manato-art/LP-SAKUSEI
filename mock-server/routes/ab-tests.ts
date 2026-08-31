@@ -1,0 +1,279 @@
+/**
+ * beyondページ（AbTest）系（企画書 §10-3）。
+ * `/ab_tests/:uid/articles` はLPエディタ本体（§6-2）なので、
+ * エディタが起動時に叩く ab_test / articles / versions をここで返す。
+ */
+import { Router } from 'express'
+import { createAbTest, deleteAbTest, updateAbTest } from '../store/actions.ts'
+import { getState, setState } from '../store/store.ts'
+import { SPLIT_TEST_DEFAULTS, isSplitTestType } from '../store/split-test-defaults.ts'
+import { aggregate, deriveKpi, isWithin } from '../store/metrics.ts'
+import { applyEmptyState } from '../lib/mock-state.ts'
+import { errorEnvelope, pagination } from '../lib/envelope.ts'
+import { dateRangeParams, filterItems, pageParams, paginate, searchItems, sortItems, sortParams } from '../lib/query.ts'
+import { optionalNumber, optionalString, requireString } from '../lib/validate.ts'
+import { serializeAbTest, serializeArticle } from '../lib/serialize.ts'
+import type { AbTest, State } from '../store/types.ts'
+
+export const abTestsRouter: Router = Router()
+
+function findAbTest(state: State, uid: string): AbTest | undefined {
+  return state.abTests.find((t) => t.uid === uid)
+}
+
+function notFound(res: Parameters<Parameters<Router['get']>[1]>[1], message: string): void {
+  res.status(404).json(errorEnvelope('not_found', message))
+}
+
+// ── 一覧 / 作成 ──────────────────────────────────────────
+abTestsRouter.get('/ab_tests', (req, res) => {
+  const state = getState()
+  const filtered = filterItems(searchItems([...state.abTests], req.query), req.query, {
+    media_id: 'media_id',
+    folder_id: 'folder_id',
+    published: 'published',
+    ad_status: 'ad_status',
+  })
+  const visible = applyEmptyState(req, filtered)
+  const sorted = sortItems(visible, sortParams(req.query), ['title', 'created_at', 'updated_at'])
+  const page = pageParams(req.query)
+  res.json({
+    pagination: pagination(sorted.length, page.perPage, page.page),
+    ab_tests: paginate(sorted, page).map((t) => serializeAbTest(state, t)),
+  })
+})
+
+/** 作成フローの中核（§10-9）。記事1件と初期Versionも同時に作られ、直後にエディタが開ける。 */
+abTestsRouter.post('/ab_tests', (req, res) => {
+  const title = requireString(req.body, 'title', { maxLength: 150 })
+  if (!title.ok) {
+    res.status(422).json(errorEnvelope('validation_failed', title.message))
+    return
+  }
+  let created: ReturnType<typeof createAbTest> | null = null
+  setState((state) => {
+    const out = createAbTest(state, {
+      title: title.value,
+      memo: optionalString(req.body, 'memo'),
+      folder_id: optionalNumber(req.body, 'folder_id') ?? null,
+      media_id: optionalNumber(req.body, 'media_id') ?? null,
+    })
+    created = out
+    return out.state
+  })
+  const result = created as unknown as ReturnType<typeof createAbTest>
+  res.status(201).json({
+    ab_test: serializeAbTest(getState(), result.abTest),
+    article: serializeArticle(result.article),
+    version: result.version,
+  })
+})
+
+abTestsRouter.get('/ab_tests/:uid', (req, res) => {
+  const state = getState()
+  const abTest = findAbTest(state, req.params.uid)
+  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
+  res.json({ ab_test: serializeAbTest(state, abTest) })
+})
+
+abTestsRouter.put('/ab_tests/:uid', (req, res) => {
+  let updated = null
+  setState((state) => {
+    const out = updateAbTest(state, req.params.uid, {
+      title: optionalString(req.body, 'title') || undefined,
+      memo: optionalString(req.body, 'memo'),
+      folder_id: optionalNumber(req.body, 'folder_id') ?? null,
+      media_id: optionalNumber(req.body, 'media_id') ?? null,
+    })
+    updated = out.abTest
+    return out.state
+  })
+  if (updated === null) return notFound(res, 'beyondページが見つかりません。')
+  res.json({ ab_test: serializeAbTest(getState(), updated) })
+})
+
+abTestsRouter.delete('/ab_tests/:uid', (req, res) => {
+  let deleted = false
+  setState((state) => {
+    const out = deleteAbTest(state, req.params.uid)
+    deleted = out.deleted
+    return out.state
+  })
+  if (!deleted) return notFound(res, 'beyondページが見つかりません。')
+  res.status(204).end()
+})
+
+// ── エディタ起動時（§6-2・§9-1）──────────────────────────
+abTestsRouter.get('/ab_tests/:uid/articles', (req, res) => {
+  const state = getState()
+  const abTest = findAbTest(state, req.params.uid)
+  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
+  const articles = state.articles.filter((a) => a.ab_test_id === abTest.id)
+  res.json({ articles: applyEmptyState(req, articles.map(serializeArticle)) })
+})
+
+// ── 離脱ポップアップ（§10-3）──
+abTestsRouter.get('/ab_tests/:uid/exit_popups', (req, res) => {
+  const state = getState()
+  const abTest = findAbTest(state, req.params.uid)
+  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
+  const popups = state.exitPopups.filter((p) => p.ab_test_id === abTest.id)
+  res.json({ exit_popups: applyEmptyState(req, popups) })
+})
+
+abTestsRouter.post('/ab_tests/:uid/exit_popups', (req, res) => {
+  const name = requireString(req.body, 'name', { maxLength: 100 })
+  if (!name.ok) {
+    res.status(422).json(errorEnvelope('validation_failed', name.message))
+    return
+  }
+  const state = getState()
+  const abTest = findAbTest(state, req.params.uid)
+  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
+  const created = {
+    id: state.nextId,
+    uid: `EXITPOPUP_${String(state.exitPopups.length + 1).padStart(4, '0')}`,
+    ab_test_id: abTest.id,
+    name: name.value,
+    trigger: optionalString(req.body, 'trigger') || 'exit_intent',
+    html: '<div>サンプルポップアップ</div>',
+    enabled: true,
+  }
+  setState((s) => ({ ...s, exitPopups: [...s.exitPopups, created], nextId: s.nextId + 1 }))
+  res.status(201).json({ exit_popup: created })
+})
+
+// ── リダイレクトページ ──
+abTestsRouter.get('/ab_tests/:uid/redirect_pages', (req, res) => {
+  const state = getState()
+  const abTest = findAbTest(state, req.params.uid)
+  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
+  const pages = state.redirectPages.filter((p) => p.ab_test_id === abTest.id)
+  res.json({ redirect_pages: applyEmptyState(req, pages) })
+})
+
+abTestsRouter.put('/ab_tests/:uid/redirect_pages', (req, res) => {
+  const state = getState()
+  const abTest = findAbTest(state, req.params.uid)
+  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
+  res.json({ redirect_pages: state.redirectPages.filter((p) => p.ab_test_id === abTest.id) })
+})
+
+// ── スプリットテスト設定6種（§9-5）──
+abTestsRouter.get('/ab_tests/:uid/split_test_settings/:type', (req, res) => {
+  const state = getState()
+  const abTest = findAbTest(state, req.params.uid)
+  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
+  const type = req.params.type
+  if (!isSplitTestType(type)) return notFound(res, '設定種別が不正です。')
+  const stored = state.splitTestSettings.find((s) => s.ab_test_id === abTest.id && s.type === type)
+  res.json({
+    split_test_setting: stored ?? {
+      id: 0,
+      ab_test_id: abTest.id,
+      type,
+      rules: SPLIT_TEST_DEFAULTS[type],
+    },
+  })
+})
+
+abTestsRouter.put('/ab_tests/:uid/split_test_settings/:type', (req, res) => {
+  const state = getState()
+  const abTest = findAbTest(state, req.params.uid)
+  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
+  const type = req.params.type
+  if (!isSplitTestType(type)) return notFound(res, '設定種別が不正です。')
+  const body = req.body as { rules?: unknown }
+  const rules = Array.isArray(body.rules) ? body.rules : SPLIT_TEST_DEFAULTS[type]
+  const setting = { id: state.nextId, ab_test_id: abTest.id, type, rules }
+  setState((s) => ({
+    ...s,
+    splitTestSettings: [
+      ...s.splitTestSettings.filter((x) => !(x.ab_test_id === abTest.id && x.type === type)),
+      setting,
+    ],
+    nextId: s.nextId + 1,
+  }))
+  res.json({ split_test_setting: setting })
+})
+
+// ── 振り分け設定 ──
+abTestsRouter.get('/ab_tests/:uid/options/devide', (req, res) => {
+  const state = getState()
+  const abTest = findAbTest(state, req.params.uid)
+  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
+  res.json({ devide: { ab_test_uid: abTest.uid, mode: 'ratio', enabled: false } })
+})
+
+abTestsRouter.put('/ab_tests/:uid/options/devide', (req, res) => {
+  const state = getState()
+  const abTest = findAbTest(state, req.params.uid)
+  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
+  res.json({
+    devide: {
+      ab_test_uid: abTest.uid,
+      mode: optionalString(req.body, 'mode') || 'ratio',
+      enabled: true,
+    },
+  })
+})
+
+// ── レポート系（§10-3・派生KPIは §10-5 恒等式）──
+function reportRows(uid: string, scope: 'version' | 'lp' | 'creative', query: unknown) {
+  const state = getState()
+  const abTest = findAbTest(state, uid)
+  if (abTest === undefined) return null
+  const { startDate, endDate } = dateRangeParams(query as Record<string, unknown>)
+  const articleIds = state.articles.filter((a) => a.ab_test_id === abTest.id).map((a) => a.id)
+  const versions = state.versions.filter((v) => articleIds.includes(v.article_id))
+  const rows = versions.map((version) => {
+    const metrics = state.metrics.filter(
+      (m) => m.entity_uid === version.uid && isWithin(m.date, startDate, endDate),
+    )
+    return {
+      scope,
+      entity_uid: version.uid,
+      name: version.name,
+      status: version.status,
+      distribution_ratio: version.distribution_ratio,
+      ...(metrics.length === 0 ? deriveKpi({ pv: 0, click: 0, cv: 0, ad_cost: 0 }) : aggregate(metrics)),
+    }
+  })
+  const abTestMetrics = state.metrics.filter(
+    (m) => m.entity_uid === abTest.uid && isWithin(m.date, startDate, endDate),
+  )
+  return { rows, totals: aggregate(abTestMetrics), period: { start_date: startDate, end_date: endDate } }
+}
+
+abTestsRouter.get('/ab_tests/:uid/reports', (req, res) => {
+  const out = reportRows(req.params.uid, 'version', req.query)
+  if (out === null) return notFound(res, 'beyondページが見つかりません。')
+  res.json({ ...out, rows: applyEmptyState(req, out.rows) })
+})
+
+abTestsRouter.get('/ab_tests/:uid/reports/lp', (req, res) => {
+  const out = reportRows(req.params.uid, 'lp', req.query)
+  if (out === null) return notFound(res, 'beyondページが見つかりません。')
+  res.json({ ...out, rows: applyEmptyState(req, out.rows) })
+})
+
+abTestsRouter.get('/ab_tests/:uid/reports/swipe', (req, res) => {
+  const out = reportRows(req.params.uid, 'version', req.query)
+  if (out === null) return notFound(res, 'beyondページが見つかりません。')
+  res.json({ ...out, rows: applyEmptyState(req, out.rows) })
+})
+
+abTestsRouter.get('/ab_tests/:uid/creative_report', (req, res) => {
+  const out = reportRows(req.params.uid, 'creative', req.query)
+  if (out === null) return notFound(res, 'beyondページが見つかりません。')
+  res.json({ ...out, rows: applyEmptyState(req, out.rows) })
+})
+
+/** ヒートマップ比較（§9-4）。密度は再現対象外・すべて合成。 */
+abTestsRouter.get('/ab_tests/:uid/heatmaps/comparisons', (req, res) => {
+  const state = getState()
+  const abTest = findAbTest(state, req.params.uid)
+  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
+  const heatmaps = state.heatmaps.filter((h) => h.ab_test_uid === abTest.uid)
+  res.json({ heatmaps: applyEmptyState(req, heatmaps) })
+})

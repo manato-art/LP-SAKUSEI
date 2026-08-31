@@ -1,0 +1,6756 @@
+{
+  "_spec": "企画書 §5-4 capture-plan。基準状態＝新規アカウント（空）＋作成フロー（§1-4）",
+  "_usage": "priority=1 の state を今回の採取範囲とする。priority=3 は populated 前提のため後日の実データ取込フェーズ。",
+  "_app_base": "{APP_BASE} は採取係が自分の環境で置換する（本番ドメインをこのファイルに書かない・§3-2）",
+  "_capture_output": "各stateで dom.html / iframe.html(該当時) / computed.json / screenshot.png / network.har / fixtures/*.json を隔離ディレクトリへ保存（§5-1[1]）",
+  "generated_from": "docs/routes.json",
+  "route_count": 80,
+  "viewports": [
+    {
+      "name": "pc",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "name": "sp",
+      "width": 430,
+      "height": 932
+    }
+  ],
+  "global_states": [
+    {
+      "name": "global__sidebar-active",
+      "interactions": [],
+      "priority": 1,
+      "note": "サイドバーの現在地ハイライト"
+    },
+    {
+      "name": "global__sidebar-hover",
+      "interactions": [
+        "hover:サイドバー各項目"
+      ],
+      "priority": 2
+    },
+    {
+      "name": "global__folder-tree-open",
+      "interactions": [
+        "click:フォルダ木の展開"
+      ],
+      "priority": 1
+    },
+    {
+      "name": "global__team-switcher-open",
+      "interactions": [
+        "click:ヘッダのチーム名"
+      ],
+      "priority": 1
+    },
+    {
+      "name": "global__notification-center",
+      "interactions": [
+        "click:ヘッダの通知アイコン"
+      ],
+      "priority": 2
+    },
+    {
+      "name": "global__toast-success",
+      "interactions": [
+        "任意の保存操作を成功させる"
+      ],
+      "priority": 1
+    },
+    {
+      "name": "global__toast-error",
+      "interactions": [
+        "バリデーションエラーになる保存を実行"
+      ],
+      "priority": 2
+    },
+    {
+      "name": "global__session-expired",
+      "interactions": [],
+      "priority": 3,
+      "note": "観測困難。手構築の可能性（§5-7）"
+    }
+  ],
+  "routes": [
+    {
+      "route": "/users/sign_up",
+      "slug": "users__sign_up",
+      "url": "{APP_BASE}/users/sign_up",
+      "tier": 1,
+      "kind": "wizard",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /users/sign_up"
+      ],
+      "params": [],
+      "states": [
+        {
+          "name": "step1",
+          "interactions": [],
+          "priority": 1
+        },
+        {
+          "name": "step1-validation-error",
+          "interactions": [
+            "click:次へ（未入力のまま）"
+          ],
+          "priority": 1
+        },
+        {
+          "name": "step2",
+          "interactions": [
+            "input:必須項目",
+            "click:次へ"
+          ],
+          "priority": 1
+        },
+        {
+          "name": "step2-validation-error",
+          "interactions": [
+            "input:必須項目",
+            "click:次へ",
+            "click:次へ（未入力のまま）"
+          ],
+          "priority": 1
+        },
+        {
+          "name": "submit-success",
+          "interactions": [
+            "最終ステップまで入力",
+            "click:完了"
+          ],
+          "priority": 2
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/users/confirmation",
+      "slug": "users__confirmation",
+      "url": "{APP_BASE}/users/confirmation",
+      "tier": 1,
+      "kind": "form",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /users/confirmation"
+      ],
+      "params": [],
+      "states": [
+        {
+          "name": "default",
+          "interactions": [],
+          "priority": 1
+        },
+        {
+          "name": "form-empty",
+          "interactions": [],
+          "priority": 1
+        },
+        {
+          "name": "form-invalid",
+          "interactions": [
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1
+        },
+        {
+          "name": "submitting",
+          "interactions": [
+            "input:必須項目",
+            "click:保存"
+          ],
+          "priority": 2
+        },
+        {
+          "name": "submit-success",
+          "interactions": [
+            "input:必須項目",
+            "click:保存",
+            "wait:トースト"
+          ],
+          "priority": 1
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/users/confirmation/code/new",
+      "slug": "users__confirmation__code__new",
+      "url": "{APP_BASE}/users/confirmation/code/new",
+      "tier": 1,
+      "kind": "form",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /users/confirmation/code/new"
+      ],
+      "params": [],
+      "states": [
+        {
+          "name": "default",
+          "interactions": [],
+          "priority": 1
+        },
+        {
+          "name": "form-empty",
+          "interactions": [],
+          "priority": 1
+        },
+        {
+          "name": "form-invalid",
+          "interactions": [
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1
+        },
+        {
+          "name": "submitting",
+          "interactions": [
+            "input:必須項目",
+            "click:保存"
+          ],
+          "priority": 2
+        },
+        {
+          "name": "submit-success",
+          "interactions": [
+            "input:必須項目",
+            "click:保存",
+            "wait:トースト"
+          ],
+          "priority": 1
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/users/forgot_password",
+      "slug": "users__forgot_password",
+      "url": "{APP_BASE}/users/forgot_password",
+      "tier": 1,
+      "kind": "form",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /users/forgot_password"
+      ],
+      "params": [],
+      "states": [
+        {
+          "name": "default",
+          "interactions": [],
+          "priority": 1
+        },
+        {
+          "name": "form-empty",
+          "interactions": [],
+          "priority": 1
+        },
+        {
+          "name": "form-invalid",
+          "interactions": [
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1
+        },
+        {
+          "name": "submitting",
+          "interactions": [
+            "input:必須項目",
+            "click:保存"
+          ],
+          "priority": 2
+        },
+        {
+          "name": "submit-success",
+          "interactions": [
+            "input:必須項目",
+            "click:保存",
+            "wait:トースト"
+          ],
+          "priority": 1
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/users/password/edit",
+      "slug": "users__password__edit",
+      "url": "{APP_BASE}/users/password/edit",
+      "tier": 1,
+      "kind": "form",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /users/password/edit"
+      ],
+      "params": [],
+      "states": [
+        {
+          "name": "default",
+          "interactions": [],
+          "priority": 1
+        },
+        {
+          "name": "form-empty",
+          "interactions": [],
+          "priority": 1
+        },
+        {
+          "name": "form-invalid",
+          "interactions": [
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1
+        },
+        {
+          "name": "submitting",
+          "interactions": [
+            "input:必須項目",
+            "click:保存"
+          ],
+          "priority": 2
+        },
+        {
+          "name": "submit-success",
+          "interactions": [
+            "input:必須項目",
+            "click:保存",
+            "wait:トースト"
+          ],
+          "priority": 1
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/users/edit",
+      "slug": "users__edit",
+      "url": "{APP_BASE}/users/edit",
+      "tier": 3,
+      "kind": "form",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /users/edit"
+      ],
+      "params": [],
+      "states": [
+        {
+          "name": "default",
+          "interactions": [],
+          "priority": 1
+        },
+        {
+          "name": "form-empty",
+          "interactions": [],
+          "priority": 1
+        },
+        {
+          "name": "form-invalid",
+          "interactions": [
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1
+        },
+        {
+          "name": "submitting",
+          "interactions": [
+            "input:必須項目",
+            "click:保存"
+          ],
+          "priority": 2
+        },
+        {
+          "name": "submit-success",
+          "interactions": [
+            "input:必須項目",
+            "click:保存",
+            "wait:トースト"
+          ],
+          "priority": 1
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/users/public_api_key",
+      "slug": "users__public_api_key",
+      "url": "{APP_BASE}/users/public_api_key",
+      "tier": 3,
+      "kind": "form",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /users/public_api_key"
+      ],
+      "params": [],
+      "states": [
+        {
+          "name": "default",
+          "interactions": [],
+          "priority": 1
+        },
+        {
+          "name": "form-empty",
+          "interactions": [],
+          "priority": 1
+        },
+        {
+          "name": "form-invalid",
+          "interactions": [
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1
+        },
+        {
+          "name": "submitting",
+          "interactions": [
+            "input:必須項目",
+            "click:保存"
+          ],
+          "priority": 2
+        },
+        {
+          "name": "submit-success",
+          "interactions": [
+            "input:必須項目",
+            "click:保存",
+            "wait:トースト"
+          ],
+          "priority": 1
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/users/teams",
+      "slug": "users__teams",
+      "url": "{APP_BASE}/users/teams",
+      "tier": 3,
+      "kind": "form",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /users/teams"
+      ],
+      "params": [],
+      "states": [
+        {
+          "name": "default",
+          "interactions": [],
+          "priority": 1
+        },
+        {
+          "name": "form-empty",
+          "interactions": [],
+          "priority": 1
+        },
+        {
+          "name": "form-invalid",
+          "interactions": [
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1
+        },
+        {
+          "name": "submitting",
+          "interactions": [
+            "input:必須項目",
+            "click:保存"
+          ],
+          "priority": 2
+        },
+        {
+          "name": "submit-success",
+          "interactions": [
+            "input:必須項目",
+            "click:保存",
+            "wait:トースト"
+          ],
+          "priority": 1
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/",
+      "slug": "root",
+      "url": "{APP_BASE}/",
+      "tier": 1,
+      "kind": "list",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /teams/dashboard",
+        "GET /ab_tests/rankings",
+        "GET /teams/version-rankings"
+      ],
+      "params": [],
+      "states": [
+        {
+          "name": "empty",
+          "interactions": [],
+          "priority": 1,
+          "note": "基準状態（新規アカウント＝0件・§1-4）。新規アカウントでは default と同一画面なので empty に一本化"
+        },
+        {
+          "name": "loading",
+          "interactions": [
+            "network:throttle-slow",
+            "reload"
+          ],
+          "priority": 2,
+          "note": "スケルトン/スピナー"
+        },
+        {
+          "name": "error",
+          "interactions": [],
+          "priority": 3,
+          "note": "実サイトでは意図的に出せない。手構築（§5-7）"
+        },
+        {
+          "name": "create-modal-open",
+          "interactions": [
+            "click:新規作成ボタン"
+          ],
+          "priority": 1,
+          "note": "作成フロー起点"
+        },
+        {
+          "name": "create-form-invalid",
+          "interactions": [
+            "click:新規作成ボタン",
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1,
+          "note": "バリデーション文言はverbatim保持対象"
+        },
+        {
+          "name": "create-submitting",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存"
+          ],
+          "priority": 2,
+          "note": "送信中disabled"
+        },
+        {
+          "name": "create-success",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存",
+            "wait:一覧反映"
+          ],
+          "priority": 1,
+          "note": "作成→一覧に出る（§10-9）"
+        },
+        {
+          "name": "normal",
+          "interactions": [],
+          "priority": 3,
+          "note": "populated前提・後日フェーズ"
+        },
+        {
+          "name": "page-last",
+          "interactions": [
+            "click:最終ページ"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "sort-desc",
+          "interactions": [
+            "click:列見出し"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "filter-empty",
+          "interactions": [
+            "input:検索に一致しない語"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "delete-confirm",
+          "interactions": [
+            "click:行の削除",
+            "wait:確認ダイアログ"
+          ],
+          "priority": 3
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/dashboard",
+      "slug": "dashboard",
+      "url": "{APP_BASE}/dashboard",
+      "tier": 1,
+      "kind": "list",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /teams/dashboard",
+        "GET /ab_tests/rankings",
+        "GET /teams/version-rankings"
+      ],
+      "params": [],
+      "states": [
+        {
+          "name": "empty",
+          "interactions": [],
+          "priority": 1,
+          "note": "基準状態（新規アカウント＝0件・§1-4）。新規アカウントでは default と同一画面なので empty に一本化"
+        },
+        {
+          "name": "loading",
+          "interactions": [
+            "network:throttle-slow",
+            "reload"
+          ],
+          "priority": 2,
+          "note": "スケルトン/スピナー"
+        },
+        {
+          "name": "error",
+          "interactions": [],
+          "priority": 3,
+          "note": "実サイトでは意図的に出せない。手構築（§5-7）"
+        },
+        {
+          "name": "create-modal-open",
+          "interactions": [
+            "click:新規作成ボタン"
+          ],
+          "priority": 1,
+          "note": "作成フロー起点"
+        },
+        {
+          "name": "create-form-invalid",
+          "interactions": [
+            "click:新規作成ボタン",
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1,
+          "note": "バリデーション文言はverbatim保持対象"
+        },
+        {
+          "name": "create-submitting",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存"
+          ],
+          "priority": 2,
+          "note": "送信中disabled"
+        },
+        {
+          "name": "create-success",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存",
+            "wait:一覧反映"
+          ],
+          "priority": 1,
+          "note": "作成→一覧に出る（§10-9）"
+        },
+        {
+          "name": "normal",
+          "interactions": [],
+          "priority": 3,
+          "note": "populated前提・後日フェーズ"
+        },
+        {
+          "name": "page-last",
+          "interactions": [
+            "click:最終ページ"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "sort-desc",
+          "interactions": [
+            "click:列見出し"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "filter-empty",
+          "interactions": [
+            "input:検索に一致しない語"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "delete-confirm",
+          "interactions": [
+            "click:行の削除",
+            "wait:確認ダイアログ"
+          ],
+          "priority": 3
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/dashboard/:uid",
+      "slug": "dashboard__UID",
+      "url": "{APP_BASE}/dashboard/:uid",
+      "tier": 1,
+      "kind": "list",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /teams/dashboard",
+        "GET /ab_tests/rankings",
+        "GET /teams/version-rankings"
+      ],
+      "params": [
+        "uid"
+      ],
+      "states": [
+        {
+          "name": "empty",
+          "interactions": [],
+          "priority": 1,
+          "note": "基準状態（新規アカウント＝0件・§1-4）。新規アカウントでは default と同一画面なので empty に一本化"
+        },
+        {
+          "name": "loading",
+          "interactions": [
+            "network:throttle-slow",
+            "reload"
+          ],
+          "priority": 2,
+          "note": "スケルトン/スピナー"
+        },
+        {
+          "name": "error",
+          "interactions": [],
+          "priority": 3,
+          "note": "実サイトでは意図的に出せない。手構築（§5-7）"
+        },
+        {
+          "name": "create-modal-open",
+          "interactions": [
+            "click:新規作成ボタン"
+          ],
+          "priority": 1,
+          "note": "作成フロー起点"
+        },
+        {
+          "name": "create-form-invalid",
+          "interactions": [
+            "click:新規作成ボタン",
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1,
+          "note": "バリデーション文言はverbatim保持対象"
+        },
+        {
+          "name": "create-submitting",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存"
+          ],
+          "priority": 2,
+          "note": "送信中disabled"
+        },
+        {
+          "name": "create-success",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存",
+            "wait:一覧反映"
+          ],
+          "priority": 1,
+          "note": "作成→一覧に出る（§10-9）"
+        },
+        {
+          "name": "normal",
+          "interactions": [],
+          "priority": 3,
+          "note": "populated前提・後日フェーズ"
+        },
+        {
+          "name": "page-last",
+          "interactions": [
+            "click:最終ページ"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "sort-desc",
+          "interactions": [
+            "click:列見出し"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "filter-empty",
+          "interactions": [
+            "input:検索に一致しない語"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "delete-confirm",
+          "interactions": [
+            "click:行の削除",
+            "wait:確認ダイアログ"
+          ],
+          "priority": 3
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/ab_tests/:ab_test_uid/articles",
+      "slug": "ab_tests__UID__articles",
+      "url": "{APP_BASE}/ab_tests/:ab_test_uid/articles",
+      "tier": 2,
+      "kind": "editor",
+      "screen": "LPエディタ本体(3レール)",
+      "capture_iframe": true,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /ab_tests/:uid",
+        "GET /ab_tests/:uid/articles",
+        "GET /articles/:uid/versions"
+      ],
+      "params": [
+        "ab_test_uid"
+      ],
+      "states": [
+        {
+          "name": "default",
+          "interactions": [],
+          "priority": 1,
+          "note": "3レール（左=タブ / 中央=PC/SP iframe / 右=編集ツール）"
+        },
+        {
+          "name": "tab-basic",
+          "interactions": [
+            "click:左レール 基本情報"
+          ],
+          "priority": 1
+        },
+        {
+          "name": "tab-version",
+          "interactions": [
+            "click:左レール Version"
+          ],
+          "priority": 1,
+          "note": "Version名+配信割合入力+更新+Version追加"
+        },
+        {
+          "name": "tab-popup",
+          "interactions": [
+            "click:左レール ポップアップ"
+          ],
+          "priority": 1
+        },
+        {
+          "name": "tab-report",
+          "interactions": [
+            "click:左レール レポート"
+          ],
+          "priority": 1
+        },
+        {
+          "name": "preview-pc",
+          "interactions": [
+            "click:PC表示"
+          ],
+          "priority": 1,
+          "note": "iframe 約620×486"
+        },
+        {
+          "name": "preview-sp",
+          "interactions": [
+            "click:SP表示"
+          ],
+          "priority": 1,
+          "note": "iframe 約430×640"
+        },
+        {
+          "name": "code-editor-open",
+          "interactions": [
+            "click:右レール コード編集"
+          ],
+          "priority": 1
+        },
+        {
+          "name": "image-picker-open",
+          "interactions": [
+            "click:右レール 画像追加"
+          ],
+          "priority": 1
+        },
+        {
+          "name": "text-tool-open",
+          "interactions": [
+            "click:右レール テキスト追加"
+          ],
+          "priority": 1
+        },
+        {
+          "name": "block-library-open",
+          "interactions": [
+            "click:右レール ブロック追加"
+          ],
+          "priority": 1,
+          "note": "ブロックテンプレHTMLをライブラリ化（§9-1[4]）"
+        },
+        {
+          "name": "history-open",
+          "interactions": [
+            "click:右レール 履歴"
+          ],
+          "priority": 2
+        },
+        {
+          "name": "publish-confirm",
+          "interactions": [
+            "click:公開",
+            "wait:確認ダイアログ"
+          ],
+          "priority": 1,
+          "note": "状態バッジ 準備中→公開中"
+        },
+        {
+          "name": "version-add",
+          "interactions": [
+            "click:左レール Version",
+            "click:Version追加"
+          ],
+          "priority": 1
+        },
+        {
+          "name": "ratio-invalid",
+          "interactions": [
+            "click:左レール Version",
+            "input:配信割合に不正値",
+            "click:更新"
+          ],
+          "priority": 1,
+          "note": "合計100%警告の文言を採る"
+        }
+      ],
+      "priority1_count": 14,
+      "priority1_shots": 28
+    },
+    {
+      "route": "/ab_tests/:ab_test_uid/articles/:article_uid/previews",
+      "slug": "ab_tests__UID__articles__UID__previews",
+      "url": "{APP_BASE}/ab_tests/:ab_test_uid/articles/:article_uid/previews",
+      "tier": 2,
+      "kind": "list",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /ab_tests/:ab_test_uid/articles/:article_uid/previews"
+      ],
+      "params": [
+        "ab_test_uid",
+        "article_uid"
+      ],
+      "states": [
+        {
+          "name": "empty",
+          "interactions": [],
+          "priority": 1,
+          "note": "基準状態（新規アカウント＝0件・§1-4）。新規アカウントでは default と同一画面なので empty に一本化"
+        },
+        {
+          "name": "loading",
+          "interactions": [
+            "network:throttle-slow",
+            "reload"
+          ],
+          "priority": 2,
+          "note": "スケルトン/スピナー"
+        },
+        {
+          "name": "error",
+          "interactions": [],
+          "priority": 3,
+          "note": "実サイトでは意図的に出せない。手構築（§5-7）"
+        },
+        {
+          "name": "create-modal-open",
+          "interactions": [
+            "click:新規作成ボタン"
+          ],
+          "priority": 1,
+          "note": "作成フロー起点"
+        },
+        {
+          "name": "create-form-invalid",
+          "interactions": [
+            "click:新規作成ボタン",
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1,
+          "note": "バリデーション文言はverbatim保持対象"
+        },
+        {
+          "name": "create-submitting",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存"
+          ],
+          "priority": 2,
+          "note": "送信中disabled"
+        },
+        {
+          "name": "create-success",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存",
+            "wait:一覧反映"
+          ],
+          "priority": 1,
+          "note": "作成→一覧に出る（§10-9）"
+        },
+        {
+          "name": "normal",
+          "interactions": [],
+          "priority": 3,
+          "note": "populated前提・後日フェーズ"
+        },
+        {
+          "name": "page-last",
+          "interactions": [
+            "click:最終ページ"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "sort-desc",
+          "interactions": [
+            "click:列見出し"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "filter-empty",
+          "interactions": [
+            "input:検索に一致しない語"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "delete-confirm",
+          "interactions": [
+            "click:行の削除",
+            "wait:確認ダイアログ"
+          ],
+          "priority": 3
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/ab_tests/:ab_test_uid/articles/exit_popups",
+      "slug": "ab_tests__UID__articles__exit_popups",
+      "url": "{APP_BASE}/ab_tests/:ab_test_uid/articles/exit_popups",
+      "tier": 2,
+      "kind": "list",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /ab_tests/:ab_test_uid/articles/exit_popups"
+      ],
+      "params": [
+        "ab_test_uid"
+      ],
+      "states": [
+        {
+          "name": "empty",
+          "interactions": [],
+          "priority": 1,
+          "note": "基準状態（新規アカウント＝0件・§1-4）。新規アカウントでは default と同一画面なので empty に一本化"
+        },
+        {
+          "name": "loading",
+          "interactions": [
+            "network:throttle-slow",
+            "reload"
+          ],
+          "priority": 2,
+          "note": "スケルトン/スピナー"
+        },
+        {
+          "name": "error",
+          "interactions": [],
+          "priority": 3,
+          "note": "実サイトでは意図的に出せない。手構築（§5-7）"
+        },
+        {
+          "name": "create-modal-open",
+          "interactions": [
+            "click:新規作成ボタン"
+          ],
+          "priority": 1,
+          "note": "作成フロー起点"
+        },
+        {
+          "name": "create-form-invalid",
+          "interactions": [
+            "click:新規作成ボタン",
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1,
+          "note": "バリデーション文言はverbatim保持対象"
+        },
+        {
+          "name": "create-submitting",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存"
+          ],
+          "priority": 2,
+          "note": "送信中disabled"
+        },
+        {
+          "name": "create-success",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存",
+            "wait:一覧反映"
+          ],
+          "priority": 1,
+          "note": "作成→一覧に出る（§10-9）"
+        },
+        {
+          "name": "normal",
+          "interactions": [],
+          "priority": 3,
+          "note": "populated前提・後日フェーズ"
+        },
+        {
+          "name": "page-last",
+          "interactions": [
+            "click:最終ページ"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "sort-desc",
+          "interactions": [
+            "click:列見出し"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "filter-empty",
+          "interactions": [
+            "input:検索に一致しない語"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "delete-confirm",
+          "interactions": [
+            "click:行の削除",
+            "wait:確認ダイアログ"
+          ],
+          "priority": 3
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/ab_tests/:ab_test_uid/articles/htmls/heatmaps/comparisons",
+      "slug": "ab_tests__UID__articles__htmls__heatmaps__comparisons",
+      "url": "{APP_BASE}/ab_tests/:ab_test_uid/articles/htmls/heatmaps/comparisons",
+      "tier": 2,
+      "kind": "list",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /ab_tests/:ab_test_uid/articles/htmls/heatmaps/comparisons"
+      ],
+      "params": [
+        "ab_test_uid"
+      ],
+      "states": [
+        {
+          "name": "empty",
+          "interactions": [],
+          "priority": 1,
+          "note": "基準状態（新規アカウント＝0件・§1-4）。新規アカウントでは default と同一画面なので empty に一本化"
+        },
+        {
+          "name": "loading",
+          "interactions": [
+            "network:throttle-slow",
+            "reload"
+          ],
+          "priority": 2,
+          "note": "スケルトン/スピナー"
+        },
+        {
+          "name": "error",
+          "interactions": [],
+          "priority": 3,
+          "note": "実サイトでは意図的に出せない。手構築（§5-7）"
+        },
+        {
+          "name": "create-modal-open",
+          "interactions": [
+            "click:新規作成ボタン"
+          ],
+          "priority": 1,
+          "note": "作成フロー起点"
+        },
+        {
+          "name": "create-form-invalid",
+          "interactions": [
+            "click:新規作成ボタン",
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1,
+          "note": "バリデーション文言はverbatim保持対象"
+        },
+        {
+          "name": "create-submitting",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存"
+          ],
+          "priority": 2,
+          "note": "送信中disabled"
+        },
+        {
+          "name": "create-success",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存",
+            "wait:一覧反映"
+          ],
+          "priority": 1,
+          "note": "作成→一覧に出る（§10-9）"
+        },
+        {
+          "name": "normal",
+          "interactions": [],
+          "priority": 3,
+          "note": "populated前提・後日フェーズ"
+        },
+        {
+          "name": "page-last",
+          "interactions": [
+            "click:最終ページ"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "sort-desc",
+          "interactions": [
+            "click:列見出し"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "filter-empty",
+          "interactions": [
+            "input:検索に一致しない語"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "delete-confirm",
+          "interactions": [
+            "click:行の削除",
+            "wait:確認ダイアログ"
+          ],
+          "priority": 3
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/ab_tests/:ab_test_uid/articles/split_test_settings/carriers",
+      "slug": "ab_tests__UID__articles__split_test_settings__carriers",
+      "url": "{APP_BASE}/ab_tests/:ab_test_uid/articles/split_test_settings/carriers",
+      "tier": 2,
+      "kind": "settings",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /ab_tests/:uid/split_test_settings/:type"
+      ],
+      "params": [
+        "ab_test_uid"
+      ],
+      "states": [
+        {
+          "name": "default",
+          "interactions": [],
+          "priority": 1
+        },
+        {
+          "name": "form-empty",
+          "interactions": [],
+          "priority": 1
+        },
+        {
+          "name": "form-invalid",
+          "interactions": [
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1
+        },
+        {
+          "name": "submitting",
+          "interactions": [
+            "input:必須項目",
+            "click:保存"
+          ],
+          "priority": 2
+        },
+        {
+          "name": "submit-success",
+          "interactions": [
+            "input:必須項目",
+            "click:保存",
+            "wait:トースト"
+          ],
+          "priority": 1
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/ab_tests/:ab_test_uid/articles/split_test_settings/devices",
+      "slug": "ab_tests__UID__articles__split_test_settings__devices",
+      "url": "{APP_BASE}/ab_tests/:ab_test_uid/articles/split_test_settings/devices",
+      "tier": 2,
+      "kind": "settings",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /ab_tests/:uid/split_test_settings/:type"
+      ],
+      "params": [
+        "ab_test_uid"
+      ],
+      "states": [
+        {
+          "name": "default",
+          "interactions": [],
+          "priority": 1
+        },
+        {
+          "name": "form-empty",
+          "interactions": [],
+          "priority": 1
+        },
+        {
+          "name": "form-invalid",
+          "interactions": [
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1
+        },
+        {
+          "name": "submitting",
+          "interactions": [
+            "input:必須項目",
+            "click:保存"
+          ],
+          "priority": 2
+        },
+        {
+          "name": "submit-success",
+          "interactions": [
+            "input:必須項目",
+            "click:保存",
+            "wait:トースト"
+          ],
+          "priority": 1
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/ab_tests/:ab_test_uid/articles/split_test_settings/hours",
+      "slug": "ab_tests__UID__articles__split_test_settings__hours",
+      "url": "{APP_BASE}/ab_tests/:ab_test_uid/articles/split_test_settings/hours",
+      "tier": 2,
+      "kind": "settings",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /ab_tests/:uid/split_test_settings/:type"
+      ],
+      "params": [
+        "ab_test_uid"
+      ],
+      "states": [
+        {
+          "name": "default",
+          "interactions": [],
+          "priority": 1
+        },
+        {
+          "name": "form-empty",
+          "interactions": [],
+          "priority": 1
+        },
+        {
+          "name": "form-invalid",
+          "interactions": [
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1
+        },
+        {
+          "name": "submitting",
+          "interactions": [
+            "input:必須項目",
+            "click:保存"
+          ],
+          "priority": 2
+        },
+        {
+          "name": "submit-success",
+          "interactions": [
+            "input:必須項目",
+            "click:保存",
+            "wait:トースト"
+          ],
+          "priority": 1
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/ab_tests/:ab_test_uid/articles/split_test_settings/oses",
+      "slug": "ab_tests__UID__articles__split_test_settings__oses",
+      "url": "{APP_BASE}/ab_tests/:ab_test_uid/articles/split_test_settings/oses",
+      "tier": 2,
+      "kind": "settings",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /ab_tests/:uid/split_test_settings/:type"
+      ],
+      "params": [
+        "ab_test_uid"
+      ],
+      "states": [
+        {
+          "name": "default",
+          "interactions": [],
+          "priority": 1
+        },
+        {
+          "name": "form-empty",
+          "interactions": [],
+          "priority": 1
+        },
+        {
+          "name": "form-invalid",
+          "interactions": [
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1
+        },
+        {
+          "name": "submitting",
+          "interactions": [
+            "input:必須項目",
+            "click:保存"
+          ],
+          "priority": 2
+        },
+        {
+          "name": "submit-success",
+          "interactions": [
+            "input:必須項目",
+            "click:保存",
+            "wait:トースト"
+          ],
+          "priority": 1
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/ab_tests/:ab_test_uid/articles/split_test_settings/params",
+      "slug": "ab_tests__UID__articles__split_test_settings__params",
+      "url": "{APP_BASE}/ab_tests/:ab_test_uid/articles/split_test_settings/params",
+      "tier": 2,
+      "kind": "settings",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /ab_tests/:uid/split_test_settings/:type"
+      ],
+      "params": [
+        "ab_test_uid"
+      ],
+      "states": [
+        {
+          "name": "default",
+          "interactions": [],
+          "priority": 1
+        },
+        {
+          "name": "form-empty",
+          "interactions": [],
+          "priority": 1
+        },
+        {
+          "name": "form-invalid",
+          "interactions": [
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1
+        },
+        {
+          "name": "submitting",
+          "interactions": [
+            "input:必須項目",
+            "click:保存"
+          ],
+          "priority": 2
+        },
+        {
+          "name": "submit-success",
+          "interactions": [
+            "input:必須項目",
+            "click:保存",
+            "wait:トースト"
+          ],
+          "priority": 1
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/ab_tests/:ab_test_uid/articles/split_test_settings/periods",
+      "slug": "ab_tests__UID__articles__split_test_settings__periods",
+      "url": "{APP_BASE}/ab_tests/:ab_test_uid/articles/split_test_settings/periods",
+      "tier": 2,
+      "kind": "settings",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /ab_tests/:uid/split_test_settings/:type"
+      ],
+      "params": [
+        "ab_test_uid"
+      ],
+      "states": [
+        {
+          "name": "default",
+          "interactions": [],
+          "priority": 1
+        },
+        {
+          "name": "form-empty",
+          "interactions": [],
+          "priority": 1
+        },
+        {
+          "name": "form-invalid",
+          "interactions": [
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1
+        },
+        {
+          "name": "submitting",
+          "interactions": [
+            "input:必須項目",
+            "click:保存"
+          ],
+          "priority": 2
+        },
+        {
+          "name": "submit-success",
+          "interactions": [
+            "input:必須項目",
+            "click:保存",
+            "wait:トースト"
+          ],
+          "priority": 1
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/ab_tests/:ab_test_uid/creative_report",
+      "slug": "ab_tests__UID__creative_report",
+      "url": "{APP_BASE}/ab_tests/:ab_test_uid/creative_report",
+      "tier": 2,
+      "kind": "list",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /ab_tests/:ab_test_uid/creative_report"
+      ],
+      "params": [
+        "ab_test_uid"
+      ],
+      "states": [
+        {
+          "name": "empty",
+          "interactions": [],
+          "priority": 1,
+          "note": "基準状態（新規アカウント＝0件・§1-4）。新規アカウントでは default と同一画面なので empty に一本化"
+        },
+        {
+          "name": "loading",
+          "interactions": [
+            "network:throttle-slow",
+            "reload"
+          ],
+          "priority": 2,
+          "note": "スケルトン/スピナー"
+        },
+        {
+          "name": "error",
+          "interactions": [],
+          "priority": 3,
+          "note": "実サイトでは意図的に出せない。手構築（§5-7）"
+        },
+        {
+          "name": "create-modal-open",
+          "interactions": [
+            "click:新規作成ボタン"
+          ],
+          "priority": 1,
+          "note": "作成フロー起点"
+        },
+        {
+          "name": "create-form-invalid",
+          "interactions": [
+            "click:新規作成ボタン",
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1,
+          "note": "バリデーション文言はverbatim保持対象"
+        },
+        {
+          "name": "create-submitting",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存"
+          ],
+          "priority": 2,
+          "note": "送信中disabled"
+        },
+        {
+          "name": "create-success",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存",
+            "wait:一覧反映"
+          ],
+          "priority": 1,
+          "note": "作成→一覧に出る（§10-9）"
+        },
+        {
+          "name": "normal",
+          "interactions": [],
+          "priority": 3,
+          "note": "populated前提・後日フェーズ"
+        },
+        {
+          "name": "page-last",
+          "interactions": [
+            "click:最終ページ"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "sort-desc",
+          "interactions": [
+            "click:列見出し"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "filter-empty",
+          "interactions": [
+            "input:検索に一致しない語"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "delete-confirm",
+          "interactions": [
+            "click:行の削除",
+            "wait:確認ダイアログ"
+          ],
+          "priority": 3
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/ab_tests/:ab_test_uid/options/devide",
+      "slug": "ab_tests__UID__options__devide",
+      "url": "{APP_BASE}/ab_tests/:ab_test_uid/options/devide",
+      "tier": 2,
+      "kind": "list",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /ab_tests/:ab_test_uid/options/devide"
+      ],
+      "params": [
+        "ab_test_uid"
+      ],
+      "states": [
+        {
+          "name": "empty",
+          "interactions": [],
+          "priority": 1,
+          "note": "基準状態（新規アカウント＝0件・§1-4）。新規アカウントでは default と同一画面なので empty に一本化"
+        },
+        {
+          "name": "loading",
+          "interactions": [
+            "network:throttle-slow",
+            "reload"
+          ],
+          "priority": 2,
+          "note": "スケルトン/スピナー"
+        },
+        {
+          "name": "error",
+          "interactions": [],
+          "priority": 3,
+          "note": "実サイトでは意図的に出せない。手構築（§5-7）"
+        },
+        {
+          "name": "create-modal-open",
+          "interactions": [
+            "click:新規作成ボタン"
+          ],
+          "priority": 1,
+          "note": "作成フロー起点"
+        },
+        {
+          "name": "create-form-invalid",
+          "interactions": [
+            "click:新規作成ボタン",
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1,
+          "note": "バリデーション文言はverbatim保持対象"
+        },
+        {
+          "name": "create-submitting",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存"
+          ],
+          "priority": 2,
+          "note": "送信中disabled"
+        },
+        {
+          "name": "create-success",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存",
+            "wait:一覧反映"
+          ],
+          "priority": 1,
+          "note": "作成→一覧に出る（§10-9）"
+        },
+        {
+          "name": "normal",
+          "interactions": [],
+          "priority": 3,
+          "note": "populated前提・後日フェーズ"
+        },
+        {
+          "name": "page-last",
+          "interactions": [
+            "click:最終ページ"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "sort-desc",
+          "interactions": [
+            "click:列見出し"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "filter-empty",
+          "interactions": [
+            "input:検索に一致しない語"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "delete-confirm",
+          "interactions": [
+            "click:行の削除",
+            "wait:確認ダイアログ"
+          ],
+          "priority": 3
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/ab_tests/:ab_test_uid/redirect_pages",
+      "slug": "ab_tests__UID__redirect_pages",
+      "url": "{APP_BASE}/ab_tests/:ab_test_uid/redirect_pages",
+      "tier": 2,
+      "kind": "list",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /ab_tests/:ab_test_uid/redirect_pages"
+      ],
+      "params": [
+        "ab_test_uid"
+      ],
+      "states": [
+        {
+          "name": "empty",
+          "interactions": [],
+          "priority": 1,
+          "note": "基準状態（新規アカウント＝0件・§1-4）。新規アカウントでは default と同一画面なので empty に一本化"
+        },
+        {
+          "name": "loading",
+          "interactions": [
+            "network:throttle-slow",
+            "reload"
+          ],
+          "priority": 2,
+          "note": "スケルトン/スピナー"
+        },
+        {
+          "name": "error",
+          "interactions": [],
+          "priority": 3,
+          "note": "実サイトでは意図的に出せない。手構築（§5-7）"
+        },
+        {
+          "name": "create-modal-open",
+          "interactions": [
+            "click:新規作成ボタン"
+          ],
+          "priority": 1,
+          "note": "作成フロー起点"
+        },
+        {
+          "name": "create-form-invalid",
+          "interactions": [
+            "click:新規作成ボタン",
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1,
+          "note": "バリデーション文言はverbatim保持対象"
+        },
+        {
+          "name": "create-submitting",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存"
+          ],
+          "priority": 2,
+          "note": "送信中disabled"
+        },
+        {
+          "name": "create-success",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存",
+            "wait:一覧反映"
+          ],
+          "priority": 1,
+          "note": "作成→一覧に出る（§10-9）"
+        },
+        {
+          "name": "normal",
+          "interactions": [],
+          "priority": 3,
+          "note": "populated前提・後日フェーズ"
+        },
+        {
+          "name": "page-last",
+          "interactions": [
+            "click:最終ページ"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "sort-desc",
+          "interactions": [
+            "click:列見出し"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "filter-empty",
+          "interactions": [
+            "input:検索に一致しない語"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "delete-confirm",
+          "interactions": [
+            "click:行の削除",
+            "wait:確認ダイアログ"
+          ],
+          "priority": 3
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/ab_tests/:ab_test_uid/reports",
+      "slug": "ab_tests__UID__reports",
+      "url": "{APP_BASE}/ab_tests/:ab_test_uid/reports",
+      "tier": 2,
+      "kind": "list",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /ab_tests/:ab_test_uid/reports"
+      ],
+      "params": [
+        "ab_test_uid"
+      ],
+      "states": [
+        {
+          "name": "empty",
+          "interactions": [],
+          "priority": 1,
+          "note": "基準状態（新規アカウント＝0件・§1-4）。新規アカウントでは default と同一画面なので empty に一本化"
+        },
+        {
+          "name": "loading",
+          "interactions": [
+            "network:throttle-slow",
+            "reload"
+          ],
+          "priority": 2,
+          "note": "スケルトン/スピナー"
+        },
+        {
+          "name": "error",
+          "interactions": [],
+          "priority": 3,
+          "note": "実サイトでは意図的に出せない。手構築（§5-7）"
+        },
+        {
+          "name": "create-modal-open",
+          "interactions": [
+            "click:新規作成ボタン"
+          ],
+          "priority": 1,
+          "note": "作成フロー起点"
+        },
+        {
+          "name": "create-form-invalid",
+          "interactions": [
+            "click:新規作成ボタン",
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1,
+          "note": "バリデーション文言はverbatim保持対象"
+        },
+        {
+          "name": "create-submitting",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存"
+          ],
+          "priority": 2,
+          "note": "送信中disabled"
+        },
+        {
+          "name": "create-success",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存",
+            "wait:一覧反映"
+          ],
+          "priority": 1,
+          "note": "作成→一覧に出る（§10-9）"
+        },
+        {
+          "name": "normal",
+          "interactions": [],
+          "priority": 3,
+          "note": "populated前提・後日フェーズ"
+        },
+        {
+          "name": "page-last",
+          "interactions": [
+            "click:最終ページ"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "sort-desc",
+          "interactions": [
+            "click:列見出し"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "filter-empty",
+          "interactions": [
+            "input:検索に一致しない語"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "delete-confirm",
+          "interactions": [
+            "click:行の削除",
+            "wait:確認ダイアログ"
+          ],
+          "priority": 3
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/ab_tests/:ab_test_uid/reports/lp",
+      "slug": "ab_tests__UID__reports__lp",
+      "url": "{APP_BASE}/ab_tests/:ab_test_uid/reports/lp",
+      "tier": 2,
+      "kind": "list",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /ab_tests/:ab_test_uid/reports/lp"
+      ],
+      "params": [
+        "ab_test_uid"
+      ],
+      "states": [
+        {
+          "name": "empty",
+          "interactions": [],
+          "priority": 1,
+          "note": "基準状態（新規アカウント＝0件・§1-4）。新規アカウントでは default と同一画面なので empty に一本化"
+        },
+        {
+          "name": "loading",
+          "interactions": [
+            "network:throttle-slow",
+            "reload"
+          ],
+          "priority": 2,
+          "note": "スケルトン/スピナー"
+        },
+        {
+          "name": "error",
+          "interactions": [],
+          "priority": 3,
+          "note": "実サイトでは意図的に出せない。手構築（§5-7）"
+        },
+        {
+          "name": "create-modal-open",
+          "interactions": [
+            "click:新規作成ボタン"
+          ],
+          "priority": 1,
+          "note": "作成フロー起点"
+        },
+        {
+          "name": "create-form-invalid",
+          "interactions": [
+            "click:新規作成ボタン",
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1,
+          "note": "バリデーション文言はverbatim保持対象"
+        },
+        {
+          "name": "create-submitting",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存"
+          ],
+          "priority": 2,
+          "note": "送信中disabled"
+        },
+        {
+          "name": "create-success",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存",
+            "wait:一覧反映"
+          ],
+          "priority": 1,
+          "note": "作成→一覧に出る（§10-9）"
+        },
+        {
+          "name": "normal",
+          "interactions": [],
+          "priority": 3,
+          "note": "populated前提・後日フェーズ"
+        },
+        {
+          "name": "page-last",
+          "interactions": [
+            "click:最終ページ"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "sort-desc",
+          "interactions": [
+            "click:列見出し"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "filter-empty",
+          "interactions": [
+            "input:検索に一致しない語"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "delete-confirm",
+          "interactions": [
+            "click:行の削除",
+            "wait:確認ダイアログ"
+          ],
+          "priority": 3
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/ab_tests/:ab_test_uid/reports/swipe",
+      "slug": "ab_tests__UID__reports__swipe",
+      "url": "{APP_BASE}/ab_tests/:ab_test_uid/reports/swipe",
+      "tier": 2,
+      "kind": "list",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /ab_tests/:ab_test_uid/reports/swipe"
+      ],
+      "params": [
+        "ab_test_uid"
+      ],
+      "states": [
+        {
+          "name": "empty",
+          "interactions": [],
+          "priority": 1,
+          "note": "基準状態（新規アカウント＝0件・§1-4）。新規アカウントでは default と同一画面なので empty に一本化"
+        },
+        {
+          "name": "loading",
+          "interactions": [
+            "network:throttle-slow",
+            "reload"
+          ],
+          "priority": 2,
+          "note": "スケルトン/スピナー"
+        },
+        {
+          "name": "error",
+          "interactions": [],
+          "priority": 3,
+          "note": "実サイトでは意図的に出せない。手構築（§5-7）"
+        },
+        {
+          "name": "create-modal-open",
+          "interactions": [
+            "click:新規作成ボタン"
+          ],
+          "priority": 1,
+          "note": "作成フロー起点"
+        },
+        {
+          "name": "create-form-invalid",
+          "interactions": [
+            "click:新規作成ボタン",
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1,
+          "note": "バリデーション文言はverbatim保持対象"
+        },
+        {
+          "name": "create-submitting",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存"
+          ],
+          "priority": 2,
+          "note": "送信中disabled"
+        },
+        {
+          "name": "create-success",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存",
+            "wait:一覧反映"
+          ],
+          "priority": 1,
+          "note": "作成→一覧に出る（§10-9）"
+        },
+        {
+          "name": "normal",
+          "interactions": [],
+          "priority": 3,
+          "note": "populated前提・後日フェーズ"
+        },
+        {
+          "name": "page-last",
+          "interactions": [
+            "click:最終ページ"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "sort-desc",
+          "interactions": [
+            "click:列見出し"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "filter-empty",
+          "interactions": [
+            "input:検索に一致しない語"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "delete-confirm",
+          "interactions": [
+            "click:行の削除",
+            "wait:確認ダイアログ"
+          ],
+          "priority": 3
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/ab_tests/:ab_test_uid/versions/swipe",
+      "slug": "ab_tests__UID__versions__swipe",
+      "url": "{APP_BASE}/ab_tests/:ab_test_uid/versions/swipe",
+      "tier": 2,
+      "kind": "list",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /ab_tests/:ab_test_uid/versions/swipe"
+      ],
+      "params": [
+        "ab_test_uid"
+      ],
+      "states": [
+        {
+          "name": "empty",
+          "interactions": [],
+          "priority": 1,
+          "note": "基準状態（新規アカウント＝0件・§1-4）。新規アカウントでは default と同一画面なので empty に一本化"
+        },
+        {
+          "name": "loading",
+          "interactions": [
+            "network:throttle-slow",
+            "reload"
+          ],
+          "priority": 2,
+          "note": "スケルトン/スピナー"
+        },
+        {
+          "name": "error",
+          "interactions": [],
+          "priority": 3,
+          "note": "実サイトでは意図的に出せない。手構築（§5-7）"
+        },
+        {
+          "name": "create-modal-open",
+          "interactions": [
+            "click:新規作成ボタン"
+          ],
+          "priority": 1,
+          "note": "作成フロー起点"
+        },
+        {
+          "name": "create-form-invalid",
+          "interactions": [
+            "click:新規作成ボタン",
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1,
+          "note": "バリデーション文言はverbatim保持対象"
+        },
+        {
+          "name": "create-submitting",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存"
+          ],
+          "priority": 2,
+          "note": "送信中disabled"
+        },
+        {
+          "name": "create-success",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存",
+            "wait:一覧反映"
+          ],
+          "priority": 1,
+          "note": "作成→一覧に出る（§10-9）"
+        },
+        {
+          "name": "normal",
+          "interactions": [],
+          "priority": 3,
+          "note": "populated前提・後日フェーズ"
+        },
+        {
+          "name": "page-last",
+          "interactions": [
+            "click:最終ページ"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "sort-desc",
+          "interactions": [
+            "click:列見出し"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "filter-empty",
+          "interactions": [
+            "input:検索に一致しない語"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "delete-confirm",
+          "interactions": [
+            "click:行の削除",
+            "wait:確認ダイアログ"
+          ],
+          "priority": 3
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/folders",
+      "slug": "folders",
+      "url": "{APP_BASE}/folders",
+      "tier": 1,
+      "kind": "list",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /folders"
+      ],
+      "params": [],
+      "states": [
+        {
+          "name": "empty",
+          "interactions": [],
+          "priority": 1,
+          "note": "基準状態（新規アカウント＝0件・§1-4）。新規アカウントでは default と同一画面なので empty に一本化"
+        },
+        {
+          "name": "loading",
+          "interactions": [
+            "network:throttle-slow",
+            "reload"
+          ],
+          "priority": 2,
+          "note": "スケルトン/スピナー"
+        },
+        {
+          "name": "error",
+          "interactions": [],
+          "priority": 3,
+          "note": "実サイトでは意図的に出せない。手構築（§5-7）"
+        },
+        {
+          "name": "create-modal-open",
+          "interactions": [
+            "click:新規作成ボタン"
+          ],
+          "priority": 1,
+          "note": "作成フロー起点"
+        },
+        {
+          "name": "create-form-invalid",
+          "interactions": [
+            "click:新規作成ボタン",
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1,
+          "note": "バリデーション文言はverbatim保持対象"
+        },
+        {
+          "name": "create-submitting",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存"
+          ],
+          "priority": 2,
+          "note": "送信中disabled"
+        },
+        {
+          "name": "create-success",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存",
+            "wait:一覧反映"
+          ],
+          "priority": 1,
+          "note": "作成→一覧に出る（§10-9）"
+        },
+        {
+          "name": "normal",
+          "interactions": [],
+          "priority": 3,
+          "note": "populated前提・後日フェーズ"
+        },
+        {
+          "name": "page-last",
+          "interactions": [
+            "click:最終ページ"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "sort-desc",
+          "interactions": [
+            "click:列見出し"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "filter-empty",
+          "interactions": [
+            "input:検索に一致しない語"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "delete-confirm",
+          "interactions": [
+            "click:行の削除",
+            "wait:確認ダイアログ"
+          ],
+          "priority": 3
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/folders/forms",
+      "slug": "folders__forms",
+      "url": "{APP_BASE}/folders/forms",
+      "tier": 2,
+      "kind": "list",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /folders/forms"
+      ],
+      "params": [],
+      "states": [
+        {
+          "name": "empty",
+          "interactions": [],
+          "priority": 1,
+          "note": "基準状態（新規アカウント＝0件・§1-4）。新規アカウントでは default と同一画面なので empty に一本化"
+        },
+        {
+          "name": "loading",
+          "interactions": [
+            "network:throttle-slow",
+            "reload"
+          ],
+          "priority": 2,
+          "note": "スケルトン/スピナー"
+        },
+        {
+          "name": "error",
+          "interactions": [],
+          "priority": 3,
+          "note": "実サイトでは意図的に出せない。手構築（§5-7）"
+        },
+        {
+          "name": "create-modal-open",
+          "interactions": [
+            "click:新規作成ボタン"
+          ],
+          "priority": 1,
+          "note": "作成フロー起点"
+        },
+        {
+          "name": "create-form-invalid",
+          "interactions": [
+            "click:新規作成ボタン",
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1,
+          "note": "バリデーション文言はverbatim保持対象"
+        },
+        {
+          "name": "create-submitting",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存"
+          ],
+          "priority": 2,
+          "note": "送信中disabled"
+        },
+        {
+          "name": "create-success",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存",
+            "wait:一覧反映"
+          ],
+          "priority": 1,
+          "note": "作成→一覧に出る（§10-9）"
+        },
+        {
+          "name": "normal",
+          "interactions": [],
+          "priority": 3,
+          "note": "populated前提・後日フェーズ"
+        },
+        {
+          "name": "page-last",
+          "interactions": [
+            "click:最終ページ"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "sort-desc",
+          "interactions": [
+            "click:列見出し"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "filter-empty",
+          "interactions": [
+            "input:検索に一致しない語"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "delete-confirm",
+          "interactions": [
+            "click:行の削除",
+            "wait:確認ダイアログ"
+          ],
+          "priority": 3
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/folders/:uid/edit",
+      "slug": "folders__UID__edit",
+      "url": "{APP_BASE}/folders/:uid/edit",
+      "tier": 2,
+      "kind": "form",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /folders/:uid/edit"
+      ],
+      "params": [
+        "uid"
+      ],
+      "states": [
+        {
+          "name": "default",
+          "interactions": [],
+          "priority": 1
+        },
+        {
+          "name": "form-empty",
+          "interactions": [],
+          "priority": 1
+        },
+        {
+          "name": "form-invalid",
+          "interactions": [
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1
+        },
+        {
+          "name": "submitting",
+          "interactions": [
+            "input:必須項目",
+            "click:保存"
+          ],
+          "priority": 2
+        },
+        {
+          "name": "submit-success",
+          "interactions": [
+            "input:必須項目",
+            "click:保存",
+            "wait:トースト"
+          ],
+          "priority": 1
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/folders/:folder_uid/ab_tests/:ab_test_uid/edit",
+      "slug": "folders__UID__ab_tests__UID__edit",
+      "url": "{APP_BASE}/folders/:folder_uid/ab_tests/:ab_test_uid/edit",
+      "tier": 2,
+      "kind": "editor",
+      "screen": "LPエディタ本体(3レール)",
+      "capture_iframe": true,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /ab_tests/:uid",
+        "GET /ab_tests/:uid/articles",
+        "GET /articles/:uid/versions"
+      ],
+      "params": [
+        "folder_uid",
+        "ab_test_uid"
+      ],
+      "states": [
+        {
+          "name": "default",
+          "interactions": [],
+          "priority": 1,
+          "note": "3レール（左=タブ / 中央=PC/SP iframe / 右=編集ツール）"
+        },
+        {
+          "name": "tab-basic",
+          "interactions": [
+            "click:左レール 基本情報"
+          ],
+          "priority": 1
+        },
+        {
+          "name": "tab-version",
+          "interactions": [
+            "click:左レール Version"
+          ],
+          "priority": 1,
+          "note": "Version名+配信割合入力+更新+Version追加"
+        },
+        {
+          "name": "tab-popup",
+          "interactions": [
+            "click:左レール ポップアップ"
+          ],
+          "priority": 1
+        },
+        {
+          "name": "tab-report",
+          "interactions": [
+            "click:左レール レポート"
+          ],
+          "priority": 1
+        },
+        {
+          "name": "preview-pc",
+          "interactions": [
+            "click:PC表示"
+          ],
+          "priority": 1,
+          "note": "iframe 約620×486"
+        },
+        {
+          "name": "preview-sp",
+          "interactions": [
+            "click:SP表示"
+          ],
+          "priority": 1,
+          "note": "iframe 約430×640"
+        },
+        {
+          "name": "code-editor-open",
+          "interactions": [
+            "click:右レール コード編集"
+          ],
+          "priority": 1
+        },
+        {
+          "name": "image-picker-open",
+          "interactions": [
+            "click:右レール 画像追加"
+          ],
+          "priority": 1
+        },
+        {
+          "name": "text-tool-open",
+          "interactions": [
+            "click:右レール テキスト追加"
+          ],
+          "priority": 1
+        },
+        {
+          "name": "block-library-open",
+          "interactions": [
+            "click:右レール ブロック追加"
+          ],
+          "priority": 1,
+          "note": "ブロックテンプレHTMLをライブラリ化（§9-1[4]）"
+        },
+        {
+          "name": "history-open",
+          "interactions": [
+            "click:右レール 履歴"
+          ],
+          "priority": 2
+        },
+        {
+          "name": "publish-confirm",
+          "interactions": [
+            "click:公開",
+            "wait:確認ダイアログ"
+          ],
+          "priority": 1,
+          "note": "状態バッジ 準備中→公開中"
+        },
+        {
+          "name": "version-add",
+          "interactions": [
+            "click:左レール Version",
+            "click:Version追加"
+          ],
+          "priority": 1
+        },
+        {
+          "name": "ratio-invalid",
+          "interactions": [
+            "click:左レール Version",
+            "input:配信割合に不正値",
+            "click:更新"
+          ],
+          "priority": 1,
+          "note": "合計100%警告の文言を採る"
+        }
+      ],
+      "priority1_count": 14,
+      "priority1_shots": 28
+    },
+    {
+      "route": "/folders/:folder_uid/ab_tests/:ab_test_uid/redirect_pages",
+      "slug": "folders__UID__ab_tests__UID__redirect_pages",
+      "url": "{APP_BASE}/folders/:folder_uid/ab_tests/:ab_test_uid/redirect_pages",
+      "tier": 2,
+      "kind": "list",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /folders/:folder_uid/ab_tests/:ab_test_uid/redirect_pages"
+      ],
+      "params": [
+        "folder_uid",
+        "ab_test_uid"
+      ],
+      "states": [
+        {
+          "name": "empty",
+          "interactions": [],
+          "priority": 1,
+          "note": "基準状態（新規アカウント＝0件・§1-4）。新規アカウントでは default と同一画面なので empty に一本化"
+        },
+        {
+          "name": "loading",
+          "interactions": [
+            "network:throttle-slow",
+            "reload"
+          ],
+          "priority": 2,
+          "note": "スケルトン/スピナー"
+        },
+        {
+          "name": "error",
+          "interactions": [],
+          "priority": 3,
+          "note": "実サイトでは意図的に出せない。手構築（§5-7）"
+        },
+        {
+          "name": "create-modal-open",
+          "interactions": [
+            "click:新規作成ボタン"
+          ],
+          "priority": 1,
+          "note": "作成フロー起点"
+        },
+        {
+          "name": "create-form-invalid",
+          "interactions": [
+            "click:新規作成ボタン",
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1,
+          "note": "バリデーション文言はverbatim保持対象"
+        },
+        {
+          "name": "create-submitting",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存"
+          ],
+          "priority": 2,
+          "note": "送信中disabled"
+        },
+        {
+          "name": "create-success",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存",
+            "wait:一覧反映"
+          ],
+          "priority": 1,
+          "note": "作成→一覧に出る（§10-9）"
+        },
+        {
+          "name": "normal",
+          "interactions": [],
+          "priority": 3,
+          "note": "populated前提・後日フェーズ"
+        },
+        {
+          "name": "page-last",
+          "interactions": [
+            "click:最終ページ"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "sort-desc",
+          "interactions": [
+            "click:列見出し"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "filter-empty",
+          "interactions": [
+            "input:検索に一致しない語"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "delete-confirm",
+          "interactions": [
+            "click:行の削除",
+            "wait:確認ダイアログ"
+          ],
+          "priority": 3
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/folders/:folder_uid/conversion_tags",
+      "slug": "folders__UID__conversion_tags",
+      "url": "{APP_BASE}/folders/:folder_uid/conversion_tags",
+      "tier": 2,
+      "kind": "list",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /folders/:folder_uid/conversion_tags"
+      ],
+      "params": [
+        "folder_uid"
+      ],
+      "states": [
+        {
+          "name": "empty",
+          "interactions": [],
+          "priority": 1,
+          "note": "基準状態（新規アカウント＝0件・§1-4）。新規アカウントでは default と同一画面なので empty に一本化"
+        },
+        {
+          "name": "loading",
+          "interactions": [
+            "network:throttle-slow",
+            "reload"
+          ],
+          "priority": 2,
+          "note": "スケルトン/スピナー"
+        },
+        {
+          "name": "error",
+          "interactions": [],
+          "priority": 3,
+          "note": "実サイトでは意図的に出せない。手構築（§5-7）"
+        },
+        {
+          "name": "create-modal-open",
+          "interactions": [
+            "click:新規作成ボタン"
+          ],
+          "priority": 1,
+          "note": "作成フロー起点"
+        },
+        {
+          "name": "create-form-invalid",
+          "interactions": [
+            "click:新規作成ボタン",
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1,
+          "note": "バリデーション文言はverbatim保持対象"
+        },
+        {
+          "name": "create-submitting",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存"
+          ],
+          "priority": 2,
+          "note": "送信中disabled"
+        },
+        {
+          "name": "create-success",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存",
+            "wait:一覧反映"
+          ],
+          "priority": 1,
+          "note": "作成→一覧に出る（§10-9）"
+        },
+        {
+          "name": "normal",
+          "interactions": [],
+          "priority": 3,
+          "note": "populated前提・後日フェーズ"
+        },
+        {
+          "name": "page-last",
+          "interactions": [
+            "click:最終ページ"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "sort-desc",
+          "interactions": [
+            "click:列見出し"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "filter-empty",
+          "interactions": [
+            "input:検索に一致しない語"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "delete-confirm",
+          "interactions": [
+            "click:行の削除",
+            "wait:確認ダイアログ"
+          ],
+          "priority": 3
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/folders/:folder_uid/forms/:uid",
+      "slug": "folders__UID__forms__UID",
+      "url": "{APP_BASE}/folders/:folder_uid/forms/:uid",
+      "tier": 2,
+      "kind": "form",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /folders/:folder_uid/forms/:uid"
+      ],
+      "params": [
+        "folder_uid",
+        "uid"
+      ],
+      "states": [
+        {
+          "name": "default",
+          "interactions": [],
+          "priority": 1
+        },
+        {
+          "name": "form-empty",
+          "interactions": [],
+          "priority": 1
+        },
+        {
+          "name": "form-invalid",
+          "interactions": [
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1
+        },
+        {
+          "name": "submitting",
+          "interactions": [
+            "input:必須項目",
+            "click:保存"
+          ],
+          "priority": 2
+        },
+        {
+          "name": "submit-success",
+          "interactions": [
+            "input:必須項目",
+            "click:保存",
+            "wait:トースト"
+          ],
+          "priority": 1
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/folders/:folder_uid/operator_articles",
+      "slug": "folders__UID__operator_articles",
+      "url": "{APP_BASE}/folders/:folder_uid/operator_articles",
+      "tier": 2,
+      "kind": "list",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /folders/:folder_uid/operator_articles"
+      ],
+      "params": [
+        "folder_uid"
+      ],
+      "states": [
+        {
+          "name": "empty",
+          "interactions": [],
+          "priority": 1,
+          "note": "基準状態（新規アカウント＝0件・§1-4）。新規アカウントでは default と同一画面なので empty に一本化"
+        },
+        {
+          "name": "loading",
+          "interactions": [
+            "network:throttle-slow",
+            "reload"
+          ],
+          "priority": 2,
+          "note": "スケルトン/スピナー"
+        },
+        {
+          "name": "error",
+          "interactions": [],
+          "priority": 3,
+          "note": "実サイトでは意図的に出せない。手構築（§5-7）"
+        },
+        {
+          "name": "create-modal-open",
+          "interactions": [
+            "click:新規作成ボタン"
+          ],
+          "priority": 1,
+          "note": "作成フロー起点"
+        },
+        {
+          "name": "create-form-invalid",
+          "interactions": [
+            "click:新規作成ボタン",
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1,
+          "note": "バリデーション文言はverbatim保持対象"
+        },
+        {
+          "name": "create-submitting",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存"
+          ],
+          "priority": 2,
+          "note": "送信中disabled"
+        },
+        {
+          "name": "create-success",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存",
+            "wait:一覧反映"
+          ],
+          "priority": 1,
+          "note": "作成→一覧に出る（§10-9）"
+        },
+        {
+          "name": "normal",
+          "interactions": [],
+          "priority": 3,
+          "note": "populated前提・後日フェーズ"
+        },
+        {
+          "name": "page-last",
+          "interactions": [
+            "click:最終ページ"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "sort-desc",
+          "interactions": [
+            "click:列見出し"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "filter-empty",
+          "interactions": [
+            "input:検索に一致しない語"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "delete-confirm",
+          "interactions": [
+            "click:行の削除",
+            "wait:確認ダイアログ"
+          ],
+          "priority": 3
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/folders/:folder_uid/operator_articles/:uid/edit",
+      "slug": "folders__UID__operator_articles__UID__edit",
+      "url": "{APP_BASE}/folders/:folder_uid/operator_articles/:uid/edit",
+      "tier": 2,
+      "kind": "form",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /folders/:folder_uid/operator_articles/:uid/edit"
+      ],
+      "params": [
+        "folder_uid",
+        "uid"
+      ],
+      "states": [
+        {
+          "name": "default",
+          "interactions": [],
+          "priority": 1
+        },
+        {
+          "name": "form-empty",
+          "interactions": [],
+          "priority": 1
+        },
+        {
+          "name": "form-invalid",
+          "interactions": [
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1
+        },
+        {
+          "name": "submitting",
+          "interactions": [
+            "input:必須項目",
+            "click:保存"
+          ],
+          "priority": 2
+        },
+        {
+          "name": "submit-success",
+          "interactions": [
+            "input:必須項目",
+            "click:保存",
+            "wait:トースト"
+          ],
+          "priority": 1
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/articles/bulk_replaces",
+      "slug": "articles__bulk_replaces",
+      "url": "{APP_BASE}/articles/bulk_replaces",
+      "tier": 2,
+      "kind": "list",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /articles/bulk_replaces"
+      ],
+      "params": [],
+      "states": [
+        {
+          "name": "empty",
+          "interactions": [],
+          "priority": 1,
+          "note": "基準状態（新規アカウント＝0件・§1-4）。新規アカウントでは default と同一画面なので empty に一本化"
+        },
+        {
+          "name": "loading",
+          "interactions": [
+            "network:throttle-slow",
+            "reload"
+          ],
+          "priority": 2,
+          "note": "スケルトン/スピナー"
+        },
+        {
+          "name": "error",
+          "interactions": [],
+          "priority": 3,
+          "note": "実サイトでは意図的に出せない。手構築（§5-7）"
+        },
+        {
+          "name": "create-modal-open",
+          "interactions": [
+            "click:新規作成ボタン"
+          ],
+          "priority": 1,
+          "note": "作成フロー起点"
+        },
+        {
+          "name": "create-form-invalid",
+          "interactions": [
+            "click:新規作成ボタン",
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1,
+          "note": "バリデーション文言はverbatim保持対象"
+        },
+        {
+          "name": "create-submitting",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存"
+          ],
+          "priority": 2,
+          "note": "送信中disabled"
+        },
+        {
+          "name": "create-success",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存",
+            "wait:一覧反映"
+          ],
+          "priority": 1,
+          "note": "作成→一覧に出る（§10-9）"
+        },
+        {
+          "name": "normal",
+          "interactions": [],
+          "priority": 3,
+          "note": "populated前提・後日フェーズ"
+        },
+        {
+          "name": "page-last",
+          "interactions": [
+            "click:最終ページ"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "sort-desc",
+          "interactions": [
+            "click:列見出し"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "filter-empty",
+          "interactions": [
+            "input:検索に一致しない語"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "delete-confirm",
+          "interactions": [
+            "click:行の削除",
+            "wait:確認ダイアログ"
+          ],
+          "priority": 3
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/conversions",
+      "slug": "conversions",
+      "url": "{APP_BASE}/conversions",
+      "tier": 2,
+      "kind": "realtime",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /conversions",
+        "WS ConversionsChannel"
+      ],
+      "params": [],
+      "states": [
+        {
+          "name": "default",
+          "interactions": [],
+          "priority": 1
+        },
+        {
+          "name": "empty",
+          "interactions": [],
+          "priority": 1,
+          "note": "基準状態（新規アカウント＝0件・§1-4）。新規アカウントでは default と同一画面なので empty に一本化"
+        },
+        {
+          "name": "loading",
+          "interactions": [
+            "network:throttle-slow",
+            "reload"
+          ],
+          "priority": 2,
+          "note": "スケルトン/スピナー"
+        },
+        {
+          "name": "error",
+          "interactions": [],
+          "priority": 3,
+          "note": "実サイトでは意図的に出せない。手構築（§5-7）"
+        },
+        {
+          "name": "cable-connecting",
+          "interactions": [
+            "reload"
+          ],
+          "priority": 2
+        },
+        {
+          "name": "cv-toast",
+          "interactions": [
+            "wait:CV着信"
+          ],
+          "priority": 2,
+          "note": "CV発火は保証されない。採れない場合はREST応答から逆算（§9-3）"
+        },
+        {
+          "name": "cable-disconnected",
+          "interactions": [
+            "network:offline"
+          ],
+          "priority": 2
+        }
+      ],
+      "priority1_count": 2,
+      "priority1_shots": 4
+    },
+    {
+      "route": "/conversion-reports",
+      "slug": "conversion_reports",
+      "url": "{APP_BASE}/conversion-reports",
+      "tier": 2,
+      "kind": "list",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /conversion-reports"
+      ],
+      "params": [],
+      "states": [
+        {
+          "name": "empty",
+          "interactions": [],
+          "priority": 1,
+          "note": "基準状態（新規アカウント＝0件・§1-4）。新規アカウントでは default と同一画面なので empty に一本化"
+        },
+        {
+          "name": "loading",
+          "interactions": [
+            "network:throttle-slow",
+            "reload"
+          ],
+          "priority": 2,
+          "note": "スケルトン/スピナー"
+        },
+        {
+          "name": "error",
+          "interactions": [],
+          "priority": 3,
+          "note": "実サイトでは意図的に出せない。手構築（§5-7）"
+        },
+        {
+          "name": "create-modal-open",
+          "interactions": [
+            "click:新規作成ボタン"
+          ],
+          "priority": 1,
+          "note": "作成フロー起点"
+        },
+        {
+          "name": "create-form-invalid",
+          "interactions": [
+            "click:新規作成ボタン",
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1,
+          "note": "バリデーション文言はverbatim保持対象"
+        },
+        {
+          "name": "create-submitting",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存"
+          ],
+          "priority": 2,
+          "note": "送信中disabled"
+        },
+        {
+          "name": "create-success",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存",
+            "wait:一覧反映"
+          ],
+          "priority": 1,
+          "note": "作成→一覧に出る（§10-9）"
+        },
+        {
+          "name": "normal",
+          "interactions": [],
+          "priority": 3,
+          "note": "populated前提・後日フェーズ"
+        },
+        {
+          "name": "page-last",
+          "interactions": [
+            "click:最終ページ"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "sort-desc",
+          "interactions": [
+            "click:列見出し"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "filter-empty",
+          "interactions": [
+            "input:検索に一致しない語"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "delete-confirm",
+          "interactions": [
+            "click:行の削除",
+            "wait:確認ダイアログ"
+          ],
+          "priority": 3
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/tasks",
+      "slug": "tasks",
+      "url": "{APP_BASE}/tasks",
+      "tier": 2,
+      "kind": "list",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /tasks"
+      ],
+      "params": [],
+      "states": [
+        {
+          "name": "empty",
+          "interactions": [],
+          "priority": 1,
+          "note": "基準状態（新規アカウント＝0件・§1-4）。新規アカウントでは default と同一画面なので empty に一本化"
+        },
+        {
+          "name": "loading",
+          "interactions": [
+            "network:throttle-slow",
+            "reload"
+          ],
+          "priority": 2,
+          "note": "スケルトン/スピナー"
+        },
+        {
+          "name": "error",
+          "interactions": [],
+          "priority": 3,
+          "note": "実サイトでは意図的に出せない。手構築（§5-7）"
+        },
+        {
+          "name": "create-modal-open",
+          "interactions": [
+            "click:新規作成ボタン"
+          ],
+          "priority": 1,
+          "note": "作成フロー起点"
+        },
+        {
+          "name": "create-form-invalid",
+          "interactions": [
+            "click:新規作成ボタン",
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1,
+          "note": "バリデーション文言はverbatim保持対象"
+        },
+        {
+          "name": "create-submitting",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存"
+          ],
+          "priority": 2,
+          "note": "送信中disabled"
+        },
+        {
+          "name": "create-success",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存",
+            "wait:一覧反映"
+          ],
+          "priority": 1,
+          "note": "作成→一覧に出る（§10-9）"
+        },
+        {
+          "name": "normal",
+          "interactions": [],
+          "priority": 3,
+          "note": "populated前提・後日フェーズ"
+        },
+        {
+          "name": "page-last",
+          "interactions": [
+            "click:最終ページ"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "sort-desc",
+          "interactions": [
+            "click:列見出し"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "filter-empty",
+          "interactions": [
+            "input:検索に一致しない語"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "delete-confirm",
+          "interactions": [
+            "click:行の削除",
+            "wait:確認ダイアログ"
+          ],
+          "priority": 3
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/inspections",
+      "slug": "inspections",
+      "url": "{APP_BASE}/inspections",
+      "tier": 2,
+      "kind": "list",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /inspections"
+      ],
+      "params": [],
+      "states": [
+        {
+          "name": "empty",
+          "interactions": [],
+          "priority": 1,
+          "note": "基準状態（新規アカウント＝0件・§1-4）。新規アカウントでは default と同一画面なので empty に一本化"
+        },
+        {
+          "name": "loading",
+          "interactions": [
+            "network:throttle-slow",
+            "reload"
+          ],
+          "priority": 2,
+          "note": "スケルトン/スピナー"
+        },
+        {
+          "name": "error",
+          "interactions": [],
+          "priority": 3,
+          "note": "実サイトでは意図的に出せない。手構築（§5-7）"
+        },
+        {
+          "name": "create-modal-open",
+          "interactions": [
+            "click:新規作成ボタン"
+          ],
+          "priority": 1,
+          "note": "作成フロー起点"
+        },
+        {
+          "name": "create-form-invalid",
+          "interactions": [
+            "click:新規作成ボタン",
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1,
+          "note": "バリデーション文言はverbatim保持対象"
+        },
+        {
+          "name": "create-submitting",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存"
+          ],
+          "priority": 2,
+          "note": "送信中disabled"
+        },
+        {
+          "name": "create-success",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存",
+            "wait:一覧反映"
+          ],
+          "priority": 1,
+          "note": "作成→一覧に出る（§10-9）"
+        },
+        {
+          "name": "normal",
+          "interactions": [],
+          "priority": 3,
+          "note": "populated前提・後日フェーズ"
+        },
+        {
+          "name": "page-last",
+          "interactions": [
+            "click:最終ページ"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "sort-desc",
+          "interactions": [
+            "click:列見出し"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "filter-empty",
+          "interactions": [
+            "input:検索に一致しない語"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "delete-confirm",
+          "interactions": [
+            "click:行の削除",
+            "wait:確認ダイアログ"
+          ],
+          "priority": 3
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/inspections/authorities",
+      "slug": "inspections__authorities",
+      "url": "{APP_BASE}/inspections/authorities",
+      "tier": 2,
+      "kind": "list",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /inspections/authorities"
+      ],
+      "params": [],
+      "states": [
+        {
+          "name": "empty",
+          "interactions": [],
+          "priority": 1,
+          "note": "基準状態（新規アカウント＝0件・§1-4）。新規アカウントでは default と同一画面なので empty に一本化"
+        },
+        {
+          "name": "loading",
+          "interactions": [
+            "network:throttle-slow",
+            "reload"
+          ],
+          "priority": 2,
+          "note": "スケルトン/スピナー"
+        },
+        {
+          "name": "error",
+          "interactions": [],
+          "priority": 3,
+          "note": "実サイトでは意図的に出せない。手構築（§5-7）"
+        },
+        {
+          "name": "create-modal-open",
+          "interactions": [
+            "click:新規作成ボタン"
+          ],
+          "priority": 1,
+          "note": "作成フロー起点"
+        },
+        {
+          "name": "create-form-invalid",
+          "interactions": [
+            "click:新規作成ボタン",
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1,
+          "note": "バリデーション文言はverbatim保持対象"
+        },
+        {
+          "name": "create-submitting",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存"
+          ],
+          "priority": 2,
+          "note": "送信中disabled"
+        },
+        {
+          "name": "create-success",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存",
+            "wait:一覧反映"
+          ],
+          "priority": 1,
+          "note": "作成→一覧に出る（§10-9）"
+        },
+        {
+          "name": "normal",
+          "interactions": [],
+          "priority": 3,
+          "note": "populated前提・後日フェーズ"
+        },
+        {
+          "name": "page-last",
+          "interactions": [
+            "click:最終ページ"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "sort-desc",
+          "interactions": [
+            "click:列見出し"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "filter-empty",
+          "interactions": [
+            "input:検索に一致しない語"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "delete-confirm",
+          "interactions": [
+            "click:行の削除",
+            "wait:確認ダイアログ"
+          ],
+          "priority": 3
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/inspections/folders",
+      "slug": "inspections__folders",
+      "url": "{APP_BASE}/inspections/folders",
+      "tier": 2,
+      "kind": "list",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /inspections/folders"
+      ],
+      "params": [],
+      "states": [
+        {
+          "name": "empty",
+          "interactions": [],
+          "priority": 1,
+          "note": "基準状態（新規アカウント＝0件・§1-4）。新規アカウントでは default と同一画面なので empty に一本化"
+        },
+        {
+          "name": "loading",
+          "interactions": [
+            "network:throttle-slow",
+            "reload"
+          ],
+          "priority": 2,
+          "note": "スケルトン/スピナー"
+        },
+        {
+          "name": "error",
+          "interactions": [],
+          "priority": 3,
+          "note": "実サイトでは意図的に出せない。手構築（§5-7）"
+        },
+        {
+          "name": "create-modal-open",
+          "interactions": [
+            "click:新規作成ボタン"
+          ],
+          "priority": 1,
+          "note": "作成フロー起点"
+        },
+        {
+          "name": "create-form-invalid",
+          "interactions": [
+            "click:新規作成ボタン",
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1,
+          "note": "バリデーション文言はverbatim保持対象"
+        },
+        {
+          "name": "create-submitting",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存"
+          ],
+          "priority": 2,
+          "note": "送信中disabled"
+        },
+        {
+          "name": "create-success",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存",
+            "wait:一覧反映"
+          ],
+          "priority": 1,
+          "note": "作成→一覧に出る（§10-9）"
+        },
+        {
+          "name": "normal",
+          "interactions": [],
+          "priority": 3,
+          "note": "populated前提・後日フェーズ"
+        },
+        {
+          "name": "page-last",
+          "interactions": [
+            "click:最終ページ"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "sort-desc",
+          "interactions": [
+            "click:列見出し"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "filter-empty",
+          "interactions": [
+            "input:検索に一致しない語"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "delete-confirm",
+          "interactions": [
+            "click:行の削除",
+            "wait:確認ダイアログ"
+          ],
+          "priority": 3
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/sb_ai",
+      "slug": "sb_ai",
+      "url": "{APP_BASE}/sb_ai",
+      "tier": 3,
+      "kind": "chat",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /sb_ai"
+      ],
+      "params": [],
+      "states": [
+        {
+          "name": "default",
+          "interactions": [],
+          "priority": 1
+        },
+        {
+          "name": "empty",
+          "interactions": [],
+          "priority": 1,
+          "note": "基準状態（新規アカウント＝0件・§1-4）。新規アカウントでは default と同一画面なので empty に一本化"
+        },
+        {
+          "name": "loading",
+          "interactions": [
+            "network:throttle-slow",
+            "reload"
+          ],
+          "priority": 2,
+          "note": "スケルトン/スピナー"
+        },
+        {
+          "name": "error",
+          "interactions": [],
+          "priority": 3,
+          "note": "実サイトでは意図的に出せない。手構築（§5-7）"
+        },
+        {
+          "name": "conversation-new",
+          "interactions": [
+            "click:新規会話"
+          ],
+          "priority": 1
+        },
+        {
+          "name": "streaming",
+          "interactions": [
+            "input:質問",
+            "click:送信"
+          ],
+          "priority": 2,
+          "note": "SSEのトークン逐次表示"
+        }
+      ],
+      "priority1_count": 3,
+      "priority1_shots": 6
+    },
+    {
+      "route": "/sb_ai/chat",
+      "slug": "sb_ai__chat",
+      "url": "{APP_BASE}/sb_ai/chat",
+      "tier": 3,
+      "kind": "chat",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /sb_ai/chat"
+      ],
+      "params": [],
+      "states": [
+        {
+          "name": "default",
+          "interactions": [],
+          "priority": 1
+        },
+        {
+          "name": "empty",
+          "interactions": [],
+          "priority": 1,
+          "note": "基準状態（新規アカウント＝0件・§1-4）。新規アカウントでは default と同一画面なので empty に一本化"
+        },
+        {
+          "name": "loading",
+          "interactions": [
+            "network:throttle-slow",
+            "reload"
+          ],
+          "priority": 2,
+          "note": "スケルトン/スピナー"
+        },
+        {
+          "name": "error",
+          "interactions": [],
+          "priority": 3,
+          "note": "実サイトでは意図的に出せない。手構築（§5-7）"
+        },
+        {
+          "name": "conversation-new",
+          "interactions": [
+            "click:新規会話"
+          ],
+          "priority": 1
+        },
+        {
+          "name": "streaming",
+          "interactions": [
+            "input:質問",
+            "click:送信"
+          ],
+          "priority": 2,
+          "note": "SSEのトークン逐次表示"
+        }
+      ],
+      "priority1_count": 3,
+      "priority1_shots": 6
+    },
+    {
+      "route": "/sb_ai/chat/:conversationId",
+      "slug": "sb_ai__chat__CONVERSATIONID",
+      "url": "{APP_BASE}/sb_ai/chat/:conversationId",
+      "tier": 3,
+      "kind": "chat",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /sb_ai/chat/:conversationId"
+      ],
+      "params": [
+        "conversationId"
+      ],
+      "states": [
+        {
+          "name": "default",
+          "interactions": [],
+          "priority": 1
+        },
+        {
+          "name": "empty",
+          "interactions": [],
+          "priority": 1,
+          "note": "基準状態（新規アカウント＝0件・§1-4）。新規アカウントでは default と同一画面なので empty に一本化"
+        },
+        {
+          "name": "loading",
+          "interactions": [
+            "network:throttle-slow",
+            "reload"
+          ],
+          "priority": 2,
+          "note": "スケルトン/スピナー"
+        },
+        {
+          "name": "error",
+          "interactions": [],
+          "priority": 3,
+          "note": "実サイトでは意図的に出せない。手構築（§5-7）"
+        },
+        {
+          "name": "conversation-new",
+          "interactions": [
+            "click:新規会話"
+          ],
+          "priority": 1
+        },
+        {
+          "name": "streaming",
+          "interactions": [
+            "input:質問",
+            "click:送信"
+          ],
+          "priority": 2,
+          "note": "SSEのトークン逐次表示"
+        }
+      ],
+      "priority1_count": 3,
+      "priority1_shots": 6
+    },
+    {
+      "route": "/teams/ad_accounts",
+      "slug": "teams__ad_accounts",
+      "url": "{APP_BASE}/teams/ad_accounts",
+      "tier": 3,
+      "kind": "list",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /teams/ad_accounts"
+      ],
+      "params": [],
+      "states": [
+        {
+          "name": "empty",
+          "interactions": [],
+          "priority": 1,
+          "note": "基準状態（新規アカウント＝0件・§1-4）。新規アカウントでは default と同一画面なので empty に一本化"
+        },
+        {
+          "name": "loading",
+          "interactions": [
+            "network:throttle-slow",
+            "reload"
+          ],
+          "priority": 2,
+          "note": "スケルトン/スピナー"
+        },
+        {
+          "name": "error",
+          "interactions": [],
+          "priority": 3,
+          "note": "実サイトでは意図的に出せない。手構築（§5-7）"
+        },
+        {
+          "name": "create-modal-open",
+          "interactions": [
+            "click:新規作成ボタン"
+          ],
+          "priority": 1,
+          "note": "作成フロー起点"
+        },
+        {
+          "name": "create-form-invalid",
+          "interactions": [
+            "click:新規作成ボタン",
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1,
+          "note": "バリデーション文言はverbatim保持対象"
+        },
+        {
+          "name": "create-submitting",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存"
+          ],
+          "priority": 2,
+          "note": "送信中disabled"
+        },
+        {
+          "name": "create-success",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存",
+            "wait:一覧反映"
+          ],
+          "priority": 1,
+          "note": "作成→一覧に出る（§10-9）"
+        },
+        {
+          "name": "normal",
+          "interactions": [],
+          "priority": 3,
+          "note": "populated前提・後日フェーズ"
+        },
+        {
+          "name": "page-last",
+          "interactions": [
+            "click:最終ページ"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "sort-desc",
+          "interactions": [
+            "click:列見出し"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "filter-empty",
+          "interactions": [
+            "input:検索に一致しない語"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "delete-confirm",
+          "interactions": [
+            "click:行の削除",
+            "wait:確認ダイアログ"
+          ],
+          "priority": 3
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/teams/asp_accounts",
+      "slug": "teams__asp_accounts",
+      "url": "{APP_BASE}/teams/asp_accounts",
+      "tier": 3,
+      "kind": "list",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /teams/asp_accounts"
+      ],
+      "params": [],
+      "states": [
+        {
+          "name": "empty",
+          "interactions": [],
+          "priority": 1,
+          "note": "基準状態（新規アカウント＝0件・§1-4）。新規アカウントでは default と同一画面なので empty に一本化"
+        },
+        {
+          "name": "loading",
+          "interactions": [
+            "network:throttle-slow",
+            "reload"
+          ],
+          "priority": 2,
+          "note": "スケルトン/スピナー"
+        },
+        {
+          "name": "error",
+          "interactions": [],
+          "priority": 3,
+          "note": "実サイトでは意図的に出せない。手構築（§5-7）"
+        },
+        {
+          "name": "create-modal-open",
+          "interactions": [
+            "click:新規作成ボタン"
+          ],
+          "priority": 1,
+          "note": "作成フロー起点"
+        },
+        {
+          "name": "create-form-invalid",
+          "interactions": [
+            "click:新規作成ボタン",
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1,
+          "note": "バリデーション文言はverbatim保持対象"
+        },
+        {
+          "name": "create-submitting",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存"
+          ],
+          "priority": 2,
+          "note": "送信中disabled"
+        },
+        {
+          "name": "create-success",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存",
+            "wait:一覧反映"
+          ],
+          "priority": 1,
+          "note": "作成→一覧に出る（§10-9）"
+        },
+        {
+          "name": "normal",
+          "interactions": [],
+          "priority": 3,
+          "note": "populated前提・後日フェーズ"
+        },
+        {
+          "name": "page-last",
+          "interactions": [
+            "click:最終ページ"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "sort-desc",
+          "interactions": [
+            "click:列見出し"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "filter-empty",
+          "interactions": [
+            "input:検索に一致しない語"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "delete-confirm",
+          "interactions": [
+            "click:行の削除",
+            "wait:確認ダイアログ"
+          ],
+          "priority": 3
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/teams/domains",
+      "slug": "teams__domains",
+      "url": "{APP_BASE}/teams/domains",
+      "tier": 3,
+      "kind": "list",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /teams/domains"
+      ],
+      "params": [],
+      "states": [
+        {
+          "name": "empty",
+          "interactions": [],
+          "priority": 1,
+          "note": "基準状態（新規アカウント＝0件・§1-4）。新規アカウントでは default と同一画面なので empty に一本化"
+        },
+        {
+          "name": "loading",
+          "interactions": [
+            "network:throttle-slow",
+            "reload"
+          ],
+          "priority": 2,
+          "note": "スケルトン/スピナー"
+        },
+        {
+          "name": "error",
+          "interactions": [],
+          "priority": 3,
+          "note": "実サイトでは意図的に出せない。手構築（§5-7）"
+        },
+        {
+          "name": "create-modal-open",
+          "interactions": [
+            "click:新規作成ボタン"
+          ],
+          "priority": 1,
+          "note": "作成フロー起点"
+        },
+        {
+          "name": "create-form-invalid",
+          "interactions": [
+            "click:新規作成ボタン",
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1,
+          "note": "バリデーション文言はverbatim保持対象"
+        },
+        {
+          "name": "create-submitting",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存"
+          ],
+          "priority": 2,
+          "note": "送信中disabled"
+        },
+        {
+          "name": "create-success",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存",
+            "wait:一覧反映"
+          ],
+          "priority": 1,
+          "note": "作成→一覧に出る（§10-9）"
+        },
+        {
+          "name": "normal",
+          "interactions": [],
+          "priority": 3,
+          "note": "populated前提・後日フェーズ"
+        },
+        {
+          "name": "page-last",
+          "interactions": [
+            "click:最終ページ"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "sort-desc",
+          "interactions": [
+            "click:列見出し"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "filter-empty",
+          "interactions": [
+            "input:検索に一致しない語"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "delete-confirm",
+          "interactions": [
+            "click:行の削除",
+            "wait:確認ダイアログ"
+          ],
+          "priority": 3
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/teams/plans",
+      "slug": "teams__plans",
+      "url": "{APP_BASE}/teams/plans",
+      "tier": 3,
+      "kind": "list",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /teams/plans"
+      ],
+      "params": [],
+      "states": [
+        {
+          "name": "empty",
+          "interactions": [],
+          "priority": 1,
+          "note": "基準状態（新規アカウント＝0件・§1-4）。新規アカウントでは default と同一画面なので empty に一本化"
+        },
+        {
+          "name": "loading",
+          "interactions": [
+            "network:throttle-slow",
+            "reload"
+          ],
+          "priority": 2,
+          "note": "スケルトン/スピナー"
+        },
+        {
+          "name": "error",
+          "interactions": [],
+          "priority": 3,
+          "note": "実サイトでは意図的に出せない。手構築（§5-7）"
+        },
+        {
+          "name": "create-modal-open",
+          "interactions": [
+            "click:新規作成ボタン"
+          ],
+          "priority": 1,
+          "note": "作成フロー起点"
+        },
+        {
+          "name": "create-form-invalid",
+          "interactions": [
+            "click:新規作成ボタン",
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1,
+          "note": "バリデーション文言はverbatim保持対象"
+        },
+        {
+          "name": "create-submitting",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存"
+          ],
+          "priority": 2,
+          "note": "送信中disabled"
+        },
+        {
+          "name": "create-success",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存",
+            "wait:一覧反映"
+          ],
+          "priority": 1,
+          "note": "作成→一覧に出る（§10-9）"
+        },
+        {
+          "name": "normal",
+          "interactions": [],
+          "priority": 3,
+          "note": "populated前提・後日フェーズ"
+        },
+        {
+          "name": "page-last",
+          "interactions": [
+            "click:最終ページ"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "sort-desc",
+          "interactions": [
+            "click:列見出し"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "filter-empty",
+          "interactions": [
+            "input:検索に一致しない語"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "delete-confirm",
+          "interactions": [
+            "click:行の削除",
+            "wait:確認ダイアログ"
+          ],
+          "priority": 3
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/teams/product_search_forms",
+      "slug": "teams__product_search_forms",
+      "url": "{APP_BASE}/teams/product_search_forms",
+      "tier": 3,
+      "kind": "list",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /teams/product_search_forms"
+      ],
+      "params": [],
+      "states": [
+        {
+          "name": "empty",
+          "interactions": [],
+          "priority": 1,
+          "note": "基準状態（新規アカウント＝0件・§1-4）。新規アカウントでは default と同一画面なので empty に一本化"
+        },
+        {
+          "name": "loading",
+          "interactions": [
+            "network:throttle-slow",
+            "reload"
+          ],
+          "priority": 2,
+          "note": "スケルトン/スピナー"
+        },
+        {
+          "name": "error",
+          "interactions": [],
+          "priority": 3,
+          "note": "実サイトでは意図的に出せない。手構築（§5-7）"
+        },
+        {
+          "name": "create-modal-open",
+          "interactions": [
+            "click:新規作成ボタン"
+          ],
+          "priority": 1,
+          "note": "作成フロー起点"
+        },
+        {
+          "name": "create-form-invalid",
+          "interactions": [
+            "click:新規作成ボタン",
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1,
+          "note": "バリデーション文言はverbatim保持対象"
+        },
+        {
+          "name": "create-submitting",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存"
+          ],
+          "priority": 2,
+          "note": "送信中disabled"
+        },
+        {
+          "name": "create-success",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存",
+            "wait:一覧反映"
+          ],
+          "priority": 1,
+          "note": "作成→一覧に出る（§10-9）"
+        },
+        {
+          "name": "normal",
+          "interactions": [],
+          "priority": 3,
+          "note": "populated前提・後日フェーズ"
+        },
+        {
+          "name": "page-last",
+          "interactions": [
+            "click:最終ページ"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "sort-desc",
+          "interactions": [
+            "click:列見出し"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "filter-empty",
+          "interactions": [
+            "input:検索に一致しない語"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "delete-confirm",
+          "interactions": [
+            "click:行の削除",
+            "wait:確認ダイアログ"
+          ],
+          "priority": 3
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/teams/tags",
+      "slug": "teams__tags",
+      "url": "{APP_BASE}/teams/tags",
+      "tier": 3,
+      "kind": "list",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /teams/tags"
+      ],
+      "params": [],
+      "states": [
+        {
+          "name": "empty",
+          "interactions": [],
+          "priority": 1,
+          "note": "基準状態（新規アカウント＝0件・§1-4）。新規アカウントでは default と同一画面なので empty に一本化"
+        },
+        {
+          "name": "loading",
+          "interactions": [
+            "network:throttle-slow",
+            "reload"
+          ],
+          "priority": 2,
+          "note": "スケルトン/スピナー"
+        },
+        {
+          "name": "error",
+          "interactions": [],
+          "priority": 3,
+          "note": "実サイトでは意図的に出せない。手構築（§5-7）"
+        },
+        {
+          "name": "create-modal-open",
+          "interactions": [
+            "click:新規作成ボタン"
+          ],
+          "priority": 1,
+          "note": "作成フロー起点"
+        },
+        {
+          "name": "create-form-invalid",
+          "interactions": [
+            "click:新規作成ボタン",
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1,
+          "note": "バリデーション文言はverbatim保持対象"
+        },
+        {
+          "name": "create-submitting",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存"
+          ],
+          "priority": 2,
+          "note": "送信中disabled"
+        },
+        {
+          "name": "create-success",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存",
+            "wait:一覧反映"
+          ],
+          "priority": 1,
+          "note": "作成→一覧に出る（§10-9）"
+        },
+        {
+          "name": "normal",
+          "interactions": [],
+          "priority": 3,
+          "note": "populated前提・後日フェーズ"
+        },
+        {
+          "name": "page-last",
+          "interactions": [
+            "click:最終ページ"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "sort-desc",
+          "interactions": [
+            "click:列見出し"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "filter-empty",
+          "interactions": [
+            "input:検索に一致しない語"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "delete-confirm",
+          "interactions": [
+            "click:行の削除",
+            "wait:確認ダイアログ"
+          ],
+          "priority": 3
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/teams/:team_uid/members/:member_uid/invitations/edit",
+      "slug": "teams__UID__members__UID__invitations__edit",
+      "url": "{APP_BASE}/teams/:team_uid/members/:member_uid/invitations/edit",
+      "tier": 3,
+      "kind": "form",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /teams/:team_uid/members/:member_uid/invitations/edit"
+      ],
+      "params": [
+        "team_uid",
+        "member_uid"
+      ],
+      "states": [
+        {
+          "name": "default",
+          "interactions": [],
+          "priority": 1
+        },
+        {
+          "name": "form-empty",
+          "interactions": [],
+          "priority": 1
+        },
+        {
+          "name": "form-invalid",
+          "interactions": [
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1
+        },
+        {
+          "name": "submitting",
+          "interactions": [
+            "input:必須項目",
+            "click:保存"
+          ],
+          "priority": 2
+        },
+        {
+          "name": "submit-success",
+          "interactions": [
+            "input:必須項目",
+            "click:保存",
+            "wait:トースト"
+          ],
+          "priority": 1
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/redirections/ab_tests/google_postback_setting",
+      "slug": "redirections__ab_tests__google_postback_setting",
+      "url": "{APP_BASE}/redirections/ab_tests/google_postback_setting",
+      "tier": 3,
+      "kind": "oauth-callback",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /redirections/ab_tests/google_postback_setting"
+      ],
+      "params": [],
+      "states": [
+        {
+          "name": "not-connected",
+          "interactions": [],
+          "priority": 1
+        },
+        {
+          "name": "connected",
+          "interactions": [],
+          "priority": 3,
+          "note": "実連携が必要。後日フェーズ"
+        }
+      ],
+      "priority1_count": 1,
+      "priority1_shots": 2
+    },
+    {
+      "route": "/redirections/ad_accounts/facebook",
+      "slug": "redirections__ad_accounts__facebook",
+      "url": "{APP_BASE}/redirections/ad_accounts/facebook",
+      "tier": 3,
+      "kind": "oauth-callback",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /redirections/ad_accounts/facebook"
+      ],
+      "params": [],
+      "states": [
+        {
+          "name": "not-connected",
+          "interactions": [],
+          "priority": 1
+        },
+        {
+          "name": "connected",
+          "interactions": [],
+          "priority": 3,
+          "note": "実連携が必要。後日フェーズ"
+        }
+      ],
+      "priority1_count": 1,
+      "priority1_shots": 2
+    },
+    {
+      "route": "/redirections/ad_accounts/google",
+      "slug": "redirections__ad_accounts__google",
+      "url": "{APP_BASE}/redirections/ad_accounts/google",
+      "tier": 3,
+      "kind": "oauth-callback",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /redirections/ad_accounts/google"
+      ],
+      "params": [],
+      "states": [
+        {
+          "name": "not-connected",
+          "interactions": [],
+          "priority": 1
+        },
+        {
+          "name": "connected",
+          "interactions": [],
+          "priority": 3,
+          "note": "実連携が必要。後日フェーズ"
+        }
+      ],
+      "priority1_count": 1,
+      "priority1_shots": 2
+    },
+    {
+      "route": "/redirections/ad_accounts/microsoft",
+      "slug": "redirections__ad_accounts__microsoft",
+      "url": "{APP_BASE}/redirections/ad_accounts/microsoft",
+      "tier": 3,
+      "kind": "oauth-callback",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /redirections/ad_accounts/microsoft"
+      ],
+      "params": [],
+      "states": [
+        {
+          "name": "not-connected",
+          "interactions": [],
+          "priority": 1
+        },
+        {
+          "name": "connected",
+          "interactions": [],
+          "priority": 3,
+          "note": "実連携が必要。後日フェーズ"
+        }
+      ],
+      "priority1_count": 1,
+      "priority1_shots": 2
+    },
+    {
+      "route": "/redirections/ad_accounts/x",
+      "slug": "redirections__ad_accounts__x",
+      "url": "{APP_BASE}/redirections/ad_accounts/x",
+      "tier": 3,
+      "kind": "oauth-callback",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /redirections/ad_accounts/x"
+      ],
+      "params": [],
+      "states": [
+        {
+          "name": "not-connected",
+          "interactions": [],
+          "priority": 1
+        },
+        {
+          "name": "connected",
+          "interactions": [],
+          "priority": 3,
+          "note": "実連携が必要。後日フェーズ"
+        }
+      ],
+      "priority1_count": 1,
+      "priority1_shots": 2
+    },
+    {
+      "route": "/redirections/ad_accounts/yahoo",
+      "slug": "redirections__ad_accounts__yahoo",
+      "url": "{APP_BASE}/redirections/ad_accounts/yahoo",
+      "tier": 3,
+      "kind": "oauth-callback",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /redirections/ad_accounts/yahoo"
+      ],
+      "params": [],
+      "states": [
+        {
+          "name": "not-connected",
+          "interactions": [],
+          "priority": 1
+        },
+        {
+          "name": "connected",
+          "interactions": [],
+          "priority": 3,
+          "note": "実連携が必要。後日フェーズ"
+        }
+      ],
+      "priority1_count": 1,
+      "priority1_shots": 2
+    },
+    {
+      "route": "/settings/internal_notifications/member",
+      "slug": "settings__internal_notifications__member",
+      "url": "{APP_BASE}/settings/internal_notifications/member",
+      "tier": 3,
+      "kind": "settings",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /settings/internal_notifications/member"
+      ],
+      "params": [],
+      "states": [
+        {
+          "name": "default",
+          "interactions": [],
+          "priority": 1
+        },
+        {
+          "name": "form-empty",
+          "interactions": [],
+          "priority": 1
+        },
+        {
+          "name": "form-invalid",
+          "interactions": [
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1
+        },
+        {
+          "name": "submitting",
+          "interactions": [
+            "input:必須項目",
+            "click:保存"
+          ],
+          "priority": 2
+        },
+        {
+          "name": "submit-success",
+          "interactions": [
+            "input:必須項目",
+            "click:保存",
+            "wait:トースト"
+          ],
+          "priority": 1
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/settings/internal_notifications/team",
+      "slug": "settings__internal_notifications__team",
+      "url": "{APP_BASE}/settings/internal_notifications/team",
+      "tier": 3,
+      "kind": "settings",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /settings/internal_notifications/team"
+      ],
+      "params": [],
+      "states": [
+        {
+          "name": "default",
+          "interactions": [],
+          "priority": 1
+        },
+        {
+          "name": "form-empty",
+          "interactions": [],
+          "priority": 1
+        },
+        {
+          "name": "form-invalid",
+          "interactions": [
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1
+        },
+        {
+          "name": "submitting",
+          "interactions": [
+            "input:必須項目",
+            "click:保存"
+          ],
+          "priority": 2
+        },
+        {
+          "name": "submit-success",
+          "interactions": [
+            "input:必須項目",
+            "click:保存",
+            "wait:トースト"
+          ],
+          "priority": 1
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/report-exclusions",
+      "slug": "report_exclusions",
+      "url": "{APP_BASE}/report-exclusions",
+      "tier": 3,
+      "kind": "list",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /report-exclusions"
+      ],
+      "params": [],
+      "states": [
+        {
+          "name": "empty",
+          "interactions": [],
+          "priority": 1,
+          "note": "基準状態（新規アカウント＝0件・§1-4）。新規アカウントでは default と同一画面なので empty に一本化"
+        },
+        {
+          "name": "loading",
+          "interactions": [
+            "network:throttle-slow",
+            "reload"
+          ],
+          "priority": 2,
+          "note": "スケルトン/スピナー"
+        },
+        {
+          "name": "error",
+          "interactions": [],
+          "priority": 3,
+          "note": "実サイトでは意図的に出せない。手構築（§5-7）"
+        },
+        {
+          "name": "create-modal-open",
+          "interactions": [
+            "click:新規作成ボタン"
+          ],
+          "priority": 1,
+          "note": "作成フロー起点"
+        },
+        {
+          "name": "create-form-invalid",
+          "interactions": [
+            "click:新規作成ボタン",
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1,
+          "note": "バリデーション文言はverbatim保持対象"
+        },
+        {
+          "name": "create-submitting",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存"
+          ],
+          "priority": 2,
+          "note": "送信中disabled"
+        },
+        {
+          "name": "create-success",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存",
+            "wait:一覧反映"
+          ],
+          "priority": 1,
+          "note": "作成→一覧に出る（§10-9）"
+        },
+        {
+          "name": "normal",
+          "interactions": [],
+          "priority": 3,
+          "note": "populated前提・後日フェーズ"
+        },
+        {
+          "name": "page-last",
+          "interactions": [
+            "click:最終ページ"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "sort-desc",
+          "interactions": [
+            "click:列見出し"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "filter-empty",
+          "interactions": [
+            "input:検索に一致しない語"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "delete-confirm",
+          "interactions": [
+            "click:行の削除",
+            "wait:確認ダイアログ"
+          ],
+          "priority": 3
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/plans/:planUid/payment/checkout",
+      "slug": "plans__UID__payment__checkout",
+      "url": "{APP_BASE}/plans/:planUid/payment/checkout",
+      "tier": 3,
+      "kind": "wizard",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /plans/:planUid/payment/checkout"
+      ],
+      "params": [
+        "planUid"
+      ],
+      "states": [
+        {
+          "name": "step1",
+          "interactions": [],
+          "priority": 1
+        },
+        {
+          "name": "step1-validation-error",
+          "interactions": [
+            "click:次へ（未入力のまま）"
+          ],
+          "priority": 1
+        },
+        {
+          "name": "step2",
+          "interactions": [
+            "input:必須項目",
+            "click:次へ"
+          ],
+          "priority": 1
+        },
+        {
+          "name": "step2-validation-error",
+          "interactions": [
+            "input:必須項目",
+            "click:次へ",
+            "click:次へ（未入力のまま）"
+          ],
+          "priority": 1
+        },
+        {
+          "name": "submit-success",
+          "interactions": [
+            "最終ステップまで入力",
+            "click:完了"
+          ],
+          "priority": 2
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/addon/option-list",
+      "slug": "addon__option_list",
+      "url": "{APP_BASE}/addon/option-list",
+      "tier": 3,
+      "kind": "list",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /addon/option-list"
+      ],
+      "params": [],
+      "states": [
+        {
+          "name": "empty",
+          "interactions": [],
+          "priority": 1,
+          "note": "基準状態（新規アカウント＝0件・§1-4）。新規アカウントでは default と同一画面なので empty に一本化"
+        },
+        {
+          "name": "loading",
+          "interactions": [
+            "network:throttle-slow",
+            "reload"
+          ],
+          "priority": 2,
+          "note": "スケルトン/スピナー"
+        },
+        {
+          "name": "error",
+          "interactions": [],
+          "priority": 3,
+          "note": "実サイトでは意図的に出せない。手構築（§5-7）"
+        },
+        {
+          "name": "create-modal-open",
+          "interactions": [
+            "click:新規作成ボタン"
+          ],
+          "priority": 1,
+          "note": "作成フロー起点"
+        },
+        {
+          "name": "create-form-invalid",
+          "interactions": [
+            "click:新規作成ボタン",
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1,
+          "note": "バリデーション文言はverbatim保持対象"
+        },
+        {
+          "name": "create-submitting",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存"
+          ],
+          "priority": 2,
+          "note": "送信中disabled"
+        },
+        {
+          "name": "create-success",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存",
+            "wait:一覧反映"
+          ],
+          "priority": 1,
+          "note": "作成→一覧に出る（§10-9）"
+        },
+        {
+          "name": "normal",
+          "interactions": [],
+          "priority": 3,
+          "note": "populated前提・後日フェーズ"
+        },
+        {
+          "name": "page-last",
+          "interactions": [
+            "click:最終ページ"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "sort-desc",
+          "interactions": [
+            "click:列見出し"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "filter-empty",
+          "interactions": [
+            "input:検索に一致しない語"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "delete-confirm",
+          "interactions": [
+            "click:行の削除",
+            "wait:確認ダイアログ"
+          ],
+          "priority": 3
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/admin-report",
+      "slug": "admin_report",
+      "url": "{APP_BASE}/admin-report",
+      "tier": 4,
+      "kind": "list",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "admin権限のアカウント",
+      "expected_endpoints": [
+        "GET /admin-report"
+      ],
+      "params": [],
+      "states": [
+        {
+          "name": "empty",
+          "interactions": [],
+          "priority": 1,
+          "note": "基準状態（新規アカウント＝0件・§1-4）。新規アカウントでは default と同一画面なので empty に一本化"
+        },
+        {
+          "name": "loading",
+          "interactions": [
+            "network:throttle-slow",
+            "reload"
+          ],
+          "priority": 2,
+          "note": "スケルトン/スピナー"
+        },
+        {
+          "name": "error",
+          "interactions": [],
+          "priority": 3,
+          "note": "実サイトでは意図的に出せない。手構築（§5-7）"
+        },
+        {
+          "name": "create-modal-open",
+          "interactions": [
+            "click:新規作成ボタン"
+          ],
+          "priority": 1,
+          "note": "作成フロー起点"
+        },
+        {
+          "name": "create-form-invalid",
+          "interactions": [
+            "click:新規作成ボタン",
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1,
+          "note": "バリデーション文言はverbatim保持対象"
+        },
+        {
+          "name": "create-submitting",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存"
+          ],
+          "priority": 2,
+          "note": "送信中disabled"
+        },
+        {
+          "name": "create-success",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存",
+            "wait:一覧反映"
+          ],
+          "priority": 1,
+          "note": "作成→一覧に出る（§10-9）"
+        },
+        {
+          "name": "normal",
+          "interactions": [],
+          "priority": 3,
+          "note": "populated前提・後日フェーズ"
+        },
+        {
+          "name": "page-last",
+          "interactions": [
+            "click:最終ページ"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "sort-desc",
+          "interactions": [
+            "click:列見出し"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "filter-empty",
+          "interactions": [
+            "input:検索に一致しない語"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "delete-confirm",
+          "interactions": [
+            "click:行の削除",
+            "wait:確認ダイアログ"
+          ],
+          "priority": 3
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/admin/articles/html_parts",
+      "slug": "admin__articles__html_parts",
+      "url": "{APP_BASE}/admin/articles/html_parts",
+      "tier": 4,
+      "kind": "list",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "admin権限のアカウント",
+      "expected_endpoints": [
+        "GET /admin/articles/html_parts"
+      ],
+      "params": [],
+      "states": [
+        {
+          "name": "empty",
+          "interactions": [],
+          "priority": 1,
+          "note": "基準状態（新規アカウント＝0件・§1-4）。新規アカウントでは default と同一画面なので empty に一本化"
+        },
+        {
+          "name": "loading",
+          "interactions": [
+            "network:throttle-slow",
+            "reload"
+          ],
+          "priority": 2,
+          "note": "スケルトン/スピナー"
+        },
+        {
+          "name": "error",
+          "interactions": [],
+          "priority": 3,
+          "note": "実サイトでは意図的に出せない。手構築（§5-7）"
+        },
+        {
+          "name": "create-modal-open",
+          "interactions": [
+            "click:新規作成ボタン"
+          ],
+          "priority": 1,
+          "note": "作成フロー起点"
+        },
+        {
+          "name": "create-form-invalid",
+          "interactions": [
+            "click:新規作成ボタン",
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1,
+          "note": "バリデーション文言はverbatim保持対象"
+        },
+        {
+          "name": "create-submitting",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存"
+          ],
+          "priority": 2,
+          "note": "送信中disabled"
+        },
+        {
+          "name": "create-success",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存",
+            "wait:一覧反映"
+          ],
+          "priority": 1,
+          "note": "作成→一覧に出る（§10-9）"
+        },
+        {
+          "name": "normal",
+          "interactions": [],
+          "priority": 3,
+          "note": "populated前提・後日フェーズ"
+        },
+        {
+          "name": "page-last",
+          "interactions": [
+            "click:最終ページ"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "sort-desc",
+          "interactions": [
+            "click:列見出し"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "filter-empty",
+          "interactions": [
+            "input:検索に一致しない語"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "delete-confirm",
+          "interactions": [
+            "click:行の削除",
+            "wait:確認ダイアログ"
+          ],
+          "priority": 3
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/admin/plans",
+      "slug": "admin__plans",
+      "url": "{APP_BASE}/admin/plans",
+      "tier": 4,
+      "kind": "list",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "admin権限のアカウント",
+      "expected_endpoints": [
+        "GET /admin/plans"
+      ],
+      "params": [],
+      "states": [
+        {
+          "name": "empty",
+          "interactions": [],
+          "priority": 1,
+          "note": "基準状態（新規アカウント＝0件・§1-4）。新規アカウントでは default と同一画面なので empty に一本化"
+        },
+        {
+          "name": "loading",
+          "interactions": [
+            "network:throttle-slow",
+            "reload"
+          ],
+          "priority": 2,
+          "note": "スケルトン/スピナー"
+        },
+        {
+          "name": "error",
+          "interactions": [],
+          "priority": 3,
+          "note": "実サイトでは意図的に出せない。手構築（§5-7）"
+        },
+        {
+          "name": "create-modal-open",
+          "interactions": [
+            "click:新規作成ボタン"
+          ],
+          "priority": 1,
+          "note": "作成フロー起点"
+        },
+        {
+          "name": "create-form-invalid",
+          "interactions": [
+            "click:新規作成ボタン",
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1,
+          "note": "バリデーション文言はverbatim保持対象"
+        },
+        {
+          "name": "create-submitting",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存"
+          ],
+          "priority": 2,
+          "note": "送信中disabled"
+        },
+        {
+          "name": "create-success",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存",
+            "wait:一覧反映"
+          ],
+          "priority": 1,
+          "note": "作成→一覧に出る（§10-9）"
+        },
+        {
+          "name": "normal",
+          "interactions": [],
+          "priority": 3,
+          "note": "populated前提・後日フェーズ"
+        },
+        {
+          "name": "page-last",
+          "interactions": [
+            "click:最終ページ"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "sort-desc",
+          "interactions": [
+            "click:列見出し"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "filter-empty",
+          "interactions": [
+            "input:検索に一致しない語"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "delete-confirm",
+          "interactions": [
+            "click:行の削除",
+            "wait:確認ダイアログ"
+          ],
+          "priority": 3
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/admin/plans/new",
+      "slug": "admin__plans__new",
+      "url": "{APP_BASE}/admin/plans/new",
+      "tier": 4,
+      "kind": "list",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "admin権限のアカウント",
+      "expected_endpoints": [
+        "GET /admin/plans/new"
+      ],
+      "params": [],
+      "states": [
+        {
+          "name": "empty",
+          "interactions": [],
+          "priority": 1,
+          "note": "基準状態（新規アカウント＝0件・§1-4）。新規アカウントでは default と同一画面なので empty に一本化"
+        },
+        {
+          "name": "loading",
+          "interactions": [
+            "network:throttle-slow",
+            "reload"
+          ],
+          "priority": 2,
+          "note": "スケルトン/スピナー"
+        },
+        {
+          "name": "error",
+          "interactions": [],
+          "priority": 3,
+          "note": "実サイトでは意図的に出せない。手構築（§5-7）"
+        },
+        {
+          "name": "create-modal-open",
+          "interactions": [
+            "click:新規作成ボタン"
+          ],
+          "priority": 1,
+          "note": "作成フロー起点"
+        },
+        {
+          "name": "create-form-invalid",
+          "interactions": [
+            "click:新規作成ボタン",
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1,
+          "note": "バリデーション文言はverbatim保持対象"
+        },
+        {
+          "name": "create-submitting",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存"
+          ],
+          "priority": 2,
+          "note": "送信中disabled"
+        },
+        {
+          "name": "create-success",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存",
+            "wait:一覧反映"
+          ],
+          "priority": 1,
+          "note": "作成→一覧に出る（§10-9）"
+        },
+        {
+          "name": "normal",
+          "interactions": [],
+          "priority": 3,
+          "note": "populated前提・後日フェーズ"
+        },
+        {
+          "name": "page-last",
+          "interactions": [
+            "click:最終ページ"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "sort-desc",
+          "interactions": [
+            "click:列見出し"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "filter-empty",
+          "interactions": [
+            "input:検索に一致しない語"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "delete-confirm",
+          "interactions": [
+            "click:行の削除",
+            "wait:確認ダイアログ"
+          ],
+          "priority": 3
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/admin/preset_access_denials",
+      "slug": "admin__preset_access_denials",
+      "url": "{APP_BASE}/admin/preset_access_denials",
+      "tier": 4,
+      "kind": "list",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "admin権限のアカウント",
+      "expected_endpoints": [
+        "GET /admin/preset_access_denials"
+      ],
+      "params": [],
+      "states": [
+        {
+          "name": "empty",
+          "interactions": [],
+          "priority": 1,
+          "note": "基準状態（新規アカウント＝0件・§1-4）。新規アカウントでは default と同一画面なので empty に一本化"
+        },
+        {
+          "name": "loading",
+          "interactions": [
+            "network:throttle-slow",
+            "reload"
+          ],
+          "priority": 2,
+          "note": "スケルトン/スピナー"
+        },
+        {
+          "name": "error",
+          "interactions": [],
+          "priority": 3,
+          "note": "実サイトでは意図的に出せない。手構築（§5-7）"
+        },
+        {
+          "name": "create-modal-open",
+          "interactions": [
+            "click:新規作成ボタン"
+          ],
+          "priority": 1,
+          "note": "作成フロー起点"
+        },
+        {
+          "name": "create-form-invalid",
+          "interactions": [
+            "click:新規作成ボタン",
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1,
+          "note": "バリデーション文言はverbatim保持対象"
+        },
+        {
+          "name": "create-submitting",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存"
+          ],
+          "priority": 2,
+          "note": "送信中disabled"
+        },
+        {
+          "name": "create-success",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存",
+            "wait:一覧反映"
+          ],
+          "priority": 1,
+          "note": "作成→一覧に出る（§10-9）"
+        },
+        {
+          "name": "normal",
+          "interactions": [],
+          "priority": 3,
+          "note": "populated前提・後日フェーズ"
+        },
+        {
+          "name": "page-last",
+          "interactions": [
+            "click:最終ページ"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "sort-desc",
+          "interactions": [
+            "click:列見出し"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "filter-empty",
+          "interactions": [
+            "input:検索に一致しない語"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "delete-confirm",
+          "interactions": [
+            "click:行の削除",
+            "wait:確認ダイアログ"
+          ],
+          "priority": 3
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/admin/product_search_forms",
+      "slug": "admin__product_search_forms",
+      "url": "{APP_BASE}/admin/product_search_forms",
+      "tier": 4,
+      "kind": "list",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "admin権限のアカウント",
+      "expected_endpoints": [
+        "GET /admin/product_search_forms"
+      ],
+      "params": [],
+      "states": [
+        {
+          "name": "empty",
+          "interactions": [],
+          "priority": 1,
+          "note": "基準状態（新規アカウント＝0件・§1-4）。新規アカウントでは default と同一画面なので empty に一本化"
+        },
+        {
+          "name": "loading",
+          "interactions": [
+            "network:throttle-slow",
+            "reload"
+          ],
+          "priority": 2,
+          "note": "スケルトン/スピナー"
+        },
+        {
+          "name": "error",
+          "interactions": [],
+          "priority": 3,
+          "note": "実サイトでは意図的に出せない。手構築（§5-7）"
+        },
+        {
+          "name": "create-modal-open",
+          "interactions": [
+            "click:新規作成ボタン"
+          ],
+          "priority": 1,
+          "note": "作成フロー起点"
+        },
+        {
+          "name": "create-form-invalid",
+          "interactions": [
+            "click:新規作成ボタン",
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1,
+          "note": "バリデーション文言はverbatim保持対象"
+        },
+        {
+          "name": "create-submitting",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存"
+          ],
+          "priority": 2,
+          "note": "送信中disabled"
+        },
+        {
+          "name": "create-success",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存",
+            "wait:一覧反映"
+          ],
+          "priority": 1,
+          "note": "作成→一覧に出る（§10-9）"
+        },
+        {
+          "name": "normal",
+          "interactions": [],
+          "priority": 3,
+          "note": "populated前提・後日フェーズ"
+        },
+        {
+          "name": "page-last",
+          "interactions": [
+            "click:最終ページ"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "sort-desc",
+          "interactions": [
+            "click:列見出し"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "filter-empty",
+          "interactions": [
+            "input:検索に一致しない語"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "delete-confirm",
+          "interactions": [
+            "click:行の削除",
+            "wait:確認ダイアログ"
+          ],
+          "priority": 3
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/admin/teams",
+      "slug": "admin__teams",
+      "url": "{APP_BASE}/admin/teams",
+      "tier": 4,
+      "kind": "list",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "admin権限のアカウント",
+      "expected_endpoints": [
+        "GET /admin/teams"
+      ],
+      "params": [],
+      "states": [
+        {
+          "name": "empty",
+          "interactions": [],
+          "priority": 1,
+          "note": "基準状態（新規アカウント＝0件・§1-4）。新規アカウントでは default と同一画面なので empty に一本化"
+        },
+        {
+          "name": "loading",
+          "interactions": [
+            "network:throttle-slow",
+            "reload"
+          ],
+          "priority": 2,
+          "note": "スケルトン/スピナー"
+        },
+        {
+          "name": "error",
+          "interactions": [],
+          "priority": 3,
+          "note": "実サイトでは意図的に出せない。手構築（§5-7）"
+        },
+        {
+          "name": "create-modal-open",
+          "interactions": [
+            "click:新規作成ボタン"
+          ],
+          "priority": 1,
+          "note": "作成フロー起点"
+        },
+        {
+          "name": "create-form-invalid",
+          "interactions": [
+            "click:新規作成ボタン",
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1,
+          "note": "バリデーション文言はverbatim保持対象"
+        },
+        {
+          "name": "create-submitting",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存"
+          ],
+          "priority": 2,
+          "note": "送信中disabled"
+        },
+        {
+          "name": "create-success",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存",
+            "wait:一覧反映"
+          ],
+          "priority": 1,
+          "note": "作成→一覧に出る（§10-9）"
+        },
+        {
+          "name": "normal",
+          "interactions": [],
+          "priority": 3,
+          "note": "populated前提・後日フェーズ"
+        },
+        {
+          "name": "page-last",
+          "interactions": [
+            "click:最終ページ"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "sort-desc",
+          "interactions": [
+            "click:列見出し"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "filter-empty",
+          "interactions": [
+            "input:検索に一致しない語"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "delete-confirm",
+          "interactions": [
+            "click:行の削除",
+            "wait:確認ダイアログ"
+          ],
+          "priority": 3
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/admin/teams/new",
+      "slug": "admin__teams__new",
+      "url": "{APP_BASE}/admin/teams/new",
+      "tier": 4,
+      "kind": "list",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "admin権限のアカウント",
+      "expected_endpoints": [
+        "GET /admin/teams/new"
+      ],
+      "params": [],
+      "states": [
+        {
+          "name": "empty",
+          "interactions": [],
+          "priority": 1,
+          "note": "基準状態（新規アカウント＝0件・§1-4）。新規アカウントでは default と同一画面なので empty に一本化"
+        },
+        {
+          "name": "loading",
+          "interactions": [
+            "network:throttle-slow",
+            "reload"
+          ],
+          "priority": 2,
+          "note": "スケルトン/スピナー"
+        },
+        {
+          "name": "error",
+          "interactions": [],
+          "priority": 3,
+          "note": "実サイトでは意図的に出せない。手構築（§5-7）"
+        },
+        {
+          "name": "create-modal-open",
+          "interactions": [
+            "click:新規作成ボタン"
+          ],
+          "priority": 1,
+          "note": "作成フロー起点"
+        },
+        {
+          "name": "create-form-invalid",
+          "interactions": [
+            "click:新規作成ボタン",
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1,
+          "note": "バリデーション文言はverbatim保持対象"
+        },
+        {
+          "name": "create-submitting",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存"
+          ],
+          "priority": 2,
+          "note": "送信中disabled"
+        },
+        {
+          "name": "create-success",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存",
+            "wait:一覧反映"
+          ],
+          "priority": 1,
+          "note": "作成→一覧に出る（§10-9）"
+        },
+        {
+          "name": "normal",
+          "interactions": [],
+          "priority": 3,
+          "note": "populated前提・後日フェーズ"
+        },
+        {
+          "name": "page-last",
+          "interactions": [
+            "click:最終ページ"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "sort-desc",
+          "interactions": [
+            "click:列見出し"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "filter-empty",
+          "interactions": [
+            "input:検索に一致しない語"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "delete-confirm",
+          "interactions": [
+            "click:行の削除",
+            "wait:確認ダイアログ"
+          ],
+          "priority": 3
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/admin/teams/:team_uid/members",
+      "slug": "admin__teams__UID__members",
+      "url": "{APP_BASE}/admin/teams/:team_uid/members",
+      "tier": 4,
+      "kind": "list",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "admin権限のアカウント",
+      "expected_endpoints": [
+        "GET /admin/teams/:team_uid/members"
+      ],
+      "params": [
+        "team_uid"
+      ],
+      "states": [
+        {
+          "name": "empty",
+          "interactions": [],
+          "priority": 1,
+          "note": "基準状態（新規アカウント＝0件・§1-4）。新規アカウントでは default と同一画面なので empty に一本化"
+        },
+        {
+          "name": "loading",
+          "interactions": [
+            "network:throttle-slow",
+            "reload"
+          ],
+          "priority": 2,
+          "note": "スケルトン/スピナー"
+        },
+        {
+          "name": "error",
+          "interactions": [],
+          "priority": 3,
+          "note": "実サイトでは意図的に出せない。手構築（§5-7）"
+        },
+        {
+          "name": "create-modal-open",
+          "interactions": [
+            "click:新規作成ボタン"
+          ],
+          "priority": 1,
+          "note": "作成フロー起点"
+        },
+        {
+          "name": "create-form-invalid",
+          "interactions": [
+            "click:新規作成ボタン",
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1,
+          "note": "バリデーション文言はverbatim保持対象"
+        },
+        {
+          "name": "create-submitting",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存"
+          ],
+          "priority": 2,
+          "note": "送信中disabled"
+        },
+        {
+          "name": "create-success",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存",
+            "wait:一覧反映"
+          ],
+          "priority": 1,
+          "note": "作成→一覧に出る（§10-9）"
+        },
+        {
+          "name": "normal",
+          "interactions": [],
+          "priority": 3,
+          "note": "populated前提・後日フェーズ"
+        },
+        {
+          "name": "page-last",
+          "interactions": [
+            "click:最終ページ"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "sort-desc",
+          "interactions": [
+            "click:列見出し"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "filter-empty",
+          "interactions": [
+            "input:検索に一致しない語"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "delete-confirm",
+          "interactions": [
+            "click:行の削除",
+            "wait:確認ダイアログ"
+          ],
+          "priority": 3
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/admin/teams/:team_uid/plans/payments",
+      "slug": "admin__teams__UID__plans__payments",
+      "url": "{APP_BASE}/admin/teams/:team_uid/plans/payments",
+      "tier": 4,
+      "kind": "list",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "admin権限のアカウント",
+      "expected_endpoints": [
+        "GET /admin/teams/:team_uid/plans/payments"
+      ],
+      "params": [
+        "team_uid"
+      ],
+      "states": [
+        {
+          "name": "empty",
+          "interactions": [],
+          "priority": 1,
+          "note": "基準状態（新規アカウント＝0件・§1-4）。新規アカウントでは default と同一画面なので empty に一本化"
+        },
+        {
+          "name": "loading",
+          "interactions": [
+            "network:throttle-slow",
+            "reload"
+          ],
+          "priority": 2,
+          "note": "スケルトン/スピナー"
+        },
+        {
+          "name": "error",
+          "interactions": [],
+          "priority": 3,
+          "note": "実サイトでは意図的に出せない。手構築（§5-7）"
+        },
+        {
+          "name": "create-modal-open",
+          "interactions": [
+            "click:新規作成ボタン"
+          ],
+          "priority": 1,
+          "note": "作成フロー起点"
+        },
+        {
+          "name": "create-form-invalid",
+          "interactions": [
+            "click:新規作成ボタン",
+            "click:保存（未入力のまま）"
+          ],
+          "priority": 1,
+          "note": "バリデーション文言はverbatim保持対象"
+        },
+        {
+          "name": "create-submitting",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存"
+          ],
+          "priority": 2,
+          "note": "送信中disabled"
+        },
+        {
+          "name": "create-success",
+          "interactions": [
+            "click:新規作成ボタン",
+            "input:名前",
+            "click:保存",
+            "wait:一覧反映"
+          ],
+          "priority": 1,
+          "note": "作成→一覧に出る（§10-9）"
+        },
+        {
+          "name": "normal",
+          "interactions": [],
+          "priority": 3,
+          "note": "populated前提・後日フェーズ"
+        },
+        {
+          "name": "page-last",
+          "interactions": [
+            "click:最終ページ"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "sort-desc",
+          "interactions": [
+            "click:列見出し"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "filter-empty",
+          "interactions": [
+            "input:検索に一致しない語"
+          ],
+          "priority": 3
+        },
+        {
+          "name": "delete-confirm",
+          "interactions": [
+            "click:行の削除",
+            "wait:確認ダイアログ"
+          ],
+          "priority": 3
+        }
+      ],
+      "priority1_count": 4,
+      "priority1_shots": 8
+    },
+    {
+      "route": "/permissions",
+      "slug": "permissions",
+      "url": "{APP_BASE}/permissions",
+      "tier": 4,
+      "kind": "static",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "権限差分の確認に第2ロールが必要な可能性あり（§5-7）",
+      "expected_endpoints": [
+        "GET /permissions"
+      ],
+      "params": [],
+      "states": [
+        {
+          "name": "default",
+          "interactions": [],
+          "priority": 1
+        }
+      ],
+      "priority1_count": 1,
+      "priority1_shots": 2
+    },
+    {
+      "route": "/introductions",
+      "slug": "introductions",
+      "url": "{APP_BASE}/introductions",
+      "tier": 4,
+      "kind": "static",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /introductions"
+      ],
+      "params": [],
+      "states": [
+        {
+          "name": "default",
+          "interactions": [],
+          "priority": 1
+        }
+      ],
+      "priority1_count": 1,
+      "priority1_shots": 2
+    },
+    {
+      "route": "/seminar",
+      "slug": "seminar",
+      "url": "{APP_BASE}/seminar",
+      "tier": 4,
+      "kind": "static",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /seminar"
+      ],
+      "params": [],
+      "states": [
+        {
+          "name": "default",
+          "interactions": [],
+          "priority": 1
+        }
+      ],
+      "priority1_count": 1,
+      "priority1_shots": 2
+    },
+    {
+      "route": "/terms",
+      "slug": "terms",
+      "url": "{APP_BASE}/terms",
+      "tier": 4,
+      "kind": "static",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET /terms"
+      ],
+      "params": [],
+      "states": [
+        {
+          "name": "default",
+          "interactions": [],
+          "priority": 1
+        }
+      ],
+      "priority1_count": 1,
+      "priority1_shots": 2
+    },
+    {
+      "route": "*",
+      "slug": "catch_all",
+      "url": "{APP_BASE}*",
+      "tier": 4,
+      "kind": "static",
+      "screen": null,
+      "capture_iframe": false,
+      "account_requirement": "新規アカウント（空）が望ましい。既存アカウントで採る場合は空状態が観測できない点に注意（§5-7）",
+      "expected_endpoints": [
+        "GET *"
+      ],
+      "params": [],
+      "states": [
+        {
+          "name": "default",
+          "interactions": [],
+          "priority": 1
+        }
+      ],
+      "priority1_count": 1,
+      "priority1_shots": 2
+    }
+  ]
+}
