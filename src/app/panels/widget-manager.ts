@@ -23,20 +23,27 @@ const HOOK = {
   icon: '[class*="sideToolbarIcon"]',
   dropdownBody: '[class*="actionDropdownBody"]',
   actionButton: '[class*="actionButton"]',
-  arrow: '[class*="_arrow_"]',
 } as const
 
-/** 採取したCSSモジュールのクラス名（実CSS: `._actionDropdownBody_1ti69_5._open_1ti69_52{display:block}`） */
-const OPEN_CLASS = '_open_1ti69_52'
-
 /**
- * メニューを開く位置。
- * **実物の開いた状態は採取できていない**ので、右レール（x=995..1045 / layout.json）から
- * 200px幅のメニューが画面外に出ない唯一の向き＝左側に出す。
- * 実物も他のドロップダウンでは inline style で位置を決めている（変更・復元履歴が `right: 30px`）。
+ * 開いたときに足すクラス。**これ1つだけ**で開く。
+ *
+ * 採取した実CSS（`capture/cssom/editor.css`）が状態を全部持っている:
+ *   `._actionDropdown_1ti69_1 ._actionDropdownBody_1ti69_5`
+ *       → `position:absolute; display:none; width:200px; z-index:10000;`（top/left は指定なし）
+ *   `._actionDropdown_1ti69_1 ._actionDropdownBody_1ti69_5._open_1ti69_52`
+ *       → `display:block;`
+ *   `... ._arrow_1ti69_16` → `top:50%; left:-1px; transform:rotate(315deg);`（本体の左端に矢印）
+ *
+ * つまり位置は「静的位置（`_actionDropdown_` の左上）＋幅200px」で実CSSが決めている。
+ * 右レールは x=995..1045（`editor-target/layout.json`・ビューポート1210）なので、
+ * 右へ200px開いても画面内に収まる。**inline style で位置を足さない。**
+ *
+ * ⚠️ 開いた状態そのものは **どの採取物にも入っていない**
+ * （`tool-widget-open` を採り直しても `_open_1ti69_52` は1件も出ていない）。
+ * だからこそ推測でinline styleを足さず、採取済みCSSが決める位置に任せる。
  */
-const OPEN_STYLE = 'top: 50%; right: 40px; transform: translateY(-50%);'
-const ARROW_STYLE = 'left: auto; right: -1px; transform: rotate(135deg);'
+export const WIDGET_MENU_OPEN_CLASS = '_open_1ti69_52'
 
 /** メニュー項目のラベル（実DOM verbatim。並び順もこのとおり） */
 export const WIDGET_MENU_LABELS: readonly string[] = [
@@ -74,18 +81,9 @@ export function mountWidgetManager(root: HTMLElement, quill: Quill): void {
     if (range !== null) lastRange = { index: range.index, length: range.length }
   })
 
-  const arrow = body.querySelector<HTMLElement>(HOOK.arrow)
-  const isOpen = (): boolean => body.classList.contains(OPEN_CLASS)
-  const close = (): void => {
-    body.classList.remove(OPEN_CLASS)
-    body.removeAttribute('style')
-    arrow?.removeAttribute('style')
-  }
-  const open = (): void => {
-    body.classList.add(OPEN_CLASS)
-    body.setAttribute('style', OPEN_STYLE)
-    arrow?.setAttribute('style', ARROW_STYLE)
-  }
+  const isOpen = (): boolean => body.classList.contains(WIDGET_MENU_OPEN_CLASS)
+  const close = (): void => body.classList.remove(WIDGET_MENU_OPEN_CLASS)
+  const open = (): void => body.classList.add(WIDGET_MENU_OPEN_CLASS)
 
   trigger.addEventListener('click', (event) => {
     event.stopPropagation()

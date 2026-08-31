@@ -82,11 +82,14 @@ export interface CoverageReport {
  * 被覆率を集計する。
  *
  * @param capturedByState 状態名 → その状態のDOMに存在する data-test の一覧
- * @param wiredTestIds    クローンのコードが参照している data-test の一覧
+ * @param wiredTestIds    クローンのコードが参照している data-test / data-testid の一覧
+ * @param alsoCaptured    別系統(data-testid)で採取されている名前。
+ *   これを渡さないと、data-testid でしか存在しない名前を「実物に無い＝推測」と誤報告する。
  */
 export function buildCoverage(
   capturedByState: Readonly<Record<string, readonly string[]>>,
   wiredTestIds: readonly string[],
+  alsoCaptured: readonly string[] = [],
 ): CoverageReport {
   const wiredSet = new Set(wiredTestIds)
   const capturedSet = new Set<string>()
@@ -101,7 +104,10 @@ export function buildCoverage(
 
   const total = capturedSet.size
   const wired = [...capturedSet].filter((testId) => wiredSet.has(testId)).length
-  const notInCapture = wiredTestIds.filter((testId) => !capturedSet.has(testId))
+  const alsoCapturedSet = new Set(alsoCaptured)
+  const notInCapture = wiredTestIds.filter(
+    (testId) => !capturedSet.has(testId) && !alsoCapturedSet.has(testId),
+  )
 
   return {
     total,

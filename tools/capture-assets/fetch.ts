@@ -7,12 +7,13 @@
  * SPAは存在しないパスにも200でHTMLを返すので、**中身がHTMLなら失敗として扱う**。
  */
 import { readFileSync, writeFileSync, existsSync, readdirSync, statSync, mkdirSync } from 'node:fs'
-import { basename, join } from 'node:path'
+import { dirname, join } from 'node:path'
+import { localPathForAsset } from './paths.ts'
 import { homedir } from 'node:os'
 
 const QUARANTINE = join(homedir(), 'squadbeyond-capture-quarantine')
 const ROUTES_DIR = join(QUARANTINE, 'routes')
-const FILES_DIR = join(QUARANTINE, 'assets', 'files')
+const ASSETS_DIR = join(QUARANTINE, 'assets')
 const ASSET_RE = /\/assets\/[A-Za-z0-9_-]+-[a-f0-9]{8}\.(?:svg|png|jpg|gif|woff2|woff|ttf)/g
 
 function walk(dir: string): string[] {
@@ -47,10 +48,10 @@ async function main(): Promise<void> {
     process.exitCode = 1
     return
   }
-  mkdirSync(FILES_DIR, { recursive: true })
+  mkdirSync(ASSETS_DIR, { recursive: true })
 
   const assets = referencedAssets()
-  const missing = assets.filter((a) => !existsSync(join(FILES_DIR, basename(a))))
+  const missing = assets.filter((a) => !existsSync(join(ASSETS_DIR, localPathForAsset(a))))
   console.log(`[assets] 参照 ${assets.length}件 / 未取得 ${missing.length}件`)
 
   let ok = 0
@@ -66,12 +67,16 @@ async function main(): Promise<void> {
       failed.push(`${asset} (中身がHTML＝SPAフォールバック)`)
       continue
     }
-    writeFileSync(join(FILES_DIR, basename(asset)), buffer)
+    // 実物のURLの形をそのまま写す。basename だけにすると、
+    // 採取したCSSが参照する /assets/x.svg と噛み合わなくなる。
+    const target = join(ASSETS_DIR, localPathForAsset(asset))
+    mkdirSync(dirname(target), { recursive: true })
+    writeFileSync(target, buffer)
     ok += 1
   }
   console.log(`[assets] 取得 ${ok}件 / 失敗 ${failed.length}件`)
   for (const f of failed) console.log(`  - ${f}`)
-  console.log('[assets] 次に: npx tsx tools/scrub/index.ts --in ~/squadbeyond-capture-quarantine/assets --out capture/assets ...')
+  console.log('[assets] 次に: npx tsx tools/scrub/index.ts --in ~/squadbeyond-capture-quarantine/assets --out capture/assets')
 }
 
 void main()

@@ -5,6 +5,10 @@
 import { markActiveNav, mountShell } from './shell.ts'
 import { renderFolders } from './pages/folders.ts'
 import { renderEditor } from './pages/editor.ts'
+import { renderBasicInfo } from './pages/basic-info.ts'
+import { renderExitPopup } from './pages/exit-popup.ts'
+import { renderReport } from './pages/report.ts'
+import { renderHeatmap } from './pages/heatmap.ts'
 import { T, button, el, emptyState, toast } from './ui.ts'
 import { api } from './api.ts'
 
@@ -37,6 +41,40 @@ async function route(): Promise<void> {
     const editorMatch = /^\/ab_tests\/([^/]+)\/articles$/.exec(path ?? '')
     if (editorMatch !== null) {
       await renderEditor(content, editorMatch[1] as string, generation)
+      return
+    }
+    /**
+     * ヒートマップ比較。レポートタブのサブナビから来る。
+     * `/articles/...` で始まるので、上のエディタ用パターンより先に判定する必要はないが、
+     * ポップアップと同じく `articles` 配下なので並べて置く。
+     */
+    const heatmapMatch = /^\/ab_tests\/([^/]+)\/articles\/htmls\/heatmaps\/comparisons$/.exec(
+      path ?? '',
+    )
+    if (heatmapMatch !== null) {
+      await renderHeatmap(content, heatmapMatch[1] as string, generation)
+      return
+    }
+    // レポートタブ（4タブの4つ目）。ここだけダークテーマ。
+    const reportMatch = /^\/ab_tests\/([^/]+)\/reports$/.exec(path ?? '')
+    if (reportMatch !== null) {
+      await renderReport(content, reportMatch[1] as string, params, generation)
+      return
+    }
+    // ポップアップタブ（4タブの3つ目）。実物は「離脱防止機能が未契約」のアップセル画面。
+    const exitPopupMatch = /^\/ab_tests\/([^/]+)\/articles\/exit_popups$/.exec(path ?? '')
+    if (exitPopupMatch !== null) {
+      await renderExitPopup(content, exitPopupMatch[1] as string, generation)
+      return
+    }
+    // 基本情報タブ（beyondページの4タブの1つ目）
+    const basicInfoMatch = /^\/folders\/([^/]+)\/ab_tests\/([^/]+)\/edit$/.exec(path ?? '')
+    if (basicInfoMatch !== null) {
+      await renderBasicInfo(
+        content,
+        { folderUid: basicInfoMatch[1] as string, abTestUid: basicInfoMatch[2] as string },
+        generation,
+      )
       return
     }
     if (path === '/folders') {

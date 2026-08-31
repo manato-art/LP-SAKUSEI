@@ -19,6 +19,7 @@ import { mountLinkReplace } from '../panels/link-replace.ts'
 import { mountHistory } from '../panels/history.ts'
 import { mountEditorToolbar } from '../panels/editor-toolbar.ts'
 import { mountWidgetManager } from '../panels/widget-manager.ts'
+import { wireAbTestTabs } from './tab-nav.ts'
 
 /** 採取DOM内の目印（実物の data-test 属性。採取のたびに増える） */
 const HOOK = {
@@ -36,7 +37,9 @@ const HOOK = {
   /** 右レール1番目。実DOMでは aria-label で識別できる */
   preview: '[aria-label="プレビュー"]',
   moreToolbar: '[data-test="EditorToolbar-BtnMoreToolbarOption"]',
-  editorWrapper: '[data-test="editor-wrapper"], [data-test="editorWrapper"]',
+  // 実物は data-test="editorWrapper"。data-testid="editor-wrapper" という別要素もあるが、
+  // 属性名が違うので [data-test="editor-wrapper"] は永久に一致しない。念のための第2候補は置かない。
+  editorWrapper: '[data-test="editorWrapper"]',
   /** Version行は記事uidを属性で持っている（実DOMで判明） */
   versionRow: '[data-article-uid]',
   funnelPrev: '[class*="changePrevFunnelStep"]',
@@ -64,6 +67,8 @@ interface EditorContext {
   root: HTMLElement
   quill: Quill
   abTestUid: string
+  /** beyondページ（＝基本情報タブ）へのリンクを組み立てるのに要る */
+  folderUid: string
   articleUid: string
   versions: Version[]
   currentUid: string
@@ -87,7 +92,8 @@ export async function renderEditor(
   }
   const { versions } = await api.versions(articleUid)
   const folders = await api.folders()
-  const folderName = folders.folders.find((f) => f.id === ab_test.folder_id)?.name ?? ''
+  const folder = folders.folders.find((f) => f.id === ab_test.folder_id)
+  const folderName = folder?.name ?? ''
 
   // API待ちの間に新しい描画が始まっていたら、ここで降りる（二重描画の防止）
   if (generation !== undefined && isStale(generation)) return
@@ -117,6 +123,7 @@ export async function renderEditor(
     root,
     quill,
     abTestUid,
+    folderUid: folder?.uid ?? '',
     articleUid,
     versions: [...versions],
     currentUid: versions[0]?.uid ?? '',
@@ -126,6 +133,8 @@ export async function renderEditor(
   wireVersionPanel(ctx)
   wireSideToolbar(ctx, ab_test.title, folderName)
   wireTopBar(root, ab_test.title, folderName)
+  // 4タブ（基本情報 / Version / ポップアップ / レポート）を相互に行き来できるようにする
+  wireAbTestTabs(root, abTestUid, folder?.uid ?? '')
   loadVersion(ctx, ctx.currentUid)
 }
 
@@ -267,9 +276,13 @@ function wireSideToolbar(ctx: EditorContext, previewTitle: string, previewFolder
   // ── 各パネルを配線（実装は src/app/panels/ に分かれている）──
   mountVersionSettings(ctx.root, ctx.articleUid)
   mountTagSettings(ctx.root, ctx.articleUid)
-  mountLinkReplace(ctx.root, ctx.articleUid)
+  // 置換の対象は「いま開いているVersion」。パネルは押されるたびに読み直す
+  mountLinkReplace(ctx.root, ctx.articleUid, () => ctx.currentUid)
   mountHistory(ctx.root, ctx.articleUid)
-  mountEditorToolbar(ctx.root, ctx.quill)
+  // リンクパネルの「計測ツールの変更」は、実物と同じ beyondページの編集画面（基本情報タブ）へ。
+  mountEditorToolbar(ctx.root, ctx.quill, {
+    trackingSettingsHref: `#/folders/${ctx.folderUid}/ab_tests/${ctx.abTestUid}/edit`,
+  })
   mountWidgetManager(ctx.root, ctx.quill)
 
   ctx.root.querySelector(HOOK.preview)?.addEventListener('click', async () => {

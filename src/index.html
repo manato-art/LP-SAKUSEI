@@ -13,6 +13,33 @@
     <link rel="stylesheet" href="/cssom/dashboard.css" />
     <link rel="stylesheet" href="/cssom/editor.css" />
     <link rel="stylesheet" href="/cssom/folders.css" />
+    <!--
+      基本情報タブ（/folders/:uid/ab_tests/:uid/edit）のEmotion。
+      dashboard/editor/folders のどれにも入っていない（css-miex0u 等が全滅する）ので、
+      採取済みの実ファイルを**そのまま**参照する（複製を増やさない）。
+    -->
+    <link rel="stylesheet" href="/clean/folders__UID__ab_tests__UID__edit/default/cssom.css" />
+    <!--
+      ポップアップタブ（/ab_tests/:uid/articles/exit_popups）のEmotion。
+      上のどれにも入っていない5クラス（css-1ruxp1v / css-1ky2vci / css-3olzan /
+      css-1t5yily / css-1afp10f）＝アップセルの暗い枠と見出しが全滅するので、
+      採取済みの実ファイルを**そのまま**参照する（複製を増やさない）。
+      editor.css と重なるルールは全て同一・@keyframes の衝突も0件（照合済み）。
+    -->
+    <link rel="stylesheet" href="/clean/ab_tests__UID__articles__exit_popups/default/cssom.css" />
+    <!--
+      レポートタブ（/ab_tests/:uid/reports）とヒートマップ
+      （/ab_tests/:uid/articles/htmls/heatmaps/comparisons）のCSS。
+      この2画面だけ**ダークテーマ**で、配色は CSS Modules の `_darkTheme_*` が持っている。
+      上のどのファイルにも入っていない（_navWrapper_8ygjt_1 / _reportWrapper_1fhbq_152 /
+      _heatmapList_14ri6_1 など）ので、採取済みの実ファイルを**そのまま**参照する。
+      既存の5ファイルと重なる 4,609 / 4,581 ルールは宣言まで完全一致・@keyframes の衝突も0件（照合済み）。
+    -->
+    <link rel="stylesheet" href="/clean/ab_tests__UID__reports/default/cssom.css" />
+    <link
+      rel="stylesheet"
+      href="/clean/ab_tests__UID__articles__htmls__heatmaps__comparisons/default/cssom.css"
+    />
     <style>
       body { margin: 0; background: #ECECEC; }
     </style>

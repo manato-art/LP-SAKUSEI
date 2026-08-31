@@ -51,6 +51,51 @@ export interface Version {
   css: string
 }
 
+/**
+ * レポートの1行ぶんのKPI。派生値は `mock-server/store/metrics.ts` の恒等式（企画書 §10-5）で
+ * サーバー側が算出したものをそのまま受け取る。ゼロ除算は null（UIで「-」表示）。
+ */
+export interface ReportKpi {
+  pv: number
+  click: number
+  cv: number
+  ad_cost: number
+  sales: number
+  gross_profit: number
+  roas: number | null
+  roi: number | null
+  cvr: number | null
+  cpa: number | null
+}
+
+export interface ReportVersionRow extends ReportKpi {
+  scope: string
+  entity_uid: string
+  name: string
+  status: string
+  distribution_ratio: number
+}
+
+export interface ReportDailyRow extends ReportKpi {
+  date: string
+}
+
+export interface ReportResponse {
+  rows: ReportVersionRow[]
+  totals: ReportKpi
+  daily: ReportDailyRow[]
+  period: { start_date: string; end_date: string }
+}
+
+export interface HeatmapEntry {
+  id: number
+  ab_test_uid: string
+  version_uid: string
+  type: 'click' | 'scroll'
+  points: readonly { x: number; y: number; value: number }[]
+  thumbnail_url: string | null
+}
+
 export const api = {
   folders: () => request<{ folders: Folder[] }>('GET', '/folders?per_page=200'),
   createFolder: (name: string) => request<{ folder: Folder }>('POST', '/folders', { name }),
@@ -89,6 +134,16 @@ export const api = {
       { distribution_ratio: ratio },
     ),
   publish: (uid: string) => request<{ version: Version }>('POST', `/versions/${uid}/publish`),
+
+  /** レポートタブ（§10-3 `GET /ab_tests/:uid/reports?start_date&end_date`） */
+  report: (abTestUid: string, query: string) =>
+    request<ReportResponse>('GET', `/ab_tests/${abTestUid}/reports?${query}`),
+  /** クリエイティブレポート（§10-3 `GET /ab_tests/:uid/creative_report`） */
+  creativeReport: (abTestUid: string, query: string) =>
+    request<ReportResponse>('GET', `/ab_tests/${abTestUid}/creative_report?${query}`),
+  /** ヒートマップ比較（§10-3 `GET /ab_tests/:uid/heatmaps/comparisons`） */
+  heatmaps: (abTestUid: string) =>
+    request<{ heatmaps: HeatmapEntry[] }>('GET', `/ab_tests/${abTestUid}/heatmaps/comparisons`),
 
   media: () => request<{ ab_tests: unknown[] }>('GET', '/ab_tests?per_page=1'),
   reset: () => fetch('/__mock/reset', { method: 'POST' }).then((r) => r.json()),

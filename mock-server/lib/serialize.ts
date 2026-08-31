@@ -59,6 +59,10 @@ export function serializeAbTest(state: State, abTest: AbTest): Record<string, un
     conversion_setting: abTest.conversion_setting,
     affiliate_service_provider: abTest.affiliate_service_provider,
     product_genres: abTest.product_genres,
+    // 基本情報タブ「その他の項目」のターゲティング欄（実DOMに実在する3つのselect）
+    gender: abTest.gender,
+    age_from: abTest.age_from,
+    age_to: abTest.age_to,
     reports: null,
     created_at: abTest.created_at,
     updated_at: abTest.updated_at,

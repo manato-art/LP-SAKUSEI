@@ -81,3 +81,15 @@ describe('data-testid（デザインシステム側の属性）も拾う', () =>
     expect(extractWiredSelectors(source)).toEqual(['list-menu-item'])
   })
 })
+
+describe('「実物に無い」の判定は両方の属性を合わせて行う', () => {
+  it('data-testid にだけ在る名前を「実物に無い」と誤報告しない', () => {
+    const coverage = buildCoverage({ editor: ['A-Btn'] }, ['A-Btn', 'media-select'], ['media-select'])
+    expect(coverage.notInCapture).toEqual([])
+  })
+
+  it('どちらにも無い名前だけを報告する', () => {
+    const coverage = buildCoverage({ editor: ['A-Btn'] }, ['A-Btn', 'ghost'], ['media-select'])
+    expect(coverage.notInCapture).toEqual(['ghost'])
+  })
+})

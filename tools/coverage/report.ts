@@ -56,8 +56,10 @@ function main(): void {
   const wiredTestIds = readWiredSelectors()
   const appByState = readCapturedByState('app')
   const componentByState = readCapturedByState('component')
-  const appCoverage = buildCoverage(appByState, wiredTestIds)
-  const componentCoverage = buildCoverage(componentByState, wiredTestIds)
+  const componentNames = Object.values(componentByState).flat()
+  const appNames = Object.values(appByState).flat()
+  const appCoverage = buildCoverage(appByState, wiredTestIds, componentNames)
+  const componentCoverage = buildCoverage(componentByState, wiredTestIds, appNames)
 
   const percent = (ratio: number | null): string =>
     ratio === null ? '判定不能（採取物が空）' : `${Math.round(ratio * 100)}%`

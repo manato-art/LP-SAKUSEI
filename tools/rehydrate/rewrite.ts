@@ -13,9 +13,6 @@ export const CSS_MAP: Readonly<Record<string, string>> = {
   '/assets/index-05deeb9d.css': '/assets/css/index-05deeb9d.css',
 }
 
-/** 採取済みの実ファイル名（`/assets/<name>` を `/assets/files/<name>` へ寄せる） */
-const ASSET_FILE_RE = /\/assets\/([A-Za-z0-9_-]+-[a-f0-9]{8}\.(?:svg|png|woff2?|ttf|eot))/g
-
 /** 本番JSは使わない（§11）。読み込もうとすると404になるだけなので除去する。 */
 const REMOVE_PATTERNS: readonly { name: string; pattern: RegExp }[] = [
   { name: 'modulepreload', pattern: /<link\b[^>]*rel="modulepreload"[^>]*>/gi },
@@ -46,6 +43,10 @@ export function rewriteSubstrate(input: string): RewriteResult {
   for (const [from, to] of Object.entries(CSS_MAP)) {
     html = html.split(`"${from}"`).join(`"${to}"`)
   }
+  // `/assets/<name>` はそのまま。採取したCSSが同じURLで画像を参照するので、
+  // ファイル側を実物のURLの形に合わせて置いている（tools/capture-assets/paths.ts）。
+  // 以前は `/assets/files/` へ寄せていたが、CSS側は寄せられないので画像が出なかった。
+
   // アイコンCSS（scrubで `/assets/fonts/...` に化けているものを実ファイルへ）
   html = html.replace(/\/assets\/fonts\/icon\?family=Material\+Icons/g, '/assets/css/material-icons.css')
   html = html.replace(
@@ -53,7 +54,6 @@ export function rewriteSubstrate(input: string): RewriteResult {
     '/assets/css/fontawesome-5.15.4.css',
   )
   // 画像・アイコン・フォントの実ファイル
-  html = html.replace(ASSET_FILE_RE, '/assets/files/$1')
 
   // integrity/crossorigin はローカル配信では邪魔になる
   html = html.replace(/\sintegrity="[^"]*"/g, '').replace(/\scrossorigin(?:="[^"]*")?/g, '')

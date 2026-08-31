@@ -175,10 +175,32 @@ export function createAbTest(
   }
 }
 
+/**
+ * 更新できる項目。基本情報タブ（`/folders/:uid/ab_tests/:uid/edit`）の実フォームに合わせて広げてある。
+ * `editor_version` は実機で disabled（「後から変更できません」）なので**含めない**。
+ */
+export type AbTestUpdatePatch = Partial<
+  Pick<
+    AbTest,
+    | 'title'
+    | 'memo'
+    | 'media_id'
+    | 'folder_id'
+    | 'ad_status'
+    | 'delivery_type'
+    | 'conversion_unit_price'
+    | 'conversion_setting'
+    | 'affiliate_service_provider'
+    | 'gender'
+    | 'age_from'
+    | 'age_to'
+  >
+>
+
 export function updateAbTest(
   state: State,
   uid: string,
-  patch: Partial<Pick<AbTest, 'title' | 'memo' | 'media_id' | 'folder_id' | 'ad_status'>>,
+  patch: AbTestUpdatePatch,
 ): { state: State; abTest: AbTest | null } {
   const target = state.abTests.find((t) => t.uid === uid)
   if (target === undefined) return { state, abTest: null }

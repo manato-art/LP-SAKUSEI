@@ -12,6 +12,8 @@ import { captureSinkRouter } from './capture-sink.ts'
 import { versionSettingsRouter } from './routes/panel-version-settings.ts'
 import { tagSettingsRouter } from './routes/panel-tag-settings.ts'
 import { historyRouter } from './routes/panel-history.ts'
+import { linkReplaceRouter } from './routes/panel-link-replace.ts'
+import { basicInfoRouter } from './routes/panel-basic-info.ts'
 import { resetArticleHistories } from './store/article-history.ts'
 import { abTestsRouter } from './routes/ab-tests.ts'
 import { conversionsRouter } from './routes/conversions.ts'
@@ -73,6 +75,8 @@ export function createApp(): Express {
     versionSettingsRouter,
     tagSettingsRouter,
     historyRouter,
+    linkReplaceRouter,
+    basicInfoRouter,
   ]
 
   // [A] メインREST API（実物は v1 / v2 が混在するため両方に同じルーターを載せる）

@@ -5,278 +5,138 @@
  * クラス名を目印に挙動だけを付ける（企画書 §11 の「島」の再実装）。
  * 採取元: capture/clean/ab_tests__UID__articles/tool-link-replace/dom.html
  *
- * 「計測機能付きリンク」の意味は **採取した実 Quill Link blot のソース**から確定している
- * （capture/clean/ab_tests__UID__articles/editor-target/iframe0.html）:
- *   - tel: 以外 … href のクエリに `sb_tracking=true` を付ける
- *   - tel:     … `data-sb-tracking="true"` 属性を付ける
- *   - 別タブ   … `target="_blank"`（rel は実物が付けないので付けない＝勝手に改善しない）
- *   - 許可プロトコル … http / https / mailto / tel（実物にはもう1つ特定アプリのスキームが
- *     入っているが、第三者のブランド名なのでクローンには持ち込まない）
+ * ## 採取できたもの / 採取できていないもの（重要）
+ *
+ * 採取できた実DOMは **アセット0件の空状態**だけ。具体的には
+ * `_targetLinkLists_id5w4_134` の中身が `_noLinksDescription_id5w4_411`（`置き換え対象のリンクが
+ * ありません`）1枚しか無い。
+ *
+ * `_targetLinkList_`（1行）/ `_linkHref_` / `_trackingLink_` / `_popupList_` /
+ * `_popupLinkList_` / `_popupInfo_` / `_popupUrl_` / `_popupName_` / `_popupPreviewTrigger_` /
+ * `_btnLinkSelectType_` / `_linkSelectDropDown_` / `_trakingListHeader_` は
+ * **CSS（capture/cssom/editor.css）にしか存在せず、採取したDOMには1件も出てこない**。
+ * → **行のマークアップは不明**。CSSから形を推測して「それらしい行」を描くことはしない。
+ *   リンクが在るときは一覧枠を空のままにし、`data-sb-*` に状態だけ出す（下の renderList）。
+ *   行が採取できたらここに実マークアップを流し込む。
+ *
+ * 選択は、採取済みの `全て選択` / `選択解除`（`_btn_id5w4_117`）と
+ * 絞り込みタブ（`_sortTab_id5w4_93`）だけで行う。ここは実物のボタンなので推測ではない。
+ *
+ * 「計測機能付きリンク」の意味と置換ロジックは src/shared/link-html.ts（実 Quill Link blot 準拠）。
  */
 import { toast } from '../ui.ts'
-import { findLpBody, recordArticleHistory } from './history.ts'
+import { findLpBody } from './history.ts'
+import {
+  buildLinkReplaceRequest,
+  EMPTY_LINKS_MESSAGE,
+  extractLinksFromHtml,
+  filterLinks,
+  isAllowedLinkUrl,
+  selectableLinkIndexes,
+  type LinkReplaceRequest,
+  type LinkSortMode,
+  type LinkTab,
+  type LpLink,
+  type ReplaceTargetType,
+} from '../../shared/link-html.ts'
+
+/**
+ * 純粋ロジックは src/shared/link-html.ts へ移した（画面とモックサーバーで同じ実装を使うため）。
+ * 既存の呼び出し元・テストが `panels/link-replace.ts` から取れる形は保つ。
+ */
+export {
+  buildLinkReplaceRequest,
+  buildReplacementHref,
+  EMPTY_LINKS_MESSAGE,
+  extractLinksFromHtml,
+  filterLinks,
+  isAllowedLinkUrl,
+  isTelHref,
+  isTrackingLink,
+  LINK_PROTOCOL_WHITELIST,
+  pickReplacementUrl,
+  replaceableIndexes,
+  replaceLinksInHtml,
+  selectableLinkIndexes,
+  TRACKING_ATTRIBUTE,
+  TRACKING_PARAM,
+  withTrackingParam,
+} from '../../shared/link-html.ts'
+export type {
+  LinkReplaceFormInput,
+  LinkReplaceRequest,
+  LinkReplacement,
+  LinkSortMode,
+  LinkTab,
+  LpLink,
+  ReplaceTargetType,
+} from '../../shared/link-html.ts'
+
+const API_BASE = '/api/v1'
 
 /* ────────────────────────────────────────────────────────────
- * 純粋ロジック（DOMに依存しない。tests/panel-link-history.test.ts が直接叩く）
+ * APIクライアント（実物のエンドポイントは未採取。モックの契約は
+ * mock-server/routes/panel-link-replace.ts の冒頭コメントを参照）
  * ──────────────────────────────────────────────────────────── */
 
-/** 実物の Quill Link blot が使う計測フラグ */
-export const TRACKING_PARAM = 'sb_tracking'
-export const TRACKING_ATTRIBUTE = 'data-sb-tracking'
-
-/** 実物の `Link.PROTOCOL_WHITELIST` 相当（特定アプリ専用スキームは除いてある） */
-export const LINK_PROTOCOL_WHITELIST: readonly string[] = ['http', 'https', 'mailto', 'tel']
-
-/** 空状態の文言（実機 verbatim） */
-export const EMPTY_LINKS_MESSAGE = '置き換え対象のリンクがありません'
-
-export type LinkSortMode = 'all' | 'tracking' | 'untracked'
-export type ReplaceTargetType = 'free' | 'redirectPage'
-export type LinkTab = 'version' | 'exitPopup'
-
-export interface LpLink {
-  /** 本文中の出現順（0始まり）。これが置換対象の識別子になる */
+interface LinkRow {
   index: number
   href: string
   text: string
-  isTracking: boolean
-  isNewTab: boolean
+  is_tracking: boolean
+  is_new_tab: boolean
 }
 
-export interface LinkReplacement {
-  href: string
-  tracking: boolean
-  newTab: boolean
-}
-
-interface HtmlAttribute {
+export interface RedirectPageRow {
+  uid: string
   name: string
-  value: string | null
+  url: string
+  enabled: boolean
 }
 
-interface AnchorTag {
-  start: number
-  end: number
-  attrs: string
+export interface ExitPopupRow {
+  uid: string
+  name: string
+  enabled: boolean
 }
 
-const NAME_START = /[A-Za-z:_@]/
-
-function isTagBoundary(ch: string): boolean {
-  return ch === ' ' || ch === '\t' || ch === '\n' || ch === '\r' || ch === '>' || ch === '/'
+interface LinkReplaceSnapshot {
+  version_uid: string
+  links: LinkRow[]
+  redirect_pages: RedirectPageRow[]
+  exit_popups: ExitPopupRow[]
 }
 
-/** 引用符の中の `>` を終端と誤認しないタグ終端探索 */
-function findTagEnd(html: string, from: number): number {
-  let quote = ''
-  for (let k = from; k < html.length; k += 1) {
-    const ch = html.charAt(k)
-    if (quote !== '') {
-      if (ch === quote) quote = ''
-      continue
-    }
-    if (ch === '"' || ch === "'") {
-      quote = ch
-      continue
-    }
-    if (ch === '>') return k + 1
-  }
-  return -1
+/** POSTの本体。`html` は編集中の本文（保存前の編集を落とさないための土台） */
+type LinkReplacePayload = LinkReplaceRequest & { html?: string }
+
+interface LinkReplaceResult {
+  html: string
+  replaced_count: number
+  links: LinkRow[]
 }
 
-/**
- * `<a ...>` の開始タグを出現順に拾う。
- * 対象は Quill が書き出す普通のHTMLなので、コメントやCDATA内の `<a` は考慮しない（既知の限界）。
- */
-function findAnchorOpenTags(html: string): AnchorTag[] {
-  const out: AnchorTag[] = []
-  const lower = html.toLowerCase()
-  let i = lower.indexOf('<a')
-  while (i >= 0) {
-    if (isTagBoundary(lower.charAt(i + 2))) {
-      const end = findTagEnd(html, i + 2)
-      if (end > 0) {
-        out.push({ start: i, end, attrs: html.slice(i + 2, end - 1) })
-        i = lower.indexOf('<a', end)
-        continue
-      }
-    }
-    i = lower.indexOf('<a', i + 2)
-  }
-  return out
-}
-
-const ATTRIBUTE_PATTERN = /([^\s"'=<>/]+)(?:\s*=\s*("[^"]*"|'[^']*'|[^\s"'=<>`]+))?/g
-
-function decodeAttributeValue(raw: string): string {
-  return raw
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#0?39;/g, "'")
-    .replace(/&amp;/g, '&')
-}
-
-function encodeAttributeValue(raw: string): string {
-  return raw
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-}
-
-function parseAttributes(source: string): HtmlAttribute[] {
-  const out: HtmlAttribute[] = []
-  ATTRIBUTE_PATTERN.lastIndex = 0
-  let match = ATTRIBUTE_PATTERN.exec(source)
-  while (match !== null) {
-    const name = match[1]
-    if (name !== undefined && NAME_START.test(name.charAt(0))) {
-      const raw = match[2]
-      const unquoted =
-        raw === undefined
-          ? null
-          : raw.startsWith('"') || raw.startsWith("'")
-            ? raw.slice(1, -1)
-            : raw
-      out.push({ name, value: unquoted === null ? null : decodeAttributeValue(unquoted) })
-    }
-    match = ATTRIBUTE_PATTERN.exec(source)
-  }
-  return out
-}
-
-function serializeAttributes(attrs: readonly HtmlAttribute[]): string {
-  if (attrs.length === 0) return ''
-  const body = attrs
-    .map((a) => (a.value === null ? a.name : `${a.name}="${encodeAttributeValue(a.value)}"`))
-    .join(' ')
-  return ` ${body}`
-}
-
-function attributeValue(attrs: readonly HtmlAttribute[], name: string): string | null {
-  const lower = name.toLowerCase()
-  return attrs.find((a) => a.name.toLowerCase() === lower)?.value ?? null
-}
-
-/** イミュータブルに属性を差し替える（元の並び順は保つ） */
-function setAttribute(
-  attrs: readonly HtmlAttribute[],
-  name: string,
-  value: string,
-): HtmlAttribute[] {
-  const lower = name.toLowerCase()
-  const exists = attrs.some((a) => a.name.toLowerCase() === lower)
-  if (!exists) return [...attrs, { name, value }]
-  return attrs.map((a) => (a.name.toLowerCase() === lower ? { name: a.name, value } : a))
-}
-
-function removeAttribute(attrs: readonly HtmlAttribute[], name: string): HtmlAttribute[] {
-  const lower = name.toLowerCase()
-  return attrs.filter((a) => a.name.toLowerCase() !== lower)
-}
-
-export function isTelHref(href: string): boolean {
-  return /^tel:/i.test(href.trim())
-}
-
-function splitHref(href: string): { base: string; query: string; hash: string } {
-  const hashAt = href.indexOf('#')
-  const hash = hashAt < 0 ? '' : href.slice(hashAt)
-  const withoutHash = hashAt < 0 ? href : href.slice(0, hashAt)
-  const queryAt = withoutHash.indexOf('?')
-  return {
-    base: queryAt < 0 ? withoutHash : withoutHash.slice(0, queryAt),
-    query: queryAt < 0 ? '' : withoutHash.slice(queryAt + 1),
-    hash,
-  }
-}
-
-/** `sb_tracking` を付けた / 外した href を返す（元の href は変更しない） */
-export function withTrackingParam(href: string, tracking: boolean): string {
-  const { base, query, hash } = splitHref(href)
-  const params = new URLSearchParams(query)
-  if (tracking) params.set(TRACKING_PARAM, 'true')
-  else params.delete(TRACKING_PARAM)
-  const next = params.toString()
-  return `${base}${next === '' ? '' : `?${next}`}${hash}`
-}
-
-/** 計測機能付きリンクか（tel: だけ属性で、それ以外はクエリで表す＝実物の挙動） */
-export function isTrackingLink(href: string, trackingAttribute: string | null): boolean {
-  if (isTelHref(href)) return trackingAttribute === 'true'
-  return new URLSearchParams(splitHref(href).query).has(TRACKING_PARAM)
-}
-
-/** 実物の `linkSanitize` 相当。スキーム無し（相対URL）はページのhttp(s)で解決されるので許可 */
-export function isAllowedLinkUrl(url: string): boolean {
-  const trimmed = url.trim()
-  if (trimmed === '') return false
-  const scheme = /^([A-Za-z][A-Za-z0-9+.-]*):/.exec(trimmed)
-  if (scheme === null) return true
-  const protocol = scheme[1]
-  return protocol !== undefined && LINK_PROTOCOL_WHITELIST.includes(protocol.toLowerCase())
-}
-
-export function buildReplacementHref(url: string, tracking: boolean): string {
-  const trimmed = url.trim()
-  return isTelHref(trimmed) ? trimmed : withTrackingParam(trimmed, tracking)
-}
-
-function innerTextAfter(html: string, from: number): string {
-  const closeAt = html.toLowerCase().indexOf('</a', from)
-  const inner = closeAt < 0 ? html.slice(from) : html.slice(from, closeAt)
-  return decodeAttributeValue(inner.replace(/<[^>]*>/g, '')).replace(/\s+/g, ' ').trim()
-}
-
-/** 本文HTMLからリンクを出現順に抽出する */
-export function extractLinksFromHtml(html: string): LpLink[] {
-  return findAnchorOpenTags(html).map((tag, index) => {
-    const attrs = parseAttributes(tag.attrs)
-    const href = attributeValue(attrs, 'href') ?? ''
-    return {
-      index,
-      href,
-      text: innerTextAfter(html, tag.end),
-      isTracking: isTrackingLink(href, attributeValue(attrs, TRACKING_ATTRIBUTE)),
-      isNewTab: (attributeValue(attrs, 'target') ?? '').toLowerCase() === '_blank',
-    }
+async function requestJson<T>(method: string, path: string, body?: unknown): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   })
-}
-
-export function filterLinks(links: readonly LpLink[], mode: LinkSortMode): LpLink[] {
-  if (mode === 'tracking') return links.filter((l) => l.isTracking)
-  if (mode === 'untracked') return links.filter((l) => !l.isTracking)
-  return [...links]
-}
-
-/**
- * 指定した出現順のリンクだけを置き換えた新しいHTMLを返す（元のHTMLは変更しない）。
- * href 以外の属性（`data-sb-link-name` 等）は落とさずに残す。
- */
-export function replaceLinksInHtml(
-  html: string,
-  indexes: readonly number[],
-  replacement: LinkReplacement,
-): string {
-  const wanted = new Set(indexes)
-  const tags = findAnchorOpenTags(html)
-  const href = buildReplacementHref(replacement.href, replacement.tracking)
-  let out = html
-  for (let i = tags.length - 1; i >= 0; i -= 1) {
-    const tag = tags[i]
-    if (tag === undefined || !wanted.has(i)) continue
-    let attrs = setAttribute(parseAttributes(tag.attrs), 'href', href)
-    attrs =
-      isTelHref(href) && replacement.tracking
-        ? setAttribute(attrs, TRACKING_ATTRIBUTE, 'true')
-        : removeAttribute(attrs, TRACKING_ATTRIBUTE)
-    attrs = replacement.newTab
-      ? setAttribute(attrs, 'target', '_blank')
-      : removeAttribute(attrs, 'target')
-    out = `${out.slice(0, tag.start)}<a${serializeAttributes(attrs)}>${out.slice(tag.end)}`
+  if (!res.ok) {
+    const detail = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
+    throw new Error(detail?.error?.message ?? `${method} ${path} が失敗しました (${res.status})`)
   }
-  return out
+  return (await res.json()) as T
+}
+
+function toLpLink(row: LinkRow): LpLink {
+  return {
+    index: row.index,
+    href: row.href,
+    text: row.text,
+    isTracking: row.is_tracking,
+    isNewTab: row.is_new_tab,
+  }
 }
 
 /* ────────────────────────────────────────────────────────────
@@ -295,9 +155,6 @@ const CLS = {
   active: '_active_id5w4_48',
   selectTypeBtn: '_btn_id5w4_117',
   lists: '_targetLinkLists_id5w4_134',
-  row: '_targetLinkList_id5w4_134',
-  rowTracking: '_trackingLink_id5w4_195',
-  linkHref: '_linkHref_id5w4_156',
   noLinks: '_noLinksDescription_id5w4_411',
   inputWrapper: '_replaceLinkInput_id5w4_246',
   invalid: '_invalid_id5w4_254',
@@ -322,6 +179,9 @@ interface PanelState {
   readonly targetType: ReplaceTargetType
   readonly selected: ReadonlySet<number>
   readonly links: readonly LpLink[]
+  readonly versionUid: string
+  readonly redirectPages: readonly RedirectPageRow[]
+  readonly exitPopups: readonly ExitPopupRow[]
 }
 
 const INITIAL_STATE: PanelState = {
@@ -330,9 +190,14 @@ const INITIAL_STATE: PanelState = {
   targetType: 'free',
   selected: new Set(),
   links: [],
+  versionUid: '',
+  redirectPages: [],
+  exitPopups: [],
 }
 
 const PANEL_STATE = new WeakMap<HTMLElement, PanelState>()
+/** どのVersionを対象にするか（editor.ts の現在Versionを都度読む） */
+const PANEL_VERSION_SOURCE = new WeakMap<HTMLElement, () => string>()
 
 function stateOf(panel: HTMLElement): PanelState {
   return PANEL_STATE.get(panel) ?? INITIAL_STATE
@@ -349,13 +214,18 @@ function patchState(panel: HTMLElement, patch: Partial<PanelState>): PanelState 
  * リンク置換パネルを開く / 閉じる（右レールのアイコンから呼ばれる想定）。
  * 採取DOMの中に土台があればそれを使い、無いときだけ採取済みmarkupを差し込む。
  */
-export function mountLinkReplace(root: HTMLElement, articleUid: string): void {
+export function mountLinkReplace(
+  root: HTMLElement,
+  articleUid: string,
+  currentVersionUid?: () => string,
+): void {
   const panel = resolvePanel(root)
   if (panel === null) {
     toast('リンク置換パネルの土台が見つかりませんでした', 'error')
     return
   }
   panel.setAttribute('data-sb-article-uid', articleUid)
+  if (currentVersionUid !== undefined) PANEL_VERSION_SOURCE.set(panel, currentVersionUid)
 
   if (panel.getAttribute('data-sb-panel') !== 'link-replace') {
     panel.setAttribute('data-sb-panel', 'link-replace')
@@ -367,7 +237,7 @@ export function mountLinkReplace(root: HTMLElement, articleUid: string): void {
   panel.classList.toggle(CLS.open, willOpen)
   if (!willOpen) return
   if (panel.getAttribute('style') === null) panel.setAttribute('style', OPEN_STYLE)
-  reload(root, panel)
+  void reload(root, panel)
 }
 
 function resolvePanel(root: HTMLElement): HTMLElement | null {
@@ -400,7 +270,7 @@ function wire(root: HTMLElement, panel: HTMLElement): void {
     tab.addEventListener('click', () => {
       patchState(panel, { tab: TABS[index] ?? 'version', selected: new Set() })
       for (const other of tabs) other.classList.toggle(CLS.active, other === tab)
-      reload(root, panel)
+      void reload(root, panel)
     })
   }
 
@@ -414,12 +284,11 @@ function wire(root: HTMLElement, panel: HTMLElement): void {
   }
 
   for (const button of panel.querySelectorAll<HTMLElement>(`.${CLS.selectTypeBtn}`)) {
-    const selectAll = (button.textContent ?? '').trim() === SELECT_ALL_LABEL
+    const isSelectAll = (button.textContent ?? '').trim() === SELECT_ALL_LABEL
     button.addEventListener('click', () => {
       const current = stateOf(panel)
-      const visible = filterLinks(current.links, current.sort)
       patchState(panel, {
-        selected: selectAll ? new Set(visible.map((l) => l.index)) : new Set(),
+        selected: isSelectAll ? new Set(selectableLinkIndexes(current.links, current.sort)) : new Set(),
       })
       renderList(panel)
     })
@@ -427,7 +296,7 @@ function wire(root: HTMLElement, panel: HTMLElement): void {
 
   const typeSelect = panel.querySelector<HTMLSelectElement>('select')
   typeSelect?.addEventListener('change', () => {
-    const value = typeSelect.value === 'redirectPage' ? 'redirectPage' : 'free'
+    const value: ReplaceTargetType = typeSelect.value === 'redirectPage' ? 'redirectPage' : 'free'
     patchState(panel, { targetType: value })
     updateReplaceButton(panel)
   })
@@ -448,16 +317,56 @@ function wire(root: HTMLElement, panel: HTMLElement): void {
   })
 }
 
-/** 本文からリンクを読み直して一覧を作り直す */
-function reload(root: HTMLElement, panel: HTMLElement): void {
-  const state = stateOf(panel)
-  // 離脱防止ポップアップのリンクはクローンに実体が無い（採取もしていない）ので空状態のまま
-  const body = state.tab === 'version' ? findLpBody(root) : null
-  const links = body === null ? [] : extractLinksFromHtml(body.innerHTML)
-  patchState(panel, { links, selected: new Set() })
-  renderList(panel)
+/**
+ * 置換対象を読み直して一覧を作り直す。
+ *
+ * リンクは **いま編集中の本文**（Quill）から数える。保存前の編集が本文に載っている以上、
+ * サーバーが持つ最後の保存内容から数えると出現順がずれて、別のリンクを置換してしまう。
+ * 編集領域が無い場合（Quillを立てていない画面）だけ、サーバーが返した保存済みの一覧を使う。
+ * 中間ページ / 離脱防止ポップアップの件数はサーバーだけが知っているので常にGETする。
+ */
+async function reload(root: HTMLElement, panel: HTMLElement): Promise<void> {
+  const articleUid = panel.getAttribute('data-sb-article-uid') ?? ''
+  if (articleUid === '') return
+  const wanted = PANEL_VERSION_SOURCE.get(panel)?.() ?? ''
+  const query = wanted === '' ? '' : `?version_uid=${encodeURIComponent(wanted)}`
+  try {
+    const snapshot = await requestJson<LinkReplaceSnapshot>(
+      'GET',
+      `/articles/${articleUid}/link_replace${query}`,
+    )
+    const body = findLpBody(root)
+    const saved = snapshot.links.map(toLpLink)
+    patchState(panel, {
+      // 「離脱防止ポップアップリンク」タブの中身は未採取（実機は機能未契約でDOMを一度も出せていない）。
+      // ポップアップが0件なら結果は同じ空状態、在っても行のマークアップが無いので描けない。
+      links:
+        stateOf(panel).tab !== 'version'
+          ? []
+          : body === null
+            ? saved
+            : extractLinksFromHtml(body.innerHTML),
+      selected: new Set(),
+      versionUid: snapshot.version_uid,
+      redirectPages: snapshot.redirect_pages,
+      exitPopups: snapshot.exit_popups,
+    })
+    renderList(panel)
+  } catch (error) {
+    // 取得できないときに古い一覧を残すと嘘になるので、空状態へ落とす
+    patchState(panel, { links: [], selected: new Set() })
+    renderList(panel)
+    toast((error as Error).message, 'error')
+  }
 }
 
+/**
+ * 一覧枠の描画。
+ *
+ * **1行ぶんのマークアップは採取できていない**（このファイル冒頭の説明を参照）ので、
+ * 行が必要なケースでは何も描かず、状態だけ `data-sb-*` に出す。
+ * CSSから形を推測した「それらしい行」は作らない。
+ */
 function renderList(panel: HTMLElement): void {
   const lists = panel.querySelector<HTMLElement>(`.${CLS.lists}`)
   if (lists === null) return
@@ -465,91 +374,92 @@ function renderList(panel: HTMLElement): void {
   const visible = filterLinks(state.links, state.sort)
 
   lists.innerHTML = ''
+  lists.setAttribute('data-sb-tab', state.tab)
+  lists.setAttribute('data-sb-link-count', String(visible.length))
+  lists.setAttribute('data-sb-selected-count', String(state.selected.size))
+  // 出せていないものを黙って隠さない: 件数だけは属性に出す（描く形が未採取なので描かない）
+  lists.setAttribute('data-sb-exit-popup-count', String(state.exitPopups.length))
+  lists.setAttribute('data-sb-redirect-page-count', String(state.redirectPages.length))
+
   if (visible.length === 0) {
+    // 採取した空状態（`_noLinksDescription_` + 文言）だけは実物どおりに出す
+    lists.removeAttribute('data-sb-row-markup')
     const empty = document.createElement('div')
     empty.className = CLS.noLinks
     empty.textContent = EMPTY_LINKS_MESSAGE
     lists.append(empty)
   } else {
-    for (const link of visible) lists.append(buildRow(panel, link, state.selected.has(link.index)))
+    lists.setAttribute('data-sb-row-markup', 'uncaptured')
   }
   updateReplaceButton(panel)
 }
 
 /**
- * 1行ぶん。採取CSSが示す構造（チェックボックス + `_linkHref_`、計測リンクは行に
- * `_trackingLink_` が付いてアイコンが出る）をそのまま組み立てる。
- * 実CSSで行内の input は `pointer-events:none` なので、行クリックで選択を切り替える。
+ * `置換` ボタンの活性。採取済みの `_disable_1bcs1_22` を付け外しするだけ。
+ * `中間ページリンク` は選択肢のマークアップが未採取なので、常に不活性のまま。
  */
-function buildRow(panel: HTMLElement, link: LpLink, checked: boolean): HTMLElement {
-  const node = document.createElement('div')
-  node.className = link.isTracking ? `${CLS.row} ${CLS.rowTracking}` : CLS.row
-  node.setAttribute('data-sb-link-index', String(link.index))
-  node.setAttribute('title', link.text === '' ? link.href : `${link.text} — ${link.href}`)
-  node.innerHTML = `<input type="checkbox"${checked ? ' checked' : ''}><div class="${CLS.linkHref}"></div>`
-  const href = node.querySelector<HTMLElement>(`.${CLS.linkHref}`)
-  if (href !== null) href.textContent = link.href
-
-  node.addEventListener('click', () => {
-    const selected = new Set(stateOf(panel).selected)
-    if (selected.has(link.index)) selected.delete(link.index)
-    else selected.add(link.index)
-    patchState(panel, { selected })
-    renderList(panel)
-  })
-  return node
-}
-
 function updateReplaceButton(panel: HTMLElement): void {
   const button = panel.querySelector<HTMLElement>(`.${CLS.btnReplace}`)
   if (button === null) return
+  button.classList.toggle(CLS.disabled, !buildRequest(panel).ok)
+}
+
+/** いまの画面状態からリクエストを組み立てる（純粋関数へ渡すだけ） */
+function buildRequest(panel: HTMLElement): ReturnType<typeof buildLinkReplaceRequest> {
   const state = stateOf(panel)
-  const url = textInputOf(panel)?.value ?? ''
-  const ready = state.selected.size > 0 && isAllowedLinkUrl(url)
-  button.classList.toggle(CLS.disabled, !ready)
+  return buildLinkReplaceRequest({
+    targetType: state.targetType,
+    selected: [...state.selected],
+    url: textInputOf(panel)?.value ?? '',
+    // 中間ページの選択UIが未採取なので、いまは何も選べない（＝常に空）
+    redirectPageUid: '',
+    isTracking: checkboxOf(panel, 'trackingCheckBox')?.checked ?? true,
+    isNewTab: checkboxOf(panel, 'targetCheckBox')?.checked ?? false,
+    versionUid: state.versionUid,
+  })
 }
 
 async function applyReplacement(root: HTMLElement, panel: HTMLElement): Promise<void> {
   const state = stateOf(panel)
-  const input = textInputOf(panel)
-  const url = input?.value ?? ''
+  const articleUid = panel.getAttribute('data-sb-article-uid') ?? ''
+  if (articleUid === '') return
 
+  if (state.tab === 'exitPopup') {
+    toast('離脱防止ポップアップリンクの置換は未採取のため出せません', 'error')
+    return
+  }
   if (state.targetType === 'redirectPage') {
-    toast('中間ページリンクへの置換は未実装です（この状態は未採取）', 'error')
+    // 中間ページの一覧は取れているが、選ばせるUIのマークアップが採取できていない
+    toast(
+      `中間ページリンクの選択UIは未採取です（中間ページ ${String(state.redirectPages.length)}件）`,
+      'error',
+    )
     return
   }
-  if (state.selected.size === 0) {
-    toast('置き換えるリンクを選択してください', 'error')
-    return
-  }
-  if (!isAllowedLinkUrl(url)) {
-    input?.classList.add(CLS.invalid)
-    toast('置き換え先のURLを正しく入力してください', 'error')
+
+  const built = buildRequest(panel)
+  if (!built.ok) {
+    if (built.message.includes('URL')) textInputOf(panel)?.classList.add(CLS.invalid)
+    toast(built.message, 'error')
     return
   }
 
   const body = findLpBody(root)
-  if (body === null) {
-    toast('LP本文が見つからないため置換できませんでした', 'error')
-    return
-  }
-
-  const before = body.innerHTML
-  const after = replaceLinksInHtml(before, [...state.selected], {
-    href: url,
-    tracking: checkboxOf(panel, 'trackingCheckBox')?.checked ?? true,
-    newTab: checkboxOf(panel, 'targetCheckBox')?.checked ?? false,
-  })
-
-  const articleUid = panel.getAttribute('data-sb-article-uid') ?? ''
   try {
-    // 置換前後を履歴に積む → 変更・復元履歴パネルから戻せるようにする
-    if (articleUid !== '') await recordArticleHistory(articleUid, before)
-    body.innerHTML = after
-    if (articleUid !== '') await recordArticleHistory(articleUid, after)
-    toast(`${state.selected.size}件のリンクを置き換えました`)
+    // 編集中の本文をそのまま渡す。サーバーはこれを土台に置換して Version へ保存するので、
+    // 「画面だけ変わってリロードで戻る」も「保存前の編集が消える」も起きない。
+    const result = await send(articleUid, {
+      ...built.value,
+      ...(body === null ? {} : { html: body.innerHTML }),
+    })
+    if (body !== null) body.innerHTML = result.html
+    toast(`${String(result.replaced_count)}件のリンクを置き換えました`)
   } catch (error) {
     toast((error as Error).message, 'error')
   }
-  reload(root, panel)
+  await reload(root, panel)
+}
+
+function send(articleUid: string, request: LinkReplacePayload): Promise<LinkReplaceResult> {
+  return requestJson<LinkReplaceResult>('POST', `/articles/${articleUid}/link_replace`, request)
 }

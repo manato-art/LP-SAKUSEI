@@ -4,10 +4,11 @@
  * エディタが起動時に叩く ab_test / articles / versions をここで返す。
  */
 import { Router } from 'express'
-import { createAbTest, deleteAbTest, updateAbTest } from '../store/actions.ts'
+import { createAbTest, deleteAbTest } from '../store/actions.ts'
 import { getState, setState } from '../store/store.ts'
 import { SPLIT_TEST_DEFAULTS, isSplitTestType } from '../store/split-test-defaults.ts'
 import { aggregate, deriveKpi, isWithin } from '../store/metrics.ts'
+import { dailyKpiSeries } from '../store/report-aggregate.ts'
 import { applyEmptyState } from '../lib/mock-state.ts'
 import { errorEnvelope, pagination } from '../lib/envelope.ts'
 import { dateRangeParams, filterItems, pageParams, paginate, searchItems, sortItems, sortParams, str } from '../lib/query.ts'
@@ -146,21 +147,10 @@ abTestsRouter.get('/ab_tests/:uid', (req, res) => {
   res.json({ ab_test: serializeAbTest(state, abTest) })
 })
 
-abTestsRouter.put('/ab_tests/:uid', (req, res) => {
-  let updated = null
-  setState((state) => {
-    const out = updateAbTest(state, req.params.uid, {
-      title: optionalString(req.body, 'title') || undefined,
-      memo: optionalString(req.body, 'memo'),
-      folder_id: optionalNumber(req.body, 'folder_id') ?? null,
-      media_id: optionalNumber(req.body, 'media_id') ?? null,
-    })
-    updated = out.abTest
-    return out.state
-  })
-  if (updated === null) return notFound(res, 'beyondページが見つかりません。')
-  res.json({ ab_test: serializeAbTest(getState(), updated) })
-})
+/**
+ * `PUT /ab_tests/:uid` は「基本情報」タブが使う更新なので
+ * `routes/panel-basic-info.ts` に移した（部分更新でフォルダ/媒体が消える不具合があったため）。
+ */
 
 abTestsRouter.delete('/ab_tests/:uid', (req, res) => {
   let deleted = false
@@ -309,10 +299,14 @@ function reportRows(uid: string, scope: 'version' | 'lp' | 'creative', query: un
       ...(metrics.length === 0 ? deriveKpi({ pv: 0, click: 0, cv: 0, ad_cost: 0 }) : aggregate(metrics)),
     }
   })
-  const abTestMetrics = state.metrics.filter(
-    (m) => m.entity_uid === abTest.uid && isWithin(m.date, startDate, endDate),
-  )
-  return { rows, totals: aggregate(abTestMetrics), period: { start_date: startDate, end_date: endDate } }
+  const abTestMetrics = state.metrics.filter((m) => m.entity_uid === abTest.uid)
+  return {
+    rows,
+    totals: aggregate(abTestMetrics.filter((m) => isWithin(m.date, startDate, endDate))),
+    /** レポートタブ「デイリーレポート」表の日付別の行（§10-5・両端含む） */
+    daily: dailyKpiSeries(abTestMetrics, startDate, endDate),
+    period: { start_date: startDate, end_date: endDate },
+  }
 }
 
 abTestsRouter.get('/ab_tests/:uid/reports', (req, res) => {

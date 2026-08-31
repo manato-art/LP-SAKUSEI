@@ -20,7 +20,7 @@
     "copy-snippet": "cat tools/capture-console/snippet.js | pbcopy && echo \"採取スニペットをクリップボードにコピーしました。Chrome の DevTools > Console に Cmd+V で貼り付けて Enter を押してください。\"",
     "fetch-assets": "tsx tools/capture-assets/fetch.ts",
     "coverage": "tsx tools/coverage/report.ts",
-    "scrub": "tsx tools/scrub/index.ts && tsx tools/scrub/index.ts --in ~/squadbeyond-capture-quarantine/assets --out capture/clean/assets"
+    "scrub": "tsx tools/scrub/index.ts && tsx tools/scrub/index.ts --in ~/squadbeyond-capture-quarantine/assets --out capture/assets"
   },
   "keywords": [],
   "author": "",
