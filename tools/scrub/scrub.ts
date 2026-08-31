@@ -41,9 +41,28 @@ export interface ScrubResult {
  * 順序が重要: 除去 → 辞書 → パターン。除去を先にやることで、
  * 消える予定のタグ内の値を無駄に辞書登録・置換しない。
  */
+/**
+ * `data-test` / `data-testid` の値は**構造上の識別子**であってユーザーデータではない。
+ * 長いトークンとみなして置換すると、土台に挙動を付けるための目印が壊れる（実採取で判明）。
+ * スクラブの前に退避し、あとで戻す。
+ */
+const TEST_ATTR_RE = /\sdata-test(?:id)?="([^"]*)"/g
+
+function protectTestAttrs(text: string): { text: string; restore: (s: string) => string } {
+  const saved: string[] = []
+  const masked = text.replace(TEST_ATTR_RE, (match) => {
+    saved.push(match)
+    return ` data-sbtestattr-${saved.length - 1}`
+  })
+  const restore = (input: string): string =>
+    input.replace(/ data-sbtestattr-(\d+)/g, (_m, i: string) => saved[Number(i)] ?? '')
+  return { text: masked, restore }
+}
+
 export function scrubText(input: string, map: ScrubMap, hosts: HostRewrite): ScrubResult {
   const stripped: string[] = []
-  let text = input
+  const protectedAttrs = protectTestAttrs(input)
+  let text = protectedAttrs.text
 
   for (const { name, pattern } of STRIP_PATTERNS) {
     if (pattern.test(text)) stripped.push(name)
@@ -107,7 +126,7 @@ export function scrubText(input: string, map: ScrubMap, hosts: HostRewrite): Scr
   text = text.replace(BEARER_RE, (m) => `Bearer ${fakeToken(m)}`)
   text = text.replace(LONG_TOKEN_RE, (m) => (m.startsWith('sample_token_') ? m : fakeToken(m)))
 
-  return { text, stripped }
+  return { text: protectedAttrs.restore(text), stripped }
 }
 
 /** JSON(fixtures)用。文字列値だけをスクラブし、構造とキーは保つ。 */

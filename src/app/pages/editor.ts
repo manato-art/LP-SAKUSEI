@@ -1,81 +1,94 @@
 /**
- * LPエディタ（企画書 §9-1 / beyondエディター＝editor_version 2）。
+ * LPエディタ（企画書 §9-1 / §11 capture-and-rehydrate）。
  *
- * 実機の構造に合わせる:
- *   左レール4タブ（基本情報 / Version / ポップアップ / レポート）
- *   左パネル = Version一覧（名前 + 配信割合 + 更新 + Version追加）
- *   中央     = LPプレビュー（PC 620×486 / SP 430×640）※編集はQuill
- *   右レール = ツール群（コード編集 / undo / redo / 公開 …）
- * 文字を選択すると**バブルツールバー**が出る（実機と同じQuillのbubbleテーマ）。
+ * **手書きでUIを似せない。** 採取した実DOMをそのまま土台として描画し、
+ * `data-test` 属性を目印に挙動だけを付ける（＝企画書 §11 の「島」の再実装）。
+ * 見た目は本物のマークアップ＋実CSS（Emotion含む）で担保される。
  */
 import Quill from 'quill'
 import 'quill/dist/quill.bubble.css'
+import substrate from '../fragments/ab_tests__UID__articles__editor-beyond-empty.html?raw'
 import { api, type Version } from '../api.ts'
-import { T, button, el, toast } from '../ui.ts'
+import { toast } from '../ui.ts'
 
-const PC_W = 620
-const PC_H = 486
-const SP_W = 430
-const SP_H = 640
+/** 採取DOM内の目印（実物の data-test 属性。採取のたびに増える） */
+const HOOK = {
+  versionList: '[data-test="Article-ArticleLists"]',
+  currentVersion: '[data-test="ArticleList-CurrentArticle"]',
+  versionName: '[data-test="ArticleList-InputMemo"]',
+  ratio: '[data-test="ArticleList-DeriveryRateForm"]',
+  ratioUp: '[data-test="ArticleList-DeriveryUpRateForm"]',
+  ratioDown: '[data-test="ArticleList-DeriveryDownRateForm"]',
+  addVersion: '[data-test="Article-BtnCreateNewArticle"]',
+  undo: '[data-test="SideToolbar-Undo"]',
+  redo: '[data-test="SideToolbar-Redo"]',
+  tagSettings: '[data-test="HtmlSettingModal-BtnOpenModal"]',
+  editorWrapper: '[data-test="editor-wrapper"], [data-test="editorWrapper"]',
+} as const
 
-interface EditorState {
-  abTestUid: string
+interface EditorContext {
+  root: HTMLElement
+  quill: Quill
   articleUid: string
   versions: Version[]
   currentUid: string
-  preview: 'pc' | 'sp'
 }
 
 export async function renderEditor(container: HTMLElement, abTestUid: string): Promise<void> {
   container.innerHTML = ''
+
   const [{ ab_test }, { articles }] = await Promise.all([
     api.abTest(abTestUid),
     api.articles(abTestUid),
   ])
   const articleUid = articles[0]?.uid
   if (articleUid === undefined) {
-    container.append(el('div', { text: '記事が見つかりません', style: 'padding:40px' }))
+    container.textContent = '記事が見つかりません'
     return
   }
   const { versions } = await api.versions(articleUid)
-  const state: EditorState = {
-    abTestUid,
+  const folders = await api.folders()
+  const folderName = folders.folders.find((f) => f.id === ab_test.folder_id)?.name ?? ''
+
+  // ── 土台を描画（本物のDOMをそのまま）──
+  const root = document.createElement('div')
+  root.innerHTML = substrate
+  container.append(root)
+
+  // ── プレビュー枠の iframe を、動くQuillに差し替える ──
+  const quill = mountQuill(root)
+
+  const ctx: EditorContext = {
+    root,
+    quill,
     articleUid,
     versions: [...versions],
     currentUid: versions[0]?.uid ?? '',
-    preview: 'pc',
   }
 
-  const page = el('div', { style: `display:flex;flex-direction:column;height:100vh;font-family:${T.font}` })
-  page.append(topBar(ab_test.title, ab_test.ad_status, abTestUid))
+  applyVersionToPanel(ctx)
+  wireVersionPanel(ctx)
+  wireSideToolbar(ctx)
+  wireTopBar(root, ab_test.title, folderName)
+  loadVersion(ctx, ctx.currentUid)
+}
 
-  const main = el('div', { style: 'flex:1;display:flex;min-height:0' })
-  const rail = leftRail()
-  const versionPanel = el('div', {
-    style: `width:280px;flex-shrink:0;background:${T.surface};border-right:1px solid #E5E5E5;
-      display:flex;flex-direction:column`,
-  })
-  const canvas = el('div', {
-    style: 'flex:1;display:flex;align-items:flex-start;justify-content:center;padding:24px;overflow:auto',
-  })
-  const toolRail = el('div', {
-    style: `width:64px;flex-shrink:0;background:${T.surface};border-left:1px solid #E5E5E5;
-      display:flex;flex-direction:column;align-items:center;gap:6px;padding-top:12px`,
-  })
-
-  main.append(rail, versionPanel, canvas, toolRail)
-  page.append(main)
-  container.append(page)
-
-  // ── Quill（実機と同じ bubble テーマ＝文字選択で出るツールバー）──
-  const frame = el('div', {
-    style: `background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.15);border-radius:4px;overflow:hidden`,
-  })
-  const editorHost = el('div', {})
-  frame.append(editorHost)
-  canvas.append(frame)
-
-  const quill = new Quill(editorHost, {
+/**
+ * 採取DOMのプレビューiframeを探し、その場所にQuillを立てる。
+ * 実物は同一オリジンiframeへ動的書き込みしているが、クローンでは
+ * 同じ寸法の枠にQuillを置いて「本当に編集できる」状態にする（§9-1 の到達点）。
+ */
+function mountQuill(root: HTMLElement): Quill {
+  const frame = root.querySelector<HTMLIFrameElement>('iframe[class*="quillEditorWrapper"]')
+  const host = document.createElement('div')
+  if (frame !== null) {
+    host.style.cssText = `width:${frame.getAttribute('width') ?? 620}px;height:486px;background:#fff;overflow:auto`
+    frame.replaceWith(host)
+  } else {
+    host.style.cssText = 'width:620px;height:486px;background:#fff;overflow:auto;margin:0 auto'
+    root.append(host)
+  }
+  return new Quill(host, {
     theme: 'bubble',
     placeholder: 'ここにLPの内容を入力してください',
     modules: {
@@ -92,283 +105,156 @@ export async function renderEditor(container: HTMLElement, abTestUid: string): P
       ],
     },
   })
+}
 
-  const applyPreviewSize = (): void => {
-    const w = state.preview === 'pc' ? PC_W : SP_W
-    const h = state.preview === 'pc' ? PC_H : SP_H
-    frame.style.width = `${w}px`
-    editorHost.style.height = `${h}px`
-    editorHost.style.overflow = 'auto'
-  }
-  applyPreviewSize()
+function loadVersion(ctx: EditorContext, uid: string): void {
+  const v = ctx.versions.find((x) => x.uid === uid)
+  if (v === undefined) return
+  ctx.currentUid = uid
+  ctx.quill.root.innerHTML = v.html
+  applyVersionToPanel(ctx)
+}
 
-  const loadVersion = (uid: string): void => {
-    const v = state.versions.find((x) => x.uid === uid)
-    if (v === undefined) return
-    state.currentUid = uid
-    quill.root.innerHTML = v.html
-    renderVersionPanel()
-  }
+/** 採取DOMのVersion行に、モックの値を流し込む */
+function applyVersionToPanel(ctx: EditorContext): void {
+  const current = ctx.versions.find((v) => v.uid === ctx.currentUid)
+  if (current === undefined) return
+  const name = ctx.root.querySelector<HTMLInputElement>(HOOK.versionName)
+  const ratio = ctx.root.querySelector<HTMLInputElement>(HOOK.ratio)
+  if (name !== null) name.value = current.name
+  if (ratio !== null) ratio.value = String(current.distribution_ratio)
 
-  // ── Versionパネル ──
-  function renderVersionPanel(): void {
-    versionPanel.innerHTML = ''
-    const head = el('div', {
-      style: 'padding:12px 14px;border-bottom:1px solid #EEE;display:flex;align-items:center',
-    })
-    head.append(
-      el('strong', { text: 'Version', style: 'font-size:13px;flex:1' }),
-      el('span', { text: '配信割合', style: `font-size:11px;color:${T.sub}` }),
-    )
-    versionPanel.append(head)
+  const total = ctx.versions.reduce((s, v) => s + v.distribution_ratio, 0)
+  showRatioWarning(ctx.root, total)
+}
 
-    const body = el('div', { style: 'flex:1;overflow:auto;padding:8px' })
-    const total = state.versions.reduce((s, v) => s + v.distribution_ratio, 0)
-    for (const v of state.versions) {
-      const active = v.uid === state.currentUid
-      const row = el('div', {
-        style: `border:1px solid ${active ? T.primary : '#E5E5E5'};border-radius:4px;padding:10px;
-          margin-bottom:8px;cursor:pointer;${active ? 'background:#F0F8FF' : ''}`,
-      })
-      const line = el('div', { style: 'display:flex;align-items:center;gap:8px' })
-      const name = el('input', {
-        style: `flex:1;min-width:0;border:1px solid #DDD;border-radius:3px;padding:5px 7px;font-size:13px;font-family:${T.font}`,
-      })
-      name.value = v.name
-      const ratio = el('input', {
-        style: 'width:56px;border:1px solid #DDD;border-radius:3px;padding:5px;font-size:13px;text-align:right',
-      })
-      ratio.type = 'number'
-      ratio.min = '0'
-      ratio.max = '100'
-      ratio.value = String(v.distribution_ratio)
-      line.append(name, ratio)
+/** 配信割合の合計が100%でないときの警告（企画書 §9-1[2]） */
+function showRatioWarning(root: HTMLElement, total: number): void {
+  const id = 'sb-ratio-warning'
+  root.querySelector(`#${id}`)?.remove()
+  if (total === 100) return
+  const list = root.querySelector(HOOK.versionList) ?? root
+  const warn = document.createElement('div')
+  warn.id = id
+  warn.textContent = `配信割合の合計が${total}%です。100%になるよう調整してください。`
+  warn.style.cssText =
+    'color:#D0021B;font-size:11px;padding:8px 12px;line-height:1.6;font-family:"Hiragino Sans",sans-serif'
+  list.append(warn)
+}
 
-      const meta = el('div', {
-        style: `display:flex;align-items:center;gap:8px;margin-top:8px`,
-      })
-      meta.append(el('span', { text: v.status, style: `font-size:11px;color:${T.sub};flex:1` }))
-      const update = button('更新', 'ghost')
-      update.style.padding = '4px 12px'
-      update.style.fontSize = '12px'
-      meta.append(update)
-      row.append(line, meta)
+function wireVersionPanel(ctx: EditorContext): void {
+  const name = ctx.root.querySelector<HTMLInputElement>(HOOK.versionName)
+  const ratio = ctx.root.querySelector<HTMLInputElement>(HOOK.ratio)
 
-      row.addEventListener('click', (e) => {
-        if (e.target === name || e.target === ratio) return
-        saveCurrent().then(() => loadVersion(v.uid))
-      })
-      update.addEventListener('click', async (e) => {
-        e.stopPropagation()
-        try {
-          const r = await api.setRatio(v.uid, Number(ratio.value))
-          await api.saveVersion(v.uid, { name: name.value })
-          v.distribution_ratio = r.version.distribution_ratio
-          v.name = name.value
-          toast(r.distribution_warning ?? '更新しました', r.distribution_warning === null ? 'success' : 'error')
-          renderVersionPanel()
-        } catch (error) {
-          toast((error as Error).message, 'error')
-        }
-      })
-      body.append(row)
+  const save = async (): Promise<void> => {
+    const current = ctx.versions.find((v) => v.uid === ctx.currentUid)
+    if (current === undefined) return
+    try {
+      if (name !== null && name.value !== current.name) {
+        await api.saveVersion(current.uid, { name: name.value })
+        current.name = name.value
+      }
+      if (ratio !== null && Number(ratio.value) !== current.distribution_ratio) {
+        const res = await api.setRatio(current.uid, Number(ratio.value))
+        current.distribution_ratio = res.version.distribution_ratio
+      }
+      applyVersionToPanel(ctx)
+      toast('更新しました')
+    } catch (error) {
+      toast((error as Error).message, 'error')
     }
-    versionPanel.append(body)
+  }
 
-    const foot = el('div', { style: 'padding:10px;border-top:1px solid #EEE' })
-    const warn = el('div', {
-      text: total === 100 ? '配信割合 合計 100%' : `配信割合の合計が${total}%です。100%になるよう調整してください。`,
-      style: `font-size:11px;margin-bottom:8px;color:${total === 100 ? '#2FA84F' : '#D0021B'}`,
-    })
-    const addBtn = button('＋ Version追加', 'ghost')
-    addBtn.style.width = '100%'
-    addBtn.addEventListener('click', async () => {
-      await saveCurrent()
-      const { version } = await api.addVersion(state.articleUid)
-      state.versions = [...state.versions, version]
+  name?.addEventListener('change', () => void save())
+  ratio?.addEventListener('change', () => void save())
+
+  // スピナー（実物は上下ボタンが別要素）
+  ctx.root.querySelector(HOOK.ratioUp)?.addEventListener('click', () => {
+    if (ratio === null) return
+    ratio.value = String(Math.min(100, Number(ratio.value) + 1))
+    void save()
+  })
+  ctx.root.querySelector(HOOK.ratioDown)?.addEventListener('click', () => {
+    if (ratio === null) return
+    ratio.value = String(Math.max(0, Number(ratio.value) - 1))
+    void save()
+  })
+
+  ctx.root.querySelector(HOOK.addVersion)?.addEventListener('click', async () => {
+    try {
+      await saveHtml(ctx)
+      const { version } = await api.addVersion(ctx.articleUid)
+      ctx.versions = [...ctx.versions, version]
       toast(`${version.name} を追加しました`)
-      loadVersion(version.uid)
-    })
-    foot.append(warn, addBtn)
-    versionPanel.append(foot)
+      loadVersion(ctx, version.uid)
+    } catch (error) {
+      toast((error as Error).message, 'error')
+    }
+  })
+}
+
+async function saveHtml(ctx: EditorContext): Promise<void> {
+  if (ctx.currentUid === '') return
+  const html = ctx.quill.root.innerHTML
+  await api.saveVersion(ctx.currentUid, { html })
+  const v = ctx.versions.find((x) => x.uid === ctx.currentUid)
+  if (v !== undefined) v.html = html
+}
+
+function wireSideToolbar(ctx: EditorContext): void {
+  ctx.root.querySelector(HOOK.undo)?.addEventListener('click', () => ctx.quill.history.undo())
+  ctx.root.querySelector(HOOK.redo)?.addEventListener('click', () => ctx.quill.history.redo())
+  ctx.root.querySelector(HOOK.tagSettings)?.addEventListener('click', () => {
+    toast('タグ設定は未実装です（採取済みなので次に作れます）', 'error')
+  })
+
+  // 目印の無い右レールアイコンは、押しても何も起きないと分かるようにしておく
+  for (const icon of ctx.root.querySelectorAll<HTMLElement>('[class*="sideToolbarIcon"]')) {
+    if (icon.querySelector('[data-test]') !== null) continue
+    icon.style.cursor = 'pointer'
+    icon.addEventListener('click', () => toast('このツールはまだ未実装です', 'error'))
   }
 
-  async function saveCurrent(): Promise<void> {
-    if (state.currentUid === '') return
-    const html = quill.root.innerHTML
-    await api.saveVersion(state.currentUid, { html })
-    const v = state.versions.find((x) => x.uid === state.currentUid)
-    if (v !== undefined) v.html = html
-  }
-
-  // ── 右レールのツール ──
-  const tool = (label: string, title: string, onClick: () => void): HTMLElement => {
-    const b = el('button', {
-      text: label,
-      style: `width:44px;height:44px;border:none;background:transparent;border-radius:6px;
-        cursor:pointer;font-size:17px`,
-    })
-    b.title = title
-    b.addEventListener('mouseenter', () => (b.style.background = T.neutral))
-    b.addEventListener('mouseleave', () => (b.style.background = 'transparent'))
-    b.addEventListener('click', onClick)
-    return b
-  }
-
-  toolRail.append(
-    tool('PC', 'PCプレビュー(620×486)', () => {
-      state.preview = 'pc'
-      applyPreviewSize()
-    }),
-    tool('SP', 'SPプレビュー(430×640)', () => {
-      state.preview = 'sp'
-      applyPreviewSize()
-    }),
-    tool('</>', 'コード編集', () => openCodeEditor(quill)),
-    tool('↶', '元に戻す', () => quill.history.undo()),
-    tool('↷', 'やり直す', () => quill.history.redo()),
-    tool('🖼', '画像を追加', () => insertImage(quill)),
-    tool('💾', '保存', async () => {
-      await saveCurrent()
-      toast('保存しました')
-    }),
-    tool('🚀', '公開', () => openPublishConfirm(state, () => renderVersionPanel())),
-  )
-
-  loadVersion(state.currentUid)
-
-  // Ctrl+S で保存（実機にはないが、作業用の利便として明示的に足している）
-  page.addEventListener('keydown', (e) => {
+  // 保存（実物にはショートカットが無いが、作業用に足している）
+  ctx.root.addEventListener('keydown', (e) => {
     if ((e.metaKey || e.ctrlKey) && e.key === 's') {
       e.preventDefault()
-      void saveCurrent().then(() => toast('保存しました'))
+      void saveHtml(ctx).then(() => toast('保存しました'))
     }
   })
 }
 
-function topBar(title: string, adStatus: string, abTestUid: string): HTMLElement {
-  const labels: Readonly<Record<string, string>> = {
-    prepared: '準備中',
-    delivered: '配信中',
-    stopping: '停止中',
-    finished: '終了',
+/**
+ * 土台には**採取した時点の値**が焼き付いている。
+ * 匿名化で `サンプル施策NNN` の形に揃えてあるので、その並びを目印にして
+ * いま開いているページの値へ差し替える（＝企画書 §5-6 の「再配線」）。
+ */
+const ANONYMIZED_NAME = /^サンプル施策\d+$/
+
+function replaceBakedValues(root: HTMLElement, values: readonly string[]): void {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+  const targets: Text[] = []
+  let node = walker.nextNode()
+  while (node !== null) {
+    const text = (node.textContent ?? '').trim()
+    if (ANONYMIZED_NAME.test(text)) targets.push(node as Text)
+    node = walker.nextNode()
   }
-  const bar = el('div', {
-    style: `height:64px;flex-shrink:0;background:${T.surface};border-bottom:1px solid #E5E5E5;
-      display:flex;align-items:center;gap:12px;padding:0 16px`,
-  })
-  const back = button('‹ 戻る', 'ghost')
-  back.addEventListener('click', () => {
-    location.hash = '/folders'
-  })
-  bar.append(
-    back,
-    el('strong', { text: title, style: 'font-size:15px' }),
-    el('span', {
-      text: labels[adStatus] ?? adStatus,
-      style: `font-size:11px;background:${T.neutral};padding:3px 10px;border-radius:10px;color:${T.sub}`,
-    }),
-    el('span', { text: abTestUid, style: `margin-left:auto;font-size:11px;color:${T.sub};font-family:monospace` }),
-  )
-  return bar
-}
-
-function leftRail(): HTMLElement {
-  const rail = el('div', {
-    style: `width:74px;flex-shrink:0;background:${T.surface};border-right:1px solid #E5E5E5;
-      display:flex;flex-direction:column;align-items:center;padding-top:10px;gap:4px`,
-  })
-  const tabs = [
-    { label: '基本情報', active: false },
-    { label: 'Version', active: true },
-    { label: 'ポップ\nアップ', active: false },
-    { label: 'レポート', active: false },
-  ]
-  for (const tab of tabs) {
-    const item = el('div', {
-      text: tab.label,
-      style: `width:60px;padding:10px 4px;text-align:center;font-size:10px;border-radius:6px;
-        white-space:pre-line;cursor:pointer;${tab.active ? `background:#E8F4FF;color:${T.primary};font-weight:600` : `color:${T.sub}`}`,
-    })
-    if (!tab.active) {
-      item.addEventListener('click', () => toast('このタブはまだ未実装です（Versionタブを先に作っています）', 'error'))
-    }
-    rail.append(item)
+  for (let i = 0; i < targets.length; i += 1) {
+    const target = targets[i]
+    if (target === undefined) continue
+    target.textContent = values[Math.min(i, values.length - 1)] ?? ''
   }
-  return rail
 }
 
-function openCodeEditor(quill: Quill): void {
-  const area = el('textarea', {
-    style: `width:100%;height:340px;font-family:monospace;font-size:12px;padding:10px;
-      border:1px solid #DDD;border-radius:4px;box-sizing:border-box`,
-  })
-  area.value = quill.root.innerHTML
-  const overlay = el('div', {
-    style: `position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:9000;display:flex;
-      align-items:center;justify-content:center`,
-  })
-  const panel = el('div', {
-    style: `background:#fff;border-radius:8px;padding:18px;width:720px;max-width:94vw;font-family:${T.font}`,
-  })
-  const head = el('div', { style: 'display:flex;align-items:center;margin-bottom:12px' })
-  const close = button('閉じる', 'ghost')
-  const apply = button('反映する')
-  head.append(close, el('strong', { text: 'コード編集', style: 'flex:1;text-align:center' }), apply)
-  panel.append(head, area)
-  overlay.append(panel)
-  document.body.append(overlay)
-  close.addEventListener('click', () => overlay.remove())
-  apply.addEventListener('click', () => {
-    quill.root.innerHTML = area.value
-    overlay.remove()
-    toast('コードを反映しました')
-  })
-}
+function wireTopBar(root: HTMLElement, title: string, folderName: string): void {
+  // 1つ目＝ページ名、2つ目＝フォルダ名（実機の上部バーの並び）
+  replaceBakedValues(root, [title, folderName])
 
-function insertImage(quill: Quill): void {
-  const input = el('input')
-  input.type = 'file'
-  input.accept = 'image/*'
-  input.addEventListener('change', () => {
-    const file = input.files?.[0]
-    if (file === undefined) return
-    const reader = new FileReader()
-    reader.addEventListener('load', () => {
-      const range = quill.getSelection(true)
-      quill.insertEmbed(range.index, 'image', String(reader.result))
-      toast('画像を挿入しました（ローカル保持のみ）')
+  for (const back of root.querySelectorAll<HTMLElement>('[class*="back"]')) {
+    back.style.cursor = 'pointer'
+    back.addEventListener('click', () => {
+      location.hash = '/folders'
     })
-    reader.readAsDataURL(file)
-  })
-  input.click()
-}
-
-function openPublishConfirm(state: EditorState, onDone: () => void): void {
-  const overlay = el('div', {
-    style: `position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:9000;display:flex;
-      align-items:center;justify-content:center;font-family:${T.font}`,
-  })
-  const panel = el('div', { style: 'background:#fff;border-radius:8px;padding:24px;width:420px' })
-  const cancel = button('閉じる', 'ghost')
-  const ok = button('公開する')
-  panel.append(
-    el('strong', { text: 'このVersionを公開しますか？', style: 'display:block;margin-bottom:10px' }),
-    el('div', {
-      text: '状態バッジが「準備中 → 公開中」に変わります。クローンなので実際には配信されません。',
-      style: `font-size:12px;color:${T.sub};line-height:1.8;margin-bottom:18px`,
-    }),
-    el('div', { style: 'display:flex;gap:10px;justify-content:flex-end' }, [cancel, ok]),
-  )
-  overlay.append(panel)
-  document.body.append(overlay)
-  cancel.addEventListener('click', () => overlay.remove())
-  ok.addEventListener('click', async () => {
-    const { version } = await api.publish(state.currentUid)
-    const v = state.versions.find((x) => x.uid === state.currentUid)
-    if (v !== undefined) v.status = version.status
-    overlay.remove()
-    onDone()
-    toast('公開しました（状態バッジが変わります）')
-  })
+  }
 }

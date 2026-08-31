@@ -121,6 +121,21 @@ describe('除去（§5-5「除去」・§13-G）', () => {
   })
 })
 
+describe('回帰: 構造上の目印を壊さないこと', () => {
+  it('data-test / data-testid の値は置換しない（挙動を付ける目印なので構造の一部）', () => {
+    const html = '<button data-test="EditorToolbar-BtnBold" data-testid="list-menu-item">B</button>'
+    const { text } = scrubText(html, {}, HOSTS)
+    expect(text).toContain('data-test="EditorToolbar-BtnBold"')
+    expect(text).toContain('data-testid="list-menu-item"')
+  })
+
+  it('長い識別子でも data-test の中なら残す', () => {
+    const html = '<div data-test="AbCdEfGhIjKlMnOpQrStUvWxYz0123456789abcdef">x</div>'
+    const { text } = scrubText(html, {}, HOSTS)
+    expect(text).toContain('AbCdEfGhIjKlMnOpQrStUvWxYz0123456789abcdef')
+  })
+})
+
 describe('回帰: SaaS除去が土台を巻き込まないこと（実採取で踏んだバグ）', () => {
   it('SaaS識別子を含まない script は残す（全script削除にしてはいけない）', () => {
     const html = '<script>const APP_CONFIG={locale:"ja"};</script><script src="/assets/app.js"></script>'

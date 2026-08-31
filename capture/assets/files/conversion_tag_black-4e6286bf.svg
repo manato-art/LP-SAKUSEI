@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="54px" height="66px" viewBox="0 0 54 66" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 57.1 (83088) - https://sketch.com -->
+    <title>tag_large</title>
+    <desc>Created with Sketch.</desc>
+    <g id="tag" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="tag-list-new" transform="translate(-309.000000, -380.000000)">
+            <g id="dialog" transform="translate(247.000000, 264.000000)">
+                <g id="tag_large" transform="translate(62.000000, 116.000000)">
+                    <path d="M23,5 L25,5 L25,9 L24,9 C22.3431458,9 21,10.3431458 21,12.0000222 L20.9999626,13.6837775 L20.2585678,13.8822438 C8.98440052,16.9002599 1,27.1586414 1,39 C1,53.3594035 12.6405965,65 27,65 C41.3594035,65 53,53.3594035 53,39 C53,27.1590059 45.0160872,16.9008579 33.7423961,13.8825018 L33.0018768,13.6842392 L33.0010222,12.9176388 L33,12 C33,10.3431458 31.6568542,9 30,9 L29,9 L29,5 L31,5 C32.1045695,5 33,4.1045695 33,3 C33,1.8954305 32.1045695,1 31,1 L23,1 C21.8954305,1 21,1.8954305 21,3 C21,4.1045695 21.8954305,5 23,5 Z M27,17 C39.1502645,17 49,26.8497355 49,39 C49,51.1502645 39.1502645,61 27,61 C14.8497355,61 5,51.1502645 5,39 C5,26.8497355 14.8497355,17 27,17 Z" id="Combined-Shape" stroke="#454647" stroke-width="2"></path>
+                    <g id="Group-7" transform="translate(15.000000, 29.918077)" fill="#454647">
+                        <g id="Group-4" transform="translate(16.000000, 3.224745)">
+                            <rect id="Rectangle" transform="translate(3.707107, 8.778175) rotate(-225.000000) translate(-3.707107, -8.778175) " x="-0.292893219" y="7.77817459" width="8" height="2" rx="1"></rect>
+                            <rect id="Rectangle" transform="translate(3.707107, 3.707107) rotate(-135.000000) translate(-3.707107, -3.707107) " x="-0.292893219" y="2.70710678" width="8" height="2" rx="1"></rect>
+                        </g>
+                        <g id="Group-4" transform="translate(4.000000, 9.724745) scale(-1, 1) translate(-4.000000, -9.724745) translate(0.000000, 3.224745)">
+                            <rect id="Rectangle" transform="translate(3.707107, 8.778175) rotate(-225.000000) translate(-3.707107, -8.778175) " x="-0.292893219" y="7.77817459" width="8" height="2" rx="1"></rect>
+                            <rect id="Rectangle" transform="translate(3.707107, 3.707107) rotate(-135.000000) translate(-3.707107, -3.707107) " x="-0.292893219" y="2.70710678" width="8" height="2" rx="1"></rect>
+                        </g>
+                        <rect id="Rectangle" transform="translate(11.810531, 10.000000) rotate(15.000000) translate(-11.810531, -10.000000) " x="10.8105313" y="0" width="2" height="20" rx="1"></rect>
+                    </g>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>

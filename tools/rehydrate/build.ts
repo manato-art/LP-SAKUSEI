@@ -10,6 +10,7 @@
 import { readFileSync, writeFileSync, mkdirSync, readdirSync, existsSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { rewriteSubstrate, substrateBanner } from './rewrite.ts'
+import { buildFragments } from './fragments.ts'
 
 const CLEAN_DIR = 'capture/clean'
 const OUT_DIR = 'src/pages'
@@ -141,7 +142,11 @@ function main(): void {
     }
   })
 
-  writeFileSync('src/index.html', buildIndex(pages))
+  // アプリ側が「土台そのもの」を読み込めるよう、#root の中身を断片として出す
+  const fragments = buildFragments(states)
+
+  writeFileSync('src/viewer.html', buildIndex(pages))
+  console.log(`[rehydrate] 断片 ${fragments}件を src/app/fragments へ出力`)
 
   console.log(`[rehydrate] ${pages.length}状態を ${OUT_DIR} へ出力`)
   for (const p of pages) {

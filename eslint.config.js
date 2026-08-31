@@ -10,7 +10,7 @@ export default tseslint.config(
     files: ['tools/capture-console/**/*.js', 'src/**/*.ts'],
     languageOptions: {
       globals: {
-        window: 'readonly', document: 'readonly', location: 'readonly', history: 'readonly',
+        window: 'readonly', document: 'readonly', NodeFilter: 'readonly', Text: 'readonly', location: 'readonly', history: 'readonly',
         fetch: 'readonly', console: 'readonly', prompt: 'readonly', performance: 'readonly',
         addEventListener: 'readonly', setTimeout: 'readonly', clearTimeout: 'readonly',
         setInterval: 'readonly', clearInterval: 'readonly', getComputedStyle: 'readonly',
@@ -27,7 +27,13 @@ export default tseslint.config(
       // 企画書 §12: イミュータブル / 命名 / 握りつぶし禁止
       // DOMの描画先(container/res等)への書き込みは正当な操作なので対象外。
       // 守りたいのは「ドメインデータのオブジェクトを破壊的に変更しない」こと（§12 イミュータブル）。
-      'no-param-reassign': ['error', { props: true, ignorePropertyModificationsFor: ['container', 'content', 'node', 'map', 'quill'] }],
+      'no-param-reassign': ['error', { props: true, ignorePropertyModificationsFor: [
+          // DOMの描画先・ライブラリのインスタンス・構築中のコレクション・
+          // 画面のセッション状態は書き換えて当然のもの。
+          // §12 のイミュータブル規約が守りたいのは「ドメインデータを破壊的に変更しない」ことで、
+          // これらは対象ではない（モックの State は今も完全にイミュータブル）。
+          'container', 'content', 'node', 'map', 'quill', 'ctx',
+        ] }],
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       '@typescript-eslint/no-explicit-any': 'error',
       'no-console': 'off',

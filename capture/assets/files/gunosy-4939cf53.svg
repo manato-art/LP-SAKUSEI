@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="36px" height="23px" viewBox="0 0 36 23" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 55.1 (78136) - https://sketchapp.com -->
+    <title>gunosy</title>
+    <desc>Created with Sketch.</desc>
+    <g id="folder-list" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="list-folder" transform="translate(-548.000000, -700.000000)">
+            <g id="gunosy" transform="translate(548.000000, 700.000000)">
+                <polygon id="Rectangle" fill="#05A5EC" points="17 0 25 6 0 23"></polygon>
+                <polygon id="Rectangle" fill="#FEF23E" points="13.7651367 10.0249023 16.7253418 6.47314453 19.21875 8.2277832 15.0241699 10.9233398"></polygon>
+                <path d="M21.7856445,5.68310547 L17.5,2.5" id="Line" stroke="#FFFFFF" stroke-linecap="square"></path>
+                <path d="M20.1784668,7 L16.2734375,4.09155273" id="Line" stroke="#FFFFFF" stroke-linecap="square"></path>
+                <path d="M15.3132324,5.96118164 L14.9226074,5.68310547" id="Line" stroke="#FFFFFF" stroke-linecap="square"></path>
+                <path d="M14.2053223,7.44384766 L13.8322754,7.12915039" id="Line" stroke="#FFFFFF" stroke-linecap="square"></path>
+                <path d="M13.0256348,8.82495117 L12.7270508,8.56323242" id="Line" stroke="#FFFFFF" stroke-linecap="square"></path>
+                <path d="M13.2250977,11.5791016 L11.4694824,10.1481934" id="Line" stroke="#FFFFFF" stroke-linecap="square"></path>
+                <path d="M11.6540527,12.8500977 L10.25,11.6704102" id="Line" stroke="#FFFFFF" stroke-linecap="square"></path>
+                <path d="M10.088623,14.0419922 L9.03271484,13.1467285" id="Line" stroke="#FFFFFF" stroke-linecap="square"></path>
+                <path d="M8.48364258,15.1992188 L7.83740234,14.6369629" id="Line" stroke="#FFFFFF" stroke-linecap="square"></path>
+                <path d="M6.95458984,16.4462891 L6.64941406,16.1750488" id="Line" stroke="#FFFFFF" stroke-linecap="square"></path>
+                <polygon id="Rectangle" fill="#EF5097" points="26 7 36 14 0 23"></polygon>
+                <polygon id="Rectangle" fill="#FEF23E" points="21.9482422 10.8708496 25.8808594 8.42724609 29.8896484 11.0571289 25.2658691 13.3581543"></polygon>
+                <path d="M31.6604004,13 L30.5280762,12.2294922" id="Line" stroke="#FFFFFF" stroke-linecap="square"></path>
+                <path d="M29.3942871,13.7231445 L28.9035645,13.2807617" id="Line" stroke="#FFFFFF" stroke-linecap="square"></path>
+                <path d="M27.3261719,14.3203125 L26.909668,13.9733887" id="Line" stroke="#FFFFFF" stroke-linecap="square"></path>
+                <path d="M24.7609863,14.8056641 L21.1455078,12.0812988" id="Line" stroke="#FFFFFF" stroke-linecap="square"></path>
+                <path d="M20.2426758,13.5913086 L19.3146973,12.9287109" id="Line" stroke="#FFFFFF" stroke-linecap="square"></path>
+                <path d="M20.3452148,15.9372559 L17.3986816,13.7700195" id="Line" stroke="#FFFFFF" stroke-linecap="square"></path>
+                <path d="M18.1359863,16.5622559 L15.7570801,14.8254395" id="Line" stroke="#FFFFFF" stroke-linecap="square"></path>
+                <path d="M15.8039551,17.0605469 L14.0895996,15.7946777" id="Line" stroke="#FFFFFF" stroke-linecap="square"></path>
+                <path d="M13.4516602,17.5092773 L12.4536133,16.770752" id="Line" stroke="#FFFFFF" stroke-linecap="square"></path>
+                <path d="M11.338623,18.1142578 L10.7573242,17.7021484" id="Line" stroke="#FFFFFF" stroke-linecap="square"></path>
+                <path d="M9.3581543,18.8996582 L9.0859375,18.6958008" id="Line" stroke="#FFFFFF" stroke-linecap="square"></path>
+                <polygon id="Rectangle" fill="#E6211D" points="25 18 24 23 0 23"></polygon>
+            </g>
+        </g>
+    </g>
+</svg>

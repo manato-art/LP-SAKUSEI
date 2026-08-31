@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="12px" height="12px" viewBox="0 0 12 12" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 64 (93537) - https://sketch.com -->
+    <title>icon_google</title>
+    <desc>Created with Sketch.</desc>
+    <g id="folder-list" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="list-folder" transform="translate(-387.000000, -349.000000)" fill="#A5A5A5">
+            <g id="ad" transform="translate(383.000000, 267.000000)">
+                <path d="M16,88 C16,91.3137085 13.3137085,94 10,94 C6.6862915,94 4,91.3137085 4,88 C4,84.6862915 6.6862915,82 10,82 C11.7596835,82 13.3424389,82.7575192 14.439954,83.9642455 L13.1084596,85.1755126 C12.34018,84.3304898 11.2320413,83.8 10,83.8 C7.68040405,83.8 5.8,85.6804041 5.8,88 C5.8,90.3195959 7.68040405,92.2 10,92.2 C11.9029238,92.2 13.5102693,90.9344792 14.0263262,89.1991482 L10.6,89.2 L10.6,87.4 L16,87.4 Z" id="icon_google"></path>
+            </g>
+        </g>
+    </g>
+</svg>

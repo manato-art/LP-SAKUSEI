@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SquadBeyond クローン ― 土台ビューア</title>
+<style>
+  :root { --primary:#0091FF; --bg:#ECECEC; --surface:#fff; --text:#151515; --sub:#808080; }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:24px; background:var(--bg); color:var(--text);
+         font-family:"Hiragino Sans", sans-serif; }
+  h1 { font-size:20px; margin:0 0 4px; }
+  .lead { color:var(--sub); font-size:13px; margin:0 0 20px; line-height:1.8; }
+  .warn { background:#FFF4E5; border-left:3px solid #FF9500; padding:10px 14px;
+          font-size:13px; line-height:1.8; margin:0 0 20px; }
+  section { background:var(--surface); border-radius:6px; padding:16px 20px; margin-bottom:12px; }
+  h2 { font-size:14px; margin:0 0 10px; font-family:monospace; color:var(--primary); }
+  ul { list-style:none; margin:0; padding:0; }
+  li { display:flex; align-items:center; gap:10px; padding:6px 0; border-bottom:1px solid #F0F0F0; }
+  li:last-child { border-bottom:none; }
+  a { color:var(--text); text-decoration:none; font-size:14px; }
+  a:hover { color:var(--primary); text-decoration:underline; }
+  .meta { color:var(--sub); font-size:12px; margin-left:auto; }
+</style>
+</head>
+<body>
+  <h1>SquadBeyond クローン ― 土台ビューア</h1>
+  <p class="lead">
+    採取した実HTML＋実CSSをローカルで表示しています（企画書 §5-6 Rehydrate）。<br />
+    9 状態 / 4 ルート。
+  </p>
+  <p class="warn">
+    <strong>これは「見た目の土台」だけです。</strong>
+    本番のJSは除去してあるため、ボタンやタブはまだ動きません（企画書 §11 の設計どおり）。<br />
+    動く部分はモックAPIに再配線してから足していきます。データはすべて匿名化済みの架空値です。
+  </p>
+  <section>
+    <h2>ab_tests__UID__articles</h2>
+    <ul>
+      <li>
+        <a href="./pages/ab_tests__UID__articles__editor-article-settings.html">editor-article-settings</a>
+        <span class="meta">809KB · <b style="color:#D0021B">CSSOM無し(無地になる)</b></span>
+      </li>
+      <li>
+        <a href="./pages/ab_tests__UID__articles__editor-beyond-empty.html">editor-beyond-empty</a>
+        <span class="meta">130KB · iframe有</span>
+      </li>
+      <li>
+        <a href="./pages/ab_tests__UID__articles__editor-tag-settings.html">editor-tag-settings</a>
+        <span class="meta">809KB · <b style="color:#D0021B">CSSOM無し(無地になる)</b></span>
+      </li>
+      <li>
+        <a href="./pages/ab_tests__UID__articles__editor-text-selected.html">editor-text-selected</a>
+        <span class="meta">132KB · <b style="color:#D0021B">CSSOM無し(無地になる)</b></span>
+      </li>
+      <li>
+        <a href="./pages/ab_tests__UID__articles__editor-toolbar-expanded.html">editor-toolbar-expanded</a>
+        <span class="meta">135KB · <b style="color:#D0021B">CSSOM無し(無地になる)</b></span>
+      </li>
+      <li>
+        <a href="./pages/ab_tests__UID__articles__editor-widget-library.html">editor-widget-library</a>
+        <span class="meta">871KB · <b style="color:#D0021B">CSSOM無し(無地になる)</b></span>
+      </li>
+    </ul>
+  </section>
+  <section>
+    <h2>dashboard</h2>
+    <ul>
+      <li>
+        <a href="./pages/dashboard__default.html">default</a>
+        <span class="meta">112KB</span>
+      </li>
+    </ul>
+  </section>
+  <section>
+    <h2>folders</h2>
+    <ul>
+      <li>
+        <a href="./pages/folders__empty-selection.html">empty-selection</a>
+        <span class="meta">372KB</span>
+      </li>
+    </ul>
+  </section>
+  <section>
+    <h2>folders__UID__ab_tests__UID__edit</h2>
+    <ul>
+      <li>
+        <a href="./pages/folders__UID__ab_tests__UID__edit__default.html">default</a>
+        <span class="meta">116KB · <b style="color:#D0021B">CSSOM無し(無地になる)</b></span>
+      </li>
+    </ul>
+  </section>
+</body>
+</html>
