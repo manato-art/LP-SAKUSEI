@@ -25,7 +25,13 @@ import {
 } from '../src/app/panels/editor-toolbar.ts'
 import { WIDGET_MENU_LABELS } from '../src/app/panels/widget-manager.ts'
 
-describe('採取した選択肢をそのまま持っている', () => {
+/**
+ * 注意: この describe は「実装の定数が期待どおりの形か」しか見ていない。
+ * 実装の定数と同じリテラルをここに書き写しているので、定数が間違っていても
+ * 同じ誤りが写って緑のままになる。
+ * **採取物との照合は tests/toolbar-from-capture.test.ts が行う**（実HTMLをパースして比べる）。
+ */
+describe('選択肢の形（採取物との照合は toolbar-from-capture.test.ts）', () => {
   test('文字サイズは 10px から 29px の10段', () => {
     expect(TOOLBAR_FONT_SIZES).toEqual([
       '10px',
