@@ -112,7 +112,6 @@ function addEntry(
 ): void {
   if (isTooShort(value)) return
   if (!override && Object.prototype.hasOwnProperty.call(map, value)) return
-  // eslint-disable-next-line no-param-reassign -- 構築中の辞書への追加（呼び出し側の所有物）
   map[value] = { category, replacement: replacementFor(category, value) }
 }
 
@@ -127,8 +126,7 @@ function addNumericVariants(map: ScrubMap, value: number): void {
   if (!Number.isInteger(value)) {
     const literal = String(Math.abs(value))
     if (literal.length < MIN_LENGTH_ASCII) return
-    // eslint-disable-next-line no-param-reassign -- 構築中の辞書への追加（呼び出し側の所有物）
-    map[literal] = { category: 'number', replacement: replacementFor('number', literal) }
+      map[literal] = { category: 'number', replacement: replacementFor('number', literal) }
     return
   }
 
@@ -146,8 +144,7 @@ function addNumericVariants(map: ScrubMap, value: number): void {
     [raw, fakeRaw],
   ]
   for (const [real, replacement] of variants) {
-    // eslint-disable-next-line no-param-reassign -- 構築中の辞書への追加（呼び出し側の所有物）
-    map[real] = { category: 'number', replacement }
+      map[real] = { category: 'number', replacement }
   }
 }
 

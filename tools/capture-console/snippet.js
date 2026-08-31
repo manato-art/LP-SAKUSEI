@@ -61,7 +61,7 @@
       const frames = [...document.querySelectorAll('iframe')].filter((f) => {
         try {
           return !!f.contentDocument
-        } catch (e) {
+        } catch {
           return false
         }
       })
@@ -80,7 +80,7 @@
       const rules = []
       for (const sheet of document.styleSheets) {
         let list
-        try { list = sheet.cssRules } catch (e) { continue } // 別オリジンのCSSは読めない
+        try { list = sheet.cssRules } catch { continue } // 別オリジンのCSSは読めない
         if (!list) continue
         const from = sheet.href || '(inline/runtime)'
         const body = []
