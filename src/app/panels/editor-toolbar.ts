@@ -94,16 +94,7 @@ const ICON_SWAP: Readonly<Record<string, { readonly on: string; readonly off: st
 
 /** 文字サイズの10段（toolbar-expanded/dom.html の並び順そのまま） */
 export const TOOLBAR_FONT_SIZES: readonly string[] = [
-  '10px',
-  '13px',
-  '15px',
-  '17px',
-  '19px',
-  '21px',
-  '23px',
-  '25px',
-  '27px',
-  '29px',
+  '10px', '13px', '15px', '17px', '19px', '21px', '23px', '25px', '27px', '29px',
 ]
 
 /** 「自由設定」の単位（`<select>` の option そのまま） */
@@ -111,12 +102,7 @@ export const FREE_FONT_SIZE_UNITS: readonly string[] = ['px', '%', 'em', 'rem']
 
 /** フォント（toolbar-expanded/dom.html の並び順そのまま） */
 export const TOOLBAR_FONT_FAMILIES: readonly string[] = [
-  'serif',
-  'sans-serif',
-  'cursive',
-  'fantasy',
-  'monospace',
-  'ヒラギノ角ゴ Pro W3',
+  'serif', 'sans-serif', 'cursive', 'fantasy', 'monospace', 'ヒラギノ角ゴ Pro W3',
 ]
 
 /** 整列（ドロップダウンのアイコン順。Quill の align 値。左寄せは値なし） */
@@ -128,46 +114,14 @@ const ALIGN_VALUES: readonly (string | false)[] = [false, 'center', 'right', 'ju
  * 企画書 §3-5 に従い**直さない**。
  */
 export const TOOLBAR_SWATCHES: readonly string[] = [
-  '#000000',
-  '#ffffff',
-  '#bbbbbb',
-  '#888888',
-  '#444444',
-  '#e60000',
-  '#facccc',
-  '#f06666',
-  '#a10000',
-  '#5c0000',
-  '#ff9900',
-  '#ffebcc',
-  '#ffc266',
-  '#b26b00',
-  '#663d00',
-  '#ffff00',
-  '#ffffcc',
-  '#fffff66',
-  '#b2b200',
-  '#666600',
-  '#008a00',
-  '#cce8cc',
-  '#66B966',
-  '#006100',
-  '#003700',
-  '#0066cc',
-  '#cce0f5',
-  '#66a3e0',
-  '#0047b2',
-  '#002966',
-  '#9933ff',
-  '#ebd6ff',
-  '#c285ff',
-  '#6b24b2',
-  '#3d140a',
-  '#0000ff',
-  '#ff0000',
-  '#ff00ff',
-  '#fa57cc',
-  '#fae1f0',
+  '#000000', '#ffffff', '#bbbbbb', '#888888', '#444444',
+  '#e60000', '#facccc', '#f06666', '#a10000', '#5c0000',
+  '#ff9900', '#ffebcc', '#ffc266', '#b26b00', '#663d00',
+  '#ffff00', '#ffffcc', '#fffff66', '#b2b200', '#666600',
+  '#008a00', '#cce8cc', '#66B966', '#006100', '#003700',
+  '#0066cc', '#cce0f5', '#66a3e0', '#0047b2', '#002966',
+  '#9933ff', '#ebd6ff', '#c285ff', '#6b24b2', '#3d140a',
+  '#0000ff', '#ff0000', '#ff00ff', '#fa57cc', '#fae1f0',
 ]
 
 /**
@@ -344,19 +298,10 @@ export function hsvToHex(h: number, s: number, v: number): string {
   const c = val * sat
   const x = c * (1 - Math.abs(((hue / 60) % 2) - 1))
   const m = val - c
-  const sector = Math.floor(hue / 60) % 6
-  const rgb: readonly [number, number, number] =
-    sector === 0
-      ? [c, x, 0]
-      : sector === 1
-        ? [x, c, 0]
-        : sector === 2
-          ? [0, c, x]
-          : sector === 3
-            ? [0, x, c]
-            : sector === 4
-              ? [x, 0, c]
-              : [c, 0, x]
+  const sectors: readonly (readonly [number, number, number])[] = [
+    [c, x, 0], [x, c, 0], [0, c, x], [0, x, c], [x, 0, c], [c, 0, x],
+  ]
+  const rgb = sectors[Math.floor(hue / 60) % 6] ?? [c, x, 0]
   const hex = rgb.map((channel) => Math.round((channel + m) * 255).toString(16).padStart(2, '0')).join('')
   return `#${hex}`
 }
@@ -726,8 +671,8 @@ function positionToolbar(wrapper: HTMLElement, quill: Quill, range: QuillRange):
   if (arrow === null) return
   arrow.classList.remove(CLS.arrowTop, CLS.arrowBottom)
   arrow.classList.add(placement.placement === 'above' ? CLS.arrowBottom : CLS.arrowTop)
+  // 実物も矢印には `left` だけを inline で書いていた（中央寄せの margin-left は実CSS側にある）
   arrow.style.setProperty('left', `${placement.arrowLeft}px`)
-  arrow.style.setProperty('margin-left', '-6px')
 }
 
 /** 押下状態（白丸背景＋黒アイコン）を現在の書式に合わせる */

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="16px" height="20px" viewBox="0 0 16 20" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 64 (93537) - https://sketch.com -->
+    <title>icon_coffee</title>
+    <desc>Created with Sketch.</desc>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="report" transform="translate(-52.000000, -1499.000000)">
+            <g id="week" transform="translate(30.000000, 1271.000000)">
+                <g id="Group-26" transform="translate(18.000000, 86.000000)">
+                    <g id="icon_coffee" transform="translate(4.000000, 143.000000)">
+                        <path d="M1.09503282,8 L11.9049672,8 C12.4572519,8 12.9049672,8.44771525 12.9049672,9 C12.9049672,9.03022514 12.9035968,9.06043474 12.9008604,9.09053575 L12.1653571,17.1810715 C12.0717064,18.2112298 11.2079771,19 10.1735707,19 L2.82642928,19 C1.79202287,19 0.928293619,18.2112298 0.834642863,17.1810715 L0.0991396133,9.09053575 C0.0491381014,8.54051912 0.454480443,8.05410831 1.00449707,8.00410679 C1.03459808,8.00137034 1.06480768,8 1.09503282,8 Z" id="Rectangle" fill="#000"></path>
+                        <path d="M6.5,0.080078125 C7.43548584,1.64581299 5.36358643,2.74060059 6.5,4.71447754" id="Path-3" stroke="#000" stroke-linecap="round" stroke-linejoin="round"></path>
+                        <path d="M4,4.5 C3.57364909,3.87809245 3.57364909,3.04475911 4,2" id="Path-4" stroke="#000" stroke-linecap="round" stroke-linejoin="round"></path>
+                        <path d="M9,4.5 C8.57364909,3.87809245 8.57364909,3.04475911 9,2" id="Path-4" stroke="#000" stroke-linecap="round" stroke-linejoin="round"></path>
+                        <rect id="Rectangle" stroke="#000" stroke-width="1.5" x="10.75" y="10.75" width="4.5" height="4.5" rx="2.25"></rect>
+                    </g>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>

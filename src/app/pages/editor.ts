@@ -6,7 +6,9 @@
  * 見た目は本物のマークアップ＋実CSS（Emotion含む）で担保される。
  */
 import Quill from 'quill'
-import 'quill/dist/quill.bubble.css'
+// bubbleテーマは独自のツールチップUIを作ってしまうので使わない。
+// 採取した実物のツールバーを使うため、Quillは**テーマ無し**＋coreのCSSだけにする。
+import 'quill/dist/quill.core.css'
 import substrate from '../fragments/ab_tests__UID__articles__editor-target.html?raw'
 import { api, type Version } from '../api.ts'
 import { isStale } from '../main.ts'
@@ -15,6 +17,8 @@ import { mountVersionSettings } from '../panels/version-settings.ts'
 import { mountTagSettings } from '../panels/tag-settings.ts'
 import { mountLinkReplace } from '../panels/link-replace.ts'
 import { mountHistory } from '../panels/history.ts'
+import { mountEditorToolbar } from '../panels/editor-toolbar.ts'
+import { mountWidgetManager } from '../panels/widget-manager.ts'
 
 /** 採取DOM内の目印（実物の data-test 属性。採取のたびに増える） */
 const HOOK = {
@@ -41,7 +45,7 @@ const HOOK = {
 } as const
 
 /** 配線済みのツール（未実装トーストを出さない） */
-const WIRED_TOOLS: readonly number[] = [0, 1, 3, 4, 5]
+const WIRED_TOOLS: readonly number[] = [0, 1, 2, 3, 4, 5]
 
 /** 右レール9ツールの実際の名前（実DOMの tooltip / aria-label より） */
 const SIDE_TOOLS: readonly string[] = [
@@ -140,22 +144,14 @@ function mountQuill(root: HTMLElement): Quill {
     host.style.cssText = 'width:620px;height:486px;background:#fff;overflow:auto;margin:0 auto'
     root.append(host)
   }
+  /**
+   * ツールバーは**採取した実物の markup**（`_editorToolbarWrapper_`）を使うので、
+   * Quill 内蔵の bubble ツールバーは出さない（二重に出てしまうため）。
+   * 書式の適用は `src/app/panels/editor-toolbar.ts` が Quill API 経由で行う。
+   */
   return new Quill(host, {
-    theme: 'bubble',
     placeholder: 'ここにLPの内容を入力してください',
-    modules: {
-      toolbar: [
-        ['bold', 'underline', 'italic', 'strike'],
-        [{ script: 'super' }, { script: 'sub' }],
-        ['link'],
-        [{ color: [] }, { background: [] }],
-        [{ align: [] }],
-        [{ header: [1, 2, 3, false] }],
-        [{ size: ['10px', '13px', '15px', '17px', '19px', '21px', '23px', '25px', '27px', '29px'] }],
-        [{ font: [] }],
-        ['clean'],
-      ],
-    },
+    modules: { toolbar: false },
   })
 }
 
@@ -273,6 +269,8 @@ function wireSideToolbar(ctx: EditorContext, previewTitle: string, previewFolder
   mountTagSettings(ctx.root, ctx.articleUid)
   mountLinkReplace(ctx.root, ctx.articleUid)
   mountHistory(ctx.root, ctx.articleUid)
+  mountEditorToolbar(ctx.root, ctx.quill)
+  mountWidgetManager(ctx.root, ctx.quill)
 
   ctx.root.querySelector(HOOK.preview)?.addEventListener('click', async () => {
     await saveHtml(ctx)
