@@ -564,6 +564,96 @@ AbTest 1-* Article （＝UI上の「Version」）
 
 ---
 
+---
+
+# エディタの実DOM（人間が貼ってくれた分・2026-08-31）
+
+## 右レール9ツールの正体（tooltip / aria-label から確定）
+
+| # | ツール名（実物の表示） | 目印 |
+|---|---|---|
+| 1 | **プレビュー** | `aria-label="プレビュー"` |
+| 2 | **変更・復元履歴** | `sideToolbarArticleHistory` → パネル `バージョン復元` + `戻る` |
+| 3 | **Widget管理** | `data-trackid="editor-side-tools-widget-management-button"` |
+| 4 | **リンク置換** | `link_replace` アイコン |
+| 5 | **Version設定** | `data-test="MasterStyleSheetModal-BtnOpenModal"` |
+| 6 | **タグ設定** | `data-test="HtmlSettingModal-BtnOpenModal"` |
+| 7 | **元に戻す** | `data-test="SideToolbar-Undo"` |
+| 8 | **やり直す** | `data-test="SideToolbar-Redo"` |
+| 9 | **外部サーバー画像アップロード** | `_externarImageUploadIcon_` |
+
+→ 私が「記事設定」と呼んでいたものは、実物では **`Version設定`**（`MasterStyleSheet`）。
+
+### Widget管理のメニュー（3番を押すと出る）
+
+`HTML編集` / `クイック編集` / `すぐ下に複製` / `widgetコピー` / `Versionから削除する`
+
+## Version一覧の行構造
+
+```
+<div data-id="<記事のid>" data-article-uid="<記事のuid>">
+  <div data-test="ArticleList-CurrentArticle" class="_abTestArticle_ _active_">
+    <img src="/assets/version-orange-*.svg">            ← 選択中はオレンジ、非選択は青
+    <input data-test="ArticleList-InputMemo" name="memo" value="Ver.NNNN">
+    <input data-test="ArticleList-DeriveryRateForm" type="number" min="0">
+    <div data-test="ArticleList-DeriveryUpRateForm">   ← 上スピナー
+    <div data-test="ArticleList-DeriveryDownRateForm"> ← 下スピナー
+    <button>（オレンジの3点アイコン）</button>
+    <button class="MuiLoadingButton-root">更新</button>
+  </div>
+</div>
+```
+
+- **行が `data-article-uid` を持つ** → Version切替の実装はこれを使うのが正しい
+- `Version追加` は `data-test="Article-BtnCreateNewArticle"`（`version-blue-*.svg` + テキスト）
+
+## Version一覧のヘッダ
+
+- `Version` のドロップダウン → 選択肢は **`Version` / `アーカイブ`**（`_articleListTypeChoice_`）
+- `配信割合` の横に **`?` ヘルプアイコン**（`data-testid="help-icon-wrapper"`）
+
+## ファネル（中央下部）の実体
+
+- `Versionリンク` + `コピーする` + readonly input
+  → URLは **`<配信URL>?step_uid=<記事uid>`**（ファネルのステップは記事単位）
+- `_btnNewFunnel_`（新しいステップ追加）
+- `_funneStepList_`（`_parent_` / `_active_` の状態を持つ）
+- `＜` `＞` = `_changePrevFunnelStep_` / `_changeNextFunnelStep_`
+
+## 画像アップロードのドロップダウン
+
+`新しい画像をアップロード` / `閉じる` / `Versionにアップロードする画像を選択` / `一覧から選択`
+タブ4つ: `全て` / `フォルダ内` / `beyondページ内` / `Version内`
+空状態の文言: **`画像がありません`**
+
+## テキスト選択ツールバーの実体
+
+アイコンは **`<img>`**（インラインSVGではない）。各ボタンの目印:
+
+| 表示 | data-test | 画像 |
+|---|---|---|
+| 太字 | `EditorToolbar-BtnBold` | `bold-black-*.svg` |
+| 下線 | `EditorToolbar-BtnItalic` | `underline-white-*.svg` |
+| 斜体 | `EditorToolbar-BtnUnderline` | `italic-white-*.svg` |
+| 打ち消し | `EditorToolbar-BtnStrike` | `strikethrough-black-*.svg` |
+| 上付き/下付き | （divのみ） | `_iconScriptSuper_` / `_iconScriptSub_` |
+| リンク | `LinkDropdown-BtnOpenDropdown` | `link_white-*.svg` |
+| 画像 | `EditorToolbar-BtnArticlePhoto` | `image-white-*.svg` |
+| 文字色 / 背景色 | `ColorPicker-BtnColor` / `ColorPicker-BtnBackGround` | （aria-label あり） |
+| 整列 | `EditorToolbar-BtnAlign` | ドロップダウンで left/center/right/justify |
+| ⋮ 展開 | `EditorToolbar-BtnMoreToolbarOption` | `_iconOptions_` |
+
+> **実物の入れ違い**: `BtnItalic` に下線アイコン、`BtnUnderline` に斜体アイコンが割り当たっている。
+> 本物がそうなっているので、忠実再現としては**そのまま真似る**（企画書 §3-5「勝手に改善しない」）。
+
+## リンク置換の説明文（マイクロコピー・verbatim保持対象）
+
+- `ページ内CTRやCVRの計測をするために、Click・CVを計測するURLリンクを挿入する際は必ず「計測機能付きリンク」をチェックした状態で追加してください。同ページ内の遷移や運営者情報など、Click・CVとして計測しないURLリンクは「計測機能付きリンク」のチェックを外してから追加してください。`
+- `別タブで開く必要がない場合、別タブで開かないことを推奨します。同じタブで開いた方がCV計測精度を高くできます。`
+- 置換先の選択肢: `新しいリンク` / `中間ページリンク`
+
+---
+
 ## 未確認のまま残ったもの（正直な記録）
 
 | 項目 | 理由 |

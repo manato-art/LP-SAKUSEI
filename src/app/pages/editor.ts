@@ -23,8 +23,28 @@ const HOOK = {
   undo: '[data-test="SideToolbar-Undo"]',
   redo: '[data-test="SideToolbar-Redo"]',
   tagSettings: '[data-test="HtmlSettingModal-BtnOpenModal"]',
+  versionSettings: '[data-test="MasterStyleSheetModal-BtnOpenModal"]',
+  moreToolbar: '[data-test="EditorToolbar-BtnMoreToolbarOption"]',
   editorWrapper: '[data-test="editor-wrapper"], [data-test="editorWrapper"]',
+  /** Version行は記事uidを属性で持っている（実DOMで判明） */
+  versionRow: '[data-article-uid]',
+  funnelPrev: '[class*="changePrevFunnelStep"]',
+  funnelNext: '[class*="changeNextFunnelStep"]',
+  versionLinkInput: '#versionLink',
 } as const
+
+/** 右レール9ツールの実際の名前（実DOMの tooltip / aria-label より） */
+const SIDE_TOOLS: readonly string[] = [
+  'プレビュー',
+  '変更・復元履歴',
+  'Widget管理',
+  'リンク置換',
+  'Version設定',
+  'タグ設定',
+  '元に戻す',
+  'やり直す',
+  '外部サーバー画像アップロード',
+]
 
 interface EditorContext {
   root: HTMLElement
@@ -180,6 +200,18 @@ function wireVersionPanel(ctx: EditorContext): void {
     void save()
   })
 
+  // Version行のクリックで切り替え（行が data-article-uid を持つ・実DOMで判明）
+  for (const row of ctx.root.querySelectorAll<HTMLElement>(HOOK.versionRow)) {
+    row.style.cursor = 'pointer'
+    row.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement
+      if (target.closest('input') !== null || target.closest('button') !== null) return
+      const uid = row.dataset['articleUid']
+      if (uid === undefined) return
+      void saveHtml(ctx).then(() => loadVersion(ctx, uid))
+    })
+  }
+
   ctx.root.querySelector(HOOK.addVersion)?.addEventListener('click', async () => {
     try {
       await saveHtml(ctx)
@@ -208,11 +240,18 @@ function wireSideToolbar(ctx: EditorContext): void {
     toast('タグ設定は未実装です（採取済みなので次に作れます）', 'error')
   })
 
-  // 目印の無い右レールアイコンは、押しても何も起きないと分かるようにしておく
-  for (const icon of ctx.root.querySelectorAll<HTMLElement>('[class*="sideToolbarIcon"]')) {
-    if (icon.querySelector('[data-test]') !== null) continue
+  ctx.root.querySelector(HOOK.versionSettings)?.addEventListener('click', () => {
+    toast('Version設定は未実装です（採取済みなので次に作れます）', 'error')
+  })
+
+  // 未実装の右レールツールは、実際の名前を出して「何が未実装か」を分かるようにする
+  const icons = [...ctx.root.querySelectorAll<HTMLElement>('[class*="sideToolbarIcon"]')]
+  for (let index = 0; index < icons.length; index += 1) {
+    const icon = icons[index]
+    if (icon === undefined || icon.querySelector('[data-test]') !== null) continue
+    const name = SIDE_TOOLS[index] ?? 'このツール'
     icon.style.cursor = 'pointer'
-    icon.addEventListener('click', () => toast('このツールはまだ未実装です', 'error'))
+    icon.addEventListener('click', () => toast(`${name} は未実装です`, 'error'))
   }
 
   // 保存（実物にはショートカットが無いが、作業用に足している）
