@@ -106,6 +106,11 @@ teamsRouter.put('/teams/:teamUid/members/:memberUid/invitation', (req, res) => {
   })
 })
 
+/** 媒体ロスター（作成モーダルの選択肢・実機では約65種） */
+teamsRouter.get('/teams/media', (_req, res) => {
+  res.json({ media: getState().media })
+})
+
 teamsRouter.get('/teams/members', (_req, res) => {
   res.json({ members: getState().members })
 })
