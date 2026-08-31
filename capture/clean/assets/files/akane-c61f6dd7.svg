@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="24px" height="22px" viewBox="0 0 24 22" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 57.1 (83088) - https://sketch.com -->
+    <title>akane</title>
+    <desc>Created with Sketch.</desc>
+    <defs>
+        <polygon id="path-1" points="12 0 23.4126782 8.29179607 19.053423 21.7082039 4.94657697 21.7082039 0.587321804 8.29179607"></polygon>
+    </defs>
+    <g id="folder-list" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="Artboard" transform="translate(-134.000000, -100.000000)">
+            <g id="akane" transform="translate(134.000000, 100.000000)">
+                <mask id="mask-2" fill="white">
+                    <use xlink:href="#path-1"></use>
+                </mask>
+                <use id="mask" fill="#FAD7A0" xlink:href="#path-1"></use>
+                <polygon id="Rectangle" fill="#E65582" mask="url(#mask-2)" points="12 0 26 0 28 7 12 12"></polygon>
+                <polygon id="Rectangle" fill="#9FC8EB" mask="url(#mask-2)" points="25 30 26 30 28 7 12 12"></polygon>
+                <polygon id="Rectangle" fill="#A587BE" mask="url(#mask-2)" points="25 30 -1 30 12 12"></polygon>
+                <polygon id="Rectangle" fill="#D7E6C3" mask="url(#mask-2)" transform="translate(4.000000, 6.000000) scale(-1, 1) translate(-4.000000, -6.000000) " points="-4 0 10 0 12 7 -4 12"></polygon>
+            </g>
+        </g>
+    </g>
+</svg>

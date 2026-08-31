@@ -131,9 +131,21 @@ function scanGitTracked(): Hit[] {
   }
 }
 
-function main(): void {
+/**
+ * 実名リストの既定の置き場。
+ * 実名そのものが入るファイルなので .gitignore 済み（コミットしてはいけない）。
+ * --names を毎回付け忘れると実名スキャンが黙って素通りするので、既定でここを見る。
+ */
+const DEFAULT_NAMES_FILE = '.gate-names.local'
+
+function resolveNamesFile(): string | undefined {
   const namesFlag = process.argv.indexOf('--names')
-  const namesFile = namesFlag === -1 ? undefined : process.argv[namesFlag + 1]
+  if (namesFlag !== -1) return process.argv[namesFlag + 1]
+  return existsSync(DEFAULT_NAMES_FILE) ? DEFAULT_NAMES_FILE : undefined
+}
+
+function main(): void {
+  const namesFile = resolveNamesFile()
   const files = scanFiles()
 
   const hits: Hit[] = [
@@ -153,8 +165,13 @@ function main(): void {
   if (namesFile !== undefined && existsSync(namesFile)) {
     const names = parseKnownNames(readFileSync(namesFile, 'utf8'))
     hits.push(...scanLiterals(files, '13-E 実名', names))
+    console.log(`[gate] 実名スキャン実施: ${names.length}語（${namesFile}）`)
   } else {
-    console.log('[gate] 注意: --names 未指定のため実名スキャンは未実施（採取後は必ず指定すること）')
+    console.error(
+      `[gate] 不合格: 実名リストが無いため実名スキャンを実施できない。` +
+        `${DEFAULT_NAMES_FILE} を作るか --names <ファイル> を指定すること`,
+    )
+    process.exitCode = 1
   }
 
   console.log(`[gate] 走査対象: ${files.length}ファイル / ${SCAN_DIRS.join(', ')}`)

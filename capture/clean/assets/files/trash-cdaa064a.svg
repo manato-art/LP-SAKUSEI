@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="17px" height="21px" viewBox="0 0 17 21" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 61.2 (89653) - https://sketch.com -->
+    <title>trash</title>
+    <desc>Created with Sketch.</desc>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="article-edit" transform="translate(-461.000000, -365.000000)" fill="#FF1711" stroke="#FF0000">
+            <g id="dropdown" transform="translate(432.000000, 168.000000)">
+                <g id="trash" transform="translate(29.000000, 197.000000)">
+                    <path d="M14.5159574,5.5 L1.50106383,5.5 L1.50106383,17 C1.50106383,18.9329966 3.06806721,20.5 5.00106383,20.5 L11.0159574,20.5 C12.9489541,20.5 14.5159574,18.9329966 14.5159574,17 L14.5159574,5.5 Z M0.5,3.5 L15.5170213,3.5 L15.5170213,3 C15.5170213,2.72385763 15.2931637,2.5 15.0170213,2.5 L9.52867689,2.5 L9.51097564,2.01836376 L9.5065078,1.88752631 C9.44899563,1.10798851 8.79729901,0.5 8.0106383,0.5 L8.00638298,0.5 C7.17795585,0.5 6.50638298,1.17157288 6.50638298,2 L6.50638298,2.5 L1,2.5 C0.723857625,2.5 0.5,2.72385763 0.5,3 L0.5,3.5 Z"></path>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>

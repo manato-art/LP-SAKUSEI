@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="16px" height="17px" viewBox="0 0 16 17" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 57.1 (83088) - https://sketch.com -->
+    <title>magnifier</title>
+    <desc>Created with Sketch.</desc>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="page-search" transform="translate(-243.000000, -280.000000)" stroke="#000000">
+            <g id="dialog" transform="translate(207.000000, 168.000000)">
+                <g id="list" transform="translate(20.000000, 100.000000)">
+                    <path d="M23,12.5 C19.4101491,12.5 16.5,15.4101491 16.5,19 C16.5,22.5898509 19.4101491,25.5 23,25.5 C24.4716033,25.5 25.8672137,25.0101652 27.0017576,24.1224956 L27.3504338,23.8496906 L27.6634501,24.1627696 L31.0606602,27.5606602 C31.0606602,27.5606602 31.0606602,27.5606602 31.0606908,27.5606908 L27.3520579,23.8527014 L27.6911313,23.4992678 C28.8448493,22.2966881 29.5,20.7005144 29.5,19 C29.5,15.4101491 26.5898509,12.5 23,12.5 Z" id="magnifier"></path>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>

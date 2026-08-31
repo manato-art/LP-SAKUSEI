@@ -8,7 +8,7 @@
  * テストデータはすべて架空。実データは一切使わない（§3-1）。
  */
 import { describe, expect, it } from 'vitest'
-import { collectFromJson, collectKnownNames, applyDictionary, type ScrubMap } from '../tools/scrub/dictionary.ts'
+import { collectFromJson, collectKnownNames, applyDictionary, type ScrubMap, collectKnownEntries, parseKnownEntries } from '../tools/scrub/dictionary.ts'
 import { scrubJson, scrubText, type HostRewrite } from '../tools/scrub/scrub.ts'
 import { fakeNumberLike, fakePersonName } from '../tools/scrub/replacers.ts'
 
@@ -240,5 +240,32 @@ describe('回帰: 通しスモークで見つかった漏れ', () => {
     const { text } = scrubText('<td class="creator">架空 太一</td>', map, HOSTS)
     expect(text).not.toContain('架空 太一')
     expect(text).not.toContain('サンプル施策')
+  })
+})
+
+describe('実名リストはカテゴリを指定できる（ページ名を人名に置換しないため）', () => {
+  it('カテゴリ未指定なら人名として扱う', () => {
+    expect(parseKnownEntries('大山')).toEqual([{ name: '大山', category: 'person' }])
+  })
+
+  it('= の右側でカテゴリを指定できる', () => {
+    expect(parseKnownEntries('複製用 = campaign')).toEqual([
+      { name: '複製用', category: 'campaign' },
+    ])
+  })
+
+  it('コメント行と空行を無視する', () => {
+    expect(parseKnownEntries('# メモ\n\n大山\n')).toEqual([{ name: '大山', category: 'person' }])
+  })
+
+  it('知らないカテゴリは黙って人名に落とさず、エラーにする', () => {
+    expect(() => parseKnownEntries('X = 宇宙')).toThrow(/宇宙/)
+  })
+
+  it('カテゴリ付きで辞書へ入れると、その分類の架空値になる', () => {
+    const map: ScrubMap = {}
+    collectKnownEntries(parseKnownEntries('複製用 = campaign'), map)
+    expect(map['複製用']?.category).toBe('campaign')
+    expect(map['複製用']?.replacement).not.toBe('複製用')
   })
 })

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="26px" height="16px" viewBox="0 0 26 16" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 64 (93537) - https://sketch.com -->
+    <title>icon_sun</title>
+    <desc>Created with Sketch.</desc>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="report" transform="translate(-48.000000, -1373.000000)" fill="#fff">
+            <g id="week" transform="translate(30.000000, 1271.000000)">
+                <g id="Group-26" transform="translate(18.000000, 86.000000)">
+                    <g id="info" transform="translate(0.000000, 16.000000)">
+                        <g id="days">
+                            <g id="icon_sun" transform="translate(0.339746, 0.000000)">
+                                <path d="M12.160254,9 C14.6455354,9 16.660254,11.0147186 16.660254,13.5 C16.660254,14.4252961 16.3809837,15.2853652 15.9021337,16.0005166 L8.41837442,16.0005166 C7.93952434,15.2853652 7.66025404,14.4252961 7.66025404,13.5 C7.66025404,11.0147186 9.67497266,9 12.160254,9 Z" id="Combined-Shape"></path>
+                                <g id="Group-22" transform="translate(11.660254, 0.000000)">
+                                    <rect id="Rectangle" transform="translate(0.500000, 2.500000) rotate(-180.000000) translate(-0.500000, -2.500000) " x="2.27373675e-13" y="0" width="1" height="5" rx="0.5"></rect>
+                                </g>
+                                <g id="Group-22" transform="translate(17.410254, 4.406733) rotate(-330.000000) translate(-17.410254, -4.406733) translate(16.910254, 2.406733)">
+                                    <rect id="Rectangle" transform="translate(0.500000, 2.000000) rotate(-180.000000) translate(-0.500000, -2.000000) " x="0" y="-6.82121026e-13" width="1" height="4" rx="0.5"></rect>
+                                </g>
+                                <g id="Group-22" transform="translate(6.910254, 4.406733) rotate(-30.000000) translate(-6.910254, -4.406733) translate(6.410254, 2.406733)">
+                                    <rect id="Rectangle" transform="translate(0.500000, 2.000000) rotate(-180.000000) translate(-0.500000, -2.000000) " x="1.70530257e-12" y="-2.27373675e-12" width="1" height="4" rx="0.5"></rect>
+                                </g>
+                                <g id="Group-22" transform="translate(3.500000, 8.500000) rotate(-60.000000) translate(-3.500000, -8.500000) translate(1.000000, 6.000000)">
+                                    <path d="M3.79903811,3.25 C3.66096692,3.48914631 3.35517172,3.57108389 3.1160254,3.4330127 L1.3839746,2.4330127 C1.14482828,2.29494151 1.06289071,1.98914631 1.20096189,1.75 C1.33903308,1.51085369 1.64482828,1.42891611 1.8839746,1.5669873 L3.6160254,2.5669873 C3.85517172,2.70505849 3.93710929,3.01085369 3.79903811,3.25 Z" id="Rectangle" transform="translate(2.500000, 2.500000) rotate(60.000000) translate(-2.500000, -2.500000) "></path>
+                                </g>
+                                <g id="Group-22" transform="translate(20.820508, 8.500000) rotate(-300.000000) translate(-20.820508, -8.500000) translate(18.320508, 6.000000)">
+                                    <path d="M1.20096189,3.25 C1.06289071,3.01085369 1.14482828,2.70505849 1.3839746,2.5669873 L3.1160254,1.5669873 C3.35517172,1.42891611 3.66096692,1.51085369 3.79903811,1.75 C3.93710929,1.98914631 3.85517172,2.29494151 3.6160254,2.4330127 L1.8839746,3.4330127 C1.64482828,3.57108389 1.33903308,3.48914631 1.20096189,3.25 Z" id="Rectangle" transform="translate(2.500000, 2.500000) rotate(300.000000) translate(-2.500000, -2.500000) "></path>
+                                </g>
+                                <g id="Group-22" transform="translate(12.160254, 13.500000) rotate(-270.000000) translate(-12.160254, -13.500000) translate(11.660254, 3.000000)">
+                                    <rect id="Rectangle" transform="translate(0.500000, 1.000000) rotate(-180.000000) translate(-0.500000, -1.000000) " x="1.8189894e-12" y="9.09494702e-13" width="1" height="2" rx="0.5"></rect>
+                                    <rect id="Rectangle" transform="translate(0.500000, 20.000000) rotate(-360.000000) translate(-0.500000, -20.000000) " x="2.72848411e-12" y="19" width="1" height="2" rx="0.5"></rect>
+                                </g>
+                            </g>
+                        </g>
+                    </g>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>

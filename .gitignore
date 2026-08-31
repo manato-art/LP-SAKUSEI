@@ -17,7 +17,7 @@ credentials*.json
 # ── ビルド/依存 ──
 node_modules/
 dist/
-coverage/
+/coverage/
 .vite/
 *.tsbuildinfo
 
@@ -34,3 +34,9 @@ Thumbs.db
 .idea/
 .vscode/
 *.swp
+
+# ── 実名リスト（実名そのものが入るので絶対にコミットしない・gate が既定で読む） ──
+.gate-names.local
+
+# ── スクラブの実行設定（本番ホスト名が入るので非コミット） ──
+.scrub.local.json

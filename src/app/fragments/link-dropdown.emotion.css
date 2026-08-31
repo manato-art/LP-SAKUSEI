@@ -1,0 +1,87 @@
+/*
+ * リンクドロップダウン（テキスト選択ツールバーの鎖アイコン）の Emotion ランタイムCSS。
+ *
+ * **手書きではない。** 出典と作り方（企画書 §11 capture-and-rehydrate）:
+ *   diff capture/clean/ab_tests__UID__articles/toolbar-with-selection/cssom.css \
+ *        capture/clean/ab_tests__UID__articles/toolbar-link-open/cssom.css
+ * の「リンクを開いた側にだけ増えた行」をそのまま（verbatim）並べたもの。1行も足していない。
+ *
+ * `/cssom/editor.css`（= editor-target 採取時のCSSOM）にはリンクパネルを開いていないため
+ * これらのルールが入っていない。パネルはEmotionが実行時に注入するので、ここで補う。
+ *
+ * 位置は `.css-1rfivp`（top: 301.5px / left: 50% / margin-left: -302px / width: 700px）が持つ。
+ * `top` はEmotionが描画のたびに作り直す値で、同じ採取の中に `.css-w63j8`（top: 280px）も
+ * 出ている。**どういう式でこの値になるかは採取物からは分からない**ため、
+ * クローンは採取された `.css-1rfivp` をそのまま使う（式を推測して書かない）。
+ */
+.css-w63j8 { position: absolute; top: 280px; left: 50%; width: 700px; margin-left: -302px; z-index: 1030; }
+.css-1lk7w8t { position: fixed; inset: 0px; background-color: rgb(21, 21, 21); opacity: 0.45; z-index: 1030; }
+.css-1l5czap { position: relative; background: rgb(255, 255, 255); border-radius: 4px; width: fit-content; z-index: 1030; }
+.css-wzqf2w { display: flex; -webkit-box-pack: justify; justify-content: space-between; -webkit-box-align: center; align-items: center; padding: 12px; }
+.css-1u62prz { font-size: 16px; font-weight: bold; margin-left: 12px; }
+.css-3p742q { box-sizing: border-box; font-weight: normal; padding: 0px 8px; border-width: medium; border-style: none; border-color: currentcolor; border-image: none; font-size: 12px; line-height: 1; height: 28px; border-radius: 4px; display: inline-flex; -webkit-box-align: center; align-items: center; -webkit-box-pack: center; justify-content: center; text-align: center; cursor: pointer; outline: none; gap: 4px; white-space: nowrap; position: relative; color: rgb(128, 128, 128); background: rgb(255, 255, 255); }
+.css-3p742q:hover { color: rgb(128, 128, 128); background: rgb(234, 234, 234); }
+.css-3p742q:disabled { color: rgb(196, 196, 196); background: rgb(255, 255, 255); }
+.css-ho1qnd { display: flex; flex-direction: row; }
+.css-1abc55u { display: flex; -webkit-box-align: center; align-items: center; -webkit-box-pack: center; justify-content: center; gap: 16px; padding: 8px; width: 100%; border-radius: 4px 4px 0px 0px; height: 30px; background-color: rgb(255, 255, 255); border-width: 1px; border-style: solid; border-color: rgb(234, 234, 234) rgb(234, 234, 234) transparent; border-image: none; color: rgb(21, 21, 21); }
+.css-rzgjf5 { display: flex; -webkit-box-align: center; align-items: center; -webkit-box-pack: center; justify-content: center; gap: 16px; padding: 8px; width: 100%; border-radius: 4px 4px 0px 0px; height: 30px; background-color: rgb(244, 244, 244); border-width: 1px; border-style: solid; border-color: transparent transparent rgb(234, 234, 234); border-image: none; color: rgb(128, 128, 128); }
+.css-10yt6u3 { display: flex; flex-direction: column; gap: 20px; background-color: rgb(255, 255, 255); }
+.css-g1tfxl { padding: 20px; display: flex; gap: 20px; }
+.css-1rkkxnj { display: flex; flex-direction: column; gap: 20px; max-width: 350px; flex: 1 1 0%; }
+.css-1821gv5 { display: flex; flex-direction: column; gap: 8px; }
+.css-171onha { display: flex; -webkit-box-align: center; align-items: center; gap: 4px; }
+.css-vffxxs { font-size: 12px; color: rgb(21, 21, 21); font-weight: bold; }
+.css-pmnrmb { border: 1px solid rgb(128, 128, 128); border-radius: 4px; }
+.css-1vpzjh7 { display: flex; flex-direction: column; -webkit-box-pack: center; justify-content: center; gap: 4px; border: 1px solid rgb(128, 128, 128); border-radius: 4px; }
+.css-1c4dpjj { display: flex; -webkit-box-align: center; align-items: center; position: relative; height: 28px; width: 100%; color: rgb(21, 21, 21); }
+.css-vz8i1i { width: 100%; padding: 8px; border-radius: 4px; border: 1px solid rgb(244, 244, 244); font-size: 12px; outline: none; position: absolute; inset: 0px; box-sizing: border-box; }
+.css-vz8i1i:focus { border-color: rgb(0, 145, 255); }
+.css-rgitvu { padding: 12px 20px; gap: 16px; border-radius: 2px; display: flex; -webkit-box-pack: justify; justify-content: space-between; -webkit-box-align: center; align-items: center; background: rgb(255, 243, 229); border: 1px solid rgb(255, 219, 178); }
+.css-s5xdrg { display: flex; -webkit-box-align: center; align-items: center; }
+.css-ozd7xs { flex-shrink: 0; }
+.css-14u1k8d { padding-left: 20px; color: rgb(128, 128, 128); font-size: 12px; }
+.css-165t1us { font-size: 12px; font-weight: bold; color: rgb(255, 138, 0); }
+.css-1vjo46s { display: flex; flex-direction: row; -webkit-box-align: center; align-items: center; gap: 10px; }
+.css-vhsupm { -webkit-box-flex: 1; flex-grow: 1; border: 1px solid rgb(128, 128, 128); border-radius: 4px; }
+.css-xbeyyi { display: flex; flex-direction: column; -webkit-box-pack: center; justify-content: center; gap: 4px; -webkit-box-flex: 1; flex-grow: 1; border: 1px solid rgb(128, 128, 128); border-radius: 4px; }
+.css-rnjm1y { display: flex; flex-direction: column; -webkit-box-pack: center; justify-content: center; gap: 4px; }
+.css-1xu2j1f { display: flex; -webkit-box-align: center; align-items: center; -webkit-box-pack: justify; justify-content: space-between; border-radius: 4px; height: 28px; padding: 8px; font-size: 12px; color: rgb(21, 21, 21); gap: 4px; cursor: pointer; width: 100%; background: rgb(255, 255, 255); border: 1px solid rgb(244, 244, 244); }
+.css-1xu2j1f:hover { background: rgb(234, 234, 234); border: 1px solid rgb(234, 234, 234); }
+.css-1xu2j1f:focus, .css-1xu2j1f:active { outline: rgb(0, 145, 255) solid 1px; }
+.css-1xu2j1f[data-placeholder] { color: rgb(128, 128, 128); }
+.css-1xu2j1f span:first-child { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.css-1xu2j1f[data-disabled] { color: rgb(196, 196, 196); cursor: default; background: rgb(255, 255, 255); border: 1px solid rgb(244, 244, 244); }
+.css-1u5kwrc { display: flex; -webkit-box-align: center; align-items: center; -webkit-box-pack: center; justify-content: center; padding: 4px; }
+.css-huskxe { display: flex; gap: 16px; -webkit-box-align: center; align-items: center; }
+.css-rh0obz { display: flex; -webkit-box-align: center; align-items: center; gap: 4px; font-size: 12px; color: rgb(21, 21, 21); }
+.css-ijir9p { display: flex; -webkit-box-align: center; align-items: center; font-size: 12px; background-color: transparent; border-width: medium; border-style: none; border-color: currentcolor; border-image: none; padding: 0px; cursor: pointer; }
+.css-ijir9p[data-state="checked"] { color: rgb(21, 21, 21); }
+.css-ijir9p[data-state="checked"]:disabled { color: rgb(196, 196, 196); }
+.css-ijir9p[data-state="unchecked"] { color: rgb(128, 128, 128); }
+.css-ijir9p[data-state="unchecked"]:disabled { color: rgb(196, 196, 196); }
+.css-ijir9p:disabled { cursor: not-allowed; }
+.css-bvjhbj { cursor: pointer; user-select: none; }
+.css-1mq05pd { display: flex; -webkit-box-align: center; align-items: center; gap: 4px; color: rgb(21, 21, 21); font-weight: bold; }
+.css-1v8my8o { display: flex; flex-direction: column; gap: 20px; }
+.css-q8pjrt { display: flex; -webkit-box-pack: justify; justify-content: space-between; -webkit-box-align: center; align-items: center; gap: 4px; width: 100%; }
+.css-1x8ebnt { font-size: 10px; color: rgb(0, 145, 255); text-decoration: underline; }
+.css-1p869ja { font-size: 12px; color: rgb(21, 21, 21); background-color: rgb(244, 244, 244); border-radius: 2px; padding: 8px; display: flex; -webkit-box-align: center; align-items: center; gap: 8px; }
+.css-1r62kog { border-top: 1px solid rgb(244, 244, 244); display: flex; -webkit-box-align: center; align-items: center; -webkit-box-pack: justify; justify-content: space-between; padding: 16px 0px; }
+.css-nxd4ue { font-size: 10px; color: rgb(255, 88, 17); text-decoration: underline; cursor: pointer; margin-left: 20px; }
+.css-10gy8rk { display: flex; -webkit-box-align: center; align-items: center; gap: 8px; margin-right: 20px; }
+.css-1l1lghn { box-sizing: border-box; font-weight: normal; padding: 0px 8px; border-width: medium; border-style: none; border-color: currentcolor; border-image: none; font-size: 12px; line-height: 1; height: 28px; border-radius: 4px; display: inline-flex; -webkit-box-align: center; align-items: center; -webkit-box-pack: center; justify-content: center; text-align: center; cursor: pointer; outline: none; gap: 4px; white-space: nowrap; position: relative; color: rgb(255, 255, 255); background: rgb(0, 145, 255); }
+.css-1l1lghn:hover { color: rgb(255, 255, 255); background: rgb(0, 116, 204); }
+.css-1l1lghn:disabled { color: rgb(255, 255, 255); background: rgb(204, 233, 255); }
+.css-7f0nh1 { overflow: hidden; border-radius: 4px; background-color: rgb(255, 255, 255); box-shadow: rgba(0, 0, 0, 0.1) 0px 10px 20px 0px; animation: 0.2s ease-out 0s 1 normal none running fadeIn; z-index: 1050; }
+@-webkit-keyframes fadeIn { 
+  0% { opacity: 0; transform: scale(0.95); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes fadeIn { 
+  0% { opacity: 0; transform: scale(0.95); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.css-8zkg65 { padding: 12px 16px; font-size: 12px; border-radius: 2px; cursor: pointer; user-select: none; }
+.css-8zkg65:focus { background: rgb(244, 244, 244); }
+.css-8zkg65:focus, .css-8zkg65:active { outline: none; }
+.css-1rfivp { position: absolute; top: 301.5px; left: 50%; width: 700px; margin-left: -302px; z-index: 1030; }

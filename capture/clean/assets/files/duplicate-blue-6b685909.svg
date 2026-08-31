@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="18px" height="23px" viewBox="0 0 18 23" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 61.2 (89653) - https://sketch.com -->
+    <title>duplicate</title>
+    <desc>Created with Sketch.</desc>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="article-edit" transform="translate(-461.000000, -305.000000)" fill="#1180FF">
+            <g id="dropdown" transform="translate(432.000000, 168.000000)">
+                <g id="duplicate" transform="translate(29.000000, 138.000000)">
+                    <path d="M2,4 L11,4 C12.6568542,4 14,5.34314575 14,7 L14,20 C14,21.1045695 13.1045695,22 12,22 L3,22 C1.34314575,22 2.02906125e-16,20.6568542 0,19 L0,6 C-1.3527075e-16,4.8954305 0.8954305,4 2,4 Z" id="Combined-Shape"></path>
+                    <path d="M5,-0.5 L12.2071068,-0.5 L17.5,4.79289322 L17.5,17 C17.5,18.3807119 16.3807119,19.5 15,19.5 L5,19.5 C3.61928813,19.5 2.5,18.3807119 2.5,17 L2.5,2 C2.5,0.619288125 3.61928813,-0.5 5,-0.5 Z" id="Combined-Shape" stroke="#FFFFFF"></path>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>

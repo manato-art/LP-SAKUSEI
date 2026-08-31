@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="14px" height="14px" viewBox="0 0 14 14" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 64 (93537) - https://sketch.com -->
+    <title>akane</title>
+    <desc>Created with Sketch.</desc>
+    <defs>
+        <polygon id="path-1" points="7.2 0 14.0476069 4.97507764 11.4320538 13.0249224 2.96794618 13.0249224 0.352393083 4.97507764"></polygon>
+    </defs>
+    <g id="folder-list" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="list-folder" transform="translate(-385.000000, -913.000000)">
+            <g id="ad" transform="translate(383.000000, 267.000000)">
+                <g id="Group-33" transform="translate(2.000000, 646.000000)">
+                    <g id="akane">
+                        <mask id="mask-2" fill="white">
+                            <use xlink:href="#path-1"></use>
+                        </mask>
+                        <use id="mask" fill="#D7D7D7" xlink:href="#path-1"></use>
+                        <polygon id="Rectangle" fill="#939393" mask="url(#mask-2)" points="7.2 0 15.6 0 16.8 4.2 7.2 7.2"></polygon>
+                        <polygon id="Rectangle" fill="#BFBFBF" mask="url(#mask-2)" points="15 18 15.6 18 16.8 4.2 7.2 7.2"></polygon>
+                        <polygon id="Rectangle" fill="#949494" mask="url(#mask-2)" points="15 18 -0.6 18 7.2 7.2"></polygon>
+                        <polygon id="Rectangle" fill="#F6F6F6" mask="url(#mask-2)" transform="translate(2.400000, 3.600000) scale(-1, 1) translate(-2.400000, -3.600000) " points="-2.4 0 6 0 7.2 4.2 -2.4 7.2"></polygon>
+                    </g>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>

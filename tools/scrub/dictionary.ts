@@ -40,6 +40,51 @@ const HOST_RE = /^(?:https?:\/\/)?[a-z0-9-]+(?:\.[a-z0-9-]+)+/i
 const UID_RE = /^[A-Za-z0-9_-]{16,}$/
 const MONEY_RE = /^[¥￥]?[\d,]+円?$/
 
+/** 実名リストの1行。カテゴリ未指定なら人名として扱う。 */
+export interface KnownEntry {
+  readonly name: string
+  readonly category: ScrubCategory
+}
+
+const SCRUB_CATEGORIES: readonly ScrubCategory[] = [
+  'person', 'campaign', 'email', 'phone', 'host', 'uid', 'token', 'number',
+]
+
+function isScrubCategory(value: string): value is ScrubCategory {
+  return (SCRUB_CATEGORIES as readonly string[]).includes(value)
+}
+
+/**
+ * 実名リストを読む。`名前` または `名前 = カテゴリ` の形式。
+ *
+ * カテゴリを持たせるのは、ページ名を人名に置換してしまうと
+ * 出力が不自然になり、後で「これは実名か架空か」の判断もできなくなるため。
+ * 知らないカテゴリは黙って人名に落とさず、必ずエラーにする（推測で埋めない）。
+ */
+export function parseKnownEntries(raw: string): KnownEntry[] {
+  return raw
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line !== '' && !line.startsWith('#'))
+    .map((line) => {
+      const separator = line.indexOf('=')
+      if (separator === -1) return { name: line, category: 'person' as const }
+      const name = line.slice(0, separator).trim()
+      const category = line.slice(separator + 1).trim()
+      if (!isScrubCategory(category)) {
+        throw new Error(
+          `実名リストのカテゴリが不正です: 「${category}」。使えるのは ${SCRUB_CATEGORIES.join(' / ')}`,
+        )
+      }
+      return { name, category }
+    })
+}
+
+/** カテゴリ付きの実名を辞書へ追加する。fixtures 由来の分類より優先する。 */
+export function collectKnownEntries(entries: readonly KnownEntry[], map: ScrubMap): void {
+  for (const { name, category } of entries) addEntry(map, name, category, { override: true })
+}
+
 /** 既知の実在社員名リスト（採取係が用意する非コミットファイル）。1行1名。 */
 export function parseKnownNames(raw: string): string[] {
   return raw

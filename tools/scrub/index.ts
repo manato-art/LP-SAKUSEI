@@ -8,11 +8,39 @@
  */
 import { readFileSync, writeFileSync, mkdirSync, readdirSync, statSync, existsSync } from 'node:fs'
 import { dirname, join, relative, extname } from 'node:path'
-import { collectFromJson, collectKnownNames, mergeMaps, parseKnownNames, type ScrubMap } from './dictionary.ts'
+import { homedir } from 'node:os'
+import {
+  collectFromJson,
+  collectKnownEntries,
+  mergeMaps,
+  parseKnownEntries,
+  type ScrubMap,
+} from './dictionary.ts'
 import { scrubJson, scrubText, type HostRewrite } from './scrub.ts'
 
 const SCRUB_MAP_PATH = 'scrub-map.json'
 const TEXT_EXTENSIONS = new Set(['.html', '.htm', '.css', '.js', '.txt', '.md', '.har', '.svg'])
+/** gate と共有する実名リスト。実名が入るので .gitignore 済み。 */
+const DEFAULT_NAMES_FILE = '.gate-names.local'
+
+/** 実行設定（本番ホスト名が入るので .gitignore 済み）。毎回の引数指定を覚えなくて済むようにする。 */
+const LOCAL_CONFIG_FILE = '.scrub.local.json'
+
+interface LocalConfig {
+  readonly in?: string
+  readonly out?: string
+  readonly hostPattern?: string
+}
+
+function readLocalConfig(): LocalConfig {
+  if (!existsSync(LOCAL_CONFIG_FILE)) return {}
+  return JSON.parse(readFileSync(LOCAL_CONFIG_FILE, 'utf8')) as LocalConfig
+}
+
+function expandHome(target: string): string {
+  return target.startsWith('~/') ? join(homedir(), target.slice(2)) : target
+}
+
 const JSON_EXTENSIONS = new Set(['.json'])
 
 interface Args {
@@ -27,17 +55,28 @@ function parseArgs(argv: readonly string[]): Args {
     const i = argv.indexOf(flag)
     return i === -1 ? undefined : argv[i + 1]
   }
-  const inDir = get('--in')
-  const outDir = get('--out') ?? 'capture/clean'
+  const local = readLocalConfig()
+  const inDir = get('--in') ?? local.in
+  const outDir = get('--out') ?? local.out ?? 'capture/clean'
   if (inDir === undefined) {
-    throw new Error('--in <隔離ディレクトリ> を指定してください（例: ~/squadbeyond-capture-quarantine）')
+    throw new Error(
+      `--in <隔離ディレクトリ> を指定するか、${LOCAL_CONFIG_FILE} に in を書いてください`,
+    )
+  }
+  const hostPattern = get('--host-pattern') ?? local.hostPattern
+  if (hostPattern === undefined) {
+    // 本番ホストのパターンはソースに固定で書かない（§3-2）。
+    // 未指定のまま既定値で走ると「匿名化したつもりで本番ドメインが残る」ので、必ず止める。
+    throw new Error(
+      `--host-pattern を指定するか、${LOCAL_CONFIG_FILE} に hostPattern を書いてください`,
+    )
   }
   return {
-    inDir,
+    inDir: expandHome(inDir),
     outDir,
-    namesFile: get('--names'),
-    // 採取対象ホストは引数で渡す（本番ドメインをソースに固定で書かない・§3-2）
-    hostPattern: get('--host-pattern') ?? '(?:https?://)?[a-z0-9-]+\\.PRODUCTION_HOST',
+    // gate と同じ実名リストを既定で読む。別々に指定できると片方だけ忘れて素通りする。
+    namesFile: get('--names') ?? DEFAULT_NAMES_FILE,
+    hostPattern,
   }
 }
 
@@ -75,7 +114,11 @@ function main(): void {
     }
   }
   if (args.namesFile !== undefined && existsSync(args.namesFile)) {
-    collectKnownNames(parseKnownNames(readFileSync(args.namesFile, 'utf8')), collected)
+    const entries = parseKnownEntries(readFileSync(args.namesFile, 'utf8'))
+    collectKnownEntries(entries, collected)
+    console.log(`[scrub] 実名リストを適用: ${entries.length}語（${args.namesFile}）`)
+  } else {
+    console.warn(`[scrub] 警告: 実名リストが無い（${DEFAULT_NAMES_FILE}）。DOM本文の実名が残る可能性がある`)
   }
   const finalMap = mergeMaps(map, collected)
 
