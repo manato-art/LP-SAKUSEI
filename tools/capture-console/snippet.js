@@ -143,7 +143,70 @@
   }
   addEventListener('popstate', schedule)
 
-  // 手動撮影（モーダルを開いた状態など、URLが変わらない状態用）
+  // ============================================================
+  // 自動採取モード
+  // クリックのたびに「UIが変わったか」を見て、変わっていたら自動で保存する。
+  // モーダル・ドロップダウン・パネルは押した先が全部撮れるので、
+  // Ctrl+Shift+S を押す必要がなくなる。
+  // ============================================================
+  let lastClickLabel = null
+  let lastSignature = ''
+  const capturedSignatures = new Set()
+  let settleTimer = null
+
+  /** 押した要素から状態名を作る（tooltip > aria-label > title > テキスト） */
+  const labelOf = (el) => {
+    let node = el
+    for (let i = 0; i < 5 && node; i++) {
+      const aria = node.getAttribute && (node.getAttribute('aria-label') || node.getAttribute('title'))
+      if (aria) return aria
+      const dt = node.getAttribute && (node.getAttribute('data-test') || node.getAttribute('data-testid'))
+      if (dt && !/^sample_token/.test(dt)) return dt
+      const txt = (node.textContent || '').trim()
+      if (txt && txt.length <= 24 && node.children.length <= 2) return txt
+      node = node.parentElement
+    }
+    return null
+  }
+
+  /** 画面の「今の姿」を安く表す指紋。変化の検出に使う。 */
+  const signature = () => {
+    const html = document.documentElement.outerHTML
+    // 開いているダイアログ/ドロップダウンの数も効かせる
+    const overlays = document.querySelectorAll(
+      '[role=dialog],[class*=modal],[class*=Modal],[class*=dropdownBody],[class*=_body_]',
+    ).length
+    let h = 0
+    for (let i = 0; i < html.length; i += 997) h = (h * 31 + html.charCodeAt(i)) >>> 0
+    return html.length + ':' + overlays + ':' + h
+  }
+
+  const autoCapture = () => {
+    const sig = signature()
+    if (sig === lastSignature) return
+    lastSignature = sig
+    if (capturedSignatures.has(sig)) return
+    capturedSignatures.add(sig)
+    const raw = lastClickLabel || 'state'
+    const name = raw
+      .replace(/\s+/g, '-')
+      .replace(/[^A-Za-z0-9_ぁ-んァ-ヶ一-龥-]/g, '')
+      .slice(0, 28) || 'state'
+    capture(name + '-' + (count + 1))
+  }
+
+  addEventListener(
+    'click',
+    (e) => {
+      lastClickLabel = labelOf(e.target)
+      clearTimeout(settleTimer)
+      // 描画とAPI取得が落ち着くのを待ってから撮る
+      settleTimer = setTimeout(autoCapture, 1400)
+    },
+    true,
+  )
+
+  // 手動撮影（自動で撮れなかった状態を狙って撮りたいとき）
   addEventListener('keydown', (e) => {
     if (e.ctrlKey && e.shiftKey && (e.key === 'S' || e.key === 's')) {
       e.preventDefault()
@@ -160,8 +223,9 @@
   }
 
   schedule()
-  console.log('%c[採取モード ON]', 'color:#0091FF;font-weight:bold')
-  console.log('・普通に画面を移動すれば自動で保存されます')
-  console.log('・モーダルなどURLが変わらない状態は Ctrl+Shift+S')
+  console.log('%c[採取モード ON（自動）]', 'color:#0091FF;font-weight:bold')
+  console.log('・普通にクリックするだけで、変化があった画面は自動で保存されます')
+  console.log('・モーダル・ドロップダウン・パネルも押した先が撮れます')
+  console.log('・狙って撮りたいときだけ Ctrl+Shift+S')
   console.log('・やめるときは __sbStop()')
 })()

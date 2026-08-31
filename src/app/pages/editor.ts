@@ -74,7 +74,11 @@ export async function renderEditor(container: HTMLElement, abTestUid: string): P
   const folderName = folders.folders.find((f) => f.id === ab_test.folder_id)?.name ?? ''
 
   // ── 土台を描画（本物のDOMをそのまま）──
+  // 実CSSは `_editorWrapper_` に `height: calc(100% - 120px); display:flex; padding:20px` を
+  // 当てているため、**差し込み先に高さを与えないとレイアウトが潰れる**（実機のLayout検査で判明）。
+  container.style.height = '100vh'
   const root = document.createElement('div')
+  root.style.cssText = 'height:100%'
   root.innerHTML = substrate
   container.append(root)
 
