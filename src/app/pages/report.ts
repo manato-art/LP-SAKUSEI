@@ -30,6 +30,7 @@ import {
 } from './report-tables.ts'
 import { defaultRange, resolvePreset, toRangeQuery, type DateRange } from './report-period.ts'
 import { wireAbTestTabs } from './tab-nav.ts'
+import { mountMetaSummary } from './report-meta.ts'
 
 /** クローン側の注記に使う印（重複挿入を防ぐ） */
 const NOTE_FLAG = 'sbCloneNote'
@@ -90,6 +91,9 @@ export async function renderReport(
   wireBranchOperation(root, abTestUid, range, report, ab_test.title, ab_test.media?.name ?? '')
   wireCreative(root, abTestUid, range)
   wireFunnel(root, abTestUid, range, report)
+
+  // Meta連携（env設定済みのときだけ）: アカウント全体の実データKPIを上部バナーで出す（指示⑤⑧）。
+  void mountMetaSummary(root, toRangeQuery(range), range)
 }
 
 /** 「デイリーレポート」= 期間フィルタ ＋ 折れ線 ＋ 日付ごとの表 */

@@ -20,6 +20,7 @@ import { abTestsRouter } from './routes/ab-tests.ts'
 import { conversionsRouter } from './routes/conversions.ts'
 import { dashboardRouter } from './routes/dashboard.ts'
 import { foldersRouter } from './routes/folders.ts'
+import { metaRouter } from './routes/meta.ts'
 import { miscRouter } from './routes/misc.ts'
 import { reportRouter } from './routes/report.ts'
 import { sbAiRouter } from './routes/sb-ai.ts'
@@ -74,6 +75,7 @@ export function createApp(): Express {
     usersRouter,
     settingsRouter,
     sbAiRouter,
+    metaRouter,
     miscRouter,
     // エディタの各パネル（担当ごとに別ファイルに分けて実装したもの）
     versionSettingsRouter,

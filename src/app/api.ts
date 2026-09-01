@@ -163,6 +163,28 @@ export const api = {
 
   media: () => request<{ ab_tests: unknown[] }>('GET', '/ab_tests?per_page=1'),
   reset: () => fetch('/__mock/reset', { method: 'POST' }).then((r) => r.json()),
+
+  /** Meta実データ連携（指示⑤⑧）。env未設定なら configured:false */
+  metaStatus: () => request<{ configured: boolean }>('GET', '/meta/status'),
+  metaInsights: (query: string) =>
+    request<MetaInsightsResponse>('GET', `/meta/insights?${query}`),
+}
+
+/** Meta広告のアカウント集計KPI（実取得） */
+export interface MetaKpi {
+  ad_cost: number
+  pv: number
+  click: number
+  media_click: number
+  cv: number
+  ctr: number | null
+  roas: number | null
+}
+
+export interface MetaInsightsResponse {
+  configured: boolean
+  kpi: MetaKpi | null
+  error?: string
 }
 
 /** 媒体ロスターはダッシュボードAPIに無いので専用に取る */

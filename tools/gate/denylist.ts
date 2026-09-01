@@ -60,6 +60,9 @@ export const EXTERNAL_HOST_ALLOWLIST: readonly RegExp[] = [
   // 匿名化後の架空ホスト。example.test は RFC 6761 の予約TLDで**絶対に名前解決されない**
   // （＝到達不能なので §13-F「localhost以外へのリクエスト0件」を実質的に満たす）
   /^https?:\/\/([a-z0-9-]+\.)*example\.test$/,
+  // Meta広告 実データ連携（指示⑤⑧）。ユーザーが明示的に依頼した**別サービスへの認可された連携**で、
+  // SquadBeyond本番バックエンドとは無関係。env（トークン/アカウント）を入れたときだけ発信する。
+  /^https?:\/\/graph\.facebook\.com$/,
 ]
 
 /** 実金額らしいパターン（§13-E 実金額パターン）。合成データは桁が撹拌済みなので通る想定。 */
