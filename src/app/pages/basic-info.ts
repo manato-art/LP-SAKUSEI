@@ -12,6 +12,7 @@
 import substrate from '../fragments/folders__UID__ab_tests__UID__edit__default.html?raw'
 import { isStale } from '../main.ts'
 import { toast } from '../ui.ts'
+import { openParamUrlModal } from '../panels/param-url-modal.ts'
 import { basicInfoApi, type MediaOption } from './basic-info-api.ts'
 import { wireAbTestTabs } from './tab-nav.ts'
 import {
@@ -256,9 +257,7 @@ function wireDeliveryUrl(ctx: PageContext): void {
   })
   for (const button of ctx.root.querySelectorAll<HTMLElement>('button')) {
     if ((button.textContent ?? '').trim() !== 'パラメータ付きURLの発行') continue
-    button.addEventListener('click', () => {
-      toast('パラメータ付きURLの発行ダイアログは採取していないため未実装です', 'error')
-    })
+    button.addEventListener('click', () => openParamUrlModal(url))
   }
 }
 
