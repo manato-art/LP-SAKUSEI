@@ -1,5 +1,5 @@
 {
-  "_note": "状態ID=slug/state。rawは~/squadbeyond-capture-quarantineに隔離（コミット禁止）。cleanはgate通過分のみ。",
+  "_note": "状態ID=slug/state。実データ画面のrawは~/squadbeyond-capture-quarantine/sidebar-ref/（scrub対象外・構造参照）に隔離。editorクラスタは実装済でcapture/cleanにcommit。",
   "_model": "クローンの基準は新規空アカウント。dashboard/CV速報/ranking等のデータヘビー画面は、実データ行を再現せず「構造＋空/モック」で描く（実データの逐一匿名化はしない）。",
   "visited_structure_captured": [
     "dashboard/default（実データ画面・raw隔離・空アカ描画で実装予定）",
@@ -20,84 +20,39 @@
   ],
   "unvisited": [
     {
-      "id": "tools/一括タグ",
-      "from": "ツールaccordion(div/onclick)"
+      "id": "tools/一括タグ・マジック置換・メディア・審査・フォーム・商品検索フォーム・HTMLパーツ",
+      "how": "ツールaccordionのdiv/onclick"
     },
     {
-      "id": "tools/マジック置換",
-      "from": "ツールaccordion"
+      "id": "teams/外部連携 submenu展開",
+      "how": "sidebar ›"
     },
     {
-      "id": "tools/メディア",
-      "from": "ツールaccordion"
+      "id": "rankings別アプリ/フォルダレポート・除外レポート",
+      "how": "（別レポートサブドメイン） タブ"
     },
     {
-      "id": "tools/審査",
-      "from": "ツールaccordion"
-    },
-    {
-      "id": "tools/フォーム",
-      "from": "ツールaccordion"
-    },
-    {
-      "id": "tools/商品検索フォーム",
-      "from": "ツールaccordion(要スクロール)"
-    },
-    {
-      "id": "tools/HTMLパーツ",
-      "from": "ツールaccordion(要スクロール)"
-    },
-    {
-      "id": "teams/外部連携",
-      "from": "sidebar(submenu ›・赤バッジ)"
-    },
-    {
-      "id": "teams/domains",
-      "label": "ドメイン",
-      "from": "sidebar"
-    },
-    {
-      "id": "addon/拡張機能",
-      "from": "sidebar"
-    },
-    {
-      "id": "report-exclusions",
-      "label": "レポート除外",
-      "from": "sidebar"
-    },
-    {
-      "id": "seminar",
-      "label": "イベント・セミナー",
-      "from": "sidebar"
-    },
-    {
-      "id": "rankings",
-      "label": "ランキング",
-      "from": "sidebar(別サブドメインの可能性)"
-    },
-    {
-      "id": "dashboard/date-custom-calendar",
-      "from": "dashboard カスタム"
-    },
-    {
-      "id": "conversion-reports/通知設定",
-      "from": "CV速報"
-    },
-    {
-      "id": "conversion-reports/全てのCV-dropdown",
-      "from": "CV速報"
-    },
-    {
-      "id": "tasks/新しいタスク",
-      "from": "tasks"
-    },
-    {
-      "id": "sb_ai/チャット履歴",
-      "from": "AI"
+      "id": "各画面の内部dropdown/modal/カレンダー/タブ",
+      "how": "訪問時に展開"
     }
   ],
   "leaf": [
     "tasks/default(空・新規はPOST)",
     "sb_ai/default(操作はPOST中心)"
-  ]
+  ],
+  "sidebar_top12_structure_captured": [
+    "dashboard（実データ:売上/案件/担当者）",
+    "sb_ai（AIチャット）",
+    "tasks（空）",
+    "folders/ページ（実装済）",
+    "conversion-reports/CV速報（実データ:CV）",
+    "tools（アコーディオン:一括タグ/マジック置換/メディア/審査/フォーム/商品検索フォーム/HTMLパーツ）",
+    "teams外部連携（submenu・未展開）",
+    "teams/domains（実データ:独自6/フリー144）",
+    "addon拡張機能（製品カタログ）",
+    "report-exclusions（設定:アクセス拒否/オーディエンス）",
+    "seminar（非同期）",
+    "rankings=別アプリ beyondレポート(（別レポートサブドメイン）・ランキング/フォルダレポート/除外レポート)"
+  ],
+  "next_build": "サイドバー各画面を「構造(sidebar-ref参照)＋空/モックデータ」で実装する。実データ行は再現しない（空アカ基準）。"
 }
