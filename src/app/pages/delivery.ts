@@ -25,12 +25,13 @@ export async function renderDelivery(
     const [, { articles }] = await Promise.all([api.abTest(abTestUid), api.articles(abTestUid)])
     const articleUid = articles[0]?.uid
     if (articleUid === undefined) {
-      root.textContent = 'ページが見つかりません'
+      showNotice(root, abTestUid)
       return
     }
     versions = (await api.versions(articleUid)).versions
   } catch {
-    root.textContent = 'ページの読み込みに失敗しました'
+    // 実在しないID（例: URLの <uid> をそのまま開いた等）はここに来る。案内を出す。
+    showNotice(root, abTestUid)
     return
   }
   if (generation !== undefined && isStale(generation)) return
@@ -60,6 +61,36 @@ export async function renderDelivery(
       `</head><body>${version.html}</body></html>`,
   )
   doc.close()
+}
+
+/** 実在しないID等で開かれたときの案内（配信URLの正しい取得方法を示す） */
+function showNotice(root: HTMLElement, abTestUid: string): void {
+  const wrap = document.createElement('div')
+  wrap.style.cssText =
+    'min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;' +
+    'font-family:"Hiragino Sans",sans-serif;background:#ECECEC'
+  const card = document.createElement('div')
+  card.style.cssText =
+    'background:#fff;border-radius:8px;padding:28px 32px;max-width:520px;text-align:center;' +
+    'box-shadow:0 1px 6px rgba(0,0,0,.12);line-height:1.9'
+  const looksLikePlaceholder = /[<>]/.test(abTestUid)
+  card.innerHTML =
+    '<div style="font-size:16px;font-weight:600;margin-bottom:8px">このURLの配信ページは見つかりません</div>' +
+    `<div style="font-size:13px;color:#555">指定されたID「${escapeText(abTestUid)}」のbeyondページが存在しません。` +
+    (looksLikePlaceholder
+      ? '<br><b>&lt;uid&gt; は差し込み用の記号です。</b>実際のIDに置き換えてください。'
+      : '') +
+    '</div>' +
+    '<div style="font-size:13px;color:#555;margin-top:12px">配信URLは、基本情報タブの「配信URL」からコピーできます。</div>' +
+    '<div style="margin-top:16px"><a href="#/folders" style="color:#0091FF;font-size:13px">ページ一覧へ →</a></div>'
+  wrap.append(card)
+  root.append(wrap)
+}
+
+function escapeText(value: string): string {
+  const el = document.createElement('span')
+  el.textContent = value
+  return el.innerHTML
 }
 
 /**
