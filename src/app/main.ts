@@ -11,6 +11,10 @@ import { renderReport } from './pages/report.ts'
 import { renderHeatmap } from './pages/heatmap.ts'
 import { renderSplitTestSettings } from './pages/split-test-settings.ts'
 import { renderRedirectPages } from './pages/redirect-pages.ts'
+import { renderAddon } from './pages/addon.ts'
+import { renderTasks } from './pages/tasks.ts'
+import { renderSbAi } from './pages/sb-ai.ts'
+import { matchSidebarPage } from './pages/sidebar-nav.ts'
 import { isSplitTestTab } from './pages/beyond-nav.ts'
 import { T, button, el, emptyState, toast } from './ui.ts'
 import { api } from './api.ts'
@@ -110,6 +114,21 @@ async function route(): Promise<void> {
     }
     if (path === '/folders') {
       await renderFolders(content, params, generation)
+      return
+    }
+    // サイドバー3画面（拡張機能 / タスク / AI）。固定パスなので純粋関数で解決する。
+    // どれもモックAPI不要（カタログ・空状態・チャットUIの土台をそのまま描く）。
+    const sidebarPage = matchSidebarPage(path ?? '')
+    if (sidebarPage === 'addon') {
+      renderAddon(content)
+      return
+    }
+    if (sidebarPage === 'tasks') {
+      renderTasks(content)
+      return
+    }
+    if (sidebarPage === 'sb_ai') {
+      renderSbAi(content)
       return
     }
     renderNotBuilt(content, path ?? '')
