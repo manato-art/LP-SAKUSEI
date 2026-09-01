@@ -11,6 +11,7 @@ import { renderReport } from './pages/report.ts'
 import { renderHeatmap } from './pages/heatmap.ts'
 import { renderSplitTestSettings } from './pages/split-test-settings.ts'
 import { renderRedirectPages } from './pages/redirect-pages.ts'
+import { renderPreview } from './pages/preview-page.ts'
 import { renderAddon } from './pages/addon.ts'
 import { renderTasks } from './pages/tasks.ts'
 import { renderSbAi } from './pages/sb-ai.ts'
@@ -79,6 +80,22 @@ async function route(): Promise<void> {
         return
       }
       renderNotBuilt(content, path ?? '')
+      return
+    }
+    /**
+     * プレビュー画面。右レール「プレビュー」から**新しいタブ**で開く実ルート
+     * `/ab_tests/:abTestUid/articles/:stepUid/previews`（末尾 previews で固定）。
+     * エディタ用パターン（末尾 articles）とは衝突しない。
+     */
+    const previewMatch =
+      /^\/ab_tests\/([^/]+)\/articles\/([^/]+)\/previews$/.exec(path ?? '')
+    if (previewMatch !== null) {
+      await renderPreview(
+        content,
+        previewMatch[1] as string,
+        previewMatch[2] as string,
+        generation,
+      )
       return
     }
     // 中間ページ（redirect_pages）。エディタ上部右の3番目のアイコンから。
