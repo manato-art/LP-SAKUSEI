@@ -50,6 +50,7 @@ export interface Version {
   distribution_ratio: number
   status: string
   archived?: boolean
+  device_targets?: { sp: boolean; tablet: boolean; pc: boolean }
   html: string
   css: string
 }
@@ -142,6 +143,8 @@ export const api = {
   deleteVersion: (uid: string) => request<void>('DELETE', `/versions/${uid}`),
   archiveVersion: (uid: string) =>
     request<{ version: Version }>('POST', `/versions/${uid}/archive`),
+  setDeviceTargets: (uid: string, targets: { sp: boolean; tablet: boolean; pc: boolean }) =>
+    request<{ version: Version }>('PATCH', `/versions/${uid}/device_targets`, targets),
   masterStyleSheet: (articleUid: string) =>
     request<{ master_style_sheet: MasterStyleSheet }>(
       'GET',

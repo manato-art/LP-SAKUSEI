@@ -153,6 +153,7 @@ export function createAbTest(
     status: '準備中',
     is_control: true,
     archived: false,
+    device_targets: { sp: true, tablet: true, pc: true },
     html: DEFAULT_LP_HTML,
     css: DEFAULT_LP_CSS,
     thumbnail_url: null,
@@ -273,6 +274,7 @@ export function addVersion(
     status: '準備中',
     is_control: false,
     archived: false,
+    device_targets: { sp: true, tablet: true, pc: true },
     html: DEFAULT_LP_HTML,
     css: DEFAULT_LP_CSS,
     thumbnail_url: null,
@@ -316,6 +318,21 @@ export function duplicateVersion(
     ...state.versions.slice(index + 1),
   ]
   return { state: { ...state, versions, nextId: id + 1 }, version: copy }
+}
+
+/** デバイス別出し分け（Versionのデバイスごとの配信ON/OFF）を更新する。 */
+export function setDeviceTargets(
+  state: State,
+  uid: string,
+  targets: { sp: boolean; tablet: boolean; pc: boolean },
+): { state: State; version: Version | null } {
+  const target = state.versions.find((v) => v.uid === uid)
+  if (target === undefined) return { state, version: null }
+  const updated: Version = { ...target, device_targets: targets, updated_at: nowTs() }
+  return {
+    state: { ...state, versions: state.versions.map((v) => (v.uid === uid ? updated : v)) },
+    version: updated,
+  }
 }
 
 export function updateVersion(

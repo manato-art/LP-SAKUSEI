@@ -86,11 +86,66 @@ export async function renderSplitTestSettings(
   // 左レール4タブは共有の配線（基本情報タブ・エディタと同じ関数）
   wireAbTestTabs(root, abTestUid, folderUid)
   wireBeyondBack(root, folderUid)
-  // 出し分けトグル（オン/オフ）を実際に効かせてモックへ保存する
-  void wireSplitTestToggles(root, abTestUid, tab)
+  // 出し分けトグル（オン/オフ）を実際に効かせてモックへ保存する。
+  // デバイス別は **Version単位**（FAQ: 出し分けロジック＝配信割合 × デバイス別ON/OFF の掛け算）。
+  if (tab === 'devices') {
+    void wireDeviceTargets(root, abTestUid)
+  } else {
+    void wireSplitTestToggles(root, abTestUid, tab)
+  }
 }
 
 const API_BASE = '/api/v1'
+
+/** MUIスイッチの見た目（つまみ位置・トラック色）を on/off に合わせる。 */
+function setSwitch(sw: HTMLElement, on: boolean): void {
+  sw.querySelector('.MuiSwitch-switchBase')?.classList.toggle('Mui-checked', on)
+  const input = sw.querySelector<HTMLInputElement>('input')
+  if (input !== null) input.checked = on
+}
+
+/**
+ * デバイス別トグルを **現在のVersion** の device_targets に配線する。
+ * スイッチの並び＝スマートフォン / タブレット / デスクトップ（画面のとおり）。
+ * オフにしたデバイスでは、このVersionは配信されず、別の配信可能Versionが表示される（配信ロジックで実現）。
+ */
+async function wireDeviceTargets(root: HTMLElement, abTestUid: string): Promise<void> {
+  const switches = [...root.querySelectorAll<HTMLElement>('.MuiSwitch-root')]
+  if (switches.length < 3) return
+  const keys: readonly ('sp' | 'tablet' | 'pc')[] = ['sp', 'tablet', 'pc']
+
+  const { articles } = await api.articles(abTestUid)
+  const articleUid = articles[0]?.uid
+  if (articleUid === undefined) return
+  const { versions } = await api.versions(articleUid)
+  const version = versions.find((v) => v.archived !== true) ?? versions[0]
+  if (version === undefined) return
+
+  const targets = {
+    sp: version.device_targets?.sp !== false,
+    tablet: version.device_targets?.tablet !== false,
+    pc: version.device_targets?.pc !== false,
+  }
+  const labels = { sp: 'スマートフォン', tablet: 'タブレット', pc: 'デスクトップ' } as const
+
+  switches.forEach((sw, index) => {
+    const key = keys[index]
+    if (key === undefined) return
+    setSwitch(sw, targets[key])
+    sw.addEventListener('click', (event) => {
+      event.preventDefault()
+      targets[key] = !targets[key]
+      setSwitch(sw, targets[key])
+      void api.setDeviceTargets(version.uid, targets).then(() => {
+        toast(
+          targets[key]
+            ? `${labels[key]}へ配信します`
+            : `${labels[key]}では配信しません（他Versionを表示）`,
+        )
+      })
+    })
+  })
+}
 
 /**
  * 各行の MUI スイッチ（`.MuiSwitch-root`）を、モックの split_test_setting の rules に

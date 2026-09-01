@@ -9,6 +9,7 @@ import {
   archiveVersion,
   deleteVersion,
   duplicateVersion,
+  setDeviceTargets,
   publishVersion,
   updateVersion,
 } from '../store/actions.ts'
@@ -93,6 +94,27 @@ versionsRouter.post('/versions/:uid/archive', (req, res) => {
     return
   }
   res.json({ version: serializeVersion(archived) })
+})
+
+/** デバイス別出し分け（Versionのデバイスごと配信ON/OFF）を更新する */
+versionsRouter.patch('/versions/:uid/device_targets', (req, res) => {
+  const body = req.body as { sp?: unknown; tablet?: unknown; pc?: unknown }
+  const targets = {
+    sp: body.sp !== false,
+    tablet: body.tablet !== false,
+    pc: body.pc !== false,
+  }
+  let updated: Version | null = null
+  setState((state) => {
+    const out = setDeviceTargets(state, req.params.uid, targets)
+    updated = out.version
+    return out.state
+  })
+  if (updated === null) {
+    res.status(404).json(errorEnvelope('not_found', 'Versionが見つかりません。'))
+    return
+  }
+  res.json({ version: serializeVersion(updated) })
 })
 
 /** LP保存（コード編集の保存・§9-1[4]） */

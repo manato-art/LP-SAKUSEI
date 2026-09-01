@@ -136,6 +136,12 @@ export interface Version {
   is_control: boolean
   /** アーカイブ済み（Version一覧の「アーカイブ」タブへ移る）。既定 false。 */
   archived: boolean
+  /**
+   * デバイス別出し分け（Versionオプション設定＞デバイス別）。各デバイスへ配信するか。
+   * FAQ「出し分けロジック＝Branch Operation(配信割合) × デバイス別ON/OFF の掛け算」。
+   * OFFにしたデバイスではこのVersionは配信されず、別の配信可能Versionが表示される。既定は全ON。
+   */
+  device_targets: { sp: boolean; tablet: boolean; pc: boolean }
   html: string
   css: string
   thumbnail_url: string | null

@@ -98,13 +98,37 @@ function escapeText(value: string): string {
   return el.innerHTML
 }
 
+type DeviceKind = 'sp' | 'tablet' | 'pc'
+
+/** 訪問者のデバイスを UA から判定する（sp / tablet / pc）。 */
+function detectDevice(): DeviceKind {
+  const ua = navigator.userAgent
+  if (/iPad|Tablet|Nexus 7|Nexus 10|Kindle|Silk|PlayBook/i.test(ua)) return 'tablet'
+  if (/Mobile|iPhone|Android.*Mobile|Windows Phone|iPod/i.test(ua)) return 'sp'
+  return 'pc'
+}
+
+/** そのVersionが、指定デバイスへ配信可か（デバイス別ON/OFF）。未設定は全ON扱い。 */
+function targetsDevice(version: Version, device: DeviceKind): boolean {
+  return version.device_targets?.[device] !== false
+}
+
 /**
- * 配信するVersionを配信割合で1つ選ぶ（ABテスト配信）。
- * 非アーカイブかつ配信割合1以上のVersionを対象に、割合で重み付け抽選する。
+ * 配信するVersionを1つ選ぶ（FAQ「出し分けロジック＝Branch Operation × デバイス別ON/OFF の掛け算」）。
+ * 訪問者のデバイスで、①非アーカイブ ②配信割合1以上 ③そのデバイスがON、の全てを満たすVersionから
+ * 配信割合で重み付け抽選する。＝OFFにしたデバイスでは、そのVersionでなく別の配信可能Versionが出る。
  */
 function pickDeliveryVersion(versions: readonly Version[]): Version | null {
-  const active = versions.filter((v) => v.archived !== true && v.distribution_ratio >= 1)
-  const pool = active.length > 0 ? active : versions.filter((v) => v.archived !== true)
+  const device = detectDevice()
+  const alive = versions.filter((v) => v.archived !== true)
+  const eligible = alive.filter((v) => v.distribution_ratio >= 1 && targetsDevice(v, device))
+  // このデバイス向けに配信可能なものが無ければ、割合条件だけで、それも無ければ生存Versionへフォールバック
+  const pool =
+    eligible.length > 0
+      ? eligible
+      : alive.filter((v) => targetsDevice(v, device)).length > 0
+        ? alive.filter((v) => targetsDevice(v, device))
+        : alive
   if (pool.length === 0) return null
   const total = pool.reduce((sum, v) => sum + Math.max(1, v.distribution_ratio), 0)
   let ticket = Math.random() * total

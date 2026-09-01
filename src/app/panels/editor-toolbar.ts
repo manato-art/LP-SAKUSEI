@@ -317,11 +317,13 @@ function syncActiveState(wrapper: HTMLElement, formats: Record<string, unknown>)
     const node = wrapper.querySelector<HTMLElement>(selector)
     const item = node?.closest(HOOK.item)
     item?.classList.toggle(CLS.itemActive, active)
-    // アイコンの元色がバラバラ（太字/取消線は黒アセット・下線/斜体は白アセット）なので filter で統一:
-    //   非アクティブ … 暗いツールバー上なので白（brightness(0) invert(1)）
-    //   アクティブ   … 白丸の背景に乗るので黒（brightness(0)）
+    // アイコン色の統一。ただし **img アイコンだけ** に当てる。
+    // x²/x₂ はCSS描画の div なので invert すると潰れる（消える）→ 非アクティブは素の色のまま。
+    //   img 非アクティブ … 暗いツールバー上なので白（brightness(0) invert(1)）
+    //   すべて アクティブ … 白丸の背景に乗るので黒（brightness(0)）
     if (node !== null && node !== undefined) {
-      node.style.filter = active ? 'brightness(0)' : 'brightness(0) invert(1)'
+      const isImg = node.tagName === 'IMG'
+      node.style.filter = active ? 'brightness(0)' : isImg ? 'brightness(0) invert(1)' : ''
     }
   }
   mark(HOOK.bold, formats['bold'] === true)

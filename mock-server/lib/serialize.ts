@@ -97,6 +97,7 @@ export function serializeVersion(version: Version): Record<string, unknown> {
     status: version.status,
     is_control: version.is_control,
     archived: version.archived,
+    device_targets: version.device_targets,
     html: version.html,
     css: version.css,
     thumbnail_url: version.thumbnail_url,
