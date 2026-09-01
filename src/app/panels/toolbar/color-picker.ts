@@ -127,6 +127,12 @@ export function swatchMarkup(hex: string): string {
 }
 
 /** ポップオーバーは document.body 直下（実物と同じく `#root` の外）に1つだけ出す */
+/**
+ * ドラッグで動かしたピッカー窓の位置を覚えておく（閉じても次回はこの位置で開く）。
+ * セッション内で保持（別の色ボタンでも同じ位置に出る＝実物の付箋のような使い勝手）。
+ */
+let savedPos: { top: number; left: number } | null = null
+
 export function openColorPicker(
   anchor: HTMLElement,
   title: string,
@@ -137,8 +143,15 @@ export function openColorPicker(
   document.querySelector('.editor-toolbar-color-picker')?.remove()
 
   const rect = anchor.getBoundingClientRect()
-  const left = clamp(rect.left + rect.width / 2 - PICKER_WIDTH / 2, 8, Math.max(8, window.innerWidth - PICKER_WIDTH - 8))
-  const top = clamp(rect.bottom + 8, 8, Math.max(8, window.innerHeight - 320))
+  const defaultLeft = clamp(
+    rect.left + rect.width / 2 - PICKER_WIDTH / 2,
+    8,
+    Math.max(8, window.innerWidth - PICKER_WIDTH - 8),
+  )
+  const defaultTop = clamp(rect.bottom + 8, 8, Math.max(8, window.innerHeight - 320))
+  // 前回ドラッグで動かした位置があればそこに出す
+  const top = savedPos?.top ?? defaultTop
+  const left = savedPos?.left ?? defaultLeft
 
   const popover = document.createElement('div')
   popover.setAttribute('role', 'presentation')
@@ -157,6 +170,10 @@ export function openColorPicker(
     'tabindex="0" type="button">適用する<span class="MuiTouchRipple-root css-w0pj6f"></span></button></div>' +
     '</div></div><div tabindex="0" data-testid="sentinelEnd"></div>'
   document.body.append(popover)
+
+  // 窓の余白部分をドラッグで動かせるようにする（コントロール操作は邪魔しない）。
+  const paper = popover.querySelector<HTMLElement>('.MuiPopover-paper')
+  if (paper !== null) makeDraggable(paper)
 
   ctx.keepOpen = true
   const close = (): void => {
@@ -181,6 +198,53 @@ export function openColorPicker(
     const hex = normalizeHex(picker.get())
     if (hex !== null) apply(hex)
     close()
+  })
+}
+
+/**
+ * ピッカー窓を「余白部分のドラッグ」で移動できるようにする。
+ * 彩度面／色相バー／hex入力／スウォッチ／適用ボタンの上では動かさない（操作を優先）。
+ * ドロップした位置は savedPos に記録し、次に開くときはその位置から出す。
+ */
+function makeDraggable(paper: HTMLElement): void {
+  const isControl = (target: EventTarget | null): boolean =>
+    target instanceof Element &&
+    target.closest(
+      '.saturation-white, .saturation-black, .hue-horizontal, input, button, .github-picker [title]',
+    ) !== null
+
+  paper.style.cursor = 'move'
+  paper.addEventListener('mousedown', (event) => {
+    if (isControl(event.target)) return
+    event.preventDefault()
+    const startX = event.clientX
+    const startY = event.clientY
+    const startLeft = Number.parseFloat(paper.style.left) || paper.getBoundingClientRect().left
+    const startTop = Number.parseFloat(paper.style.top) || paper.getBoundingClientRect().top
+    const move = (moveEvent: MouseEvent): void => {
+      const left = clamp(
+        startLeft + (moveEvent.clientX - startX),
+        0,
+        Math.max(0, window.innerWidth - paper.offsetWidth),
+      )
+      const top = clamp(
+        startTop + (moveEvent.clientY - startY),
+        0,
+        Math.max(0, window.innerHeight - 40),
+      )
+      paper.style.left = `${left}px`
+      paper.style.top = `${top}px`
+    }
+    const up = (): void => {
+      document.removeEventListener('mousemove', move)
+      document.removeEventListener('mouseup', up)
+      savedPos = {
+        top: Number.parseFloat(paper.style.top),
+        left: Number.parseFloat(paper.style.left),
+      }
+    }
+    document.addEventListener('mousemove', move)
+    document.addEventListener('mouseup', up)
   })
 }
 
