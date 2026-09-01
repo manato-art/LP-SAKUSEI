@@ -15,6 +15,8 @@ import { renderAddon } from './pages/addon.ts'
 import { renderTasks } from './pages/tasks.ts'
 import { renderSbAi } from './pages/sb-ai.ts'
 import { matchSidebarPage } from './pages/sidebar-nav.ts'
+import { matchToolPage } from './pages/tool-subnav.ts'
+import { renderToolPage } from './pages/tool-pages.ts'
 import { isSplitTestTab } from './pages/beyond-nav.ts'
 import { T, button, el, emptyState, toast } from './ui.ts'
 import { api } from './api.ts'
@@ -129,6 +131,16 @@ async function route(): Promise<void> {
     }
     if (sidebarPage === 'sb_ai') {
       renderSbAi(content)
+      return
+    }
+    /**
+     * ツール5画面（一括タグ / マジック置換 / メディア / 審査 / フォーム）。
+     * 共通サブナビを持つアコーディオンの各サブページ。どれも固定パスで、
+     * モックAPI不要（採取した実DOMの土台＋空/枠だけ描画）。純粋関数で解決する。
+     */
+    const toolPage = matchToolPage(path ?? '')
+    if (toolPage !== null) {
+      renderToolPage(toolPage, content)
       return
     }
     renderNotBuilt(content, path ?? '')
