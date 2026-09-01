@@ -36,6 +36,13 @@ export interface BasicInfoValues {
   memo: string
   affiliate_service_provider: string
   conversion_unit_price: string
+  /** 以下は選択肢セレクト（指示⑮ で編集可能化）。未指定なら現状維持 */
+  delivery_type?: string
+  media_id?: string
+  conversion_condition?: string
+  gender?: string
+  age_from?: string
+  age_to?: string
 }
 
 export type BasicInfoValidation = { ok: true } | { ok: false; message: string }
@@ -90,17 +97,23 @@ export function buildUpdatePayload(
 ): Record<string, unknown> {
   const asp = input.affiliate_service_provider.trim()
   const price = Number(input.conversion_unit_price.trim())
+  const numOrNull = (raw: string | undefined, fallback: number | null): number | null => {
+    if (raw === undefined) return fallback
+    if (raw === '') return null
+    const n = Number(raw)
+    return Number.isFinite(n) ? n : fallback
+  }
   return {
     title: input.title.trim(),
     memo: input.memo,
-    media_id: abTest.media_id,
-    delivery_type: abTest.delivery_type,
-    conversion_condition: abTest.conversion_setting.conversion_condition,
+    media_id: numOrNull(input.media_id, abTest.media_id),
+    delivery_type: input.delivery_type ?? abTest.delivery_type,
+    conversion_condition: input.conversion_condition ?? abTest.conversion_setting.conversion_condition,
     conversion_unit_price: Number.isFinite(price) ? price : 0,
     affiliate_service_provider: asp === '' ? null : asp,
-    gender: abTest.gender,
-    age_from: abTest.age_from,
-    age_to: abTest.age_to,
+    gender: input.gender !== undefined ? (input.gender === '' ? null : input.gender) : abTest.gender,
+    age_from: numOrNull(input.age_from, abTest.age_from),
+    age_to: numOrNull(input.age_to, abTest.age_to),
   }
 }
 

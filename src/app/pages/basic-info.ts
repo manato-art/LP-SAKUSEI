@@ -101,7 +101,7 @@ export async function renderBasicInfo(
   wireAbTestTabs(root, target.abTestUid, ab_test.folder?.uid ?? target.folderUid)
   wireTopBar(ctx)
   applyAbTest(ctx, medias)
-  wireReadOnlySelects(ctx)
+  wireSelects(ctx, medias)
   wireDeliveryUrl(ctx)
   wireDetailToggles(ctx)
   wireAsp(ctx)
@@ -224,20 +224,96 @@ function wireTopBar(ctx: PageContext): void {
   }
 }
 
-// ── 採取物に無いUI（正直に出す）──────────────────────────
+// ── 選択肢セレクト（指示⑮ で編集可能化）──────────────────────
 
-function wireReadOnlySelects(ctx: PageContext): void {
+interface SelectOption {
+  value: string
+  label: string
+}
+
+/** ラベル→選択肢。値/表記は既知のenumマップ・媒体リスト・妥当な範囲から作る */
+function optionsForLabel(label: string, medias: readonly MediaOption[]): SelectOption[] {
+  const fromMap = (map: Record<string, string>): SelectOption[] =>
+    Object.entries(map).map(([value, text]) => ({ value, label: text }))
+  switch (label) {
+    case '配信タイプ':
+      return fromMap(DELIVERY_TYPE_LABELS)
+    case 'CV条件':
+      return fromMap(CONVERSION_CONDITION_LABELS)
+    case '媒体':
+      return [{ value: '', label: '指定なし' }, ...medias.map((m) => ({ value: String(m.id), label: m.name }))]
+    case '性別':
+      return [
+        { value: '', label: '指定なし' },
+        { value: '男性', label: '男性' },
+        { value: '女性', label: '女性' },
+      ]
+    case '歳以上':
+    case '歳以下':
+      return [{ value: '', label: '指定なし' }, ...AGE_CHOICES.map((a) => ({ value: String(a), label: String(a) }))]
+    default:
+      return []
+  }
+}
+
+const AGE_CHOICES: readonly number[] = [15, 18, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70]
+
+/** 選択肢セレクトを、クリックでドロップダウンが開き、選ぶと表示＋隠しinputへ反映するようにする */
+function wireSelects(ctx: PageContext, medias: readonly MediaOption[]): void {
   for (const label of READ_ONLY_SELECT_LABELS) {
     const control =
       label === '媒体'
-        ? ctx.root.querySelector<HTMLElement>(HOOK.mediaSelect)?.closest(HOOK.formControl) ?? null
+        ? ctx.root.querySelector<HTMLElement>(HOOK.mediaSelect)?.closest<HTMLElement>(HOOK.formControl) ?? null
         : formControlByLabel(ctx.root, label)
     const display = control?.querySelector<HTMLElement>(HOOK.selectDisplay)
-    if (display === undefined || display === null) continue
-    display.addEventListener('click', () => {
-      toast(`「${label}」の選択肢一覧は採取していないため、変更できません`, 'error')
+    if (control === null || display === undefined || display === null) continue
+    const options = optionsForLabel(label, medias)
+    if (options.length === 0) continue
+    display.style.cursor = 'pointer'
+    display.addEventListener('click', (event) => {
+      event.stopPropagation()
+      openSelectDropdown(control, display, options, (option) => {
+        applySelect(control, option.value, option.label)
+      })
     })
   }
+}
+
+/** 選択肢のドロップダウンを表示欄の直下に出す（採取物にリストボックスが無いため軽量に自作） */
+function openSelectDropdown(
+  control: HTMLElement,
+  display: HTMLElement,
+  options: readonly SelectOption[],
+  onPick: (option: SelectOption) => void,
+): void {
+  control.querySelector('[data-clone-select-menu]')?.remove()
+  const menu = document.createElement('div')
+  menu.setAttribute('data-clone-select-menu', '')
+  menu.style.cssText =
+    'position:absolute;z-index:9700;background:#fff;border:1px solid #ccc;border-radius:6px;' +
+    'box-shadow:0 4px 16px rgba(0,0,0,.15);max-height:240px;overflow:auto;min-width:160px;' +
+    'font-size:14px;left:0;right:0;margin-top:2px'
+  for (const option of options) {
+    const row = document.createElement('div')
+    row.textContent = option.label
+    row.style.cssText = 'padding:8px 14px;cursor:pointer'
+    row.addEventListener('mouseenter', () => (row.style.background = '#F2F6FF'))
+    row.addEventListener('mouseleave', () => (row.style.background = ''))
+    row.addEventListener('click', (event) => {
+      event.stopPropagation()
+      onPick(option)
+      menu.remove()
+    })
+    menu.append(row)
+  }
+  const host = display.closest<HTMLElement>('.MuiInputBase-root') ?? control
+  if (getComputedStyle(host).position === 'static') host.style.position = 'relative'
+  host.append(menu)
+  const close = (): void => {
+    menu.remove()
+    document.removeEventListener('click', close)
+  }
+  setTimeout(() => document.addEventListener('click', close), 0)
 }
 
 function wireDeliveryUrl(ctx: PageContext): void {
@@ -308,12 +384,26 @@ function wireAsp(ctx: PageContext): void {
 
 // ── 保存 ────────────────────────────────────────────────
 
+function selectValueByLabel(root: HTMLElement, label: string): string | undefined {
+  const control =
+    label === '媒体'
+      ? root.querySelector<HTMLElement>(HOOK.mediaSelect)?.closest(HOOK.formControl) ?? null
+      : formControlByLabel(root, label)
+  return control?.querySelector<HTMLInputElement>(HOOK.selectNativeInput)?.value
+}
+
 function collectValues(root: HTMLElement): BasicInfoValues {
   return {
     title: textFieldByLabel(root, 'beyondページ名')?.value ?? '',
     memo: textAreaByLabel(root, 'メモ')?.value ?? '',
     affiliate_service_provider: textFieldByLabel(root, '計測ツール・ASP')?.value ?? '',
     conversion_unit_price: textFieldByLabel(root, 'コンバージョン単価')?.value ?? '',
+    delivery_type: selectValueByLabel(root, '配信タイプ'),
+    media_id: selectValueByLabel(root, '媒体'),
+    conversion_condition: selectValueByLabel(root, 'CV条件'),
+    gender: selectValueByLabel(root, '性別'),
+    age_from: selectValueByLabel(root, '歳以上'),
+    age_to: selectValueByLabel(root, '歳以下'),
   }
 }
 
