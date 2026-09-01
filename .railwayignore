@@ -10,11 +10,9 @@ dist/
 .git/
 
 # ── アップロード削減 ──
-# 実行時に要らない採取物は上げない（リポジトリには残す）。
 capture/clean/**/dom.html
 capture/clean/**/*.json
 capture/capture-plan.json
-# cssom.css は index.html が参照するものだけ要る。それ以外は除外する。
 capture/clean/**/cssom.css
 
 !capture/clean/ab_tests__UID__articles/editor-beyond-empty/cssom.css
@@ -33,6 +31,14 @@ capture/clean/**/cssom.css
 !capture/clean/ab_tests__UID__articles__split_test_settings/params/cssom.css
 !capture/clean/ab_tests__UID__articles__split_test_settings/periods/cssom.css
 !capture/clean/ab_tests__UID__reports/default/cssom.css
+!capture/clean/addon__option-list/default/cssom.css
+!capture/clean/articles__bulk_replaces/default/cssom.css
 !capture/clean/folders/empty-selection/cssom.css
 !capture/clean/folders__UID__ab_tests__UID__edit/default/cssom.css
 !capture/clean/folders__UID__ab_tests__UID__redirect_pages/default/cssom.css
+!capture/clean/folders__forms/default/cssom.css
+!capture/clean/inspections__folders/default/cssom.css
+!capture/clean/sb_ai/default/cssom.css
+!capture/clean/tasks/default/cssom.css
+!capture/clean/teams__product_search_forms/default/cssom.css
+!capture/clean/teams__tags/default/cssom.css
