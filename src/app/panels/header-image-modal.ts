@@ -141,19 +141,19 @@ function setHeaderImage(headerBox: HTMLElement, dataUrl: string): void {
   const prompt = findPrompt(headerBox)
   if (prompt !== null) prompt.style.display = 'none'
 
-  // 削除ボタン（×）。採取物に削除UIが無いため、実物を真似ず汎用の×で「消せる」を担保する。
+  // 削除リンク。実物は画像右上に白い角丸の中に青文字「削除」が出る（ユーザー提示の実画面）。
   if (headerBox.querySelector('[data-clone-header-remove="true"]') === null) {
     const remove = document.createElement('button')
     remove.dataset['cloneHeaderRemove'] = 'true'
     remove.type = 'button'
-    remove.textContent = '×'
+    remove.textContent = '削除'
     remove.title = 'ヘッダー画像を削除'
     remove.style.cssText =
-      'position:absolute;top:8px;right:8px;z-index:2;width:28px;height:28px;border:none;border-radius:50%;' +
-      'background:rgba(0,0,0,.6);color:#fff;font-size:18px;line-height:1;cursor:pointer;display:flex;' +
-      'align-items:center;justify-content:center'
+      'position:absolute;top:15px;right:15px;z-index:2;padding:8px 16px;border:none;border-radius:6px;' +
+      'background:#fff;color:#0091FF;font-size:14px;line-height:1;cursor:pointer;' +
+      'box-shadow:0 1px 4px rgba(0,0,0,.2)'
     remove.addEventListener('click', (event) => {
-      // 枠クリック＝モーダルを開く挙動へ伝播させない（×は削除だけ）
+      // 枠クリック＝モーダルを開く挙動へ伝播させない（削除だけ）
       event.stopPropagation()
       removeHeaderImage(headerBox)
     })
@@ -195,14 +195,32 @@ function renderGrid(root: HTMLElement, apply: (dataUrl: string) => void): void {
     grid.append(empty)
     return
   }
-  grid.style.cssText = 'display:flex;flex-wrap:wrap;gap:10px;padding:12px'
-  for (const dataUrl of uploadedImages) {
+  // 実物は横幅いっぱいのバナーを縦に積む一覧（ユーザー提示の実画面）。同じ並びにする。
+  grid.style.cssText = 'display:flex;flex-direction:column;gap:12px;padding:12px'
+  // 新しく足したものが上に来るよう逆順で
+  for (const dataUrl of [...uploadedImages].reverse()) {
+    const item = document.createElement('div')
+    item.style.cssText = 'position:relative;cursor:pointer;border-radius:6px;overflow:hidden'
     const thumb = document.createElement('img')
     thumb.src = dataUrl
-    thumb.style.cssText =
-      'width:120px;height:80px;object-fit:cover;border-radius:6px;cursor:pointer;border:2px solid transparent'
-    thumb.addEventListener('click', () => apply(dataUrl))
-    grid.append(thumb)
+    thumb.style.cssText = 'display:block;width:100%;height:auto'
+    item.addEventListener('click', () => apply(dataUrl))
+    // 一覧からの削除（過去追加したヘッダーを消す）
+    const del = document.createElement('button')
+    del.type = 'button'
+    del.textContent = '削除'
+    del.style.cssText =
+      'position:absolute;top:8px;right:8px;padding:6px 12px;border:none;border-radius:6px;background:#fff;' +
+      'color:#0091FF;font-size:13px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.2)'
+    del.addEventListener('click', (event) => {
+      event.stopPropagation()
+      const idx = uploadedImages.indexOf(dataUrl)
+      if (idx >= 0) uploadedImages.splice(idx, 1)
+      renderGrid(root, apply)
+      toast('一覧から削除しました')
+    })
+    item.append(thumb, del)
+    grid.append(item)
   }
 }
 
