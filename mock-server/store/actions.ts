@@ -14,6 +14,7 @@ import type {
   Article,
   Conversion,
   Folder,
+  RedirectPage,
   State,
   Task,
   Version,
@@ -391,6 +392,49 @@ export function deleteVersion(state: State, uid: string): { state: State; delete
  * FAQ:「アーカイブする際には、配信割合が1以上のVersionがbeyondページ内に存在している必要がある」
  * ＝アーカイブ後も、非アーカイブで配信割合>=1のVersionが最低1つ残ることを条件にする。
  */
+/** 中間ページ（redirect page）を1つ追加する（指示⑮ 中間ページを追加） */
+export function addRedirectPage(
+  state: State,
+  abTestUid: string,
+): { state: State; page: RedirectPage | null } {
+  const abTest = state.abTests.find((t) => t.uid === abTestUid)
+  if (abTest === undefined) return { state, page: null }
+  const page: RedirectPage = {
+    id: state.nextId,
+    uid: makeUid('redirectPage', nextSeq(state.redirectPages)),
+    ab_test_id: abTest.id,
+    name: '中間ページ名なし',
+    url: '',
+    weight: 0,
+    enabled: true,
+    redirect_time: 0.4,
+  }
+  return {
+    state: { ...state, redirectPages: [...state.redirectPages, page], nextId: state.nextId + 1 },
+    page,
+  }
+}
+
+/** 中間ページの設定を更新する（名前 / リダイレクト先URL / リダイレクト時間） */
+export function updateRedirectPage(
+  state: State,
+  uid: string,
+  patch: { name?: string; url?: string; redirect_time?: number },
+): { state: State; page: RedirectPage | null } {
+  const target = state.redirectPages.find((p) => p.uid === uid)
+  if (target === undefined) return { state, page: null }
+  const updated: RedirectPage = {
+    ...target,
+    ...(patch.name !== undefined ? { name: patch.name } : {}),
+    ...(patch.url !== undefined ? { url: patch.url } : {}),
+    ...(patch.redirect_time !== undefined ? { redirect_time: patch.redirect_time } : {}),
+  }
+  return {
+    state: { ...state, redirectPages: state.redirectPages.map((p) => (p.uid === uid ? updated : p)) },
+    page: updated,
+  }
+}
+
 /**
  * beyondページに**ファネルステップ（記事）を1つ追加する**（指示⑮ ステップの作成）。
  * 記事＋既定Version1本を作り、記事一覧の末尾に足す。

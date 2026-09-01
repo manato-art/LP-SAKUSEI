@@ -4,7 +4,13 @@
  * エディタが起動時に叩く ab_test / articles / versions をここで返す。
  */
 import { Router } from 'express'
-import { addArticle, createAbTest, deleteAbTest } from '../store/actions.ts'
+import {
+  addArticle,
+  addRedirectPage,
+  createAbTest,
+  deleteAbTest,
+  updateRedirectPage,
+} from '../store/actions.ts'
 import { getState, setState } from '../store/store.ts'
 import { SPLIT_TEST_DEFAULTS, isSplitTestType } from '../store/split-test-defaults.ts'
 import { aggregate, deriveKpi, isWithin } from '../store/metrics.ts'
@@ -226,6 +232,29 @@ abTestsRouter.put('/ab_tests/:uid/redirect_pages', (req, res) => {
   const abTest = findAbTest(state, req.params.uid)
   if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
   res.json({ redirect_pages: state.redirectPages.filter((p) => p.ab_test_id === abTest.id) })
+})
+
+/** 中間ページを1つ追加（指示⑮ 中間ページを追加） */
+abTestsRouter.post('/ab_tests/:uid/redirect_pages/create', (req, res) => {
+  const out = addRedirectPage(getState(), req.params.uid)
+  if (out.page === null) return notFound(res, 'beyondページが見つかりません。')
+  setState(() => out.state)
+  res.status(201).json({ redirect_page: out.page })
+})
+
+/** 中間ページの設定を更新（名前 / リダイレクト先 / リダイレクト時間） */
+abTestsRouter.patch('/redirect_pages/:uid', (req, res) => {
+  const name = optionalString(req.body, 'name')
+  const url = optionalString(req.body, 'url')
+  const redirectTime = optionalNumber(req.body, 'redirect_time')
+  const out = updateRedirectPage(getState(), req.params.uid, {
+    ...(name !== '' ? { name } : {}),
+    url,
+    ...(redirectTime !== undefined ? { redirect_time: redirectTime } : {}),
+  })
+  if (out.page === null) return notFound(res, '中間ページが見つかりません。')
+  setState(() => out.state)
+  res.json({ redirect_page: out.page })
 })
 
 // ── スプリットテスト設定6種（§9-5）──

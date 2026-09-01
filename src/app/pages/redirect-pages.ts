@@ -1,29 +1,16 @@
 /**
  * 中間ページ（redirect_pages）＝
- * `/folders/:folder_uid/ab_tests/:ab_test_uid/redirect_pages`
+ * `/folders/:folder_uid/ab_tests/:ab_test_uid/redirect_pages`（指示⑮ フロー総点検）。
  *
- * エディタ上部右の3番目のアイコン（中間ページ）から来る画面。
- * 「中間ページ」＝ `redirect_pages`（ファネルとは別物）は
- * `docs/findings-live-observation.md`「ナビの3リンク」で確定済み。
- *
- * ## 採取物が示す状態（`folders__UID__ab_tests__UID__redirect_pages__default.html`）
- * 本文は次の3要素だけ:
- *   <div class="_redirectPagesWrapper_1tjuv_1">
- *     <div class="_left_1tjuv_8"><div class="_newRedirectPage_1tjuv_78">中間ページを追加</div></div>
- *     <div class="_right_1tjuv_91"></div>   ← 詳細ペイン（空）
- *   </div>
- * ＝**中間ページが1件も無い空状態**。一覧UI・作成フォーム・モーダルは採取物に無い
- * （`data-test` 0個・`<form>`/`<input>`/モーダルのマークアップ無し）。
- *
- * ## 実装方針（企画書 §11 capture-and-rehydrate）
- * 見た目は採取した実DOM＋実CSSがそのまま担う。ここで足すのは挙動だけ:
- *   - 上部バーの焼き付き値（ページ名 / フォルダ名 / 配信ステータス）をモックの値へ差し替える
- *   - 上部右3アイコン ＋ 左レール4タブ ＋「戻る」をクローンのルートへ張り替える
- *   - 「中間ページを追加」は**押した後が採取できていない**（追加モーダルが採取物に無い）ので、
- *     それらしいフォームを作らず、未採取であることを表示する（§3-2・§3-5）
+ * エディタ上部右の3番目のアイコン（中間ページ）から来る画面。実本体（許可経路）で
+ * 「中間ページを追加」後の**詳細画面**を採取し（一覧＋設定フォーム）、土台にして挙動を付ける:
+ *   - 中間ページ一覧をモックから描く（作成した分が増える）
+ *   - 「中間ページを追加」→ モックに作成 → 一覧に追加して選択
+ *   - 設定フォーム（中間ページ名 / リダイレクト先 / リダイレクト時間）を選んだページに束ね、
+ *     「中間ページ設定を保存する」で更新
  */
-import substrate from '../fragments/folders__UID__ab_tests__UID__redirect_pages__default.html?raw'
-import { api } from '../api.ts'
+import substrate from '../fragments/folders__UID__ab_tests__UID__redirect_pages__detail.html?raw'
+import { api, type RedirectPage } from '../api.ts'
 import { isStale } from '../main.ts'
 import { toast } from '../ui.ts'
 import { applyBeyondTopBar, wireBeyondBack } from './beyond-topbar.ts'
@@ -31,8 +18,17 @@ import { wireBeyondNavAnchors } from './beyond-nav.ts'
 import { stripShellFromFragment } from './report-substrate.ts'
 import { wireAbTestTabs } from './tab-nav.ts'
 
-/** 「中間ページを追加」ボタン（採取した実物のクラス名） */
-const ADD_BUTTON = '._newRedirectPage_1tjuv_78'
+const HOOK = {
+  left: '[class*="_left_1tjuv"]',
+  item: '[class*="_redirectPage_1tjuv_1"]',
+  itemTitle: '[class*="_title_1tjuv"]',
+  addButton: '[class*="_newRedirectPage_1tjuv"]',
+  active: '_active_1tjuv_41',
+  save: '[class*="_save_1tjuv"]',
+  nameInput: 'input[name="name"]',
+  urlInput: 'input[name="redirect_url"]',
+  timeInput: 'input[name="redirect_time"]',
+} as const
 
 export async function renderRedirectPages(
   container: HTMLElement,
@@ -40,25 +36,13 @@ export async function renderRedirectPages(
   generation?: number,
 ): Promise<void> {
   container.innerHTML = ''
-
-  const [{ ab_test }, { folders }] = await Promise.all([
-    api.abTest(ids.abTestUid),
-    api.folders(),
-  ])
-
-  // API待ちの間に新しい描画が始まっていたら降りる（二重描画の防止・main.ts の世代トークン）
+  const [{ ab_test }, { folders }] = await Promise.all([api.abTest(ids.abTestUid), api.folders()])
   if (generation !== undefined && isStale(generation)) return
 
   const folder = folders.find((f) => f.id === ab_test.folder_id) ?? null
-  // ルートの folder_uid を第一に使い、モックのフォルダが引ければそちらで補う
   const folderUid = folder?.uid ?? ids.folderUid
 
-  /**
-   * シェルの content は全ルートで使い回される。エディタは `height:100vh;overflow:hidden` を
-   * 直接書き込むので、そこから遷移してくると本文が切れる。シェル本来の値に戻してから描く。
-   */
   container.style.cssText = 'flex:1;min-width:0'
-
   const root = document.createElement('div')
   root.innerHTML = stripShellFromFragment(substrate)
   container.append(root)
@@ -68,27 +52,107 @@ export async function renderRedirectPages(
     folderName: folder?.name ?? '',
     adStatus: ab_test.ad_status,
   })
-  // 上部右3アイコンをクローンのルートへ張り替える（href で同定・位置に依存しない）
   wireBeyondNavAnchors(root, { abTestUid: ids.abTestUid, folderUid })
-  // 左レール4タブは共有の配線（基本情報タブ・エディタと同じ関数）
   wireAbTestTabs(root, ids.abTestUid, folderUid)
   wireBeyondBack(root, folderUid)
-  wireAddButton(root)
+
+  // 一覧項目の雛形を控える（採取物の1件目をクリーンにクローン）
+  const template = root.querySelector<HTMLElement>(HOOK.item)?.cloneNode(true) as HTMLElement | undefined
+  await renderList(root, ids.abTestUid, template ?? null)
+
+  root.querySelector<HTMLElement>(HOOK.addButton)?.addEventListener('click', () => {
+    void addAndSelect(root, ids.abTestUid, template ?? null)
+  })
 }
 
-/**
- * 「中間ページを追加」。
- * **押した後に何が起きるかは採取できていない**（追加モーダル・作成フォームの採取物が無い）。
- * それらしいフォームを作らず、分かっていないことをそのまま画面に出す。
- */
-function wireAddButton(root: HTMLElement): void {
-  const button = root.querySelector<HTMLElement>(ADD_BUTTON)
-  if (button === null) {
-    console.warn('[redirect-pages]', ADD_BUTTON, 'が土台に見つかりませんでした')
-    return
+async function addAndSelect(
+  root: HTMLElement,
+  abTestUid: string,
+  template: HTMLElement | null,
+): Promise<void> {
+  try {
+    const { redirect_page } = await api.addRedirectPage(abTestUid)
+    await renderList(root, abTestUid, template, redirect_page.uid)
+    toast('中間ページを追加しました')
+  } catch (error) {
+    toast((error as Error).message, 'error')
   }
-  button.style.cursor = 'pointer'
-  button.addEventListener('click', () => {
-    toast('中間ページの追加は未採取です（追加後の画面・モーダルが採取できていないため未実装）', 'error')
+}
+
+/** 一覧を描き直し、selectedUid（無ければ先頭）を選択状態にする */
+async function renderList(
+  root: HTMLElement,
+  abTestUid: string,
+  template: HTMLElement | null,
+  selectedUid?: string,
+): Promise<void> {
+  const left = root.querySelector<HTMLElement>(HOOK.left)
+  const addButton = root.querySelector<HTMLElement>(HOOK.addButton)
+  if (left === null) return
+  for (const item of left.querySelectorAll<HTMLElement>(HOOK.item)) item.remove()
+
+  const { redirect_pages } = await api.redirectPages(abTestUid)
+  const target = selectedUid ?? redirect_pages[0]?.uid
+
+  for (const page of redirect_pages) {
+    const item = (template?.cloneNode(true) as HTMLElement | undefined) ?? fallbackItem()
+    item.dataset['redirectUid'] = page.uid
+    const title = item.querySelector<HTMLElement>(HOOK.itemTitle)
+    if (title !== null) title.textContent = page.name
+    item.classList.toggle(HOOK.active, page.uid === target)
+    item.style.cursor = 'pointer'
+    item.addEventListener('click', () => {
+      for (const other of left.querySelectorAll<HTMLElement>(HOOK.item)) {
+        other.classList.toggle(HOOK.active, other === item)
+      }
+      bindForm(root, page)
+    })
+    if (addButton !== null) left.insertBefore(item, addButton)
+    else left.append(item)
+  }
+
+  const selected = redirect_pages.find((p) => p.uid === target) ?? null
+  bindForm(root, selected)
+  wireSave(root, abTestUid, template)
+}
+
+/** 設定フォームを選択中の中間ページに束ねる（未選択なら空にする） */
+function bindForm(root: HTMLElement, page: RedirectPage | null): void {
+  const name = root.querySelector<HTMLInputElement>(HOOK.nameInput)
+  const url = root.querySelector<HTMLInputElement>(HOOK.urlInput)
+  const time = root.querySelector<HTMLInputElement>(HOOK.timeInput)
+  if (name !== null) name.value = page?.name ?? ''
+  if (url !== null) url.value = page?.url ?? ''
+  if (time !== null) time.value = String(page?.redirect_time ?? 0.4)
+  root.dataset['cloneSelectedRedirect'] = page?.uid ?? ''
+}
+
+function wireSave(root: HTMLElement, abTestUid: string, template: HTMLElement | null): void {
+  const save = root.querySelector<HTMLElement>(HOOK.save)
+  if (save === null || save.dataset['cloneSaveWired'] === 'true') return
+  save.dataset['cloneSaveWired'] = 'true'
+  save.style.cursor = 'pointer'
+  save.addEventListener('click', () => {
+    const uid = root.dataset['cloneSelectedRedirect'] ?? ''
+    if (uid === '') {
+      toast('中間ページを選択してください', 'error')
+      return
+    }
+    const name = root.querySelector<HTMLInputElement>(HOOK.nameInput)?.value ?? ''
+    const url = root.querySelector<HTMLInputElement>(HOOK.urlInput)?.value ?? ''
+    const time = Number(root.querySelector<HTMLInputElement>(HOOK.timeInput)?.value ?? '0.4')
+    void api
+      .updateRedirectPage(uid, { name, url, redirect_time: Number.isFinite(time) ? time : 0.4 })
+      .then(() => renderList(root, abTestUid, template, uid))
+      .then(() => toast('中間ページ設定を保存しました'))
+      .catch((error: unknown) => toast((error as Error).message, 'error'))
   })
+}
+
+/** 雛形が採れないときの最小の一覧項目 */
+function fallbackItem(): HTMLElement {
+  const item = document.createElement('div')
+  item.className = '_redirectPage_1tjuv_1'
+  item.innerHTML = '<div class="_title_1tjuv_23"></div>'
+  return item
 }

@@ -157,6 +157,8 @@ export interface RedirectPage {
   url: string
   weight: number
   enabled: boolean
+  /** リダイレクト時間（秒・指示⑮ 中間ページ設定） */
+  redirect_time?: number
 }
 
 export interface ExitPopup {

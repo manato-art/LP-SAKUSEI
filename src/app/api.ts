@@ -125,6 +125,12 @@ export const api = {
     request<{ article: { uid: string } }>('POST', `/ab_tests/${abTestUid}/articles`, {
       ...(name === undefined ? {} : { name }),
     }),
+  redirectPages: (abTestUid: string) =>
+    request<{ redirect_pages: RedirectPage[] }>('GET', `/ab_tests/${abTestUid}/redirect_pages`),
+  addRedirectPage: (abTestUid: string) =>
+    request<{ redirect_page: RedirectPage }>('POST', `/ab_tests/${abTestUid}/redirect_pages/create`),
+  updateRedirectPage: (uid: string, patch: { name?: string; url?: string; redirect_time?: number }) =>
+    request<{ redirect_page: RedirectPage }>('PATCH', `/redirect_pages/${uid}`, patch),
 
   versions: (articleUid: string) =>
     request<{ versions: Version[]; distribution_total: number; distribution_warning: string | null }>(
@@ -195,6 +201,18 @@ export interface MetaAdAccountsResponse {
   configured: boolean
   accounts: MetaAdAccount[]
   error?: string
+}
+
+/** 中間ページ（redirect page・指示⑮） */
+export interface RedirectPage {
+  id: number
+  uid: string
+  ab_test_id: number
+  name: string
+  url: string
+  weight: number
+  enabled: boolean
+  redirect_time?: number
 }
 
 /** Meta広告のアカウント集計KPI（実取得） */
