@@ -61,6 +61,9 @@ const AUTOSAVE_DELAY_MS = 900
 
 /** 右レールの並び順は SIDE_TOOLS のとおり。プレビューは1番目。 */
 const PREVIEW_TOOL_INDEX = 0
+/** 右レールの並び: 6=元に戻す / 7=やり直す */
+const UNDO_TOOL_INDEX = 6
+const REDO_TOOL_INDEX = 7
 
 const WIRED_TOOLS: readonly number[] = [0, 1, 2, 3, 4, 5]
 
@@ -284,8 +287,6 @@ async function saveHtml(ctx: EditorContext): Promise<void> {
 }
 
 function wireSideToolbar(ctx: EditorContext, previewTitle: string, previewFolder: string): void {
-  ctx.root.querySelector(HOOK.undo)?.addEventListener('click', () => ctx.quill.history.undo())
-  ctx.root.querySelector(HOOK.redo)?.addEventListener('click', () => ctx.quill.history.redo())
   // ── 各パネルを配線（実装は src/app/panels/ に分かれている）──
   mountVersionSettings(ctx.root, ctx.articleUid)
   mountTagSettings(ctx.root, ctx.articleUid)
@@ -321,7 +322,7 @@ function wireSideToolbar(ctx: EditorContext, previewTitle: string, previewFolder
       continue
     }
 
-    const open = openers[index]
+      const open = openers[index]
     if (open !== undefined) {
       // 押すたびに開閉。開くときは他のパネルを閉じる（実物は同時に1枚だけ）。
       icon.addEventListener('click', () => {
@@ -332,8 +333,18 @@ function wireSideToolbar(ctx: EditorContext, previewTitle: string, previewFolder
       })
       continue
     }
+    // 元に戻す / やり直す は Quill の履歴で実際に動かす（data-test がアイコンの
+    // 内側にあり外側クリックを拾えないことがあるため、レールアイコンに直接配線する）。
+    if (index === UNDO_TOOL_INDEX) {
+      icon.addEventListener('click', () => ctx.quill.history.undo())
+      continue
+    }
+    if (index === REDO_TOOL_INDEX) {
+      icon.addEventListener('click', () => ctx.quill.history.redo())
+      continue
+    }
     if (WIRED_TOOLS.includes(index)) continue
-    // 未実装の右レールツールは、実際の名前を出して「何が未実装か」を分かるようにする
+    // それでも残るツール（外部サーバー画像アップロード等）は正直にトースト
     const name = SIDE_TOOLS[index] ?? 'このツール'
     icon.addEventListener('click', () => toast(`${name} は未実装です`, 'error'))
   }

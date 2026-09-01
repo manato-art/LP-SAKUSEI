@@ -7,7 +7,7 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   {
     // ブラウザで動くもの: DevToolsに貼るスニペットと、クローン本体のフロント
-    files: ['tools/capture-console/**/*.js', 'tools/reachability/**/*.js', 'src/**/*.ts'],
+    files: ['tools/capture-console/**/*.js', 'tools/reachability/**/*.js', 'tools/**/*.mjs', 'src/**/*.ts'],
     languageOptions: {
       globals: {
         window: 'readonly', document: 'readonly', NodeFilter: 'readonly', Text: 'readonly', location: 'readonly', history: 'readonly',
