@@ -21,6 +21,7 @@ import { api } from '../api.ts'
 import { toast } from '../ui.ts'
 import { bindBackdropClose, findByExactText, openPortal } from './portal.ts'
 import { LP_BASE_CSS } from '../lp-base-css.ts'
+import { openDuplicateModal } from './version-duplicate-modal.ts'
 
 /** 採取物の目印（実物のクラス。書き換えていない） */
 export const DOTS_MENU_HOOK = {
@@ -128,7 +129,8 @@ function openMenu(deps: DotsMenuDeps, onClosed: () => void): void {
   if (backdrop !== null) bindBackdropClose(backdrop, portal.close)
 
   const handlers: Readonly<Record<string, () => void>> = {
-    [DOTS_MENU_LABELS.duplicate]: () => void duplicate(deps),
+    // 実物は「複製」で Version複製 モーダル（複製個数・引き継ぎ設定）が開く
+    [DOTS_MENU_LABELS.duplicate]: () => openDuplicateModal(deps),
     [DOTS_MENU_LABELS.downloadHtml]: () => downloadHtml(deps),
     [DOTS_MENU_LABELS.duplicateToOther]: () =>
       toast('別のbeyondページに複製は未実装です', 'error'),
@@ -165,21 +167,6 @@ async function archive(deps: DotsMenuDeps): Promise<void> {
     const { version } = await api.archiveVersion(current.uid)
     toast(`${version.name} をアーカイブしました`)
     deps.onArchived(version)
-  } catch (error) {
-    toast((error as Error).message, 'error')
-  }
-}
-
-async function duplicate(deps: DotsMenuDeps): Promise<void> {
-  const current = deps.getCurrentVersion()
-  if (current === null) {
-    toast('複製元のVersionが見つかりません', 'error')
-    return
-  }
-  try {
-    const { version } = await api.duplicateVersion(current.uid)
-    toast(`${version.name} に複製しました`)
-    deps.onDuplicated(version)
   } catch (error) {
     toast((error as Error).message, 'error')
   }

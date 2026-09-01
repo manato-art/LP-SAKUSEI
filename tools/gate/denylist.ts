@@ -124,6 +124,9 @@ export const SELF_EXCLUDE: readonly string[] = [
   // プレビュー画面の断片が本番ドメイン（squadbeyond.com / discover-news）を含まないことを
   // 確認するテスト。アサーション文字列としてドメイン名を意図的に持つ（実データではない）。
   'tests/preview-page.test.ts',
+  // Version複製モーダルが本番ドメイン（squadbeyond.com）を含まないことを確認するテスト。
+  // アサーション文字列としてドメイン名を意図的に持つ（実データではない）。
+  'tests/version-duplicate-modal.test.ts',
   // デプロイ設定。$schema の https://railway.app は Railway の設定スキーマURLで、
   // クローン対象の本番ドメインでも実データでもない。
   'railway.json',
