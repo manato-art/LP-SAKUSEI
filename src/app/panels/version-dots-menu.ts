@@ -20,6 +20,7 @@ import type { Version } from '../api.ts'
 import { api } from '../api.ts'
 import { toast } from '../ui.ts'
 import { bindBackdropClose, findByExactText, openPortal } from './portal.ts'
+import { LP_BASE_CSS } from '../lp-base-css.ts'
 
 /** 採取物の目印（実物のクラス。書き換えていない） */
 export const DOTS_MENU_HOOK = {
@@ -58,7 +59,7 @@ export function buildVersionHtmlDocument(version: Pick<Version, 'name' | 'html' 
     '<head>',
     '<meta charset="utf-8">',
     `<title>${escapeHtml(version.name)}</title>`,
-    `<style>${version.css}</style>`,
+    `<style>${LP_BASE_CSS}${version.css}</style>`,
     '</head>',
     `<body>${version.html}</body>`,
     '</html>',

@@ -13,6 +13,7 @@ import { api, type Version } from '../api.ts'
 import { isStale } from '../main.ts'
 import { toast } from '../ui.ts'
 import { mountCapturedPage, setTopBarNames, wireBackLink, wireCapturedLinks } from './report-dom.ts'
+import { LP_BASE_CSS } from '../lp-base-css.ts'
 
 export async function renderPreview(
   container: HTMLElement,
@@ -93,7 +94,7 @@ function fillPreviewIframe(root: HTMLElement, version: Version | undefined): voi
   doc.open()
   doc.write(
     `<!doctype html><html lang="ja"><head><meta charset="utf-8">` +
-      `<style>body{margin:0;font-family:"Hiragino Sans",sans-serif}${version.css}</style>` +
+      `<style>body{margin:0;font-family:"Hiragino Sans",sans-serif}${LP_BASE_CSS}${version.css}</style>` +
       `</head><body>${version.html}</body></html>`,
   )
   doc.close()

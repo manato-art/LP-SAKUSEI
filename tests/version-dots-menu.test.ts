@@ -65,7 +65,9 @@ describe('HTMLダウンロードの組み立て（純粋関数）', () => {
     const doc = buildVersionHtmlDocument({ name: 'Ver.3873', html: '<p>hi</p>', css: 'p{color:red}' })
     expect(doc.startsWith('<!doctype html>')).toBe(true)
     expect(doc).toContain('<title>Ver.3873</title>')
-    expect(doc).toContain('<style>p{color:red}</style>')
+    expect(doc).toContain('p{color:red}')
+    // 配信・ダウンロードでも整列が効くよう、LP土台CSS（ql-align 等）を含める
+    expect(doc).toContain('.ql-align-center')
     expect(doc).toContain('<body><p>hi</p></body>')
   })
 

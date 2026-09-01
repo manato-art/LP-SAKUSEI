@@ -10,6 +10,7 @@
  */
 import { api, type Version } from '../api.ts'
 import { isStale } from '../main.ts'
+import { LP_BASE_CSS } from '../lp-base-css.ts'
 
 /** 既定の配信Version幅（実物のデフォルト） */
 const DELIVERY_WIDTH = 620
@@ -57,7 +58,7 @@ export async function renderDelivery(
   doc.write(
     `<!doctype html><html lang="ja"><head><meta charset="utf-8">` +
       `<meta name="viewport" content="width=device-width, initial-scale=1">` +
-      `<style>body{margin:0;font-family:"Hiragino Sans",sans-serif}${version.css}</style>` +
+      `<style>body{margin:0;font-family:"Hiragino Sans",sans-serif}${LP_BASE_CSS}${version.css}</style>` +
       `</head><body>${version.html}</body></html>`,
   )
   doc.close()
