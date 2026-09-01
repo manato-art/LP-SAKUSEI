@@ -23,6 +23,7 @@ import { toast } from '../ui.ts'
 import { CLS, HOOK, setItemShown } from './toolbar/hooks.ts'
 import { closeAllDropdowns, wireDropdowns, type ToolbarState } from './toolbar/dropdown.ts'
 import { openColorPicker } from './toolbar/color-picker.ts'
+import { pickAndInsertImage } from './insert-image.ts'
 import { mountLinkDropdown } from './toolbar/link-dropdown.ts'
 import { shouldCrashOnLinkOpen } from './toolbar/link-form.ts'
 import { positionToolbar } from './toolbar/placement.ts'
@@ -151,9 +152,8 @@ export function mountEditorToolbar(root: HTMLElement, quill: Quill, options: Edi
     },
     refresh: () => refresh(),
   })
-  wrapper.querySelector(HOOK.photo)?.addEventListener('click', () => {
-    toast('ツールバーからの画像挿入は未実装です', 'error')
-  })
+  // ツールバーの「画像」ボタン＝カーソル位置へ画像を差し込む（右レールの画像挿入と同じ）
+  wrapper.querySelector(HOOK.photo)?.addEventListener('click', () => pickAndInsertImage(quill))
 
   // ── 色パレット ──
   const colorButton = wrapper.querySelector<HTMLElement>(HOOK.color)
@@ -218,18 +218,25 @@ export function mountEditorToolbar(root: HTMLElement, quill: Quill, options: Edi
     refresh()
   })
 
-  /** 選択に合わせて 表示 / 位置 / 押下状態 を更新する */
+  /** 選択／カーソルに合わせて 表示 / 位置 / 押下状態 を更新する */
   function refresh(): void {
     const range = quill.getSelection()
-    if (range !== null && range.length > 0) state.lastRange = { index: range.index, length: range.length }
+    // カーソルのみ（collapsed）でも位置追従できるよう、範囲があれば常に lastRange を更新する。
+    if (range !== null) state.lastRange = { index: range.index, length: range.length }
 
     const hasSelection = range !== null && range.length > 0
-    const visible = hasSelection || (state.keepOpen && state.lastRange !== null)
+    // **エディタにカーソルが入っていれば常に表示**（選択が無くても）。
+    // ＝「ここに入ったら常に出る」。エディタ外へ出ると range が null になり隠れる。
+    const focused = range !== null
+    const visible = focused || (state.keepOpen && state.lastRange !== null)
     wrapper.classList.toggle(CLS.wrapperActive, visible)
     if (!visible) {
       closeAllDropdowns(dropdowns)
       return
     }
+    // カーソルのみ＝画像の差し込みモード（画像ボタンを出す）。
+    // 選択あり＝整列・色などの書式モード（実物の text-selected 状態に合わせ画像は隠す）。
+    setItemShown(wrapper.querySelector(HOOK.photo), !hasSelection)
     const target = state.lastRange
     if (target === null) return
     positionToolbar(wrapper, quill, target)
@@ -310,9 +317,12 @@ function syncActiveState(wrapper: HTMLElement, formats: Record<string, unknown>)
     const node = wrapper.querySelector<HTMLElement>(selector)
     const item = node?.closest(HOOK.item)
     item?.classList.toggle(CLS.itemActive, active)
-    // アクティブ時は「白丸」の背景に乗る。白アイコン（下線/斜体は黒アセットが無い）が
-    // 白丸で見えなくなるので、filterで黒く見せて統一する（新アセットを足さない）。
-    if (node !== null && node !== undefined) node.style.filter = active ? 'brightness(0)' : ''
+    // アイコンの元色がバラバラ（太字/取消線は黒アセット・下線/斜体は白アセット）なので filter で統一:
+    //   非アクティブ … 暗いツールバー上なので白（brightness(0) invert(1)）
+    //   アクティブ   … 白丸の背景に乗るので黒（brightness(0)）
+    if (node !== null && node !== undefined) {
+      node.style.filter = active ? 'brightness(0)' : 'brightness(0) invert(1)'
+    }
   }
   mark(HOOK.bold, formats['bold'] === true)
   // アイコン入れ違いに合わせて素性も入れ替え（BtnItalic=下線アイコン / BtnUnderline=斜体アイコン）
