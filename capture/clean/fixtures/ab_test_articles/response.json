@@ -27,7 +27,7 @@
       "team_id": 1012,
       "uid": "UID_8830",
       "email": "user523@example.test",
-      "name": "サンプル施策733",
+      "name": "ダミー三郎",
       "role": "owner",
       "joined": true,
       "is_admin_user": false,
@@ -37,7 +37,7 @@
       "created_at": 1744618638,
       "user": {
         "id": 10623,
-        "name": "サンプル施策733",
+        "name": "ダミー三郎",
         "company_name": "user523@example.test",
         "email": "user523@example.test",
         "confirmed_at": null
