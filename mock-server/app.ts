@@ -4,7 +4,7 @@
  * 本番ドメインはコード中に一切登場させない（§3-2・§13-F）。
  */
 import express, { type Express, type NextFunction, type Request, type Response } from 'express'
-import { join, resolve } from 'node:path'
+import { join, resolve, sep } from 'node:path'
 import { PREFIX, SERVE_DIST } from './config.ts'
 import { mockStateMiddleware } from './lib/mock-state.ts'
 import { errorEnvelope } from './lib/envelope.ts'
@@ -99,7 +99,19 @@ export function createApp(): Express {
   // ── 本番: ビルドしたフロントを配信する（開発時は Vite が担当するので無効）──
   if (SERVE_DIST !== undefined) {
     const distDir = resolve(SERVE_DIST)
-    app.use(express.static(distDir))
+    // index.html は毎回取り直す（no-cache）＝古いJSに固定されない。
+    // ハッシュ付きアセット（/assets/index-XXXX.js 等）はファイル名が変わるので長期キャッシュ可。
+    app.use(
+      express.static(distDir, {
+        setHeaders: (res, filePath) => {
+          if (filePath.endsWith('index.html')) {
+            res.setHeader('Cache-Control', 'no-cache')
+          } else if (filePath.includes(`${sep}assets${sep}`)) {
+            res.setHeader('Cache-Control', 'public, max-age=31536000, immutable')
+          }
+        },
+      }),
+    )
     // ハッシュルーティングなので、API以外の全パスは index.html を返す。
     // Express 5 は文字列ワイルドカード '*' を廃止したので、末尾ミドルウェアで受ける。
     // API系プレフィックスは上で処理済みなのでここには来ない。
@@ -108,6 +120,7 @@ export function createApp(): Express {
         next()
         return
       }
+      res.setHeader('Cache-Control', 'no-cache') // SPAのindex.htmlは常に最新を配る
       res.sendFile(join(distDir, 'index.html'))
     })
   }
