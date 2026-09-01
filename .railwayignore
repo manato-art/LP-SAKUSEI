@@ -10,35 +10,11 @@ dist/
 .git/
 
 # ── アップロード削減 ──
+# 実行時に要らない採取物は上げない（リポジトリには残す）。
 capture/clean/**/dom.html
 capture/clean/**/*.json
 capture/capture-plan.json
+# 画面別cssomは統合版(_merged)に集約済み。個別cssomはアップロードしない。
 capture/clean/**/cssom.css
-
-!capture/clean/ab_tests__UID__articles/editor-beyond-empty/cssom.css
-!capture/clean/ab_tests__UID__articles/editor-target/cssom.css
-!capture/clean/ab_tests__UID__articles/header-image-modal/cssom.css
-!capture/clean/ab_tests__UID__articles/step-add-modal/cssom.css
-!capture/clean/ab_tests__UID__articles/toolbar-color-open/cssom.css
-!capture/clean/ab_tests__UID__articles/toolbar-link-open/cssom.css
-!capture/clean/ab_tests__UID__articles/version-dots-menu/cssom.css
-!capture/clean/ab_tests__UID__articles__exit_popups/default/cssom.css
-!capture/clean/ab_tests__UID__articles__htmls__heatmaps__comparisons/default/cssom.css
-!capture/clean/ab_tests__UID__articles__split_test_settings/carriers/cssom.css
-!capture/clean/ab_tests__UID__articles__split_test_settings/devices/cssom.css
-!capture/clean/ab_tests__UID__articles__split_test_settings/hours/cssom.css
-!capture/clean/ab_tests__UID__articles__split_test_settings/oses/cssom.css
-!capture/clean/ab_tests__UID__articles__split_test_settings/params/cssom.css
-!capture/clean/ab_tests__UID__articles__split_test_settings/periods/cssom.css
-!capture/clean/ab_tests__UID__reports/default/cssom.css
-!capture/clean/addon__option-list/default/cssom.css
-!capture/clean/articles__bulk_replaces/default/cssom.css
-!capture/clean/folders/empty-selection/cssom.css
-!capture/clean/folders__UID__ab_tests__UID__edit/default/cssom.css
-!capture/clean/folders__UID__ab_tests__UID__redirect_pages/default/cssom.css
-!capture/clean/folders__forms/default/cssom.css
-!capture/clean/inspections__folders/default/cssom.css
-!capture/clean/sb_ai/default/cssom.css
-!capture/clean/tasks/default/cssom.css
-!capture/clean/teams__product_search_forms/default/cssom.css
-!capture/clean/teams__tags/default/cssom.css
+!capture/clean/_merged/cssom.css
+# 採取アセット（画像/フォント）は必要

@@ -160,9 +160,13 @@ describe('リンクパネルのCSSは採取した実ファイルをそのまま�
     expect(existsSync('src/app/fragments/link-dropdown.emotion.css')).toBe(false)
   })
 
-  it('index.html が採取済みのCSSOMを直接参照している', () => {
+  it('index.html が採取済みのCSSOM（統合版）を参照している', () => {
     const html = readFileSync('src/index.html', 'utf8')
-    expect(html).toContain('/clean/ab_tests__UID__articles/toolbar-link-open/cssom.css')
+    // 画面別cssomは重複除去して _merged/cssom.css に統合済み（本番アップロード安定化）。
+    expect(html).toContain('/clean/_merged/cssom.css')
+    // 統合cssomにリンクパネルのクラスが含まれることを確認（採取物由来）
+    const merged = readFileSync('capture/clean/_merged/cssom.css', 'utf8')
+    expect(merged).toContain('_bodyWrapper_x4j8w')
   })
 })
 

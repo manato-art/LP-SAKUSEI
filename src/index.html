@@ -16,21 +16,20 @@
       これは scrub を通らないため、匿名化を直しても古いままだった
       （アセットのファイル名がトークンとして潰された参照が2件残っていた）。
     -->
-    <link rel="stylesheet" href="/clean/folders/empty-selection/cssom.css" />
-    <link rel="stylesheet" href="/clean/ab_tests__UID__articles/editor-beyond-empty/cssom.css" />
+    <!-- 採取した全画面のEmotion CSSを重複除去して統合（14.8MB→0.93MB・本番アップロード安定化）。
+         元の画面別cssomは capture/clean 配下に保持。ルールは一切書き換えていない（union・忠実）。 -->
+    <link rel="stylesheet" href="/clean/_merged/cssom.css" />
     <!--
       Emotionは「その状態で描かれた要素の分だけ」ルールを作るので、
       空アカウントの採取（editor-beyond-empty）にはVersion行のスタイルが入っていない
       （更新ボタンが無地になっていた）。Version有りの採取も併せて読む。
       互いに4件/12件ずつしか持たないクラスがあるため、両方必要。
     -->
-    <link rel="stylesheet" href="/clean/ab_tests__UID__articles/editor-target/cssom.css" />
     <!--
       基本情報タブ（/folders/:uid/ab_tests/:uid/edit）のEmotion。
       dashboard/editor/folders のどれにも入っていない（css-miex0u 等が全滅する）ので、
       採取済みの実ファイルを**そのまま**参照する（複製を増やさない）。
     -->
-    <link rel="stylesheet" href="/clean/folders__UID__ab_tests__UID__edit/default/cssom.css" />
     <!--
       ポップアップタブ（/ab_tests/:uid/articles/exit_popups）のEmotion。
       上のどれにも入っていない5クラス（css-1ruxp1v / css-1ky2vci / css-3olzan /
@@ -38,7 +37,6 @@
       採取済みの実ファイルを**そのまま**参照する（複製を増やさない）。
       editor.css と重なるルールは全て同一・@keyframes の衝突も0件（照合済み）。
     -->
-    <link rel="stylesheet" href="/clean/ab_tests__UID__articles__exit_popups/default/cssom.css" />
     <!--
       リンクのドロップダウン（テキスト選択→鎖アイコン）と、文字色・背景色ピッカーのEmotion。
       editor.css に入っていないため、採取済みの実ファイルを**そのまま**参照する。
@@ -46,8 +44,6 @@
       再スクラブのたびに実物とズレるうえ、宣言の写し漏れで見た目が変わっていた
       （ホバー時の影が落ちていた）。写さずに実ファイルを読む。
     -->
-    <link rel="stylesheet" href="/clean/ab_tests__UID__articles/toolbar-link-open/cssom.css" />
-    <link rel="stylesheet" href="/clean/ab_tests__UID__articles/toolbar-color-open/cssom.css" />
     <!--
       エディタ内オーバーレイ4種のEmotion / CSS Modules。
       editor-target には入っていないクラス（MUI Popover の css-1ppmnxd、
@@ -55,9 +51,6 @@
       _funnelStepModal_rugej 等）が全滅するので、採取済みの実ファイルをそのまま参照する。
       Versionリンク popup は editor-target に既に入っているため追加不要。
     -->
-    <link rel="stylesheet" href="/clean/ab_tests__UID__articles/version-dots-menu/cssom.css" />
-    <link rel="stylesheet" href="/clean/ab_tests__UID__articles/header-image-modal/cssom.css" />
-    <link rel="stylesheet" href="/clean/ab_tests__UID__articles/step-add-modal/cssom.css" />
     <!--
       レポートタブ（/ab_tests/:uid/reports）とヒートマップ
       （/ab_tests/:uid/articles/htmls/heatmaps/comparisons）のCSS。
@@ -66,10 +59,8 @@
       _heatmapList_14ri6_1 など）ので、採取済みの実ファイルを**そのまま**参照する。
       既存の5ファイルと重なる 4,609 / 4,581 ルールは宣言まで完全一致・@keyframes の衝突も0件（照合済み）。
     -->
-    <link rel="stylesheet" href="/clean/ab_tests__UID__reports/default/cssom.css" />
     <link
       rel="stylesheet"
-      href="/clean/ab_tests__UID__articles__htmls__heatmaps__comparisons/default/cssom.css"
     />
     <!--
       Versionオプション設定（/ab_tests/:uid/articles/split_test_settings/:tab）のEmotion/CSS Modules。
@@ -77,19 +68,12 @@
       タブごとに固有の css-* が入る（デバイス別の表とキャリア別の表で要素が違う）。
       採取済みの実ファイルを**そのまま**タブ数ぶん参照する（複製を作らない・手書きしない）。
     -->
-    <link rel="stylesheet" href="/clean/ab_tests__UID__articles__split_test_settings/devices/cssom.css" />
-    <link rel="stylesheet" href="/clean/ab_tests__UID__articles__split_test_settings/params/cssom.css" />
-    <link rel="stylesheet" href="/clean/ab_tests__UID__articles__split_test_settings/hours/cssom.css" />
-    <link rel="stylesheet" href="/clean/ab_tests__UID__articles__split_test_settings/periods/cssom.css" />
-    <link rel="stylesheet" href="/clean/ab_tests__UID__articles__split_test_settings/oses/cssom.css" />
-    <link rel="stylesheet" href="/clean/ab_tests__UID__articles__split_test_settings/carriers/cssom.css" />
     <!--
       中間ページ（/folders/:folder_uid/ab_tests/:uid/redirect_pages）のEmotion/CSS Modules。
       `_redirectPagesWrapper_1tjuv_*` など、上のどのファイルにも入っていないので実ファイルを参照する。
     -->
     <link
       rel="stylesheet"
-      href="/clean/folders__UID__ab_tests__UID__redirect_pages/default/cssom.css"
     />
     <!--
       サイドバー3画面（拡張機能 / タスク / AI）のEmotion/MUI/CSS Modules。
@@ -98,20 +82,12 @@
       上のどのファイルにも入っていないので、採取済みの実ファイルを**そのまま**参照する
       （複製を作らない・手書きしない）。サイドバー分の重複ルールは既存ファイルと同一。
     -->
-    <link rel="stylesheet" href="/clean/addon__option-list/default/cssom.css" />
-    <link rel="stylesheet" href="/clean/tasks/default/cssom.css" />
-    <link rel="stylesheet" href="/clean/sb_ai/default/cssom.css" />
     <!--
       ツール5画面（一括タグ / マジック置換 / メディア / 審査 / フォーム）のEmotion/MUI/CSS Modules。
       共通サブナビ＋各ページ固有の css-* / _*（マジック置換のドロップゾーン、メディアの
       _teamSearchFormsWrapper、審査のフォルダツリー MuiBox 等）が上のどのファイルにも
       入っていないので、採取済みの実ファイルを**そのまま**参照する（複製を作らない・手書きしない）。
     -->
-    <link rel="stylesheet" href="/clean/teams__tags/default/cssom.css" />
-    <link rel="stylesheet" href="/clean/articles__bulk_replaces/default/cssom.css" />
-    <link rel="stylesheet" href="/clean/teams__product_search_forms/default/cssom.css" />
-    <link rel="stylesheet" href="/clean/inspections__folders/default/cssom.css" />
-    <link rel="stylesheet" href="/clean/folders__forms/default/cssom.css" />
     <style>
       body { margin: 0; background: #ECECEC; }
     </style>
