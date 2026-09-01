@@ -28,8 +28,13 @@ export function registerMediaBlots(): void {
       const node = super.create(url)
       node.setAttribute('src', url)
       node.setAttribute('controls', 'controls')
-      node.setAttribute('playsinline', 'true')
+      // 指示⑬: 常に再生（自動再生＋ループ）。音ありの自動再生はブロックされるので muted 必須。
+      node.setAttribute('autoplay', 'autoplay')
+      node.setAttribute('muted', 'muted')
+      node.setAttribute('loop', 'loop')
+      node.setAttribute('playsinline', 'playsinline')
       node.setAttribute('preload', 'metadata')
+      if (node instanceof HTMLVideoElement) node.muted = true // 属性だけだと効かない環境向け
       node.style.maxWidth = '100%'
       return node
     }

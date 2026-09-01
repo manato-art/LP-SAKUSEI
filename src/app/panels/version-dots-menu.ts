@@ -21,6 +21,7 @@ import { api } from '../api.ts'
 import { toast } from '../ui.ts'
 import { bindBackdropClose, findByExactText, openPortal } from './portal.ts'
 import { LP_BASE_CSS } from '../lp-base-css.ts'
+import { withAutoplayVideos } from '../lp-video.ts'
 import { openDuplicateModal } from './version-duplicate-modal.ts'
 import { normalizeDotsMenuHtml } from './dots-menu-normalize.ts'
 
@@ -69,7 +70,7 @@ export function buildVersionHtmlDocument(version: Pick<Version, 'name' | 'html' 
     `<title>${escapeHtml(version.name)}</title>`,
     `<style>${LP_BASE_CSS}${version.css}</style>`,
     '</head>',
-    `<body>${version.html}</body>`,
+    `<body>${withAutoplayVideos(version.html)}</body>`,
     '</html>',
     '',
   ].join('\n')

@@ -15,6 +15,7 @@ import { toast } from '../ui.ts'
 import { mountCapturedPage, setTopBarNames, wireBackLink, wireCapturedLinks } from './report-dom.ts'
 import { LP_BASE_CSS } from '../lp-base-css.ts'
 import { masterStyleIframeCss } from '../master-style.ts'
+import { withAutoplayVideos } from '../lp-video.ts'
 
 export async function renderPreview(
   container: HTMLElement,
@@ -102,7 +103,7 @@ function fillPreviewIframe(
   doc.write(
     `<!doctype html><html lang="ja"><head><meta charset="utf-8">` +
       `<style>body{margin:0;font-family:"Hiragino Sans",sans-serif}${LP_BASE_CSS}${version.css}${styleCss}</style>` +
-      `</head><body>${version.html}</body></html>`,
+      `</head><body>${withAutoplayVideos(version.html)}</body></html>`,
   )
   doc.close()
 }

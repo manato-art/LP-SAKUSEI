@@ -12,6 +12,7 @@ import { api, type Version } from '../api.ts'
 import { isStale } from '../main.ts'
 import { LP_BASE_CSS } from '../lp-base-css.ts'
 import { masterStyleIframeCss } from '../master-style.ts'
+import { withAutoplayVideos } from '../lp-video.ts'
 
 /** 既定の配信Version幅（実物のデフォルト） */
 const DELIVERY_WIDTH = 620
@@ -63,7 +64,7 @@ export async function renderDelivery(
     `<!doctype html><html lang="ja"><head><meta charset="utf-8">` +
       `<meta name="viewport" content="width=device-width, initial-scale=1">` +
       `<style>body{margin:0;font-family:"Hiragino Sans",sans-serif}${LP_BASE_CSS}${version.css}${styleCss}</style>` +
-      `</head><body>${version.html}</body></html>`,
+      `</head><body>${withAutoplayVideos(version.html)}</body></html>`,
   )
   doc.close()
 }
