@@ -21,6 +21,10 @@ import { mountEditorToolbar } from '../panels/editor-toolbar.ts'
 import { createAutosave } from './autosave.ts'
 import { createPanelGroup } from '../panels/panel-group.ts'
 import { mountVersionListDropdown } from '../panels/version-actions.ts'
+import { mountVersionDotsMenu } from '../panels/version-dots-menu.ts'
+import { mountHeaderImageModal } from '../panels/header-image-modal.ts'
+import { mountVersionLinkPopup } from '../panels/version-link-popup.ts'
+import { mountStepAddModal } from '../panels/step-add-modal.ts'
 import { mountWidgetManager } from '../panels/widget-manager.ts'
 import { wireAbTestTabs } from './tab-nav.ts'
 import { wireBeyondNavAnchors } from './beyond-nav.ts'
@@ -143,6 +147,17 @@ export async function renderEditor(
   wireVersionPanel(ctx)
   // 「Version ▼」一覧ドロップダウンの開閉（task 2・採取済みマークアップに挙動だけ付ける）
   mountVersionListDropdown(root)
+  // エディタ内オーバーレイ4種（すべて採取済みマークアップに挙動だけ付ける）
+  mountVersionDotsMenu(root, {
+    getCurrentVersion: () => ctx.versions.find((v) => v.uid === ctx.currentUid) ?? null,
+    onDuplicated: (version) => {
+      ctx.versions = [...ctx.versions, version]
+      loadVersion(ctx, version.uid)
+    },
+  })
+  mountHeaderImageModal(root)
+  mountVersionLinkPopup(root, { abTestUid, getCurrentUid: () => ctx.currentUid })
+  mountStepAddModal(root)
   wireSideToolbar(ctx, ab_test.title, folderName)
   wireTopBar(root, ab_test.title, folderName)
   // 4タブ（基本情報 / Version / ポップアップ / レポート）を相互に行き来できるようにする

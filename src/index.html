@@ -49,6 +49,16 @@
     <link rel="stylesheet" href="/clean/ab_tests__UID__articles/toolbar-link-open/cssom.css" />
     <link rel="stylesheet" href="/clean/ab_tests__UID__articles/toolbar-color-open/cssom.css" />
     <!--
+      エディタ内オーバーレイ4種のEmotion / CSS Modules。
+      editor-target には入っていないクラス（MUI Popover の css-1ppmnxd、
+      ヘッダー画像モーダルの _headerPhotoWrapper_1pk5s、ステップ追加の
+      _funnelStepModal_rugej 等）が全滅するので、採取済みの実ファイルをそのまま参照する。
+      Versionリンク popup は editor-target に既に入っているため追加不要。
+    -->
+    <link rel="stylesheet" href="/clean/ab_tests__UID__articles/version-dots-menu/cssom.css" />
+    <link rel="stylesheet" href="/clean/ab_tests__UID__articles/header-image-modal/cssom.css" />
+    <link rel="stylesheet" href="/clean/ab_tests__UID__articles/step-add-modal/cssom.css" />
+    <!--
       レポートタブ（/ab_tests/:uid/reports）とヒートマップ
       （/ab_tests/:uid/articles/htmls/heatmaps/comparisons）のCSS。
       この2画面だけ**ダークテーマ**で、配色は CSS Modules の `_darkTheme_*` が持っている。
