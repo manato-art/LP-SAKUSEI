@@ -125,8 +125,9 @@ function pickImage(modalRoot: HTMLElement, apply: (dataUrl: string) => void): vo
   input.click()
 }
 
-/** 本文上部のヘッダー画像枠に、選んだ画像を実際に表示する */
+/** 本文上部のヘッダー画像枠に、選んだ画像を実際に表示する（右上に×＝削除ボタン付き） */
 function setHeaderImage(headerBox: HTMLElement, dataUrl: string): void {
+  headerBox.style.position = 'relative'
   let img = headerBox.querySelector<HTMLImageElement>('img[data-clone-header="true"]')
   if (img === null) {
     img = document.createElement('img')
@@ -135,9 +136,47 @@ function setHeaderImage(headerBox: HTMLElement, dataUrl: string): void {
     headerBox.prepend(img)
   }
   img.src = dataUrl
-  // 「ヘッダー画像を追加する」の案内文は隠す（画像が入ったので不要）
-  const prompt = headerBox.querySelector<HTMLElement>('[class*="selectArticleHeaderPhoto"] > span')
+  // 「ヘッダー画像を追加する」の案内文は隠す（画像が入ったので不要）。
+  // クラスは匿名化され得るので**文言で**引く（`[class*=…]` は当たらない）。
+  const prompt = findPrompt(headerBox)
   if (prompt !== null) prompt.style.display = 'none'
+
+  // 削除ボタン（×）。採取物に削除UIが無いため、実物を真似ず汎用の×で「消せる」を担保する。
+  if (headerBox.querySelector('[data-clone-header-remove="true"]') === null) {
+    const remove = document.createElement('button')
+    remove.dataset['cloneHeaderRemove'] = 'true'
+    remove.type = 'button'
+    remove.textContent = '×'
+    remove.title = 'ヘッダー画像を削除'
+    remove.style.cssText =
+      'position:absolute;top:8px;right:8px;z-index:2;width:28px;height:28px;border:none;border-radius:50%;' +
+      'background:rgba(0,0,0,.6);color:#fff;font-size:18px;line-height:1;cursor:pointer;display:flex;' +
+      'align-items:center;justify-content:center'
+    remove.addEventListener('click', (event) => {
+      // 枠クリック＝モーダルを開く挙動へ伝播させない（×は削除だけ）
+      event.stopPropagation()
+      removeHeaderImage(headerBox)
+    })
+    headerBox.append(remove)
+  }
+}
+
+/** ヘッダー画像を外して、元の「ヘッダー画像を追加する」状態へ戻す */
+function removeHeaderImage(headerBox: HTMLElement): void {
+  headerBox.querySelector('img[data-clone-header="true"]')?.remove()
+  headerBox.querySelector('[data-clone-header-remove="true"]')?.remove()
+  const prompt = findPrompt(headerBox)
+  if (prompt !== null) prompt.style.display = ''
+  toast('ヘッダー画像を削除しました')
+}
+
+/** 「ヘッダー画像を追加する」の案内 span を文言で探す（クラスは匿名化され得るため） */
+function findPrompt(headerBox: HTMLElement): HTMLElement | null {
+  return (
+    [...headerBox.querySelectorAll<HTMLElement>('span')].find(
+      (s) => s.textContent?.trim() === 'ヘッダー画像を追加する',
+    ) ?? null
+  )
 }
 
 /**
