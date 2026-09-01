@@ -166,7 +166,8 @@ export function openColorPicker(
   }
   popover.querySelector('.MuiBackdrop-root')?.addEventListener('click', close)
 
-  const picker = wireChromePicker(popover)
+  // onChange を渡して、ドラッグ・色相・hex入力のたびに選択文字へライブ反映する
+  const picker = wireChromePicker(popover, apply)
   for (const swatch of popover.querySelectorAll<HTMLElement>('.github-picker [title]')) {
     swatch.addEventListener('click', () => {
       const hex = swatch.getAttribute('title') ?? ''
@@ -198,8 +199,12 @@ interface ChromePicker {
   readonly set: (hex: string) => void
 }
 
-/** 採取した ChromePicker のマークアップ（彩度面 / 色相バー / hex入力）を動かす */
-function wireChromePicker(popover: HTMLElement): ChromePicker {
+/**
+ * 採取した ChromePicker のマークアップ（彩度面 / 色相バー / hex入力）を動かす。
+ * `onChange` を渡すと、ドラッグ・色相・hex入力のたびに現在色を**ライブで**通知する
+ * （「適用する」を押さなくても常に反映される）。初期描画と set() では通知しない。
+ */
+function wireChromePicker(popover: HTMLElement, onChange?: (hex: string) => void): ChromePicker {
   const saturation = popover.querySelector<HTMLElement>('.saturation-white')
   const saturationBg = saturation?.parentElement ?? null
   const saturationMarker = saturation?.querySelector<HTMLElement>(':scope > div:nth-child(2)') ?? null
@@ -227,6 +232,7 @@ function wireChromePicker(popover: HTMLElement): ChromePicker {
       if (box.width === 0 || box.height === 0) return
       onMove(clamp((event.clientX - box.left) / box.width, 0, 1), clamp((event.clientY - box.top) / box.height, 0, 1))
       render()
+      onChange?.(hsvToHex(hsv.h, hsv.s, hsv.v)) // ドラッグ中も常にライブ反映
     }
     surface.addEventListener('mousedown', (event) => {
       event.preventDefault()
@@ -247,7 +253,8 @@ function wireChromePicker(popover: HTMLElement): ChromePicker {
   dragOn(hue, (x) => {
     hsv = { h: x * 360, s: hsv.s, v: hsv.v }
   })
-  hexInput?.addEventListener('change', () => {
+  const onHexEdit = (): void => {
+    if (hexInput === null) return
     const parsed = hexToHsv(hexInput.value)
     if (parsed === null) {
       render()
@@ -255,7 +262,10 @@ function wireChromePicker(popover: HTMLElement): ChromePicker {
     }
     hsv = parsed
     render()
-  })
+    onChange?.(hsvToHex(hsv.h, hsv.s, hsv.v)) // 入力のたびにライブ反映
+  }
+  hexInput?.addEventListener('change', onHexEdit)
+  hexInput?.addEventListener('input', onHexEdit)
 
   render()
   return {

@@ -54,14 +54,6 @@ export type { Hsv } from './toolbar/color-picker.ts'
 export { TOOLBAR_SWATCHES, hexToHsv, hexToRgbCss, hsvToHex, normalizeHex, swatchMarkup } from './toolbar/color-picker.ts'
 
 /** アイコンの明暗差し替え（押下状態は白背景になるので黒アイコンへ）。実在するファイルだけ */
-const ICON_SWAP: Readonly<Record<string, { readonly on: string; readonly off: string }>> = {
-  bold: { on: '/assets/bold-black-149b128e.svg', off: '/assets/bold-white-68435554.svg' },
-  strike: {
-    on: '/assets/strikethrough-black-6f71bb5f.svg',
-    off: '/assets/strikethrough-white-1675881b.svg',
-  },
-}
-
 /** 整列（ドロップダウンのアイコン順。Quill の align 値。左寄せは値なし） */
 const ALIGN_VALUES: readonly (string | false)[] = [false, 'center', 'right', 'justify']
 
@@ -141,9 +133,11 @@ export function mountEditorToolbar(root: HTMLElement, quill: Quill, options: Edi
     applyInline(name, currentFormats()[name] === true ? false : true)
   }
   wrapper.querySelector(HOOK.bold)?.addEventListener('click', () => toggleInline('bold'))
-  // アイコンは入れ違いのまま。フォーマットは要素の素性（data-test名）に従う（§3-5）
-  wrapper.querySelector(HOOK.italic)?.addEventListener('click', () => toggleInline('italic'))
-  wrapper.querySelector(HOOK.underline)?.addEventListener('click', () => toggleInline('underline'))
+  // 実物は data-test とアイコンが入れ違い（BtnItalic=下線アイコン / BtnUnderline=斜体アイコン）。
+  // ユーザーが押すのは**見えているアイコン**なので、フォーマットはアイコンに合わせる
+  // （下線アイコンのボタン→下線 / 斜体アイコンのボタン→斜体）。
+  wrapper.querySelector(HOOK.italic)?.addEventListener('click', () => toggleInline('underline'))
+  wrapper.querySelector(HOOK.underline)?.addEventListener('click', () => toggleInline('italic'))
   wrapper.querySelector(HOOK.strike)?.addEventListener('click', () => toggleInline('strike'))
   wrapper.querySelector(HOOK.scriptSuper)?.addEventListener('click', () => {
     applyInline('script', currentFormats()['script'] === 'super' ? false : 'super')
@@ -312,17 +306,19 @@ function wireLink(
 
 /** 押下状態（白丸背景＋黒アイコン）を現在の書式に合わせる */
 function syncActiveState(wrapper: HTMLElement, formats: Record<string, unknown>): void {
-  const mark = (selector: string, active: boolean, iconKey?: string): void => {
-    const node = wrapper.querySelector(selector)
+  const mark = (selector: string, active: boolean): void => {
+    const node = wrapper.querySelector<HTMLElement>(selector)
     const item = node?.closest(HOOK.item)
     item?.classList.toggle(CLS.itemActive, active)
-    const swap = iconKey === undefined ? undefined : ICON_SWAP[iconKey]
-    if (swap !== undefined) node?.setAttribute('src', active ? swap.on : swap.off)
+    // アクティブ時は「白丸」の背景に乗る。白アイコン（下線/斜体は黒アセットが無い）が
+    // 白丸で見えなくなるので、filterで黒く見せて統一する（新アセットを足さない）。
+    if (node !== null && node !== undefined) node.style.filter = active ? 'brightness(0)' : ''
   }
-  mark(HOOK.bold, formats['bold'] === true, 'bold')
-  mark(HOOK.italic, formats['italic'] === true)
-  mark(HOOK.underline, formats['underline'] === true)
-  mark(HOOK.strike, formats['strike'] === true, 'strike')
+  mark(HOOK.bold, formats['bold'] === true)
+  // アイコン入れ違いに合わせて素性も入れ替え（BtnItalic=下線アイコン / BtnUnderline=斜体アイコン）
+  mark(HOOK.italic, formats['underline'] === true)
+  mark(HOOK.underline, formats['italic'] === true)
+  mark(HOOK.strike, formats['strike'] === true)
   mark(HOOK.scriptSuper, formats['script'] === 'super')
   mark(HOOK.scriptSub, formats['script'] === 'sub')
 

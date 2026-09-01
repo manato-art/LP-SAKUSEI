@@ -6,11 +6,13 @@
 import type { SplitTestRule, SplitTestType } from './types.ts'
 
 function rule(key: string, label: string): SplitTestRule {
-  return { key, label, ratio: 0, enabled: false }
+  // 既定は全対象オン（＝このVersionを全対象へ配信）。実物の初期状態（トグル全点灯）に合わせる。
+  return { key, label, ratio: 0, enabled: true }
 }
 
 export const SPLIT_TEST_DEFAULTS: Readonly<Record<SplitTestType, readonly SplitTestRule[]>> = {
-  devices: [rule('pc', 'PC'), rule('sp', 'スマートフォン'), rule('tablet', 'タブレット')],
+  // 画面の並び（スマートフォン / タブレット / デスクトップ）に合わせる（トグルは位置で対応づける）
+  devices: [rule('sp', 'スマートフォン'), rule('tablet', 'タブレット'), rule('pc', 'デスクトップ')],
   oses: [
     rule('ios', 'iOS'),
     rule('android', 'Android'),

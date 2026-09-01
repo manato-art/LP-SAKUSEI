@@ -31,6 +31,14 @@ import { applyBeyondTopBar, wireBeyondBack } from './beyond-topbar.ts'
 import { wireBeyondNavAnchors, type SplitTestTab } from './beyond-nav.ts'
 import { stripShellFromFragment } from './report-substrate.ts'
 import { wireAbTestTabs } from './tab-nav.ts'
+import { toast } from '../ui.ts'
+
+interface SplitTestRule {
+  key: string
+  label: string
+  ratio: number
+  enabled: boolean
+}
 
 /** タブ → 採取した土台。ルートで受け取ったタブに対応する断片を選ぶ。 */
 const SUBSTRATE_BY_TAB: Readonly<Record<SplitTestTab, string>> = {
@@ -78,4 +86,62 @@ export async function renderSplitTestSettings(
   // 左レール4タブは共有の配線（基本情報タブ・エディタと同じ関数）
   wireAbTestTabs(root, abTestUid, folderUid)
   wireBeyondBack(root, folderUid)
+  // 出し分けトグル（オン/オフ）を実際に効かせてモックへ保存する
+  void wireSplitTestToggles(root, abTestUid, tab)
+}
+
+const API_BASE = '/api/v1'
+
+/**
+ * 各行の MUI スイッチ（`.MuiSwitch-root`）を、モックの split_test_setting の rules に
+ * **位置で対応づけて**配線する。オフにした対象では、このVersionを配信しない設定になる
+ * （実物の「オフにしたデバイスでは他Versionを表示」に相当）。トグルのたびにモックへ PUT する。
+ */
+async function wireSplitTestToggles(
+  root: HTMLElement,
+  abTestUid: string,
+  tab: SplitTestTab,
+): Promise<void> {
+  const switches = [...root.querySelectorAll<HTMLElement>('.MuiSwitch-root')]
+  if (switches.length === 0) return
+
+  let rules: SplitTestRule[]
+  try {
+    const res = await fetch(`${API_BASE}/ab_tests/${abTestUid}/split_test_settings/${tab}`)
+    const body = (await res.json()) as { split_test_setting?: { rules?: SplitTestRule[] } }
+    rules = [...(body.split_test_setting?.rules ?? [])]
+  } catch {
+    return
+  }
+
+  const setVisual = (sw: HTMLElement, on: boolean): void => {
+    // MUI は switchBase の `Mui-checked` で見た目（つまみ位置・トラック色）が決まる
+    sw.querySelector('.MuiSwitch-switchBase')?.classList.toggle('Mui-checked', on)
+    const input = sw.querySelector<HTMLInputElement>('input')
+    if (input !== null) input.checked = on
+  }
+
+  switches.forEach((sw, index) => {
+    const rule = rules[index]
+    if (rule === undefined) return
+    setVisual(sw, rule.enabled)
+    sw.addEventListener('click', (event) => {
+      // ネイティブの checkbox 二重トグルを止め、rules を唯一の真実にする
+      event.preventDefault()
+      const next = !(rules[index]?.enabled ?? true)
+      rules[index] = { ...rule, enabled: next }
+      setVisual(sw, next)
+      void save(abTestUid, tab, rules).then(() => {
+        toast(next ? `${rule.label} をオンにしました` : `${rule.label} をオフにしました（他Versionを配信）`)
+      })
+    })
+  })
+}
+
+async function save(abTestUid: string, tab: SplitTestTab, rules: SplitTestRule[]): Promise<void> {
+  await fetch(`${API_BASE}/ab_tests/${abTestUid}/split_test_settings/${tab}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: tab, rules }),
+  }).catch(() => undefined)
 }
