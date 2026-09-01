@@ -152,8 +152,30 @@ async function fetchInsightRows(
   return rows
 }
 
-/** 会話系の action_type を CV とみなす（v1・後で調整可能） */
-const CV_ACTION = /purchase|lead|complete_registration|submit_application|onsite_conversion/i
+/**
+ * CV に使う action_type の**優先順位**。1行につき最初に見つかった1つだけを採用する。
+ * ⚠ purchase 系は omni_purchase / web_in_store_purchase 等の**同義が多数**返るので、合算すると
+ * 同じCVを多重計上して激増する。また onsite_conversion.post_save/like 等の**エンゲージメント**は
+ * CVではない。→ 正規のコンバージョン1種だけを優先順で拾う。
+ */
+const CV_ACTION_PRIORITY: readonly string[] = [
+  'offsite_conversion.fb_pixel_purchase',
+  'purchase',
+  'omni_purchase',
+  'lead',
+  'complete_registration',
+  'submit_application',
+]
+
+/** 1行の actions から、優先順で最初に見つかったコンバージョン数を返す */
+function cvOfRow(actions: { action_type: string; value: string }[] | undefined): number {
+  if (actions === undefined) return 0
+  for (const type of CV_ACTION_PRIORITY) {
+    const hit = actions.find((a) => a.action_type === type)
+    if (hit !== undefined) return num(hit.value)
+  }
+  return 0
+}
 
 /** 複数行（=日別など）を1つの集計KPIへ畳む */
 export function aggregateRows(rows: readonly InsightRow[]): MetaKpi {
@@ -169,9 +191,7 @@ export function aggregateRows(rows: readonly InsightRow[]): MetaKpi {
     impressions += num(row.impressions)
     clicks += num(row.clicks)
     linkClicks += num(row.inline_link_clicks)
-    for (const action of row.actions ?? []) {
-      if (CV_ACTION.test(action.action_type)) cv += num(action.value)
-    }
+    cv += cvOfRow(row.actions)
     const rowRoas = (row.purchase_roas ?? []).reduce((sum, r) => sum + num(r.value), 0)
     roasWeighted += rowRoas * rowSpend
   }

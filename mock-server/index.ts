@@ -2,6 +2,8 @@
  * モックサーバー起動（企画書 §10-1・§10-7・§10-9）。
  * `npm run mock` で追加設定なしに起動する（§13-H）。
  */
+// ★最初に読む: store など import 時に env を読むモジュールより前に .env を反映する。
+import './load-env.ts'
 import { createServer } from 'node:http'
 import { createApp } from './app.ts'
 import { MOCK_PORT, PREFIX } from './config.ts'

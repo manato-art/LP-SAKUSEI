@@ -14,9 +14,12 @@ describe('aggregateRows: Meta insights を集計KPIへ畳む', () => {
         clicks: '500',
         inline_link_clicks: '400',
         actions: [
+          // 同義の purchase 系が多数来ても多重計上しない（優先1種のみ）。エンゲージメントもCVにしない。
           { action_type: 'offsite_conversion.fb_pixel_purchase', value: '10' },
-          { action_type: 'lead', value: '5' },
-          { action_type: 'landing_page_view', value: '300' }, // CVには数えない
+          { action_type: 'omni_purchase', value: '10' },
+          { action_type: 'purchase', value: '10' },
+          { action_type: 'onsite_conversion.post_save', value: '99' }, // CVではない
+          { action_type: 'landing_page_view', value: '300' }, // CVではない
         ],
         purchase_roas: [{ action_type: 'omni_purchase', value: '3.5' }],
       },
@@ -25,9 +28,24 @@ describe('aggregateRows: Meta insights を集計KPIへ畳む', () => {
     expect(kpi.pv).toBe(50000)
     expect(kpi.click).toBe(400) // inline_link_clicks を優先
     expect(kpi.media_click).toBe(500)
-    expect(kpi.cv).toBe(15) // purchase(10) + lead(5)
+    expect(kpi.cv).toBe(10) // 優先順で offsite_conversion.fb_pixel_purchase の1種のみ（多重計上しない）
     expect(kpi.ctr).toBe(1) // 500/50000*100
     expect(kpi.roas).toBe(3.5)
+  })
+
+  it('CVはエンゲージメント(post_save/like)を数えず、purchaseを1種だけ拾う', () => {
+    const kpi = aggregateRows([
+      {
+        spend: '100',
+        actions: [
+          { action_type: 'onsite_conversion.post_save', value: '222' },
+          { action_type: 'onsite_conversion.post_net_like', value: '1352' },
+          { action_type: 'purchase', value: '7' },
+          { action_type: 'omni_purchase', value: '7' },
+        ],
+      },
+    ])
+    expect(kpi.cv).toBe(7)
   })
 
   it('複数行（日別）を合算し、ROASは費用で加重平均する', () => {
