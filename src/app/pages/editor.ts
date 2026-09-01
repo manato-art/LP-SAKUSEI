@@ -128,7 +128,14 @@ export async function renderEditor(
    * 実CSSが `height: calc(100% - 120px)` を前提にしているため、
    * 差し込み先に高さを与えないとレイアウトが潰れる。
    */
-  container.style.cssText = 'height:100vh;overflow:hidden'
+  // container はシェルのコンテンツ枠（`flex:1; min-width:0` が入っている）。
+  // ここで cssText を丸ごと上書きすると **flex:1 が消えて左寄せ＋右に灰色余白**になり、
+  // overflow:hidden だと縦に長いエディタをスクロールできない。
+  // → flex は残したまま、高さと縦スクロールだけ足す。
+  container.style.flex = '1'
+  container.style.minWidth = '0'
+  container.style.height = '100vh'
+  container.style.overflow = 'auto'
   const root = document.createElement('div')
   root.style.cssText = 'height:100%'
   root.innerHTML = substrate
