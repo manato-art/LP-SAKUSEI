@@ -6,6 +6,7 @@ import { Router } from 'express'
 import { currentTeamId } from '../store/current-team.ts'
 import {
   addVersion,
+  archiveVersion,
   deleteVersion,
   duplicateVersion,
   publishVersion,
@@ -69,6 +70,29 @@ versionsRouter.post('/versions/:uid/duplicate', (req, res) => {
     return
   }
   res.status(201).json({ version: serializeVersion(created) })
+})
+
+/** Versionをアーカイブする（一覧の「アーカイブ」タブへ移す） */
+versionsRouter.post('/versions/:uid/archive', (req, res) => {
+  let archived: Version | null = null
+  let reason: string | undefined
+  setState((state) => {
+    const out = archiveVersion(state, req.params.uid)
+    archived = out.version
+    reason = out.reason
+    return out.state
+  })
+  if (archived === null) {
+    if (reason === 'need-active') {
+      res
+        .status(422)
+        .json(errorEnvelope('unprocessable', '配信割合が1以上のVersionが1つ以上必要です。'))
+      return
+    }
+    res.status(404).json(errorEnvelope('not_found', 'Versionが見つかりません。'))
+    return
+  }
+  res.json({ version: serializeVersion(archived) })
 })
 
 /** LP保存（コード編集の保存・§9-1[4]） */

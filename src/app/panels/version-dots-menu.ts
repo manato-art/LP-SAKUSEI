@@ -85,6 +85,8 @@ export interface DotsMenuDeps {
   getCurrentVersion: () => Version | null
   /** 複製に成功したときの後処理（複製先へ切り替える等） */
   onDuplicated: (version: Version) => void
+  /** アーカイブに成功したときの後処理（一覧から外して別Versionへ切り替える等） */
+  onArchived: (version: Version) => void
 }
 
 /**
@@ -130,9 +132,7 @@ function openMenu(deps: DotsMenuDeps, onClosed: () => void): void {
     [DOTS_MENU_LABELS.duplicateToOther]: () =>
       toast('別のbeyondページに複製は未実装です', 'error'),
     [DOTS_MENU_LABELS.archive]: () => {
-      if (globalThis.confirm('このVersionをアーカイブしますか？')) {
-        toast('アーカイブは未実装です', 'error')
-      }
+      if (globalThis.confirm('このVersionをアーカイブしますか？')) void archive(deps)
     },
     [DOTS_MENU_LABELS.archiveSelected]: () =>
       toast('選択してアーカイブするは未実装です', 'error'),
@@ -151,6 +151,21 @@ function openMenu(deps: DotsMenuDeps, onClosed: () => void): void {
       portal.close()
       handler()
     })
+  }
+}
+
+async function archive(deps: DotsMenuDeps): Promise<void> {
+  const current = deps.getCurrentVersion()
+  if (current === null) {
+    toast('アーカイブ対象のVersionが見つかりません', 'error')
+    return
+  }
+  try {
+    const { version } = await api.archiveVersion(current.uid)
+    toast(`${version.name} をアーカイブしました`)
+    deps.onArchived(version)
+  } catch (error) {
+    toast((error as Error).message, 'error')
   }
 }
 

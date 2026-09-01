@@ -47,6 +47,7 @@ export interface Version {
   name: string
   distribution_ratio: number
   status: string
+  archived?: boolean
   html: string
   css: string
 }
@@ -137,6 +138,8 @@ export const api = {
   duplicateVersion: (uid: string) =>
     request<{ version: Version }>('POST', `/versions/${uid}/duplicate`),
   deleteVersion: (uid: string) => request<void>('DELETE', `/versions/${uid}`),
+  archiveVersion: (uid: string) =>
+    request<{ version: Version }>('POST', `/versions/${uid}/archive`),
 
   /** レポートタブ（§10-3 `GET /ab_tests/:uid/reports?start_date&end_date`） */
   report: (abTestUid: string, query: string) =>

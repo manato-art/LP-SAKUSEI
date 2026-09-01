@@ -165,6 +165,14 @@ export async function renderEditor(
       ctx.versions = [...ctx.versions, version]
       loadVersion(ctx, version.uid)
     },
+    onArchived: (version) => {
+      // アーカイブしたVersionを反映（archived を立てる）し、残る非アーカイブへ切り替える
+      ctx.versions = ctx.versions.map((v) =>
+        v.uid === version.uid ? { ...v, archived: true } : v,
+      )
+      const next = ctx.versions.find((v) => v.archived !== true)
+      if (next !== undefined) loadVersion(ctx, next.uid)
+    },
   })
   mountHeaderImageModal(root)
   mountVersionLinkPopup(root, { abTestUid, getCurrentUid: () => ctx.currentUid })

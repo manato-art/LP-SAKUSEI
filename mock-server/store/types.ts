@@ -134,6 +134,8 @@ export interface Version {
   distribution_ratio: number
   status: VersionStatus
   is_control: boolean
+  /** アーカイブ済み（Version一覧の「アーカイブ」タブへ移る）。既定 false。 */
+  archived: boolean
   html: string
   css: string
   thumbnail_url: string | null

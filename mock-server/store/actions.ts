@@ -152,6 +152,7 @@ export function createAbTest(
     distribution_ratio: 1,
     status: '準備中',
     is_control: true,
+    archived: false,
     html: DEFAULT_LP_HTML,
     css: DEFAULT_LP_CSS,
     thumbnail_url: null,
@@ -271,6 +272,7 @@ export function addVersion(
     distribution_ratio: 0,
     status: '準備中',
     is_control: false,
+    archived: false,
     html: DEFAULT_LP_HTML,
     css: DEFAULT_LP_CSS,
     thumbnail_url: null,
@@ -364,6 +366,31 @@ export function deleteVersion(state: State, uid: string): { state: State; delete
       metrics: state.metrics.filter((m) => m.entity_uid !== uid),
     },
     deleted: true,
+  }
+}
+
+/**
+ * Versionをアーカイブする（Version一覧の「アーカイブ」タブへ移す）。
+ * FAQ:「アーカイブする際には、配信割合が1以上のVersionがbeyondページ内に存在している必要がある」
+ * ＝アーカイブ後も、非アーカイブで配信割合>=1のVersionが最低1つ残ることを条件にする。
+ */
+export function archiveVersion(
+  state: State,
+  uid: string,
+): { state: State; version: Version | null; reason?: string } {
+  const target = state.versions.find((v) => v.uid === uid)
+  if (target === undefined) return { state, version: null, reason: 'notfound' }
+  const siblings = state.versions.filter(
+    (v) => v.article_id === target.article_id && v.uid !== uid && !v.archived,
+  )
+  const hasActiveLeft = siblings.some((v) => v.distribution_ratio >= 1)
+  if (!hasActiveLeft) {
+    return { state, version: null, reason: 'need-active' }
+  }
+  const updated: Version = { ...target, archived: true, distribution_ratio: 0, updated_at: nowTs() }
+  return {
+    state: { ...state, versions: state.versions.map((v) => (v.uid === uid ? updated : v)) },
+    version: updated,
   }
 }
 
