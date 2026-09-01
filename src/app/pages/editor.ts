@@ -25,7 +25,7 @@ import { mountVersionDotsMenu } from '../panels/version-dots-menu.ts'
 import { mountHeaderImageModal } from '../panels/header-image-modal.ts'
 import { mountVersionLinkPopup } from '../panels/version-link-popup.ts'
 import { mountStepAddModal } from '../panels/step-add-modal.ts'
-import { mountWidgetManager } from '../panels/widget-manager.ts'
+import { mountWidgetLibrary } from '../panels/widget-library.ts'
 import { EXTERNAL_IMAGE_TOOL_INDEX, mountExternalImage } from '../panels/external-image.ts'
 import { wireAbTestTabs } from './tab-nav.ts'
 import { wireBeyondNavAnchors } from './beyond-nav.ts'
@@ -320,7 +320,8 @@ function wireSideToolbar(ctx: EditorContext): void {
   mountEditorToolbar(ctx.root, ctx.quill, {
     trackingSettingsHref: `#/folders/${ctx.folderUid}/ab_tests/${ctx.abTestUid}/edit`,
   })
-  mountWidgetManager(ctx.root, ctx.quill)
+  // パズルピース（Widget管理ボタン）は実物では Widgetライブラリを開く
+  mountWidgetLibrary(ctx.root, ctx.quill)
 
 
   const icons = [...ctx.root.querySelectorAll<HTMLElement>('[class*="sideToolbarIcon"]')]
