@@ -27,6 +27,8 @@ import { mountVersionLinkPopup } from '../panels/version-link-popup.ts'
 import { mountStepAddModal } from '../panels/step-add-modal.ts'
 import { mountWidgetLibrary } from '../panels/widget-library.ts'
 import { EXTERNAL_IMAGE_TOOL_INDEX, mountExternalImage } from '../panels/external-image.ts'
+import { registerMediaBlots } from '../panels/media-blots.ts'
+import { wireMediaDrop } from '../panels/media-insert.ts'
 import { wireAbTestTabs } from './tab-nav.ts'
 import { wireBeyondNavAnchors } from './beyond-nav.ts'
 import { masterStyleEditorDecls } from '../master-style.ts'
@@ -142,8 +144,12 @@ export async function renderEditor(
   root.innerHTML = substrate
   container.append(root)
 
+  // 動画（<video>）ブロットを Quill 生成前に登録しておく（保存HTMLからの復元でも消えないように）。
+  registerMediaBlots()
   // ── プレビュー枠の iframe を、動くQuillに差し替える ──
   const quill = mountQuill(root)
+  // キャンバスへのドラッグ＆ドロップで、カーソル位置へ画像/GIF/動画を挿入できるようにする。
+  wireMediaDrop(quill)
 
   const ctx: EditorContext = {
     root,

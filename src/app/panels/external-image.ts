@@ -10,7 +10,7 @@
  * エディタ（Quill）のカーソル位置へ挿入する＝クローン内で完結する。
  */
 import type Quill from 'quill'
-import { pickAndInsertImage } from './insert-image.ts'
+import { pickAndInsertMedia } from './media-insert.ts'
 
 /** 右レールの並び: 8=外部サーバー画像アップロード */
 export const EXTERNAL_IMAGE_TOOL_INDEX = 8
@@ -19,5 +19,5 @@ export function mountExternalImage(icon: HTMLElement, quill: Quill): void {
   if (icon.dataset['externalImageWired'] === 'true') return
   icon.dataset['externalImageWired'] = 'true'
   icon.style.cursor = 'pointer'
-  icon.addEventListener('click', () => pickAndInsertImage(quill))
+  icon.addEventListener('click', () => pickAndInsertMedia(quill))
 }

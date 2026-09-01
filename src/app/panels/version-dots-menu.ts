@@ -22,6 +22,13 @@ import { toast } from '../ui.ts'
 import { bindBackdropClose, findByExactText, openPortal } from './portal.ts'
 import { LP_BASE_CSS } from '../lp-base-css.ts'
 import { openDuplicateModal } from './version-duplicate-modal.ts'
+import { normalizeDotsMenuHtml } from './dots-menu-normalize.ts'
+
+/**
+ * 採取物の不正な入れ子（span 内の li）を平らな `<li>` 群に正規化した土台。
+ * これをしないと innerHTML パース時に「複製」1項目しか描画されない（実測）。
+ */
+const MENU_HTML = normalizeDotsMenuHtml(rawMenu)
 
 /** 採取物の目印（実物のクラス。書き換えていない） */
 export const DOTS_MENU_HOOK = {
@@ -118,7 +125,7 @@ export function mountVersionDotsMenu(root: HTMLElement, deps: DotsMenuDeps): voi
 }
 
 function openMenu(deps: DotsMenuDeps, onClosed: () => void): void {
-  const portal = openPortal(rawMenu, DOTS_MENU_HOOK.popover, onClosed)
+  const portal = openPortal(MENU_HTML, DOTS_MENU_HOOK.popover, onClosed)
   if (portal === null) {
     onClosed()
     toast('メニューのマークアップが壊れています', 'error')

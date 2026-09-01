@@ -19,6 +19,7 @@ export const LP_BASE_CSS = [
   '.ql-indent-6{padding-left:18em}',
   '.ql-indent-7{padding-left:21em}',
   '.ql-indent-8{padding-left:24em}',
-  // 画像は枠内に収める
+  // 画像・動画は枠内に収める
   'img{max-width:100%;height:auto}',
+  'video{max-width:100%;height:auto;display:block}',
 ].join('')

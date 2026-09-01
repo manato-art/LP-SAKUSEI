@@ -23,7 +23,7 @@ import { toast } from '../ui.ts'
 import { CLS, HOOK, setItemShown } from './toolbar/hooks.ts'
 import { closeAllDropdowns, wireDropdowns, type ToolbarState } from './toolbar/dropdown.ts'
 import { openColorPicker } from './toolbar/color-picker.ts'
-import { pickAndInsertImage } from './insert-image.ts'
+import { pickAndInsertMedia } from './media-insert.ts'
 import { mountLinkDropdown } from './toolbar/link-dropdown.ts'
 import { shouldCrashOnLinkOpen } from './toolbar/link-form.ts'
 import { positionToolbar } from './toolbar/placement.ts'
@@ -152,8 +152,8 @@ export function mountEditorToolbar(root: HTMLElement, quill: Quill, options: Edi
     },
     refresh: () => refresh(),
   })
-  // ツールバーの「画像」ボタン＝カーソル位置へ画像を差し込む（右レールの画像挿入と同じ）
-  wrapper.querySelector(HOOK.photo)?.addEventListener('click', () => pickAndInsertImage(quill))
+  // ツールバーの「画像」ボタン＝カーソル位置へ画像/GIF/動画を差し込む（右レールの挿入と同じ）
+  wrapper.querySelector(HOOK.photo)?.addEventListener('click', () => pickAndInsertMedia(quill))
 
   // ── 色パレット ──
   const colorButton = wrapper.querySelector<HTMLElement>(HOOK.color)
