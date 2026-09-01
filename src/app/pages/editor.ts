@@ -176,13 +176,22 @@ export async function renderEditor(
  * 同じ寸法の枠にQuillを置いて「本当に編集できる」状態にする（§9-1 の到達点）。
  */
 function mountQuill(root: HTMLElement): Quill {
-  const frame = root.querySelector<HTMLIFrameElement>('iframe[class*="quillEditorWrapper"]')
+  // プレビュー枠は実DOMでは `<iframe id="quillIframe" class="_quillEditorWrapper_…">`。
+  // **id で引く**（class は匿名化で `_quillEditorWrapper_…`→`UID_…` に置換され得るため、
+  // `[class*="quillEditorWrapper"]` だと外れて host が枠の外＝ページ末尾に落ちてしまう）。
+  const frame =
+    root.querySelector<HTMLIFrameElement>('#quillIframe') ??
+    root.querySelector<HTMLIFrameElement>('iframe[class*="quillEditorWrapper"]')
   const host = document.createElement('div')
   if (frame !== null) {
-    host.style.cssText = `width:${frame.getAttribute('width') ?? 620}px;height:486px;background:#fff;overflow:auto`
+    // iframe の採取CSS（width:100% / height:calc(100vh-260px) / 角丸）を引き継いで、
+    // コンテンツ枠いっぱいに広げる（従来は 486px 固定で下に余白が出ていた）。
+    host.className = frame.className
+    host.style.background = '#fff'
+    host.style.overflow = 'auto'
     frame.replaceWith(host)
   } else {
-    host.style.cssText = 'width:620px;height:486px;background:#fff;overflow:auto;margin:0 auto'
+    host.style.cssText = 'width:100%;height:calc(100vh - 260px);background:#fff;overflow:auto'
     root.append(host)
   }
   /**
