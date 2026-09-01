@@ -61,10 +61,29 @@ function protectTestAttrs(text: string): { text: string; restore: (s: string) =>
   return { text: masked, restore }
 }
 
+/**
+ * SVGパスの d 属性を保護する。パスデータは幾何情報（アイコンの形）であって
+ * 顧客データでもトークンでもない。ここをスクラブすると、たまたま32文字以上に
+ * なった座標列や、辞書キーに一致した部分が置換され、アイコンが壊れる
+ * （実際にカレンダーアイコン等12個の path が sample_token に化けていた）。
+ */
+const SVG_D_ATTR = /\sd="[^"]*"/g
+function protectSvgPaths(text: string): { text: string; restore: (s: string) => string } {
+  const saved: string[] = []
+  const masked = text.replace(SVG_D_ATTR, (match) => {
+    saved.push(match)
+    return ` data-sbpath-${saved.length - 1}`
+  })
+  const restore = (input: string): string =>
+    input.replace(/ data-sbpath-(\d+)/g, (_m, i: string) => saved[Number(i)] ?? '')
+  return { text: masked, restore }
+}
+
 export function scrubText(input: string, map: ScrubMap, hosts: HostRewrite): ScrubResult {
   const stripped: string[] = []
   const protectedAttrs = protectTestAttrs(input)
-  let text = protectedAttrs.text
+  const protectedPaths = protectSvgPaths(protectedAttrs.text)
+  let text = protectedPaths.text
 
   for (const { name, pattern } of STRIP_PATTERNS) {
     if (pattern.test(text)) stripped.push(name)
@@ -145,7 +164,7 @@ export function scrubText(input: string, map: ScrubMap, hosts: HostRewrite): Scr
   // 辞書ではなく本文の形で見つけて置き換える（実売上がそのまま残っていた）。
   text = scrubDomNumbers(text)
 
-  return { text: protectedAttrs.restore(text), stripped }
+  return { text: protectedAttrs.restore(protectedPaths.restore(text)), stripped }
 }
 
 /** JSON(fixtures)用。文字列値だけをスクラブし、構造とキーは保つ。 */
