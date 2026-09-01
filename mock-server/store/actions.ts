@@ -283,6 +283,39 @@ export function addVersion(
   }
 }
 
+/**
+ * Version複製。元Versionの html/css を引き継いで新Versionを作り、**元の直後**に挿入する
+ * （実物の「すぐ下に複製」に倣った並び）。配信割合・コントロール・状態は addVersion と同じ既定
+ * （0 / 非コントロール / 準備中）に落とす＝合計100%を壊さない。
+ */
+export function duplicateVersion(
+  state: State,
+  uid: string,
+): { state: State; version: Version | null } {
+  const index = state.versions.findIndex((v) => v.uid === uid)
+  const source = state.versions[index]
+  if (source === undefined) return { state, version: null }
+  const id = state.nextId
+  const copy: Version = {
+    ...source,
+    id,
+    uid: makeUid('version', nextSeq(state.versions)),
+    name: generateVersionName(state.versions.length + 1),
+    distribution_ratio: 0,
+    is_control: false,
+    status: '準備中',
+    thumbnail_url: null,
+    created_at: nowTs(),
+    updated_at: nowTs(),
+  }
+  const versions = [
+    ...state.versions.slice(0, index + 1),
+    copy,
+    ...state.versions.slice(index + 1),
+  ]
+  return { state: { ...state, versions, nextId: id + 1 }, version: copy }
+}
+
 export function updateVersion(
   state: State,
   uid: string,

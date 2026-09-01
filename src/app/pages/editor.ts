@@ -20,6 +20,7 @@ import { mountHistory } from '../panels/history.ts'
 import { mountEditorToolbar } from '../panels/editor-toolbar.ts'
 import { createAutosave } from './autosave.ts'
 import { createPanelGroup } from '../panels/panel-group.ts'
+import { mountVersionListDropdown } from '../panels/version-actions.ts'
 import { mountWidgetManager } from '../panels/widget-manager.ts'
 import { wireAbTestTabs } from './tab-nav.ts'
 
@@ -139,6 +140,8 @@ export async function renderEditor(
 
   applyVersionToPanel(ctx)
   wireVersionPanel(ctx)
+  // 「Version ▼」一覧ドロップダウンの開閉（task 2・採取済みマークアップに挙動だけ付ける）
+  mountVersionListDropdown(root)
   wireSideToolbar(ctx, ab_test.title, folderName)
   wireTopBar(root, ab_test.title, folderName)
   // 4タブ（基本情報 / Version / ポップアップ / レポート）を相互に行き来できるようにする

@@ -134,6 +134,9 @@ export const api = {
       { distribution_ratio: ratio },
     ),
   publish: (uid: string) => request<{ version: Version }>('POST', `/versions/${uid}/publish`),
+  duplicateVersion: (uid: string) =>
+    request<{ version: Version }>('POST', `/versions/${uid}/duplicate`),
+  deleteVersion: (uid: string) => request<void>('DELETE', `/versions/${uid}`),
 
   /** レポートタブ（§10-3 `GET /ab_tests/:uid/reports?start_date&end_date`） */
   report: (abTestUid: string, query: string) =>

@@ -4,7 +4,13 @@
  */
 import { Router } from 'express'
 import { currentTeamId } from '../store/current-team.ts'
-import { addVersion, deleteVersion, publishVersion, updateVersion } from '../store/actions.ts'
+import {
+  addVersion,
+  deleteVersion,
+  duplicateVersion,
+  publishVersion,
+  updateVersion,
+} from '../store/actions.ts'
 import { getState, setState } from '../store/store.ts'
 import { applyEmptyState } from '../lib/mock-state.ts'
 import { errorEnvelope } from '../lib/envelope.ts'
@@ -45,6 +51,21 @@ versionsRouter.post('/articles/:uid/versions', (req, res) => {
   })
   if (created === null) {
     res.status(404).json(errorEnvelope('not_found', '記事が見つかりません。'))
+    return
+  }
+  res.status(201).json({ version: serializeVersion(created) })
+})
+
+/** Version複製（元Versionの直後に新Versionを作る） */
+versionsRouter.post('/versions/:uid/duplicate', (req, res) => {
+  let created: Version | null = null
+  setState((state) => {
+    const out = duplicateVersion(state, req.params.uid)
+    created = out.version
+    return out.state
+  })
+  if (created === null) {
+    res.status(404).json(errorEnvelope('not_found', 'Versionが見つかりません。'))
     return
   }
   res.status(201).json({ version: serializeVersion(created) })
