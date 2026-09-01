@@ -12,6 +12,7 @@ import { describe, expect, it } from 'vitest'
 import { stripGlobalSidebar } from '../src/app/pages/sidebar-shell.ts'
 import {
   ADDON_ROUTE,
+  EXTERNAL_ROUTE,
   SB_AI_ROUTE,
   SIDEBAR_PAGE_ROUTES,
   TASKS_ROUTE,
@@ -113,18 +114,19 @@ describe('グローバルサイドバーを落とす純粋関数', () => {
 })
 
 describe('ルート解決の純粋関数', () => {
-  it('3つのルートを対応するページへ解決する', () => {
+  it('各ルートを対応するページへ解決する', () => {
     expect(matchSidebarPage(ADDON_ROUTE)).toBe('addon')
     expect(matchSidebarPage(TASKS_ROUTE)).toBe('tasks')
     expect(matchSidebarPage(SB_AI_ROUTE)).toBe('sb_ai')
+    expect(matchSidebarPage(EXTERNAL_ROUTE)).toBe('external')
   })
   it('未知のパスは null（推測で埋めない）', () => {
     expect(matchSidebarPage('/folders')).toBeNull()
     expect(matchSidebarPage('/addon')).toBeNull()
     expect(matchSidebarPage('')).toBeNull()
   })
-  it('ルート定数の一覧が3件そろっている', () => {
-    expect(SIDEBAR_PAGE_ROUTES).toEqual([ADDON_ROUTE, TASKS_ROUTE, SB_AI_ROUTE])
+  it('ルート定数の一覧がそろっている（外部連携を含む）', () => {
+    expect(SIDEBAR_PAGE_ROUTES).toEqual([ADDON_ROUTE, TASKS_ROUTE, SB_AI_ROUTE, EXTERNAL_ROUTE])
   })
 })
 

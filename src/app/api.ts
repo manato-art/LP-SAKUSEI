@@ -168,6 +168,23 @@ export const api = {
   metaStatus: () => request<{ configured: boolean }>('GET', '/meta/status'),
   metaInsights: (query: string) =>
     request<MetaInsightsResponse>('GET', `/meta/insights?${query}`),
+  /** 外部連携画面のMeta広告アカウント一覧（指示⑦） */
+  metaAdAccounts: () => request<MetaAdAccountsResponse>('GET', '/meta/adaccounts'),
+}
+
+/** 外部連携: Meta広告アカウント1件 */
+export interface MetaAdAccount {
+  account_id: string
+  name: string
+  account_status: number
+  currency: string
+  created_date: string
+}
+
+export interface MetaAdAccountsResponse {
+  configured: boolean
+  accounts: MetaAdAccount[]
+  error?: string
 }
 
 /** Meta広告のアカウント集計KPI（実取得） */

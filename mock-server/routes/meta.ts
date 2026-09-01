@@ -7,12 +7,21 @@
  * 未設定でも 200 を返し configured:false にする（フロントは 0/モックへフォールバック）。
  */
 import { Router } from 'express'
-import { fetchAccountKpi, isMetaConfigured } from '../lib/meta-client.ts'
+import { fetchAccountKpi, fetchAdAccounts, isMetaConfigured } from '../lib/meta-client.ts'
 
 export const metaRouter: Router = Router()
 
 metaRouter.get('/meta/status', (_req, res) => {
   res.json({ configured: isMetaConfigured() })
+})
+
+/** 外部連携画面のMeta一覧（トークンで見える広告アカウント・指示⑦） */
+metaRouter.get('/meta/adaccounts', (_req, res) => {
+  void fetchAdAccounts()
+    .then((result) => res.json(result))
+    .catch((error: unknown) =>
+      res.json({ configured: true, accounts: [], error: (error as Error).message }),
+    )
 })
 
 metaRouter.get('/meta/insights', (req, res) => {

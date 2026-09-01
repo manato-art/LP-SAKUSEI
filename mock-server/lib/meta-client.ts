@@ -68,6 +68,69 @@ export function isMetaConfigured(): boolean {
   return readMetaConfig() !== null
 }
 
+export interface MetaAdAccount {
+  account_id: string
+  name: string
+  /** Meta の account_status（1=有効 → 接続可） */
+  account_status: number
+  currency: string
+  /** 登録日相当（created_time の日付）。取れなければ空 */
+  created_date: string
+}
+
+interface RawAdAccount {
+  account_id?: string
+  name?: string
+  account_status?: number
+  currency?: string
+  created_time?: string
+}
+
+/**
+ * トークンで見える広告アカウント一覧を取得する（外部連携画面の一覧・指示⑦）。
+ * env 未設定なら configured:false。個別のアプリID等は不要（トークンだけで /me/adaccounts が引ける）。
+ */
+export async function fetchAdAccounts(): Promise<{
+  configured: boolean
+  accounts: MetaAdAccount[]
+  error?: string
+}> {
+  const config = readMetaConfig()
+  if (config === null) return { configured: false, accounts: [] }
+  const url =
+    `https://graph.facebook.com/${config.version}/me/adaccounts?` +
+    new URLSearchParams({
+      fields: 'account_id,name,account_status,currency,created_time',
+      limit: '200',
+    }).toString()
+  try {
+    const accounts: MetaAdAccount[] = []
+    let next: string | null = url
+    while (next !== null) {
+      const res = await fetch(next, { headers: { Authorization: `Bearer ${config.token}` } })
+      const json = (await res.json()) as {
+        data?: RawAdAccount[]
+        paging?: { next?: string }
+        error?: { code: number; message: string }
+      }
+      if (json.error) throw new Error(`Meta API Error [${json.error.code}]: ${json.error.message}`)
+      for (const raw of json.data ?? []) {
+        accounts.push({
+          account_id: raw.account_id ?? '',
+          name: raw.name ?? '',
+          account_status: raw.account_status ?? 0,
+          currency: raw.currency ?? '',
+          created_date: (raw.created_time ?? '').slice(0, 10),
+        })
+      }
+      next = json.paging?.next ?? null
+    }
+    return { configured: true, accounts }
+  } catch (error) {
+    return { configured: true, accounts: [], error: (error as Error).message }
+  }
+}
+
 /** 直近の取得結果を短時間キャッシュ（レート制限緩和・cockpit踏襲の TTL 発想） */
 const CACHE_TTL_MS = 5 * 60 * 1000
 const cache = new Map<string, { at: number; result: MetaInsightsResult }>()

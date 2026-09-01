@@ -12,10 +12,12 @@ export const ADDON_ROUTE = '/addon/option-list'
 export const TASKS_ROUTE = '/tasks'
 /** AI（チャットUI） */
 export const SB_AI_ROUTE = '/sb_ai'
+/** 外部連携 → 広告媒体連携（shell.ts の 外部連携→#/teams/ad_accounts と一致） */
+export const EXTERNAL_ROUTE = '/teams/ad_accounts'
 
-export const SIDEBAR_PAGE_ROUTES = [ADDON_ROUTE, TASKS_ROUTE, SB_AI_ROUTE] as const
+export const SIDEBAR_PAGE_ROUTES = [ADDON_ROUTE, TASKS_ROUTE, SB_AI_ROUTE, EXTERNAL_ROUTE] as const
 
-export type SidebarPage = 'addon' | 'tasks' | 'sb_ai'
+export type SidebarPage = 'addon' | 'tasks' | 'sb_ai' | 'external'
 
 /** パスを対応するページ種別へ解決する。未知のパスは null（推測で埋めない）。 */
 export function matchSidebarPage(path: string): SidebarPage | null {
@@ -26,6 +28,8 @@ export function matchSidebarPage(path: string): SidebarPage | null {
       return 'tasks'
     case SB_AI_ROUTE:
       return 'sb_ai'
+    case EXTERNAL_ROUTE:
+      return 'external'
     default:
       return null
   }

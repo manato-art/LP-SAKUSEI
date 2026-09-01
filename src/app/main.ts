@@ -16,6 +16,7 @@ import { renderPreview } from './pages/preview-page.ts'
 import { renderAddon } from './pages/addon.ts'
 import { renderTasks } from './pages/tasks.ts'
 import { renderSbAi } from './pages/sb-ai.ts'
+import { renderExternalIntegration } from './pages/external-integration.ts'
 import { matchSidebarPage } from './pages/sidebar-nav.ts'
 import { matchToolPage } from './pages/tool-subnav.ts'
 import { renderToolPage } from './pages/tool-pages.ts'
@@ -159,6 +160,10 @@ async function route(): Promise<void> {
     }
     if (sidebarPage === 'sb_ai') {
       renderSbAi(content)
+      return
+    }
+    if (sidebarPage === 'external') {
+      await renderExternalIntegration(content, generation)
       return
     }
     /**
