@@ -2,15 +2,39 @@
  * Version設定モーダル（エディタ右レール5番目の歯車・`MasterStyleSheet`）。
  *
  * **手書きでUIを似せない**（企画書 §11）。
- * モーダルのマークアップは採取した実DOM
- * `capture/clean/ab_tests__UID__articles/tool-version-settings/dom.html` から
- * `ReactModal__Overlay` ごと切り出した `fragments/version-settings-modal.html` をそのまま使い、
- * `data-test` 属性と `name` 属性を目印に「挙動だけ」を後付けする。
+ * モーダルのマークアップは採取した実DOM（記事設定モーダルの完全版）を
+ * `ReactModal__Overlay` ごと切り出した `article-settings-modal.portals.html` を土台にし、
+ * `data-test` / `name` 属性を目印に「挙動だけ」を後付けする。
+ * 背景の「画像」「色」を選んだときに実物が差し込む入力欄も、状態別の採取物
+ * （`article-settings-bg-image` / `-bg-color`）から切り出して使う（手書きしない）。
  *
  * 実物の見た目は index.html が読み込む採取済み実CSS（/cssom/editor.css）が担保する。
  */
-import modalHtml from '../fragments/version-settings-modal.html?raw'
+// 記事設定モーダルの土台。採取した実物（背景の入力欄まで揃った完全版）を使う。
+// 既定状態（設定しない）＝ article-settings-modal、
+// 「画像」「色」を選んだときに実物が差し込む入力欄は、それぞれの採取物から切り出して使う。
+import modalHtml from '../fragments/ab_tests__UID__articles__article-settings-modal.portals.html?raw'
+import bgImageHtml from '../fragments/ab_tests__UID__articles__article-settings-bg-image.portals.html?raw'
+import bgColorHtml from '../fragments/ab_tests__UID__articles__article-settings-bg-color.portals.html?raw'
 import { toast } from '../ui.ts'
+
+/**
+ * 背景ラジオで「画像」「色」を選んだときに実物が差し込む入力欄は、React の条件描画なので
+ * 既定の採取物には入っていない。画像状態・色状態それぞれを別途採取してあるので、
+ * そこから該当グループ（全体背景/Version背景）の**追加行だけ**を切り出して使う。
+ * ＝手書きせず、実物のマークアップを差し込むタイミングだけこちらで制御する（企画書 §11）。
+ */
+function extractBackgroundExtra(variantHtml: string, radioName: string): string {
+  const doc = new DOMParser().parseFromString(variantHtml, 'text/html')
+  const radio = doc.querySelector(`input[name="${radioName}"]`)
+  const wrap = radio?.closest('[class*="backgroundFormWrapper"]')
+  if (wrap === null || wrap === undefined) return ''
+  // 先頭の子＝ラジオ行。その後ろに続く要素が「画像/色」を選んだときの追加入力欄。
+  return [...wrap.children]
+    .slice(1)
+    .map((child) => child.outerHTML)
+    .join('')
+}
 
 /** 採取DOM内の目印（実物の属性。書き換えていない） */
 const HOOK = {
@@ -138,6 +162,10 @@ async function openPanel(articleUid: string): Promise<void> {
   const portal = document.createElement('div')
   portal.className = 'ReactModalPortal'
   portal.innerHTML = modalHtml
+  // 採取物には ReactModal の遷移用に overlay が2枚含まれることがある。
+  // 2枚とも生かすと同じモーダルが重なるので、先頭以外は取り除く。
+  const overlays = portal.querySelectorAll(HOOK.overlay)
+  for (let i = 1; i < overlays.length; i += 1) overlays[i]?.remove()
   document.body.append(portal)
 
   const wrapper = portal.querySelector<HTMLElement>(HOOK.wrapper)
@@ -228,23 +256,74 @@ function readBackgroundMode(wrapper: HTMLElement, radioName: string): Background
 }
 
 /**
- * 背景ラジオ。「画像」「色」の入力欄は未採取のため、選んでも入力先が無いことを正直に伝える
- * （保存済みの値がある場合はその値が維持される）。
+ * 背景ラジオ。「画像」「色」を選ぶと、実物と同じ入力欄（採取物から切り出したマークアップ）を
+ * ラジオ行の直後へ差し込み、「設定しない」で取り除く。
+ * - 色: カラーコードのテキスト入力。保存時にそのまま送る。
+ * - 画像: 実物のドロップゾーン。本番サーバーへは上げず（§3-2）、選んだ画像をその場で
+ *   dataURL に読み、`data-image-value` に控えてプレビューする＝クローン内で完結する。
  */
+const EXTRA_MARK = 'data-clone-bg-extra'
+
 function wireBackgroundRadios(wrapper: HTMLElement, sheet: MasterStyleSheet): void {
   for (const group of BACKGROUND_GROUPS) {
-    for (const radio of wrapper.querySelectorAll<HTMLInputElement>(
+    const groupWrap = wrapper
+      .querySelector<HTMLInputElement>(`input[name="${group.radioName}"]`)
+      ?.closest<HTMLElement>('[class*="backgroundFormWrapper"]')
+    if (groupWrap === null || groupWrap === undefined) continue
+
+    const render = (mode: BackgroundMode): void => {
+      groupWrap.querySelector(`[${EXTRA_MARK}]`)?.remove()
+      if (mode === 'none') return
+      const source = mode === 'image' ? bgImageHtml : bgColorHtml
+      const html = extractBackgroundExtra(source, group.radioName)
+      if (html === '') return
+      const holder = document.createElement('div')
+      holder.setAttribute(EXTRA_MARK, mode)
+      holder.style.display = 'contents'
+      holder.innerHTML = html
+      groupWrap.append(holder)
+      wireExtraControls(holder, group, sheet, mode)
+    }
+
+    for (const radio of groupWrap.querySelectorAll<HTMLInputElement>(
       `input[name="${group.radioName}"]`,
     )) {
       radio.addEventListener('change', () => {
-        if (radio.value === 'none' || !radio.checked) return
-        const stored = radio.value === 'image' ? sheet[group.imageField] : sheet[group.colorField]
-        if (String(stored ?? '') === '') {
-          toast(`${group.label}の「${radio.value === 'image' ? '画像' : '色'}」の入力欄は未実装です`, 'error')
-        }
+        if (!radio.checked) return
+        render(radio.value === 'image' || radio.value === 'color' ? radio.value : 'none')
       })
     }
+    // 初期状態（保存済みの値）に合わせて最初から差し込んでおく
+    render(modeOf(sheet, group.colorField, group.imageField))
   }
+}
+
+/** 差し込んだ入力欄に初期値を入れ、画像はローカルで dataURL 化してプレビューする。 */
+function wireExtraControls(
+  holder: HTMLElement,
+  group: (typeof BACKGROUND_GROUPS)[number],
+  sheet: MasterStyleSheet,
+  mode: BackgroundMode,
+): void {
+  if (mode === 'color') {
+    const input = holder.querySelector<HTMLInputElement>(`input[name="${group.colorField}"]`)
+    if (input !== null) input.value = String(sheet[group.colorField] ?? '')
+    return
+  }
+  // 画像: 実物の file 入力。本番へ上げず、選んだ画像をその場で dataURL にして控える。
+  const stored = String(sheet[group.imageField] ?? '')
+  if (stored !== '') holder.dataset['imageValue'] = stored
+  const file = holder.querySelector<HTMLInputElement>(`input[type="file"][name="${group.imageField}"]`)
+  file?.addEventListener('change', () => {
+    const chosen = file.files?.[0]
+    if (chosen === undefined) return
+    const reader = new FileReader()
+    reader.addEventListener('load', () => {
+      holder.dataset['imageValue'] = String(reader.result ?? '')
+      toast(`${group.label}の画像を読み込みました`)
+    })
+    reader.readAsDataURL(chosen)
+  })
 }
 
 /** 入力欄の生の文字列をそのまま送り、検証はモックAPI（境界）に任せる */
@@ -257,8 +336,17 @@ function collectPayload(wrapper: HTMLElement, sheet: MasterStyleSheet): Record<s
   }
   for (const group of BACKGROUND_GROUPS) {
     const mode = readBackgroundMode(wrapper, group.radioName)
-    payload[group.colorField] = mode === 'color' ? String(sheet[group.colorField] ?? '') : ''
-    payload[group.imageField] = mode === 'image' ? String(sheet[group.imageField] ?? '') : ''
+    const holder = wrapper
+      .querySelector<HTMLInputElement>(`input[name="${group.radioName}"]`)
+      ?.closest<HTMLElement>('[class*="backgroundFormWrapper"]')
+      ?.querySelector<HTMLElement>(`[${EXTRA_MARK}]`)
+    // 色: 差し込んだテキスト入力の生値。画像: file→dataURL を控えた data-image-value。
+    const colorValue =
+      holder?.querySelector<HTMLInputElement>(`input[name="${group.colorField}"]`)?.value ??
+      String(sheet[group.colorField] ?? '')
+    const imageValue = holder?.dataset['imageValue'] ?? String(sheet[group.imageField] ?? '')
+    payload[group.colorField] = mode === 'color' ? colorValue.trim() : ''
+    payload[group.imageField] = mode === 'image' ? imageValue : ''
   }
   return payload
 }

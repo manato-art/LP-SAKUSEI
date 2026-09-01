@@ -186,7 +186,16 @@ describe('PUT /articles/:uid/master_style_sheet', () => {
 })
 
 describe('モーダルの土台（採取マークアップ）', () => {
-  const fragment = readFileSync('src/app/fragments/version-settings-modal.html', 'utf8')
+  const base = 'src/app/fragments/ab_tests__UID__articles__article-settings-modal.portals.html'
+  const fragment = readFileSync(base, 'utf8')
+  const bgImage = readFileSync(
+    'src/app/fragments/ab_tests__UID__articles__article-settings-bg-image.portals.html',
+    'utf8',
+  )
+  const bgColor = readFileSync(
+    'src/app/fragments/ab_tests__UID__articles__article-settings-bg-color.portals.html',
+    'utf8',
+  )
 
   it('配線に使う目印が実マークアップに揃っている', () => {
     expect(fragment).toContain('data-test="MasterStyleSheetModal-ModalWrapper"')
@@ -197,17 +206,31 @@ describe('モーダルの土台（採取マークアップ）', () => {
 
   it('APIのキーと同じ name を持つ入力欄が全部ある', () => {
     for (const name of Object.keys(DEFAULT_MASTER_STYLE_SHEET)) {
-      if (name.includes('background')) continue // 背景は色/画像でなくラジオで採取されている
+      if (name.includes('background')) continue // 背景は状態別に採取（下で個別に検証）
       expect(fragment).toContain(`name="${name}"`)
     }
     expect(fragment).toContain('name="outerBackgroundRadio"')
     expect(fragment).toContain('name="innerBackgroundRadio"')
   })
 
+  it('「色」状態にはカラーコード入力欄が採取されている', () => {
+    expect(bgColor).toContain('name="outer_background_color"')
+    expect(bgColor).toContain('name="inner_background_color"')
+    expect(bgColor).toContain('placeholder="ffffff"')
+  })
+
+  it('「画像」状態には画像アップロード欄が採取されている', () => {
+    expect(bgImage).toContain('name="outer_background_image"')
+    expect(bgImage).toContain('name="inner_background_image"')
+    expect(bgImage).toContain('type="file"')
+  })
+
   it('採取ノイズ（本番JS・採取ツールの痕跡）が混ざっていない', () => {
-    expect(fragment).not.toContain('<script')
-    expect(fragment).not.toContain('claude-agent')
-    expect(fragment).not.toContain('claude-phantom')
-    expect(fragment).not.toMatch(/https?:\/\//)
+    for (const f of [fragment, bgImage, bgColor]) {
+      expect(f).not.toContain('<script')
+      expect(f).not.toContain('claude-agent')
+      expect(f).not.toContain('claude-phantom')
+      expect(f).not.toMatch(/https?:\/\//)
+    }
   })
 })
