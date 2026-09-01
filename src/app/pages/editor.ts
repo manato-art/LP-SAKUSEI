@@ -97,6 +97,8 @@ interface EditorContext {
   cardTemplate: HTMLElement
   /** Version▼の表示モード（通常一覧 / アーカイブ一覧・指示⑮） */
   listMode: 'active' | 'archived'
+  /** 「選択してアーカイブする」モード（チェックボックス選択・指示⑮） */
+  selectionMode: boolean
 }
 
 export async function renderEditor(
@@ -169,6 +171,7 @@ export async function renderEditor(
     currentUid: versions[0]?.uid ?? '',
     cardTemplate,
     listMode: 'active',
+    selectionMode: false,
   }
 
   // Versionパネルは ctx.versions から**1枚ずつカードを描く**（複製/追加した分も下に増える）。
@@ -288,6 +291,94 @@ function renderVersionList(ctx: EditorContext): void {
     if (addButton !== null) list.insertBefore(card, addButton)
     else list.append(card)
   }
+  applySelectionMode(ctx, list)
+}
+
+/** Versionパネル上部（選択モードでは「キャンセル / アーカイブする」を差し込む） */
+const ARTICLES_TOP = '[class*="_abTestArticlesTop"]'
+const CARD_CONTENT = '[class*="_abTestArticleContent"]'
+
+/**
+ * 「選択してアーカイブする」モードの見た目と挙動（指示⑮）。
+ * 実物どおり: 上部を「キャンセル / アーカイブする」に、各カードにチェックボックスを足す。
+ * 通常ヘッダ（Version▼等）は innerHTML を壊さず display で退避し、配線を失わない。
+ * アーカイブは配信割合1以上を1件は残すサーバーガードが効く。
+ */
+function applySelectionMode(ctx: EditorContext, list: HTMLElement): void {
+  const top = ctx.root.querySelector<HTMLElement>(ARTICLES_TOP)
+  // 前回の選択ヘッダを消し、通常ヘッダの退避を解除する
+  ctx.root.querySelector('[data-clone-selheader]')?.remove()
+  if (top !== null) {
+    for (const child of [...top.children]) (child as HTMLElement).style.removeProperty('display')
+  }
+  if (!ctx.selectionMode || top === null) return
+
+  // 通常ヘッダを退避（配線は残る）し、選択ヘッダを差し込む
+  for (const child of [...top.children]) (child as HTMLElement).style.display = 'none'
+  const selHeader = document.createElement('div')
+  selHeader.setAttribute('data-clone-selheader', '')
+  selHeader.style.cssText =
+    'display:flex;justify-content:space-between;align-items:center;padding:6px 10px;font-size:13px'
+  selHeader.innerHTML =
+    '<div data-clone-sel-cancel style="cursor:pointer;color:#0091FF">キャンセル</div>' +
+    '<div data-clone-sel-bulk style="cursor:pointer;color:#bbb;pointer-events:none">アーカイブする</div>'
+  top.prepend(selHeader)
+
+  const bulk = selHeader.querySelector<HTMLElement>('[data-clone-sel-bulk]')
+  selHeader.querySelector<HTMLElement>('[data-clone-sel-cancel]')?.addEventListener('click', () => {
+    ctx.selectionMode = false
+    renderVersionList(ctx)
+  })
+
+  const selected = new Set<string>()
+  const syncBulk = (): void => {
+    if (bulk === null) return
+    const on = selected.size > 0
+    bulk.style.color = on ? '#E5573F' : '#bbb'
+    bulk.style.pointerEvents = on ? 'auto' : 'none'
+  }
+  for (const card of list.querySelectorAll<HTMLElement>(HOOK.versionRow)) {
+    const uid = card.dataset['articleUid']
+    const content = card.querySelector<HTMLElement>(CARD_CONTENT)
+    if (uid === undefined || content === null) continue
+    const checkbox = document.createElement('input')
+    checkbox.type = 'checkbox'
+    checkbox.setAttribute('data-test', 'ArticleList-ArticleCheckBox')
+    checkbox.value = uid
+    checkbox.style.cssText = 'margin-right:8px;cursor:pointer'
+    content.prepend(checkbox)
+    checkbox.addEventListener('change', () => {
+      if (checkbox.checked) selected.add(uid)
+      else selected.delete(uid)
+      syncBulk()
+    })
+  }
+  bulk?.addEventListener('click', () => {
+    if (selected.size > 0) void bulkArchive(ctx, [...selected])
+  })
+}
+
+/** 選択したVersionをまとめてアーカイブ（配信割合1以上を1件残すガードは各リクエストで効く） */
+async function bulkArchive(ctx: EditorContext, uids: readonly string[]): Promise<void> {
+  let failed = 0
+  for (const uid of uids) {
+    try {
+      const { version } = await api.archiveVersion(uid)
+      ctx.versions = ctx.versions.map((v) => (v.uid === version.uid ? version : v))
+    } catch {
+      failed += 1
+    }
+  }
+  ctx.selectionMode = false
+  const archived = uids.length - failed
+  toast(
+    failed > 0
+      ? `${archived}件アーカイブ（${failed}件は配信割合1以上を残すため不可）`
+      : `${archived}件アーカイブしました`,
+  )
+  const next = ctx.versions.find((v) => v.archived !== true)
+  if (next !== undefined) loadVersion(ctx, next.uid)
+  else renderVersionList(ctx)
 }
 
 /** アーカイブ一覧のカード: 名前/割合を表示し、「復元」でアーカイブ解除して通常一覧へ戻す（指示⑮） */
@@ -381,9 +472,15 @@ function wireVersionCard(ctx: EditorContext, card: HTMLElement, version: Version
     void save()
   })
 
+  // 選択モードでは「…」を隠し、カードクリックでの切替もしない（チェックボックス操作のみ）。
+  if (ctx.selectionMode) {
+    card.querySelector<HTMLElement>(DOTS_MENU_TRIGGER)?.style.setProperty('display', 'none')
+  }
+
   // カードのクリックでVersionを切り替える（入力欄・ボタン・スピナー・「…」上は除く）。
   card.style.cursor = 'pointer'
   card.addEventListener('click', (event) => {
+    if (ctx.selectionMode) return
     const target = event.target as HTMLElement
     if (target.closest('input, button, ._articleButtons_1xibh_160') !== null) return
     if (target.closest(HOOK.ratioUp) !== null || target.closest(HOOK.ratioDown) !== null) return
@@ -407,6 +504,10 @@ function wireVersionCard(ctx: EditorContext, card: HTMLElement, version: Version
       const next = ctx.versions.find((v) => v.archived !== true)
       if (next !== undefined) loadVersion(ctx, next.uid)
       else renderVersionList(ctx)
+    },
+    onSelectArchiveMode: () => {
+      ctx.selectionMode = true
+      renderVersionList(ctx)
     },
   })
 }

@@ -100,6 +100,8 @@ export interface DotsMenuDeps {
   onDuplicated: (version: Version) => void
   /** アーカイブに成功したときの後処理（一覧から外して別Versionへ切り替える等） */
   onArchived: (version: Version) => void
+  /** 「選択してアーカイブする」モードに入る（チェックボックス選択） */
+  onSelectArchiveMode: () => void
 }
 
 /**
@@ -151,8 +153,7 @@ function openMenu(deps: DotsMenuDeps, onClosed: () => void): void {
     [DOTS_MENU_LABELS.archive]: () => {
       if (globalThis.confirm('このVersionをアーカイブしますか？')) void archive(deps)
     },
-    [DOTS_MENU_LABELS.archiveSelected]: () =>
-      toast('選択してアーカイブするは未実装です', 'error'),
+    [DOTS_MENU_LABELS.archiveSelected]: () => deps.onSelectArchiveMode(),
   }
 
   for (const [label, handler] of Object.entries(handlers)) {
