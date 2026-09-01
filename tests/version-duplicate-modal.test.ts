@@ -26,6 +26,12 @@ describe('Version複製モーダルの文言・目印は採取物に実在する
     expect(modal).toContain('>閉じる<')
   })
 
+  it('操作ボタンは <button> でなく <div class="_btn_1bcs1_2">（結線が依存する事実）', () => {
+    // 「複製する」「閉じる」はダークテーマの div ボタン。button タグ前提だと結線できない
+    expect(modal).toMatch(/<div[^>]*class="_btn_1bcs1_2[^"]*"[^>]*>複製する</)
+    expect(modal).toContain('data-test="DuplicateModal-BtnClose"')
+  })
+
   it('複製個数は最大4の number 入力（実物どおり）', () => {
     expect(modal).toContain('複製個数')
     expect(modal).toMatch(/name="duplicateCount"[^>]*min="1"[^>]*max="4"[^>]*type="number"/)
@@ -56,7 +62,10 @@ describe('「…」→複製 はモーダルを開くよう結線されている
   it('パネルは採取した実モーダル断片を土台にする（手書きしない）', () => {
     const panel = read(PANEL)
     expect(panel).toContain('version-duplicate-modal.portals.html?raw')
-    expect(panel).toContain("openPortal(rawModal, '.ReactModal__Overlay'")
+    expect(panel).toContain("overlay: '.ReactModal__Overlay'")
+    // ダークテーマのボタンは <button> でなく <div class="_btn_…">。button セレクタで拾う
+    expect(panel).toContain("button: '[class*=\"_btn_1bcs1_2\"]'")
+    expect(panel).toContain("close: '[data-test=\"DuplicateModal-BtnClose\"]'")
     // 複製個数は 1〜4 にクランプして、その回数だけ複製する
     expect(panel).toContain('Math.min(4, Math.max(1, raw))')
     expect(panel).toContain('api.duplicateVersion(current.uid)')

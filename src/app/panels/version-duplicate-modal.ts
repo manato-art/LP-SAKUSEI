@@ -18,6 +18,18 @@ export interface DuplicateDeps {
   onDuplicated: (version: Version) => void
 }
 
+/**
+ * 目印（採取物に実在するもの）。ダークテーマのボタンは `<button>` ではなく
+ * `<div class="_btn_1bcs1_2 …">`。閉じるは data-test 属性が最も安定。
+ */
+const DUPLICATE_HOOK = {
+  overlay: '.ReactModal__Overlay',
+  button: '[class*="_btn_1bcs1_2"]',
+  close: '[data-test="DuplicateModal-BtnClose"]',
+  count: 'input[name="duplicateCount"]',
+  submit: '複製する',
+} as const
+
 let isOpen = false
 
 export function openDuplicateModal(deps: DuplicateDeps): void {
@@ -28,7 +40,7 @@ export function openDuplicateModal(deps: DuplicateDeps): void {
     return
   }
   // 実物は ReactModal（ダークテーマ）。採取物には overlay/content が2重に入るので先頭だけ使う。
-  const portal = openPortal(rawModal, '.ReactModal__Overlay', () => {
+  const portal = openPortal(rawModal, DUPLICATE_HOOK.overlay, () => {
     isOpen = false
   })
   if (portal === null) {
@@ -39,10 +51,13 @@ export function openDuplicateModal(deps: DuplicateDeps): void {
 
   // オーバーレイ（背景）クリックで閉じる
   bindBackdropClose(portal.root, portal.close)
-  findByExactText(portal.root, 'button', '閉じる')?.addEventListener('click', () => portal.close())
+  // ダークテーマのボタンは <div class="_btn_…">（<button> ではない）
+  portal.root
+    .querySelector<HTMLElement>(DUPLICATE_HOOK.close)
+    ?.addEventListener('click', () => portal.close())
 
-  const countInput = portal.root.querySelector<HTMLInputElement>('input[name="duplicateCount"]')
-  const dupButton = findByExactText(portal.root, 'button', '複製する')
+  const countInput = portal.root.querySelector<HTMLInputElement>(DUPLICATE_HOOK.count)
+  const dupButton = findByExactText(portal.root, DUPLICATE_HOOK.button, DUPLICATE_HOOK.submit)
   dupButton?.addEventListener('click', () => {
     void runDuplicate(deps, current, countInput, portal.close)
   })
