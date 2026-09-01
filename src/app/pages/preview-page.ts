@@ -14,6 +14,7 @@ import { isStale } from '../main.ts'
 import { toast } from '../ui.ts'
 import { mountCapturedPage, setTopBarNames, wireBackLink, wireCapturedLinks } from './report-dom.ts'
 import { LP_BASE_CSS } from '../lp-base-css.ts'
+import { masterStyleIframeCss } from '../master-style.ts'
 
 export async function renderPreview(
   container: HTMLElement,
@@ -37,6 +38,8 @@ export async function renderPreview(
   const folder = folders.folders.find((f) => f.id === ab_test.folder_id)
   // ステップ（＝Version）uid で開く。無ければ先頭Version。
   const version = versions.find((v) => v.uid === stepUid) ?? versions[0]
+  // 記事設定（Version設定）をプレビューにも反映
+  const styleCss = masterStyleIframeCss((await api.masterStyleSheet(articleUid)).master_style_sheet)
 
   if (generation !== undefined && isStale(generation)) return
 
@@ -46,7 +49,7 @@ export async function renderPreview(
   setTopBarNames(root, ab_test.title, folder?.name ?? '')
 
   wireUrlCards(root, abTestUid, version)
-  fillPreviewIframe(root, version)
+  fillPreviewIframe(root, version, styleCss)
 }
 
 /**
@@ -86,7 +89,11 @@ function wireUrlCards(root: HTMLElement, abTestUid: string, version: Version | u
 }
 
 /** 中央のプレビュー iframe に、保存済みの html/css を流し込む（本番へは出さない） */
-function fillPreviewIframe(root: HTMLElement, version: Version | undefined): void {
+function fillPreviewIframe(
+  root: HTMLElement,
+  version: Version | undefined,
+  styleCss: string,
+): void {
   const frame = root.querySelector<HTMLIFrameElement>('#previewIframe')
   if (frame === null || version === undefined) return
   const doc = frame.contentDocument
@@ -94,7 +101,7 @@ function fillPreviewIframe(root: HTMLElement, version: Version | undefined): voi
   doc.open()
   doc.write(
     `<!doctype html><html lang="ja"><head><meta charset="utf-8">` +
-      `<style>body{margin:0;font-family:"Hiragino Sans",sans-serif}${LP_BASE_CSS}${version.css}</style>` +
+      `<style>body{margin:0;font-family:"Hiragino Sans",sans-serif}${LP_BASE_CSS}${version.css}${styleCss}</style>` +
       `</head><body>${version.html}</body></html>`,
   )
   doc.close()

@@ -129,17 +129,25 @@ interface ActiveModal {
 }
 
 let activeModal: ActiveModal | null = null
+/** 保存成功時に呼ぶ（編集画面へ即反映するため）。 */
+let onSavedCallback: (() => void) | null = null
 
 /**
  * 右レールの歯車に Version設定モーダルを配線する。
  * 採取した土台に起動ボタンが居ることが前提（居なければ何も配線しない）。
+ * `onSaved` を渡すと、保存成功のたびに呼ぶ（編集画面の本文へ即反映するのに使う）。
  */
-export function mountVersionSettings(root: HTMLElement, articleUid: string): void {
+export function mountVersionSettings(
+  root: HTMLElement,
+  articleUid: string,
+  onSaved?: () => void,
+): void {
   const opener = root.querySelector<HTMLElement>(HOOK.open)
   if (opener === null) {
     console.warn('[version-settings] 起動ボタン', HOOK.open, 'が土台に見つかりませんでした')
     return
   }
+  onSavedCallback = onSaved ?? null
   if (opener.dataset['versionSettingsWired'] === 'true') return
   opener.dataset['versionSettingsWired'] = 'true'
   opener.style.cursor = 'pointer'
@@ -368,6 +376,7 @@ async function save(
       collectPayload(wrapper, sheet),
     )
     toast('Version設定を保存しました')
+    onSavedCallback?.() // 編集画面の本文へ即反映
     close()
   } catch (error) {
     toast((error as Error).message, 'error')

@@ -29,6 +29,7 @@ import { mountWidgetLibrary } from '../panels/widget-library.ts'
 import { EXTERNAL_IMAGE_TOOL_INDEX, mountExternalImage } from '../panels/external-image.ts'
 import { wireAbTestTabs } from './tab-nav.ts'
 import { wireBeyondNavAnchors } from './beyond-nav.ts'
+import { masterStyleEditorDecls } from '../master-style.ts'
 
 /** 採取DOM内の目印（実物の data-test 属性。採取のたびに増える） */
 const HOOK = {
@@ -183,6 +184,19 @@ export async function renderEditor(
   wireAbTestTabs(root, abTestUid, folder?.uid ?? '')
   wireTopRightIcons(root, abTestUid, folder?.uid ?? '')
   loadVersion(ctx, ctx.currentUid)
+  // 記事設定（Version設定）を編集画面の本文にも反映する（保存後は「更新」または再読込で最新化）。
+  void applyMasterStyleToEditor(ctx)
+}
+
+/** 記事設定（MasterStyleSheet）を Quill 本文へ当てて、編集画面でも見た目を反映する。 */
+async function applyMasterStyleToEditor(ctx: EditorContext): Promise<void> {
+  try {
+    const { master_style_sheet } = await api.masterStyleSheet(ctx.articleUid)
+    const decls = masterStyleEditorDecls(master_style_sheet)
+    if (decls !== '') ctx.quill.root.setAttribute('style', decls)
+  } catch {
+    // 取得に失敗しても編集は続けられる（既定の見た目のまま）
+  }
 }
 
 /**
@@ -313,7 +327,7 @@ async function saveHtml(ctx: EditorContext): Promise<void> {
 
 function wireSideToolbar(ctx: EditorContext): void {
   // ── 各パネルを配線（実装は src/app/panels/ に分かれている）──
-  mountVersionSettings(ctx.root, ctx.articleUid)
+  mountVersionSettings(ctx.root, ctx.articleUid, () => void applyMasterStyleToEditor(ctx))
   mountTagSettings(ctx.root, ctx.articleUid)
   // 置換の対象は「いま開いているVersion」。パネルは押されるたびに読み直す
   // サイドパネルは**押したときに開く**。実物は同時に1枚しか開かない

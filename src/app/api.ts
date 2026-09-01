@@ -2,6 +2,8 @@
  * モックAPIクライアント（企画書 §10-1・localhost固定）。
  * 本番ドメインは登場させない（§3-2）。
  */
+import type { MasterStyleSheet } from './master-style.ts'
+
 const BASE = '/api/v1'
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
@@ -140,6 +142,11 @@ export const api = {
   deleteVersion: (uid: string) => request<void>('DELETE', `/versions/${uid}`),
   archiveVersion: (uid: string) =>
     request<{ version: Version }>('POST', `/versions/${uid}/archive`),
+  masterStyleSheet: (articleUid: string) =>
+    request<{ master_style_sheet: MasterStyleSheet }>(
+      'GET',
+      `/articles/${articleUid}/master_style_sheet`,
+    ),
 
   /** レポートタブ（§10-3 `GET /ab_tests/:uid/reports?start_date&end_date`） */
   report: (abTestUid: string, query: string) =>
