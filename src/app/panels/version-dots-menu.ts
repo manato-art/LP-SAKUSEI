@@ -23,6 +23,7 @@ import { bindBackdropClose, findByExactText, openPortal } from './portal.ts'
 import { LP_BASE_CSS } from '../lp-base-css.ts'
 import { withAutoplayVideos } from '../lp-video.ts'
 import { openDuplicateModal } from './version-duplicate-modal.ts'
+import { openDuplicateToOtherModal } from './version-duplicate-to-other-modal.ts'
 import { normalizeDotsMenuHtml } from './dots-menu-normalize.ts'
 
 /**
@@ -91,6 +92,8 @@ function escapeHtml(value: string): string {
 }
 
 export interface DotsMenuDeps {
+  /** いま開いている beyondページ（別ページ複製の「複製元」除外に使う） */
+  abTestUid: string
   /** いま開いている Version（複製元・ダウンロード対象） */
   getCurrentVersion: () => Version | null
   /** 複製に成功したときの後処理（複製先へ切り替える等） */
@@ -141,7 +144,10 @@ function openMenu(deps: DotsMenuDeps, onClosed: () => void): void {
     [DOTS_MENU_LABELS.duplicate]: () => openDuplicateModal(deps),
     [DOTS_MENU_LABELS.downloadHtml]: () => downloadHtml(deps),
     [DOTS_MENU_LABELS.duplicateToOther]: () =>
-      toast('別のbeyondページに複製は未実装です', 'error'),
+      openDuplicateToOtherModal({
+        abTestUid: deps.abTestUid,
+        getCurrentVersion: deps.getCurrentVersion,
+      }),
     [DOTS_MENU_LABELS.archive]: () => {
       if (globalThis.confirm('このVersionをアーカイブしますか？')) void archive(deps)
     },

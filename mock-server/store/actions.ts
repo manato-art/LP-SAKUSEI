@@ -391,6 +391,38 @@ export function deleteVersion(state: State, uid: string): { state: State; delete
  * FAQ:「アーカイブする際には、配信割合が1以上のVersionがbeyondページ内に存在している必要がある」
  * ＝アーカイブ後も、非アーカイブで配信割合>=1のVersionが最低1つ残ることを条件にする。
  */
+/**
+ * Versionを**別のbeyondページ（記事）へ**複製する（指示⑮ 別のbeyondページに複製）。
+ * ソースの html/css/name を引き継ぎ、対象記事の末尾に配信割合0で追加する。
+ */
+export function duplicateVersionToArticle(
+  state: State,
+  versionUid: string,
+  targetArticleUid: string,
+): { state: State; version: Version | null; reason?: string } {
+  const source = state.versions.find((v) => v.uid === versionUid)
+  if (source === undefined) return { state, version: null, reason: 'source-notfound' }
+  const targetArticle = state.articles.find((a) => a.uid === targetArticleUid)
+  if (targetArticle === undefined) return { state, version: null, reason: 'target-notfound' }
+  const copy: Version = {
+    ...source,
+    id: state.nextId,
+    uid: makeUid('version', nextSeq(state.versions)),
+    article_id: targetArticle.id,
+    name: `${source.name}の複製`,
+    distribution_ratio: 0,
+    is_control: false,
+    status: '準備中',
+    thumbnail_url: null,
+    created_at: nowTs(),
+    updated_at: nowTs(),
+  }
+  return {
+    state: { ...state, versions: [...state.versions, copy], nextId: state.nextId + 1 },
+    version: copy,
+  }
+}
+
 export function archiveVersion(
   state: State,
   uid: string,

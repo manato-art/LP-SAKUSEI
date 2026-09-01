@@ -10,6 +10,7 @@ import {
   unarchiveVersion,
   deleteVersion,
   duplicateVersion,
+  duplicateVersionToArticle,
   setDeviceTargets,
   publishVersion,
   updateVersion,
@@ -69,6 +70,29 @@ versionsRouter.post('/versions/:uid/duplicate', (req, res) => {
   })
   if (created === null) {
     res.status(404).json(errorEnvelope('not_found', 'Versionが見つかりません。'))
+    return
+  }
+  res.status(201).json({ version: serializeVersion(created) })
+})
+
+/** 別のbeyondページ（記事）へ複製（指示⑮） */
+versionsRouter.post('/versions/:uid/duplicate_to', (req, res) => {
+  const targetArticleUid = optionalString(req.body, 'target_article_uid')
+  if (targetArticleUid === '') {
+    res.status(422).json(errorEnvelope('validation_failed', '複製先のbeyondページを選んでください。'))
+    return
+  }
+  let created: Version | null = null
+  let reason: string | undefined
+  setState((state) => {
+    const out = duplicateVersionToArticle(state, req.params.uid, targetArticleUid)
+    created = out.version
+    reason = out.reason
+    return out.state
+  })
+  if (created === null) {
+    const msg = reason === 'target-notfound' ? '複製先のbeyondページが見つかりません。' : 'Versionが見つかりません。'
+    res.status(404).json(errorEnvelope('not_found', msg))
     return
   }
   res.status(201).json({ version: serializeVersion(created) })

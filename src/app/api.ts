@@ -140,6 +140,10 @@ export const api = {
   publish: (uid: string) => request<{ version: Version }>('POST', `/versions/${uid}/publish`),
   duplicateVersion: (uid: string) =>
     request<{ version: Version }>('POST', `/versions/${uid}/duplicate`),
+  duplicateVersionToArticle: (uid: string, targetArticleUid: string) =>
+    request<{ version: Version }>('POST', `/versions/${uid}/duplicate_to`, {
+      target_article_uid: targetArticleUid,
+    }),
   deleteVersion: (uid: string) => request<void>('DELETE', `/versions/${uid}`),
   archiveVersion: (uid: string) =>
     request<{ version: Version }>('POST', `/versions/${uid}/archive`),

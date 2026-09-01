@@ -393,6 +393,7 @@ function wireVersionCard(ctx: EditorContext, card: HTMLElement, version: Version
 
   // このカードの「…」メニューは**このVersion**を対象にする。
   mountVersionDotsMenu(card, {
+    abTestUid: ctx.abTestUid,
     getCurrentVersion: () => model,
     onDuplicated: (created) => {
       ctx.versions = [...ctx.versions, created]
