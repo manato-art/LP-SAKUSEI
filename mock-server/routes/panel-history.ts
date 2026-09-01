@@ -43,6 +43,8 @@ function serializeHistory(entry: ArticleHistory, isCurrent: boolean): Record<str
     /** 実機の書式（ゼロ埋めなし）。表示側で組み立て直さないよう、ここで確定させる */
     recorded_at_label: formatHistoryTimestamp(entry.recorded_at),
     is_current: isCurrent,
+    /** 「何をしたか」の操作ログ（指示⑪） */
+    label: entry.label ?? '',
   }
 }
 

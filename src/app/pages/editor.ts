@@ -16,7 +16,7 @@ import { toast } from '../ui.ts'
 import { mountVersionSettings } from '../panels/version-settings.ts'
 import { mountTagSettings } from '../panels/tag-settings.ts'
 import { mountLinkReplace } from '../panels/link-replace.ts'
-import { mountHistory } from '../panels/history.ts'
+import { mountHistory, recordArticleHistory } from '../panels/history.ts'
 import { mountEditorToolbar } from '../panels/editor-toolbar.ts'
 import { createAutosave } from './autosave.ts'
 import { createPanelGroup } from '../panels/panel-group.ts'
@@ -462,7 +462,15 @@ function wireSideToolbar(ctx: EditorContext): void {
   // （docs/findings-live-observation.md「エディタは『開くだけで自動保存』が走る」・DOMに _saveAnimation_）。
   // これが無いと、打った内容がサーバーに残らない。
   const autosave = createAutosave({
-    save: () => saveHtml(ctx),
+    // 変更のたびに保存し、同時に履歴スナップショットを積む（指示⑪・サーバー側で最新100件に丸め）。
+    save: async () => {
+      await saveHtml(ctx)
+      try {
+        await recordArticleHistory(ctx.articleUid, ctx.quill.root.innerHTML)
+      } catch {
+        // 履歴記録の失敗で編集は止めない（保存自体は済んでいる）。
+      }
+    },
     delayMs: AUTOSAVE_DELAY_MS,
     onError: (error) => toast(`保存できませんでした: ${error.message}`, 'error'),
   })

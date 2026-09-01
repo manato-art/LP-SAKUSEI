@@ -67,6 +67,8 @@ export interface ArticleHistoryRow {
   recorded_at: number
   recorded_at_label: string
   is_current: boolean
+  /** 「何をしたか」の操作ログ（指示⑪） */
+  label?: string
 }
 
 /* ────────────────────────────────────────────────────────────
@@ -226,8 +228,9 @@ function buildRow(history: ArticleHistoryRow): HTMLElement {
 
   const date = node.querySelector<HTMLElement>(`.${CLS.infoDate}`)
   if (date !== null) date.textContent = history.recorded_at_label
+  // 操作ログ（指示⑪）: 現行版は「現行版」、それ以外は「何をしたか」を出す。
   const label = node.querySelector<HTMLElement>(`.${CLS.infoLabel}`)
-  if (label !== null && history.is_current) label.textContent = CURRENT_LABEL
+  if (label !== null) label.textContent = history.is_current ? CURRENT_LABEL : (history.label ?? '')
 
   node.addEventListener('click', () => select(node))
   return node

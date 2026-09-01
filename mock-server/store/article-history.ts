@@ -22,7 +22,12 @@ export interface ArticleHistory {
   css: string
   /** UNIX秒（実APIの created_at/updated_at と同じ単位） */
   recorded_at: number
+  /** 「何をしたか」の短い説明（指示⑪の操作ログ）。例: 「画像を追加」「本文 +12文字」 */
+  label?: string
 }
+
+/** 1記事あたりに保持するスナップショット上限（指示⑪「50〜100だけキャッシュ」）。100で運用。 */
+export const HISTORY_MAX_PER_ARTICLE = 100
 
 export interface ArticleHistoryState {
   readonly entries: readonly ArticleHistory[]
@@ -108,11 +113,15 @@ export interface AppendHistoryInput {
   html: string
   css: string
   recorded_at: number
+  /** 省略時は直前スナップショットとの差分から自動生成（指示⑪の操作ログ） */
+  label?: string
 }
 
 /**
  * スナップショットを1件積む。
- * 直前と内容が同じなら積まない（同じ日時の行が延々並ぶのを防ぐ）。
+ * - 直前と内容が同じなら積まない（同じ日時の行が延々並ぶのを防ぐ）。
+ * - 「何をしたか」の label を直前との差分から自動生成する（指示⑪）。
+ * - 1記事あたり HISTORY_MAX_PER_ARTICLE 件を超えたら**古い方から捨てる**（指示⑪「N件だけキャッシュ」）。
  */
 export function appendArticleHistory(
   history: ArticleHistoryState,
@@ -122,12 +131,51 @@ export function appendArticleHistory(
   if (latest !== undefined && latest.html === input.html && latest.css === input.css) {
     return { state: history, history: latest, recorded: false }
   }
-  const entry: ArticleHistory = { id: history.nextId, ...input }
+  const label = input.label ?? describeHtmlChange(latest?.html, input.html)
+  const entry: ArticleHistory = { id: history.nextId, ...input, label }
+  const appended = [...history.entries, entry]
   return {
-    state: { entries: [...history.entries, entry], nextId: history.nextId + 1 },
+    state: { entries: capPerArticle(appended, input.article_key), nextId: history.nextId + 1 },
     history: entry,
     recorded: true,
   }
+}
+
+/** 指定記事のエントリが上限を超えていたら、古い順に削って上限内へ収める（他記事は不変） */
+function capPerArticle(entries: readonly ArticleHistory[], key: string): ArticleHistory[] {
+  const mine = entries.filter((e) => e.article_key === key)
+  if (mine.length <= HISTORY_MAX_PER_ARTICLE) return [...entries]
+  const dropCount = mine.length - HISTORY_MAX_PER_ARTICLE
+  const dropIds = new Set(mine.slice(0, dropCount).map((e) => e.id))
+  return entries.filter((e) => !dropIds.has(e.id))
+}
+
+/** 直前スナップショットと今回で「何が変わったか」を短い日本語ログにする（純粋関数・指示⑪） */
+export function describeHtmlChange(prevHtml: string | undefined, nextHtml: string): string {
+  if (prevHtml === undefined) return '作成'
+  const imgDelta = countTag(nextHtml, 'img') - countTag(prevHtml, 'img')
+  const videoDelta = countTag(nextHtml, 'video') - countTag(prevHtml, 'video')
+  if (videoDelta > 0) return videoDelta === 1 ? '動画を追加' : `動画を${videoDelta}個追加`
+  if (videoDelta < 0) return '動画を削除'
+  if (imgDelta > 0) return imgDelta === 1 ? '画像を追加' : `画像を${imgDelta}枚追加`
+  if (imgDelta < 0) return '画像を削除'
+  const textDelta = textLength(nextHtml) - textLength(prevHtml)
+  if (textDelta > 0) return `本文 +${textDelta}文字`
+  if (textDelta < 0) return `本文 ${textDelta}文字`
+  return '編集'
+}
+
+function countTag(html: string, tag: string): number {
+  return html.split(new RegExp(`<${tag}\\b`, 'i')).length - 1
+}
+
+/** タグを除いた本文の文字数（ざっくり） */
+function textLength(html: string): number {
+  return html
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\s+/g, '')
+    .length
 }
 
 /**
