@@ -93,6 +93,8 @@ interface EditorContext {
   articleUid: string
   versions: Version[]
   currentUid: string
+  /** Versionカードの雛形（採取した実物カードのクリーンなクローン。Versionごとに複製して並べる） */
+  cardTemplate: HTMLElement
 }
 
 export async function renderEditor(
@@ -151,6 +153,10 @@ export async function renderEditor(
   // キャンバスへのドラッグ＆ドロップで、カーソル位置へ画像/GIF/動画を挿入できるようにする。
   wireMediaDrop(quill)
 
+  // Versionカードの雛形を、配線前のクリーンな状態でクローンして控える（採取した実物1枚が雛形）。
+  const originalCard = root.querySelector<HTMLElement>('[data-article-uid]')
+  const cardTemplate = (originalCard?.cloneNode(true) as HTMLElement | null) ?? document.createElement('div')
+
   const ctx: EditorContext = {
     root,
     quill,
@@ -159,28 +165,15 @@ export async function renderEditor(
     articleUid,
     versions: [...versions],
     currentUid: versions[0]?.uid ?? '',
+    cardTemplate,
   }
 
-  applyVersionToPanel(ctx)
-  wireVersionPanel(ctx)
+  // Versionパネルは ctx.versions から**1枚ずつカードを描く**（複製/追加した分も下に増える）。
+  renderVersionList(ctx)
+  // 「Version追加」ボタンはカードの下に据え置き（再描画で消えない）。1回だけ配線する。
+  wireAddVersion(ctx)
   // 「Version ▼」一覧ドロップダウンの開閉（task 2・採取済みマークアップに挙動だけ付ける）
   mountVersionListDropdown(root)
-  // エディタ内オーバーレイ4種（すべて採取済みマークアップに挙動だけ付ける）
-  mountVersionDotsMenu(root, {
-    getCurrentVersion: () => ctx.versions.find((v) => v.uid === ctx.currentUid) ?? null,
-    onDuplicated: (version) => {
-      ctx.versions = [...ctx.versions, version]
-      loadVersion(ctx, version.uid)
-    },
-    onArchived: (version) => {
-      // アーカイブしたVersionを反映（archived を立てる）し、残る非アーカイブへ切り替える
-      ctx.versions = ctx.versions.map((v) =>
-        v.uid === version.uid ? { ...v, archived: true } : v,
-      )
-      const next = ctx.versions.find((v) => v.archived !== true)
-      if (next !== undefined) loadVersion(ctx, next.uid)
-    },
-  })
   mountHeaderImageModal(root)
   mountVersionLinkPopup(root, { abTestUid, getCurrentUid: () => ctx.currentUid })
   mountStepAddModal(root)
@@ -245,38 +238,65 @@ function loadVersion(ctx: EditorContext, uid: string): void {
   if (v === undefined) return
   ctx.currentUid = uid
   ctx.quill.root.innerHTML = v.html
-  applyVersionToPanel(ctx)
+  // 現在Versionの本文を載せ替えたら、カード一覧も描き直して選択状態を合わせる。
+  renderVersionList(ctx)
 }
 
-/** 採取DOMのVersion行に、モックの値を流し込む */
-function applyVersionToPanel(ctx: EditorContext): void {
-  const current = ctx.versions.find((v) => v.uid === ctx.currentUid)
-  if (current === undefined) return
-  const name = ctx.root.querySelector<HTMLInputElement>(HOOK.versionName)
-  const ratio = ctx.root.querySelector<HTMLInputElement>(HOOK.ratio)
-  if (name !== null) name.value = current.name
-  if (ratio !== null) ratio.value = String(current.distribution_ratio)
+/** アクティブ表示に使う実CSSクラス（採取物のクラス。書き換えていない） */
+const ACTIVE_CARD_CLASS = '_active_1xibh_202'
 
+/**
+ * Versionパネルのカードを ctx.versions から**1枚ずつ描き直す**。
+ * 採取物には現在Versionのカードが1枚しか無いので、それを雛形にVersionの数だけ複製して並べる。
+ * これが無いと、複製/追加したVersionのカードが下に増えない（＝ユーザー報告の不具合）。
+ */
+function renderVersionList(ctx: EditorContext): void {
+  const list = ctx.root.querySelector<HTMLElement>(HOOK.versionList)
+  if (list === null) return
+  const addButton = list.querySelector<HTMLElement>(HOOK.addVersion)
+  for (const card of list.querySelectorAll<HTMLElement>(HOOK.versionRow)) card.remove()
+
+  const alive = ctx.versions.filter((v) => v.archived !== true)
+  for (const version of alive) {
+    const card = ctx.cardTemplate.cloneNode(true) as HTMLElement
+    wireVersionCard(ctx, card, version)
+    if (addButton !== null) list.insertBefore(card, addButton)
+    else list.append(card)
+  }
 }
 
+/** 1枚のVersionカードに、そのVersionの値と操作（名前/配信割合/更新/「…」/クリック切替）を配線する */
+function wireVersionCard(ctx: EditorContext, card: HTMLElement, version: Version): void {
+  // このカードが表す最新のVersion（保存のたびに新しいオブジェクトへ差し替える＝イミュータブル・§12）。
+  let model = version
+  card.dataset['articleUid'] = model.uid
+  card.setAttribute('data-id', String(model.id))
+  const isCurrent = model.uid === ctx.currentUid
+  card.querySelector<HTMLElement>(HOOK.currentVersion)?.classList.toggle(ACTIVE_CARD_CLASS, isCurrent)
 
-function wireVersionPanel(ctx: EditorContext): void {
-  const name = ctx.root.querySelector<HTMLInputElement>(HOOK.versionName)
-  const ratio = ctx.root.querySelector<HTMLInputElement>(HOOK.ratio)
+  const name = card.querySelector<HTMLInputElement>(HOOK.versionName)
+  const ratio = card.querySelector<HTMLInputElement>(HOOK.ratio)
+  if (name !== null) name.value = model.name
+  if (ratio !== null) ratio.value = String(model.distribution_ratio)
 
   const save = async (): Promise<void> => {
-    const current = ctx.versions.find((v) => v.uid === ctx.currentUid)
-    if (current === undefined) return
+    const nextName = name !== null && name.value !== model.name ? name.value : null
+    const nextRatio =
+      ratio !== null && Number(ratio.value) !== model.distribution_ratio ? Number(ratio.value) : null
+    if (nextName === null && nextRatio === null) return
     try {
-      if (name !== null && name.value !== current.name) {
-        await api.saveVersion(current.uid, { name: name.value })
-        current.name = name.value
+      let updated = model
+      if (nextName !== null) {
+        await api.saveVersion(model.uid, { name: nextName })
+        updated = { ...updated, name: nextName }
       }
-      if (ratio !== null && Number(ratio.value) !== current.distribution_ratio) {
-        const res = await api.setRatio(current.uid, Number(ratio.value))
-        current.distribution_ratio = res.version.distribution_ratio
+      if (nextRatio !== null) {
+        const res = await api.setRatio(model.uid, nextRatio)
+        updated = { ...updated, distribution_ratio: res.version.distribution_ratio }
+        if (ratio !== null) ratio.value = String(res.version.distribution_ratio)
       }
-      applyVersionToPanel(ctx)
+      model = updated
+      ctx.versions = ctx.versions.map((v) => (v.uid === updated.uid ? updated : v))
       toast('更新しました')
     } catch (error) {
       toast((error as Error).message, 'error')
@@ -285,31 +305,64 @@ function wireVersionPanel(ctx: EditorContext): void {
 
   name?.addEventListener('change', () => void save())
   ratio?.addEventListener('change', () => void save())
-
-  // スピナー（実物は上下ボタンが別要素）
-  ctx.root.querySelector(HOOK.ratioUp)?.addEventListener('click', () => {
+  card.querySelector(HOOK.ratioUp)?.addEventListener('click', (event) => {
+    event.stopPropagation()
     if (ratio === null) return
     ratio.value = String(Math.min(100, Number(ratio.value) + 1))
     void save()
   })
-  ctx.root.querySelector(HOOK.ratioDown)?.addEventListener('click', () => {
+  card.querySelector(HOOK.ratioDown)?.addEventListener('click', (event) => {
+    event.stopPropagation()
     if (ratio === null) return
     ratio.value = String(Math.max(0, Number(ratio.value) - 1))
     void save()
   })
+  // 「更新」ボタン（`_articleButtons_` 内の文言「更新」のボタン）
+  findUpdateButton(card)?.addEventListener('click', (event) => {
+    event.stopPropagation()
+    void save()
+  })
 
-  // Version行のクリックで切り替え（行が data-article-uid を持つ・実DOMで判明）
-  for (const row of ctx.root.querySelectorAll<HTMLElement>(HOOK.versionRow)) {
-    row.style.cursor = 'pointer'
-    row.addEventListener('click', (e) => {
-      const target = e.target as HTMLElement
-      if (target.closest('input') !== null || target.closest('button') !== null) return
-      const uid = row.dataset['articleUid']
-      if (uid === undefined) return
-      void saveHtml(ctx).then(() => loadVersion(ctx, uid))
-    })
+  // カードのクリックでVersionを切り替える（入力欄・ボタン・スピナー・「…」上は除く）。
+  card.style.cursor = 'pointer'
+  card.addEventListener('click', (event) => {
+    const target = event.target as HTMLElement
+    if (target.closest('input, button, ._articleButtons_1xibh_160') !== null) return
+    if (target.closest(HOOK.ratioUp) !== null || target.closest(HOOK.ratioDown) !== null) return
+    if (model.uid === ctx.currentUid) return
+    void saveHtml(ctx).then(() => loadVersion(ctx, model.uid))
+  })
+
+  // このカードの「…」メニューは**このVersion**を対象にする。
+  mountVersionDotsMenu(card, {
+    getCurrentVersion: () => model,
+    onDuplicated: (created) => {
+      ctx.versions = [...ctx.versions, created]
+      // 追加分のカードが下に増える。複製先へ切り替える。
+      loadVersion(ctx, created.uid)
+    },
+    onArchived: (archived) => {
+      ctx.versions = ctx.versions.map((v) =>
+        v.uid === archived.uid ? { ...v, archived: true } : v,
+      )
+      const next = ctx.versions.find((v) => v.archived !== true)
+      if (next !== undefined) loadVersion(ctx, next.uid)
+      else renderVersionList(ctx)
+    },
+  })
+}
+
+/** カード内の「更新」ボタンを文言で探す（Emotionクラスは匿名化され得るので文言で引く） */
+function findUpdateButton(card: HTMLElement): HTMLElement | null {
+  const buttons = card.querySelectorAll<HTMLElement>('._articleButtons_1xibh_160 button')
+  for (const button of buttons) {
+    if ((button.textContent ?? '').trim().startsWith('更新')) return button
   }
+  return null
+}
 
+/** 「Version追加」ボタンを1回だけ配線する（カード再描画で消えない要素なので使い回す） */
+function wireAddVersion(ctx: EditorContext): void {
   ctx.root.querySelector(HOOK.addVersion)?.addEventListener('click', async () => {
     try {
       await saveHtml(ctx)
