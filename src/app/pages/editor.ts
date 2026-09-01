@@ -20,7 +20,7 @@ import { mountHistory, recordArticleHistory } from '../panels/history.ts'
 import { mountEditorToolbar } from '../panels/editor-toolbar.ts'
 import { createAutosave } from './autosave.ts'
 import { createPanelGroup } from '../panels/panel-group.ts'
-import { mountVersionListDropdown } from '../panels/version-actions.ts'
+import { mountVersionListDropdown, setVersionListMode } from '../panels/version-actions.ts'
 import { mountVersionDotsMenu } from '../panels/version-dots-menu.ts'
 import { mountHeaderImageModal } from '../panels/header-image-modal.ts'
 import { mountVersionLinkPopup } from '../panels/version-link-popup.ts'
@@ -95,6 +95,8 @@ interface EditorContext {
   currentUid: string
   /** Versionカードの雛形（採取した実物カードのクリーンなクローン。Versionごとに複製して並べる） */
   cardTemplate: HTMLElement
+  /** Version▼の表示モード（通常一覧 / アーカイブ一覧・指示⑮） */
+  listMode: 'active' | 'archived'
 }
 
 export async function renderEditor(
@@ -166,6 +168,7 @@ export async function renderEditor(
     versions: [...versions],
     currentUid: versions[0]?.uid ?? '',
     cardTemplate,
+    listMode: 'active',
   }
 
   // Versionパネルは ctx.versions から**1枚ずつカードを描く**（複製/追加した分も下に増える）。
@@ -173,7 +176,12 @@ export async function renderEditor(
   // 「Version追加」ボタンはカードの下に据え置き（再描画で消えない）。1回だけ配線する。
   wireAddVersion(ctx)
   // 「Version ▼」一覧ドロップダウンの開閉（task 2・採取済みマークアップに挙動だけ付ける）
-  mountVersionListDropdown(root)
+  mountVersionListDropdown(root, {
+    onSelectMode: (mode) => {
+      ctx.listMode = mode
+      renderVersionList(ctx)
+    },
+  })
   mountHeaderImageModal(root)
   mountVersionLinkPopup(root, { abTestUid, getCurrentUid: () => ctx.currentUid })
   mountStepAddModal(root)
@@ -244,6 +252,8 @@ function loadVersion(ctx: EditorContext, uid: string): void {
 
 /** アクティブ表示に使う実CSSクラス（採取物のクラス。書き換えていない） */
 const ACTIVE_CARD_CLASS = '_active_1xibh_202'
+/** カードの「…」トリガー（採取物のクラス） */
+const DOTS_MENU_TRIGGER = 'button.css-3tls8'
 
 /**
  * Versionパネルのカードを ctx.versions から**1枚ずつ描き直す**。
@@ -256,12 +266,60 @@ function renderVersionList(ctx: EditorContext): void {
   const addButton = list.querySelector<HTMLElement>(HOOK.addVersion)
   for (const card of list.querySelectorAll<HTMLElement>(HOOK.versionRow)) card.remove()
 
-  const alive = ctx.versions.filter((v) => v.archived !== true)
-  for (const version of alive) {
+  const archivedMode = ctx.listMode === 'archived'
+  const shown = ctx.versions.filter((v) => (archivedMode ? v.archived === true : v.archived !== true))
+  // アーカイブ一覧では「Version追加」を隠す（実物どおり・追加は通常一覧の操作）
+  if (addButton !== null) addButton.style.display = archivedMode ? 'none' : ''
+
+  if (archivedMode && shown.length === 0) {
+    const empty = document.createElement('div')
+    empty.dataset['articleUid'] = '__empty__'
+    empty.style.cssText = 'padding:24px 12px;color:#888;font-size:13px;line-height:1.8'
+    empty.textContent = 'アーカイブされたVersionはありません。'
+    if (addButton !== null) list.insertBefore(empty, addButton)
+    else list.append(empty)
+    return
+  }
+
+  for (const version of shown) {
     const card = ctx.cardTemplate.cloneNode(true) as HTMLElement
-    wireVersionCard(ctx, card, version)
+    if (archivedMode) wireArchivedCard(ctx, card, version)
+    else wireVersionCard(ctx, card, version)
     if (addButton !== null) list.insertBefore(card, addButton)
     else list.append(card)
+  }
+}
+
+/** アーカイブ一覧のカード: 名前/割合を表示し、「復元」でアーカイブ解除して通常一覧へ戻す（指示⑮） */
+function wireArchivedCard(ctx: EditorContext, card: HTMLElement, version: Version): void {
+  card.dataset['articleUid'] = version.uid
+  card.setAttribute('data-id', String(version.id))
+  card.querySelector<HTMLElement>(HOOK.currentVersion)?.classList.remove(ACTIVE_CARD_CLASS)
+  const name = card.querySelector<HTMLInputElement>(HOOK.versionName)
+  const ratio = card.querySelector<HTMLInputElement>(HOOK.ratio)
+  if (name !== null) {
+    name.value = version.name
+    name.readOnly = true
+  }
+  if (ratio !== null) {
+    ratio.value = String(version.distribution_ratio)
+    ratio.readOnly = true
+  }
+  // 「…」トリガーは隠し、更新ボタンを「復元」に置き換える
+  card.querySelector<HTMLElement>(DOTS_MENU_TRIGGER)?.style.setProperty('display', 'none')
+  const restore = findUpdateButton(card)
+  if (restore !== null) {
+    restore.textContent = '復元'
+    restore.addEventListener('click', (event) => {
+      event.stopPropagation()
+      void api.unarchiveVersion(version.uid).then((res) => {
+        ctx.versions = ctx.versions.map((v) => (v.uid === version.uid ? res.version : v))
+        toast(`${res.version.name} を復元しました`)
+        ctx.listMode = 'active'
+        setVersionListMode(ctx.root, 'active')
+        loadVersion(ctx, res.version.uid)
+      })
+    })
   }
 }
 

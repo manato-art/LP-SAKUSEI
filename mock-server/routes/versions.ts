@@ -7,6 +7,7 @@ import { currentTeamId } from '../store/current-team.ts'
 import {
   addVersion,
   archiveVersion,
+  unarchiveVersion,
   deleteVersion,
   duplicateVersion,
   setDeviceTargets,
@@ -94,6 +95,21 @@ versionsRouter.post('/versions/:uid/archive', (req, res) => {
     return
   }
   res.json({ version: serializeVersion(archived) })
+})
+
+/** アーカイブ解除（アーカイブ一覧からの復元・指示⑮） */
+versionsRouter.post('/versions/:uid/unarchive', (req, res) => {
+  let restored: Version | null = null
+  setState((state) => {
+    const out = unarchiveVersion(state, req.params.uid)
+    restored = out.version
+    return out.state
+  })
+  if (restored === null) {
+    res.status(404).json(errorEnvelope('not_found', 'Versionが見つかりません。'))
+    return
+  }
+  res.json({ version: serializeVersion(restored) })
 })
 
 /** デバイス別出し分け（Versionのデバイスごと配信ON/OFF）を更新する */

@@ -411,6 +411,20 @@ export function archiveVersion(
   }
 }
 
+/** アーカイブを解除して通常一覧へ戻す（アーカイブ一覧の「復元」・指示⑮） */
+export function unarchiveVersion(
+  state: State,
+  uid: string,
+): { state: State; version: Version | null } {
+  const target = state.versions.find((v) => v.uid === uid)
+  if (target === undefined) return { state, version: null }
+  const updated: Version = { ...target, archived: false, updated_at: nowTs() }
+  return {
+    state: { ...state, versions: state.versions.map((v) => (v.uid === uid ? updated : v)) },
+    version: updated,
+  }
+}
+
 // ── タスク ───────────────────────────────────────────────
 export function createTask(
   state: State,

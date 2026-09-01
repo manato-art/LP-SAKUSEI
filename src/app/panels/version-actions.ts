@@ -18,8 +18,6 @@
  *  - task 3 の「配信割合 (?)」ツールチップ本文も**未採取**（`data-testid="help-icon-wrapper"` は
  *    アイコンSVGのみで、`_tooltipDescription` 本体が付いていない）。文言が無いので作らない。
  */
-import { toast } from '../ui.ts'
-
 /** 採取物のクラス（実物・書き換えていない）。テストが採取HTMLと突き合わせる。 */
 export const VERSION_LIST_HOOK = {
   /** Version▼ 全体 */
@@ -36,8 +34,15 @@ export const VERSION_LIST_HOOK = {
   openClass: '_open_x4j8w_84',
 } as const
 
-/** アーカイブ一覧はモックにデータが無い（採取物にも一覧マークアップが無い）ので選んだら正直に伝える */
+/** Version▼ の2択の文言（採取した実物） */
 const ARCHIVE_LABEL = 'アーカイブ'
+
+export type VersionListMode = 'active' | 'archived'
+
+export interface VersionListDeps {
+  /** 「Version」/「アーカイブ」を選んだときに呼ばれる（表示モード切替） */
+  onSelectMode: (mode: VersionListMode) => void
+}
 
 export interface HttpRequest {
   readonly method: string
@@ -60,7 +65,7 @@ export function buildDeleteRequest(versionUid: string): HttpRequest {
  * 「Version ▼」一覧ドロップダウンの開閉を配線する（task 2）。
  * 採取した土台にドロップダウンが居ることが前提（居なければ何も配線しない）。
  */
-export function mountVersionListDropdown(root: HTMLElement): void {
+export function mountVersionListDropdown(root: HTMLElement, deps?: VersionListDeps): void {
   const listType = root.querySelector<HTMLElement>('[class*="articleListType"]')
   const dropdown = listType?.closest<HTMLElement>('[class*="dropdown_x4j8w"]') ?? null
   if (dropdown === null) {
@@ -94,16 +99,42 @@ export function mountVersionListDropdown(root: HTMLElement): void {
   })
 
   // 選択肢（本体直下の div から矢印を除いたもの）。ラベルは採取した実文言。
-  const options = [...body.querySelectorAll<HTMLElement>('[class*="body_x4j8w"] > div')].filter(
-    (node) => !node.className.includes('arrow_x4j8w'),
-  )
+  const options = optionsOf(dropdown)
   for (const option of options) {
     const label = (option.textContent ?? '').trim()
     option.style.cursor = 'pointer'
     option.addEventListener('click', () => {
       close()
-      // アーカイブは一覧データが未採取・未モデル化。切り替えたふりをせず正直に伝える。
-      if (label === ARCHIVE_LABEL) toast('アーカイブ一覧は未実装です', 'error')
+      const mode: VersionListMode = label === ARCHIVE_LABEL ? 'archived' : 'active'
+      markActiveOption(options, option)
+      deps?.onSelectMode(mode)
     })
   }
+}
+
+/** Version▼ 本体直下の選択肢（矢印を除く） */
+function optionsOf(dropdown: HTMLElement): HTMLElement[] {
+  return [...dropdown.querySelectorAll<HTMLElement>('[class*="body_x4j8w"] > div')].filter(
+    (node) => !node.className.includes('arrow_x4j8w'),
+  )
+}
+
+/** 選択中の選択肢に active クラス（採取物の `_active_1xibh_202`）を付ける */
+function markActiveOption(options: readonly HTMLElement[], active: HTMLElement): void {
+  for (const option of options) option.classList.toggle(VERSION_LIST_HOOK.activeOption.slice(1), option === active)
+}
+
+/**
+ * 外部（復元など）から表示モードを切り替えたときに、ドロップダウンのハイライトも合わせる。
+ * onSelectMode は呼ばない（呼び元が既に再描画している前提）。
+ */
+export function setVersionListMode(root: HTMLElement, mode: VersionListMode): void {
+  const listType = root.querySelector<HTMLElement>('[class*="articleListType"]')
+  const dropdown = listType?.closest<HTMLElement>('[class*="dropdown_x4j8w"]') ?? null
+  if (dropdown === null) return
+  const options = optionsOf(dropdown)
+  const target = options.find(
+    (o) => ((o.textContent ?? '').trim() === ARCHIVE_LABEL) === (mode === 'archived'),
+  )
+  if (target !== undefined) markActiveOption(options, target)
 }
