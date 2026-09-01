@@ -20,8 +20,7 @@ import { matchSidebarPage } from './pages/sidebar-nav.ts'
 import { matchToolPage } from './pages/tool-subnav.ts'
 import { renderToolPage } from './pages/tool-pages.ts'
 import { isSplitTestTab } from './pages/beyond-nav.ts'
-import { T, button, el, emptyState, toast } from './ui.ts'
-import { api } from './api.ts'
+import { T, button, el, emptyState } from './ui.ts'
 
 /**
  * 描画の世代。ルートの描画はAPI待ちを含むため、
@@ -201,25 +200,5 @@ function renderNotBuilt(content: HTMLElement, path: string): void {
   )
 }
 
-/** 開発用の操作パネル（リセット等）。実機には無いのでクローン側の道具として明示する。 */
-function devPanel(): void {
-  const panel = el('div', {
-    style: `position:fixed;right:10px;bottom:10px;z-index:8000;background:#151515;color:#fff;
-      font-family:${T.font};font-size:11px;padding:8px 10px;border-radius:6px;display:flex;gap:8px;align-items:center`,
-  })
-  const reset = el('button', {
-    text: '空の状態に戻す',
-    style: 'background:#333;color:#fff;border:1px solid #555;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:11px',
-  })
-  reset.addEventListener('click', async () => {
-    await api.reset()
-    toast('新規アカウント発行直後の状態に戻しました')
-    location.hash = '/folders'
-    await route()
-  })
-  panel.append(el('span', { text: 'クローン（モックデータ）' }), reset)
-  document.body.append(panel)
-}
-
 addEventListener('hashchange', () => void route())
-void route().then(devPanel)
+void route()

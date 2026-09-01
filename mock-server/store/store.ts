@@ -7,15 +7,20 @@
  */
 import { createEmptyState } from './seed-empty.ts'
 import { createDemoState } from './seed-demo.ts'
+import { loadPersistedState, schedulePersist } from './persistence.ts'
 import type { State } from './types.ts'
 
+/** シード（保存済みが無いときの初期状態）。SEED_DEMO=1 なら架空デモ1式、なければ空。 */
+function seedState(): State {
+  return process.env['SEED_DEMO'] === '1' ? createDemoState() : createEmptyState()
+}
+
 /**
- * 既定は空シード（テスト・検証の前提を変えない）。
- * `SEED_DEMO=1` のときだけ、公開デモ用に架空のフォルダ／ABテスト／Versionを1件用意する
- * （エディタ等の各画面を「到達できる」状態にするため・seed-demo.ts）。
+ * 初期状態。DATA_DIR に保存済み state があればそれを読み戻す（ユーザーが作ったLPを保持）。
+ * 無ければシード（テスト・検証の前提は変えない＝DATA_DIR未設定では常にシード）。
  */
 function initialState(): State {
-  return process.env['SEED_DEMO'] === '1' ? createDemoState() : createEmptyState()
+  return loadPersistedState() ?? seedState()
 }
 
 let current: State = initialState()
@@ -39,12 +44,14 @@ export function setState(updater: (state: State) => State): State {
   if (next === current) return current
   current = next
   revision += 1
+  schedulePersist(current) // DATA_DIR があればディスクへ保存（無ければノーオペ）
   return current
 }
 
 /** 新規アカウント発行直後へ戻す（§10-9 リセット）。SEED_DEMO のときはデモへ戻す。 */
 export function resetState(): State {
-  current = initialState()
+  current = seedState()
   revision += 1
+  schedulePersist(current) // 保存済みもシードで上書き
   return current
 }

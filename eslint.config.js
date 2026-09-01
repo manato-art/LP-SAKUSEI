@@ -33,6 +33,9 @@ export default tseslint.config(
           // §12 のイミュータブル規約が守りたいのは「ドメインデータを破壊的に変更しない」ことで、
           // これらは対象ではない（モックの State は今も完全にイミュータブル）。
           'container', 'content', 'node', 'map', 'quill', 'ctx',
+          // 追加のDOM描画先（採取土台・モーダル/パネル/アイコン等の要素）。いずれもDOM操作であり
+          // ドメインデータの破壊的変更ではない。
+          'root', 'paper', 'icon', 'headerBox', 'holder',
         ] }],
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       '@typescript-eslint/no-explicit-any': 'error',
