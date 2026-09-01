@@ -23,6 +23,7 @@ import { createPanelGroup } from '../panels/panel-group.ts'
 import { mountVersionListDropdown } from '../panels/version-actions.ts'
 import { mountWidgetManager } from '../panels/widget-manager.ts'
 import { wireAbTestTabs } from './tab-nav.ts'
+import { wireBeyondNavAnchors } from './beyond-nav.ts'
 
 /** 採取DOM内の目印（実物の data-test 属性。採取のたびに増える） */
 const HOOK = {
@@ -146,6 +147,7 @@ export async function renderEditor(
   wireTopBar(root, ab_test.title, folderName)
   // 4タブ（基本情報 / Version / ポップアップ / レポート）を相互に行き来できるようにする
   wireAbTestTabs(root, abTestUid, folder?.uid ?? '')
+  wireTopRightIcons(root, abTestUid, folder?.uid ?? '')
   loadVersion(ctx, ctx.currentUid)
 }
 
@@ -410,7 +412,7 @@ function openPreview(ctx: EditorContext, title: string, folderName: string): voi
   for (const [label, hash] of [
     ['Version編集', `/ab_tests/${ctx.abTestUid}/articles`],
     ['Versionオプション設定', `/ab_tests/${ctx.abTestUid}/articles/split_test_settings/devices`],
-    ['中間ページ', `/ab_tests/${ctx.abTestUid}/redirect_pages`],
+    ['中間ページ', `/folders/${ctx.folderUid}/ab_tests/${ctx.abTestUid}/redirect_pages`],
   ] as const) {
     const b = navButton(label)
     b.addEventListener('click', () => {
@@ -509,6 +511,30 @@ function urlCard(label: string, url: string, note: string, noteColor: string): H
 
   card.append(row, inline(note, `font-size:11px;margin-top:8px;color:${noteColor};line-height:1.7`))
   return card
+}
+
+/**
+ * 上部右の3アイコン（編集 / Versionオプション設定 / 中間ページ）を配線する。
+ *
+ * 3アイコンは採取物では `_linksContainer_dcd38_102` 配下の `<a>` で、いずれも実アプリの
+ * 絶対パスを指している。位置で #2/#3 を当てるのは脆いので、**アンカー自身の href /
+ * data-trackid で同定**する（`wireBeyondNavAnchors` の中身・editor-target で確認した実DOM）:
+ *   #1 編集              data-trackid="editor-nav-editor" / href=/ab_tests/:uid/articles#<記事uid>
+ *   #2 オプション設定    href=/ab_tests/:uid/articles/split_test_settings/devices
+ *   #3 中間ページ        data-trackid="editor-nav-redirect-page" / href=…/redirect_pages
+ * #1(編集)は現画面。採取物の絶対hrefのままだとクリックでSPA外へ出てしまうので、
+ * 現画面のハッシュへ張り替えて実害を消す（＝押しても現画面に留まる＝実質「無反応」）。
+ *
+ * 走査は `_linksContainer_dcd38_102` に限定する（本文の他アンカーを巻き込まないため）。
+ * このクラスが採取物から消えたら、下部の Version▼ 等を触らないよう黙って何もしない。
+ */
+function wireTopRightIcons(root: HTMLElement, abTestUid: string, folderUid: string): void {
+  const container = root.querySelector<HTMLElement>('._linksContainer_dcd38_102')
+  if (container === null) {
+    console.warn('[editor] 上部右アイコンの入れ物（_linksContainer_dcd38_102）が見つかりませんでした')
+    return
+  }
+  wireBeyondNavAnchors(container, { abTestUid, folderUid })
 }
 
 function wireTopBar(root: HTMLElement, title: string, folderName: string): void {

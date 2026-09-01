@@ -9,6 +9,9 @@ import { renderBasicInfo } from './pages/basic-info.ts'
 import { renderExitPopup } from './pages/exit-popup.ts'
 import { renderReport } from './pages/report.ts'
 import { renderHeatmap } from './pages/heatmap.ts'
+import { renderSplitTestSettings } from './pages/split-test-settings.ts'
+import { renderRedirectPages } from './pages/redirect-pages.ts'
+import { isSplitTestTab } from './pages/beyond-nav.ts'
 import { T, button, el, emptyState, toast } from './ui.ts'
 import { api } from './api.ts'
 
@@ -53,6 +56,34 @@ async function route(): Promise<void> {
     )
     if (heatmapMatch !== null) {
       await renderHeatmap(content, heatmapMatch[1] as string, generation)
+      return
+    }
+    /**
+     * Versionオプション設定（Version出し分け）。エディタ上部右の2番目のアイコンから。
+     * 6タブ（devices/params/hours/periods/oses/carriers）を末尾セグメントで受ける。
+     * `/articles/` 配下だが末尾が固定なので、エディタ用パターンとは衝突しない。
+     */
+    const splitTestMatch =
+      /^\/ab_tests\/([^/]+)\/articles\/split_test_settings\/([^/]+)$/.exec(path ?? '')
+    if (splitTestMatch !== null) {
+      const tab = splitTestMatch[2] as string
+      // 未知のタブは推測で埋めず「未作成」へ落とす（採取した6タブ以外は再現できない）
+      if (isSplitTestTab(tab)) {
+        await renderSplitTestSettings(content, splitTestMatch[1] as string, tab, generation)
+        return
+      }
+      renderNotBuilt(content, path ?? '')
+      return
+    }
+    // 中間ページ（redirect_pages）。エディタ上部右の3番目のアイコンから。
+    const redirectMatch =
+      /^\/folders\/([^/]+)\/ab_tests\/([^/]+)\/redirect_pages$/.exec(path ?? '')
+    if (redirectMatch !== null) {
+      await renderRedirectPages(
+        content,
+        { folderUid: redirectMatch[1] as string, abTestUid: redirectMatch[2] as string },
+        generation,
+      )
       return
     }
     // レポートタブ（4タブの4つ目）。ここだけダークテーマ。

@@ -64,14 +64,40 @@ function topLevelElements(html: string): TopLevelElement[] {
 /**
  * サイドバー（`list-menu-item` を含むトップレベル要素）を落として本体だけを返す。
  * サイドバーが無ければ入力をそのまま返す。
+ *
+ * 採取物には2通りの入れ子がある:
+ *   - サイドバーと本体が**兄弟**（reports / exit_popups / split_test_settings など）
+ *   - サイドバーと本体が**1枚の外枠でくるまれている**（redirect_pages。外側に
+ *     `h-[100vh]` → `flex h-full flex-col` が付いた状態で採れている）
+ * 後者はトップレベルが1要素で、その中にサイドバーと本体の両方が入るため、
+ * 単純なトップレベル除去だと本体ごと消える。**単一の外枠は1枚ずつ剥がして再帰**する。
  */
 export function stripShellFromFragment(html: string): string {
+  if (!html.includes(SHELL_MARKER)) return html
   const elements = topLevelElements(html)
   if (elements.length === 0) return html
   const kept = elements
     .map((range) => html.slice(range.start, range.end))
     .filter((chunk) => !chunk.includes(SHELL_MARKER))
-  return kept.length === elements.length ? html : kept.join('')
+
+  // サイドバーが兄弟として分離できた（本体が残った）
+  if (kept.length > 0) return kept.length === elements.length ? html : kept.join('')
+
+  // トップレベル1要素の中にサイドバーと本体が同居 → 外枠を1枚剥がして再帰する
+  if (elements.length === 1) {
+    const chunk = html.slice(elements[0]?.start, elements[0]?.end)
+    const inner = unwrapOuterElement(chunk)
+    if (inner !== null) return stripShellFromFragment(inner)
+  }
+  return html
+}
+
+/** `<div ...>…</div>` の外側タグを1枚剥がして中身を返す（剥がせなければ null） */
+function unwrapOuterElement(chunk: string): string | null {
+  const open = chunk.indexOf('>')
+  const close = chunk.lastIndexOf('</')
+  if (open === -1 || close === -1 || close <= open) return null
+  return chunk.slice(open + 1, close)
 }
 
 /**

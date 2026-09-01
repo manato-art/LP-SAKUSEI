@@ -61,6 +61,26 @@
       rel="stylesheet"
       href="/clean/ab_tests__UID__articles__htmls__heatmaps__comparisons/default/cssom.css"
     />
+    <!--
+      Versionオプション設定（/ab_tests/:uid/articles/split_test_settings/:tab）のEmotion/CSS Modules。
+      6タブは別ルートで、Emotionは「その状態で描かれた要素の分だけ」ルールを作るため、
+      タブごとに固有の css-* が入る（デバイス別の表とキャリア別の表で要素が違う）。
+      採取済みの実ファイルを**そのまま**タブ数ぶん参照する（複製を作らない・手書きしない）。
+    -->
+    <link rel="stylesheet" href="/clean/ab_tests__UID__articles__split_test_settings/devices/cssom.css" />
+    <link rel="stylesheet" href="/clean/ab_tests__UID__articles__split_test_settings/params/cssom.css" />
+    <link rel="stylesheet" href="/clean/ab_tests__UID__articles__split_test_settings/hours/cssom.css" />
+    <link rel="stylesheet" href="/clean/ab_tests__UID__articles__split_test_settings/periods/cssom.css" />
+    <link rel="stylesheet" href="/clean/ab_tests__UID__articles__split_test_settings/oses/cssom.css" />
+    <link rel="stylesheet" href="/clean/ab_tests__UID__articles__split_test_settings/carriers/cssom.css" />
+    <!--
+      中間ページ（/folders/:folder_uid/ab_tests/:uid/redirect_pages）のEmotion/CSS Modules。
+      `_redirectPagesWrapper_1tjuv_*` など、上のどのファイルにも入っていないので実ファイルを参照する。
+    -->
+    <link
+      rel="stylesheet"
+      href="/clean/folders__UID__ab_tests__UID__redirect_pages/default/cssom.css"
+    />
     <style>
       body { margin: 0; background: #ECECEC; }
     </style>
