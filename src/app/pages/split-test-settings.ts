@@ -104,32 +104,67 @@ function setSwitch(sw: HTMLElement, on: boolean): void {
   if (input !== null) input.checked = on
 }
 
+const DEVICE_KEYS: readonly ('sp' | 'tablet' | 'pc')[] = ['sp', 'tablet', 'pc']
+const DEVICE_LABELS = { sp: 'スマートフォン', tablet: 'タブレット', pc: 'デスクトップ' } as const
+const VERSION_NAME_CELL = '.css-10qqjzd'
+const VERSION_RATIO_CELL = '.css-1aqqee4'
+
 /**
- * デバイス別トグルを **現在のVersion** の device_targets に配線する。
- * スイッチの並び＝スマートフォン / タブレット / デスクトップ（画面のとおり）。
- * オフにしたデバイスでは、このVersionは配信されず、別の配信可能Versionが表示される（配信ロジックで実現）。
+ * デバイス別タブの**Version一覧を全Versionぶん描く**（指示⑭: 複製した版もここに増える）。
+ * 採取物には版行が1つ（Ver.3873）しか無いので、それを雛形に version の数だけ複製し、
+ * 各行の3スイッチ（スマホ/タブレット/デスクトップ）をその版の device_targets に配線する。
+ *
+ * 版行の同定は Emotion クラスの直指定を避け、**構造**で行う:
+ *   版名セル（.css-10qqjzd）→ その祖先を上り、デバイス見出し（スマートフォン等）を内包する
+ *   コンテナに達したら、その直下で版名を含む子＝「1版の行」。行はコンテナ直下に兄弟として並ぶ。
  */
 async function wireDeviceTargets(root: HTMLElement, abTestUid: string): Promise<void> {
-  const switches = [...root.querySelectorAll<HTMLElement>('.MuiSwitch-root')]
-  if (switches.length < 3) return
-  const keys: readonly ('sp' | 'tablet' | 'pc')[] = ['sp', 'tablet', 'pc']
+  const nameCell = root.querySelector<HTMLElement>(VERSION_NAME_CELL)
+  if (nameCell === null) return
+  let container: HTMLElement | null = nameCell.parentElement
+  while (container !== null && !/スマートフォン/.test(container.textContent ?? '')) {
+    container = container.parentElement
+  }
+  if (container === null) return
+  const templateRow = [...container.children].find((c) => c.contains(nameCell))
+  if (!(templateRow instanceof HTMLElement)) return
 
   const { articles } = await api.articles(abTestUid)
   const articleUid = articles[0]?.uid
   if (articleUid === undefined) return
   const { versions } = await api.versions(articleUid)
-  const version = versions.find((v) => v.archived !== true) ?? versions[0]
-  if (version === undefined) return
+  const alive = versions.filter((v) => v.archived !== true)
+  if (alive.length === 0) return
+
+  const pristine = templateRow.cloneNode(true) as HTMLElement
+  templateRow.remove()
+  for (const version of alive) {
+    const row = pristine.cloneNode(true) as HTMLElement
+    wireDeviceRow(row, version)
+    container.append(row)
+  }
+}
+
+/** 版行1つ：Ver名・配信割合を差し込み、3スイッチをその版の device_targets に配線する */
+function wireDeviceRow(row: HTMLElement, version: {
+  uid: string
+  name: string
+  distribution_ratio: number
+  device_targets?: { sp: boolean; tablet: boolean; pc: boolean }
+}): void {
+  const nameCell = row.querySelector<HTMLElement>(VERSION_NAME_CELL)
+  const ratioCell = row.querySelector<HTMLElement>(VERSION_RATIO_CELL)
+  if (nameCell !== null) nameCell.textContent = version.name
+  if (ratioCell !== null) ratioCell.textContent = String(version.distribution_ratio)
 
   const targets = {
     sp: version.device_targets?.sp !== false,
     tablet: version.device_targets?.tablet !== false,
     pc: version.device_targets?.pc !== false,
   }
-  const labels = { sp: 'スマートフォン', tablet: 'タブレット', pc: 'デスクトップ' } as const
-
+  const switches = [...row.querySelectorAll<HTMLElement>('.MuiSwitch-root')]
   switches.forEach((sw, index) => {
-    const key = keys[index]
+    const key = DEVICE_KEYS[index]
     if (key === undefined) return
     setSwitch(sw, targets[key])
     sw.addEventListener('click', (event) => {
@@ -139,8 +174,8 @@ async function wireDeviceTargets(root: HTMLElement, abTestUid: string): Promise<
       void api.setDeviceTargets(version.uid, targets).then(() => {
         toast(
           targets[key]
-            ? `${labels[key]}へ配信します`
-            : `${labels[key]}では配信しません（他Versionを表示）`,
+            ? `${version.name}: ${DEVICE_LABELS[key]}へ配信します`
+            : `${version.name}: ${DEVICE_LABELS[key]}では配信しません（他Versionを表示）`,
         )
       })
     })
