@@ -54,6 +54,18 @@ export function mountShell(): { content: HTMLElement } {
   return { content: contentRoot as HTMLElement }
 }
 
+/**
+ * シェル（サイドバー）を撤去して #root を空にする。
+ * 配信ページのような「サイドバーを出さない公開ページ」を全画面で描くときに使う。
+ * 次に mountShell が呼ばれると作り直される。
+ */
+export function resetShell(): void {
+  const app = document.querySelector<HTMLElement>('#root')
+  if (app !== null) app.innerHTML = ''
+  shellRoot = null
+  contentRoot = null
+}
+
 /** 採取したサイドバーのリンクをクローンのルートへ張り替える */
 function wireSidebar(nav: HTMLElement): void {
   for (const item of nav.querySelectorAll<HTMLElement>('[data-testid="list-menu-item"]')) {

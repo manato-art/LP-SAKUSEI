@@ -2,7 +2,8 @@
  * クローンのエントリ（企画書 §1-4 の基準状態＝新規アカウントの空状態から始まる）。
  * データはすべてローカルのモックAPIから供給される（§3-2・localhost固定）。
  */
-import { markActiveNav, mountShell } from './shell.ts'
+import { markActiveNav, mountShell, resetShell } from './shell.ts'
+import { renderDelivery } from './pages/delivery.ts'
 import { renderFolders } from './pages/folders.ts'
 import { renderEditor } from './pages/editor.ts'
 import { renderBasicInfo } from './pages/basic-info.ts'
@@ -40,11 +41,22 @@ export function isStale(generation: number): boolean {
 async function route(): Promise<void> {
   renderGeneration += 1
   const generation = renderGeneration
-  const { content } = mountShell()
-  content.innerHTML = ''
   const raw = location.hash.replace(/^#/, '') || '/folders'
   const [path, query] = raw.split('?')
   const params = new URLSearchParams(query ?? '')
+
+  // 配信ページ（配信URLの実体）は**シェルを出さない全画面の公開ページ**。
+  // シェルを構築する前に、#root へ直接描く。
+  const deliveryMatch = /^\/ab\/([^/]+)$/.exec(path ?? '')
+  if (deliveryMatch !== null) {
+    resetShell()
+    const rootEl = document.querySelector<HTMLElement>('#root')
+    if (rootEl !== null) await renderDelivery(rootEl, deliveryMatch[1] as string, generation)
+    return
+  }
+
+  const { content } = mountShell()
+  content.innerHTML = ''
   markActiveNav(path ?? '')
 
   try {
