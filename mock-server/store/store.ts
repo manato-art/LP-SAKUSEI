@@ -6,9 +6,19 @@
  * - reset で新規アカウント発行直後へ戻す（再起動 or `?reset=1`）。
  */
 import { createEmptyState } from './seed-empty.ts'
+import { createDemoState } from './seed-demo.ts'
 import type { State } from './types.ts'
 
-let current: State = createEmptyState()
+/**
+ * 既定は空シード（テスト・検証の前提を変えない）。
+ * `SEED_DEMO=1` のときだけ、公開デモ用に架空のフォルダ／ABテスト／Versionを1件用意する
+ * （エディタ等の各画面を「到達できる」状態にするため・seed-demo.ts）。
+ */
+function initialState(): State {
+  return process.env['SEED_DEMO'] === '1' ? createDemoState() : createEmptyState()
+}
+
+let current: State = initialState()
 let revision = 0
 
 export function getState(): State {
@@ -32,9 +42,9 @@ export function setState(updater: (state: State) => State): State {
   return current
 }
 
-/** 新規アカウント発行直後（空）へ戻す（§10-9 リセット） */
+/** 新規アカウント発行直後へ戻す（§10-9 リセット）。SEED_DEMO のときはデモへ戻す。 */
 export function resetState(): State {
-  current = createEmptyState()
+  current = initialState()
   revision += 1
   return current
 }
