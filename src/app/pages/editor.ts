@@ -26,6 +26,7 @@ import { mountHeaderImageModal } from '../panels/header-image-modal.ts'
 import { mountVersionLinkPopup } from '../panels/version-link-popup.ts'
 import { mountStepAddModal } from '../panels/step-add-modal.ts'
 import { mountWidgetManager } from '../panels/widget-manager.ts'
+import { EXTERNAL_IMAGE_TOOL_INDEX, mountExternalImage } from '../panels/external-image.ts'
 import { wireAbTestTabs } from './tab-nav.ts'
 import { wireBeyondNavAnchors } from './beyond-nav.ts'
 
@@ -343,8 +344,14 @@ function wireSideToolbar(ctx: EditorContext, previewTitle: string, previewFolder
       icon.addEventListener('click', () => ctx.quill.history.redo())
       continue
     }
+    // 外部サーバー画像アップロードは、実物のモーダルが採取できていないため
+    // 見た目は真似ず、標準のファイル選択でカーソル位置へ画像を挿入する（§11 の“正直な代替”）。
+    if (index === EXTERNAL_IMAGE_TOOL_INDEX) {
+      mountExternalImage(icon, ctx.quill)
+      continue
+    }
     if (WIRED_TOOLS.includes(index)) continue
-    // それでも残るツール（外部サーバー画像アップロード等）は正直にトースト
+    // それでも残るツールがあれば正直にトースト
     const name = SIDE_TOOLS[index] ?? 'このツール'
     icon.addEventListener('click', () => toast(`${name} は未実装です`, 'error'))
   }
