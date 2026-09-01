@@ -392,6 +392,57 @@ export function deleteVersion(state: State, uid: string): { state: State; delete
  * ＝アーカイブ後も、非アーカイブで配信割合>=1のVersionが最低1つ残ることを条件にする。
  */
 /**
+ * beyondページに**ファネルステップ（記事）を1つ追加する**（指示⑮ ステップの作成）。
+ * 記事＋既定Version1本を作り、記事一覧の末尾に足す。
+ */
+export function addArticle(
+  state: State,
+  abTestUid: string,
+  opts?: { name?: string },
+): { state: State; article: Article; version: Version } | null {
+  const abTest = state.abTests.find((t) => t.uid === abTestUid)
+  if (abTest === undefined) return null
+  const articleId = state.nextId
+  const versionId = state.nextId + 1
+  const article: Article = {
+    id: articleId,
+    uid: makeUid('article', nextSeq(state.articles)),
+    ab_test_id: abTest.id,
+    memo: opts?.name ?? '',
+    archived: false,
+    style_applied: false,
+    created_at: nowTs(),
+    updated_timestamp: Date.now(),
+  }
+  const version: Version = {
+    id: versionId,
+    uid: makeUid('version', nextSeq(state.versions)),
+    article_id: articleId,
+    name: generateVersionName(nextSeq(state.versions)),
+    distribution_ratio: 1,
+    status: '準備中',
+    is_control: true,
+    archived: false,
+    device_targets: { sp: true, tablet: true, pc: true },
+    html: DEFAULT_LP_HTML,
+    css: DEFAULT_LP_CSS,
+    thumbnail_url: null,
+    created_at: nowTs(),
+    updated_at: nowTs(),
+  }
+  return {
+    state: {
+      ...state,
+      articles: [...state.articles, article],
+      versions: [...state.versions, version],
+      nextId: versionId + 1,
+    },
+    article,
+    version,
+  }
+}
+
+/**
  * Versionを**別のbeyondページ（記事）へ**複製する（指示⑮ 別のbeyondページに複製）。
  * ソースの html/css/name を引き継ぎ、対象記事の末尾に配信割合0で追加する。
  */

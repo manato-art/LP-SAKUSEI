@@ -91,6 +91,10 @@ interface EditorContext {
   /** beyondページ（＝基本情報タブ）へのリンクを組み立てるのに要る */
   folderUid: string
   articleUid: string
+  /** beyondページのファネルステップ（記事）一覧。`< >` で行き来する（指示⑮） */
+  articles: { uid: string }[]
+  /** いま開いているステップの index（articles 内） */
+  stepIndex: number
   versions: Version[]
   currentUid: string
   /** Versionカードの雛形（採取した実物カードのクリーンなクローン。Versionごとに複製して並べる） */
@@ -167,6 +171,8 @@ export async function renderEditor(
     abTestUid,
     folderUid: folder?.uid ?? '',
     articleUid,
+    articles: [...articles],
+    stepIndex: Math.max(0, articles.findIndex((a) => a.uid === articleUid)),
     versions: [...versions],
     currentUid: versions[0]?.uid ?? '',
     cardTemplate,
@@ -187,7 +193,19 @@ export async function renderEditor(
   })
   mountHeaderImageModal(root)
   mountVersionLinkPopup(root, { abTestUid, getCurrentUid: () => ctx.currentUid })
-  mountStepAddModal(root)
+  // 下部バーの「+」＝ファネルステップ追加（指示⑮）。作成したら新ステップへ移動する。
+  mountStepAddModal(root, {
+    onCreate: async (name) => {
+      const { article } = await api.addArticle(ctx.abTestUid, name)
+      const refreshed = (await api.articles(ctx.abTestUid)).articles
+      ctx.articles = [...refreshed]
+      const index = refreshed.findIndex((a) => a.uid === article.uid)
+      await loadStep(ctx, index >= 0 ? index : refreshed.length - 1)
+      toast('ステップを作成しました')
+    },
+  })
+  // 下部バーの「< / >」＝ファネルステップの行き来（指示⑮）
+  wireStepNavigation(ctx)
   wireSideToolbar(ctx)
   wireTopBar(root, ab_test.title, folderName)
   // 4タブ（基本情報 / Version / ポップアップ / レポート）を相互に行き来できるようにする
@@ -242,6 +260,45 @@ function mountQuill(root: HTMLElement): Quill {
     placeholder: 'ここにLPの内容を入力してください',
     modules: { toolbar: false },
   })
+}
+
+/**
+ * ファネルステップ（記事）を切り替える（指示⑮ `< >`）。
+ * 対象記事のVersion一覧を取り直し、先頭Versionを開く。範囲外は何もしない。
+ */
+async function loadStep(ctx: EditorContext, index: number): Promise<void> {
+  if (index < 0 || index >= ctx.articles.length) return
+  const article = ctx.articles[index]
+  if (article === undefined) return
+  ctx.stepIndex = index
+  ctx.articleUid = article.uid
+  ctx.listMode = 'active'
+  ctx.selectionMode = false
+  try {
+    const { versions } = await api.versions(article.uid)
+    ctx.versions = [...versions]
+    ctx.currentUid = versions[0]?.uid ?? ''
+    renderVersionList(ctx)
+    if (ctx.currentUid !== '') loadVersion(ctx, ctx.currentUid)
+    void applyMasterStyleToEditor(ctx)
+    toast(`ステップ ${index + 1}/${ctx.articles.length}`)
+  } catch (error) {
+    toast((error as Error).message, 'error')
+  }
+}
+
+/** 下部バーの `< / >`（前/次のステップ）を配線する */
+function wireStepNavigation(ctx: EditorContext): void {
+  const prev = ctx.root.querySelector<HTMLElement>(HOOK.funnelPrev)
+  const next = ctx.root.querySelector<HTMLElement>(HOOK.funnelNext)
+  if (prev !== null) {
+    prev.style.cursor = 'pointer'
+    prev.addEventListener('click', () => void loadStep(ctx, ctx.stepIndex - 1))
+  }
+  if (next !== null) {
+    next.style.cursor = 'pointer'
+    next.addEventListener('click', () => void loadStep(ctx, ctx.stepIndex + 1))
+  }
 }
 
 function loadVersion(ctx: EditorContext, uid: string): void {

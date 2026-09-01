@@ -45,11 +45,16 @@ export const STEP_COLORS: readonly string[] = [
 
 let isOpen = false
 
+export interface StepAddDeps {
+  /** 「作成」で新しいステップ（記事）を作る。name はモーダルの「ステップ名」 */
+  onCreate: (name: string) => Promise<void>
+}
+
 /**
  * 下部バーの「+」にステップ追加モーダルを配線する。
  * 土台にトリガーが居ることが前提（居なければ何も配線しない）。
  */
-export function mountStepAddModal(root: HTMLElement): void {
+export function mountStepAddModal(root: HTMLElement, deps: StepAddDeps): void {
   const trigger = root.querySelector<HTMLElement>(STEP_ADD_HOOK.trigger)
   if (trigger === null) {
     console.warn('[step-add-modal] トリガー', STEP_ADD_HOOK.trigger, 'が土台に見つかりませんでした')
@@ -60,11 +65,11 @@ export function mountStepAddModal(root: HTMLElement): void {
   trigger.style.cursor = 'pointer'
   trigger.addEventListener('click', (event) => {
     event.stopPropagation()
-    open()
+    open(deps)
   })
 }
 
-function open(): void {
+function open(deps: StepAddDeps): void {
   if (isOpen) return
   const portal = openPortal(rawModal, STEP_ADD_HOOK.overlay, () => {
     isOpen = false
@@ -90,9 +95,11 @@ function open(): void {
   const cancel = findByExactText(portal.root, STEP_ADD_HOOK.button, STEP_ADD_HOOK.cancel)
   cancel?.addEventListener('click', () => portal.close())
 
+  const nameInput = portal.root.querySelector<HTMLInputElement>('input[name="name"]')
   const create = findByExactText(portal.root, STEP_ADD_HOOK.button, STEP_ADD_HOOK.create)
   create?.addEventListener('click', () => {
-    // モックにファネルステップ概念が無い。捏造せず正直に伝えて閉じない（入力は保持）。
-    toast('ステップの作成は未実装です', 'error')
+    const name = (nameInput?.value ?? '').trim() || '無題のステップ'
+    portal.close()
+    void deps.onCreate(name).catch((error: unknown) => toast((error as Error).message, 'error'))
   })
 }

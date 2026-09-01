@@ -4,7 +4,7 @@
  * エディタが起動時に叩く ab_test / articles / versions をここで返す。
  */
 import { Router } from 'express'
-import { createAbTest, deleteAbTest } from '../store/actions.ts'
+import { addArticle, createAbTest, deleteAbTest } from '../store/actions.ts'
 import { getState, setState } from '../store/store.ts'
 import { SPLIT_TEST_DEFAULTS, isSplitTestType } from '../store/split-test-defaults.ts'
 import { aggregate, deriveKpi, isWithin } from '../store/metrics.ts'
@@ -170,6 +170,15 @@ abTestsRouter.get('/ab_tests/:uid/articles', (req, res) => {
   if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
   const articles = state.articles.filter((a) => a.ab_test_id === abTest.id)
   res.json({ articles: applyEmptyState(req, articles.map(serializeArticle)) })
+})
+
+/** ファネルステップ（記事）を1つ追加する（指示⑮ ステップの作成） */
+abTestsRouter.post('/ab_tests/:uid/articles', (req, res) => {
+  const name = optionalString(req.body, 'name')
+  const out = addArticle(getState(), req.params.uid, { name })
+  if (out === null) return notFound(res, 'beyondページが見つかりません。')
+  setState(() => out.state)
+  res.status(201).json({ article: serializeArticle(out.article) })
 })
 
 // ── 離脱ポップアップ（§10-3）──

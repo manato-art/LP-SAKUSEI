@@ -121,6 +121,10 @@ export const api = {
   abTest: (uid: string) => request<{ ab_test: AbTest }>('GET', `/ab_tests/${uid}`),
   articles: (abTestUid: string) =>
     request<{ articles: { uid: string }[] }>('GET', `/ab_tests/${abTestUid}/articles`),
+  addArticle: (abTestUid: string, name?: string) =>
+    request<{ article: { uid: string } }>('POST', `/ab_tests/${abTestUid}/articles`, {
+      ...(name === undefined ? {} : { name }),
+    }),
 
   versions: (articleUid: string) =>
     request<{ versions: Version[]; distribution_total: number; distribution_warning: string | null }>(
