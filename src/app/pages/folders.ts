@@ -222,6 +222,13 @@ function wireRealPageRows(area: HTMLElement, context: PageContext): void {
   // モックが0件のときは雛形を1枚だけ残さず、行を空にして正直に（採取の空状態は未採取）
   anchor.before(fragment)
   for (const wrapper of rowWrappers) wrapper.remove()
+
+  // 採取物に残る無限スクロールのローディング（`role="progressbar"`）は、
+  // クローンの一覧が全件そろっているので永遠に回り続ける。畳んで消す。
+  for (const spinner of container.querySelectorAll<HTMLElement>('[role="progressbar"]')) {
+    const wrapper = spinner.closest<HTMLElement>(`${FOLDERS_HOOK.pageRowList} > div`)
+    ;(wrapper ?? spinner).style.display = 'none'
+  }
 }
 
 /** 雛形の実行を複製し、名前・ステータス・媒体をモック値へ差し替えてクリックを配線する。 */
