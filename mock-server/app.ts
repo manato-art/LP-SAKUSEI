@@ -10,6 +10,7 @@ import { mockStateMiddleware } from './lib/mock-state.ts'
 import { errorEnvelope } from './lib/envelope.ts'
 import { resetState } from './store/store.ts'
 import { captureSinkRouter } from './capture-sink.ts'
+import { seedWidgetAssets, widgetAssetsRouter } from './widget-assets.ts'
 import { versionSettingsRouter } from './routes/panel-version-settings.ts'
 import { tagSettingsRouter } from './routes/panel-tag-settings.ts'
 import { historyRouter } from './routes/panel-history.ts'
@@ -104,6 +105,11 @@ export function createApp(): Express {
   // ── 本番: ビルドしたフロントを配信する（開発時は Vite が担当するので無効）──
   if (SERVE_DIST !== undefined) {
     const distDir = resolve(SERVE_DIST)
+    // Widget資産(13MB)は永続Volumeから配信する（イメージへ焼くとデプロイが昇格しないため）。
+    // 起動時に一度だけ dist → Volume へ種蒔きし、以後は Volume を dist より先に見る。
+    seedWidgetAssets(distDir)
+    const widgetRouter = widgetAssetsRouter()
+    if (widgetRouter !== null) app.use(widgetRouter)
     // index.html は毎回取り直す（no-cache）＝古いJSに固定されない。
     // ハッシュ付きアセット（/assets/index-XXXX.js 等）はファイル名が変わるので長期キャッシュ可。
     app.use(
