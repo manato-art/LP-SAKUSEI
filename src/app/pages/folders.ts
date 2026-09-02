@@ -26,7 +26,7 @@
 import substrate from '../fragments/folders__detail.html?raw'
 import { isStale } from '../main.ts'
 import { api, type AbTest, type Folder } from '../api.ts'
-import { T, emptyState, toast } from '../ui.ts'
+import { T, button, el, emptyState, toast } from '../ui.ts'
 import {
   FOLDERS_HOOK,
   FOLDER_UID_ATTRIBUTE,
@@ -345,25 +345,211 @@ function wireRealDetailPanel(body: HTMLElement, context: PageContext): void {
 }
 
 /**
- * 詳細パネルの鉛筆アイコン（7個）を基本情報の編集ページへ遷移させる。
+ * 詳細パネルの鉛筆アイコン（7個）をインライン編集に配線する。
  * 実物: ページ名 / 配信ステータス / 配信タイプ / 広告媒体 / コンバージョンポイント / コンバージョン単価 / 計測方法
- * それぞれの `<svg data-testid="pencil-icon">` を拾い、クリックで基本情報ページへ飛ばす。
+ *
+ * 鉛筆をクリック → 値テキストが input/select に変わる → 確定で PUT /ab_tests/:uid → DOM更新。
  */
 function wirePencilIcons(panel: HTMLElement, context: PageContext): void {
-  const folderUid = context.folder?.uid
-  const abTestUid = context.abTests[0]?.uid
-  if (folderUid === undefined || abTestUid === undefined) return
+  const abTest = context.abTests[0]
+  if (abTest === undefined) return
 
-  const editHash = `/folders/${folderUid}/ab_tests/${abTestUid}/edit`
+  const pencils = [...panel.querySelectorAll<SVGElement>('[data-testid="pencil-icon"]')]
 
-  for (const pencil of panel.querySelectorAll<HTMLElement>('[data-testid="pencil-icon"]')) {
-    // SVG自身かその親divをクリック可能にする
-    const clickTarget = pencil.closest<HTMLElement>('.css-fbr94v') ?? pencil
+  /** 鉛筆の順番は固定: ページ名, 配信ステータス, 配信タイプ, 広告媒体, CVポイント, CV単価, 計測方法 */
+  const fields: PencilField[] = [
+    { key: 'title', type: 'text' },
+    { key: 'ad_status', type: 'select', options: ['準備中', '公開中', '停止'] },
+    { key: 'delivery_type', type: 'select', options: ['同一URL配信', '異なるURL配信'] },
+    { key: 'media_id', type: 'text', readonly: true },
+    { key: 'conversion_condition', type: 'select', options: ['クリック', 'アクセス'] },
+    { key: 'conversion_unit_price', type: 'text', inputType: 'number' },
+    { key: 'affiliate_service_provider', type: 'text', readonly: true },
+  ]
+
+  for (let i = 0; i < pencils.length && i < fields.length; i++) {
+    const pencilSvg = pencils[i] as SVGElement
+    const field = fields[i] as PencilField
+    const clickTarget = pencilSvg.closest<HTMLElement>('.css-fbr94v') ?? (pencilSvg as unknown as HTMLElement)
     clickTarget.style.cursor = 'pointer'
     clickTarget.addEventListener('click', (e) => {
       e.stopPropagation()
-      location.hash = editHash
+      openInlineEdit(pencilSvg, field, abTest.uid)
     })
+  }
+}
+
+interface PencilField {
+  key: string
+  type: 'text' | 'select'
+  options?: readonly string[]
+  inputType?: string
+  readonly?: boolean
+}
+
+/**
+ * 鉛筆アイコンの横に小さなポップオーバーを出してインライン編集する。
+ * テキスト → input, セレクト → select を表示。保存で API 呼び出し → DOM 更新。
+ */
+function openInlineEdit(
+  pencilSvg: SVGElement,
+  field: PencilField,
+  abTestUid: string,
+): void {
+  // 既存のポップオーバーがあれば閉じる
+  document.querySelector('.sb-inline-edit')?.remove()
+
+  // 現在の表示値を取得（鉛筆の隣のテキスト）
+  const valueContainer = findValueContainer(pencilSvg)
+  const currentText = valueContainer !== null ? (valueContainer.textContent ?? '').trim() : ''
+
+  // 読み取り専用のフィールドは基本情報ページへ遷移
+  if (field.readonly === true) {
+    toast('この項目は基本情報ページで編集できます')
+    return
+  }
+
+  // ポップオーバーを作成
+  const popover = el('div', {
+    style: [
+      'z-index:1200',
+      `background:${T.surface};border:1px solid #DDD;border-radius:8px`,
+      'box-shadow:0 4px 16px rgba(0,0,0,.12);padding:12px 16px',
+      `min-width:220px;font-family:${T.font}`,
+    ].join(';'),
+  })
+  popover.classList.add('sb-inline-edit')
+
+  let inputEl: HTMLInputElement | HTMLSelectElement
+
+  if (field.type === 'select' && field.options !== undefined) {
+    const sel = document.createElement('select')
+    sel.style.cssText = `width:100%;padding:6px 8px;font-size:13px;border:1px solid #CCC;border-radius:4px;font-family:${T.font}`
+    for (const opt of field.options) {
+      const o = document.createElement('option')
+      o.value = opt
+      o.textContent = opt
+      if (opt === currentText) o.selected = true
+      sel.append(o)
+    }
+    inputEl = sel
+  } else {
+    const inp = document.createElement('input')
+    inp.type = field.inputType ?? 'text'
+    inp.value = currentText === '-' ? '' : currentText
+    inp.style.cssText = `width:100%;padding:6px 8px;font-size:13px;border:1px solid #CCC;border-radius:4px;font-family:${T.font};box-sizing:border-box`
+    inputEl = inp
+  }
+
+  const btnRow = el('div', { style: 'display:flex;gap:8px;margin-top:8px;justify-content:flex-end' })
+  const cancelBtn = button('キャンセル')
+  cancelBtn.style.cssText += ';padding:4px 12px;font-size:12px;background:#F5F5F5;color:#333'
+  const saveBtn = button('保存')
+  saveBtn.style.cssText += ';padding:4px 12px;font-size:12px'
+
+  cancelBtn.addEventListener('click', () => popover.remove())
+  saveBtn.addEventListener('click', () => {
+    const newValue = inputEl.value.trim()
+    if (newValue === '') {
+      toast('値を入力してください', 'error')
+      return
+    }
+    saveBtn.textContent = '保存中…'
+    saveBtn.setAttribute('disabled', '')
+
+    const body = buildPatchBody(field.key, newValue)
+    void api.updateAbTest(abTestUid, body).then(
+      () => {
+        popover.remove()
+        // DOM上の表示テキストを更新
+        if (valueContainer !== null) {
+          valueContainer.textContent = newValue
+        }
+        toast('更新しました')
+      },
+      (err: Error) => {
+        saveBtn.textContent = '保存'
+        saveBtn.removeAttribute('disabled')
+        toast(`更新に失敗しました: ${err.message}`, 'error')
+      },
+    )
+  })
+
+  // Enter で保存
+  inputEl.addEventListener('keydown', ((e: KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.isComposing) {
+      e.preventDefault()
+      saveBtn.click()
+    }
+    if (e.key === 'Escape') popover.remove()
+  }) as EventListener)
+
+  btnRow.append(cancelBtn, saveBtn)
+  popover.append(inputEl, btnRow)
+
+  // 鉛筆の位置に fixed ポップオーバーで表示
+  const anchor = pencilSvg.closest<HTMLElement>('.css-fbr94v') ?? (pencilSvg as unknown as HTMLElement)
+  const rect = anchor.getBoundingClientRect()
+  popover.style.position = 'fixed'
+  popover.style.top = `${rect.bottom + 4}px`
+  popover.style.right = `${window.innerWidth - rect.right}px`
+  document.body.append(popover)
+
+  // フォーカス
+  inputEl.focus()
+  if (inputEl instanceof HTMLInputElement) inputEl.select()
+
+  // 外側クリックで閉じる
+  const onOutsideClick = (ev: MouseEvent): void => {
+    if (!popover.contains(ev.target as Node)) {
+      popover.remove()
+      document.removeEventListener('mousedown', onOutsideClick)
+    }
+  }
+  setTimeout(() => document.addEventListener('mousedown', onOutsideClick), 0)
+}
+
+/** 鉛筆SVGの隣にある値テキストの要素を探す */
+function findValueContainer(pencilSvg: SVGElement): HTMLElement | null {
+  // パターン1: 鉛筆が <dd> 内にある → <dd> の中で SVG/div.css-fbr94v 以外のテキストノード
+  const dd = pencilSvg.closest('dd')
+  if (dd !== null) {
+    // dd内の直接テキストか、pencilの前にあるspan/div
+    for (const child of dd.childNodes) {
+      if (child.nodeType === Node.TEXT_NODE && (child.textContent ?? '').trim() !== '') {
+        // テキストノードをspanで囲んで返す
+        const span = document.createElement('span')
+        span.textContent = (child.textContent ?? '').trim()
+        child.replaceWith(span)
+        return span
+      }
+      if (child instanceof HTMLElement && !child.classList.contains('css-fbr94v') && child.tagName !== 'svg') {
+        return child
+      }
+    }
+  }
+  // パターン2: ページ名 → 鉛筆の前の兄弟要素
+  const parent = (pencilSvg.closest('.css-fbr94v') ?? pencilSvg).parentElement
+  if (parent !== null) {
+    for (const child of parent.children) {
+      if (child !== pencilSvg.closest('.css-fbr94v') && child !== pencilSvg && child instanceof HTMLElement) {
+        const text = (child.textContent ?? '').trim()
+        if (text !== '') return child
+      }
+    }
+  }
+  return null
+}
+
+/** フィールドキーに応じて、PUT /ab_tests/:uid に送る部分更新ボディを作る */
+function buildPatchBody(key: string, value: string): Record<string, unknown> {
+  switch (key) {
+    case 'title': return { title: value }
+    case 'ad_status': return { ad_status: value }
+    case 'delivery_type': return { delivery_type: value }
+    case 'conversion_condition': return { conversion_condition: value.toLowerCase() === 'アクセス' ? 'access' : 'click' }
+    case 'conversion_unit_price': return { conversion_unit_price: Number(value) || 0 }
+    default: return { [key]: value }
   }
 }
 

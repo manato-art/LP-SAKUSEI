@@ -122,6 +122,9 @@ export const api = {
       input,
     ),
   abTest: (uid: string) => request<{ ab_test: AbTest }>('GET', `/ab_tests/${uid}`),
+  /** 基本情報の部分更新（PUT /ab_tests/:uid） */
+  updateAbTest: (uid: string, patch: Record<string, unknown>) =>
+    request<{ ab_test: AbTest }>('PUT', `/ab_tests/${uid}`, patch),
   articles: (abTestUid: string) =>
     request<{ articles: { uid: string }[] }>('GET', `/ab_tests/${abTestUid}/articles`),
   addArticle: (abTestUid: string, name?: string) =>
