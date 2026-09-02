@@ -12,7 +12,7 @@ import 'quill/dist/quill.core.css'
 import substrate from '../fragments/ab_tests__UID__articles__editor-target.html?raw'
 import { api, type Version } from '../api.ts'
 import { isStale } from '../main.ts'
-import { toast } from '../ui.ts'
+import { T, el, toast } from '../ui.ts'
 import { mountVersionSettings } from '../panels/version-settings.ts'
 import { mountTagSettings } from '../panels/tag-settings.ts'
 import { mountLinkReplace } from '../panels/link-replace.ts'
@@ -105,12 +105,41 @@ interface EditorContext {
   selectionMode: boolean
 }
 
+/** エディタ土台の描画までの一瞬に出す読み込み表示（クリック直後の blank を埋める）。 */
+function editorLoadingPlaceholder(): HTMLElement {
+  const spinner = el('div', {
+    style: `width:28px;height:28px;border:3px solid #E5E7EB;border-top-color:${T.primary};
+      border-radius:50%;animation:sbspin .8s linear infinite`,
+  })
+  // キーフレームは一度だけ注入する（重複させない）
+  if (document.getElementById('sb-editor-spin-kf') === null) {
+    const style = document.createElement('style')
+    style.id = 'sb-editor-spin-kf'
+    style.textContent = '@keyframes sbspin{to{transform:rotate(360deg)}}'
+    document.head.append(style)
+  }
+  return el(
+    'div',
+    {
+      style: `display:flex;flex-direction:column;align-items:center;justify-content:center;
+        gap:14px;height:70vh;color:${T.sub};font-family:${T.font};font-size:13px`,
+    },
+    [spinner, el('div', { text: 'エディタを起動しています…' })],
+  )
+}
+
 export async function renderEditor(
   container: HTMLElement,
   abTestUid: string,
   generation?: number,
 ): Promise<void> {
   container.innerHTML = ''
+  // ページ名クリック直後は土台の描画（大きな実DOM）とQuill生成で一瞬 blank になる。
+  // 何も出ないと「起動が長い」と感じるので、即座に読み込み表示を出す（描画完了で消す）。
+  container.style.flex = '1'
+  container.style.minWidth = '0'
+  const loader = editorLoadingPlaceholder()
+  container.append(loader)
 
   const [{ ab_test }, { articles }] = await Promise.all([
     api.abTest(abTestUid),
@@ -118,16 +147,18 @@ export async function renderEditor(
   ])
   const articleUid = articles[0]?.uid
   if (articleUid === undefined) {
+    container.innerHTML = ''
     container.textContent = '記事が見つかりません'
     return
   }
-  const { versions } = await api.versions(articleUid)
-  const folders = await api.folders()
+  // versions は articleUid に依存するが、folders は独立なので並行取得する（体感の短縮）。
+  const [{ versions }, folders] = await Promise.all([api.versions(articleUid), api.folders()])
   const folder = folders.folders.find((f) => f.id === ab_test.folder_id)
   const folderName = folder?.name ?? ''
 
   // API待ちの間に新しい描画が始まっていたら、ここで降りる（二重描画の防止）
   if (generation !== undefined && isStale(generation)) return
+  loader.remove()
 
   /**
    * 土台を描画（本物のDOMをそのまま）。

@@ -175,29 +175,78 @@ function renderRealList(body: HTMLElement, context: PageContext): void {
   wireRealDetailPanel(body, context)
 }
 
+/** 配信ステータスの表示名（正本は `mock-server/store/types.ts`） */
+const AD_STATUS_LABELS: Readonly<Record<string, string>> = {
+  prepared: '準備中',
+  delivered: '配信中',
+  stopping: '停止中',
+  finished: '終了',
+}
+
 /**
- * 一覧の各ページ行（採取した実マークアップ・KPI列つき）をクリック可能にする。
- * 採取の行数はモックの件数より多いので、行 i にモックの `abTests[i % 件数]` を割り当て、
- * クリックでそのbeyondページのエディタへ飛ばす。モックが0件なら押下時にそう伝える。
+ * 一覧の実マークアップ（KPI列つきの行）を雛形に、**モックのbeyondページを1件ずつ描き直す**。
+ *
+ * 以前は採取物の行（サンプルの匿名データ）をそのまま見せてクリックだけ配線していたが、
+ * それだとユーザーが実際に作ったページ（例: めぐり）が一覧に出ず消えたように見えた。
+ * ここでは実の行を雛形として複製し、名前・ステータス・媒体をモックの値へ差し替え、
+ * 行クリックでそのページのエディタへ飛ばす。KPI値は採取の「準備中・¥0」がそのまま残る
+ * （モックの準備中ページは実績0なので、これは正しい表示）。
  */
 function wireRealPageRows(area: HTMLElement, context: PageContext): void {
-  const rows = area.querySelectorAll<HTMLElement>(
-    `${FOLDERS_HOOK.pageRowList} [data-testid="list-menu-item"]`,
+  const container = area.querySelector<HTMLElement>(FOLDERS_HOOK.pageRowList)
+  if (container === null) {
+    console.warn('[folders]', FOLDERS_HOOK.pageRowList, 'が土台に見つかりませんでした')
+    return
+  }
+  // 実の行ラッパー（`list-menu-item` を内包する直下要素）を集める。ヘッダやグループ行は残す。
+  const rowWrappers = Array.from(container.children).filter(
+    (child): child is HTMLElement =>
+      child.querySelector('[data-testid="list-menu-item"]') !== null,
   )
-  const abTests = context.abTests
-  rows.forEach((row, index) => {
-    row.style.cursor = 'pointer'
-    const target = abTests.length === 0 ? null : abTests[index % abTests.length] ?? null
-    row.addEventListener('click', (event) => {
-      // 行内のホバー操作アイコン（設定など）を押したときはエディタへ飛ばさない
-      if ((event.target as HTMLElement).closest('button') !== null) return
-      if (target === null) {
-        toast('このフォルダにはモックのbeyondページがまだありません', 'error')
-        return
-      }
-      location.hash = `/ab_tests/${target.uid}/articles`
-    })
+  const anchor = rowWrappers[0]
+  if (anchor === undefined) return
+
+  // 配線前のクリーンな1枚を雛形として控える
+  const template = anchor.cloneNode(true) as HTMLElement
+
+  // フォルダ見出しをモックのフォルダ名に合わせる
+  if (context.folder !== null) {
+    const groupName = area.querySelector<HTMLElement>(FOLDERS_HOOK.groupName)
+    if (groupName !== null) groupName.textContent = context.folder.name
+  }
+
+  const fragment = document.createDocumentFragment()
+  for (const abTest of context.abTests) {
+    fragment.append(buildPageRow(template, abTest))
+  }
+  // モックが0件のときは雛形を1枚だけ残さず、行を空にして正直に（採取の空状態は未採取）
+  anchor.before(fragment)
+  for (const wrapper of rowWrappers) wrapper.remove()
+}
+
+/** 雛形の実行を複製し、名前・ステータス・媒体をモック値へ差し替えてクリックを配線する。 */
+function buildPageRow(template: HTMLElement, abTest: AbTest): HTMLElement {
+  const row = template.cloneNode(true) as HTMLElement
+  const status = AD_STATUS_LABELS[abTest.ad_status] ?? abTest.ad_status
+
+  const title = row.querySelector<HTMLElement>(FOLDERS_HOOK.pageTitle)
+  if (title !== null) title.textContent = abTest.title
+  for (const node of row.querySelectorAll<HTMLElement>(
+    `${FOLDERS_HOOK.pageStatusInline}, ${FOLDERS_HOOK.pageStatusKpi}`,
+  )) {
+    node.textContent = status
+  }
+  const media = row.querySelector<HTMLElement>(FOLDERS_HOOK.pageMedia)
+  if (media !== null) media.textContent = abTest.media?.name ?? '媒体未設定'
+
+  const item = row.querySelector<HTMLElement>('[data-testid="list-menu-item"]')
+  if (item !== null) item.style.cursor = 'pointer'
+  row.addEventListener('click', (event) => {
+    // 行内のホバー操作アイコン（設定など）を押したときはエディタへ飛ばさない
+    if ((event.target as HTMLElement).closest('button') !== null) return
+    location.hash = `/ab_tests/${abTest.uid}/articles`
   })
+  return row
 }
 
 /**

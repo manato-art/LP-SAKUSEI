@@ -43,6 +43,16 @@ export const FOLDERS_HOOK = {
   listArea: '.efy50tl20',
   /** ページ行（`data-testid="list-menu-item"`）が並ぶ内側の容器。 */
   pageRowList: '.efy50tl18',
+  /** ページ行内のタイトル（beyondページ名）。 */
+  pageTitle: '.ehlzdh09',
+  /** ページ行の下段ステータス（準備中 等）。 */
+  pageStatusInline: '.ehlzdh06',
+  /** KPI列側の配信ステータス表示。 */
+  pageStatusKpi: '.ejtacxq0',
+  /** ページ行の媒体名。 */
+  pageMedia: '.ehlzdh02',
+  /** フォルダ見出し（グループ名）。 */
+  groupName: '.en4zj404',
   /** 右の詳細パネル（URL情報 / beyondページ情報 / 配信情報 / パラメータ付きURL発行）。 */
   detailPanel: '.efy50tl16',
 } as const
