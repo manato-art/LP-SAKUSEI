@@ -7,7 +7,7 @@
  */
 import { createEmptyState } from './seed-empty.ts'
 import { createDemoState } from './seed-demo.ts'
-import { loadPersistedState, schedulePersist } from './persistence.ts'
+import { loadPersistedState, persistenceEnabled, schedulePersist } from './persistence.ts'
 import type { State } from './types.ts'
 
 /** シード（保存済みが無いときの初期状態）。SEED_DEMO=1 なら架空デモ1式、なければ空。 */
@@ -20,7 +20,14 @@ function seedState(): State {
  * 無ければシード（テスト・検証の前提は変えない＝DATA_DIR未設定では常にシード）。
  */
 function initialState(): State {
-  return loadPersistedState() ?? seedState()
+  const persisted = loadPersistedState()
+  if (persisted !== null) {
+    console.log(`[store] 永続化データから復元しました（abTests: ${persisted.abTests.length}件、folders: ${persisted.folders.length}件）`)
+    return persisted
+  }
+  const seed = seedState()
+  console.log(`[store] シードから初期化（${persistenceEnabled() ? '永続化ファイル未検出' : 'DATA_DIR未設定'}、abTests: ${seed.abTests.length}件）`)
+  return seed
 }
 
 let current: State = initialState()

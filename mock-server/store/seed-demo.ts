@@ -27,6 +27,11 @@ const DEMO_HTML_B =
   '<p>Versionを切り替えると本文が入れ替わります。</p>' +
   '<p><a href="#">今すぐ試す</a></p>'
 
+const MEGURI_HTML =
+  '<h1>めぐり</h1>' +
+  '<p>めぐりのランディングページです。</p>' +
+  '<p>架空の商品ページとして各画面の検証に使います。</p>'
+
 export function createDemoState(): State {
   let state = createEmptyState()
 
@@ -63,6 +68,20 @@ export function createDemoState(): State {
       distribution_ratio: 50,
     }).state
   }
+
+  // 5) 2つ目のABテスト「めぐり」（架空・2ページ目があることで一覧画面がリアルになる）
+  const meguriResult = createAbTest(state, {
+    title: 'めぐり',
+    memo: '',
+    folder_id: folder.id,
+    media_id: null,
+  })
+  state = meguriResult.state
+  const meguriVersion = meguriResult.version
+  state = updateVersion(state, meguriVersion.uid, {
+    html: MEGURI_HTML,
+    distribution_ratio: 100,
+  }).state
 
   return state
 }
