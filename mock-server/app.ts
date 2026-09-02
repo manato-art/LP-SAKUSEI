@@ -44,6 +44,12 @@ function resetMiddleware(req: Request, _res: Response, next: NextFunction): void
 
 export function createApp(): Express {
   const app = express()
+  // ヘルスチェックは**ボディパーサより前**に置く。Railway のヘルス probe は
+  // 接続をすぐ閉じることがあり、express.json を通すと "request aborted" で
+  // 500 になりチェックが通らずデプロイが INITIALIZING で止まる（実際に踏んだ）。
+  app.get('/__mock/health', (_req, res) => {
+    res.json({ ok: true })
+  })
   app.use(express.json({ limit: '64mb' })) // 採取DOMは数MBになりうる
   app.use(express.urlencoded({ extended: true }))
   app.use(resetMiddleware)
@@ -55,10 +61,7 @@ export function createApp(): Express {
     app.use(captureSinkRouter)
   }
 
-  // ── 運用エンドポイント ──
-  app.get('/__mock/health', (_req, res) => {
-    res.json({ ok: true })
-  })
+  // ── 運用エンドポイント ──（health は上部・ボディパーサ前に登録済み）
   app.post('/__mock/reset', (_req, res) => {
     resetAll()
     res.json({ ok: true })
