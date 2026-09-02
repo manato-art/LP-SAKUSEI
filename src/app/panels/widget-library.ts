@@ -32,9 +32,20 @@ const HOOK = {
   button: 'button',
   search: 'input[placeholder="検索"]',
   category: '.MuiButton-fullWidth',
+  /** カード一覧の器（このカテゴリーぶんのカードだけを入れ替える）。 */
+  grid: '.css-ojejk4',
   card: '.MuiCard-root',
   cardTitle: '.MuiCardHeader-title p',
 } as const
+
+/** カテゴリー資産（採取＋匿名化＋gzip 済み）の場所。ボタンの並び順＝cat番号。 */
+const CATEGORY_ASSET = (index: number): string =>
+  `/clean/widget-library/cat${index}/grid.html.gz`
+/** 採取していないカテゴリー（お気に入り＝ユーザー個別のため空で扱う）。 */
+const UNCAPTURED_CATEGORIES = new Set<number>([1])
+
+/** 取得済みカテゴリーのカードHTMLをセッション内でキャッシュ（再取得しない）。 */
+const gridCache = new Map<number, string>()
 
 let isOpen = false
 
@@ -69,40 +80,125 @@ function open(quill: Quill): void {
 
   findByExactText(portal.root, HOOK.button, HOOK.close)?.addEventListener('click', () => portal.close())
 
-  wireCategories(portal.root)
+  wireCategories(portal.root, quill, portal.close)
   wireSearch(portal.root)
   wireCards(portal.root, quill, portal.close)
+  // 開いた直後に「最近追加」の全件（さらに読み込む込み）へ差し替える。
+  void loadCategory(portal.root, quill, portal.close, 0)
 }
 
-/** カテゴリー選択の見た目切替（実物は選択中が塗り／他はテキストボタン）。 */
-function wireCategories(root: HTMLElement): void {
+/** カテゴリー選択の見た目切替＋そのカテゴリーのカードを取得して差し替える。 */
+function wireCategories(root: HTMLElement, quill: Quill, close: () => void): void {
   const categories = [...root.querySelectorAll<HTMLElement>(HOOK.category)]
-  const activate = (target: HTMLElement): void => {
-    for (const cat of categories) {
-      const on = cat === target
-      cat.classList.toggle('MuiButton-contained', on)
-      cat.classList.toggle('MuiButton-containedPrimary', on)
-      cat.classList.toggle('MuiButton-text', !on)
-      cat.classList.toggle('MuiButton-textPrimary', !on)
-    }
-  }
-  for (const cat of categories) {
-    cat.addEventListener('click', () => activate(cat))
+  for (const [index, cat] of categories.entries()) {
+    cat.addEventListener('click', () => {
+      activateCategory(categories, cat)
+      void loadCategory(root, quill, close, index)
+    })
   }
 }
 
-/** Widget検索（カード名での絞り込み・クライアント側）。 */
+/**
+ * 選択中カテゴリーの塗り（オレンジ）を移す。実物の選択色は Emotion クラス
+ * `css-148uesp`（選択・オレンジ）／`css-1ukmx5`（非選択）で、MUIの contained/text も併せて切替える。
+ */
+function activateCategory(categories: readonly HTMLElement[], target: HTMLElement): void {
+  for (const cat of categories) {
+    const on = cat === target
+    cat.classList.toggle('css-148uesp', on)
+    cat.classList.toggle('css-1ukmx5', !on)
+    cat.classList.toggle('MuiButton-containedSizeMedium', on)
+    cat.classList.toggle('MuiButton-textSizeMedium', !on)
+    cat.classList.toggle('MuiButton-contained', on)
+    cat.classList.toggle('MuiButton-containedPrimary', on)
+    cat.classList.toggle('MuiButton-text', !on)
+    cat.classList.toggle('MuiButton-textPrimary', !on)
+  }
+}
+
+/**
+ * そのカテゴリーのカード一覧（採取＋匿名化＋gzip 済み）を取得して器へ差し込み、配線し直す。
+ * 取得中はローディング、失敗は正直に出す。お気に入りは未採取なので空状態。
+ */
+async function loadCategory(
+  root: HTMLElement,
+  quill: Quill,
+  close: () => void,
+  index: number,
+): Promise<void> {
+  const grid = root.querySelector<HTMLElement>(HOOK.grid)
+  if (grid === null) return
+  if (UNCAPTURED_CATEGORIES.has(index)) {
+    grid.innerHTML = ''
+    grid.append(gridMessage('このカテゴリー（お気に入り）は各ユーザー個別のため、クローンでは空です。'))
+    return
+  }
+  grid.innerHTML = ''
+  grid.append(gridMessage('読み込み中…'))
+  try {
+    const html = await fetchCategoryGrid(index)
+    if (html === null) {
+      grid.innerHTML = ''
+      grid.append(gridMessage('このカテゴリーの読み込みに失敗しました。'))
+      return
+    }
+    grid.innerHTML = html
+    wireCards(root, quill, close)
+    applySearchFilter(root)
+  } catch {
+    grid.innerHTML = ''
+    grid.append(gridMessage('このカテゴリーの読み込みに失敗しました。'))
+  }
+}
+
+/** gzip 資産を取得して展開し、カード一覧（器の中身）だけを返す。 */
+async function fetchCategoryGrid(index: number): Promise<string | null> {
+  const cached = gridCache.get(index)
+  if (cached !== undefined) return cached
+  const res = await fetch(CATEGORY_ASSET(index))
+  if (!res.ok) return null
+  const buffer = await res.arrayBuffer()
+  const html = await gunzipToText(buffer)
+  const doc = new DOMParser().parseFromString(html, 'text/html')
+  const grid = doc.querySelector<HTMLElement>(HOOK.grid)
+  const inner = grid === null ? null : grid.innerHTML
+  if (inner !== null) gridCache.set(index, inner)
+  return inner
+}
+
+/** gzip のバイト列をテキストへ。既に展開済み（サーバーが自動解凍）なら素通し。 */
+async function gunzipToText(buffer: ArrayBuffer): Promise<string> {
+  try {
+    const stream = new Blob([buffer]).stream().pipeThrough(new DecompressionStream('gzip'))
+    return await new Response(stream).text()
+  } catch {
+    return new TextDecoder().decode(buffer)
+  }
+}
+
+function gridMessage(text: string): HTMLElement {
+  const box = document.createElement('div')
+  box.textContent = text
+  box.style.cssText =
+    'grid-column:1/-1;padding:40px 16px;text-align:center;color:#bbb;font:14px "Hiragino Sans",sans-serif'
+  return box
+}
+
+/** Widget検索（カード名での絞り込み・クライアント側）。差し替え後も効くよう毎回引き直す。 */
 function wireSearch(root: HTMLElement): void {
   const input = root.querySelector<HTMLInputElement>(HOOK.search)
   if (input === null) return
-  const cards = [...root.querySelectorAll<HTMLElement>(HOOK.card)]
-  input.addEventListener('input', () => {
-    const query = input.value.trim().toLowerCase()
-    for (const card of cards) {
-      const title = (card.querySelector(HOOK.cardTitle)?.textContent ?? '').toLowerCase()
-      card.style.display = query === '' || title.includes(query) ? '' : 'none'
-    }
-  })
+  input.addEventListener('input', () => applySearchFilter(root))
+}
+
+function applySearchFilter(root: HTMLElement): void {
+  const input = root.querySelector<HTMLInputElement>(HOOK.search)
+  if (input === null) return
+  const query = input.value.trim().toLowerCase()
+  for (const card of root.querySelectorAll<HTMLElement>(HOOK.card)) {
+    const title = (card.querySelector(HOOK.cardTitle)?.textContent ?? '').toLowerCase()
+    card.style.display = query === '' || title.includes(query) ? '' : 'none'
+  }
 }
 
 /** 各カードの「プレビュー」「追加」を配線する。 */
