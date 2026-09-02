@@ -687,8 +687,34 @@ function wireRealDetailPanel(body: HTMLElement, context: PageContext): void {
   // 鉛筆アイコン（data-testid="pencil-icon"）→ インライン編集
   wirePencilIcons(panel, context)
 
+  // ヘッダーのページ名鉛筆（パネル外にある）を配線
+  wireHeaderPencil(body, context)
+
   // 折りたたみセクション（URL情報・beyondページ情報・配信情報）のアコーディオン開閉
   wireAccordionSections(panel)
+}
+
+/**
+ * ヘッダーのページ名鉛筆（パネル外にある `.efy50tl4` 内の pencil-icon）を配線する。
+ * クリック → ページ名のテキストが input に変わり、Enter/blur で API 更新。
+ */
+function wireHeaderPencil(body: HTMLElement, context: PageContext): void {
+  const abTest = context.abTests[0]
+  if (abTest === undefined) return
+
+  // パネル外のすべての鉛筆を探し、パネル内に無いものを対象にする
+  const panel = body.querySelector<HTMLElement>(FOLDERS_HOOK.detailPanel)
+  const allPencils = body.querySelectorAll<SVGElement>('[data-testid="pencil-icon"]')
+  for (const pencilSvg of allPencils) {
+    if (panel !== null && panel.contains(pencilSvg)) continue
+    // ヘッダーの鉛筆 → ページ名の編集
+    const clickTarget = pencilSvg.closest<HTMLElement>('.css-fbr94v') ?? (pencilSvg.parentElement as HTMLElement)
+    clickTarget.style.cursor = 'pointer'
+    clickTarget.addEventListener('click', (e) => {
+      e.stopPropagation()
+      openInlineEdit(pencilSvg, { key: 'title', type: 'text' }, abTest.uid)
+    })
+  }
 }
 
 /**
@@ -730,10 +756,12 @@ function wirePencilIcons(panel: HTMLElement, context: PageContext): void {
 
   const pencils = [...panel.querySelectorAll<SVGElement>('[data-testid="pencil-icon"]')]
 
-  /** 鉛筆の順番は固定: ページ名, 配信ステータス, 配信タイプ, 広告媒体, CVポイント, CV単価, 計測方法 */
+  /**
+   * 配信情報セクション内の鉛筆の順番（パネル内のみ。ヘッダーのページ名鉛筆は
+   * パネル外なのでここには含まない — 含めると全フィールドが1つずれる）。
+   */
   const fields: PencilField[] = [
-    { key: 'title', type: 'text' },
-    { key: 'ad_status', type: 'select', options: ['準備中', '公開中', '停止'] },
+    { key: 'ad_status', type: 'select', options: ['準備中', '配信中', '停止中', '終了'] },
     { key: 'delivery_type', type: 'select', options: ['同一URL配信', '異なるURL配信'] },
     { key: 'media_id', type: 'text', readonly: true },
     { key: 'conversion_condition', type: 'select', options: ['クリック', 'アクセス'] },
@@ -919,7 +947,10 @@ function findValueContainer(pencilSvg: SVGElement): HTMLElement | null {
 function buildPatchBody(key: string, value: string): Record<string, unknown> {
   switch (key) {
     case 'title': return { title: value }
-    case 'ad_status': return { ad_status: value }
+    case 'ad_status': {
+      const map: Record<string, string> = { '準備中': 'prepared', '配信中': 'delivered', '停止中': 'stopping', '終了': 'finished' }
+      return { ad_status: map[value] ?? value }
+    }
     case 'delivery_type': return { delivery_type: value }
     case 'conversion_condition': return { conversion_condition: value.toLowerCase() === 'アクセス' ? 'access' : 'click' }
     case 'conversion_unit_price': return { conversion_unit_price: Number(value) || 0 }
@@ -1282,8 +1313,9 @@ function updateStarAppearance(starBtn: HTMLElement, isFavorite: boolean): void {
     path.setAttribute('fill', '#0091FF')
     path.setAttribute('stroke', '#0091FF')
   } else {
-    // 線だけ（既定）
+    // 線だけ（既定）— stroke を残さないと星が透明になる
     path.setAttribute('fill', 'none')
-    path.removeAttribute('stroke')
+    path.setAttribute('stroke', '#999')
+    path.setAttribute('stroke-width', '1')
   }
 }
