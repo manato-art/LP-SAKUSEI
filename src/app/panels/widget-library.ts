@@ -12,11 +12,12 @@
  *   - Widget検索（カード名での絞り込み）
  *   - 追加（本文へ挿入）／プレビュー
  *
- * ## 採取できていない部分（正直に扱う）
- * 各カードの中身（Widgetの実HTML）は、実物ではプレビュー iframe に動的描画されるだけで
- * **採取物には残らない**。よって「プレビュー」は実物の描画を出せず、「追加」も実HTMLが無い。
- * クローンでは、追加時に**そのWidget名のプレースホルダ**を本文へ挿入して「入った」ことは示す
- * （実HTMLが採取できたら差し替える）。
+ * ## Widgetの中身（実プレビュー）
+ * 各カードの中身は実物ではプレビュー iframe に動的描画される（outerHTML には残らない）。
+ * そこで実アプリで各 iframe の `contentDocument` を `srcdoc` に焼き込んでから採取し直し、
+ * 25枚ぶんの実プレビューを**土台（`widget-library.portals.html`）に inline** した（匿名化済み）。
+ * よってカードは実物どおりプレビューを表示する。「プレビュー」= 原寸の iframe で拡大表示、
+ * 「追加」= その Widget の実 body HTML を本文へ挿入する（srcdoc から取り出す）。
  */
 import type Quill from 'quill'
 import rawLibrary from '../fragments/ab_tests__UID__articles__widget-library.portals.html?raw'
@@ -113,24 +114,74 @@ function wireCards(root: HTMLElement, quill: Quill, close: () => void): void {
     const add = buttons.find((b) => b.textContent?.trim() === '追加')
     preview?.addEventListener('click', (event) => {
       event.stopPropagation()
-      toast(`「${title}」のプレビューは未採取です（実Widgetの中身は採取物に残りません）`, 'error')
+      openLargePreview(card, title)
     })
     add?.addEventListener('click', (event) => {
       event.stopPropagation()
-      insertPlaceholder(quill, title)
-      toast(`「${title}」を追加しました（クローンは名前のプレースホルダを挿入します）`)
+      insertWidget(quill, card, title)
+      toast(`「${title}」を追加しました`)
       close()
     })
   }
 }
 
-/** 実Widget HTMLが無いので、そのWidget名のプレースホルダ・ブロックを本文へ挿入する。 */
-function insertPlaceholder(quill: Quill, title: string): void {
+/** カードのプレビュー iframe（srcdoc に実Widgetの中身が入っている）から本文HTMLを取り出す。 */
+function widgetBodyHtml(card: HTMLElement): string | null {
+  const srcdoc = card.querySelector('iframe')?.getAttribute('srcdoc')
+  if (srcdoc === null || srcdoc === undefined || srcdoc === '') return null
+  const doc = new DOMParser().parseFromString(srcdoc, 'text/html')
+  return doc.body.innerHTML.trim() === '' ? null : doc.body.innerHTML
+}
+
+/** 「プレビュー」= そのWidgetの中身を大きな iframe で開く（採取した実プレビューを原寸で見せる）。 */
+function openLargePreview(card: HTMLElement, title: string): void {
+  const srcdoc = card.querySelector('iframe')?.getAttribute('srcdoc')
+  if (srcdoc === null || srcdoc === undefined || srcdoc === '') {
+    toast(`「${title}」のプレビューを表示できません`, 'error')
+    return
+  }
+  const overlay = document.createElement('div')
+  overlay.setAttribute('data-clone-widget-preview', 'true')
+  overlay.style.cssText =
+    'position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.6);display:flex;' +
+    'align-items:center;justify-content:center;padding:24px'
+  const panel = document.createElement('div')
+  panel.style.cssText =
+    'background:#fff;border-radius:10px;width:min(680px,92vw);height:min(80vh,760px);' +
+    'display:flex;flex-direction:column;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.4)'
+  const bar = document.createElement('div')
+  bar.style.cssText =
+    'display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid #eee;font:600 13px "Hiragino Sans",sans-serif'
+  const name = document.createElement('div')
+  name.textContent = title
+  name.style.cssText = 'flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap'
+  const closeBtn = document.createElement('button')
+  closeBtn.textContent = '閉じる'
+  closeBtn.style.cssText =
+    'border:none;background:#F0F0F0;border-radius:6px;padding:6px 12px;cursor:pointer;font:inherit'
+  const frame = document.createElement('iframe')
+  frame.setAttribute('srcdoc', srcdoc)
+  frame.style.cssText = 'flex:1;border:none;width:100%;background:#fff'
+  bar.append(name, closeBtn)
+  panel.append(bar, frame)
+  overlay.append(panel)
+  const dismiss = (): void => overlay.remove()
+  closeBtn.addEventListener('click', dismiss)
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) dismiss()
+  })
+  document.body.append(overlay)
+}
+
+/** 「追加」= そのWidgetの実HTMLを本文へ挿入する（採取物が無ければ名前プレースホルダに退避）。 */
+function insertWidget(quill: Quill, card: HTMLElement, title: string): void {
   const range = quill.getSelection(true)
   const index = range?.index ?? quill.getLength()
+  const body = widgetBodyHtml(card)
   const html =
+    body ??
     `<div style="border:1px dashed #B0B0B0;border-radius:6px;padding:16px;margin:8px 0;` +
-    `background:#FAFAFA;color:#555;text-align:center;font-size:14px">【Widget】${escapeHtml(title)}</div>`
+      `background:#FAFAFA;color:#555;text-align:center;font-size:14px">【Widget】${escapeHtml(title)}</div>`
   quill.clipboard.dangerouslyPasteHTML(index, html, 'user')
 }
 
