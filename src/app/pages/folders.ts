@@ -339,6 +339,32 @@ function wireRealDetailPanel(body: HTMLElement, context: PageContext): void {
       )
     })
   }
+
+  // 鉛筆アイコン（data-testid="pencil-icon"）→ 基本情報の編集ページへ遷移
+  wirePencilIcons(panel, context)
+}
+
+/**
+ * 詳細パネルの鉛筆アイコン（7個）を基本情報の編集ページへ遷移させる。
+ * 実物: ページ名 / 配信ステータス / 配信タイプ / 広告媒体 / コンバージョンポイント / コンバージョン単価 / 計測方法
+ * それぞれの `<svg data-testid="pencil-icon">` を拾い、クリックで基本情報ページへ飛ばす。
+ */
+function wirePencilIcons(panel: HTMLElement, context: PageContext): void {
+  const folderUid = context.folder?.uid
+  const abTestUid = context.abTests[0]?.uid
+  if (folderUid === undefined || abTestUid === undefined) return
+
+  const editHash = `/folders/${folderUid}/ab_tests/${abTestUid}/edit`
+
+  for (const pencil of panel.querySelectorAll<HTMLElement>('[data-testid="pencil-icon"]')) {
+    // SVG自身かその親divをクリック可能にする
+    const clickTarget = pencil.closest<HTMLElement>('.css-fbr94v') ?? pencil
+    clickTarget.style.cursor = 'pointer'
+    clickTarget.addEventListener('click', (e) => {
+      e.stopPropagation()
+      location.hash = editHash
+    })
+  }
 }
 
 /** URL発行/コピーの元になる配信URL。モックのbeyondページがあればそれを、無ければパネル表示値を使う。 */

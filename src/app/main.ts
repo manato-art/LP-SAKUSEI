@@ -203,6 +203,11 @@ async function route(): Promise<void> {
       await renderAccountSettings(content)
       return
     }
+    // /tools → 最初のツールサブページへリダイレクト（シェルの「ツール」が #/tools を指している）
+    if (path === '/tools') {
+      location.hash = '/teams/tags'
+      return
+    }
     /**
      * ツール5画面（一括タグ / マジック置換 / メディア / 審査 / フォーム）。
      * 共通サブナビを持つアコーディオンの各サブページ。どれも固定パスで、

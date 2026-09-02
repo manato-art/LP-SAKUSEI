@@ -142,8 +142,8 @@ function openRenameDialog(folder: Folder): void {
       () => {
         overlay.remove()
         toast('フォルダ名を変更しました')
-        // ページを再描画
-        location.hash = location.hash
+        // ページを再描画（hashchangeを強制発火させる）
+        dispatchEvent(new HashChangeEvent('hashchange'))
       },
       (err: Error) => {
         saveBtn.textContent = '保存'
