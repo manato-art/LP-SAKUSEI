@@ -55,6 +55,19 @@ export const FOLDERS_HOOK = {
   groupName: '.en4zj404',
   /** 右の詳細パネル（URL情報 / beyondページ情報 / 配信情報 / パラメータ付きURL発行）。 */
   detailPanel: '.efy50tl16',
+  /** 「＋ 新規ページを作成」ボタンの中にある＋アイコン。親buttonを辿って使う。 */
+  createPageIcon: '[data-testid="plus-icon"]',
+} as const
+
+/**
+ * タブ切り替え用のCSSクラス名。セレクタではなくクラストグルに使うので FOLDERS_HOOK とは別に置く。
+ * （FOLDERS_HOOK は全エントリを `isSelectorInCapture` で検証するため、セレクタ形式でないと落ちる。）
+ */
+export const TAB_CLASS = {
+  /** アクティブタブのCSSクラス（採取時は「すべて」に付いている）。 */
+  active: 'css-7nmmet',
+  /** 非アクティブタブのCSSクラス。 */
+  inactive: 'css-aifqgm',
 } as const
 
 export interface SelectorMarker {

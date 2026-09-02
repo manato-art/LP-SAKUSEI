@@ -25,6 +25,7 @@ export interface Folder {
   name: string
   parent_id: number | null
   ab_tests_count: number
+  is_favorite: boolean
 }
 
 export interface Media {
@@ -105,6 +106,8 @@ export const api = {
   createFolder: (name: string) => request<{ folder: Folder }>('POST', '/folders', { name }),
   folderDetail: (uid: string) =>
     request<{ folder: Folder; ab_tests: AbTest[] }>('GET', `/folders/${uid}`),
+  toggleFavorite: (uid: string, isFavorite: boolean) =>
+    request<{ folder: Folder }>('PATCH', `/folders/${uid}/favorite`, { is_favorite: isFavorite }),
 
   abTests: () => request<{ ab_tests: AbTest[] }>('GET', '/ab_tests?per_page=200'),
   createAbTest: (input: {

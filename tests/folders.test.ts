@@ -15,6 +15,7 @@ import { describe, expect, it } from 'vitest'
 import {
   FOLDERS_HOOK,
   FOLDER_UID_ATTRIBUTE,
+  TAB_CLASS,
   countClassToken,
   extractEnclosingDiv,
   extractFolderRowTemplate,
@@ -80,6 +81,11 @@ describe('配線が使う目印は、すべて採取物に実在する', () => {
 
   it('中央ペインの一覧容器も1つだけ', () => {
     expect(countClassToken(capturedHtml, 'efy50tl20')).toBe(1)
+  })
+
+  it('TAB_CLASS のアクティブ/非アクティブクラスが採取HTMLに在る', () => {
+    expect(countClassToken(capturedHtml, TAB_CLASS.active)).toBeGreaterThan(0)
+    expect(countClassToken(capturedHtml, TAB_CLASS.inactive)).toBeGreaterThan(0)
   })
 })
 

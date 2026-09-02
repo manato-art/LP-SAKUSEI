@@ -30,13 +30,29 @@ import { emptyState, toast } from '../ui.ts'
 import {
   FOLDERS_HOOK,
   FOLDER_UID_ATTRIBUTE,
+  TAB_CLASS,
   extractFolderRowTemplate,
 } from './folders-substrate.ts'
-import { openCreateFolder } from './folders-create.ts'
+import { openCreateFolder, openCreatePage } from './folders-create.ts'
 import { openParamUrlModal } from '../panels/param-url-modal.ts'
 
 /** 採取物から切り出したフォルダ1行ぶんのマークアップ（読み込み時に一度だけ） */
 const FOLDER_ROW_TEMPLATE = extractFolderRowTemplate(substrate)
+
+/** 現在選ばれているタブ（画面描画をまたいで保持する）。 */
+type TreeTab = 'すべて' | 'お気に入り' | '履歴'
+let activeTreeTab: TreeTab = 'すべて'
+
+/** 最近アクセスしたフォルダUIDを新しい順に保持（最大20件）。 */
+const folderHistory: string[] = []
+
+/** フォルダ閲覧を履歴に記録する（先頭に挿入・重複は古い方を除去）。 */
+function recordHistory(uid: string): void {
+  const idx = folderHistory.indexOf(uid)
+  if (idx !== -1) folderHistory.splice(idx, 1)
+  folderHistory.unshift(uid)
+  if (folderHistory.length > 20) folderHistory.length = 20
+}
 
 interface PageContext {
   folders: readonly Folder[]
@@ -80,10 +96,15 @@ export async function renderFolders(
     folder: detail?.folder ?? null,
     abTests: detail?.ab_tests ?? [],
   }
+
+  // 選択したフォルダを履歴に記録
+  if (selectedUid !== null) recordHistory(selectedUid)
+
   renderTree(body, context)
   renderRealList(body, context)
-  wireUncapturedTreeControls(body)
-  wireUncapturedMainControls(body)
+  wireTreeTabs(body, context)
+  wireTreeControls(body)
+  wireMainControls(body, context)
 }
 
 // ── 左: フォルダツリー ─────────────────────────────────
@@ -91,6 +112,7 @@ export async function renderFolders(
 /**
  * 採取物のフォルダ行を捨て、モックのフォルダで置き換える。
  * 行のマークアップは採取物そのまま（`FOLDER_ROW_TEMPLATE`）を複製して使う。
+ * アクティブタブ（すべて / お気に入り / 履歴）に応じてフィルタリングする。
  */
 function renderTree(body: HTMLElement, context: PageContext): void {
   const list = body.querySelector<HTMLElement>(FOLDERS_HOOK.treeList)
@@ -107,11 +129,40 @@ function renderTree(body: HTMLElement, context: PageContext): void {
     console.warn('[folders] 採取物からフォルダ行のマークアップを取り出せませんでした')
     return
   }
-  for (const folder of context.folders) {
+
+  // タブに応じてフォルダをフィルタリング
+  const filtered = filterFoldersByTab(context.folders)
+
+  if (filtered.length === 0) {
+    const msg = document.createElement('div')
+    msg.style.cssText = 'padding:24px 16px;color:#999;font-size:13px;text-align:center'
+    msg.textContent =
+      activeTreeTab === 'お気に入り'
+        ? 'お気に入りのフォルダがありません'
+        : '最近アクセスしたフォルダがありません'
+    rows.append(msg)
+    return
+  }
+
+  for (const folder of filtered) {
     const wrapper = document.createElement('div')
     wrapper.append(folderRow(prototypeRow, folder))
     rows.append(wrapper)
   }
+}
+
+/** アクティブタブに応じてフォルダをフィルタリングする。 */
+function filterFoldersByTab(folders: readonly Folder[]): readonly Folder[] {
+  if (activeTreeTab === 'お気に入り') {
+    return folders.filter((f) => f.is_favorite)
+  }
+  if (activeTreeTab === '履歴') {
+    // 履歴順（新しい順）に並べる。履歴に無いフォルダは除外。
+    return folderHistory
+      .map((uid) => folders.find((f) => f.uid === uid))
+      .filter((f): f is Folder => f !== undefined)
+  }
+  return folders
 }
 
 function folderRowPrototype(): HTMLElement | null {
@@ -133,7 +184,7 @@ function folderRow(prototypeRow: HTMLElement, folder: Folder): HTMLElement {
     if (location.hash !== next) location.hash = next
   })
   wireRowHover(row)
-  wireUncapturedRowActions(row)
+  wireRowActions(row, folder)
   return row
 }
 
@@ -305,6 +356,53 @@ function findByText(root: HTMLElement, text: string): HTMLElement | null {
   )
 }
 
+// ── タブ切り替え（すべて / お気に入り / 履歴）────────────────
+
+/**
+ * タブのクリックでフォルダツリーを切り替える。
+ * 実物は css-7nmmet がアクティブ、css-aifqgm が非アクティブ。
+ * クリック時にクラスを入れ替え、ツリーを描き直す。
+ */
+function wireTreeTabs(body: HTMLElement, context: PageContext): void {
+  const tabs = body.querySelectorAll<HTMLElement>(FOLDERS_HOOK.treeTab)
+  if (tabs.length === 0) return
+
+  // 初期状態をアクティブタブに合わせる
+  for (const tab of tabs) {
+    const label = (tab.textContent ?? '').trim()
+    applyTabStyle(tab, label === activeTreeTab)
+  }
+
+  for (const tab of tabs) {
+    const rawLabel = (tab.textContent ?? '').trim()
+    if (rawLabel === '') continue
+    const label = rawLabel as TreeTab
+    tab.style.cursor = 'pointer'
+    tab.addEventListener('click', () => {
+      if (activeTreeTab === label) return
+      activeTreeTab = label
+      // 全タブのスタイルを更新
+      for (const t of tabs) {
+        const tLabel = (t.textContent ?? '').trim()
+        applyTabStyle(t, tLabel === label)
+      }
+      // ツリーを描き直し
+      renderTree(body, context)
+    })
+  }
+}
+
+/** タブ要素のアクティブ/非アクティブ切り替え。クラスを入れ替えるだけでCSSが効く。 */
+function applyTabStyle(tab: HTMLElement, isActive: boolean): void {
+  if (isActive) {
+    tab.classList.remove(TAB_CLASS.inactive)
+    tab.classList.add(TAB_CLASS.active)
+  } else {
+    tab.classList.remove(TAB_CLASS.active)
+    tab.classList.add(TAB_CLASS.inactive)
+  }
+}
+
 // ── 採取物に在るが、挙動を採取できていないもの ────────────────
 
 /** 押した後の画面を採取していない操作。それらしい画面を作らず、そう言う（§3-5）。 */
@@ -314,46 +412,98 @@ function wireNotCaptured(node: Element | null | undefined, label: string): void 
   })
 }
 
-function wireUncapturedTreeControls(body: HTMLElement): void {
+function wireTreeControls(body: HTMLElement): void {
   const tree = body.querySelector<HTMLElement>(FOLDERS_HOOK.tree)
   if (tree === null) {
     console.warn('[folders]', FOLDERS_HOOK.tree, 'が土台に見つかりませんでした')
     return
   }
-  // 新規フォルダ作成だけは起点のボタンが採取できている（作成フローの入口）
+  // 新規フォルダ作成ボタン
   const create = tree.querySelector(FOLDERS_HOOK.createFolderIcon)?.closest('button') ?? null
   if (create === null) console.warn('[folders] 新規フォルダ作成のボタンが土台に見つかりませんでした')
   else create.addEventListener('click', openCreateFolder)
 
   wireNotCaptured(tree.querySelector(FOLDERS_HOOK.treeSearchIcon)?.closest('button'), '検索')
-  for (const tab of tree.querySelectorAll<HTMLElement>(FOLDERS_HOOK.treeTab)) {
-    const label = (tab.textContent ?? '').trim()
-    // 「すべて」は採取時点で選ばれている状態そのもの。切り替え先の2つだけ未採取。
-    if (label === 'すべて' || label === '') continue
-    wireNotCaptured(tab, label)
-  }
 }
 
-function wireUncapturedMainControls(body: HTMLElement): void {
+function wireMainControls(body: HTMLElement, context: PageContext): void {
   const main = body.querySelector<HTMLElement>(FOLDERS_HOOK.mainPane)
   if (main === null) {
     console.warn('[folders]', FOLDERS_HOOK.mainPane, 'が土台に見つかりませんでした')
     return
   }
+
+  // 「+ 新規ページを作成」ボタン
+  const createPageBtn =
+    main.querySelector(FOLDERS_HOOK.createPageIcon)?.closest('button') ?? null
+  if (createPageBtn !== null) {
+    createPageBtn.style.cursor = 'pointer'
+    createPageBtn.addEventListener('click', () => {
+      if (context.folder === null) {
+        toast('フォルダを選択してからページを作成してください', 'error')
+        return
+      }
+      void openCreatePage(context.folder)
+    })
+  }
+
   wireNotCaptured(main.querySelector(FOLDERS_HOOK.folderSearchButton), 'フォルダ内検索')
   wireNotCaptured(main.querySelector(FOLDERS_HOOK.periodSelect), '集計期間')
   wireNotCaptured(main.querySelector(FOLDERS_HOOK.adStatusSelect), '配信ステータス')
 }
 
-/** 行のホバーで出るお気に入り・設定。押した後が採取できていない。 */
-function wireUncapturedRowActions(row: HTMLElement): void {
+/**
+ * 行のホバーで出るアクション。1つ目（星アイコン）はお気に入りトグル、
+ * 2つ目（歯車）はフォルダ操作メニュー（未実装）。
+ */
+function wireRowActions(row: HTMLElement, folder: Folder): void {
   const actions = row.querySelector<HTMLElement>(FOLDERS_HOOK.folderRowActions)
   if (actions === null) return
-  for (const action of actions.querySelectorAll<HTMLElement>('button')) {
-    action.addEventListener('click', (event) => {
-      // 行のクリック（フォルダ選択）まで飛ばさない
+  const buttons = actions.querySelectorAll<HTMLElement>('button')
+  const starBtn = buttons[0] ?? null
+  const gearBtn = buttons[1] ?? null
+
+  // 星アイコン: お気に入りトグル
+  if (starBtn !== null) {
+    let isFav = folder.is_favorite
+    updateStarAppearance(starBtn, isFav)
+
+    starBtn.addEventListener('click', (event) => {
+      event.stopPropagation()
+      const newValue = !isFav
+      isFav = newValue
+      updateStarAppearance(starBtn, newValue)
+      void api.toggleFavorite(folder.uid, newValue).catch(() => {
+        // 失敗したら戻す
+        isFav = !newValue
+        updateStarAppearance(starBtn, !newValue)
+        toast('お気に入りの切り替えに失敗しました', 'error')
+      })
+    })
+  }
+
+  // 歯車: フォルダ操作メニュー（未実装）
+  if (gearBtn !== null) {
+    gearBtn.addEventListener('click', (event) => {
       event.stopPropagation()
       toast('フォルダの操作メニューは採取していないため未実装です', 'error')
     })
+  }
+}
+
+/** 星アイコンの見た目をお気に入り状態に合わせて変える。 */
+function updateStarAppearance(starBtn: HTMLElement, isFavorite: boolean): void {
+  const svg = starBtn.querySelector('svg')
+  if (svg === null) return
+  const path = svg.querySelector('path')
+  if (path === null) return
+  if (isFavorite) {
+    // 塗りつぶし（ブランド色）
+    path.setAttribute('fill', '#0091FF')
+    path.setAttribute('stroke', '#0091FF')
+  } else {
+    // 線だけ（既定）
+    path.setAttribute('fill', 'none')
+    path.removeAttribute('stroke')
   }
 }

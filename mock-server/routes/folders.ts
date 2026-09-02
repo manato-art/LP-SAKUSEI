@@ -61,6 +61,26 @@ foldersRouter.get('/folders/:uid', (req, res) => {
   res.json({ folder, ab_tests: abTests })
 })
 
+foldersRouter.patch('/folders/:uid/favorite', (req, res) => {
+  const isFavorite = req.body?.is_favorite
+  if (typeof isFavorite !== 'boolean') {
+    res.status(422).json(errorEnvelope('validation_failed', 'is_favorite は boolean で指定してください。'))
+    return
+  }
+  const state = getState()
+  const target = state.folders.find((f) => f.uid === req.params.uid)
+  if (target === undefined) {
+    res.status(404).json(errorEnvelope('not_found', 'フォルダが見つかりません。'))
+    return
+  }
+  const updated = { ...target, is_favorite: isFavorite, updated_at: Math.floor(Date.now() / 1000) }
+  setState((s) => ({
+    ...s,
+    folders: s.folders.map((f) => (f.uid === req.params.uid ? updated : f)),
+  }))
+  res.json({ folder: updated })
+})
+
 foldersRouter.put('/folders/:uid', (req, res) => {
   const name = requireString(req.body, 'name', { maxLength: 100 })
   if (!name.ok) {
