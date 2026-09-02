@@ -628,11 +628,34 @@ function wireAddVersion(ctx: EditorContext): void {
   })
 }
 
+/**
+ * 本文が「実質空」か。テキストも画像/動画等のメディアも無ければ空とみなす。
+ * （`<p><br></p>` だけの土台初期状態や、リコンサイルで一瞬空になった状態を判定する。）
+ */
+function isEffectivelyEmptyHtml(html: string): boolean {
+  const probe = document.createElement('div')
+  probe.innerHTML = html
+  const hasMedia = probe.querySelector('img, video, iframe, audio, svg, canvas') !== null
+  const text = (probe.textContent ?? '').replace(/\u200B/g, '').trim()
+  return !hasMedia && text === ''
+}
+
 async function saveHtml(ctx: EditorContext): Promise<void> {
   if (ctx.currentUid === '') return
   const html = ctx.quill.root.innerHTML
-  await api.saveVersion(ctx.currentUid, { html })
   const v = ctx.versions.find((x) => x.uid === ctx.currentUid)
+  // 🚨データ損失防止: いま中身のあるVersionを「空」で上書きしない。
+  // エディタの再描画/Quillのリコンサイルで本文が一瞬空になった瞬間に自動保存が走ると、
+  // 入れた画像ごとサーバーの内容を消してしまう事故が起きる（実際に「めぐり」で発生）。
+  // 空にしたい場合はVersion自体をアーカイブ/削除で行う（自動保存で全消しはさせない）。
+  if (v !== undefined && isEffectivelyEmptyHtml(html) && !isEffectivelyEmptyHtml(v.html)) {
+    console.warn(
+      '[editor] 空の本文で既存Versionを上書きしようとしたため保存を中止しました:',
+      ctx.currentUid,
+    )
+    return
+  }
+  await api.saveVersion(ctx.currentUid, { html })
   if (v !== undefined) v.html = html
 }
 

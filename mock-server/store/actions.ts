@@ -336,6 +336,35 @@ export function setDeviceTargets(
   }
 }
 
+/**
+ * 本文HTMLが「実質空」か（テキストもメディアも無い）。node側なのでDOMは使わず素朴に判定する。
+ */
+function htmlIsEffectivelyEmpty(html: string | undefined): boolean {
+  if (html === undefined || html === '') return true
+  if (/<(?:img|video|iframe|audio|canvas|svg)\b/i.test(html)) return false
+  const text = html.replace(/<[^>]*>/g, '').replace(/&nbsp;|&#8203;|[\s\u200B]/g, '')
+  return text === ''
+}
+
+/**
+ * 🚨データ損失防止: いま中身のあるVersionを「空」で上書きするpatchから html を落とす。
+ * クライアントのリコンサイル事故（本文が一瞬空→自動保存）で入れた画像ごと消える事故を、
+ * サーバー側でも止める（どのクライアント/セッションからでも守る）。html 以外の更新は通す。
+ */
+function guardEmptyHtmlOverwrite(
+  target: Version,
+  patch: Partial<Pick<Version, 'name' | 'html' | 'css' | 'distribution_ratio' | 'status'>>,
+): typeof patch {
+  if (patch.html === undefined) return patch
+  if (htmlIsEffectivelyEmpty(patch.html) && !htmlIsEffectivelyEmpty(target.html)) {
+    const next = { ...patch }
+    delete next.html
+    console.warn(`[store] 空の本文で ${target.uid} を上書きしようとしたため html を無視しました`)
+    return next
+  }
+  return patch
+}
+
 export function updateVersion(
   state: State,
   uid: string,
@@ -343,7 +372,8 @@ export function updateVersion(
 ): { state: State; version: Version | null } {
   const target = state.versions.find((v) => v.uid === uid)
   if (target === undefined) return { state, version: null }
-  const updated: Version = { ...target, ...patch, updated_at: nowTs() }
+  const safePatch = guardEmptyHtmlOverwrite(target, patch)
+  const updated: Version = { ...target, ...safePatch, updated_at: nowTs() }
   return {
     state: { ...state, versions: state.versions.map((v) => (v.uid === uid ? updated : v)) },
     version: updated,
