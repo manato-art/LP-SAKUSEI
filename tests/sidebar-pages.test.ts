@@ -12,8 +12,14 @@ import { describe, expect, it } from 'vitest'
 import { stripGlobalSidebar } from '../src/app/pages/sidebar-shell.ts'
 import {
   ADDON_ROUTE,
+  CONVERSIONS_ROUTE,
+  DASHBOARD_ROUTE,
+  DOMAINS_ROUTE,
   EXTERNAL_ROUTE,
+  RANKINGS_ROUTE,
+  REPORT_EXCLUSIONS_ROUTE,
   SB_AI_ROUTE,
+  SEMINAR_ROUTE,
   SIDEBAR_PAGE_ROUTES,
   TASKS_ROUTE,
   matchSidebarPage,
@@ -119,14 +125,30 @@ describe('ルート解決の純粋関数', () => {
     expect(matchSidebarPage(TASKS_ROUTE)).toBe('tasks')
     expect(matchSidebarPage(SB_AI_ROUTE)).toBe('sb_ai')
     expect(matchSidebarPage(EXTERNAL_ROUTE)).toBe('external')
+    expect(matchSidebarPage(DASHBOARD_ROUTE)).toBe('dashboard')
+    expect(matchSidebarPage(CONVERSIONS_ROUTE)).toBe('conversions')
+    expect(matchSidebarPage(DOMAINS_ROUTE)).toBe('domains')
+    expect(matchSidebarPage(REPORT_EXCLUSIONS_ROUTE)).toBe('report_exclusions')
+    expect(matchSidebarPage(RANKINGS_ROUTE)).toBe('rankings')
+    expect(matchSidebarPage(SEMINAR_ROUTE)).toBe('seminar')
   })
   it('未知のパスは null（推測で埋めない）', () => {
-    expect(matchSidebarPage('/folders')).toBeNull()
     expect(matchSidebarPage('/addon')).toBeNull()
     expect(matchSidebarPage('')).toBeNull()
   })
-  it('ルート定数の一覧がそろっている（外部連携を含む）', () => {
-    expect(SIDEBAR_PAGE_ROUTES).toEqual([ADDON_ROUTE, TASKS_ROUTE, SB_AI_ROUTE, EXTERNAL_ROUTE])
+  it('ルート定数の一覧がそろっている（サイドバーのデータ画面を含む）', () => {
+    expect(SIDEBAR_PAGE_ROUTES).toEqual([
+      ADDON_ROUTE,
+      TASKS_ROUTE,
+      SB_AI_ROUTE,
+      EXTERNAL_ROUTE,
+      DASHBOARD_ROUTE,
+      CONVERSIONS_ROUTE,
+      DOMAINS_ROUTE,
+      REPORT_EXCLUSIONS_ROUTE,
+      RANKINGS_ROUTE,
+      SEMINAR_ROUTE,
+    ])
   })
 })
 

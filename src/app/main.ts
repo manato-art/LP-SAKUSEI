@@ -17,6 +17,14 @@ import { renderAddon } from './pages/addon.ts'
 import { renderTasks } from './pages/tasks.ts'
 import { renderSbAi } from './pages/sb-ai.ts'
 import { renderExternalIntegration } from './pages/external-integration.ts'
+import {
+  renderDashboard,
+  renderConversions,
+  renderDomains,
+  renderReportExclusions,
+  renderRankings,
+  renderSeminarPage,
+} from './pages/sidebar-data.ts'
 import { matchSidebarPage } from './pages/sidebar-nav.ts'
 import { matchToolPage } from './pages/tool-subnav.ts'
 import { renderToolPage } from './pages/tool-pages.ts'
@@ -164,6 +172,30 @@ async function route(): Promise<void> {
     }
     if (sidebarPage === 'external') {
       await renderExternalIntegration(content, generation)
+      return
+    }
+    if (sidebarPage === 'dashboard') {
+      await renderDashboard(content)
+      return
+    }
+    if (sidebarPage === 'conversions') {
+      await renderConversions(content)
+      return
+    }
+    if (sidebarPage === 'domains') {
+      await renderDomains(content)
+      return
+    }
+    if (sidebarPage === 'report_exclusions') {
+      await renderReportExclusions(content)
+      return
+    }
+    if (sidebarPage === 'rankings') {
+      await renderRankings(content)
+      return
+    }
+    if (sidebarPage === 'seminar') {
+      renderSeminarPage(content)
       return
     }
     /**
