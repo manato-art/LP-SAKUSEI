@@ -15,6 +15,7 @@ import { toast } from '../ui.ts'
 import { openParamUrlModal } from '../panels/param-url-modal.ts'
 import { basicInfoApi, type MediaOption } from './basic-info-api.ts'
 import { wireAbTestTabs } from './tab-nav.ts'
+import { recordHistory } from './folders.ts'
 import {
   AD_STATUS_LABELS,
   CONVERSION_CONDITION_LABELS,
@@ -81,6 +82,9 @@ export async function renderBasicInfo(
   ])
   // API待ちの間に新しい描画が始まっていたら、ここで降りる（二重描画の防止・main.ts の作法）
   if (generation !== undefined && isStale(generation)) return
+
+  // 基本情報ページを開いた操作を履歴に記録
+  recordHistory(target.abTestUid, ab_test.title, 'ab_test', '基本情報')
 
   const root = document.createElement('div')
   root.innerHTML = substrate

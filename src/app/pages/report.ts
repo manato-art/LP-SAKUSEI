@@ -21,6 +21,7 @@ import {
   wireCapturedLinks,
   wireThemeToggle,
 } from './report-dom.ts'
+import { recordHistory } from './folders.ts'
 import {
   cardByHeading,
   fillBranchTable,
@@ -74,6 +75,9 @@ export async function renderReport(
 
   // API待ちの間に別の描画が始まっていたら降りる（main.ts の描画世代トークン）
   if (generation !== undefined && isStale(generation)) return
+
+  // レポート閲覧を履歴に記録
+  recordHistory(abTestUid, ab_test.title, 'ab_test', 'レポート閲覧')
 
   const folderName = folder?.name ?? ''
   const root = mountCapturedPage(container, substrate)

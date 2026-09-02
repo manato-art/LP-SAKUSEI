@@ -20,6 +20,7 @@ import { mountHistory, recordArticleHistory } from '../panels/history.ts'
 import { mountEditorToolbar } from '../panels/editor-toolbar.ts'
 import { createAutosave } from './autosave.ts'
 import { createPanelGroup } from '../panels/panel-group.ts'
+import { recordHistory } from './folders.ts'
 import { mountVersionListDropdown, setVersionListMode } from '../panels/version-actions.ts'
 import { mountVersionDotsMenu } from '../panels/version-dots-menu.ts'
 import { mountHeaderImageModal } from '../panels/header-image-modal.ts'
@@ -158,6 +159,9 @@ export async function renderEditor(
 
   // API待ちの間に新しい描画が始まっていたら、ここで降りる（二重描画の防止）
   if (generation !== undefined && isStale(generation)) return
+
+  // beyondページを開いた操作を履歴に記録
+  recordHistory(abTestUid, ab_test.title, 'ab_test', '編集')
   loader.remove()
 
   /**
