@@ -2,7 +2,7 @@
   "$schema": "https://railway.app/railway.schema.json",
   "build": {
     "builder": "NIXPACKS",
-    "buildCommand": "npm install --include=dev && npm run build"
+    "buildCommand": "echo cache-bust-2026-09-02-widgets-v2 && npm install --include=dev && npm run build"
   },
   "deploy": {
     "startCommand": "npm start",
