@@ -7,7 +7,12 @@
  */
 import { createEmptyState } from './seed-empty.ts'
 import { createDemoState } from './seed-demo.ts'
-import { loadPersistedState, persistenceEnabled, schedulePersist } from './persistence.ts'
+import {
+  archiveBeforeDestruction,
+  loadPersistedState,
+  persistenceEnabled,
+  schedulePersist,
+} from './persistence.ts'
 import type { State } from './types.ts'
 
 /** シード（保存済みが無いときの初期状態）。SEED_DEMO=1 なら架空デモ1式、なければ空。 */
@@ -55,8 +60,12 @@ export function setState(updater: (state: State) => State): State {
   return current
 }
 
-/** 新規アカウント発行直後へ戻す（§10-9 リセット）。SEED_DEMO のときはデモへ戻す。 */
+/**
+ * 新規アカウント発行直後へ戻す（§10-9 リセット）。SEED_DEMO のときはデモへ戻す。
+ * **破壊の直前に現在の内容を強制アーカイブ**する（作業中の記事を消える前に必ず退避）。
+ */
 export function resetState(): State {
+  archiveBeforeDestruction(current)
   current = seedState()
   revision += 1
   schedulePersist(current) // 保存済みもシードで上書き
