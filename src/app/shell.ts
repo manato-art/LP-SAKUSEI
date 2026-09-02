@@ -4,6 +4,7 @@
  * リンク先だけクローンのルートへ張り替える。
  */
 import { NAV_ACTIVE_CLASS, NAV_INACTIVE_CLASS } from './shell-nav.ts'
+import { toast } from './ui.ts'
 import sidebarHtml from './templates/sidebar.html?raw'
 
 export interface Route {
@@ -19,7 +20,7 @@ const NAV_TARGETS: readonly { label: string; href: string }[] = [
   { label: 'ページ', href: '#/folders' },
   { label: 'CV速報', href: '#/conversions' },
   { label: 'ツール', href: '#/tools' },
-  { label: '外部連携', href: '#/teams/ad_accounts' },
+  // 外部連携はアコーディオン親（指示⑯）。直接遷移しないので NAV_TARGETS から外す。
   { label: 'ドメイン', href: '#/teams/domains' },
   { label: '拡張機能', href: '#/addon/option-list' },
   { label: 'レポー', href: '#/report-exclusions' },
@@ -88,6 +89,9 @@ function wireSidebar(nav: HTMLElement): void {
     label?.classList.add(RAIL_LABEL_CLASS)
   }
 
+  // 外部連携のアコーディオン配線（指示⑯）
+  wireAccordion(nav)
+
   // クリックは1つの委譲ハンドラで受ける（項目内のどこを押しても、対応ルートへ遷移）。
   nav.addEventListener('click', (event) => {
     const target = event.target as HTMLElement | null
@@ -108,6 +112,105 @@ function wireSidebar(nav: HTMLElement): void {
 /** 折りたたみ/展開・ラベルの目印クラス（JSで付与するのでスタイルは採取クラスに依存しない） */
 const RAIL_CLASS = 'sb-rail'
 const RAIL_LABEL_CLASS = 'sb-rail-label'
+
+// ── 外部連携アコーディオン（指示⑯） ──
+
+/** アコーディオン親のラベル。NAV_TARGETS から外れた「外部連携」を専用ハンドラで受ける。 */
+const ACCORDION_LABEL = '外部連携'
+
+/** アコーディオンのサブ項目。href が null の項目はトーストを出す（指示⑰: CV計測連携は未実装）。 */
+const ACCORDION_ITEMS: readonly { label: string; href: string | null }[] = [
+  { label: '広告媒体連携', href: '#/teams/ad_accounts' },
+  { label: 'CV計測連携', href: null },
+]
+
+/** chevron-down SVG（10x10）。閉じ状態では CSS で -90deg 回転して右向きになる。 */
+const CHEVRON_SVG = [
+  '<svg width="10" height="10" viewBox="0 0 10 10" fill="none" xmlns="http://www.w3.org/2000/svg">',
+  '<path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" stroke-width="1.5"',
+  ' stroke-linecap="round" stroke-linejoin="round"/></svg>',
+].join('')
+
+/** アコーディオンのDOM参照（markActiveNav から参照する） */
+let accordionSubMenu: HTMLElement | null = null
+let accordionChevron: HTMLElement | null = null
+let accordionParentItem: HTMLElement | null = null
+let isAccordionOpen = false
+
+function toggleAccordion(): void {
+  isAccordionOpen = !isAccordionOpen
+  accordionSubMenu?.classList.toggle('sb-accordion-open', isAccordionOpen)
+  accordionChevron?.classList.toggle('sb-accordion-collapsed', !isAccordionOpen)
+}
+
+/**
+ * 「外部連携」項目をアコーディオンに仕立てる（指示⑯）。
+ * クリックでサブメニュー（広告媒体連携 / CV計測連携）を開閉し、
+ * サブ項目クリックで遷移またはトーストを出す。
+ */
+function wireAccordion(nav: HTMLElement): void {
+  for (const item of nav.querySelectorAll<HTMLElement>('[data-testid="list-menu-item"]')) {
+    const text = (item.textContent ?? '').trim()
+    if (!text.startsWith(ACCORDION_LABEL)) continue
+
+    accordionParentItem = item
+    item.style.cursor = 'pointer'
+
+    // ラベル末尾にシェブロン（開閉矢印）を追加
+    const label = labelChildOf(item)
+    if (label !== null) {
+      const chevronSpan = document.createElement('span')
+      chevronSpan.className = 'sb-accordion-chevron sb-accordion-collapsed'
+      chevronSpan.innerHTML = CHEVRON_SVG
+      label.append(chevronSpan)
+      accordionChevron = chevronSpan
+    }
+
+    // サブメニュー（<ul>）を作成。既定は閉じた状態（CSS で max-height:0）。
+    const subMenu = document.createElement('ul')
+    subMenu.className = 'sb-accordion-sub'
+
+    for (const sub of ACCORDION_ITEMS) {
+      const li = document.createElement('li')
+      li.className = 'sb-accordion-item'
+      // CSS ::before で丸ビュレット。ラベルは rail-label で折りたたみ時に隠す。
+      const labelSpan = document.createElement('span')
+      labelSpan.className = RAIL_LABEL_CLASS
+      labelSpan.textContent = sub.label
+      li.append(labelSpan)
+
+      if (sub.href !== null) {
+        const href = sub.href
+        li.addEventListener('click', (e) => {
+          e.stopPropagation()
+          location.hash = href.slice(1)
+        })
+      } else {
+        const itemLabel = sub.label
+        li.addEventListener('click', (e) => {
+          e.stopPropagation()
+          toast(`${itemLabel}は準備中です`)
+        })
+      }
+
+      subMenu.append(li)
+    }
+
+    // 親 <li> の末尾にサブメニューを挿入
+    const parentLi = item.closest('li')
+    if (parentLi !== null) parentLi.append(subMenu)
+    accordionSubMenu = subMenu
+
+    // 親クリックで開閉トグル
+    item.addEventListener('click', (e) => {
+      e.stopPropagation()
+      e.preventDefault()
+      toggleAccordion()
+    })
+
+    break
+  }
+}
 
 /** 項目の子のうち「アイコンでない方」＝ラベル（テキストを持ち、svg/imgを含まない）を返す */
 function labelChildOf(item: HTMLElement): HTMLElement | null {
@@ -135,6 +238,21 @@ function injectRailStyles(): void {
     `.${RAIL_CLASS}:hover{width:232px !important}`,
     `.${RAIL_CLASS}:hover .${RAIL_LABEL_CLASS}{opacity:1;max-width:170px}`,
     `}`,
+    // ── アコーディオン ──
+    `.sb-accordion-chevron{display:inline-flex;align-items:center;margin-left:4px;`,
+    `transition:transform .18s ease}`,
+    `.sb-accordion-chevron.sb-accordion-collapsed{transform:rotate(-90deg)}`,
+    `.sb-accordion-sub{list-style:none;margin:0;padding:0;overflow:hidden;`,
+    `max-height:0;opacity:0;transition:max-height .22s ease,opacity .16s ease}`,
+    `@media (hover:hover){`,
+    `.${RAIL_CLASS}:hover .sb-accordion-sub.sb-accordion-open{max-height:120px;opacity:1}`,
+    `}`,
+    `.sb-accordion-item{display:flex;align-items:center;padding:5px 8px 5px 40px;`,
+    `cursor:pointer;font-size:13px;color:#666;white-space:nowrap;overflow:hidden}`,
+    `.sb-accordion-item:hover{background:rgba(0,0,0,.04)}`,
+    `.sb-accordion-item.sb-accordion-item-active{color:#333;font-weight:500}`,
+    `.sb-accordion-item::before{content:'';display:inline-block;width:5px;height:5px;`,
+    `border-radius:50%;background:currentColor;margin-right:8px;flex-shrink:0}`,
   ].join('')
   document.head.append(style)
 }
@@ -150,5 +268,30 @@ export function markActiveNav(pathPrefix: string): void {
     // （手書きの色は実物の rgb(255, 249, 229) と違っていた）。
     item.classList.toggle(NAV_ACTIVE_CLASS, active)
     item.classList.toggle(NAV_INACTIVE_CLASS, !active)
+  }
+
+  // ── アコーディオン親のハイライトと自動展開（指示⑯） ──
+  if (accordionParentItem !== null) {
+    const accordionActive = ACCORDION_ITEMS.some(
+      (ai) => ai.href !== null && pathPrefix.startsWith(ai.href.slice(1)),
+    )
+    accordionParentItem.classList.toggle(NAV_ACTIVE_CLASS, accordionActive)
+    accordionParentItem.classList.toggle(NAV_INACTIVE_CLASS, !accordionActive)
+    // アコーディオン配下のルートにいるなら自動で開く
+    if (accordionActive && !isAccordionOpen) toggleAccordion()
+  }
+
+  // ── アコーディオンのサブ項目ハイライト ──
+  if (accordionSubMenu !== null) {
+    const subLis = accordionSubMenu.querySelectorAll<HTMLElement>('.sb-accordion-item')
+    let idx = 0
+    for (const ai of ACCORDION_ITEMS) {
+      const li = subLis[idx]
+      if (li !== undefined) {
+        const subActive = ai.href !== null && pathPrefix.startsWith(ai.href.slice(1))
+        li.classList.toggle('sb-accordion-item-active', subActive)
+      }
+      idx += 1
+    }
   }
 }
