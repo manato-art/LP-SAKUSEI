@@ -22,7 +22,8 @@ import {
   selectorMarkers,
 } from '../src/app/pages/folders-substrate.ts'
 
-const FOLDERS_FRAGMENT = 'src/app/fragments/folders__empty-selection.html'
+// フォルダ選択後（KPI一覧＋右詳細パネル）の状態を採取した断片。これが実際に描く土台。
+const FOLDERS_FRAGMENT = 'src/app/fragments/folders__detail.html'
 const capturedHtml = readFileSync(FOLDERS_FRAGMENT, 'utf8')
 
 describe('セレクタを採取HTMLと突き合わせるための分解', () => {
@@ -168,19 +169,31 @@ describe('フォルダ行のテンプレートを採取物から取り出す', (
   })
 })
 
-describe('採取できていない範囲を、テストで固定して忘れないようにする', () => {
-  it('フォルダ選択後の状態は採取されていない（beyondページ一覧の行が無い）', () => {
-    // 採取したのは `/folders`（フォルダ未選択）だけ。中央ペインの一覧容器は空。
-    // ここが将来の再採取で埋まったら、このテストが落ちて手書きを剥がす合図になる。
-    expect(capturedHtml).toContain('css-1ln2r2k efy50tl20')
-    expect(capturedHtml).toMatch(/class="css-1ln2r2k efy50tl20"[^>]*>\s*<\/div>/)
+describe('フォルダ選択後の状態を採取済み（KPI一覧＋右詳細パネル）', () => {
+  it('一覧容器にページ行（list-menu-item）が並んでいる（空ではない）', () => {
+    // 以前はフォルダ未選択だけを採取していて `.efy50tl20` は空だった。
+    // いまはフォルダ選択後を採取したので、ページ行が実マークアップで入っている。
+    const rows = (capturedHtml.match(/data-testid="list-menu-item"/g) ?? []).length
+    expect(rows).toBeGreaterThan(0)
+    expect(capturedHtml).toMatch(/class="[^"]*efy50tl18[^"]*"/)
   })
 
-  it('「新規ページを作成」の実マークアップは採取物に無い', () => {
-    expect(capturedHtml).not.toContain('新規ページ')
+  it('配線が掴むページ行の容器と右詳細パネルが実在する', () => {
+    expect(isSelectorInCapture(capturedHtml, FOLDERS_HOOK.pageRowList)).toBe(true)
+    expect(isSelectorInCapture(capturedHtml, FOLDERS_HOOK.detailPanel)).toBe(true)
   })
 
-  it('新規フォルダ作成のボタンだけは採取できている（作成フローの起点）', () => {
+  it('右詳細パネルに実物の見出し（URL情報 / beyondページ情報 / 配信情報）が在る', () => {
+    expect(capturedHtml).toContain('URL情報')
+    expect(capturedHtml).toContain('beyondページ情報')
+    expect(capturedHtml).toContain('配信情報')
+  })
+
+  it('「パラメータ付きURLの発行」の入口が実マークアップに在る', () => {
+    expect(capturedHtml).toContain('パラメータ付きURL')
+  })
+
+  it('新規フォルダ作成のボタンも採取できている（作成フローの起点）', () => {
     expect(capturedHtml).toContain('data-testid="generate-folder-icon"')
   })
 

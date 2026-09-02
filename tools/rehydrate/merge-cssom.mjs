@@ -4,8 +4,16 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { execSync } from 'node:child_process'
 
+// 採取済みの全 cssom.css を直接走査して集める（`_merged` 自身は除く）。
+// 以前は index.html の <link> 一覧から集めていたが、index.html を _merged 1本に
+// 束ねた時点で個別refが消え、新しく採取した画面（例: folders/detail）が
+// 統合に載らなくなった。採取物を正本に据えて取りこぼしを無くす。
 const refs = [...new Set(
-  execSync(`grep -oE 'clean/[^"]*cssom\\.css' src/index.html`).toString().trim().split('\n'),
+  execSync(`find capture/clean -name cssom.css -not -path '*/_merged/*' | sed 's#^capture/##' | sort`)
+    .toString()
+    .trim()
+    .split('\n')
+    .filter(Boolean),
 )]
 
 // トップレベルのルール（セレクタ{...} / @media{...} / @keyframes{...}）に分割する。

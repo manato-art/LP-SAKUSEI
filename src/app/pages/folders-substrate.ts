@@ -39,8 +39,12 @@ export const FOLDERS_HOOK = {
   folderSearchButton: '.efy50tl0',
   periodSelect: '.e5a3hxd1',
   adStatusSelect: '.e8c3jcp1',
-  /** 一覧の入る容器。採取時点（フォルダ未選択）では**空**。 */
+  /** 一覧の入る容器。`folders__detail` ではKPI列つきのページ一覧が入る。 */
   listArea: '.efy50tl20',
+  /** ページ行（`data-testid="list-menu-item"`）が並ぶ内側の容器。 */
+  pageRowList: '.efy50tl18',
+  /** 右の詳細パネル（URL情報 / beyondページ情報 / 配信情報 / パラメータ付きURL発行）。 */
+  detailPanel: '.efy50tl16',
 } as const
 
 export interface SelectorMarker {

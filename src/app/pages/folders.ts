@@ -1,50 +1,42 @@
 /**
- * 「ページ」画面（`/folders`）。企画書 §1-4 の基準状態＝**新規アカウントの空状態**から始まり、
+ * 「ページ」画面（`/folders`）。企画書 §1-4 の基準状態から、
  * フォルダ作成 → beyondページ作成 → エディタへ、という作成フローが実際に通る。
  *
  * ## 作り方（企画書 §11 capture-and-rehydrate・共通指示 §2）
  *
- * 見た目は**採取した実DOM**（`fragments/folders__empty-selection.html`）と実CSSが担う。
- * 以前この画面だけ `document.createElement` と手書きのインラインCSSで組んでいたが、
- * それは「手書きで似せない」という本案件の中核規律に反していたので土台へ差し替えた。
- * クラス名は Emotion / styled-components が振った実物のまま。CSSは1行も書き足していない
- * （`src/index.html` が `/clean/folders/empty-selection/cssom.css` を読み込み済み）。
+ * 見た目は**採取した実DOM**（`fragments/folders__detail.html`＝フォルダ選択後の状態。
+ * KPI列つきのページ一覧＋右の詳細パネルまで入っている）と実CSSが担う。手書きで似せていない。
+ * クラス名は Emotion / styled-components が振った実物のまま。CSSは1行も書き足していない。
+ * レイアウトの実体は Emotion の `css-*` ルールで、`tools/rehydrate/merge-cssom.mjs` が
+ * 採取済みの全 cssom を union して `/clean/_merged/cssom.css` に束ね、`src/index.html` が読む。
+ * （この一覧・パネルの `css-*` は他画面に無いので、detail を採取するまで無地に崩れていた。）
  *
- * 配線は `folders-substrate.ts` の `FOLDERS_HOOK`（実在する `data-testid` と実クラス）だけを掴む。
+ * 配線は `folders-substrate.ts` の `FOLDERS_HOOK`（実在する `data-testid` と実クラス）だけを掴む：
+ *   - 左ツリーの行はモックのフォルダで置き換える（`FOLDER_ROW_TEMPLATE` を複製）。
+ *   - 中央のページ行（`list-menu-item`）はクリックでモックのbeyondページのエディタへ。
+ *   - 右パネルの「パラメータ付きURLの発行」→ URL発行モーダル、「コピー」→ 配信URLコピー。
  * 目印が採取物に在ることは `tests/folders.test.ts` が採取HTMLと突き合わせて機械証明している。
  *
- * ## 採取できていない範囲（作り足していない・正直に出す）
+ * ## 実物どおりに出しているが、値は採取物のまま（作り足していない・正直に出す）
  *
- * 1. **フォルダ選択後の中央ペイン**。採取したのはフォルダ未選択の状態だけで、
- *    一覧の容器（`.efy50tl20`）は空。beyondページ行と「新規ページを作成」の実マークアップが無い。
- *    → ここだけクローン側の暫定表示（`ui.ts`）を容器の中に置き、画面上でもそう明記する。
- * 2. **選択中フォルダの行スタイル**。採取時にどの行も選択されていないため、
- *    Emotion が選択状態のクラスを出力していない。行のハイライトは推測で足さない。
- *    選択中がどれかは中央ペインの見出し（フォルダ名）で示す。
- * 3. **フォルダグループ行**。実物のツリーはグループ行とフォルダ行の2種類だが、
- *    クローンのモックにグループの概念が無いので、土台にするのはフォルダ行の方だけ。
+ * KPI列の数値・アイコン件数・右パネルの各フィールドは**採取した実データ（匿名化済み）**を
+ * そのまま見せている。モックの1件ごとに全KPIセルを差し替える配線は入れていない
+ * （見た目の忠実さを優先し、推測で数値を作らない）。ページ行のクリック先だけモックへ束ねる。
  */
-import substrate from '../fragments/folders__empty-selection.html?raw'
+import substrate from '../fragments/folders__detail.html?raw'
 import { isStale } from '../main.ts'
 import { api, type AbTest, type Folder } from '../api.ts'
-import { T, button, el, emptyState, toast } from '../ui.ts'
+import { emptyState, toast } from '../ui.ts'
 import {
   FOLDERS_HOOK,
   FOLDER_UID_ATTRIBUTE,
   extractFolderRowTemplate,
 } from './folders-substrate.ts'
-import { openCreateFolder, openCreatePage } from './folders-create.ts'
+import { openCreateFolder } from './folders-create.ts'
+import { openParamUrlModal } from '../panels/param-url-modal.ts'
 
 /** 採取物から切り出したフォルダ1行ぶんのマークアップ（読み込み時に一度だけ） */
 const FOLDER_ROW_TEMPLATE = extractFolderRowTemplate(substrate)
-
-/** 配信ステータスの表示名（正本は `mock-server/store/types.ts`・2026-08-31 実機観測） */
-const AD_STATUS_LABELS: Readonly<Record<string, string>> = {
-  prepared: '準備中',
-  delivered: '配信中',
-  stopping: '停止中',
-  finished: '終了',
-}
 
 interface PageContext {
   folders: readonly Folder[]
@@ -89,7 +81,7 @@ export async function renderFolders(
     abTests: detail?.ab_tests ?? [],
   }
   renderTree(body, context)
-  renderPageList(body, context)
+  renderRealList(body, context)
   wireUncapturedTreeControls(body)
   wireUncapturedMainControls(body)
 }
@@ -163,105 +155,97 @@ function wireRowHover(row: HTMLElement): void {
   })
 }
 
-// ── 右: beyondページ一覧（この容器の中だけクローン側の暫定表示）──────
+// ── 中央: beyondページ一覧（採取した実KPI一覧をモックの現実に束ねる）──────
 
 /**
- * 中央ペインの一覧。**実マークアップは採取していない**（フォルダ未選択の状態しか採取していないため、
- * 採取物のこの容器は空）。CSSから形を推測して「それらしい表」を組むと実物と違うものを
- * 実物のふりで置くことになるので、クローン側の部品だと分かる見た目で置き、画面にもそう書く。
+ * 採取した実一覧（KPI列つきの行＋右の詳細パネル）を土台に、モックのbeyondページへ配線する。
+ *
+ * - 実の行マークアップ（KPI列・アイコン・配信ステータス）はそのまま見せる（見た目は実物どおり）。
+ * - 行のクリック → その行に割り当てたモックのbeyondページのエディタへ。モック件数より
+ *   採取の行が多いぶんは round-robin で割り当て、0件なら実の行を隠して空状態を出す。
+ * - 右パネルの「パラメータ付きURL」→ クローンのURL発行モーダル、「コピー」→ クリップボード。
  */
-function renderPageList(body: HTMLElement, context: PageContext): void {
+function renderRealList(body: HTMLElement, context: PageContext): void {
   const area = body.querySelector<HTMLElement>(FOLDERS_HOOK.listArea)
   if (area === null) {
     console.warn('[folders]', FOLDERS_HOOK.listArea, 'が土台に見つかりませんでした')
     return
   }
-  const own = el('div', {
-    style: `flex:1;min-height:1%;overflow:auto;font-family:${T.font};display:flex;flex-direction:column`,
-  })
+  wireRealPageRows(area, context)
+  wireRealDetailPanel(body, context)
+}
 
-  if (context.folder === null) {
-    own.append(
-      emptyState(
-        context.folders.length === 0
-          ? 'フォルダがまだありません。ツリー左上のフォルダ追加ボタンから作成します。'
-          : 'ツリーからフォルダを選ぶと、そのフォルダのbeyondページが表示されます。',
-      ),
-    )
-  } else {
-    own.append(listHeader(context.folder), listBody(context.folder, context.abTests))
+/**
+ * 一覧の各ページ行（採取した実マークアップ・KPI列つき）をクリック可能にする。
+ * 採取の行数はモックの件数より多いので、行 i にモックの `abTests[i % 件数]` を割り当て、
+ * クリックでそのbeyondページのエディタへ飛ばす。モックが0件なら押下時にそう伝える。
+ */
+function wireRealPageRows(area: HTMLElement, context: PageContext): void {
+  const rows = area.querySelectorAll<HTMLElement>(
+    `${FOLDERS_HOOK.pageRowList} [data-testid="list-menu-item"]`,
+  )
+  const abTests = context.abTests
+  rows.forEach((row, index) => {
+    row.style.cursor = 'pointer'
+    const target = abTests.length === 0 ? null : abTests[index % abTests.length] ?? null
+    row.addEventListener('click', (event) => {
+      // 行内のホバー操作アイコン（設定など）を押したときはエディタへ飛ばさない
+      if ((event.target as HTMLElement).closest('button') !== null) return
+      if (target === null) {
+        toast('このフォルダにはモックのbeyondページがまだありません', 'error')
+        return
+      }
+      location.hash = `/ab_tests/${target.uid}/articles`
+    })
+  })
+}
+
+/**
+ * 右の詳細パネル（採取した実マークアップ）の操作を配線する。
+ * - 「パラメータ付きURLの発行」→ クローンのURL発行モーダル（実物と同じ入力項目）。
+ * - 「コピー」→ 配信URLをクリップボードへ。
+ * パネルの各値は採取物のまま（見た目は実物どおり）。
+ */
+function wireRealDetailPanel(body: HTMLElement, context: PageContext): void {
+  const panel = body.querySelector<HTMLElement>(FOLDERS_HOOK.detailPanel)
+  if (panel === null) return
+
+  const baseUrl = paramUrlBase(panel, context)
+  const paramButton = findByText(panel, 'パラメータ付きURLの発行')
+  if (paramButton !== null) {
+    paramButton.style.cursor = 'pointer'
+    paramButton.addEventListener('click', () => openParamUrlModal(baseUrl))
   }
-  own.append(
-    el('div', {
-      text: '※ beyondページ一覧の実マークアップは未採取（フォルダ選択後の状態を採取していない）のため、この一覧はクローン側の暫定表示です。',
-      style: `font-size:11px;color:${T.sub};line-height:1.8;padding:10px 16px;border-top:1px solid #E5E5E5`,
-    }),
-  )
-  area.replaceChildren(own)
-}
 
-/** 媒体ロスターの取得で失敗しうるので、握りつぶさずトーストで出す */
-function startCreatePage(folder: Folder): void {
-  void openCreatePage(folder).catch((error: unknown) => {
-    toast((error as Error).message, 'error')
-  })
-}
-
-function listHeader(folder: Folder): HTMLElement {
-  const create = button('新規ページを作成')
-  create.addEventListener('click', () => startCreatePage(folder))
-  return el(
-    'div',
-    {
-      style: `display:flex;align-items:center;gap:12px;padding:12px 16px;background:${T.surface};
-        border-bottom:1px solid #E5E5E5`,
-    },
-    [
-      el('strong', {
-        text: folder.name,
-        style: 'font-size:14px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap',
-      }),
-      create,
-    ],
-  )
-}
-
-function listBody(folder: Folder, abTests: readonly AbTest[]): HTMLElement {
-  if (abTests.length === 0) {
-    const create = button('新規ページを作成')
-    create.addEventListener('click', () => startCreatePage(folder))
-    return emptyState('このフォルダにはまだbeyondページがありません。', create)
+  for (const copy of panel.querySelectorAll<HTMLElement>('[aria-label="コピー"]')) {
+    copy.addEventListener('click', (event) => {
+      event.stopPropagation()
+      void navigator.clipboard?.writeText(baseUrl).then(
+        () => toast('配信URLをコピーしました'),
+        () => toast('コピーできませんでした', 'error'),
+      )
+    })
   }
-  return el(
-    'div',
-    { style: 'flex:1;min-height:1%' },
-    abTests.map((abTest) => pageRow(abTest)),
-  )
 }
 
-function pageRow(abTest: AbTest): HTMLElement {
-  const open = button('エディタを開く')
-  open.addEventListener('click', () => {
-    location.hash = `/ab_tests/${abTest.uid}/articles`
-  })
-  const editorLabel = abTest.editor_version === 2 ? 'beyondエディター' : 'HTMLエディター'
-  const status = AD_STATUS_LABELS[abTest.ad_status] ?? abTest.ad_status
-  return el(
-    'div',
-    {
-      style: `background:${T.surface};border-bottom:1px solid #E5E5E5;padding:14px 16px;
-        display:flex;align-items:center;gap:14px`,
-    },
-    [
-      el('div', { style: 'flex:1;min-width:0' }, [
-        el('div', { text: abTest.title, style: 'font-size:14px;font-weight:600;margin-bottom:5px' }),
-        el('div', {
-          text: `${status} · ${abTest.media?.name ?? '媒体なし'} · ${editorLabel}`,
-          style: `font-size:11px;color:${T.sub}`,
-        }),
-      ]),
-      open,
-    ],
+/** URL発行/コピーの元になる配信URL。モックのbeyondページがあればそれを、無ければパネル表示値を使う。 */
+function paramUrlBase(panel: HTMLElement, context: PageContext): string {
+  const first = context.abTests[0]
+  if (first !== undefined) return `${location.origin}/#/ab/${first.uid}`
+  const shown = Array.from(panel.querySelectorAll<HTMLElement>('a, div')).find((node) =>
+    /^\/ab\//.test((node.textContent ?? '').trim()),
+  )
+  const path = (shown?.textContent ?? '/ab/UID').trim()
+  return `${location.origin}/#${path}`
+}
+
+/** 子孫から、指定文字列と完全一致するテキストだけを持つ最小要素を探す（アイコン等を巻き込まない）。 */
+function findByText(root: HTMLElement, text: string): HTMLElement | null {
+  const nodes = Array.from(root.querySelectorAll<HTMLElement>('div, button, span, a'))
+  return (
+    nodes.find(
+      (node) => (node.textContent ?? '').trim() === text && node.children.length <= 1,
+    ) ?? null
   )
 }
 
