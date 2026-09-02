@@ -159,6 +159,8 @@ export interface RedirectPage {
   enabled: boolean
   /** リダイレクト時間（秒・指示⑮ 中間ページ設定） */
   redirect_time?: number
+  /** リファラー設定（version=VersionURL / redirect_page=中間ページURL） */
+  referrer_type?: 'version' | 'redirect_page'
 }
 
 export interface ExitPopup {

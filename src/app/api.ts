@@ -135,8 +135,10 @@ export const api = {
     request<{ redirect_pages: RedirectPage[] }>('GET', `/ab_tests/${abTestUid}/redirect_pages`),
   addRedirectPage: (abTestUid: string) =>
     request<{ redirect_page: RedirectPage }>('POST', `/ab_tests/${abTestUid}/redirect_pages/create`),
-  updateRedirectPage: (uid: string, patch: { name?: string; url?: string; redirect_time?: number }) =>
+  updateRedirectPage: (uid: string, patch: { name?: string; url?: string; redirect_time?: number; referrer_type?: string }) =>
     request<{ redirect_page: RedirectPage }>('PATCH', `/redirect_pages/${uid}`, patch),
+  deleteRedirectPage: (uid: string) =>
+    request<void>('DELETE', `/redirect_pages/${uid}`),
 
   versions: (articleUid: string) =>
     request<{ versions: Version[]; distribution_total: number; distribution_warning: string | null }>(
@@ -270,6 +272,7 @@ export interface RedirectPage {
   weight: number
   enabled: boolean
   redirect_time?: number
+  referrer_type?: 'version' | 'redirect_page'
 }
 
 /** Meta広告のアカウント集計KPI（実取得） */

@@ -419,19 +419,34 @@ export function addRedirectPage(
 export function updateRedirectPage(
   state: State,
   uid: string,
-  patch: { name?: string; url?: string; redirect_time?: number },
+  patch: { name?: string; url?: string; redirect_time?: number; referrer_type?: string },
 ): { state: State; page: RedirectPage | null } {
   const target = state.redirectPages.find((p) => p.uid === uid)
   if (target === undefined) return { state, page: null }
+  const validReferrer = patch.referrer_type === 'version' || patch.referrer_type === 'redirect_page' ? patch.referrer_type : undefined
   const updated: RedirectPage = {
     ...target,
     ...(patch.name !== undefined ? { name: patch.name } : {}),
     ...(patch.url !== undefined ? { url: patch.url } : {}),
     ...(patch.redirect_time !== undefined ? { redirect_time: patch.redirect_time } : {}),
+    ...(validReferrer !== undefined ? { referrer_type: validReferrer } : {}),
   }
   return {
     state: { ...state, redirectPages: state.redirectPages.map((p) => (p.uid === uid ? updated : p)) },
     page: updated,
+  }
+}
+
+/** 中間ページを削除する */
+export function deleteRedirectPage(
+  state: State,
+  uid: string,
+): { state: State; deleted: boolean } {
+  const exists = state.redirectPages.some((p) => p.uid === uid)
+  if (!exists) return { state, deleted: false }
+  return {
+    state: { ...state, redirectPages: state.redirectPages.filter((p) => p.uid !== uid) },
+    deleted: true,
   }
 }
 

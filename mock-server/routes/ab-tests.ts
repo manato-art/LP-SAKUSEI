@@ -9,6 +9,7 @@ import {
   addRedirectPage,
   createAbTest,
   deleteAbTest,
+  deleteRedirectPage,
   updateRedirectPage,
 } from '../store/actions.ts'
 import { getState, setState } from '../store/store.ts'
@@ -247,14 +248,23 @@ abTestsRouter.patch('/redirect_pages/:uid', (req, res) => {
   const name = optionalString(req.body, 'name')
   const url = optionalString(req.body, 'url')
   const redirectTime = optionalNumber(req.body, 'redirect_time')
+  const referrerType = optionalString(req.body, 'referrer_type')
   const out = updateRedirectPage(getState(), req.params.uid, {
     ...(name !== '' ? { name } : {}),
     url,
     ...(redirectTime !== undefined ? { redirect_time: redirectTime } : {}),
+    ...(referrerType !== '' ? { referrer_type: referrerType } : {}),
   })
   if (out.page === null) return notFound(res, '中間ページが見つかりません。')
   setState(() => out.state)
   res.json({ redirect_page: out.page })
+})
+
+abTestsRouter.delete('/redirect_pages/:uid', (req, res) => {
+  const out = deleteRedirectPage(getState(), req.params.uid)
+  if (!out.deleted) return notFound(res, '中間ページが見つかりません。')
+  setState(() => out.state)
+  res.status(204).end()
 })
 
 // ── スプリットテスト設定6種（§9-5）──

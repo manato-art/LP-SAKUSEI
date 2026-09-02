@@ -1,9 +1,10 @@
 /**
  * フォルダ操作メニュー（歯車アイコンから開くドロップダウン）。
- * FAQの機能: フォルダ名変更、フォルダ削除、レポートCSVダウンロード。
+ * 実物の構成: ヘッダー（フォルダ名 設定）/ お気に入りトグル / フォルダを作成 / 名称変更 / グループを削除。
  */
 import { api, type Folder } from '../api.ts'
 import { T, el, toast } from '../ui.ts'
+import { openCreateFolder } from '../pages/folders-create.ts'
 
 let currentMenu: HTMLElement | null = null
 
@@ -18,6 +19,9 @@ function onDocumentClick(): void {
   closeMenu()
 }
 
+/** ゴミ箱SVGアイコン（実物に合わせたオレンジ色） */
+const TRASH_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E53E3E" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14z"/></svg>'
+
 /** フォルダ操作メニューを表示する */
 export function openFolderMenu(anchor: HTMLElement, folder: Folder): void {
   // 既に開いていたら閉じる
@@ -28,22 +32,57 @@ export function openFolderMenu(anchor: HTMLElement, folder: Folder): void {
       'position:absolute;z-index:9999',
       `background:${T.surface};border-radius:8px`,
       'box-shadow:0 4px 16px rgba(0,0,0,.15)',
-      'min-width:180px;padding:4px 0',
+      'min-width:200px;padding:0',
       `font-family:${T.font};font-size:13px`,
     ].join(';'),
   })
 
-  const items: { label: string; action: () => void; danger?: boolean }[] = [
+  // ── ヘッダー: 「フォルダ名 設定」 ──
+  const header = el('div', {
+    text: `${folder.name} 設定`,
+    style: [
+      `padding:14px 16px;text-align:center;font-weight:600;color:${T.text}`,
+      'border-bottom:1px solid #F0F0F0;font-size:14px',
+    ].join(';'),
+  })
+  menu.append(header)
+
+  // ── メニュー項目 ──
+  const itemContainer = el('div', { style: 'padding:4px 0' })
+
+  interface MenuItem { label: string; action: () => void; danger?: boolean; icon?: string }
+  const items: MenuItem[] = [
     {
-      label: 'フォルダ名を変更',
+      label: folder.is_favorite ? 'お気に入りから除外' : 'お気に入りに追加',
+      action: () => {
+        closeMenu()
+        void api.toggleFavorite(folder.uid, !folder.is_favorite).then(
+          () => {
+            toast(folder.is_favorite ? 'お気に入りから除外しました' : 'お気に入りに追加しました')
+            dispatchEvent(new HashChangeEvent('hashchange'))
+          },
+          () => toast('お気に入りの切り替えに失敗しました', 'error'),
+        )
+      },
+    },
+    {
+      label: 'フォルダを作成',
+      action: () => {
+        closeMenu()
+        openCreateFolder()
+      },
+    },
+    {
+      label: '名称変更',
       action: () => {
         closeMenu()
         openRenameDialog(folder)
       },
     },
     {
-      label: 'フォルダを削除',
+      label: 'グループを削除',
       danger: true,
+      icon: TRASH_ICON,
       action: () => {
         closeMenu()
         confirmDeleteFolder(folder)
@@ -53,12 +92,18 @@ export function openFolderMenu(anchor: HTMLElement, folder: Folder): void {
 
   for (const item of items) {
     const row = el('div', {
-      text: item.label,
       style: [
-        'padding:8px 16px;cursor:pointer;white-space:nowrap',
+        'padding:10px 16px;cursor:pointer;white-space:nowrap;display:flex;align-items:center;justify-content:space-between',
         `color:${item.danger === true ? '#E53E3E' : T.text}`,
       ].join(';'),
     })
+    const label = el('span', { text: item.label })
+    row.append(label)
+    if (item.icon !== undefined) {
+      const iconEl = el('span', { style: 'display:flex;align-items:center;margin-left:12px' })
+      iconEl.innerHTML = item.icon
+      row.append(iconEl)
+    }
     row.addEventListener('mouseenter', () => {
       row.style.background = 'rgba(0,0,0,.04)'
     })
@@ -69,8 +114,10 @@ export function openFolderMenu(anchor: HTMLElement, folder: Folder): void {
       e.stopPropagation()
       item.action()
     })
-    menu.append(row)
+    itemContainer.append(row)
   }
+
+  menu.append(itemContainer)
 
   // 位置をアンカー要素の下に
   const rect = anchor.getBoundingClientRect()

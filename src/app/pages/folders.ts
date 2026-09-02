@@ -400,7 +400,10 @@ function buildPageRow(template: HTMLElement, abTest: AbTest): HTMLElement {
   const status = AD_STATUS_LABELS[abTest.ad_status] ?? abTest.ad_status
 
   const title = row.querySelector<HTMLElement>(FOLDERS_HOOK.pageTitle)
-  if (title !== null) title.textContent = abTest.title
+  if (title !== null) {
+    title.textContent = abTest.title
+    wireInlineRename(title, abTest)
+  }
   for (const node of row.querySelectorAll<HTMLElement>(
     `${FOLDERS_HOOK.pageStatusInline}, ${FOLDERS_HOOK.pageStatusKpi}`,
   )) {
@@ -411,12 +414,247 @@ function buildPageRow(template: HTMLElement, abTest: AbTest): HTMLElement {
 
   const item = row.querySelector<HTMLElement>('[data-testid="list-menu-item"]')
   if (item !== null) item.style.cursor = 'pointer'
+
+  // ページ行ホバーアクション（分析/ヒートマップ/レポート/バージョン/…メニュー）
+  wirePageRowActions(row, abTest)
+
   row.addEventListener('click', (event) => {
-    // 行内のホバー操作アイコン（設定など）を押したときはエディタへ飛ばさない
-    if ((event.target as HTMLElement).closest('button') !== null) return
+    // 行内のインライン操作（ボタン・入力・アクションバー）を押したときはエディタへ飛ばさない
+    const target = event.target as HTMLElement
+    if (target.closest('button') !== null || target.closest('input') !== null || target.closest('.sb-page-actions') !== null) return
     location.hash = `/ab_tests/${abTest.uid}/articles`
   })
   return row
+}
+
+/**
+ * ページ名（タイトル）をクリックでインライン編集する（指示㉓）。
+ * クリック → テキストが input に変わる（黄色背景・青ボーダー）→ Enter/blur で確定 → API更新。
+ */
+function wireInlineRename(titleEl: HTMLElement, abTest: AbTest): void {
+  const el$ = titleEl  // eslint-safe alias（no-param-reassign 回避）
+  el$.style.cursor = 'text'
+  el$.addEventListener('click', (e) => {
+    e.stopPropagation()
+    // 既に編集中なら何もしない
+    if (el$.querySelector('input') !== null) return
+
+    const currentName = (el$.textContent ?? '').trim()
+    const input = document.createElement('input')
+    input.type = 'text'
+    input.value = currentName
+    input.style.cssText = [
+      'width:100%;box-sizing:border-box;padding:4px 8px',
+      'border:2px solid #0091FF;border-radius:4px',
+      'background:#FFFDE7',
+      `font-size:inherit;font-family:${T.font}`,
+      'outline:none',
+    ].join(';')
+
+    el$.replaceChildren(input)
+    input.focus()
+    input.select()
+
+    const commit = (): void => {
+      const newName = input.value.trim()
+      if (newName === '' || newName === currentName) {
+        el$.replaceChildren(document.createTextNode(currentName))
+        return
+      }
+      el$.replaceChildren(document.createTextNode(newName))
+      void api.updateAbTest(abTest.uid, { title: newName }).then(
+        () => toast('ページ名を更新しました'),
+        () => {
+          el$.replaceChildren(document.createTextNode(currentName))
+          toast('ページ名の更新に失敗しました', 'error')
+        },
+      )
+    }
+
+    input.addEventListener('blur', commit)
+    input.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter' && !ev.isComposing) {
+        ev.preventDefault()
+        input.blur()
+      }
+      if (ev.key === 'Escape') {
+        el$.replaceChildren(document.createTextNode(currentName))
+      }
+    })
+  })
+}
+
+/**
+ * ページ行のホバーアクションバー（指示㉒）。
+ * 実物は行ホバー時に「分析 / ヒートマップ / レポート / バージョン / ... / 歯車」が出る。
+ * 採取物にはこのバーが無い（ホバー時だけ描画されるため）ので、自前で追加する。
+ */
+function wirePageRowActions(row: HTMLElement, abTest: AbTest): void {
+  const item = row.querySelector<HTMLElement>('[data-testid="list-menu-item"]')
+  if (item === null) return
+
+  const bar = el('div', {
+    style: [
+      'position:absolute;top:8px;right:8px',
+      'display:flex;gap:4px;opacity:0;transition:opacity 0.15s',
+      'pointer-events:none;z-index:10',
+    ].join(';'),
+  })
+  bar.classList.add('sb-page-actions')
+
+  // 行をposition:relativeにしてバーをabsoluteで配置
+  ;(item.style as CSSStyleDeclaration).position = 'relative'
+
+  const navButtons: { label: string; hash: string; bg: string; color: string }[] = [
+    { label: '分析', hash: `/ab_tests/${abTest.uid}/reports`, bg: '#6C63FF', color: '#FFF' },
+    { label: 'ヒートマップ', hash: `/ab_tests/${abTest.uid}/reports`, bg: '#444', color: '#FFF' },
+    { label: 'レポート', hash: `/ab_tests/${abTest.uid}/reports`, bg: '#0091FF', color: '#FFF' },
+    { label: 'バージョン', hash: `/ab_tests/${abTest.uid}/articles`, bg: '#7B61FF', color: '#FFF' },
+  ]
+
+  for (const nav of navButtons) {
+    const btn = el('button', {
+      text: nav.label,
+      style: [
+        `background:${nav.bg};color:${nav.color}`,
+        'border:none;border-radius:4px;padding:4px 10px',
+        `font-size:11px;cursor:pointer;font-family:${T.font}`,
+        'white-space:nowrap',
+      ].join(';'),
+    })
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation()
+      location.hash = nav.hash
+    })
+    bar.append(btn)
+  }
+
+  // 三点メニュー（…）
+  const moreBtn = el('button', {
+    text: '···',
+    style: [
+      `background:${T.surface};color:${T.text}`,
+      'border:1px solid #DDD;border-radius:4px;padding:4px 8px',
+      `font-size:13px;cursor:pointer;font-family:${T.font}`,
+      'font-weight:700',
+    ].join(';'),
+  })
+  moreBtn.addEventListener('click', (e) => {
+    e.stopPropagation()
+    openPageMoreMenu(moreBtn, abTest)
+  })
+  bar.append(moreBtn)
+
+  // 歯車アイコン
+  const gearBtn = el('button', {
+    style: [
+      `background:${T.surface};color:${T.sub}`,
+      'border:1px solid #DDD;border-radius:4px;padding:4px 6px',
+      'cursor:pointer;display:flex;align-items:center',
+    ].join(';'),
+  })
+  gearBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 00.12-.61l-1.92-3.32a.49.49 0 00-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.48.48 0 00-.48-.41h-3.84a.48.48 0 00-.48.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.49.49 0 00-.59.22L2.74 8.87a.48.48 0 00.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.49.49 0 00-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 1115.6 12 3.6 3.6 0 0112 15.6z"/></svg>'
+  gearBtn.addEventListener('click', (e) => {
+    e.stopPropagation()
+    // 基本情報ページへ
+    location.hash = `/ab_tests/${abTest.uid}/basic_info`
+  })
+  bar.append(gearBtn)
+
+  item.append(bar)
+
+  // ホバーで表示/非表示
+  row.addEventListener('mouseenter', () => {
+    bar.style.opacity = '1'
+    bar.style.pointerEvents = 'auto'
+  })
+  row.addEventListener('mouseleave', () => {
+    bar.style.opacity = '0'
+    bar.style.pointerEvents = 'none'
+  })
+}
+
+/** ページ行の三点メニュー（…）の中身（指示㉒） */
+let pageMoreMenuEl: HTMLElement | null = null
+
+function openPageMoreMenu(anchor: HTMLElement, abTest: AbTest): void {
+  if (pageMoreMenuEl !== null) {
+    pageMoreMenuEl.remove()
+    pageMoreMenuEl = null
+    return
+  }
+
+  const menu = el('div', {
+    style: [
+      'position:fixed;z-index:9999',
+      `background:${T.surface};border-radius:8px`,
+      'box-shadow:0 4px 16px rgba(0,0,0,.15)',
+      'min-width:180px;padding:4px 0',
+      `font-family:${T.font};font-size:13px`,
+    ].join(';'),
+  })
+
+  const items: { label: string; action: () => void }[] = [
+    {
+      label: 'お気に入りに追加',
+      action: () => toast('お気に入り機能はフォルダ単位です'),
+    },
+    {
+      label: 'フォルダ移動',
+      action: () => toast('フォルダ移動は未実装です（採取物なし）', 'error'),
+    },
+    {
+      label: '別フォルダへ複製',
+      action: () => toast('別フォルダへ複製は未実装です（採取物なし）', 'error'),
+    },
+    {
+      label: 'beyondページ複製',
+      action: () => toast('beyondページ複製は未実装です（採取物なし）', 'error'),
+    },
+    {
+      label: 'ステータスを終了にする',
+      action: () => {
+        void api.updateAbTest(abTest.uid, { ad_status: 'finished' }).then(
+          () => {
+            toast('ステータスを終了に変更しました')
+            dispatchEvent(new HashChangeEvent('hashchange'))
+          },
+          () => toast('ステータスの変更に失敗しました', 'error'),
+        )
+      },
+    },
+  ]
+
+  for (const item of items) {
+    const row = el('div', {
+      text: item.label,
+      style: `padding:10px 16px;cursor:pointer;color:${T.text};white-space:nowrap`,
+    })
+    row.addEventListener('mouseenter', () => { row.style.background = 'rgba(0,0,0,.04)' })
+    row.addEventListener('mouseleave', () => { row.style.background = 'transparent' })
+    row.addEventListener('click', (e) => {
+      e.stopPropagation()
+      menu.remove()
+      pageMoreMenuEl = null
+      item.action()
+    })
+    menu.append(row)
+  }
+
+  const rect = anchor.getBoundingClientRect()
+  menu.style.top = `${rect.bottom + 4}px`
+  menu.style.right = `${window.innerWidth - rect.right}px`
+  document.body.append(menu)
+  pageMoreMenuEl = menu
+
+  requestAnimationFrame(() => {
+    const close = (): void => {
+      menu.remove()
+      pageMoreMenuEl = null
+      document.removeEventListener('click', close)
+    }
+    document.addEventListener('click', close)
+  })
 }
 
 /**
@@ -446,8 +684,38 @@ function wireRealDetailPanel(body: HTMLElement, context: PageContext): void {
     })
   }
 
-  // 鉛筆アイコン（data-testid="pencil-icon"）→ 基本情報の編集ページへ遷移
+  // 鉛筆アイコン（data-testid="pencil-icon"）→ インライン編集
   wirePencilIcons(panel, context)
+
+  // 折りたたみセクション（URL情報・beyondページ情報・配信情報）のアコーディオン開閉
+  wireAccordionSections(panel)
+}
+
+/**
+ * 詳細パネルの折りたたみセクション（ej6u9q12）を配線する。
+ * ヘッダー（ej6u9q11）をクリックでコンテンツ（ej6u9q10）をトグルし、
+ * 矢印アイコン（arrow-down-icon）を回転させる。
+ */
+function wireAccordionSections(panel: HTMLElement): void {
+  const sections = panel.querySelectorAll<HTMLElement>('.ej6u9q12')
+  for (const section of sections) {
+    const header = section.querySelector<HTMLElement>('.ej6u9q11')
+    const content = section.querySelector<HTMLElement>('.ej6u9q10')
+    if (header === null || content === null) continue
+
+    const arrow = header.querySelector<SVGElement>('[data-testid="arrow-down-icon"]')
+    let isOpen = true  // 初期状態は開いている（採取物のまま）
+
+    header.style.cursor = 'pointer'
+    header.addEventListener('click', () => {
+      isOpen = !isOpen
+      content.style.display = isOpen ? '' : 'none'
+      if (arrow !== null) {
+        arrow.style.transition = 'transform 0.2s ease'
+        arrow.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(-90deg)'
+      }
+    })
+  }
 }
 
 /**
