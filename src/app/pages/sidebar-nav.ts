@@ -21,6 +21,8 @@ export const DOMAINS_ROUTE = '/teams/domains'
 export const REPORT_EXCLUSIONS_ROUTE = '/report-exclusions'
 export const RANKINGS_ROUTE = '/rankings'
 export const SEMINAR_ROUTE = '/seminar'
+/** アカウント設定（FAQ: 設定・管理） */
+export const ACCOUNT_SETTINGS_ROUTE = '/settings/account'
 
 export const SIDEBAR_PAGE_ROUTES = [
   ADDON_ROUTE,
@@ -33,6 +35,7 @@ export const SIDEBAR_PAGE_ROUTES = [
   REPORT_EXCLUSIONS_ROUTE,
   RANKINGS_ROUTE,
   SEMINAR_ROUTE,
+  ACCOUNT_SETTINGS_ROUTE,
 ] as const
 
 export type SidebarPage =
@@ -46,6 +49,7 @@ export type SidebarPage =
   | 'report_exclusions'
   | 'rankings'
   | 'seminar'
+  | 'account_settings'
 
 /** パスを対応するページ種別へ解決する。未知のパスは null（推測で埋めない）。 */
 export function matchSidebarPage(path: string): SidebarPage | null {
@@ -70,6 +74,8 @@ export function matchSidebarPage(path: string): SidebarPage | null {
       return 'rankings'
     case SEMINAR_ROUTE:
       return 'seminar'
+    case ACCOUNT_SETTINGS_ROUTE:
+      return 'account_settings'
     default:
       return null
   }

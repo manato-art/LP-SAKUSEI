@@ -25,6 +25,7 @@ import {
   renderRankings,
   renderSeminarPage,
 } from './pages/sidebar-data.ts'
+import { renderAccountSettings } from './pages/account-settings.ts'
 import { matchSidebarPage } from './pages/sidebar-nav.ts'
 import { matchToolPage } from './pages/tool-subnav.ts'
 import { renderToolPage } from './pages/tool-pages.ts'
@@ -196,6 +197,10 @@ async function route(): Promise<void> {
     }
     if (sidebarPage === 'seminar') {
       renderSeminarPage(content)
+      return
+    }
+    if (sidebarPage === 'account_settings') {
+      await renderAccountSettings(content)
       return
     }
     /**

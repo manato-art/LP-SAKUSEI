@@ -26,7 +26,7 @@
 import substrate from '../fragments/folders__detail.html?raw'
 import { isStale } from '../main.ts'
 import { api, type AbTest, type Folder } from '../api.ts'
-import { emptyState, toast } from '../ui.ts'
+import { T, emptyState, toast } from '../ui.ts'
 import {
   FOLDERS_HOOK,
   FOLDER_UID_ATTRIBUTE,
@@ -35,6 +35,7 @@ import {
 } from './folders-substrate.ts'
 import { openCreateFolder, openCreatePage } from './folders-create.ts'
 import { openParamUrlModal } from '../panels/param-url-modal.ts'
+import { openFolderMenu } from '../panels/folder-menu.ts'
 
 /** 採取物から切り出したフォルダ1行ぶんのマークアップ（読み込み時に一度だけ） */
 const FOLDER_ROW_TEMPLATE = extractFolderRowTemplate(substrate)
@@ -103,7 +104,7 @@ export async function renderFolders(
   renderTree(body, context)
   renderRealList(body, context)
   wireTreeTabs(body, context)
-  wireTreeControls(body)
+  wireTreeControls(body, context)
   wireMainControls(body, context)
 }
 
@@ -151,18 +152,23 @@ function renderTree(body: HTMLElement, context: PageContext): void {
   }
 }
 
-/** アクティブタブに応じてフォルダをフィルタリングする。 */
+/** アクティブタブに応じてフォルダをフィルタリングする。検索クエリがあればさらに絞る。 */
 function filterFoldersByTab(folders: readonly Folder[]): readonly Folder[] {
+  let result: readonly Folder[]
   if (activeTreeTab === 'お気に入り') {
-    return folders.filter((f) => f.is_favorite)
-  }
-  if (activeTreeTab === '履歴') {
-    // 履歴順（新しい順）に並べる。履歴に無いフォルダは除外。
-    return folderHistory
+    result = folders.filter((f) => f.is_favorite)
+  } else if (activeTreeTab === '履歴') {
+    result = folderHistory
       .map((uid) => folders.find((f) => f.uid === uid))
       .filter((f): f is Folder => f !== undefined)
+  } else {
+    result = folders
   }
-  return folders
+  // 検索クエリで絞り込み
+  if (searchQuery !== '') {
+    result = result.filter((f) => f.name.toLowerCase().includes(searchQuery))
+  }
+  return result
 }
 
 function folderRowPrototype(): HTMLElement | null {
@@ -412,7 +418,11 @@ function wireNotCaptured(node: Element | null | undefined, label: string): void 
   })
 }
 
-function wireTreeControls(body: HTMLElement): void {
+/** フォルダツリーの検索バーを表示/非表示する */
+let searchInput: HTMLInputElement | null = null
+let searchQuery = ''
+
+function wireTreeControls(body: HTMLElement, context: PageContext): void {
   const tree = body.querySelector<HTMLElement>(FOLDERS_HOOK.tree)
   if (tree === null) {
     console.warn('[folders]', FOLDERS_HOOK.tree, 'が土台に見つかりませんでした')
@@ -423,7 +433,52 @@ function wireTreeControls(body: HTMLElement): void {
   if (create === null) console.warn('[folders] 新規フォルダ作成のボタンが土台に見つかりませんでした')
   else create.addEventListener('click', openCreateFolder)
 
-  wireNotCaptured(tree.querySelector(FOLDERS_HOOK.treeSearchIcon)?.closest('button'), '検索')
+  // 検索ボタン: クリックで検索バーをトグル
+  const searchBtn = tree.querySelector(FOLDERS_HOOK.treeSearchIcon)?.closest('button') ?? null
+  if (searchBtn !== null) {
+    searchBtn.addEventListener('click', () => {
+      toggleTreeSearch(tree, context)
+    })
+  }
+}
+
+function toggleTreeSearch(tree: HTMLElement, context: PageContext): void {
+  if (searchInput !== null) {
+    // 閉じる
+    searchInput.parentElement?.remove()
+    searchInput = null
+    searchQuery = ''
+    renderTree(tree.closest(FOLDERS_HOOK.body) as HTMLElement, context)
+    return
+  }
+  // 検索バーを挿入（ツリーのリスト容器の直前）
+  const list = tree.querySelector<HTMLElement>(FOLDERS_HOOK.treeList)
+  if (list === null) return
+
+  const bar = document.createElement('div')
+  bar.style.cssText = 'padding:4px 8px'
+
+  const input = document.createElement('input')
+  input.type = 'text'
+  input.placeholder = 'フォルダを検索...'
+  input.value = searchQuery
+  input.style.cssText = `width:100%;box-sizing:border-box;padding:6px 10px;border:1px solid #DDD;border-radius:4px;font-size:12px;outline:none;font-family:${T.font}`
+  input.addEventListener('input', () => {
+    searchQuery = input.value.trim().toLowerCase()
+    const bodyEl = tree.closest(FOLDERS_HOOK.body) as HTMLElement
+    if (bodyEl !== null) renderTree(bodyEl, context)
+  })
+  input.addEventListener('focus', () => {
+    input.style.borderColor = '#0091FF'
+  })
+  input.addEventListener('blur', () => {
+    input.style.borderColor = '#DDD'
+  })
+
+  bar.append(input)
+  list.before(bar)
+  searchInput = input
+  requestAnimationFrame(() => input.focus())
 }
 
 function wireMainControls(body: HTMLElement, context: PageContext): void {
@@ -447,14 +502,153 @@ function wireMainControls(body: HTMLElement, context: PageContext): void {
     })
   }
 
-  wireNotCaptured(main.querySelector(FOLDERS_HOOK.folderSearchButton), 'フォルダ内検索')
+  // フォルダ内検索: ページタイトルでフィルタ
+  const folderSearchBtn = main.querySelector<HTMLElement>(FOLDERS_HOOK.folderSearchButton)
+  if (folderSearchBtn !== null) {
+    folderSearchBtn.style.cursor = 'pointer'
+    folderSearchBtn.addEventListener('click', () => {
+      togglePageSearch(main, context)
+    })
+  }
+
+  // 配信ステータスフィルタ
+  const statusSelect = main.querySelector<HTMLElement>(FOLDERS_HOOK.adStatusSelect)
+  if (statusSelect !== null) {
+    statusSelect.style.cursor = 'pointer'
+    statusSelect.addEventListener('click', () => {
+      openStatusFilter(statusSelect, main, context)
+    })
+  }
+
+  // 集計期間: トーストを残す（モック側に日次メトリクスの期間フィルタリングUIは採取物に無い）
   wireNotCaptured(main.querySelector(FOLDERS_HOOK.periodSelect), '集計期間')
-  wireNotCaptured(main.querySelector(FOLDERS_HOOK.adStatusSelect), '配信ステータス')
+}
+
+// ── ページ検索（フォルダ内検索）──────────────────────
+let pageSearchInput: HTMLInputElement | null = null
+let pageSearchQuery = ''
+
+function togglePageSearch(main: HTMLElement, context: PageContext): void {
+  if (pageSearchInput !== null) {
+    pageSearchInput.parentElement?.remove()
+    pageSearchInput = null
+    pageSearchQuery = ''
+    refilterPageRows(main, context)
+    return
+  }
+  const container = main.querySelector<HTMLElement>(FOLDERS_HOOK.pageRowList)
+  if (container === null) return
+
+  const bar = document.createElement('div')
+  bar.style.cssText = 'padding:4px 8px'
+
+  const input = document.createElement('input')
+  input.type = 'text'
+  input.placeholder = 'ページを検索...'
+  input.style.cssText = `width:100%;box-sizing:border-box;padding:6px 10px;border:1px solid #DDD;border-radius:4px;font-size:12px;outline:none;font-family:${T.font}`
+  input.addEventListener('input', () => {
+    pageSearchQuery = input.value.trim().toLowerCase()
+    refilterPageRows(main, context)
+  })
+
+  bar.append(input)
+  container.before(bar)
+  pageSearchInput = input
+  requestAnimationFrame(() => input.focus())
+}
+
+/** ページ行をフィルタ（検索クエリ + ステータスフィルタ） */
+function refilterPageRows(main: HTMLElement, _context: PageContext): void {
+  const container = main.querySelector<HTMLElement>(FOLDERS_HOOK.pageRowList)
+  if (container === null) return
+  const rowWrappers = Array.from(container.children).filter(
+    (child): child is HTMLElement =>
+      child.querySelector('[data-testid="list-menu-item"]') !== null,
+  )
+  for (const wrapper of rowWrappers) {
+    const title = wrapper.querySelector<HTMLElement>(FOLDERS_HOOK.pageTitle)
+    const titleText = (title?.textContent ?? '').toLowerCase()
+    const matchesSearch = pageSearchQuery === '' || titleText.includes(pageSearchQuery)
+
+    // ステータスフィルタ
+    let matchesStatus = true
+    if (activeStatusFilter !== 'all') {
+      const statusEl = wrapper.querySelector<HTMLElement>(FOLDERS_HOOK.pageStatusInline)
+      const statusText = (statusEl?.textContent ?? '').trim()
+      matchesStatus = statusText === AD_STATUS_LABELS[activeStatusFilter]
+    }
+
+    ;(wrapper as HTMLElement).style.display = matchesSearch && matchesStatus ? '' : 'none'
+  }
+}
+
+// ── 配信ステータスフィルタ ──────────────────────
+let activeStatusFilter: string = 'all'
+let statusMenuEl: HTMLElement | null = null
+
+function openStatusFilter(anchor: HTMLElement, main: HTMLElement, context: PageContext): void {
+  if (statusMenuEl !== null) {
+    statusMenuEl.remove()
+    statusMenuEl = null
+    return
+  }
+
+  const menu = document.createElement('div')
+  menu.style.cssText = [
+    'position:fixed;z-index:9999',
+    `background:${T.surface};border-radius:8px`,
+    'box-shadow:0 4px 16px rgba(0,0,0,.15)',
+    'min-width:140px;padding:4px 0',
+    `font-family:${T.font};font-size:13px`,
+  ].join(';')
+
+  const options: { label: string; value: string }[] = [
+    { label: 'すべて', value: 'all' },
+    { label: '準備中', value: 'prepared' },
+    { label: '配信中', value: 'delivered' },
+    { label: '停止中', value: 'stopping' },
+    { label: '終了', value: 'finished' },
+  ]
+
+  for (const opt of options) {
+    const row = document.createElement('div')
+    row.textContent = opt.label
+    row.style.cssText = `padding:8px 16px;cursor:pointer;color:${T.text}${opt.value === activeStatusFilter ? ';font-weight:700' : ''}`
+    row.addEventListener('mouseenter', () => {
+      row.style.background = 'rgba(0,0,0,.04)'
+    })
+    row.addEventListener('mouseleave', () => {
+      row.style.background = 'transparent'
+    })
+    row.addEventListener('click', (e) => {
+      e.stopPropagation()
+      activeStatusFilter = opt.value
+      menu.remove()
+      statusMenuEl = null
+      refilterPageRows(main, context)
+    })
+    menu.append(row)
+  }
+
+  const rect = anchor.getBoundingClientRect()
+  menu.style.top = `${rect.bottom + 4}px`
+  menu.style.left = `${rect.left}px`
+  document.body.append(menu)
+  statusMenuEl = menu
+
+  requestAnimationFrame(() => {
+    const close = (): void => {
+      menu.remove()
+      statusMenuEl = null
+      document.removeEventListener('click', close)
+    }
+    document.addEventListener('click', close)
+  })
 }
 
 /**
  * 行のホバーで出るアクション。1つ目（星アイコン）はお気に入りトグル、
- * 2つ目（歯車）はフォルダ操作メニュー（未実装）。
+ * 2つ目（歯車）はフォルダ操作メニュー。
  */
 function wireRowActions(row: HTMLElement, folder: Folder): void {
   const actions = row.querySelector<HTMLElement>(FOLDERS_HOOK.folderRowActions)
@@ -482,11 +676,11 @@ function wireRowActions(row: HTMLElement, folder: Folder): void {
     })
   }
 
-  // 歯車: フォルダ操作メニュー（未実装）
+  // 歯車: フォルダ操作メニュー（リネーム・削除）
   if (gearBtn !== null) {
     gearBtn.addEventListener('click', (event) => {
       event.stopPropagation()
-      toast('フォルダの操作メニューは採取していないため未実装です', 'error')
+      openFolderMenu(gearBtn, folder)
     })
   }
 }

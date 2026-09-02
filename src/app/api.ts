@@ -183,6 +183,57 @@ export const api = {
   media: () => request<{ ab_tests: unknown[] }>('GET', '/ab_tests?per_page=1'),
   reset: () => fetch('/__mock/reset', { method: 'POST' }).then((r) => r.json()),
 
+  /** フォルダ名変更 */
+  renameFolder: (uid: string, name: string) =>
+    request<{ folder: Folder }>('PUT', `/folders/${uid}`, { name }),
+  /** フォルダ削除 */
+  deleteFolder: (uid: string) => request<void>('DELETE', `/folders/${uid}`),
+  /** beyondページ削除 */
+  deleteAbTest: (uid: string) => request<void>('DELETE', `/ab_tests/${uid}`),
+  /** 通知設定取得 */
+  notificationSettings: (scope: string) =>
+    request<{ settings: NotificationSetting | null }>('GET', `/settings/internal_notifications/${scope}`),
+  /** 通知設定更新 */
+  updateNotificationSettings: (scope: string, patch: Partial<NotificationSetting>) =>
+    request<{ settings: NotificationSetting | null }>('PUT', `/settings/internal_notifications/${scope}`, patch),
+  /** 現在のユーザー */
+  currentUser: () => request<{ user: User | null }>('GET', '/users/me'),
+  /** ユーザー更新 */
+  updateUser: (patch: { name?: string }) =>
+    request<{ user: User | null }>('PUT', '/users/me', patch),
+  /** チームメンバー一覧 */
+  teamMembers: () => request<{ members: Member[] }>('GET', '/teams/members'),
+  /** レポート除外追加 */
+  addReportExclusion: (target: string, reason?: string) =>
+    request<{ report_exclusion: ReportExclusionEntry }>('POST', '/report-exclusions', {
+      target,
+      ...(reason !== undefined ? { reason } : {}),
+    }),
+  /** レポート除外削除 */
+  deleteReportExclusion: (uid: string) => request<void>('DELETE', `/report-exclusions/${uid}`),
+  /** ドメイン追加 */
+  addDomain: (host: string) =>
+    request<{ domain: DomainEntry }>('POST', '/teams/domains', { host }),
+  /** タスク作成 */
+  createTask: (title: string) =>
+    request<{ task: Task }>('POST', '/tasks', { title }),
+  /** タスク更新 */
+  updateTask: (uid: string, patch: { status?: string; title?: string }) =>
+    request<{ task: Task }>('PUT', `/tasks/${uid}`, patch),
+  /** タスク一覧 */
+  listTasks: () => request<{ tasks: Task[] }>('GET', '/tasks'),
+  /** SB AI 会話一覧 */
+  sbAiConversations: () =>
+    request<{ conversations: SbAiConversation[] }>('GET', '/sb_ai/conversations'),
+  /** SB AI 会話作成 */
+  sbAiCreateConversation: () =>
+    request<{ conversation: SbAiConversation }>('POST', '/sb_ai/conversations'),
+  /** SB AI メッセージ送信 */
+  sbAiSendMessage: (conversationUid: string, content: string) =>
+    request<{ messages: SbAiMessage[] }>('POST', `/sb_ai/conversations/${conversationUid}/messages`, {
+      content,
+    }),
+
   /** Meta実データ連携（指示⑤⑧）。env未設定なら configured:false */
   metaStatus: () => request<{ configured: boolean }>('GET', '/meta/status'),
   metaInsights: (query: string) =>
@@ -233,6 +284,78 @@ export interface MetaInsightsResponse {
   configured: boolean
   kpi: MetaKpi | null
   error?: string
+}
+
+/** チームメンバー */
+export interface Member {
+  id: number
+  uid: string
+  name: string
+  email: string
+  role: string
+  team_id: number
+}
+
+/** ユーザー */
+export interface User {
+  id: number
+  uid: string
+  name: string
+  email: string
+  public_api_key: string | null
+  current_team_id: number
+}
+
+/** 通知設定 */
+export interface NotificationSetting {
+  scope: string
+  cv_notify: boolean
+  daily_report: boolean
+  ad_alert: boolean
+}
+
+/** タスク */
+export interface Task {
+  id: number
+  uid: string
+  title: string
+  assignee_member_id: number | null
+  status: string
+  due_at: string | null
+  created_at: number
+}
+
+/** ドメイン */
+export interface DomainEntry {
+  id: number
+  uid: string
+  host: string
+  status: string
+  ssl: boolean
+}
+
+/** レポート除外 */
+export interface ReportExclusionEntry {
+  id: number
+  uid: string
+  target: string
+  reason: string
+}
+
+/** SB AI 会話 */
+export interface SbAiConversation {
+  id: number
+  uid: string
+  title: string
+  created_at: string
+}
+
+export interface SbAiMessage {
+  id: number
+  conversation_id: number
+  role: 'user' | 'assistant'
+  content: string
+  created_at: string
 }
 
 /** 媒体ロスターはダッシュボードAPIに無いので専用に取る */

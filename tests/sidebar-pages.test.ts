@@ -11,6 +11,7 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { stripGlobalSidebar } from '../src/app/pages/sidebar-shell.ts'
 import {
+  ACCOUNT_SETTINGS_ROUTE,
   ADDON_ROUTE,
   CONVERSIONS_ROUTE,
   DASHBOARD_ROUTE,
@@ -131,6 +132,7 @@ describe('ルート解決の純粋関数', () => {
     expect(matchSidebarPage(REPORT_EXCLUSIONS_ROUTE)).toBe('report_exclusions')
     expect(matchSidebarPage(RANKINGS_ROUTE)).toBe('rankings')
     expect(matchSidebarPage(SEMINAR_ROUTE)).toBe('seminar')
+    expect(matchSidebarPage(ACCOUNT_SETTINGS_ROUTE)).toBe('account_settings')
   })
   it('未知のパスは null（推測で埋めない）', () => {
     expect(matchSidebarPage('/addon')).toBeNull()
@@ -148,6 +150,7 @@ describe('ルート解決の純粋関数', () => {
       REPORT_EXCLUSIONS_ROUTE,
       RANKINGS_ROUTE,
       SEMINAR_ROUTE,
+      ACCOUNT_SETTINGS_ROUTE,
     ])
   })
 })

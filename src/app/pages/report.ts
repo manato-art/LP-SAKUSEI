@@ -143,10 +143,11 @@ function wireBranchOperation(
   wireRangeInputs(card, abTestUid, range)
   fillBranchTable(card, { title, mediaName, totals: report.totals, versions: report.rows })
   wireFilterCollapse(card)
+  wireCsvDownload(card, report, title)
 
   noteAfter(
-    findButtonByText(card, 'CSVダウンロード') ?? findButtonByText(card, '配信除外設定'),
-    '「CSVダウンロード」「配信除外設定」は未配線（書き出し・別画面の採取物が無い）。',
+    findButtonByText(card, '配信除外設定'),
+    '「配信除外設定」は未配線（別画面の採取物が無い）。',
   )
 }
 
@@ -234,6 +235,46 @@ function wirePresetSelect(section: HTMLElement, abTestUid: string): void {
       return
     }
     gotoRange(abTestUid, resolved)
+  })
+}
+
+/** CSVダウンロードボタンを配線 */
+function wireCsvDownload(card: HTMLElement, report: ReportResponse, title: string): void {
+  const btn = findButtonByText(card, 'CSVダウンロード')
+  if (btn === null) return
+
+  btn.addEventListener('click', () => {
+    const header = ['scope', 'name', 'status', 'PV', 'Click', 'CV', '広告費', '売上', '粗利', 'ROAS', 'ROI', 'CVR', 'CPA']
+    const rows = report.rows.map((r) => [
+      r.scope,
+      r.name,
+      r.status,
+      String(r.pv),
+      String(r.click),
+      String(r.cv),
+      String(r.ad_cost),
+      String(r.sales),
+      String(r.gross_profit),
+      r.roas !== null ? String(r.roas) : '',
+      r.roi !== null ? String(r.roi) : '',
+      r.cvr !== null ? String(r.cvr) : '',
+      r.cpa !== null ? String(r.cpa) : '',
+    ])
+
+    // BOM付きUTF-8でExcelでも文字化けしない
+    const bom = '﻿'
+    const csv = bom + [header, ...rows].map((row) => row.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(',')).join('\n')
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${title}_report.csv`
+    document.body.append(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+    toast('CSVをダウンロードしました')
   })
 }
 
