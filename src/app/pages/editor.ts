@@ -799,11 +799,16 @@ function wireVersionCard(ctx: EditorContext, card: HTMLElement, version: Version
     ratio.value = String(Math.max(0, Number(ratio.value) - 1))
     void save()
   })
-  // 「更新」ボタン（`_articleButtons_` 内の文言「更新」のボタン）
-  findUpdateButton(card)?.addEventListener('click', (event) => {
-    event.stopPropagation()
-    void save()
-  })
+  // 保存ボタン（旧「更新」→「保存済み/未保存」表示に変更: 指示62）
+  const saveBtn = findUpdateButton(card)
+  if (saveBtn !== null) {
+    saveBtn.setAttribute('data-save-btn', 'true')
+    saveBtn.textContent = '保存済み'
+    saveBtn.addEventListener('click', (event) => {
+      event.stopPropagation()
+      void save()
+    })
+  }
 
   // 選択モードでは「…」を隠し、カードクリックでの切替もしない（チェックボックス操作のみ）。
   if (ctx.selectionMode) {
@@ -852,8 +857,12 @@ function wireVersionCard(ctx: EditorContext, card: HTMLElement, version: Version
   })
 }
 
-/** カード内の「更新」ボタンを文言で探す（Emotionクラスは匿名化され得るので文言で引く） */
+/** カード内の保存ボタンを探す（data属性→文言フォールバック） */
 function findUpdateButton(card: HTMLElement): HTMLElement | null {
+  // data-save-btn 属性で探す（指示62で付与）
+  const marked = card.querySelector<HTMLElement>('[data-save-btn]')
+  if (marked !== null) return marked
+  // フォールバック: 旧テキスト「更新」で探す（初回配線前）
   const buttons = card.querySelectorAll<HTMLElement>('._articleButtons_1xibh_160 button')
   for (const button of buttons) {
     if ((button.textContent ?? '').trim().startsWith('更新')) return button
@@ -1029,6 +1038,7 @@ function wireSideToolbar(ctx: EditorContext): void {
   function markUnsaved(): void {
     const btn = findCurrentUpdateButton()
     if (btn === null) return
+    btn.textContent = '未保存'
     btn.style.transition = 'background-color 0.3s'
     btn.style.backgroundColor = '#f59e0b'
     btn.style.color = '#fff'
@@ -1037,6 +1047,7 @@ function wireSideToolbar(ctx: EditorContext): void {
   function markSaved(): void {
     const btn = findCurrentUpdateButton()
     if (btn === null) return
+    btn.textContent = '保存済み'
     btn.style.transition = 'background-color 0.3s'
     btn.style.backgroundColor = ''
     btn.style.color = ''

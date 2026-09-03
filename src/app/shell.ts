@@ -79,6 +79,11 @@ function wireSidebar(nav: HTMLElement): void {
   // レール本体（採取物の最外要素）に、折りたたみ/展開用の目印クラスを付ける。
   const rail = nav.firstElementChild as HTMLElement | null
   rail?.classList.add(RAIL_CLASS)
+  // 指示63: 高さを全画面に（採取CSSの225pxだとアイテムが切れる）
+  if (rail !== null) {
+    rail.style.height = '100vh'
+    rail.style.overflowY = 'auto'
+  }
 
   // 各項目のラベル（アイコンでない方の子）に目印を付けて、折りたたみ時は隠す。
   for (const item of nav.querySelectorAll<HTMLElement>('[data-testid="list-menu-item"]')) {
@@ -403,8 +408,10 @@ function injectRailStyles(): void {
     `.${RAIL_CLASS} .${RAIL_LABEL_CLASS}{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;`,
     `opacity:.7;max-width:42px;font-size:11px;transition:opacity .16s ease,max-width .18s ease,font-size .16s ease}`,
     `@media (hover:hover){`,
-    `.${RAIL_CLASS}:hover{width:232px !important}`,
-    `.${RAIL_CLASS}:hover .${RAIL_LABEL_CLASS}{opacity:1;max-width:170px;font-size:inherit}`,
+    `.${RAIL_CLASS}:hover{width:160px !important}`,
+    `.${RAIL_CLASS}:hover .${RAIL_LABEL_CLASS}{opacity:1;max-width:120px;font-size:inherit}`,
+    // 指示63: 展開時にアイコン+ラベルを横並び左揃え
+    `.${RAIL_CLASS}:hover [data-testid="list-menu-item"]{flex-direction:row !important;justify-content:flex-start !important;align-items:center !important;gap:8px;padding:6px 12px !important}`,
     `}`,
     // ── アコーディオン ──
     `.sb-accordion-chevron{display:inline-flex;align-items:center;margin-left:4px;`,
