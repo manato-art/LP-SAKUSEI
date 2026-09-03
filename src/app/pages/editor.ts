@@ -223,7 +223,7 @@ export async function renderEditor(
   // Versionパネル（_abTestArticlesWrapper_）も同じ 120px を引いている
   const articlesWrapper = root.querySelector<HTMLElement>('[class*="_abTestArticlesWrapper_"]')
   if (articlesWrapper !== null) {
-    articlesWrapper.style.height = 'calc(100vh - 68px)'
+    articlesWrapper.style.height = 'calc(100vh - 92px)'
   }
 
   // 動画（<video>）ブロットを Quill 生成前に登録しておく（保存HTMLからの復元でも消えないように）。
@@ -243,10 +243,10 @@ export async function renderEditor(
   //
   // contentWrapper の高さを Versionパネルと揃える。
   // 採取CSSの calc(100% - 86px) だと editorWrapper のpadding分だけ短くなるため、
-  // Versionパネルと同じ calc(100vh - 68px) に統一して下端を合わせる。
+  // Versionパネルと同じ calc(100vh - 84px) に統一して下端を合わせる。
   const contentWrapper = root.querySelector<HTMLElement>('.quillEditorContentWrapper')
   if (contentWrapper !== null) {
-    contentWrapper.style.height = 'calc(100vh - 68px)'
+    contentWrapper.style.height = 'calc(100vh - 92px)'
   }
   // 下部バー（_funnelStepWrapper_）を contentWrapper の底に固定して
   // Versionパネルの「Version追加」と下端を揃える。
@@ -369,10 +369,10 @@ function mountQuill(root: HTMLElement): Quill {
     // 採取CSSの UID_2445 { height:calc(100vh-260px) } を同詳細度の後勝ちで上書きしてしまう。
     // inline style で明示的に高さを設定し、確実にスクロール領域として機能させる。
     // 下部バー（50px）は absolute 配置なので、キャンバスはバーの上端まで伸ばす。
-    host.style.height = 'calc(100vh - 204px)'
+    host.style.height = 'calc(100vh - 228px)'
     frame.replaceWith(host)
   } else {
-    host.style.cssText = 'width:100%;height:calc(100vh - 204px);background:#fff;overflow:auto'
+    host.style.cssText = 'width:100%;height:calc(100vh - 220px);background:#fff;overflow:auto'
     root.append(host)
   }
   /**

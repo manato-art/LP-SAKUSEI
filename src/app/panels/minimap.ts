@@ -32,7 +32,7 @@ export function mountMinimap(editorRoot: HTMLElement, scrollContainer: HTMLEleme
     'top:100px',
     'right:0',
     `width:${MINIMAP_WIDTH}px`,
-    'bottom:40px',
+    'bottom:64px',
     'overflow:hidden',
     'z-index:40',
     'background:#F5F5F5',
