@@ -303,6 +303,14 @@ export async function renderEditor(
   // 指示㊿②: スクロール対象は Quill ホスト（LP本文のスクロール領域）
   const quillHost = quill.container as HTMLElement
   mountMinimap(root, quillHost)
+  // pinToolbar(RAF) 完了後にミニマップ上端をプレビューアイコンに揃える
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    const minimap = document.querySelector<HTMLElement>('[data-clone-minimap]')
+    const previewIcon = root.querySelector<HTMLElement>('[class*="_sideToolbarIcon_"]')
+    if (minimap !== null && previewIcon !== null) {
+      minimap.style.top = `${previewIcon.getBoundingClientRect().top}px`
+    }
+  }))
   // キャンバスのみズームできる − 100% + コントロール（下部バーの < > 位置に配置）
   mountZoomControl(root, quill)
   // 記事設定（Version設定）を編集画面の本文にも反映する（保存後は「更新」または再読込で最新化）。
@@ -917,7 +925,7 @@ function wireSideToolbar(ctx: EditorContext): void {
       const rect = sideToolbarWrapper.getBoundingClientRect()
       // 右端の x を viewport 右端からの距離で固定
       sideToolbarWrapper.style.position = 'fixed'
-      sideToolbarWrapper.style.top = `${Math.max(rect.top, 80)}px`
+      sideToolbarWrapper.style.top = `${Math.max(rect.top, 100)}px`
       sideToolbarWrapper.style.right = `${document.documentElement.clientWidth - rect.right}px`
       sideToolbarWrapper.style.left = 'auto'
       sideToolbarWrapper.style.height = 'auto'

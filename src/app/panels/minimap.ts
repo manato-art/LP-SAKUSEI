@@ -29,7 +29,7 @@ export function mountMinimap(editorRoot: HTMLElement, scrollContainer: HTMLEleme
   wrapper.setAttribute('data-clone-minimap', 'true')
   wrapper.style.cssText = [
     'position:fixed',
-    'top:80px',
+    'top:100px',
     'right:0',
     `width:${MINIMAP_WIDTH}px`,
     'bottom:40px',
