@@ -200,14 +200,9 @@ export async function renderEditor(
   wireImageResize(quill)
 
   // ── 指示㊿②: キャンバスのみスクロール ──
-  // quillEditorContentWrapper = ヘッダー画像 + Quill + ファネルバーを囲む「赤枠」。
-  // ここだけ overflow-y:auto にし、外枠やバージョンパネルは動かさない。
-  const canvasWrapper = root.querySelector<HTMLElement>('[class*="quillEditorContentWrapper"]')
-  if (canvasWrapper !== null) {
-    canvasWrapper.style.overflowY = 'auto'
-    canvasWrapper.style.overflowX = 'hidden'
-  }
-  // バージョンパネルも独立スクロール（バージョンが多い場合に必要）
+  // スクロールは Quill ホスト（#quillIframe 跡地）の overflow:auto が担当。
+  // 外枠の quillEditorContentWrapper は**スクロールしない**（ヘッダー画像・ファネルバーは固定）。
+  // バージョンパネルは独立スクロール（バージョンが多い場合に必要）
   // 指示㊼再修正: パネル幅を縮小してキャンバスに面積を譲る
   const versionPanel = root.querySelector<HTMLElement>('[class*="_abTestArticlesWrapper_"]')
   if (versionPanel !== null) {
@@ -269,9 +264,9 @@ export async function renderEditor(
   wireTopRightIcons(root, abTestUid, folder?.uid ?? '')
   loadVersion(ctx, ctx.currentUid)
   // 指示㊻: エディタ右側にミニマップ（LP全体の縮小プレビュー）を表示
-  // 指示㊿②: スクロール対象はキャンバス（quillEditorContentWrapper）のみ
-  const minimapScroll = canvasWrapper ?? container
-  mountMinimap(root, minimapScroll)
+  // 指示㊿②: スクロール対象は Quill ホスト（LP本文のスクロール領域）
+  const quillHost = quill.container as HTMLElement
+  mountMinimap(root, quillHost)
   // 記事設定（Version設定）を編集画面の本文にも反映する（保存後は「更新」または再読込で最新化）。
   void applyMasterStyleToEditor(ctx)
 }
@@ -301,16 +296,14 @@ function mountQuill(root: HTMLElement): Quill {
     root.querySelector<HTMLIFrameElement>('iframe[class*="quillEditorWrapper"]')
   const host = document.createElement('div')
   if (frame !== null) {
-    // 指示㊿②: Quillホストはスクロールしない（親の quillEditorContentWrapper がスクロール担当）。
-    // 固定heightとoverflowを外し、自然な高さでLP本文を全部展開させる。
+    // iframe の採取CSS（width:100% / height:calc(100vh-260px) / 角丸）を引き継ぐ。
+    // 指示㊿②: Quillホストが唯一のスクロール領域。キャンバスのLP本文だけが動く。
     host.className = frame.className
     host.style.background = '#fff'
-    host.style.height = 'auto'
-    host.style.minHeight = '400px'
-    host.style.overflow = 'visible'
+    host.style.overflow = 'auto'
     frame.replaceWith(host)
   } else {
-    host.style.cssText = 'width:100%;min-height:400px;background:#fff;overflow:visible'
+    host.style.cssText = 'width:100%;height:calc(100vh - 260px);background:#fff;overflow:auto'
     root.append(host)
   }
   /**
