@@ -136,10 +136,35 @@ export function createApp(): Express {
     })
   }
 
+  // 最近のエラーを保持する（デバッグ用・最大20件）
+  const recentErrors: { time: string; method: string; url: string; message: string; stack?: string }[] = []
+
+  // 診断エンドポイント: 最近のサーバーエラーを返す
+  app.get('/__mock/errors', (_req, res) => {
+    res.json({ errors: recentErrors, count: recentErrors.length })
+  })
+
   // エラーハンドラ（握りつぶさない・§12）
-  app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
-    console.error('[mock] unhandled error:', err.message)
-    res.status(500).json(errorEnvelope('internal_server_error', 'サーバーエラーが発生しました。'))
+  app.use((err: Error & { type?: string; status?: number }, _req: Request, res: Response, _next: NextFunction) => {
+    const entry = {
+      time: new Date().toISOString(),
+      method: _req.method,
+      url: _req.originalUrl,
+      message: err.message,
+      type: err.type,
+      stack: err.stack,
+    }
+    recentErrors.push(entry)
+    if (recentErrors.length > 20) recentErrors.shift()
+    console.error('[mock] unhandled error:', _req.method, _req.originalUrl, err.message, err.type, err.stack)
+    // body-parser のエラーは適切なステータスを返す（413=too large, 400=malformed JSON）
+    const status = err.status ?? 500
+    const message = status === 413
+      ? 'リクエストが大きすぎます。'
+      : status === 400
+        ? `リクエストの解析に失敗しました: ${err.message}`
+        : 'サーバーエラーが発生しました。'
+    res.status(status).json(errorEnvelope('internal_server_error', message))
   })
 
   return app

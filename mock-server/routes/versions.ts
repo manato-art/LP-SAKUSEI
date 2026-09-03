@@ -159,24 +159,31 @@ versionsRouter.patch('/versions/:uid/device_targets', (req, res) => {
 
 /** LP保存（コード編集の保存・§9-1[4]） */
 versionsRouter.put('/versions/:uid', (req, res) => {
-  const html = optionalString(req.body, 'html')
-  const css = optionalString(req.body, 'css')
-  const name = optionalString(req.body, 'name')
-  let updated: Version | null = null
-  setState((state) => {
-    const out = updateVersion(state, req.params.uid, {
-      ...(html !== '' ? { html } : {}),
-      ...(css !== '' ? { css } : {}),
-      ...(name !== '' ? { name } : {}),
+  try {
+    const html = optionalString(req.body, 'html')
+    const css = optionalString(req.body, 'css')
+    const name = optionalString(req.body, 'name')
+    console.log(`[versions] PUT /versions/${req.params.uid} html=${html.length}bytes css=${css.length}bytes name="${name}"`)
+    let updated: Version | null = null
+    setState((state) => {
+      const out = updateVersion(state, req.params.uid, {
+        ...(html !== '' ? { html } : {}),
+        ...(css !== '' ? { css } : {}),
+        ...(name !== '' ? { name } : {}),
+      })
+      updated = out.version
+      return out.state
     })
-    updated = out.version
-    return out.state
-  })
-  if (updated === null) {
-    res.status(404).json(errorEnvelope('not_found', 'Versionが見つかりません。'))
-    return
+    if (updated === null) {
+      console.error(`[versions] PUT /versions/${req.params.uid} → 404: UID not found`)
+      res.status(404).json(errorEnvelope('not_found', 'Versionが見つかりません。'))
+      return
+    }
+    res.json({ version: serializeVersion(updated) })
+  } catch (err) {
+    console.error(`[versions] PUT /versions/${req.params.uid} → 500:`, (err as Error).message, (err as Error).stack)
+    res.status(500).json(errorEnvelope('internal_server_error', `保存エラー: ${(err as Error).message}`))
   }
-  res.json({ version: serializeVersion(updated) })
 })
 
 /**
