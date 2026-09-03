@@ -240,6 +240,23 @@ export async function renderEditor(
   // 外枠の quillEditorContentWrapper は**スクロールしない**（ヘッダー画像・ファネルバーは固定）。
   // バージョンパネルは独立スクロール（バージョンが多い場合に必要）
   // 指示㊼再修正: パネル幅を縮小してキャンバスに面積を譲る
+  //
+  // contentWrapper の高さを Versionパネルと揃える。
+  // 採取CSSの calc(100% - 86px) だと editorWrapper のpadding分だけ短くなるため、
+  // Versionパネルと同じ calc(100vh - 68px) に統一して下端を合わせる。
+  const contentWrapper = root.querySelector<HTMLElement>('.quillEditorContentWrapper')
+  if (contentWrapper !== null) {
+    contentWrapper.style.height = 'calc(100vh - 68px)'
+  }
+  // 下部バー（_funnelStepWrapper_）を contentWrapper の底に固定して
+  // Versionパネルの「Version追加」と下端を揃える。
+  const funnelBar = root.querySelector<HTMLElement>('[class*="_funnelStepWrapper_"]')
+  if (funnelBar !== null) {
+    funnelBar.style.position = 'absolute'
+    funnelBar.style.bottom = '0'
+    funnelBar.style.left = '0'
+    funnelBar.style.width = '100%'
+  }
   const versionPanel = root.querySelector<HTMLElement>('[class*="_abTestArticlesWrapper_"]')
   if (versionPanel !== null) {
     versionPanel.style.overflowY = 'auto'
