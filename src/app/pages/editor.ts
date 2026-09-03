@@ -939,11 +939,14 @@ function wireSideToolbar(ctx: EditorContext): void {
   const sideToolbarWrapper = ctx.root.querySelector<HTMLElement>('[class*="_sideToolbarWrapper_"]')
   if (sideToolbarWrapper !== null) {
     // 初期位置を計測して fixed に切り替える
+    // コンテンツエリア（キャンバス）と上端を揃える
     const pinToolbar = (): void => {
       const rect = sideToolbarWrapper.getBoundingClientRect()
+      const contentTop = ctx.root.querySelector('.quillEditorContentWrapper')?.getBoundingClientRect().top
       // 右端の x を viewport 右端からの距離で固定
       sideToolbarWrapper.style.position = 'fixed'
-      sideToolbarWrapper.style.top = `${Math.max(rect.top, 100)}px`
+      sideToolbarWrapper.style.top = `${contentTop ?? Math.max(rect.top, 100)}px`
+      sideToolbarWrapper.style.paddingTop = '0px'
       sideToolbarWrapper.style.right = `${document.documentElement.clientWidth - rect.right}px`
       sideToolbarWrapper.style.left = 'auto'
       sideToolbarWrapper.style.height = 'auto'
