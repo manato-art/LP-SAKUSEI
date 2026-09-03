@@ -244,8 +244,8 @@ export async function renderEditor(
   if (versionPanel !== null) {
     versionPanel.style.overflowY = 'auto'
     versionPanel.style.overflowX = 'hidden'
-    versionPanel.style.minWidth = '180px'
-    versionPanel.style.width = '180px'
+    versionPanel.style.minWidth = '230px'
+    versionPanel.style.width = '230px'
   }
 
   // Versionカードの雛形を、配線前のクリーンな状態でクローンして控える（採取した実物1枚が雛形）。
