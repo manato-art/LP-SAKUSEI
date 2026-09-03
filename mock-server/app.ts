@@ -5,7 +5,7 @@
  */
 import express, { type Express, type NextFunction, type Request, type Response } from 'express'
 import { join, resolve, sep } from 'node:path'
-import { PREFIX, SERVE_DIST } from './config.ts'
+import { ADMIN_PATH, PREFIX, SERVE_DIST } from './config.ts'
 import { mockStateMiddleware } from './lib/mock-state.ts'
 import { errorEnvelope } from './lib/envelope.ts'
 import { resetState } from './store/store.ts'
@@ -31,7 +31,9 @@ import { teamsRouter } from './routes/teams.ts'
 import { usersRouter } from './routes/users.ts'
 import { versionsRouter } from './routes/versions.ts'
 import { deliveryRouter } from './routes/delivery.ts'
-import { adminAuthRouter, isAdminAuthenticated, render404Page } from './lib/admin-auth.ts'
+import { adminAuthRouter, isAdminAuthenticated, isEmailGateVerified, render404Page, renderEmailGatePage } from './lib/admin-auth.ts'
+import { isEmailGateEnabled } from './store/allowed-emails.ts'
+import { allowedEmailsRouter } from './routes/allowed-emails.ts'
 
 /** `?reset=1` で新規アカウント発行直後（空）へ戻す（§10-9） */
 function resetAll(): void {
@@ -115,6 +117,8 @@ export function createApp(): Express {
     historyRouter,
     linkReplaceRouter,
     basicInfoRouter,
+    // アクセス管理（許可メールアドレスCRUD）
+    allowedEmailsRouter,
   ]
 
   // [A] メインREST API（実物は v1 / v2 が混在するため両方に同じルーターを載せる）
@@ -146,16 +150,28 @@ export function createApp(): Express {
     if (widgetRouter !== null) app.use(widgetRouter)
 
     // 管理SPA本体（index.html）はパスワード保護する。
-    // ルート（`/`）は**ログイン済みならSPA、未ログインなら404**を返す。
-    // ログイン画面は `ADMIN_PATH`（既定 `/__admin`）でのみ表示する＝
-    // 配信URLを渡したクライアントがドメイン直打ちしても管理画面の存在を悟らせない。
+    // ルート（`/`）の応答:
+    //   ① ログイン済み → SPA を返す
+    //   ② メールゲートが有効（許可メールが1件以上） → メール入力フォーム
+    //   ③ メールゲートが無効（許可メール0件） → 404（従来どおり）
+    // メールゲートを通過済み（email_gate Cookie有効）の場合はログイン画面へリダイレクト。
     const serveIndexOr404 = (req: Request, res: Response): void => {
       res.setHeader('Cache-Control', 'no-cache')
       if (isAdminAuthenticated(req)) {
         res.sendFile(join(distDir, 'index.html'))
         return
       }
-      // 未ログイン → 404（ログイン画面を見せない）
+      // メールゲート通過済み → ログイン画面へ誘導
+      if (isEmailGateVerified(req)) {
+        res.redirect(ADMIN_PATH)
+        return
+      }
+      // メールゲートが有効 → メール入力フォーム
+      if (isEmailGateEnabled()) {
+        res.type('html').send(renderEmailGatePage())
+        return
+      }
+      // 未ログイン & ゲート無効 → 404（ログイン画面を見せない）
       res.status(404).type('html').send(render404Page())
     }
     // `/` と `/index.html` は明示ルートで先取りする（後段の express.static がファイル名一致で

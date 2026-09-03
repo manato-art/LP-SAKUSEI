@@ -21,7 +21,7 @@ export async function renderAccountSettings(container: HTMLElement): Promise<voi
   container.append(body)
 
   // タブ
-  const tabs = ['アカウント', '通知設定', 'チームメンバー'] as const
+  const tabs = ['アカウント', '通知設定', 'チームメンバー', 'アクセス管理'] as const
   let activeTab: (typeof tabs)[number] = 'アカウント'
 
   const tabBar = el('div', { style: 'display:flex;gap:0;margin-bottom:20px;border-bottom:2px solid #EEE' })
@@ -55,7 +55,8 @@ export async function renderAccountSettings(container: HTMLElement): Promise<voi
     contentArea.innerHTML = ''
     if (activeTab === 'アカウント') await renderAccount(contentArea)
     else if (activeTab === '通知設定') await renderNotifications(contentArea)
-    else await renderMembers(contentArea)
+    else if (activeTab === 'チームメンバー') await renderMembers(contentArea)
+    else if (activeTab === 'アクセス管理') await renderAccessManagement(contentArea)
   }
 
   renderTabs()
@@ -248,4 +249,141 @@ async function renderMembers(content: HTMLElement): Promise<void> {
     )
     content.append(tr)
   }
+}
+
+// ── アクセス管理タブ（メールゲート） ─────────────────────────
+
+interface AllowedEmailEntry {
+  id: number
+  email: string
+  created_at: number
+}
+
+async function renderAccessManagement(content: HTMLElement): Promise<void> {
+  const desc = el('div', {
+    style: `font-size:13px;color:${T.sub};line-height:1.7;margin-bottom:20px`,
+  })
+  desc.innerHTML = [
+    'ここに登録したメールアドレスの人だけが、ルートURL（<code>/</code>）からログイン画面へ進めます。',
+    '登録が0件のときはルートURLは404を返します（従来どおり）。',
+  ].join('<br>')
+  content.append(desc)
+
+  // 追加フォーム
+  const addRow = el('div', { style: 'display:flex;gap:8px;margin-bottom:20px;align-items:center' })
+  const emailInput = document.createElement('input')
+  emailInput.type = 'email'
+  emailInput.placeholder = 'メールアドレスを入力'
+  emailInput.style.cssText =
+    `flex:1;padding:10px 12px;border:1px solid #DDD;border-radius:6px;font-size:14px;font-family:${T.font};outline:none`
+  const addBtn = document.createElement('button')
+  addBtn.textContent = '追加'
+  addBtn.style.cssText =
+    `padding:10px 20px;border:none;border-radius:6px;background:${T.primary};color:#FFF;cursor:pointer;font-size:14px;font-family:${T.font};white-space:nowrap`
+  addRow.append(emailInput, addBtn)
+  content.append(addRow)
+
+  // リスト表示エリア
+  const listArea = el('div', {})
+  content.append(listArea)
+
+  let emails: AllowedEmailEntry[] = []
+
+  async function loadEmails(): Promise<void> {
+    try {
+      const res = await fetch('/api/v1/allowed_emails')
+      if (!res.ok) throw new Error(`${res.status}`)
+      const data = (await res.json()) as { allowed_emails: AllowedEmailEntry[] }
+      emails = data.allowed_emails
+    } catch {
+      emails = []
+      toast('許可メールの読み込みに失敗しました', 'error')
+    }
+    renderList()
+  }
+
+  function renderList(): void {
+    listArea.innerHTML = ''
+    if (emails.length === 0) {
+      listArea.append(
+        el('div', {
+          text: 'メールアドレスが登録されていません。ルートURLは404を返します。',
+          style: `padding:20px;text-align:center;font-size:13px;color:${T.sub}`,
+        }),
+      )
+      return
+    }
+    for (const entry of emails) {
+      const row = el('div', {
+        style:
+          'display:flex;justify-content:space-between;align-items:center;padding:12px 8px;border-bottom:1px solid #F2F2F2',
+      })
+      const left = el('div', {}, [
+        el('div', { text: entry.email, style: `font-size:14px;color:${T.text}` }),
+        el('div', {
+          text: `追加: ${new Date(entry.created_at).toLocaleDateString('ja-JP')}`,
+          style: `font-size:11px;color:${T.sub};margin-top:2px`,
+        }),
+      ])
+      const removeBtn = document.createElement('button')
+      removeBtn.textContent = '削除'
+      removeBtn.style.cssText =
+        `padding:6px 14px;border:1px solid #E4432B;border-radius:6px;background:transparent;color:#E4432B;cursor:pointer;font-size:12px;font-family:${T.font}`
+      removeBtn.addEventListener('click', () => {
+        void removeEmail(entry.id)
+      })
+      row.append(left, removeBtn)
+      listArea.append(row)
+    }
+  }
+
+  async function addEmail(): Promise<void> {
+    const email = emailInput.value.trim()
+    if (email === '') {
+      toast('メールアドレスを入力してください', 'error')
+      return
+    }
+    addBtn.textContent = '追加中...'
+    addBtn.setAttribute('disabled', '')
+    try {
+      const res = await fetch('/api/v1/allowed_emails', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      })
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
+        throw new Error(data?.error?.message ?? '追加に失敗しました')
+      }
+      emailInput.value = ''
+      toast('メールアドレスを追加しました')
+      await loadEmails()
+    } catch (error) {
+      toast((error as Error).message, 'error')
+    } finally {
+      addBtn.textContent = '追加'
+      addBtn.removeAttribute('disabled')
+    }
+  }
+
+  async function removeEmail(id: number): Promise<void> {
+    try {
+      const res = await fetch(`/api/v1/allowed_emails/${id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('削除に失敗しました')
+      toast('メールアドレスを削除しました')
+      await loadEmails()
+    } catch (error) {
+      toast((error as Error).message, 'error')
+    }
+  }
+
+  addBtn.addEventListener('click', () => void addEmail())
+  emailInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      void addEmail()
+    }
+  })
+
+  await loadEmails()
 }
