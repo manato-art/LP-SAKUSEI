@@ -2,8 +2,7 @@
  * クローンのエントリ（企画書 §1-4 の基準状態＝新規アカウントの空状態から始まる）。
  * データはすべてローカルのモックAPIから供給される（§3-2・localhost固定）。
  */
-import { markActiveNav, mountShell, resetShell } from './shell.ts'
-import { renderDelivery } from './pages/delivery.ts'
+import { markActiveNav, mountShell } from './shell.ts'
 import { renderFolders } from './pages/folders.ts'
 import { renderEditor } from './pages/editor.ts'
 import { renderBasicInfo } from './pages/basic-info.ts'
@@ -54,13 +53,13 @@ async function route(): Promise<void> {
   const [path, query] = raw.split('?')
   const params = new URLSearchParams(query ?? '')
 
-  // 配信ページ（配信URLの実体）は**シェルを出さない全画面の公開ページ**。
-  // シェルを構築する前に、#root へ直接描く。
+  // 旧・配信URL（ハッシュルート `/#/ab/:uid`）。配信URLの実体は今は実パス `/lp/:uid`
+  // （サーバー側でSSR配信・§10-1）に移した。既存のリンクも引き続き開けるよう、
+  // ここへ来たら実パスへリダイレクトするだけにする（SPA側では何も描かない）。
   const deliveryMatch = /^\/ab\/([^/]+)$/.exec(path ?? '')
   if (deliveryMatch !== null) {
-    resetShell()
-    const rootEl = document.querySelector<HTMLElement>('#root')
-    if (rootEl !== null) await renderDelivery(rootEl, deliveryMatch[1] as string, generation)
+    const uid = deliveryMatch[1] as string
+    location.replace(`/lp/${uid}${query !== undefined && query !== '' ? `?${query}` : ''}`)
     return
   }
 

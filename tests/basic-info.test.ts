@@ -295,9 +295,13 @@ describe('validateBasicInfo', () => {
 })
 
 describe('deliveryUrl', () => {
+  it('配信URLは実パス /lp/:uid を指す（サーバー側でSSR配信・§10-1）', () => {
+    const url = deliveryUrl('http://localhost:5173', 'ABTEST_0001')
+    expect(url).toBe('http://localhost:5173/lp/ABTEST_0001')
+  })
+
   it('配信URLはローカルだけを指す（本番ドメインを作らない・§3-2）', () => {
     const url = deliveryUrl('http://localhost:5173', 'ABTEST_0001')
-    expect(url).toBe('http://localhost:5173/#/ab/ABTEST_0001')
     expect(url).not.toContain('squadbeyond')
   })
 })

@@ -134,9 +134,13 @@ export function validateBasicInfo(input: BasicInfoValues): BasicInfoValidation {
 /**
  * 配信URL。実物は `https://<フォルダのドメイン>/ab/<uid>` だが、
  * クローンは本番ドメインを一切登場させない（企画書 §3-2）ので localhost のプレビューを指す。
+ *
+ * 実パス `/lp/:uid`（サーバー側でSSR配信・§10-1）が配信URLの実体。
+ * 旧URL（ハッシュルート `/#/ab/:uid`）は `main.ts` が `/lp/:uid` へリダイレクトするので
+ * 既存のリンクも引き続き開ける。
  */
 export function deliveryUrl(origin: string, abTestUid: string): string {
-  return `${origin}/#/ab/${abTestUid}`
+  return `${origin}/lp/${abTestUid}`
 }
 
 /** 4つのタブの遷移先（実DOMの href をクローンのハッシュルートへ写したもの） */

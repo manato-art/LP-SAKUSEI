@@ -12,6 +12,8 @@ export default defineConfig({
       '/api': `http://localhost:${MOCK_PORT}`,
       '/workers': `http://localhost:${MOCK_PORT}`,
       '/report': `http://localhost:${MOCK_PORT}`,
+      // 配信ページ（実パス配信URL・SSR）はモックサーバー側が応答を作る
+      '/lp': `http://localhost:${MOCK_PORT}`,
       '/cable': { target: `ws://localhost:${MOCK_PORT}`, ws: true },
     },
   },

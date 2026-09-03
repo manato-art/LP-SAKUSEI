@@ -30,6 +30,8 @@ import { tasksRouter } from './routes/tasks.ts'
 import { teamsRouter } from './routes/teams.ts'
 import { usersRouter } from './routes/users.ts'
 import { versionsRouter } from './routes/versions.ts'
+import { deliveryRouter } from './routes/delivery.ts'
+import { adminAuthRouter, isAdminAuthenticated, renderLoginPage } from './lib/admin-auth.ts'
 
 /** `?reset=1` で新規アカウント発行直後（空）へ戻す（§10-9） */
 function resetAll(): void {
@@ -76,6 +78,9 @@ export function createApp(): Express {
     res.json({ ok: true })
   })
 
+  // 管理SPAのパスワード保護（ログイン/確認/ログアウト）。認証不要（これ自体が認証の入口）。
+  app.use(adminAuthRouter)
+
   const apiRouters = [
     dashboardRouter,
     foldersRouter,
@@ -110,6 +115,11 @@ export function createApp(): Express {
     res.status(404).json(errorEnvelope('not_found', 'エンドポイントが見つかりません。'))
   })
 
+  // 配信ページ（配信URLの実体・実パス）。SPAのシェルは出さず、ここで完結してSSR応答する。
+  // 認証（管理SPAのパスワード保護）は掛けない＝エンドユーザーが見るページなので素通し。
+  // API群より後・SPAのcatch-allより前（dev/本番どちらでも有効にするので SERVE_DIST 判定の外）。
+  app.use(deliveryRouter)
+
   // ── 本番: ビルドしたフロントを配信する（開発時は Vite が担当するので無効）──
   if (SERVE_DIST !== undefined) {
     const distDir = resolve(SERVE_DIST)
@@ -118,20 +128,36 @@ export function createApp(): Express {
     seedWidgetAssets(distDir)
     const widgetRouter = widgetAssetsRouter()
     if (widgetRouter !== null) app.use(widgetRouter)
+
+    // 管理SPA本体（index.html）はパスワード保護する。CSS/JS/画像等の静的アセットは
+    // 素通し（下の express.static がそのまま配る）＝ログイン画面自体の描画にも使うため。
     // index.html は毎回取り直す（no-cache）＝古いJSに固定されない。
+    const serveIndexOrLogin = (req: Request, res: Response): void => {
+      res.setHeader('Cache-Control', 'no-cache') // SPAのindex.html／ログイン画面は常に最新を配る
+      if (isAdminAuthenticated(req)) {
+        res.sendFile(join(distDir, 'index.html'))
+        return
+      }
+      res.type('html').send(renderLoginPage())
+    }
+    // `/` と `/index.html` は明示ルートで先取りする（後段の express.static がファイル名一致で
+    // 直接配ってしまい、ログイン画面を素通りしてしまうのを防ぐ）。
+    app.get(['/', '/index.html'], serveIndexOrLogin)
+
     // ハッシュ付きアセット（/assets/index-XXXX.js 等）はファイル名が変わるので長期キャッシュ可。
+    // index: false＝ディレクトリ相当のリクエストで index.html を暗黙に配らせない
+    // （上のゲートを必ず通す）。
     app.use(
       express.static(distDir, {
+        index: false,
         setHeaders: (res, filePath) => {
-          if (filePath.endsWith('index.html')) {
-            res.setHeader('Cache-Control', 'no-cache')
-          } else if (filePath.includes(`${sep}assets${sep}`)) {
+          if (filePath.includes(`${sep}assets${sep}`)) {
             res.setHeader('Cache-Control', 'public, max-age=31536000, immutable')
           }
         },
       }),
     )
-    // ハッシュルーティングなので、API以外の全パスは index.html を返す。
+    // ハッシュルーティングなので、API/静的アセット以外の全パスは index.html（またはログイン画面）を返す。
     // Express 5 は文字列ワイルドカード '*' を廃止したので、末尾ミドルウェアで受ける。
     // API系プレフィックスは上で処理済みなのでここには来ない。
     app.use((req, res, next) => {
@@ -139,8 +165,7 @@ export function createApp(): Express {
         next()
         return
       }
-      res.setHeader('Cache-Control', 'no-cache') // SPAのindex.htmlは常に最新を配る
-      res.sendFile(join(distDir, 'index.html'))
+      serveIndexOrLogin(req, res)
     })
   }
 

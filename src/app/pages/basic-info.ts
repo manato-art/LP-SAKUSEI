@@ -324,8 +324,8 @@ function wireDeliveryUrl(ctx: PageContext): void {
   const url = deliveryUrl(location.origin, ctx.abTestUid)
   const link = ctx.root.querySelector<HTMLAnchorElement>(HOOK.deliveryUrlLink)
   if (link !== null) {
-    // 表示は実物と同じ「配信URL」だが、遷移先はクローン内のハッシュルートにする（外へ出さない）
-    link.setAttribute('href', `#/ab/${ctx.abTestUid}`)
+    // 表示は実物と同じ「配信URL」だが、遷移先はクローン内の実パス `/lp/:uid`（SSR配信）にする（外へ出さない）
+    link.setAttribute('href', `/lp/${ctx.abTestUid}`)
     link.removeAttribute('target')
     link.textContent = url
   }
