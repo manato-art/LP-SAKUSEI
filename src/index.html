@@ -90,6 +90,10 @@
     -->
     <style>
       body { margin: 0; background: #ECECEC; }
+      /* 指示㉖: 実アプリは「未アップロードの画像」に赤枠を出す（.ql-editor img{border:2px solid red}）。
+         クローンは画像を常にローカル(dataURL)で完結させ外部アップロードしないので、この警告枠は不要。
+         マージ済みcssomの後に読み込まれる本ブロックで打ち消す（同詳細度なら後勝ち）。 */
+      .ql-editor img { border: none; }
     </style>
   </head>
   <body>

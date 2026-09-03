@@ -100,6 +100,8 @@ export interface DotsMenuDeps {
   onDuplicated: (version: Version) => void
   /** アーカイブに成功したときの後処理（一覧から外して別Versionへ切り替える等） */
   onArchived: (version: Version) => void
+  /** 削除に成功したときの後処理（一覧から外して別Versionへ切り替える・指示㉗） */
+  onDeleted: (version: Version) => void
   /** 「選択してアーカイブする」モードに入る（チェックボックス選択） */
   onSelectArchiveMode: () => void
 }
@@ -169,6 +171,49 @@ function openMenu(deps: DotsMenuDeps, onClosed: () => void): void {
       portal.close()
       handler()
     })
+  }
+
+  // 指示㉗: 「このバージョンを削除」を末尾に追加する（採取メニューには無い項目）。
+  // 破壊系の「アーカイブする」項目を雛形に複製して見た目（赤）を合わせ、文言だけ差し替える。
+  injectDeleteItem(portal, deps)
+}
+
+/**
+ * 「このバージョンを削除」項目を、アーカイブ項目のマークアップを雛形にメニュー末尾へ挿入する。
+ * 実採取メニューには無い項目なので、既存の破壊系項目を複製して見た目を合わせる（手書きで似せない）。
+ */
+function injectDeleteItem(portal: { root: HTMLElement; close: () => void }, deps: DotsMenuDeps): void {
+  const archiveSpan = findByExactText(portal.root, DOTS_MENU_HOOK.label, DOTS_MENU_LABELS.archive)
+  const archiveItem = archiveSpan?.closest<HTMLElement>(DOTS_MENU_HOOK.item) ?? null
+  if (archiveItem === null) return
+  const list = archiveItem.parentElement
+  if (list === null) return
+
+  const deleteItem = archiveItem.cloneNode(true) as HTMLElement
+  const label = deleteItem.querySelector<HTMLElement>(DOTS_MENU_HOOK.label)
+  if (label !== null) label.textContent = 'このバージョンを削除'
+  deleteItem.setAttribute('data-clone-delete-version', 'true')
+  deleteItem.style.cursor = 'pointer'
+  deleteItem.addEventListener('click', (event) => {
+    event.stopPropagation()
+    portal.close()
+    if (globalThis.confirm('このVersionを削除しますか？（元に戻せません）')) void deleteVersion(deps)
+  })
+  list.append(deleteItem)
+}
+
+async function deleteVersion(deps: DotsMenuDeps): Promise<void> {
+  const current = deps.getCurrentVersion()
+  if (current === null) {
+    toast('削除対象のVersionが見つかりません', 'error')
+    return
+  }
+  try {
+    await api.deleteVersion(current.uid)
+    toast(`${current.name} を削除しました`)
+    deps.onDeleted(current)
+  } catch (error) {
+    toast((error as Error).message, 'error')
   }
 }
 

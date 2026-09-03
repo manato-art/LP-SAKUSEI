@@ -520,6 +520,11 @@ function wireVersionCard(ctx: EditorContext, card: HTMLElement, version: Version
   if (name !== null) name.value = model.name
   if (ratio !== null) ratio.value = String(model.distribution_ratio)
 
+  // 指示㉘: 切替の当たり判定が狭い問題。非選択カードでは名前入力がカードの大半を覆って
+  // クリックを食う（＝切替できる余白が僅か）ので、名前入力のクリックをカードへ通す
+  // （pointer-events:none）。名前編集は切替後に行う（実物と同じ「まず選択」動線）。
+  if (name !== null && !isCurrent) name.style.pointerEvents = 'none'
+
   const save = async (): Promise<void> => {
     const nextName = name !== null && name.value !== model.name ? name.value : null
     const nextRatio =
@@ -594,6 +599,13 @@ function wireVersionCard(ctx: EditorContext, card: HTMLElement, version: Version
         v.uid === archived.uid ? { ...v, archived: true } : v,
       )
       const next = ctx.versions.find((v) => v.archived !== true)
+      if (next !== undefined) loadVersion(ctx, next.uid)
+      else renderVersionList(ctx)
+    },
+    onDeleted: (deleted) => {
+      // 一覧から取り除き、残りの先頭（非アーカイブ）へ切り替える。
+      ctx.versions = ctx.versions.filter((v) => v.uid !== deleted.uid)
+      const next = ctx.versions.find((v) => v.archived !== true) ?? ctx.versions[0]
       if (next !== undefined) loadVersion(ctx, next.uid)
       else renderVersionList(ctx)
     },

@@ -178,9 +178,10 @@ function renderTree(body: HTMLElement, context: PageContext): void {
     return
   }
 
+  const rerender = (): void => renderTree(body, context)
   for (const folder of filtered) {
     const wrapper = document.createElement('div')
-    wrapper.append(folderRow(prototypeRow, folder))
+    wrapper.append(folderRow(prototypeRow, folder, rerender))
     rows.append(wrapper)
   }
 }
@@ -284,7 +285,7 @@ function folderRowPrototype(): HTMLElement | null {
   return holder.firstElementChild as HTMLElement | null
 }
 
-function folderRow(prototypeRow: HTMLElement, folder: Folder): HTMLElement {
+function folderRow(prototypeRow: HTMLElement, folder: Folder, rerender: () => void): HTMLElement {
   const row = prototypeRow.cloneNode(true) as HTMLElement
   row.setAttribute(FOLDER_UID_ATTRIBUTE, folder.uid)
   const name = row.querySelector<HTMLElement>(FOLDERS_HOOK.folderRowName)
@@ -296,7 +297,7 @@ function folderRow(prototypeRow: HTMLElement, folder: Folder): HTMLElement {
     if (location.hash !== next) location.hash = next
   })
   wireRowHover(row)
-  wireRowActions(row, folder)
+  wireRowActions(row, folder, rerender)
   return row
 }
 
@@ -397,6 +398,8 @@ function wireRealPageRows(area: HTMLElement, context: PageContext): void {
 /** 雛形の実行を複製し、名前・ステータス・媒体をモック値へ差し替えてクリックを配線する。 */
 function buildPageRow(template: HTMLElement, abTest: AbTest): HTMLElement {
   const row = template.cloneNode(true) as HTMLElement
+  // 指示㉞: 行同士の境界が薄くて分かりづらいので、はっきりした仕切り線を足す。
+  row.style.borderBottom = '1px solid #E3E6EA'
   const status = AD_STATUS_LABELS[abTest.ad_status] ?? abTest.ad_status
 
   const title = row.querySelector<HTMLElement>(FOLDERS_HOOK.pageTitle)
@@ -1267,27 +1270,28 @@ function openStatusFilter(anchor: HTMLElement, main: HTMLElement, context: PageC
  * 行のホバーで出るアクション。1つ目（星アイコン）はお気に入りトグル、
  * 2つ目（歯車）はフォルダ操作メニュー。
  */
-function wireRowActions(row: HTMLElement, folder: Folder): void {
+function wireRowActions(row: HTMLElement, folder: Folder, rerender: () => void): void {
   const actions = row.querySelector<HTMLElement>(FOLDERS_HOOK.folderRowActions)
   if (actions === null) return
   const buttons = actions.querySelectorAll<HTMLElement>('button')
   const starBtn = buttons[0] ?? null
   const gearBtn = buttons[1] ?? null
 
-  // 星アイコン: お気に入りトグル
+  // 星アイコン: お気に入りトグル（指示㉝: 押しても「お気に入り」タブに反映されない不具合を修正）。
+  // 以前は API 呼び出しと星の見た目だけ更新し、手元の folder とツリーを更新していなかったため、
+  // 「お気に入り」タブ（context.folders を is_favorite で絞る）に出てこなかった。
+  // トグル時に folder.is_favorite を更新し、ツリーを描き直して即座に反映する。
   if (starBtn !== null) {
-    let isFav = folder.is_favorite
-    updateStarAppearance(starBtn, isFav)
+    updateStarAppearance(starBtn, folder.is_favorite)
 
     starBtn.addEventListener('click', (event) => {
       event.stopPropagation()
-      const newValue = !isFav
-      isFav = newValue
-      updateStarAppearance(starBtn, newValue)
+      const newValue = !folder.is_favorite
+      folder.is_favorite = newValue
+      rerender() // 楽観的に即反映（「お気に入り」タブにも出る/消える）
       void api.toggleFavorite(folder.uid, newValue).catch(() => {
-        // 失敗したら戻す
-        isFav = !newValue
-        updateStarAppearance(starBtn, !newValue)
+        folder.is_favorite = !newValue
+        rerender()
         toast('お気に入りの切り替えに失敗しました', 'error')
       })
     })

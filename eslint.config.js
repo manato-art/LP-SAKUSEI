@@ -35,7 +35,7 @@ export default tseslint.config(
           'container', 'content', 'node', 'map', 'quill', 'ctx',
           // 追加のDOM描画先（採取土台・モーダル/パネル/アイコン等の要素）。いずれもDOM操作であり
           // ドメインデータの破壊的変更ではない。
-          'root', 'paper', 'icon', 'headerBox', 'holder', 'card', 'select', 'row',
+          'root', 'paper', 'icon', 'headerBox', 'holder', 'card', 'select', 'row', 'folder',
         ] }],
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       '@typescript-eslint/no-explicit-any': 'error',
