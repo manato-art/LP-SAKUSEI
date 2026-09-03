@@ -261,7 +261,7 @@ export function renderLoginPage(): string {
     <img class="logo" src="/assets/ebiyon-favicon-180.png" alt="EBIyon">
     <div class="brand">EBIyon</div>
     <div class="sub">管理画面にはパスワードが必要です</div>
-    <input type="password" id="password" name="password" placeholder="パスワード" autofocus required>
+    <input type="password" id="password" name="password" placeholder="パスワード" autocomplete="current-password" autofocus required>
     <button type="submit" id="submit-btn">ログイン</button>
     <div class="error" id="error"></div>
   </form>
@@ -334,7 +334,7 @@ export function renderEmailGatePage(): string {
     <img class="logo" src="/assets/ebiyon-favicon-180.png" alt="EBIyon">
     <div class="brand">EBIyon</div>
     <div class="sub">登録されたメールアドレスを入力してください</div>
-    <input type="email" id="email" name="email" placeholder="メールアドレス" autofocus required>
+    <input type="email" id="email" name="email" placeholder="メールアドレス" autocomplete="email" autofocus required>
     <button type="submit" id="submit-btn">認証</button>
     <div class="error" id="error"></div>
   </form>
