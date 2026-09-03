@@ -113,6 +113,10 @@ export async function renderFolders(
     container.append(emptyState('ページ画面の土台が壊れています（本体が見つかりません）'))
     return
   }
+  // 指示66: 採取CSSの `.css-4qo2ft` はサイドバー幅（60px）の左パディングを持つが、
+  // シェルが同じサイドバーを既に描いているため、空白の帯になってしまう。
+  // エディタ（キャンバス）で同様の修正を行ったのと同じ手法で除去する。
+  body.style.paddingLeft = '0'
   root.replaceChildren(body)
   container.append(root)
 
@@ -1507,33 +1511,38 @@ function wireRowActions(row: HTMLElement, folder: Folder, rerender: () => void):
   }
 }
 
-// ── 指示㊲: リサイズハンドル（一覧と詳細パネルの幅変更）──────────
+// ── 指示㊲→指示67: リサイズハンドル（フォルダサイドバーの幅変更）──────────
 /**
  * 採取DOMに在るリサイズ用のグリップ（`.css-1tixm3t`）をドラッグ可能にする。
- * 実物と同じく `col-resize` カーソルは CSS で当たっている。ここではマウスドラッグ時に
- * 左隣のページ一覧（`.efy50tl20`）の flex-basis を動かして幅を変える。
+ * 実物と同じく `col-resize` カーソルは CSS で当たっている。
+ *
+ * 指示67: ↔ハンドルのドラッグで**左のフォルダサイドバー**（`.e1krw8ps3`：
+ * 検索・すべて/お気に入り/履歴 タブ・フォルダ一覧を含むエリア）の幅を変える。
+ * ハンドルはサイドバーコンテナ内の右端に位置し、隣の mainPane が残りを埋める。
  */
 function wireResizeHandle(body: HTMLElement): void {
   const handle = body.querySelector<HTMLElement>('.css-1tixm3t')
   if (handle === null) return
-  const listArea = body.querySelector<HTMLElement>(FOLDERS_HOOK.listArea)
-  const detailPanel = body.querySelector<HTMLElement>(FOLDERS_HOOK.detailPanel)
-  if (listArea === null || detailPanel === null) return
 
-  // 共通の親
-  const parent = listArea.parentElement
-  if (parent === null) return
-  parent.style.position = 'relative'
+  // ハンドルの親＝フォルダサイドバーコンテナ（.e1krw8ps3）
+  const treeContainer = handle.parentElement
+  if (treeContainer === null) return
+  // サイドバーと mainPane を並べる flex 親（.e11hwzd01）
+  const flexParent = treeContainer.parentElement
+  if (flexParent === null) return
+  // mainPane（.e11hwzd00）＝ページ一覧＋詳細パネル
+  const mainPane = body.querySelector<HTMLElement>(FOLDERS_HOOK.mainPane)
+  if (mainPane === null) return
 
   let isDragging = false
   let startX = 0
-  let startListWidth = 0
+  let startWidth = 0
 
   handle.addEventListener('mousedown', (e: MouseEvent) => {
     e.preventDefault()
     isDragging = true
     startX = e.clientX
-    startListWidth = listArea.getBoundingClientRect().width
+    startWidth = treeContainer.getBoundingClientRect().width
     handle.style.zIndex = '100'
     document.body.style.cursor = 'col-resize'
     document.body.style.userSelect = 'none'
@@ -1542,12 +1551,12 @@ function wireResizeHandle(body: HTMLElement): void {
   document.addEventListener('mousemove', (e: MouseEvent) => {
     if (!isDragging) return
     const delta = e.clientX - startX
-    const parentWidth = parent.getBoundingClientRect().width
-    const newWidth = Math.max(200, Math.min(parentWidth - 200, startListWidth + delta))
-    listArea.style.flex = 'none'
-    listArea.style.width = `${newWidth}px`
-    detailPanel.style.flex = '1'
-    detailPanel.style.minWidth = '200px'
+    const parentWidth = flexParent.getBoundingClientRect().width
+    const newWidth = Math.max(160, Math.min(parentWidth - 300, startWidth + delta))
+    treeContainer.style.flex = 'none'
+    treeContainer.style.width = `${newWidth}px`
+    mainPane.style.flex = '1'
+    mainPane.style.minWidth = '300px'
   })
 
   document.addEventListener('mouseup', () => {

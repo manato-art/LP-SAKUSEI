@@ -439,6 +439,14 @@ function mountSidebarToolbarPanel(ctx: EditorContext): void {
   }
   versionPanel.append(cardsWrapper)
 
+  // 指示71: 「Version追加」ボタンをカードスクロール領域から取り出して
+  // ツールバーの下（下部バーと同じ高さ）に固定する。
+  const addBtn = cardsWrapper.querySelector<HTMLElement>(HOOK.addVersion)
+  if (addBtn !== null) {
+    addBtn.style.flexShrink = '0'
+    addBtn.style.borderTop = '1px solid #e0e0e0'
+  }
+
   // ツールバーパネルを作成して flex の 2 番目の子に
   const panel = mountSidebarToolbar(ctx.quill, ctx.root)
   panel.style.width = '100%'
@@ -450,6 +458,11 @@ function mountSidebarToolbarPanel(ctx: EditorContext): void {
   panel.style.maxHeight = '50%'
 
   versionPanel.append(panel)
+
+  // 指示71: Version追加を最下部に移動（下部バーと同じ位置）
+  if (addBtn !== null) {
+    versionPanel.append(addBtn)
+  }
 }
 
 /**
@@ -616,10 +629,35 @@ function hideStepNavigation(root: HTMLElement): void {
 function loadVersion(ctx: EditorContext, uid: string): void {
   const v = ctx.versions.find((x) => x.uid === uid)
   if (v === undefined) return
-  ctx.currentUid = uid
-  ctx.quill.root.innerHTML = v.html
-  // 現在Versionの本文を載せ替えたら、カード一覧も描き直して選択状態を合わせる。
-  renderVersionList(ctx)
+
+  // 指示72: バージョン切り替え中のローディング表示
+  const contentWrapper = ctx.root.querySelector<HTMLElement>('.quillEditorContentWrapper')
+  let overlay: HTMLElement | null = null
+  if (contentWrapper !== null) {
+    overlay = document.createElement('div')
+    overlay.setAttribute('data-version-loading', 'true')
+    overlay.style.cssText = [
+      'position:absolute', 'inset:0', 'z-index:100',
+      'display:flex', 'align-items:center', 'justify-content:center',
+      'background:rgba(255,255,255,.7)',
+    ].join(';')
+    overlay.innerHTML = `<div style="text-align:center">
+      <div style="width:32px;height:32px;border:3px solid #e0e0e0;border-top-color:#4A90D9;border-radius:50%;animation:sbspin .7s linear infinite;margin:0 auto"></div>
+      <div style="margin-top:8px;font-size:13px;color:#666">バージョン切り替え中...</div>
+    </div>`
+    if (getComputedStyle(contentWrapper).position === 'static') {
+      contentWrapper.style.position = 'relative'
+    }
+    contentWrapper.append(overlay)
+  }
+
+  // 重い DOM 更新をマクロタスクに回してオーバーレイを先に描画させる
+  setTimeout(() => {
+    ctx.currentUid = uid
+    ctx.quill.root.innerHTML = v.html
+    renderVersionList(ctx)
+    overlay?.remove()
+  }, 50)
 }
 
 /** アクティブ表示に使う実CSSクラス（採取物のクラス。書き換えていない） */
@@ -988,36 +1026,8 @@ function wireSideToolbar(ctx: EditorContext): void {
   // パズルピース（Widget管理ボタン）は実物では Widgetライブラリを開く
   mountWidgetLibrary(ctx.root, ctx.quill)
 
-  // 指示㊶: 右レールをスクロール追従させる。
-  // 実DOMの構造（指示㊿② 更新後）:
-  //   container (overflow:hidden, height:100vh) ← 外枠はスクロールしない
-  //     └ _editorWrapper_ (display:flex, height:calc(100%-120px))
-  //         └ quillEditorContentWrapper (overflow-y:auto) ← キャンバスのみスクロール
-  //             └ _sideToolbarWrapper_ (width:50px, height:calc(100%-80px))
-  // 親が flex で height 制約あり → sticky は効かない。position:fixed で viewport に固定する。
-  const sideToolbarWrapper = ctx.root.querySelector<HTMLElement>('[class*="_sideToolbarWrapper_"]')
-  if (sideToolbarWrapper !== null) {
-    // 初期位置を計測して fixed に切り替える
-    // コンテンツエリア（キャンバス）と上端を揃える
-    const pinToolbar = (): void => {
-      const rect = sideToolbarWrapper.getBoundingClientRect()
-      const contentTop = ctx.root.querySelector('.quillEditorContentWrapper')?.getBoundingClientRect().top
-      // 右端の x を viewport 右端からの距離で固定
-      sideToolbarWrapper.style.position = 'fixed'
-      sideToolbarWrapper.style.top = `${contentTop ?? Math.max(rect.top, 100)}px`
-      sideToolbarWrapper.style.paddingTop = '0px'
-      sideToolbarWrapper.style.right = `${document.documentElement.clientWidth - rect.right}px`
-      sideToolbarWrapper.style.left = 'auto'
-      sideToolbarWrapper.style.height = 'auto'
-      sideToolbarWrapper.style.marginTop = '0'
-      sideToolbarWrapper.style.marginBottom = '0'
-      sideToolbarWrapper.style.zIndex = '50'
-    }
-    // 初回配置は DOM が安定してから
-    requestAnimationFrame(pinToolbar)
-    // ウィンドウリサイズで再計算
-    addEventListener('resize', pinToolbar)
-  }
+  // 指示70: スクロール領域が変わったため、右レールの position:fixed は不要になった。
+  // 採取CSSのままで問題なく表示される。
 
   const icons = [...ctx.root.querySelectorAll<HTMLElement>('[class*="sideToolbarIcon"]')]
   for (let index = 0; index < icons.length; index += 1) {

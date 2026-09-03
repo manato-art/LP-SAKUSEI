@@ -91,7 +91,11 @@ export async function renderBasicInfo(
   // 断片は `#root` の中身そのままなので**サイドバーを含む**。シェルが同じものを出しているため、
   // ここでは本体側（`.ehppitp0`）だけを残す（マークアップは一切書き換えていない）。
   const main = root.querySelector<HTMLElement>(HOOK.main)
-  if (main !== null) root.replaceChildren(main)
+  if (main !== null) {
+    // 指示66: サイドバー幅（60px）の左パディングを除去（シェルが既にサイドバーを出している）
+    main.style.paddingLeft = '0'
+    root.replaceChildren(main)
+  }
   container.append(root)
 
   const form = root.querySelector<HTMLElement>(HOOK.form)

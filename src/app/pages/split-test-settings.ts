@@ -138,9 +138,21 @@ async function wireDeviceTargets(root: HTMLElement, abTestUid: string): Promise<
 
   const pristine = templateRow.cloneNode(true) as HTMLElement
   templateRow.remove()
-  for (const version of alive) {
+  for (let i = 0; i < alive.length; i++) {
+    const version = alive[i]!
     const row = pristine.cloneNode(true) as HTMLElement
     wireDeviceRow(row, version)
+    // 指示69: 版行を詰めて表示（実物のように行をコンパクトに並べる）
+    // 採取CSSの .css-1q0mywx は min-height:300px を持ち、各行が巨大になる。
+    // また .css-1r20ns4 の padding-bottom:20px が名前欄を間延びさせる。
+    // 最終行だけ底のborder-radiusを残し、他は0にして行を連結する。
+    const toggleArea = row.querySelector<HTMLElement>('.css-1q0mywx')
+    if (toggleArea !== null) {
+      toggleArea.style.minHeight = 'auto'
+      toggleArea.style.borderRadius = i === alive.length - 1 ? '0 0 10px 10px' : '0'
+    }
+    const nameWrapper = row.querySelector<HTMLElement>('.css-1r20ns4')
+    if (nameWrapper !== null) nameWrapper.style.paddingBottom = '0'
     container.append(row)
   }
 }
@@ -277,7 +289,8 @@ async function wireTabVersionRows(root: HTMLElement, abTestUid: string): Promise
   const pristine = templateRow.cloneNode(true) as HTMLElement
   templateRow.remove()
 
-  for (const version of alive) {
+  for (let i = 0; i < alive.length; i++) {
+    const version = alive[i]!
     const row = pristine.cloneNode(true) as HTMLElement
     const nc = row.querySelector<HTMLElement>(VERSION_NAME_CELL)
     const rc = row.querySelector<HTMLElement>(VERSION_RATIO_CELL)
@@ -293,6 +306,14 @@ async function wireTabVersionRows(root: HTMLElement, abTestUid: string): Promise
       rc.style.maxWidth = '60px'
     }
     row.style.maxWidth = '100%'
+    // 指示69: 版行を詰めて表示（デバイス別と同様、min-height/padding を除去して行をコンパクトに）
+    const toggleArea = row.querySelector<HTMLElement>('.css-1q0mywx')
+    if (toggleArea !== null) {
+      toggleArea.style.minHeight = 'auto'
+      toggleArea.style.borderRadius = i === alive.length - 1 ? '0 0 10px 10px' : '0'
+    }
+    const nameWrapper = row.querySelector<HTMLElement>('.css-1r20ns4')
+    if (nameWrapper !== null) nameWrapper.style.paddingBottom = '0'
     container.append(row)
   }
 }

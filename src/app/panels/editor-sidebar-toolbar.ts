@@ -246,38 +246,53 @@ export function mountSidebarToolbar(quill: Quill, _editorRoot: HTMLElement): HTM
   const { row: bgColorRow, swatch: bgSwatch, input: bgColorInput } =
     colorField('背景色', bgColorHex.value)
 
-  textSwatch.addEventListener('click', () => {
-    const color = prompt('テキスト色 (hex)', textColorHex.value)
-    if (color !== null && /^#[0-9a-fA-F]{3,8}$/.test(color)) {
-      textColorHex.value = color
-      textSwatch.style.background = color
-      textColorInput.value = color
-      applyInline('color', color)
-    }
+  // 指示73: カラーパッド（<input type="color">）を使う
+  const textColorPicker = document.createElement('input')
+  textColorPicker.type = 'color'
+  textColorPicker.value = textColorHex.value
+  textColorPicker.style.cssText = 'position:absolute;opacity:0;width:0;height:0;pointer-events:none'
+  textSwatch.style.position = 'relative'
+  textSwatch.append(textColorPicker)
+
+  textSwatch.addEventListener('click', () => { textColorPicker.click() })
+  textColorPicker.addEventListener('input', () => {
+    const color = textColorPicker.value
+    textColorHex.value = color
+    textSwatch.style.background = color
+    textColorInput.value = color
+    applyInline('color', color)
   })
   textColorInput.addEventListener('change', () => {
     const v = textColorInput.value.trim()
     if (/^#[0-9a-fA-F]{3,8}$/.test(v)) {
       textColorHex.value = v
       textSwatch.style.background = v
+      textColorPicker.value = v
       applyInline('color', v)
     }
   })
 
-  bgSwatch.addEventListener('click', () => {
-    const color = prompt('背景色 (hex)', bgColorHex.value)
-    if (color !== null && /^#[0-9a-fA-F]{3,8}$/.test(color)) {
-      bgColorHex.value = color
-      bgSwatch.style.background = color
-      bgColorInput.value = color
-      applyInline('background', color)
-    }
+  const bgColorPicker = document.createElement('input')
+  bgColorPicker.type = 'color'
+  bgColorPicker.value = bgColorHex.value === '#FFFFFF' ? '#ffffff' : bgColorHex.value
+  bgColorPicker.style.cssText = 'position:absolute;opacity:0;width:0;height:0;pointer-events:none'
+  bgSwatch.style.position = 'relative'
+  bgSwatch.append(bgColorPicker)
+
+  bgSwatch.addEventListener('click', () => { bgColorPicker.click() })
+  bgColorPicker.addEventListener('input', () => {
+    const color = bgColorPicker.value
+    bgColorHex.value = color
+    bgSwatch.style.background = color
+    bgColorInput.value = color
+    applyInline('background', color)
   })
   bgColorInput.addEventListener('change', () => {
     const v = bgColorInput.value.trim()
     if (/^#[0-9a-fA-F]{3,8}$/.test(v)) {
       bgColorHex.value = v
       bgSwatch.style.background = v
+      bgColorPicker.value = v
       applyInline('background', v)
     }
   })
@@ -351,20 +366,8 @@ export function mountSidebarToolbar(quill: Quill, _editorRoot: HTMLElement): HTM
   sec4.append(alignRow)
   panel.append(sec4)
 
-  // ── セクション5: その他の設定 ──
+  // ── セクション5: 書式クリア（指示71: アコーディオンを廃止し常時表示） ──
   const sec5 = section()
-  const accHeader = document.createElement('div')
-  accHeader.classList.add('sb-side-tb-accordion-header')
-  accHeader.textContent = 'その他の設定'
-  const arrow = document.createElement('span')
-  arrow.classList.add('arrow')
-  arrow.textContent = '▼'
-  accHeader.append(arrow)
-
-  const accBody = document.createElement('div')
-  accBody.classList.add('sb-side-tb-accordion-body')
-
-  // 書式クリアボタン
   const clearBtn = document.createElement('button')
   clearBtn.type = 'button'
   clearBtn.style.cssText = `
@@ -384,14 +387,7 @@ export function mountSidebarToolbar(quill: Quill, _editorRoot: HTMLElement): HTM
     quill.setSelection(r.index, r.length, 'silent')
     refresh()
   })
-  accBody.append(clearBtn)
-
-  accHeader.addEventListener('click', () => {
-    accHeader.classList.toggle('open')
-    accBody.classList.toggle('open')
-  })
-
-  sec5.append(accHeader, accBody)
+  sec5.append(clearBtn)
   panel.append(sec5)
 
   // ── 状態の同期 ──

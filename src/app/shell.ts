@@ -15,7 +15,7 @@ export interface Route {
 /** サイドバーの各項目に、クローン側のルートを割り当てる（実物のナビ順・§6-3） */
 const NAV_TARGETS: readonly { label: string; href: string }[] = [
   { label: 'ダッシ', href: '#/dashboard' },
-  { label: 'AI', href: '#/sb_ai' },
+  // 指示68: AI 項目は削除
   { label: 'タスク', href: '#/tasks' },
   { label: 'ページ', href: '#/folders' },
   { label: 'CV速報', href: '#/conversions' },
@@ -129,7 +129,7 @@ const RAIL_LABEL_CLASS = 'sb-rail-label'
 
 /** 採取HTMLからイベント・セミナー / ランキング / 新UI OFF を削除する */
 function removeUnwantedItems(nav: HTMLElement): void {
-  const REMOVE_LABELS = ['イベント・セミナー', 'ランキング']
+  const REMOVE_LABELS = ['イベント・セミナー', 'ランキング', 'AI']  // 指示68: AI 追加
   for (const item of nav.querySelectorAll<HTMLElement>('[data-testid="list-menu-item"]')) {
     const text = (item.textContent ?? '').trim()
     if (REMOVE_LABELS.some((label) => text === label || text.startsWith(label))) {
@@ -428,6 +428,9 @@ function injectRailStyles(): void {
     `.sb-accordion-item.sb-accordion-item-active{color:#333;font-weight:500}`,
     `.sb-accordion-item::before{content:'';display:inline-block;width:5px;height:5px;`,
     `border-radius:50%;background:currentColor;margin-right:8px;flex-shrink:0}`,
+  // 指示66: 採取CSSの body ラッパーは padding-left:60px（元のサイドバー幅）を持つが、
+  // シェルが同じサイドバーを既に描いているため空白帯になる。全画面で一括除去。
+  `.css-4qo2ft,.css-155ijxb{padding-left:0 !important}`,
   ].join('')
   document.head.append(style)
 }
