@@ -617,14 +617,16 @@ function wirePageRowActions(row: HTMLElement, abTest: AbTest): void {
 
   item.append(bar)
 
-  // ホバーで表示/非表示
+  // ホバーで表示/非表示 + 指示61: 黄色ハイライト
   row.addEventListener('mouseenter', () => {
     bar.style.opacity = '1'
     bar.style.pointerEvents = 'auto'
+    if (item !== null) item.style.backgroundColor = '#FFFDE7'
   })
   row.addEventListener('mouseleave', () => {
     bar.style.opacity = '0'
     bar.style.pointerEvents = 'none'
+    if (item !== null) item.style.backgroundColor = ''
   })
 }
 
@@ -712,6 +714,59 @@ function openPageMoreMenu(anchor: HTMLElement, abTest: AbTest): void {
 }
 
 /**
+ * 指示60: 詳細パネルにホバー時のみ表示する「閉じる >>」ボタンを追加する。
+ * パネルの左上に配置し、クリックでパネルを非表示にする。
+ */
+function wireDetailPanelCloseButton(panel: HTMLElement): void {
+  if (panel.querySelector('[data-detail-close]') !== null) return
+
+  // パネルを position:relative にして閉じるボタンの基準にする
+  panel.style.position = 'relative'
+
+  const closeBtn = document.createElement('button')
+  closeBtn.setAttribute('data-detail-close', 'true')
+  closeBtn.textContent = '閉じる »'
+  closeBtn.style.cssText = [
+    'position:absolute',
+    'top:8px',
+    'left:8px',
+    'z-index:10',
+    'display:none',
+    'padding:4px 10px',
+    'border:1px solid #ccc',
+    'border-radius:4px',
+    'background:#fff',
+    'color:#666',
+    'font-size:12px',
+    `font-family:${T.font}`,
+    'cursor:pointer',
+    'white-space:nowrap',
+    'transition:background 0.15s',
+  ].join(';')
+
+  closeBtn.addEventListener('mouseenter', () => {
+    closeBtn.style.background = '#f5f5f5'
+  })
+  closeBtn.addEventListener('mouseleave', () => {
+    closeBtn.style.background = '#fff'
+  })
+  closeBtn.addEventListener('click', (e) => {
+    e.stopPropagation()
+    panel.style.display = 'none'
+  })
+
+  panel.prepend(closeBtn)
+
+  // パネル全体のホバーで表示/非表示
+  panel.addEventListener('mouseenter', () => {
+    closeBtn.style.display = 'block'
+  })
+  panel.addEventListener('mouseleave', () => {
+    closeBtn.style.display = 'none'
+  })
+}
+
+/**
  * 右の詳細パネル（採取した実マークアップ）の操作を配線する。
  * - 「パラメータ付きURLの発行」→ クローンのURL発行モーダル（実物と同じ入力項目）。
  * - 「コピー」→ 配信URLをクリップボードへ。
@@ -720,6 +775,9 @@ function openPageMoreMenu(anchor: HTMLElement, abTest: AbTest): void {
 function wireRealDetailPanel(body: HTMLElement, context: PageContext): void {
   const panel = body.querySelector<HTMLElement>(FOLDERS_HOOK.detailPanel)
   if (panel === null) return
+
+  // 指示60: ホバー時のみ「閉じる >>」ボタンを表示
+  wireDetailPanelCloseButton(panel)
 
   const baseUrl = paramUrlBase(panel, context)
 
