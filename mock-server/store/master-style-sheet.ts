@@ -22,10 +22,13 @@ export const IFRAME_HEIGHT_UNITS = ['', 'px', 'vh', '%'] as const
 export const DELIVERY_WIDTH_UNITS = ['', 'px', '%'] as const
 export const BORDER_TYPES = ['', 'solid', 'double', 'dashed', 'dotted'] as const
 
+export const TEXT_ALIGN_VALUES = ['', 'left', 'center', 'right'] as const
+
 export interface MasterStyleSheet {
   readonly font_size: number | null
   readonly font_family: string
   readonly color: string
+  readonly text_align: string
   readonly line_height: number | null
   readonly letter_spacing: number | null
   readonly img_margin_top: number | null
@@ -61,6 +64,7 @@ export const DEFAULT_MASTER_STYLE_SHEET: MasterStyleSheet = {
   font_size: 17,
   font_family: 'Hiragino Sans, Arial, sans-serif',
   color: '000000',
+  text_align: '',
   line_height: 1.8,
   letter_spacing: null,
   img_margin_top: 0,
@@ -221,6 +225,14 @@ export function parseMasterStyleSheet(
   if (!fontFamily.ok) return fontFamily
   const color = parseColorField(body, 'color', base.color, '文字色')
   if (!color.ok) return color
+  const textAlign = parseChoiceField(
+    body,
+    'text_align',
+    TEXT_ALIGN_VALUES,
+    base.text_align,
+    'テキスト揃え',
+  )
+  if (!textAlign.ok) return textAlign
   const borderColor = parseColorField(body, 'border_color', base.border_color, 'Version枠線の色')
   if (!borderColor.ok) return borderColor
   const iframeUnit = parseChoiceField(
@@ -285,6 +297,7 @@ export function parseMasterStyleSheet(
       font_size: numbers['font_size'] ?? null,
       font_family: fontFamily.value,
       color: color.value,
+      text_align: textAlign.value,
       line_height: numbers['line_height'] ?? null,
       letter_spacing: numbers['letter_spacing'] ?? null,
       img_margin_top: numbers['img_margin_top'] ?? null,

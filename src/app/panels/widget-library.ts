@@ -278,10 +278,10 @@ function openLargePreview(card: HTMLElement, title: string): void {
  *   inline style がすでに付いている。
  */
 function insertWidget(quill: Quill, card: HTMLElement, title: string): void {
-  const range = quill.getSelection(true)
-  const index = range?.index ?? quill.getLength()
   const body = widgetBodyHtml(card)
   if (body === null) {
+    const range = quill.getSelection(true)
+    const index = range?.index ?? quill.getLength()
     const placeholder =
       `<div style="border:1px dashed #B0B0B0;border-radius:6px;padding:16px;margin:8px 0;` +
       `background:#FAFAFA;color:#555;text-align:center;font-size:14px">【Widget】${escapeHtml(title)}</div>`
@@ -293,7 +293,6 @@ function insertWidget(quill: Quill, card: HTMLElement, title: string): void {
   for (const style of doc.querySelectorAll('style')) {
     const css = style.textContent ?? ''
     if (css.trim() !== '') {
-      // エディタ外のドキュメント head に退避（Quill の中に <style> を入れない）
       const existing = [...document.head.querySelectorAll('style[data-widget-css]')]
       const alreadyHas = existing.some((s) => s.textContent === css)
       if (!alreadyHas) {
@@ -307,8 +306,37 @@ function insertWidget(quill: Quill, card: HTMLElement, title: string): void {
   }
   // <script> も除去（Quill内で実行されると壊れる）
   for (const script of doc.querySelectorAll('script')) script.remove()
+
+  // ── Quill の clipboard.dangerouslyPasteHTML は clipboard matcher が
+  //    div/table 等の複雑なHTMLを blot 不在で削ぎ落とし、テキストだけになる。
+  //    → ql-editor の DOM に直接挿入し、Quill の内部モデルを update() で同期する。
+  const qlEditor = quill.root // .ql-editor 要素
   const cleaned = doc.body.innerHTML
-  quill.clipboard.dangerouslyPasteHTML(index, cleaned, 'user')
+  const wrapper = document.createElement('div')
+  wrapper.setAttribute('data-widget-block', 'true')
+  wrapper.innerHTML = cleaned
+  // カーソル位置に挿入（末尾の場合 or 選択なしの場合は append）
+  const sel = window.getSelection()
+  let inserted = false
+  if (sel !== null && sel.rangeCount > 0) {
+    const range = sel.getRangeAt(0)
+    // カーソルが ql-editor 内にあるか確認
+    if (qlEditor.contains(range.commonAncestorContainer)) {
+      range.collapse(false) // 選択範囲の末尾へ
+      range.insertNode(wrapper)
+      // カーソルを挿入ノードの後ろへ
+      range.setStartAfter(wrapper)
+      range.collapse(true)
+      sel.removeAllRanges()
+      sel.addRange(range)
+      inserted = true
+    }
+  }
+  if (!inserted) {
+    qlEditor.append(wrapper)
+  }
+  // Quill の内部モデルとDOMを同期
+  quill.update('user')
 }
 
 function escapeHtml(value: string): string {

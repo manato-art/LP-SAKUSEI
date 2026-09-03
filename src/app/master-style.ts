@@ -10,6 +10,7 @@ export interface MasterStyleSheet {
   readonly font_size: number | null
   readonly font_family: string
   readonly color: string
+  readonly text_align: string
   readonly line_height: number | null
   readonly letter_spacing: number | null
   readonly img_margin_top: number | null
@@ -42,6 +43,7 @@ function containerDecls(s: MasterStyleSheet): string[] {
   if (s.font_family !== '') d.push(`font-family:${s.font_family}`)
   const c = hex(s.color)
   if (c !== null) d.push(`color:${c}`)
+  if (s.text_align !== '' && s.text_align !== undefined) d.push(`text-align:${s.text_align}`)
   if (s.line_height !== null) d.push(`line-height:${s.line_height}`)
   if (s.letter_spacing !== null) d.push(`letter-spacing:${s.letter_spacing}px`)
   const pt = s.padding_top ?? 0

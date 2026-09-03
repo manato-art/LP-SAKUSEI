@@ -207,6 +207,7 @@ describe('モーダルの土台（採取マークアップ）', () => {
   it('APIのキーと同じ name を持つ入力欄が全部ある', () => {
     for (const name of Object.keys(DEFAULT_MASTER_STYLE_SHEET)) {
       if (name.includes('background')) continue // 背景は状態別に採取（下で個別に検証）
+      if (name === 'text_align') continue // text_align は採取DOMに無い（JS側で動的に追加する）
       expect(fragment).toContain(`name="${name}"`)
     }
     expect(fragment).toContain('name="outerBackgroundRadio"')

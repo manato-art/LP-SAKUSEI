@@ -50,6 +50,7 @@ export interface MasterStyleSheet {
   font_size: number | null
   font_family: string
   color: string
+  text_align: string
   line_height: number | null
   letter_spacing: number | null
   img_margin_top: number | null
@@ -184,6 +185,8 @@ async function openPanel(articleUid: string): Promise<void> {
   }
 
   applySheet(wrapper, sheet)
+  enhanceColorFields(wrapper)
+  mountTextAlignButtons(wrapper, sheet.text_align ?? '')
 
   const onKeydown = (event: KeyboardEvent): void => {
     if (event.key === 'Escape') close()
@@ -334,6 +337,123 @@ function wireExtraControls(
   })
 }
 
+// ── カラーピッカー ──
+// `color` と `border_color` のテキスト入力の横にネイティブ `<input type="color">` を付ける。
+// 値はテキスト入力と双方向同期する。
+const COLOR_FIELDS: readonly (keyof MasterStyleSheet)[] = ['color', 'border_color']
+
+function enhanceColorFields(wrapper: HTMLElement): void {
+  for (const name of COLOR_FIELDS) {
+    const textInput = findControl(wrapper, name) as HTMLInputElement | null
+    if (textInput === null) continue
+    const picker = document.createElement('input')
+    picker.type = 'color'
+    picker.value = normalizeHex(textInput.value)
+    picker.style.cssText =
+      'width:28px;height:28px;padding:0;border:1px solid #ccc;border-radius:4px;' +
+      'cursor:pointer;vertical-align:middle;margin-left:6px;flex-shrink:0'
+    picker.addEventListener('input', () => {
+      textInput.value = picker.value
+    })
+    textInput.addEventListener('input', () => {
+      const hex = normalizeHex(textInput.value)
+      if (hex !== '') picker.value = hex
+    })
+    // テキスト入力の直後に差し込む
+    textInput.parentElement?.insertBefore(picker, textInput.nextSibling)
+    // 親がflexなら横並びにする
+    if (textInput.parentElement !== null) {
+      textInput.parentElement.style.display = 'flex'
+      textInput.parentElement.style.alignItems = 'center'
+    }
+  }
+}
+
+/** #000000 形式に正規化（3桁 #abc → #aabbcc 対応、不正な値は空文字） */
+function normalizeHex(raw: string): string {
+  const s = raw.trim().replace(/^#/, '')
+  if (/^[0-9a-fA-F]{6}$/.test(s)) return `#${s}`
+  if (/^[0-9a-fA-F]{3}$/.test(s)) {
+    return `#${s[0]}${s[0]}${s[1]}${s[1]}${s[2]}${s[2]}`
+  }
+  return '#000000'
+}
+
+// ── テキスト揃え ──
+const ALIGN_OPTIONS: readonly { value: string; label: string; icon: string }[] = [
+  { value: 'left', label: '左揃え', icon: 'M3 4h18v2H3zm0 4h12v2H3zm0 4h18v2H3zm0 4h12v2H3z' },
+  { value: 'center', label: '中央揃え', icon: 'M3 4h18v2H3zm3 4h12v2H6zm-3 4h18v2H3zm3 4h12v2H6z' },
+  { value: 'right', label: '右揃え', icon: 'M3 4h18v2H3zm6 4h12v2H9zm-6 4h18v2H3zm6 4h12v2H9z' },
+]
+/** data属性でcollectPayloadから取得するためのキー */
+const ALIGN_DATA_KEY = 'textAlignValue'
+
+function mountTextAlignButtons(wrapper: HTMLElement, currentValue: string): void {
+  // `color` 入力の行の直後に挿入する
+  const colorInput = findControl(wrapper, 'color')
+  const insertAfter = colorInput?.closest('[class*="formGroup"], [class*="row"], div')
+  const anchorParent = insertAfter?.parentElement ?? wrapper
+  const anchor = insertAfter ?? null
+
+  const row = document.createElement('div')
+  row.setAttribute('data-clone-text-align-row', 'true')
+  row.style.cssText =
+    'display:flex;align-items:center;gap:4px;padding:8px 16px;font-size:12px;color:#666'
+  const label = document.createElement('span')
+  label.textContent = 'テキスト揃え'
+  label.style.cssText = 'min-width:100px;flex-shrink:0'
+  row.append(label)
+
+  const group = document.createElement('div')
+  group.style.cssText = 'display:flex;gap:2px'
+
+  const active = currentValue || 'left'
+  for (const opt of ALIGN_OPTIONS) {
+    const btn = document.createElement('button')
+    btn.type = 'button'
+    btn.title = opt.label
+    btn.style.cssText =
+      'width:30px;height:28px;display:flex;align-items:center;justify-content:center;' +
+      'border:1px solid #ccc;border-radius:4px;cursor:pointer;background:#fff;padding:0'
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+    svg.setAttribute('viewBox', '0 0 24 24')
+    svg.setAttribute('width', '16')
+    svg.setAttribute('height', '16')
+    svg.setAttribute('fill', 'currentColor')
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path')
+    path.setAttribute('d', opt.icon)
+    svg.append(path)
+    btn.append(svg)
+
+    if (opt.value === active) {
+      btn.style.background = '#e3f2fd'
+      btn.style.borderColor = '#2196f3'
+      btn.style.color = '#1976d2'
+    }
+    btn.addEventListener('click', () => {
+      row.dataset[ALIGN_DATA_KEY] = opt.value
+      // 全ボタンのスタイルをリセットし、押されたものだけアクティブにする
+      for (const sibling of group.children) {
+        ;(sibling as HTMLElement).style.background = '#fff'
+        ;(sibling as HTMLElement).style.borderColor = '#ccc'
+        ;(sibling as HTMLElement).style.color = '#333'
+      }
+      btn.style.background = '#e3f2fd'
+      btn.style.borderColor = '#2196f3'
+      btn.style.color = '#1976d2'
+    })
+    group.append(btn)
+  }
+  row.append(group)
+  row.dataset[ALIGN_DATA_KEY] = active
+
+  if (anchor !== null && anchor.nextSibling !== null) {
+    anchorParent.insertBefore(row, anchor.nextSibling)
+  } else {
+    anchorParent.append(row)
+  }
+}
+
 /** 入力欄の生の文字列をそのまま送り、検証はモックAPI（境界）に任せる */
 function collectPayload(wrapper: HTMLElement, sheet: MasterStyleSheet): Record<string, string> {
   const payload: Record<string, string> = {}
@@ -342,6 +462,9 @@ function collectPayload(wrapper: HTMLElement, sheet: MasterStyleSheet): Record<s
     if (control === null) continue
     payload[name] = control.value.trim()
   }
+  // テキスト揃え（DOM直作成のためFIELD_NAMESには無い）
+  const alignRow = wrapper.querySelector<HTMLElement>('[data-clone-text-align-row]')
+  payload['text_align'] = alignRow?.dataset[ALIGN_DATA_KEY] ?? ''
   for (const group of BACKGROUND_GROUPS) {
     const mode = readBackgroundMode(wrapper, group.radioName)
     const holder = wrapper

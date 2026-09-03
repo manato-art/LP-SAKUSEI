@@ -190,6 +190,31 @@ export async function renderEditor(
   root.innerHTML = substrate
   container.append(root)
 
+  // ── 指示57: 上部ナビ周辺の縦空白を詰める ──
+  // 採取CSSの _navArticleWrapper_ は height:60px + padding-top:20px = 80px、
+  // _editorWrapper_ は height:calc(100%-120px) + padding:20px で余白が大きい。
+  // padding-top を 4px に、editorWrapper の 120px を 68px に縮め、padding を詰める。
+  const navWrapper = root.querySelector<HTMLElement>('[class*="_navArticleWrapper_"]')
+  if (navWrapper !== null) {
+    navWrapper.style.paddingTop = '4px'
+    navWrapper.style.height = '44px'
+  }
+  const editorWrapper = root.querySelector<HTMLElement>('[class*="_editorWrapper_"]')
+  if (editorWrapper !== null) {
+    editorWrapper.style.height = 'calc(100% - 68px)'
+    editorWrapper.style.padding = '8px 12px'
+  }
+  // boostEditorWrapper も同じ calc(100%-120px) を使う
+  const boostWrapper = root.querySelector<HTMLElement>('[class*="_boostEditorWrapper_"]')
+  if (boostWrapper !== null) {
+    boostWrapper.style.height = 'calc(100% - 68px)'
+  }
+  // Versionパネル（_abTestArticlesWrapper_）も同じ 120px を引いている
+  const articlesWrapper = root.querySelector<HTMLElement>('[class*="_abTestArticlesWrapper_"]')
+  if (articlesWrapper !== null) {
+    articlesWrapper.style.height = 'calc(100vh - 68px)'
+  }
+
   // 動画（<video>）ブロットを Quill 生成前に登録しておく（保存HTMLからの復元でも消えないように）。
   registerMediaBlots()
   // ── プレビュー枠の iframe を、動くQuillに差し替える ──

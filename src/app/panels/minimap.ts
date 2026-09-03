@@ -105,26 +105,39 @@ export function mountMinimap(editorRoot: HTMLElement, scrollContainer: HTMLEleme
   }
 
   // ── ビューポートインジケータの位置を更新 ──
+  //
+  // scrollFraction = scrollTop / maxScrollTop  (0=先頭, 1=末尾)
+  // indicatorH     = (clientH / scrollH) * scaledH  (表示範囲の視覚的な高さ)
+  // indicatorTop   = scrollFraction * (scaledH - indicatorH)
+  //
+  // scrollToY はこの逆写像で、クリック位置と表示位置が必ず一致する。
   const updateViewport = (): void => {
     const scrollH = scrollContainer.scrollHeight
-    if (scrollH <= 0) return
+    const clientH = scrollContainer.clientHeight
+    if (scrollH <= 0 || scrollH <= clientH) return
     const scaledH = clone.scrollHeight * effectiveScale
-    const scrollRatio = scrollContainer.scrollTop / scrollH
-    const visibleRatio = scrollContainer.clientHeight / scrollH
-    const top = scrollRatio * scaledH
-    const height = visibleRatio * scaledH
+    const indicatorH = (clientH / scrollH) * scaledH
+    const maxScrollTop = scrollH - clientH
+    const scrollFraction = scrollContainer.scrollTop / maxScrollTop
+    const top = scrollFraction * (scaledH - indicatorH)
     viewport.style.top = `${top}px`
-    viewport.style.height = `${Math.max(8, height)}px`
+    viewport.style.height = `${Math.max(8, indicatorH)}px`
   }
 
   // ── クリック/ドラッグでスクロール ──
   const scrollToY = (clientY: number): void => {
     const rect = wrapper.getBoundingClientRect()
+    const scrollH = scrollContainer.scrollHeight
+    const clientH = scrollContainer.clientHeight
+    if (scrollH <= clientH) return
     const scaledH = clone.scrollHeight * effectiveScale
     if (scaledH <= 0) return
-    const ratio = Math.max(0, Math.min(1, (clientY - rect.top) / scaledH))
-    scrollContainer.scrollTop =
-      ratio * (scrollContainer.scrollHeight - scrollContainer.clientHeight)
+    const indicatorH = (clientH / scrollH) * scaledH
+    const track = scaledH - indicatorH
+    if (track <= 0) return
+    // クリック位置をインジケータの中央に合わせる
+    const fraction = Math.max(0, Math.min(1, (clientY - rect.top - indicatorH / 2) / track))
+    scrollContainer.scrollTop = fraction * (scrollH - clientH)
   }
 
   let isDragging = false
