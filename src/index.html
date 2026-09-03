@@ -94,6 +94,9 @@
          クローンは画像を常にローカル(dataURL)で完結させ外部アップロードしないので、この警告枠は不要。
          マージ済みcssomの後に読み込まれる本ブロックで打ち消す（同詳細度なら後勝ち）。 */
       .ql-editor img { border: none; }
+      /* 指示㉜: ロゴを差し替えた（正方アイコン）。元のimgは36x27指定なので、
+         高さ基準・幅autoで歪ませずに表示する。 */
+      img[alt="Squadbeyond Logo"] { height: 28px; width: auto; }
     </style>
   </head>
   <body>
