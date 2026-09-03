@@ -18,6 +18,7 @@ import { mountTagSettings } from '../panels/tag-settings.ts'
 import { mountLinkReplace } from '../panels/link-replace.ts'
 import { mountHistory, recordArticleHistory } from '../panels/history.ts'
 import { mountEditorToolbar } from '../panels/editor-toolbar.ts'
+import { mountSidebarToolbar } from '../panels/editor-sidebar-toolbar.ts'
 import { createAutosave } from './autosave.ts'
 import { createPanelGroup } from '../panels/panel-group.ts'
 import { recordHistory } from './folders.ts'
@@ -403,6 +404,32 @@ function injectQuillScrollFix(): void {
     '.ql-editor { height: auto !important; overflow-y: visible !important; }',
   ].join('')
   document.head.append(style)
+}
+
+/** 旧フローティングツールバーを非表示にする */
+function hideFloatingToolbar(root: HTMLElement): void {
+  const wrapper = root.querySelector<HTMLElement>('[data-test="EditorToolbar-EditorToolbarWrapper"]')
+  if (wrapper !== null) {
+    wrapper.style.display = 'none'
+  }
+}
+
+/** 左固定サイドバーツールバーを editorWrapper 内に配置する */
+function mountSidebarToolbarPanel(ctx: EditorContext): void {
+  const editorWrapper = ctx.root.querySelector<HTMLElement>('[class*="_editorWrapper_"]')
+  if (editorWrapper === null) return
+
+  // 既存のパネルがあれば重複しない
+  if (editorWrapper.querySelector('[data-sidebar-toolbar]') !== null) return
+
+  const panel = mountSidebarToolbar(ctx.quill, ctx.root)
+
+  // editorWrapper を flex コンテナにして左にパネルを差し込む
+  editorWrapper.style.display = 'flex'
+  editorWrapper.style.flexDirection = 'row'
+
+  // パネルを editorWrapper の先頭に差し込む（Versionパネルの手前・キャンバスの左）
+  editorWrapper.prepend(panel)
 }
 
 /**
@@ -935,6 +962,9 @@ function wireSideToolbar(ctx: EditorContext): void {
   mountEditorToolbar(ctx.root, ctx.quill, {
     trackingSettingsHref: `#/folders/${ctx.folderUid}/ab_tests/${ctx.abTestUid}/edit`,
   })
+  // 旧フローティングツールバーを非表示にし、左固定パネルに置き換える
+  hideFloatingToolbar(ctx.root)
+  mountSidebarToolbarPanel(ctx)
   // パズルピース（Widget管理ボタン）は実物では Widgetライブラリを開く
   mountWidgetLibrary(ctx.root, ctx.quill)
 
