@@ -19,7 +19,7 @@ import { createHash, timingSafeEqual } from 'node:crypto'
 import { Router } from 'express'
 import type { Request, Response } from 'express'
 import { ADMIN_PASSWORD, ADMIN_PATH } from '../config.ts'
-import { hasAllowedEmail } from '../store/allowed-emails.ts'
+import { hasAllowedEmail, isEmailGateEnabled } from '../store/allowed-emails.ts'
 
 export const ADMIN_SESSION_COOKIE = 'admin_session'
 export const EMAIL_GATE_COOKIE = 'email_gate'
@@ -205,13 +205,19 @@ adminAuthRouter.post('/__auth/verify-email', (req, res) => {
   res.json({ ok: true, redirect: ADMIN_PATH })
 })
 
-/** 管理画面入口（ADMIN_PATH）にログイン画面を返す */
+/** 管理画面入口（ADMIN_PATH）にログイン画面またはメールゲートを返す */
 adminAuthRouter.get(ADMIN_PATH, (req: Request, res: Response) => {
   if (isAdminAuthenticated(req)) {
     // ログイン済みならSPAのルート（`/`）へ飛ばす（本番では serveIndexOrLogin がSPAを返す）
     res.redirect('/')
     return
   }
+  // メールゲートが有効 & まだメール認証していない → メール入力フォーム
+  if (isEmailGateEnabled() && !isEmailGateVerified(req)) {
+    res.type('html').send(renderEmailGatePage())
+    return
+  }
+  // メールゲート無効 or メール認証済み → パスワードログイン画面
   res.type('html').send(renderLoginPage())
 })
 
