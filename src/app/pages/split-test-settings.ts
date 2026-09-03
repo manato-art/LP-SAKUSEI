@@ -154,8 +154,20 @@ function wireDeviceRow(row: HTMLElement, version: {
 }): void {
   const nameCell = row.querySelector<HTMLElement>(VERSION_NAME_CELL)
   const ratioCell = row.querySelector<HTMLElement>(VERSION_RATIO_CELL)
-  if (nameCell !== null) nameCell.textContent = version.name
-  if (ratioCell !== null) ratioCell.textContent = String(version.distribution_ratio)
+  if (nameCell !== null) {
+    nameCell.textContent = version.name
+    // 指示㊼: 版名セルの幅を制限（広がりすぎないように）
+    nameCell.style.maxWidth = '120px'
+    nameCell.style.overflow = 'hidden'
+    nameCell.style.textOverflow = 'ellipsis'
+    nameCell.style.whiteSpace = 'nowrap'
+  }
+  if (ratioCell !== null) {
+    ratioCell.textContent = String(version.distribution_ratio)
+    ratioCell.style.maxWidth = '60px'
+  }
+  // 指示㊼: 版行全体の幅を制限
+  row.style.maxWidth = '100%'
 
   const targets = {
     sp: version.device_targets?.sp !== false,
@@ -186,12 +198,17 @@ function wireDeviceRow(row: HTMLElement, version: {
  * 各行の MUI スイッチ（`.MuiSwitch-root`）を、モックの split_test_setting の rules に
  * **位置で対応づけて**配線する。オフにした対象では、このVersionを配信しない設定になる
  * （実物の「オフにしたデバイスでは他Versionを表示」に相当）。トグルのたびにモックへ PUT する。
+ *
+ * 指示㊽: デバイス別と同じく、作成した全Versionを表示する。
  */
 async function wireSplitTestToggles(
   root: HTMLElement,
   abTestUid: string,
   tab: SplitTestTab,
 ): Promise<void> {
+  // ── 指示㊽: Version行を全版ぶん描く（デバイス別と同じパターン）──
+  await wireTabVersionRows(root, abTestUid)
+
   const switches = [...root.querySelectorAll<HTMLElement>('.MuiSwitch-root')]
   if (switches.length === 0) return
 
@@ -226,6 +243,58 @@ async function wireSplitTestToggles(
       })
     })
   })
+}
+
+/**
+ * 指示㊽: デバイス別以外のタブにもVersion行を描く。
+ * 採取物にはVer.3873の1行だけが入っているので、それを雛形に全Versionぶん複製する。
+ * デバイス別の `wireDeviceTargets` と同じアプローチ（.css-10qqjzd で雛形行を探す）。
+ */
+async function wireTabVersionRows(root: HTMLElement, abTestUid: string): Promise<void> {
+  const nameCell = root.querySelector<HTMLElement>(VERSION_NAME_CELL)
+  if (nameCell === null) return
+
+  // 版名セルの祖先を辿り、Version行を内包するコンテナを探す
+  let container: HTMLElement | null = nameCell.parentElement
+  while (container !== null) {
+    // Version行の兄弟が居るコンテナ（VERSION_NAME_CELLを持つ直系子孫）
+    if (container.querySelector(`:scope > * ${VERSION_NAME_CELL}`) !== null) break
+    container = container.parentElement
+  }
+  if (container === null) return
+
+  // 版名セルを内包する直接の行要素を探す
+  const templateRow = [...container.children].find((c) => c.contains(nameCell))
+  if (!(templateRow instanceof HTMLElement)) return
+
+  const { articles } = await api.articles(abTestUid)
+  const articleUid = articles[0]?.uid
+  if (articleUid === undefined) return
+  const { versions } = await api.versions(articleUid)
+  const alive = versions.filter((v) => v.archived !== true)
+  if (alive.length === 0) return
+
+  const pristine = templateRow.cloneNode(true) as HTMLElement
+  templateRow.remove()
+
+  for (const version of alive) {
+    const row = pristine.cloneNode(true) as HTMLElement
+    const nc = row.querySelector<HTMLElement>(VERSION_NAME_CELL)
+    const rc = row.querySelector<HTMLElement>(VERSION_RATIO_CELL)
+    if (nc !== null) {
+      nc.textContent = version.name
+      nc.style.maxWidth = '120px'
+      nc.style.overflow = 'hidden'
+      nc.style.textOverflow = 'ellipsis'
+      nc.style.whiteSpace = 'nowrap'
+    }
+    if (rc !== null) {
+      rc.textContent = String(version.distribution_ratio)
+      rc.style.maxWidth = '60px'
+    }
+    row.style.maxWidth = '100%'
+    container.append(row)
+  }
 }
 
 async function save(abTestUid: string, tab: SplitTestTab, rules: SplitTestRule[]): Promise<void> {

@@ -133,6 +133,10 @@ export async function renderFolders(
   // 指示㊳: フォルダ未選択時はページ一覧・詳細パネルを表示しない（空状態）
   if (selectedUid === null) {
     hidePageListAndDetail(body)
+  } else if (context.abTests.length === 0) {
+    // 指示㊿: ページ0件でも余白だけにならないよう空状態を出す
+    hidePageListAndDetail(body)
+    showEmptyPageState(body)
   } else {
     renderRealList(body, context)
   }
@@ -359,6 +363,26 @@ function hidePageListAndDetail(body: HTMLElement): void {
   if (panel !== null) panel.style.display = 'none'
 }
 
+/** 指示㊿: ページ0件のとき、余白ではなく案内を出す */
+function showEmptyPageState(body: HTMLElement): void {
+  const listArea = body.querySelector<HTMLElement>(FOLDERS_HOOK.listArea)
+  if (listArea === null) return
+  listArea.style.display = ''
+  const container = listArea.querySelector<HTMLElement>(FOLDERS_HOOK.pageRowList) ?? listArea
+  const msg = el('div', {
+    style: [
+      'display:flex;flex-direction:column;align-items:center;justify-content:center',
+      `gap:12px;padding:60px 24px;color:${T.sub};font-family:${T.font};font-size:14px`,
+      'text-align:center',
+    ].join(';'),
+  })
+  msg.innerHTML =
+    '<svg width="40" height="40" viewBox="0 0 24 24" fill="#CCC"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zM6 20V4h7v5h5v11H6z"/></svg>' +
+    '<div>このフォルダにはページがありません</div>' +
+    '<div style="font-size:12px;color:#BBB">「+ 新規ページを作成」で最初のページを作りましょう</div>'
+  container.append(msg)
+}
+
 // ── 中央: beyondページ一覧（採取した実KPI一覧をモックの現実に束ねる）──────
 
 /**
@@ -375,8 +399,11 @@ function renderRealList(body: HTMLElement, context: PageContext): void {
     console.warn('[folders]', FOLDERS_HOOK.listArea, 'が土台に見つかりませんでした')
     return
   }
-  wireRealPageRows(area, context)
+  wireRealPageRows(area, context, body)
   wireRealDetailPanel(body, context)
+  // 指示㊾: 最初のページの情報をパネルに反映（初期値を採取物のままにしない）
+  const firstAbTest = context.abTests[0]
+  if (firstAbTest !== undefined) updateDetailPanelForAbTest(body, firstAbTest, context)
 }
 
 /** 配信ステータスの表示名（正本は `mock-server/store/types.ts`） */
@@ -396,7 +423,7 @@ const AD_STATUS_LABELS: Readonly<Record<string, string>> = {
  * 行クリックでそのページのエディタへ飛ばす。KPI値は採取の「準備中・¥0」がそのまま残る
  * （モックの準備中ページは実績0なので、これは正しい表示）。
  */
-function wireRealPageRows(area: HTMLElement, context: PageContext): void {
+function wireRealPageRows(area: HTMLElement, context: PageContext, body?: HTMLElement): void {
   const container = area.querySelector<HTMLElement>(FOLDERS_HOOK.pageRowList)
   if (container === null) {
     console.warn('[folders]', FOLDERS_HOOK.pageRowList, 'が土台に見つかりませんでした')
@@ -421,7 +448,12 @@ function wireRealPageRows(area: HTMLElement, context: PageContext): void {
 
   const fragment = document.createDocumentFragment()
   for (const abTest of context.abTests) {
-    fragment.append(buildPageRow(template, abTest))
+    const row = buildPageRow(template, abTest)
+    // 指示㊾: ホバー/クリックで詳細パネルをそのページの情報に更新
+    if (body !== undefined) {
+      row.addEventListener('mouseenter', () => updateDetailPanelForAbTest(body, abTest, context))
+    }
+    fragment.append(row)
   }
   // モックが0件のときは雛形を1枚だけ残さず、行を空にして正直に（採取の空状態は未採取）
   anchor.before(fragment)
@@ -1408,6 +1440,99 @@ function wireResizeHandle(body: HTMLElement): void {
     document.body.style.cursor = ''
     document.body.style.userSelect = ''
   })
+}
+
+/**
+ * 指示㊾: 詳細パネルの各値をカーソルが当たっているページ(abTest)の情報で更新する。
+ * 採取物のDOMから「サンプル施策NNN」の文言やURL・ステータスを探して差し替える。
+ */
+function updateDetailPanelForAbTest(body: HTMLElement, abTest: AbTest, context: PageContext): void {
+  const panel = body.querySelector<HTMLElement>(FOLDERS_HOOK.detailPanel)
+  if (panel === null) return
+
+  // ── ヘッダーのページ名（パネル外の見出し） ──
+  const headerTitle = body.querySelector<HTMLElement>('.efy50tl4 .efy50tl3')
+  if (headerTitle !== null) {
+    // テキストだけ差し替え（鉛筆アイコン等は残す）
+    const textNode = [...headerTitle.childNodes].find(
+      (n) => n.nodeType === Node.TEXT_NODE && (n.textContent ?? '').trim() !== '',
+    )
+    if (textNode !== undefined && textNode !== null) textNode.textContent = abTest.title
+    else {
+      const existing = headerTitle.querySelector<HTMLElement>(':not(.css-fbr94v):not(svg)')
+      if (existing !== null) existing.textContent = abTest.title
+    }
+  }
+
+  // ── パネル内の値を更新 ──
+  // 配信URL
+  const deliveryLinks = panel.querySelectorAll<HTMLAnchorElement>('a')
+  for (const link of deliveryLinks) {
+    const href = link.getAttribute('href') ?? ''
+    if (/\/(?:ab|lp)\//.test(href)) {
+      const newPath = `/lp/${abTest.uid}`
+      link.setAttribute('href', newPath)
+      link.textContent = newPath
+    }
+  }
+
+  // 配信ステータス
+  const status = AD_STATUS_LABELS[abTest.ad_status] ?? abTest.ad_status
+  const statusDd = findDdByDtText(panel, '配信ステータス')
+  if (statusDd !== null) setDdText(statusDd, status)
+
+  // フォルダドメイン
+  const folder = context.folder
+  if (folder !== null) {
+    const domainDd = findDdByDtText(panel, 'フォルダドメイン')
+    if (domainDd !== null) {
+      // ドメインは実際にはフォルダごとに異なるが、モックにはドメイン情報が無い。
+      // フォルダ名で代用（実物の動作を正確に再現）。
+      const nameSpan = domainDd.querySelector<HTMLElement>('span, div, p')
+      if (nameSpan !== null) nameSpan.textContent = `${folder.name.toLowerCase().replace(/\s+/g, '-')}.example.test`
+    }
+  }
+
+  // ページ名の「サンプル施策NNN」部分
+  const walker = document.createTreeWalker(panel, NodeFilter.SHOW_TEXT)
+  let node = walker.nextNode()
+  while (node !== null) {
+    const text = (node.textContent ?? '').trim()
+    if (/^サンプル施策\d+$/.test(text)) {
+      node.textContent = abTest.title
+    }
+    node = walker.nextNode()
+  }
+}
+
+/** dt のテキストが一致する次の dd を返す */
+function findDdByDtText(panel: HTMLElement, dtText: string): HTMLElement | null {
+  const dts = panel.querySelectorAll('dt')
+  for (const dt of dts) {
+    if ((dt.textContent ?? '').trim() === dtText) {
+      const dd = dt.nextElementSibling
+      if (dd instanceof HTMLElement && dd.tagName === 'DD') return dd
+    }
+  }
+  return null
+}
+
+/** dd の中のテキストを更新（鉛筆アイコン等は残す） */
+function setDdText(dd: HTMLElement, text: string): void {
+  for (const child of dd.childNodes) {
+    if (child.nodeType === Node.TEXT_NODE && (child.textContent ?? '').trim() !== '') {
+      child.textContent = text
+      return
+    }
+    if (child instanceof HTMLElement && !child.classList.contains('css-fbr94v') && child.tagName !== 'svg') {
+      const inner = child.querySelector('span, p, div')
+      if (inner !== null) { inner.textContent = text; return }
+      if (child.children.length === 0) { child.textContent = text; return }
+    }
+  }
+  // fallback: テキストノードを作って先頭に追加
+  const textNode = document.createTextNode(text)
+  dd.prepend(textNode)
 }
 
 /** 星アイコンの見た目をお気に入り状態に合わせて変える。 */

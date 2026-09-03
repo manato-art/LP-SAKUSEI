@@ -269,16 +269,46 @@ function openLargePreview(card: HTMLElement, title: string): void {
   document.body.append(overlay)
 }
 
-/** 「追加」= そのWidgetの実HTMLを本文へ挿入する（採取物が無ければ名前プレースホルダに退避）。 */
+/**
+ * 「追加」= そのWidgetの実HTMLを本文へ挿入する（採取物が無ければ名前プレースホルダに退避）。
+ *
+ * 指示㊹修正: Widget の srcdoc には `<style>` が含まれるが、Quill は `<style>` をテキスト
+ * ノードとして描画してしまう（CSSコードがキャンバスに文字として出る）。
+ * → `<style>` を除去し、必要ならエディタ外に移す。Widget の見た目は採取CSSが担保するか、
+ *   inline style がすでに付いている。
+ */
 function insertWidget(quill: Quill, card: HTMLElement, title: string): void {
   const range = quill.getSelection(true)
   const index = range?.index ?? quill.getLength()
   const body = widgetBodyHtml(card)
-  const html =
-    body ??
-    `<div style="border:1px dashed #B0B0B0;border-radius:6px;padding:16px;margin:8px 0;` +
+  if (body === null) {
+    const placeholder =
+      `<div style="border:1px dashed #B0B0B0;border-radius:6px;padding:16px;margin:8px 0;` +
       `background:#FAFAFA;color:#555;text-align:center;font-size:14px">【Widget】${escapeHtml(title)}</div>`
-  quill.clipboard.dangerouslyPasteHTML(index, html, 'user')
+    quill.clipboard.dangerouslyPasteHTML(index, placeholder, 'user')
+    return
+  }
+  // <style> タグを本文から除去し、<head> 側へ退避（同じ style が既にあれば足さない）
+  const doc = new DOMParser().parseFromString(body, 'text/html')
+  for (const style of doc.querySelectorAll('style')) {
+    const css = style.textContent ?? ''
+    if (css.trim() !== '') {
+      // エディタ外のドキュメント head に退避（Quill の中に <style> を入れない）
+      const existing = [...document.head.querySelectorAll('style[data-widget-css]')]
+      const alreadyHas = existing.some((s) => s.textContent === css)
+      if (!alreadyHas) {
+        const moved = document.createElement('style')
+        moved.setAttribute('data-widget-css', 'true')
+        moved.textContent = css
+        document.head.append(moved)
+      }
+    }
+    style.remove()
+  }
+  // <script> も除去（Quill内で実行されると壊れる）
+  for (const script of doc.querySelectorAll('script')) script.remove()
+  const cleaned = doc.body.innerHTML
+  quill.clipboard.dangerouslyPasteHTML(index, cleaned, 'user')
 }
 
 function escapeHtml(value: string): string {

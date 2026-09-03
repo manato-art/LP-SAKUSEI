@@ -167,6 +167,9 @@ function resolvePanel(root: HTMLElement): HTMLElement | null {
 }
 
 function wire(root: HTMLElement, panel: HTMLElement): void {
+  // 指示㊺: パネル内のクリックが親（サイドバーアイコン等）へ伝播してパネルが閉じるのを防ぐ
+  panel.addEventListener('click', (e) => e.stopPropagation())
+
   const cancel = panel.querySelector<HTMLElement>(`.${CLS.btnCancel}`)
   cancel?.addEventListener('click', () => panel.classList.remove(CLS.open))
 
@@ -232,7 +235,10 @@ function buildRow(history: ArticleHistoryRow): HTMLElement {
   const label = node.querySelector<HTMLElement>(`.${CLS.infoLabel}`)
   if (label !== null) label.textContent = history.is_current ? CURRENT_LABEL : (history.label ?? '')
 
-  node.addEventListener('click', () => select(node))
+  node.addEventListener('click', (e) => {
+    e.stopPropagation()
+    select(node)
+  })
   return node
 }
 

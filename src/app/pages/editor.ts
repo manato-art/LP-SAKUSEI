@@ -31,6 +31,7 @@ import { EXTERNAL_IMAGE_TOOL_INDEX, mountExternalImage } from '../panels/externa
 import { registerMediaBlots } from '../panels/media-blots.ts'
 import { wireMediaDrop } from '../panels/media-insert.ts'
 import { wireImageResize } from '../panels/image-resize.ts'
+import { mountMinimap } from '../panels/minimap.ts'
 import { wireAbTestTabs } from './tab-nav.ts'
 import { wireBeyondNavAnchors } from './beyond-nav.ts'
 import { masterStyleEditorDecls } from '../master-style.ts'
@@ -250,6 +251,8 @@ export async function renderEditor(
   wireAbTestTabs(root, abTestUid, folder?.uid ?? '')
   wireTopRightIcons(root, abTestUid, folder?.uid ?? '')
   loadVersion(ctx, ctx.currentUid)
+  // 指示㊻: エディタ右側にミニマップ（LP全体の縮小プレビュー）を表示
+  mountMinimap(root, container)
   // 記事設定（Version設定）を編集画面の本文にも反映する（保存後は「更新」または再読込で最新化）。
   void applyMasterStyleToEditor(ctx)
 }
