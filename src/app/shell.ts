@@ -19,13 +19,12 @@ const NAV_TARGETS: readonly { label: string; href: string }[] = [
   { label: 'タスク', href: '#/tasks' },
   { label: 'ページ', href: '#/folders' },
   { label: 'CV速報', href: '#/conversions' },
-  { label: 'ツール', href: '#/tools' },
+  // ツールはアコーディオン親（指示㊲㊳）。直接遷移しないので NAV_TARGETS から外す。
   // 外部連携はアコーディオン親（指示⑯）。直接遷移しないので NAV_TARGETS から外す。
   { label: 'ドメイン', href: '#/teams/domains' },
   { label: '拡張機能', href: '#/addon/option-list' },
   { label: 'レポー', href: '#/report-exclusions' },
-  { label: 'イベン', href: '#/seminar' },
-  { label: 'ランキ', href: '#/rankings' },
+  // 指示㊷: イベント・セミナー / ランキング / 新UI OFF はサイドバーから除去。
 ]
 
 let shellRoot: HTMLElement | null = null
@@ -89,6 +88,11 @@ function wireSidebar(nav: HTMLElement): void {
     label?.classList.add(RAIL_LABEL_CLASS)
   }
 
+  // 指示㊷: イベント・セミナー / ランキング / 新UI OFF をサイドバーから除去
+  removeUnwantedItems(nav)
+
+  // ツールのアコーディオン配線（指示㊲㊳）
+  wireToolAccordion(nav)
   // 外部連携のアコーディオン配線（指示⑯）
   wireAccordion(nav)
 
@@ -115,6 +119,96 @@ function wireSidebar(nav: HTMLElement): void {
 /** 折りたたみ/展開・ラベルの目印クラス（JSで付与するのでスタイルは採取クラスに依存しない） */
 const RAIL_CLASS = 'sb-rail'
 const RAIL_LABEL_CLASS = 'sb-rail-label'
+
+// ── 指示㊷: 不要項目の除去 ──
+
+/** 採取HTMLからイベント・セミナー / ランキング / 新UI OFF を削除する */
+function removeUnwantedItems(nav: HTMLElement): void {
+  const REMOVE_LABELS = ['イベント・セミナー', 'ランキング']
+  for (const item of nav.querySelectorAll<HTMLElement>('[data-testid="list-menu-item"]')) {
+    const text = (item.textContent ?? '').trim()
+    if (REMOVE_LABELS.some((label) => text === label || text.startsWith(label))) {
+      // <li> ごと除去（list-menu-item はli内のdiv/a）
+      const li = item.closest('li')
+      ;(li ?? item).remove()
+    }
+  }
+  // 新UI OFF ボタン（css-pewadg 内の css-tmda99）を除去
+  for (const btn of nav.querySelectorAll<HTMLElement>('.ertw5f00, .css-tmda99')) {
+    btn.remove()
+  }
+}
+
+// ── ツールアコーディオン（指示㊲㊳） ──
+
+/** ツールのサブ項目（サブナビと同じ5ページ）。 */
+const TOOL_ACCORDION_ITEMS: readonly { label: string; href: string }[] = [
+  { label: '一括タグ', href: '#/teams/tags' },
+  { label: 'マジック置換', href: '#/articles/bulk_replaces' },
+  { label: 'メディア', href: '#/teams/product_search_forms' },
+  { label: '審査', href: '#/inspections' },
+  { label: 'フォーム', href: '#/folders/forms' },
+]
+
+let toolSubMenu: HTMLElement | null = null
+let toolChevron: HTMLElement | null = null
+let toolParentItem: HTMLElement | null = null
+let isToolOpen = false
+
+function toggleToolAccordion(): void {
+  isToolOpen = !isToolOpen
+  toolSubMenu?.classList.toggle('sb-accordion-open', isToolOpen)
+  toolChevron?.classList.toggle('sb-accordion-collapsed', !isToolOpen)
+}
+
+/** 「ツール」項目をアコーディオンに仕立てる（外部連携と同じ方式）。 */
+function wireToolAccordion(nav: HTMLElement): void {
+  for (const item of nav.querySelectorAll<HTMLElement>('[data-testid="list-menu-item"]')) {
+    const text = (item.textContent ?? '').trim()
+    if (!text.startsWith('ツール')) continue
+
+    toolParentItem = item
+    item.style.cursor = 'pointer'
+
+    const label = labelChildOf(item)
+    if (label !== null) {
+      const chevronSpan = document.createElement('span')
+      chevronSpan.className = 'sb-accordion-chevron sb-accordion-collapsed'
+      chevronSpan.innerHTML = CHEVRON_SVG
+      label.append(chevronSpan)
+      toolChevron = chevronSpan
+    }
+
+    const subMenu = document.createElement('ul')
+    subMenu.className = 'sb-accordion-sub'
+
+    for (const sub of TOOL_ACCORDION_ITEMS) {
+      const li = document.createElement('li')
+      li.className = 'sb-accordion-item'
+      const labelSpan = document.createElement('span')
+      labelSpan.className = RAIL_LABEL_CLASS
+      labelSpan.textContent = sub.label
+      li.append(labelSpan)
+      const href = sub.href
+      li.addEventListener('click', (e) => {
+        e.stopPropagation()
+        location.hash = href.slice(1)
+      })
+      subMenu.append(li)
+    }
+
+    const parentLi = item.closest('li')
+    if (parentLi !== null) parentLi.append(subMenu)
+    toolSubMenu = subMenu
+
+    item.addEventListener('click', (e) => {
+      e.stopPropagation()
+      e.preventDefault()
+      toggleToolAccordion()
+    })
+    break
+  }
+}
 
 // ── 外部連携アコーディオン（指示⑯） ──
 
@@ -304,12 +398,13 @@ function injectRailStyles(): void {
   const style = document.createElement('style')
   style.id = 'sb-rail-styles'
   style.textContent = [
+    // 指示㊴: 折りたたみ時もラベルを短縮表示する（実物と同じ）
     `.${RAIL_CLASS}{transition:width .18s ease;overflow:hidden;will-change:width}`,
-    `.${RAIL_CLASS} .${RAIL_LABEL_CLASS}{opacity:0;max-width:0;white-space:nowrap;overflow:hidden;`,
-    `transition:opacity .16s ease,max-width .18s ease}`,
+    `.${RAIL_CLASS} .${RAIL_LABEL_CLASS}{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;`,
+    `opacity:.7;max-width:42px;font-size:11px;transition:opacity .16s ease,max-width .18s ease,font-size .16s ease}`,
     `@media (hover:hover){`,
     `.${RAIL_CLASS}:hover{width:232px !important}`,
-    `.${RAIL_CLASS}:hover .${RAIL_LABEL_CLASS}{opacity:1;max-width:170px}`,
+    `.${RAIL_CLASS}:hover .${RAIL_LABEL_CLASS}{opacity:1;max-width:170px;font-size:inherit}`,
     `}`,
     // ── アコーディオン ──
     `.sb-accordion-chevron{display:inline-flex;align-items:center;margin-left:4px;`,
@@ -318,7 +413,7 @@ function injectRailStyles(): void {
     `.sb-accordion-sub{list-style:none;margin:0;padding:0;overflow:hidden;`,
     `max-height:0;opacity:0;transition:max-height .22s ease,opacity .16s ease}`,
     `@media (hover:hover){`,
-    `.${RAIL_CLASS}:hover .sb-accordion-sub.sb-accordion-open{max-height:120px;opacity:1}`,
+    `.${RAIL_CLASS}:hover .sb-accordion-sub.sb-accordion-open{max-height:200px;opacity:1}`,
     `}`,
     `.sb-accordion-item{display:flex;align-items:center;padding:5px 8px 5px 40px;`,
     `cursor:pointer;font-size:13px;color:#666;white-space:nowrap;overflow:hidden}`,
@@ -343,14 +438,34 @@ export function markActiveNav(pathPrefix: string): void {
     item.classList.toggle(NAV_INACTIVE_CLASS, !active)
   }
 
-  // ── アコーディオン親のハイライトと自動展開（指示⑯） ──
+  // ── ツールアコーディオン親のハイライトと自動展開（指示㊲㊳） ──
+  if (toolParentItem !== null) {
+    const toolActive = TOOL_ACCORDION_ITEMS.some(
+      (ti) => pathPrefix.startsWith(ti.href.slice(1)),
+    )
+    toolParentItem.classList.toggle(NAV_ACTIVE_CLASS, toolActive)
+    toolParentItem.classList.toggle(NAV_INACTIVE_CLASS, !toolActive)
+    if (toolActive && !isToolOpen) toggleToolAccordion()
+  }
+  if (toolSubMenu !== null) {
+    const toolLis = toolSubMenu.querySelectorAll<HTMLElement>('.sb-accordion-item')
+    let tidx = 0
+    for (const ti of TOOL_ACCORDION_ITEMS) {
+      const li = toolLis[tidx]
+      if (li !== undefined) {
+        li.classList.toggle('sb-accordion-item-active', pathPrefix.startsWith(ti.href.slice(1)))
+      }
+      tidx += 1
+    }
+  }
+
+  // ── 外部連携アコーディオン親のハイライトと自動展開（指示⑯） ──
   if (accordionParentItem !== null) {
     const accordionActive = ACCORDION_ITEMS.some(
       (ai) => ai.href !== null && pathPrefix.startsWith(ai.href.slice(1)),
     )
     accordionParentItem.classList.toggle(NAV_ACTIVE_CLASS, accordionActive)
     accordionParentItem.classList.toggle(NAV_INACTIVE_CLASS, !accordionActive)
-    // アコーディオン配下のルートにいるなら自動で開く
     if (accordionActive && !isAccordionOpen) toggleAccordion()
   }
 

@@ -202,7 +202,7 @@ async function route(): Promise<void> {
       await renderAccountSettings(content)
       return
     }
-    // /tools → 最初のツールサブページへリダイレクト（シェルの「ツール」が #/tools を指している）
+    // /tools → 最初のツールサブページへリダイレクト（旧リンクの互換性）
     if (path === '/tools') {
       location.hash = '/teams/tags'
       return

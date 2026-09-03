@@ -129,10 +129,19 @@ export async function renderFolders(
   }
 
   renderTree(body, context)
-  renderRealList(body, context)
+
+  // 指示㊳: フォルダ未選択時はページ一覧・詳細パネルを表示しない（空状態）
+  if (selectedUid === null) {
+    hidePageListAndDetail(body)
+  } else {
+    renderRealList(body, context)
+  }
+
   wireTreeTabs(body, context)
   wireTreeControls(body, context)
   wireMainControls(body, context)
+  // 指示㊲: リサイズハンドルのドラッグで一覧と詳細パネルの幅を変える
+  wireResizeHandle(body)
 }
 
 // ── 左: フォルダツリー ─────────────────────────────────
@@ -317,6 +326,37 @@ function wireRowHover(row: HTMLElement): void {
   row.addEventListener('mouseleave', () => {
     for (const node of hidden) node.style.opacity = '0'
   })
+}
+
+/**
+ * 指示㊳: フォルダ未選択時、ページ一覧エリアと右詳細パネルの中身を空にする。
+ * 採取した枠は残すが、データ行・詳細情報は表示しない。
+ */
+function hidePageListAndDetail(body: HTMLElement): void {
+  // 一覧エリアの行を消す
+  const listArea = body.querySelector<HTMLElement>(FOLDERS_HOOK.listArea)
+  if (listArea !== null) {
+    const container = listArea.querySelector<HTMLElement>(FOLDERS_HOOK.pageRowList)
+    if (container !== null) {
+      // 行ラッパーを全削除（ヘッダは残す）
+      const rowWrappers = Array.from(container.children).filter(
+        (child): child is HTMLElement =>
+          child.querySelector('[data-testid="list-menu-item"]') !== null,
+      )
+      for (const wrapper of rowWrappers) wrapper.remove()
+      // スピナーも消す
+      for (const spinner of container.querySelectorAll<HTMLElement>('[role="progressbar"]')) {
+        const wrapper = spinner.closest<HTMLElement>(`${FOLDERS_HOOK.pageRowList} > div`)
+        ;(wrapper ?? spinner).style.display = 'none'
+      }
+    }
+    // グループ名を消す
+    const groupName = listArea.querySelector<HTMLElement>(FOLDERS_HOOK.groupName)
+    if (groupName !== null) groupName.textContent = ''
+  }
+  // 右詳細パネルを非表示にする
+  const panel = body.querySelector<HTMLElement>(FOLDERS_HOOK.detailPanel)
+  if (panel !== null) panel.style.display = 'none'
 }
 
 // ── 中央: beyondページ一覧（採取した実KPI一覧をモックの現実に束ねる）──────
@@ -1316,6 +1356,58 @@ function wireRowActions(row: HTMLElement, folder: Folder, rerender: () => void):
       openFolderMenu(gearBtn, folder)
     })
   }
+}
+
+// ── 指示㊲: リサイズハンドル（一覧と詳細パネルの幅変更）──────────
+/**
+ * 採取DOMに在るリサイズ用のグリップ（`.css-1tixm3t`）をドラッグ可能にする。
+ * 実物と同じく `col-resize` カーソルは CSS で当たっている。ここではマウスドラッグ時に
+ * 左隣のページ一覧（`.efy50tl20`）の flex-basis を動かして幅を変える。
+ */
+function wireResizeHandle(body: HTMLElement): void {
+  const handle = body.querySelector<HTMLElement>('.css-1tixm3t')
+  if (handle === null) return
+  const listArea = body.querySelector<HTMLElement>(FOLDERS_HOOK.listArea)
+  const detailPanel = body.querySelector<HTMLElement>(FOLDERS_HOOK.detailPanel)
+  if (listArea === null || detailPanel === null) return
+
+  // 共通の親
+  const parent = listArea.parentElement
+  if (parent === null) return
+  parent.style.position = 'relative'
+
+  let isDragging = false
+  let startX = 0
+  let startListWidth = 0
+
+  handle.addEventListener('mousedown', (e: MouseEvent) => {
+    e.preventDefault()
+    isDragging = true
+    startX = e.clientX
+    startListWidth = listArea.getBoundingClientRect().width
+    handle.style.zIndex = '100'
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+  })
+
+  document.addEventListener('mousemove', (e: MouseEvent) => {
+    if (!isDragging) return
+    const delta = e.clientX - startX
+    const parentWidth = parent.getBoundingClientRect().width
+    const newWidth = Math.max(200, Math.min(parentWidth - 200, startListWidth + delta))
+    listArea.style.flex = 'none'
+    listArea.style.width = `${newWidth}px`
+    detailPanel.style.flex = '1'
+    detailPanel.style.minWidth = '200px'
+  })
+
+  document.addEventListener('mouseup', () => {
+    if (!isDragging) return
+    isDragging = false
+    handle.style.zIndex = ''
+    document.body.style.cursor = ''
+    document.body.style.userSelect = ''
+  })
 }
 
 /** 星アイコンの見た目をお気に入り状態に合わせて変える。 */

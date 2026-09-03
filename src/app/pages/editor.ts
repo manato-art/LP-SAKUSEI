@@ -30,6 +30,7 @@ import { mountWidgetLibrary } from '../panels/widget-library.ts'
 import { EXTERNAL_IMAGE_TOOL_INDEX, mountExternalImage } from '../panels/external-image.ts'
 import { registerMediaBlots } from '../panels/media-blots.ts'
 import { wireMediaDrop } from '../panels/media-insert.ts'
+import { wireImageResize } from '../panels/image-resize.ts'
 import { wireAbTestTabs } from './tab-nav.ts'
 import { wireBeyondNavAnchors } from './beyond-nav.ts'
 import { masterStyleEditorDecls } from '../master-style.ts'
@@ -195,6 +196,8 @@ export async function renderEditor(
   const quill = mountQuill(root)
   // キャンバスへのドラッグ＆ドロップで、カーソル位置へ画像/GIF/動画を挿入できるようにする。
   wireMediaDrop(quill)
+  // 指示㊵: 貼り付けた画像のサイズをドラッグで変更できるようにする
+  wireImageResize(quill)
 
   // Versionカードの雛形を、配線前のクリーンな状態でクローンして控える（採取した実物1枚が雛形）。
   const originalCard = root.querySelector<HTMLElement>('[data-article-uid]')
@@ -691,6 +694,14 @@ function wireSideToolbar(ctx: EditorContext): void {
   // パズルピース（Widget管理ボタン）は実物では Widgetライブラリを開く
   mountWidgetLibrary(ctx.root, ctx.quill)
 
+  // 指示㊶: 右レールをスクロール追従させる（sticky）。
+  // エディタのコンテナは `overflow:auto` なので `position:sticky` が効く。
+  const sideToolbarWrapper = ctx.root.querySelector<HTMLElement>('[class*="_sideToolbarWrapper_"]')
+  if (sideToolbarWrapper !== null) {
+    sideToolbarWrapper.style.position = 'sticky'
+    sideToolbarWrapper.style.top = '0'
+    sideToolbarWrapper.style.alignSelf = 'flex-start'
+  }
 
   const icons = [...ctx.root.querySelectorAll<HTMLElement>('[class*="sideToolbarIcon"]')]
   for (let index = 0; index < icons.length; index += 1) {
