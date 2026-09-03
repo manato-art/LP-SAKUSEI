@@ -283,12 +283,52 @@ interface AllowedEmailEntry {
 }
 
 async function renderAccessManagement(content: HTMLElement): Promise<void> {
+  // 共有リンク表示エリア（admin_path を取得後に埋める）
+  const shareBox = el('div', {
+    style: [
+      `background:#F0F6FF;border:1px solid #C4DCFF;border-radius:8px;padding:14px 16px`,
+      `margin-bottom:20px;display:flex;align-items:center;gap:10px`,
+    ].join(';'),
+  })
+  const shareLinkEl = el('div', {
+    style: `flex:1;min-width:0`,
+  })
+  shareLinkEl.append(
+    el('div', {
+      text: '共有リンク',
+      style: `font-size:11px;color:#4A7FBF;font-weight:600;margin-bottom:4px`,
+    }),
+  )
+  const shareUrlText = el('div', {
+    text: '読み込み中...',
+    style: `font-size:13px;color:${T.text};word-break:break-all;font-family:monospace`,
+  })
+  shareLinkEl.append(shareUrlText)
+  const copyBtn = document.createElement('button')
+  copyBtn.textContent = 'コピー'
+  copyBtn.style.cssText = [
+    `padding:6px 16px;border:1px solid #4A7FBF;border-radius:6px;background:#FFF`,
+    `color:#4A7FBF;cursor:pointer;font-size:12px;font-family:${T.font};white-space:nowrap`,
+  ].join(';')
+  copyBtn.addEventListener('click', () => {
+    const url = shareUrlText.textContent ?? ''
+    void navigator.clipboard.writeText(url).then(
+      () => {
+        copyBtn.textContent = 'コピー済み'
+        setTimeout(() => { copyBtn.textContent = 'コピー' }, 1500)
+      },
+      () => toast('コピーに失敗しました', 'error'),
+    )
+  })
+  shareBox.append(shareLinkEl, copyBtn)
+  content.append(shareBox)
+
   const desc = el('div', {
     style: `font-size:13px;color:${T.sub};line-height:1.7;margin-bottom:20px`,
   })
   desc.innerHTML = [
-    'ここに登録したメールアドレスの人だけが、ルートURL（<code>/</code>）からログイン画面へ進めます。',
-    '登録が0件のときはルートURLは404を返します（従来どおり）。',
+    'ここに登録したメールアドレスの人だけが、上記リンクからログイン画面へ進めます。',
+    '登録が0件のときはメールゲートが無効になり、リンクから直接パスワード画面が出ます。',
   ].join('<br>')
   content.append(desc)
 
@@ -316,10 +356,14 @@ async function renderAccessManagement(content: HTMLElement): Promise<void> {
     try {
       const res = await fetch('/api/v1/allowed_emails')
       if (!res.ok) throw new Error(`${res.status}`)
-      const data = (await res.json()) as { allowed_emails: AllowedEmailEntry[] }
+      const data = (await res.json()) as { allowed_emails: AllowedEmailEntry[]; admin_path?: string }
       emails = data.allowed_emails
+      // 共有リンクを更新
+      const adminPath = data.admin_path ?? '/__admin'
+      shareUrlText.textContent = `${location.origin}${adminPath}`
     } catch {
       emails = []
+      shareUrlText.textContent = `${location.origin}/__admin`
       toast('許可メールの読み込みに失敗しました', 'error')
     }
     renderList()
@@ -330,7 +374,7 @@ async function renderAccessManagement(content: HTMLElement): Promise<void> {
     if (emails.length === 0) {
       listArea.append(
         el('div', {
-          text: 'メールアドレスが登録されていません。ルートURLは404を返します。',
+          text: 'メールアドレスが登録されていません。共有リンクから直接パスワード画面が出ます。',
           style: `padding:20px;text-align:center;font-size:13px;color:${T.sub}`,
         }),
       )

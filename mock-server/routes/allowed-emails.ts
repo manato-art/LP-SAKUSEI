@@ -10,12 +10,13 @@ import {
   getAllowedEmails,
   removeAllowedEmail,
 } from '../store/allowed-emails.ts'
+import { ADMIN_PATH } from '../config.ts'
 
 export const allowedEmailsRouter: Router = Router()
 
-/** 許可メール一覧 */
+/** 許可メール一覧 + 共有用の管理画面パス */
 allowedEmailsRouter.get('/allowed_emails', (_req, res) => {
-  res.json({ allowed_emails: getAllowedEmails() })
+  res.json({ allowed_emails: getAllowedEmails(), admin_path: ADMIN_PATH })
 })
 
 /** メール追加 */
