@@ -617,11 +617,13 @@ function wirePageRowActions(row: HTMLElement, abTest: AbTest): void {
 
   item.append(bar)
 
-  // ホバーで表示/非表示 + 指示61: 黄色ハイライト
+  // ホバーで表示/非表示 + 指示61: 黄色ハイライト + 指示65: 畳んだパネルを再展開
   row.addEventListener('mouseenter', () => {
     bar.style.opacity = '1'
     bar.style.pointerEvents = 'auto'
     if (item !== null) item.style.backgroundColor = '#FFFDE7'
+    // 指示65: 畳まれた詳細パネルを再展開
+    expandDetailPanel(document.body)
   })
   row.addEventListener('mouseleave', () => {
     bar.style.opacity = '0'
@@ -714,56 +716,131 @@ function openPageMoreMenu(anchor: HTMLElement, abTest: AbTest): void {
 }
 
 /**
- * 指示60: 詳細パネルにホバー時のみ表示する「閉じる >>」ボタンを追加する。
- * パネルの左上に配置し、クリックでパネルを非表示にする。
+ * 指示60→65: 詳細パネルの「閉じる »」ボタン。
+ * パネル左端にタブ型で配置。クリックでパネルを畳む（非表示ではなく折り畳み）。
+ * ページ行をホバー/クリックしたら再展開する。
  */
 function wireDetailPanelCloseButton(panel: HTMLElement): void {
-  if (panel.querySelector('[data-detail-close]') !== null) return
+  if (document.querySelector('[data-detail-close]') !== null) return
 
-  // パネルを position:relative にして閉じるボタンの基準にする
-  panel.style.position = 'relative'
+  // 親要素(.efy50tl23)が overflow:scroll のため、
+  // その子要素はクリップされてしまう。
+  // → grandparent(.efy50tl22, overflow:visible)にボタンを配置し、
+  //   scrollParent の左端に合わせて突き出させる。
+  const scrollParent = panel.parentElement
+  if (scrollParent === null) return
+  const grandparent = scrollParent.parentElement
+  if (grandparent === null) return
+
+  grandparent.style.position = 'relative'
 
   const closeBtn = document.createElement('button')
   closeBtn.setAttribute('data-detail-close', 'true')
   closeBtn.textContent = '閉じる »'
   closeBtn.style.cssText = [
     'position:absolute',
-    'top:8px',
-    'left:8px',
+    'top:50%',
+    'transform:translateY(-50%)',
     'z-index:10',
-    'display:none',
-    'padding:4px 10px',
+    'padding:8px 6px',
     'border:1px solid #ccc',
-    'border-radius:4px',
+    'border-right:none',
+    'border-radius:4px 0 0 4px',
     'background:#fff',
     'color:#666',
-    'font-size:12px',
+    'font-size:11px',
     `font-family:${T.font}`,
     'cursor:pointer',
     'white-space:nowrap',
+    'writing-mode:vertical-rl',
+    'text-orientation:mixed',
+    'letter-spacing:2px',
     'transition:background 0.15s',
+    'box-shadow:-2px 0 4px rgba(0,0,0,.08)',
+    'display:none',
   ].join(';')
 
+  // scrollParent の左端にボタンの右端を合わせる位置を計算
+  const updatePosition = (): void => {
+    const spLeft = scrollParent.offsetLeft
+    closeBtn.style.left = `${spLeft - closeBtn.offsetWidth}px`
+  }
+
   closeBtn.addEventListener('mouseenter', () => {
-    closeBtn.style.background = '#f5f5f5'
+    closeBtn.style.background = '#f0f0f0'
   })
   closeBtn.addEventListener('mouseleave', () => {
     closeBtn.style.background = '#fff'
   })
   closeBtn.addEventListener('click', (e) => {
     e.stopPropagation()
-    panel.style.display = 'none'
-  })
-
-  panel.prepend(closeBtn)
-
-  // パネル全体のホバーで表示/非表示
-  panel.addEventListener('mouseenter', () => {
-    closeBtn.style.display = 'block'
-  })
-  panel.addEventListener('mouseleave', () => {
+    // 畳む: scrollParent を幅0にする
+    scrollParent.style.minWidth = '0'
+    scrollParent.style.width = '0'
+    scrollParent.style.overflow = 'hidden'
+    scrollParent.style.padding = '0'
+    scrollParent.style.borderLeft = 'none'
+    scrollParent.setAttribute('data-collapsed', 'true')
     closeBtn.style.display = 'none'
   })
+
+  grandparent.append(closeBtn)
+
+  // scrollParent のホバーで表示/非表示
+  scrollParent.addEventListener('mouseenter', () => {
+    if (scrollParent.getAttribute('data-collapsed') !== 'true') {
+      closeBtn.style.display = 'block'
+      updatePosition()
+    }
+  })
+  scrollParent.addEventListener('mouseleave', () => {
+    // ボタンにマウスが移動した場合は閉じない
+    setTimeout(() => {
+      if (!closeBtn.matches(':hover')) closeBtn.style.display = 'none'
+    }, 50)
+  })
+  closeBtn.addEventListener('mouseleave', () => {
+    if (!scrollParent.matches(':hover')) closeBtn.style.display = 'none'
+  })
+}
+
+/**
+ * 指示65: 畳まれた詳細パネルを再展開する。
+ * ページ行のホバー/クリックで呼ばれる。
+ */
+function expandDetailPanel(body: HTMLElement): void {
+  // scrollParent (.efy50tl23) が畳まれているかを確認
+  const panel = body.querySelector<HTMLElement>(FOLDERS_HOOK.detailPanel)
+  if (panel === null) return
+  const scrollParent = panel.parentElement
+  if (scrollParent === null || scrollParent.getAttribute('data-collapsed') !== 'true') return
+
+  scrollParent.removeAttribute('data-collapsed')
+  scrollParent.style.minWidth = ''
+  scrollParent.style.width = ''
+  scrollParent.style.overflow = ''
+  scrollParent.style.padding = ''
+  scrollParent.style.borderLeft = ''
+  // 閉じるボタンは再びホバーで表示されるよう非表示に戻す
+  const closeBtn = scrollParent.parentElement?.querySelector<HTMLElement>('[data-detail-close]')
+  if (closeBtn != null) closeBtn.style.display = 'none'
+}
+
+/**
+ * 指示64: 詳細パネルのセクションヘッダー（URL情報・beyondページ情報・配信情報）に色をつける。
+ */
+function colorSectionHeaders(panel: HTMLElement): void {
+  const headers = panel.querySelectorAll<HTMLElement>('.ej6u9q11')
+  for (const header of headers) {
+    header.style.background = '#F5F7FA'
+    header.style.padding = '8px 12px'
+    header.style.borderRadius = '0'
+    header.style.borderBottom = '1px solid #E3E6EA'
+    header.style.borderTop = '1px solid #E3E6EA'
+    header.style.color = '#555'
+    header.style.fontSize = '12px'
+    header.style.fontWeight = '600'
+  }
 }
 
 /**
@@ -816,6 +893,9 @@ function wireRealDetailPanel(body: HTMLElement, context: PageContext): void {
 
   // 折りたたみセクション（URL情報・beyondページ情報・配信情報）のアコーディオン開閉
   wireAccordionSections(panel)
+
+  // 指示64: セクションヘッダーに色をつける
+  colorSectionHeaders(panel)
 }
 
 /**

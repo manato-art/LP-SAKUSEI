@@ -414,7 +414,11 @@ function hideFloatingToolbar(root: HTMLElement): void {
   }
 }
 
-/** 左固定サイドバーツールバーを Versionパネルの下に配置する */
+/**
+ * 左固定サイドバーツールバーを Versionパネルの下に配置する。
+ * Versionパネルを flex column にし、Versionカードはスクロール可能、
+ * ツールバーは常に下部に固定表示する。
+ */
 function mountSidebarToolbarPanel(ctx: EditorContext): void {
   const versionPanel = ctx.root.querySelector<HTMLElement>('[class*="_abTestArticlesWrapper_"]')
   if (versionPanel === null) return
@@ -422,12 +426,28 @@ function mountSidebarToolbarPanel(ctx: EditorContext): void {
   // 既存のパネルがあれば重複しない
   if (versionPanel.querySelector('[data-sidebar-toolbar]') !== null) return
 
+  // Versionパネルを flex column に変更
+  versionPanel.style.display = 'flex'
+  versionPanel.style.flexDirection = 'column'
+  versionPanel.style.overflow = 'hidden' // パネル自体はスクロールしない
+
+  // 既存の子要素（Versionカード等）をスクロール可能なラッパーに移動
+  const cardsWrapper = document.createElement('div')
+  cardsWrapper.style.cssText = 'flex:1 1 0;overflow-y:auto;overflow-x:hidden;min-height:0'
+  while (versionPanel.firstChild) {
+    cardsWrapper.append(versionPanel.firstChild)
+  }
+  versionPanel.append(cardsWrapper)
+
+  // ツールバーパネルを作成して flex の 2 番目の子に
   const panel = mountSidebarToolbar(ctx.quill, ctx.root)
-  // Versionパネルと同じ幅に合わせる
   panel.style.width = '100%'
   panel.style.minWidth = '0'
   panel.style.borderRight = 'none'
   panel.style.borderTop = '1px solid #e0e0e0'
+  panel.style.flexShrink = '0'
+  panel.style.overflowY = 'auto'
+  panel.style.maxHeight = '50%'
 
   versionPanel.append(panel)
 }
