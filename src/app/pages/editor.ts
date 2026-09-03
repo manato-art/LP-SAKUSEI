@@ -190,6 +190,13 @@ export async function renderEditor(
   root.innerHTML = substrate
   container.append(root)
 
+  // ── 重複サイドバーの除去 ──
+  // 採取テンプレートにはサイドバー（css-1v797yu）が丸ごと含まれており、
+  // position:fixed; left:0; z-index:101 でシェルの本物サイドバーを覆い隠す。
+  // 除去してシェル側の配線済みサイドバーを露出させる。
+  const dupSidebar = root.querySelector<HTMLElement>('.css-1v797yu')
+  if (dupSidebar !== null) dupSidebar.remove()
+
   // ── 指示57: 上部ナビ周辺の縦空白を詰める ──
   // 採取CSSの _navArticleWrapper_ は height:60px + padding-top:20px = 80px、
   // _editorWrapper_ は height:calc(100%-120px) + padding:20px で余白が大きい。
@@ -321,11 +328,16 @@ function mountQuill(root: HTMLElement): Quill {
     root.querySelector<HTMLIFrameElement>('iframe[class*="quillEditorWrapper"]')
   const host = document.createElement('div')
   if (frame !== null) {
-    // iframe の採取CSS（width:100% / height:calc(100vh-260px) / 角丸）を引き継ぐ。
+    // iframe の採取CSS（width:100% / 角丸）を引き継ぐ。
     // 指示㊿②: Quillホストが唯一のスクロール領域。キャンバスのLP本文だけが動く。
     host.className = frame.className
     host.style.background = '#fff'
     host.style.overflow = 'auto'
+    // ★ Quill は .ql-container { height:100% } を core CSS で持つ。
+    // Vite の CSS injection 順（JS import → <style> 注入）が index.html の <link> より後なので
+    // 採取CSSの UID_2445 { height:calc(100vh-260px) } を同詳細度の後勝ちで上書きしてしまう。
+    // inline style で明示的に高さを設定し、確実にスクロール領域として機能させる。
+    host.style.height = 'calc(100vh - 260px)'
     frame.replaceWith(host)
   } else {
     host.style.cssText = 'width:100%;height:calc(100vh - 260px);background:#fff;overflow:auto'
@@ -336,10 +348,29 @@ function mountQuill(root: HTMLElement): Quill {
    * Quill 内蔵の bubble ツールバーは出さない（二重に出てしまうため）。
    * 書式の適用は `src/app/panels/editor-toolbar.ts` が Quill API 経由で行う。
    */
+  // Quill core CSS: .ql-editor { height:100%; overflow-y:auto }
+  // .ql-editor が自身でスクロールすると、ミニマップの scrollContainer（= host）と
+  // スクロール位置が一致しない。height:auto にして内容に伸ばし、
+  // スクロールは host（.ql-container, overflow:auto + 固定高さ）に一本化する。
+  // ※ inline style は applyMasterStyleToEditor の setAttribute('style', decls) で
+  //    丸ごと上書きされるため、<style> タグで !important 付きで注入する。
+  injectQuillScrollFix()
+
   return new Quill(host, {
     placeholder: 'ここにLPの内容を入力してください',
     modules: { toolbar: false },
   })
+}
+
+/** .ql-editor のスクロールを無効化し、host (.ql-container) に一本化する CSS を1回だけ注入 */
+function injectQuillScrollFix(): void {
+  if (document.getElementById('sb-quill-scroll-fix') !== null) return
+  const style = document.createElement('style')
+  style.id = 'sb-quill-scroll-fix'
+  style.textContent = [
+    '.ql-editor { height: auto !important; overflow-y: visible !important; }',
+  ].join('')
+  document.head.append(style)
 }
 
 /**
