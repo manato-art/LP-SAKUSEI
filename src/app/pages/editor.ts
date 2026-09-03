@@ -374,6 +374,51 @@ function injectQuillScrollFix(): void {
 }
 
 /**
+ * 右レール（_sideToolbarWrapper_）のアイコンを実物と同じ丸い背景付きに揃える CSS を注入。
+ * 実物では各アイコンが 36×36 の円形背景に入り、hover で少し濃くなる。
+ * プレビュー（index 0）は採取 CSS で既にスタイル済みなので除外。
+ * ::before 疑似要素で背景円を描くことで、内部構造に依存しない。
+ */
+function injectSideToolbarStyles(): void {
+  if (document.getElementById('sb-side-toolbar-fix') !== null) return
+  const style = document.createElement('style')
+  style.id = 'sb-side-toolbar-fix'
+  style.textContent = `
+    /* ── 右レール: アイコンに丸い背景を付ける ── */
+    [class*="_sideToolbarIcon_"]:not([class*="_preview_"]) {
+      position: relative;
+    }
+    [class*="_sideToolbarIcon_"]:not([class*="_preview_"])::before {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #f0f0f0;
+      transition: background 0.15s ease;
+      z-index: 0;
+    }
+    [class*="_sideToolbarIcon_"]:not([class*="_preview_"]):hover::before {
+      background: #e0e0e0;
+    }
+    /* アイコンの中身を ::before より前面に */
+    [class*="_sideToolbarIcon_"]:not([class*="_preview_"]) > * {
+      position: relative;
+      z-index: 1;
+    }
+    /* アイコン画像サイズを揃える */
+    [class*="_sideToolbarIcon_"] img[class*="_icon_"] {
+      width: 22px !important;
+      height: 22px !important;
+    }
+  `
+  document.head.append(style)
+}
+
+/**
  * ファネルステップ（記事）を切り替える（指示⑮ `< >`）。
  * 対象記事のVersion一覧を取り直し、先頭Versionを開く。範囲外は何もしない。
  */
@@ -754,6 +799,8 @@ async function saveHtml(ctx: EditorContext): Promise<void> {
 }
 
 function wireSideToolbar(ctx: EditorContext): void {
+  // 右レールアイコンのスタイルを実物に合わせる（丸い背景付き）
+  injectSideToolbarStyles()
   // ── 各パネルを配線（実装は src/app/panels/ に分かれている）──
   mountVersionSettings(ctx.root, ctx.articleUid, () => void applyMasterStyleToEditor(ctx))
   mountTagSettings(ctx.root, ctx.articleUid)
