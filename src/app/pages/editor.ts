@@ -291,8 +291,8 @@ export async function renderEditor(
       toast('ステップを作成しました')
     },
   })
-  // 下部バーの「< / >」＝ファネルステップの行き来（指示⑮）
-  wireStepNavigation(ctx)
+  // 下部バーの「< / >」はズームコントロールに置き換える（後述 mountZoomControl）
+  hideStepNavigation(root)
   wireSideToolbar(ctx)
   wireTopBar(root, ab_test.title, folderName)
   // 4タブ（基本情報 / Version / ポップアップ / レポート）を相互に行き来できるようにする
@@ -303,20 +303,7 @@ export async function renderEditor(
   // 指示㊿②: スクロール対象は Quill ホスト（LP本文のスクロール領域）
   const quillHost = quill.container as HTMLElement
   mountMinimap(root, quillHost)
-  // pinToolbar は requestAnimationFrame で走る。同一フレーム内の後続 RAF では
-  // layout がまだ反映されていないことがあるので、次フレームまで遅延させる。
-  requestAnimationFrame(() => requestAnimationFrame(() => {
-    const minimap = document.querySelector<HTMLElement>('[data-clone-minimap]')
-    const toolbar = root.querySelector<HTMLElement>('[class*="_sideToolbarWrapper_"]')
-    const previewIcon = root.querySelector<HTMLElement>('[class*="_sideToolbarIcon_"]')
-    if (minimap !== null && toolbar !== null) {
-      const toolbarRect = toolbar.getBoundingClientRect()
-      const previewTop = previewIcon?.getBoundingClientRect().top ?? 100
-      minimap.style.top = `${previewTop}px`
-      minimap.style.right = `${document.documentElement.clientWidth - toolbarRect.left + 4}px`
-    }
-  }))
-  // キャンバスのみズームできる  − / + コントロール
+  // キャンバスのみズームできる − 100% + コントロール（下部バーの < > 位置に配置）
   mountZoomControl(root, quill)
   // 記事設定（Version設定）を編集画面の本文にも反映する（保存後は「更新」または再読込で最新化）。
   void applyMasterStyleToEditor(ctx)
@@ -438,66 +425,71 @@ function injectSideToolbarStyles(): void {
 }
 
 /**
- * キャンバスのみズームできる − / + コントロールを下部に配置する。
+ * キャンバスのみズームできる − 100% + コントロールを下部バーの < > 位置に配置する。
  * CSS transform: scale() で Quill 本文だけを拡縮する。UIはそのまま。
  */
-function mountZoomControl(_root: HTMLElement, quill: Quill): void {
+function mountZoomControl(root: HTMLElement, quill: Quill): void {
   const ZOOM_STEPS = [0.25, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.25, 1.5] as const
   const DEFAULT_INDEX = 6 // 1.0 = 100%
   let zoomIndex = DEFAULT_INDEX
   const editor = quill.root // .ql-editor
 
+  // < > の親コンテナ（_funnelStepWrapper_ の子）を探してズームコントロールを隣に置く
+  const funnelWrapper = root.querySelector<HTMLElement>('[class*="_funnelStepWrapper_"]')
+  if (funnelWrapper === null) return
+
   const bar = document.createElement('div')
   bar.style.cssText = [
-    'position:fixed',
-    'bottom:8px',
-    'left:50%',
-    'transform:translateX(-50%)',
     'display:flex',
     'align-items:center',
-    'gap:4px',
-    'z-index:50',
-    'background:rgba(50,50,50,0.85)',
-    'border-radius:20px',
-    'padding:4px 8px',
+    'gap:2px',
+    'margin-left:auto',
+    'padding-right:4px',
   ].join(';')
 
   const btnStyle = [
-    'width:28px',
-    'height:28px',
+    'width:24px',
+    'height:24px',
     'border:none',
     'background:transparent',
-    'color:#fff',
-    'font-size:18px',
+    'color:#666',
+    'font-size:16px',
     'line-height:1',
     'cursor:pointer',
-    'border-radius:50%',
+    'border-radius:4px',
     'display:flex',
     'align-items:center',
     'justify-content:center',
+    'padding:0',
   ].join(';')
 
   const minus = document.createElement('button')
   minus.textContent = '−'
   minus.style.cssText = btnStyle
-  minus.addEventListener('mouseenter', () => { minus.style.background = 'rgba(255,255,255,0.15)' })
+  minus.addEventListener('mouseenter', () => { minus.style.background = '#e8e8e8' })
   minus.addEventListener('mouseleave', () => { minus.style.background = 'transparent' })
+
+  const label = document.createElement('span')
+  label.style.cssText = 'font-size:12px;color:#666;min-width:36px;text-align:center;user-select:none'
 
   const plus = document.createElement('button')
   plus.textContent = '+'
   plus.style.cssText = btnStyle
-  plus.addEventListener('mouseenter', () => { plus.style.background = 'rgba(255,255,255,0.15)' })
+  plus.addEventListener('mouseenter', () => { plus.style.background = '#e8e8e8' })
   plus.addEventListener('mouseleave', () => { plus.style.background = 'transparent' })
 
-  bar.append(minus, plus)
-  document.body.append(bar)
+  bar.append(minus, label, plus)
+  funnelWrapper.append(bar)
 
   function applyZoom(): void {
     const scale = ZOOM_STEPS[zoomIndex] ?? 1
     editor.style.transform = `scale(${scale})`
     editor.style.transformOrigin = 'top center'
+    label.textContent = `${Math.round(scale * 100)}%`
     minus.style.opacity = zoomIndex <= 0 ? '0.3' : '1'
+    minus.style.cursor = zoomIndex <= 0 ? 'default' : 'pointer'
     plus.style.opacity = zoomIndex >= ZOOM_STEPS.length - 1 ? '0.3' : '1'
+    plus.style.cursor = zoomIndex >= ZOOM_STEPS.length - 1 ? 'default' : 'pointer'
   }
 
   minus.addEventListener('click', () => {
@@ -535,17 +527,16 @@ async function loadStep(ctx: EditorContext, index: number): Promise<void> {
   }
 }
 
-/** 下部バーの `< / >`（前/次のステップ）を配線する */
-function wireStepNavigation(ctx: EditorContext): void {
-  const prev = ctx.root.querySelector<HTMLElement>(HOOK.funnelPrev)
-  const next = ctx.root.querySelector<HTMLElement>(HOOK.funnelNext)
-  if (prev !== null) {
-    prev.style.cursor = 'pointer'
-    prev.addEventListener('click', () => void loadStep(ctx, ctx.stepIndex - 1))
-  }
-  if (next !== null) {
-    next.style.cursor = 'pointer'
-    next.addEventListener('click', () => void loadStep(ctx, ctx.stepIndex + 1))
+/** 下部バーの `< / >` を非表示にする（ズームコントロールに置き換えるため） */
+function hideStepNavigation(root: HTMLElement): void {
+  const prev = root.querySelector<HTMLElement>(HOOK.funnelPrev)
+  const next = root.querySelector<HTMLElement>(HOOK.funnelNext)
+  // < > の親コンテナごと隠す
+  const container = prev?.parentElement ?? next?.parentElement
+  if (container !== null && container !== undefined) {
+    container.style.visibility = 'hidden'
+    container.style.width = '0'
+    container.style.overflow = 'hidden'
   }
 }
 
