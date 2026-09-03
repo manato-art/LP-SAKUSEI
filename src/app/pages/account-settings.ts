@@ -11,8 +11,31 @@ export async function renderAccountSettings(container: HTMLElement): Promise<voi
   container.innerHTML = ''
 
   const body = el('div', { style: `padding:24px 28px;font-family:${T.font}` })
+  // ヘッダー行（タイトル + ログアウトボタン）
+  const header = el('div', {
+    style: 'display:flex;justify-content:space-between;align-items:center;margin-bottom:4px',
+  })
+  header.append(
+    el('div', { text: 'マイページ', style: `font-size:20px;font-weight:700;color:${T.text}` }),
+  )
+  const logoutBtn = document.createElement('button')
+  logoutBtn.textContent = 'ログアウト'
+  logoutBtn.style.cssText = [
+    `padding:8px 18px;border:1px solid #E4432B;border-radius:6px;background:transparent`,
+    `color:#E4432B;cursor:pointer;font-size:13px;font-family:${T.font}`,
+  ].join(';')
+  logoutBtn.addEventListener('click', () => {
+    void fetch('/__auth/logout', { method: 'POST' })
+      .then(() => {
+        // ログアウト後はルートへ（メールゲートか404が出る）
+        location.href = '/'
+      })
+      .catch(() => toast('ログアウトに失敗しました', 'error'))
+  })
+  header.append(logoutBtn)
+
   body.append(
-    el('div', { text: '設定', style: `font-size:20px;font-weight:700;color:${T.text};margin-bottom:4px` }),
+    header,
     el('div', {
       text: '※クローンが自作した画面です（実物とは見た目が異なる場合があります）。',
       style: `font-size:12px;color:${T.sub};margin-bottom:20px;line-height:1.7`,

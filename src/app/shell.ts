@@ -215,51 +215,74 @@ function wireAccordion(nav: HTMLElement): void {
   }
 }
 
-/** サイドバー下部に「設定」リンクを追加（FAQ: 設定・管理） */
+/** サイドバー下部に「マイページ」と「設定」リンクを追加 */
 function appendSettingsLink(nav: HTMLElement): void {
   const rail = nav.firstElementChild as HTMLElement | null
   if (rail === null) return
 
-  const settingsItem = document.createElement('div')
-  settingsItem.style.cssText = [
-    'position:absolute;bottom:16px;left:0;right:0;padding:8px 12px',
-    'cursor:pointer;display:flex;align-items:center;gap:8px',
-  ].join(';')
+  // 下部コンテナ（マイページ + 設定を縦に並べる）
+  const bottomArea = document.createElement('div')
+  bottomArea.style.cssText = 'position:absolute;bottom:8px;left:0;right:0'
 
-  // 歯車SVGアイコン
-  const icon = document.createElement('span')
-  icon.innerHTML = [
-    '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">',
-    '<path d="M8.325 2.317a1.63 1.63 0 013.35 0 1.724 1.724 0 002.573 1.066 1.63 1.63 0 012.369 2.369',
-    ' 1.724 1.724 0 001.065 2.572 1.63 1.63 0 010 3.35 1.724 1.724 0 00-1.066 2.573',
-    ' 1.63 1.63 0 01-2.369 2.369 1.724 1.724 0 00-2.572 1.065 1.63 1.63 0 01-3.35 0',
-    ' 1.724 1.724 0 00-2.573-1.066 1.63 1.63 0 01-2.369-2.369 1.724 1.724 0 00-1.065-2.572',
-    ' 1.63 1.63 0 010-3.35 1.724 1.724 0 001.066-2.573A1.63 1.63 0 015.752 3.383',
-    ' 1.724 1.724 0 008.325 2.317z"',
-    ' stroke="#888" stroke-width="1.5"/>',
-    '<circle cx="10" cy="10" r="2.5" stroke="#888" stroke-width="1.5"/>',
-    '</svg>',
-  ].join('')
-  icon.style.cssText = 'display:flex;align-items:center;flex-shrink:0'
+  // ── マイページ ──
+  const myPageItem = createSidebarBottomItem(
+    // 人物SVGアイコン
+    [
+      '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">',
+      '<circle cx="10" cy="7" r="3.5" stroke="#888" stroke-width="1.5"/>',
+      '<path d="M3.5 17.5c0-3.59 2.91-6.5 6.5-6.5s6.5 2.91 6.5 6.5" stroke="#888" stroke-width="1.5"',
+      ' stroke-linecap="round"/></svg>',
+    ].join(''),
+    'マイページ',
+  )
+  myPageItem.addEventListener('click', () => {
+    location.hash = '/settings/account'
+  })
 
-  const label = document.createElement('span')
-  label.textContent = '設定'
-  label.className = RAIL_LABEL_CLASS
-
-  settingsItem.append(icon, label)
+  // ── 設定 ──
+  const settingsItem = createSidebarBottomItem(
+    [
+      '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">',
+      '<path d="M8.325 2.317a1.63 1.63 0 013.35 0 1.724 1.724 0 002.573 1.066 1.63 1.63 0 012.369 2.369',
+      ' 1.724 1.724 0 001.065 2.572 1.63 1.63 0 010 3.35 1.724 1.724 0 00-1.066 2.573',
+      ' 1.63 1.63 0 01-2.369 2.369 1.724 1.724 0 00-2.572 1.065 1.63 1.63 0 01-3.35 0',
+      ' 1.724 1.724 0 00-2.573-1.066 1.63 1.63 0 01-2.369-2.369 1.724 1.724 0 00-1.065-2.572',
+      ' 1.63 1.63 0 010-3.35 1.724 1.724 0 001.066-2.573A1.63 1.63 0 015.752 3.383',
+      ' 1.724 1.724 0 008.325 2.317z"',
+      ' stroke="#888" stroke-width="1.5"/>',
+      '<circle cx="10" cy="10" r="2.5" stroke="#888" stroke-width="1.5"/>',
+      '</svg>',
+    ].join(''),
+    '設定',
+  )
   settingsItem.addEventListener('click', () => {
     location.hash = '/settings/account'
   })
-  settingsItem.addEventListener('mouseenter', () => {
-    settingsItem.style.background = 'rgba(0,0,0,.04)'
-  })
-  settingsItem.addEventListener('mouseleave', () => {
-    settingsItem.style.background = 'transparent'
-  })
+
+  bottomArea.append(myPageItem, settingsItem)
 
   // レールにposition:relativeを付ける（absoluteの基準にする）
   rail.style.position = 'relative'
-  rail.append(settingsItem)
+  rail.append(bottomArea)
+}
+
+/** サイドバー下部に配置する項目を作る（アイコン＋ラベル・ホバーエフェクト付き） */
+function createSidebarBottomItem(iconSvg: string, labelText: string): HTMLElement {
+  const item = document.createElement('div')
+  item.style.cssText = 'padding:8px 12px;cursor:pointer;display:flex;align-items:center;gap:8px'
+
+  const icon = document.createElement('span')
+  icon.innerHTML = iconSvg
+  icon.style.cssText = 'display:flex;align-items:center;flex-shrink:0'
+
+  const label = document.createElement('span')
+  label.textContent = labelText
+  label.className = RAIL_LABEL_CLASS
+
+  item.append(icon, label)
+  item.addEventListener('mouseenter', () => { item.style.background = 'rgba(0,0,0,.04)' })
+  item.addEventListener('mouseleave', () => { item.style.background = 'transparent' })
+  return item
 }
 
 /** 項目の子のうち「アイコンでない方」＝ラベル（テキストを持ち、svg/imgを含まない）を返す */
