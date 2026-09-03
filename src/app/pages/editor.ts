@@ -196,6 +196,10 @@ export async function renderEditor(
   // 除去してシェル側の配線済みサイドバーを露出させる。
   const dupSidebar = root.querySelector<HTMLElement>('.css-1v797yu')
   if (dupSidebar !== null) dupSidebar.remove()
+  // 除去したサイドバーの幅分（60px）のパディングが残っているので消す。
+  // これが残ると左サイドバーと4タブナビの間に空白ができる。
+  const mainContent = root.querySelector<HTMLElement>('.css-1n8b1pi')
+  if (mainContent !== null) mainContent.style.paddingLeft = '0'
 
   // ── 指示57: 上部ナビ周辺の縦空白を詰める ──
   // 採取CSSの _navArticleWrapper_ は height:60px + padding-top:20px = 80px、
@@ -203,18 +207,18 @@ export async function renderEditor(
   // padding-top を 4px に、editorWrapper の 120px を 68px に縮め、padding を詰める。
   const navWrapper = root.querySelector<HTMLElement>('[class*="_navArticleWrapper_"]')
   if (navWrapper !== null) {
-    navWrapper.style.paddingTop = '4px'
-    navWrapper.style.height = '44px'
+    navWrapper.style.paddingTop = '14px'
+    navWrapper.style.height = '54px'
   }
   const editorWrapper = root.querySelector<HTMLElement>('[class*="_editorWrapper_"]')
   if (editorWrapper !== null) {
-    editorWrapper.style.height = 'calc(100% - 68px)'
+    editorWrapper.style.height = 'calc(100% - 78px)'
     editorWrapper.style.padding = '8px 12px'
   }
-  // boostEditorWrapper も同じ calc(100%-120px) を使う
+  // boostEditorWrapper も同じ calc を使う
   const boostWrapper = root.querySelector<HTMLElement>('[class*="_boostEditorWrapper_"]')
   if (boostWrapper !== null) {
-    boostWrapper.style.height = 'calc(100% - 68px)'
+    boostWrapper.style.height = 'calc(100% - 78px)'
   }
   // Versionパネル（_abTestArticlesWrapper_）も同じ 120px を引いている
   const articlesWrapper = root.querySelector<HTMLElement>('[class*="_abTestArticlesWrapper_"]')
