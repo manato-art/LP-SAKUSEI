@@ -12,7 +12,7 @@
  * クリック/ドラッグの位置もそれに合わせて正確にスクロールする。
  */
 
-const MINIMAP_WIDTH = 40
+const MINIMAP_WIDTH = 6
 /** 理想スケール。コンテンツが長い場合はこれより小さくなる */
 const PREFERRED_SCALE = 0.06
 
@@ -24,19 +24,20 @@ export function mountMinimap(editorRoot: HTMLElement, scrollContainer: HTMLEleme
     editorRoot.querySelector<HTMLElement>('.ql-editor')?.parentElement ?? null
   if (quillHost === null) return
 
-  // ── ミニマップの外枠 ──
+  // ── ミニマップの外枠（スクロールバー風の細いトラック） ──
+  // 位置は mountMinimap 呼び出し後に repositionMinimap() で設定する
   const wrapper = document.createElement('div')
   wrapper.setAttribute('data-clone-minimap', 'true')
   wrapper.style.cssText = [
     'position:fixed',
-    'top:80px',
-    'right:0',
+    'top:100px',
+    'right:56px',
     `width:${MINIMAP_WIDTH}px`,
     'bottom:40px',
     'overflow:hidden',
     'z-index:40',
-    'background:#F5F5F5',
-    'border-left:1px solid #E0E0E0',
+    'background:#E8E8E8',
+    'border-radius:3px',
     'cursor:pointer',
     'user-select:none',
   ].join(';')
@@ -49,18 +50,18 @@ export function mountMinimap(editorRoot: HTMLElement, scrollContainer: HTMLEleme
     'position:absolute',
     'top:0',
     'left:0',
+    'opacity:0',
   ].join(';')
   wrapper.append(clone)
 
-  // ── ビューポートインジケータ（現在表示範囲を示す半透明の帯） ──
+  // ── ビューポートインジケータ（現在位置を示すハンドル） ──
   const viewport = document.createElement('div')
   viewport.style.cssText = [
     'position:absolute',
     'left:0',
     `width:${MINIMAP_WIDTH}px`,
-    'background:rgba(0,145,255,0.15)',
-    'border:1px solid rgba(0,145,255,0.4)',
-    'border-radius:2px',
+    'background:rgba(100,100,100,0.6)',
+    'border-radius:3px',
     'pointer-events:none',
     'transition:top 0.1s ease-out, height 0.1s ease-out',
   ].join(';')

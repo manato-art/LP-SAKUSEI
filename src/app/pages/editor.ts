@@ -303,6 +303,21 @@ export async function renderEditor(
   // 指示㊿②: スクロール対象は Quill ホスト（LP本文のスクロール領域）
   const quillHost = quill.container as HTMLElement
   mountMinimap(root, quillHost)
+  // pinToolbar は requestAnimationFrame で走る。同一フレーム内の後続 RAF では
+  // layout がまだ反映されていないことがあるので、次フレームまで遅延させる。
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    const minimap = document.querySelector<HTMLElement>('[data-clone-minimap]')
+    const toolbar = root.querySelector<HTMLElement>('[class*="_sideToolbarWrapper_"]')
+    const previewIcon = root.querySelector<HTMLElement>('[class*="_sideToolbarIcon_"]')
+    if (minimap !== null && toolbar !== null) {
+      const toolbarRect = toolbar.getBoundingClientRect()
+      const previewTop = previewIcon?.getBoundingClientRect().top ?? 100
+      minimap.style.top = `${previewTop}px`
+      minimap.style.right = `${document.documentElement.clientWidth - toolbarRect.left + 4}px`
+    }
+  }))
+  // キャンバスのみズームできる  − / + コントロール
+  mountZoomControl(root, quill)
   // 記事設定（Version設定）を編集画面の本文にも反映する（保存後は「更新」または再読込で最新化）。
   void applyMasterStyleToEditor(ctx)
 }
@@ -420,6 +435,79 @@ function injectSideToolbarStyles(): void {
     }
   `
   document.head.append(style)
+}
+
+/**
+ * キャンバスのみズームできる − / + コントロールを下部に配置する。
+ * CSS transform: scale() で Quill 本文だけを拡縮する。UIはそのまま。
+ */
+function mountZoomControl(_root: HTMLElement, quill: Quill): void {
+  const ZOOM_STEPS = [0.25, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.25, 1.5] as const
+  const DEFAULT_INDEX = 6 // 1.0 = 100%
+  let zoomIndex = DEFAULT_INDEX
+  const editor = quill.root // .ql-editor
+
+  const bar = document.createElement('div')
+  bar.style.cssText = [
+    'position:fixed',
+    'bottom:8px',
+    'left:50%',
+    'transform:translateX(-50%)',
+    'display:flex',
+    'align-items:center',
+    'gap:4px',
+    'z-index:50',
+    'background:rgba(50,50,50,0.85)',
+    'border-radius:20px',
+    'padding:4px 8px',
+  ].join(';')
+
+  const btnStyle = [
+    'width:28px',
+    'height:28px',
+    'border:none',
+    'background:transparent',
+    'color:#fff',
+    'font-size:18px',
+    'line-height:1',
+    'cursor:pointer',
+    'border-radius:50%',
+    'display:flex',
+    'align-items:center',
+    'justify-content:center',
+  ].join(';')
+
+  const minus = document.createElement('button')
+  minus.textContent = '−'
+  minus.style.cssText = btnStyle
+  minus.addEventListener('mouseenter', () => { minus.style.background = 'rgba(255,255,255,0.15)' })
+  minus.addEventListener('mouseleave', () => { minus.style.background = 'transparent' })
+
+  const plus = document.createElement('button')
+  plus.textContent = '+'
+  plus.style.cssText = btnStyle
+  plus.addEventListener('mouseenter', () => { plus.style.background = 'rgba(255,255,255,0.15)' })
+  plus.addEventListener('mouseleave', () => { plus.style.background = 'transparent' })
+
+  bar.append(minus, plus)
+  document.body.append(bar)
+
+  function applyZoom(): void {
+    const scale = ZOOM_STEPS[zoomIndex] ?? 1
+    editor.style.transform = `scale(${scale})`
+    editor.style.transformOrigin = 'top center'
+    minus.style.opacity = zoomIndex <= 0 ? '0.3' : '1'
+    plus.style.opacity = zoomIndex >= ZOOM_STEPS.length - 1 ? '0.3' : '1'
+  }
+
+  minus.addEventListener('click', () => {
+    if (zoomIndex > 0) { zoomIndex -= 1; applyZoom() }
+  })
+  plus.addEventListener('click', () => {
+    if (zoomIndex < ZOOM_STEPS.length - 1) { zoomIndex += 1; applyZoom() }
+  })
+
+  applyZoom()
 }
 
 /**
