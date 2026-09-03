@@ -339,6 +339,62 @@ function wireDeliveryUrl(ctx: PageContext): void {
     if ((button.textContent ?? '').trim() !== 'パラメータ付きURLの発行') continue
     button.addEventListener('click', () => openParamUrlModal(url))
   }
+
+  // 「タブ表示名」入力欄を配信URLセクションの直後に挿入する。
+  // 採取DOMにこの欄は無いため、既存MUIのスタイルに合わせて動的に生成する。
+  injectPageTitleField(ctx)
+}
+
+/**
+ * 「タブ表示名」の入力欄を、配信URLセクションの直後に差し込む。
+ * 採取物に存在しない独自フィールドなので、既存MUIのテキストフィールドのスタイルに
+ * 視覚的に揃えつつ、独自の `data-clone-page-title` 属性で `collectValues` が拾えるようにする。
+ */
+function injectPageTitleField(ctx: PageContext): void {
+  // 配信URLのリンクが入っている FormControl を探す
+  const urlLink = ctx.root.querySelector<HTMLAnchorElement>(HOOK.deliveryUrlLink)
+  const urlSection = urlLink?.closest<HTMLElement>(HOOK.formControl)
+  const insertTarget = urlSection?.parentElement ?? ctx.form
+  const insertRef = urlSection?.nextElementSibling ?? null
+
+  const wrapper = document.createElement('div')
+  wrapper.style.cssText = 'margin:16px 0 8px;padding:0'
+
+  const label = document.createElement('label')
+  label.textContent = 'タブ表示名'
+  label.style.cssText =
+    'display:block;font-size:12px;color:rgba(0,0,0,.6);margin-bottom:4px;' +
+    'font-family:"Hiragino Sans",sans-serif;font-weight:400;line-height:1.4375em;letter-spacing:0.00938em'
+
+  const input = document.createElement('input')
+  input.type = 'text'
+  input.setAttribute('data-clone-page-title', '')
+  input.value = ctx.abTest.page_title ?? ''
+  input.placeholder = ctx.abTest.title
+  input.style.cssText =
+    'display:block;width:100%;box-sizing:border-box;padding:8.5px 14px;' +
+    'font-size:16px;font-family:"Hiragino Sans",sans-serif;' +
+    'border:1px solid rgba(0,0,0,.23);border-radius:4px;outline:none;' +
+    'background:transparent;color:rgba(0,0,0,.87);line-height:1.4375em'
+  input.addEventListener('focus', () => {
+    input.style.borderColor = '#1976d2'
+    input.style.borderWidth = '2px'
+    input.style.padding = '7.5px 13px'
+  })
+  input.addEventListener('blur', () => {
+    input.style.borderColor = 'rgba(0,0,0,.23)'
+    input.style.borderWidth = '1px'
+    input.style.padding = '8.5px 14px'
+  })
+
+  const hint = document.createElement('p')
+  hint.textContent = '未入力の場合はbeyondページ名がタブに表示されます'
+  hint.style.cssText =
+    'margin:4px 0 0;font-size:11px;color:rgba(0,0,0,.4);' +
+    'font-family:"Hiragino Sans",sans-serif'
+
+  wrapper.append(label, input, hint)
+  insertTarget.insertBefore(wrapper, insertRef)
 }
 
 /**
@@ -399,6 +455,7 @@ function selectValueByLabel(root: HTMLElement, label: string): string | undefine
 function collectValues(root: HTMLElement): BasicInfoValues {
   return {
     title: textFieldByLabel(root, 'beyondページ名')?.value ?? '',
+    page_title: root.querySelector<HTMLInputElement>('[data-clone-page-title]')?.value ?? '',
     memo: textAreaByLabel(root, 'メモ')?.value ?? '',
     affiliate_service_provider: textFieldByLabel(root, '計測ツール・ASP')?.value ?? '',
     conversion_unit_price: textFieldByLabel(root, 'コンバージョン単価')?.value ?? '',

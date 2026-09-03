@@ -19,6 +19,7 @@ export type AbTestPatch = Partial<
   Pick<
     AbTest,
     | 'title'
+    | 'page_title'
     | 'memo'
     | 'media_id'
     | 'folder_id'
@@ -75,6 +76,15 @@ export function parseAbTestPatch(input: unknown): ValidationResult<AbTestPatch> 
       return { ok: false, message: `beyondページ名は${TITLE_MAX_LENGTH}文字まで入力できます。` }
     }
     patch = { ...patch, title: raw.trim() }
+  }
+
+  if (has(body, 'page_title')) {
+    const raw = body['page_title']
+    if (typeof raw !== 'string') {
+      return { ok: false, message: 'タブ表示名は文字列で指定してください。' }
+    }
+    // 空文字は「未設定」＝titleへフォールバック
+    patch = { ...patch, page_title: raw.trim() }
   }
 
   if (has(body, 'memo')) {

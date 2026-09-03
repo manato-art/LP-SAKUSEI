@@ -130,6 +130,7 @@ export function createAbTest(
     gender: null,
     age_from: null,
     age_to: null,
+    page_title: '',
     created_at: nowTs(),
     updated_at: nowTs(),
     creator_member_id: owner?.id ?? 1,

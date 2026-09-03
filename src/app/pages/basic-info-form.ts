@@ -9,6 +9,7 @@
 export interface AbTestForEdit {
   uid: string
   title: string
+  page_title: string
   memo: string
   ad_status: string
   /** 1=(該当なし) / 2=beyondエディター / 3=HTMLエディター。実機では disabled */
@@ -33,6 +34,8 @@ export interface AbTestForEdit {
  */
 export interface BasicInfoValues {
   title: string
+  /** 配信ページのブラウザタブ表示名（空なら title にフォールバック） */
+  page_title: string
   memo: string
   affiliate_service_provider: string
   conversion_unit_price: string
@@ -80,6 +83,7 @@ export const AD_STATUS_LABELS: Readonly<Record<string, string>> = {
 export function toFormValues(abTest: AbTestForEdit): BasicInfoValues {
   return {
     title: abTest.title,
+    page_title: abTest.page_title ?? '',
     memo: abTest.memo,
     affiliate_service_provider: abTest.affiliate_service_provider ?? '',
     conversion_unit_price: String(abTest.conversion_unit_price),
@@ -105,6 +109,7 @@ export function buildUpdatePayload(
   }
   return {
     title: input.title.trim(),
+    page_title: input.page_title.trim(),
     memo: input.memo,
     media_id: numOrNull(input.media_id, abTest.media_id),
     delivery_type: input.delivery_type ?? abTest.delivery_type,

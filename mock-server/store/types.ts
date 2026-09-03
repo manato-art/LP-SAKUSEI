@@ -106,6 +106,8 @@ export interface AbTest {
   gender: string | null
   age_from: number | null
   age_to: number | null
+  /** 配信ページのブラウザタブに表示する名前（未設定ならtitleをフォールバック） */
+  page_title: string
   created_at: number
   updated_at: number
   creator_member_id: number

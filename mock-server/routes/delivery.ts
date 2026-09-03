@@ -138,7 +138,7 @@ deliveryRouter.get('/lp/:uid', (req, res) => {
     `<!doctype html><html lang="ja"><head><meta charset="utf-8">` +
     `<meta name="viewport" content="width=device-width, initial-scale=1">` +
     robotsMeta +
-    `<title>${escapeHtml(abTest.title)}</title>` +
+    `<title>${escapeHtml(abTest.page_title || abTest.title)}</title>` +
     `<style>body{margin:0 auto;max-width:${DELIVERY_WIDTH}px;font-family:"Hiragino Sans",sans-serif;background:#fff}` +
     `${LP_BASE_CSS}${version.css}${styleCss}</style>` +
     headTags +

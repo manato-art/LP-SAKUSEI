@@ -56,6 +56,7 @@ function seedAbTest(title = 'サンプル施策001'): { abTestUid: string; folde
 const BASE_RECORD: AbTestForEdit = {
   uid: 'ABTEST_0001',
   title: 'サンプル施策001',
+  page_title: '',
   memo: '',
   ad_status: 'prepared',
   editor_version: 2,
@@ -186,6 +187,7 @@ describe('toFormValues', () => {
     const values = toFormValues({ ...BASE_RECORD, affiliate_service_provider: null })
     expect(values).toEqual({
       title: 'サンプル施策001',
+      page_title: '',
       memo: '',
       affiliate_service_provider: '',
       conversion_unit_price: '0',
@@ -209,12 +211,14 @@ describe('buildUpdatePayload', () => {
   it('入力欄の値と、画面が保持している値をまとめて1本のリクエストにする', () => {
     const payload = buildUpdatePayload(BASE_RECORD, {
       title: '  サンプル施策002  ',
+      page_title: '',
       memo: 'サンプルメモ',
       affiliate_service_provider: 'サンプルASP-01',
       conversion_unit_price: '1200',
     })
     expect(payload).toEqual({
       title: 'サンプル施策002',
+      page_title: '',
       memo: 'サンプルメモ',
       media_id: 3,
       delivery_type: 'html_rewriting',
@@ -230,6 +234,7 @@ describe('buildUpdatePayload', () => {
   it('空文字の計測ツール・ASP は null にする（「未設定」を空文字で保存しない）', () => {
     const payload = buildUpdatePayload(BASE_RECORD, {
       title: 'サンプル施策001',
+      page_title: '',
       memo: '',
       affiliate_service_provider: '   ',
       conversion_unit_price: '',
@@ -249,7 +254,7 @@ describe('buildUpdatePayload', () => {
         age_from: 20,
         age_to: 49,
       },
-      { title: 'サンプル施策001', memo: '', affiliate_service_provider: '', conversion_unit_price: '0' },
+      { title: 'サンプル施策001', page_title: '', memo: '', affiliate_service_provider: '', conversion_unit_price: '0' },
     )
     expect(payload).toMatchObject({
       media_id: 17,
@@ -263,7 +268,7 @@ describe('buildUpdatePayload', () => {
 })
 
 describe('validateBasicInfo', () => {
-  const ok = { title: 'サンプル施策001', memo: '', affiliate_service_provider: '', conversion_unit_price: '0' }
+  const ok = { title: 'サンプル施策001', page_title: '', memo: '', affiliate_service_provider: '', conversion_unit_price: '0' }
 
   it('正しい入力は通る', () => {
     expect(validateBasicInfo(ok)).toEqual({ ok: true })
