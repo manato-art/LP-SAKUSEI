@@ -414,22 +414,22 @@ function hideFloatingToolbar(root: HTMLElement): void {
   }
 }
 
-/** 左固定サイドバーツールバーを editorWrapper 内に配置する */
+/** 左固定サイドバーツールバーを Versionパネルの下に配置する */
 function mountSidebarToolbarPanel(ctx: EditorContext): void {
-  const editorWrapper = ctx.root.querySelector<HTMLElement>('[class*="_editorWrapper_"]')
-  if (editorWrapper === null) return
+  const versionPanel = ctx.root.querySelector<HTMLElement>('[class*="_abTestArticlesWrapper_"]')
+  if (versionPanel === null) return
 
   // 既存のパネルがあれば重複しない
-  if (editorWrapper.querySelector('[data-sidebar-toolbar]') !== null) return
+  if (versionPanel.querySelector('[data-sidebar-toolbar]') !== null) return
 
   const panel = mountSidebarToolbar(ctx.quill, ctx.root)
+  // Versionパネルと同じ幅に合わせる
+  panel.style.width = '100%'
+  panel.style.minWidth = '0'
+  panel.style.borderRight = 'none'
+  panel.style.borderTop = '1px solid #e0e0e0'
 
-  // editorWrapper を flex コンテナにして左にパネルを差し込む
-  editorWrapper.style.display = 'flex'
-  editorWrapper.style.flexDirection = 'row'
-
-  // パネルを editorWrapper の先頭に差し込む（Versionパネルの手前・キャンバスの左）
-  editorWrapper.prepend(panel)
+  versionPanel.append(panel)
 }
 
 /**
