@@ -748,10 +748,28 @@ function wireSideToolbar(ctx: EditorContext): void {
   // 本文の自動保存。実物のエディタは自動保存が走る
   // （docs/findings-live-observation.md「エディタは『開くだけで自動保存』が走る」・DOMに _saveAnimation_）。
   // これが無いと、打った内容がサーバーに残らない。
+  /** 「更新」ボタンを一瞬オレンジにして保存成功を知らせる */
+  function flashSaveIndicator(): void {
+    const card = ctx.root.querySelector<HTMLElement>(`[data-article-uid="${ctx.currentUid}"]`)
+      ?? ctx.root.querySelector<HTMLElement>(HOOK.currentVersion)?.closest('[data-id]')
+      ?? ctx.root.querySelector<HTMLElement>('._articleButtons_1xibh_160')?.closest('[data-id]')
+    if (card === null) return
+    const btn = findUpdateButton(card as HTMLElement)
+    if (btn === null) return
+    btn.style.transition = 'background-color 0.3s'
+    btn.style.backgroundColor = '#f59e0b'
+    btn.style.color = '#fff'
+    setTimeout(() => {
+      btn.style.backgroundColor = ''
+      btn.style.color = ''
+    }, 1500)
+  }
+
   const autosave = createAutosave({
     // 変更のたびに保存し、同時に履歴スナップショットを積む（指示⑪・サーバー側で最新100件に丸め）。
     save: async () => {
       await saveHtml(ctx)
+      flashSaveIndicator()
       try {
         await recordArticleHistory(ctx.articleUid, ctx.quill.root.innerHTML)
       } catch {
