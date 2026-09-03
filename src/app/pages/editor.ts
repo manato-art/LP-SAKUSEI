@@ -179,13 +179,12 @@ export async function renderEditor(
    * 差し込み先に高さを与えないとレイアウトが潰れる。
    */
   // container はシェルのコンテンツ枠（`flex:1; min-width:0` が入っている）。
-  // ここで cssText を丸ごと上書きすると **flex:1 が消えて左寄せ＋右に灰色余白**になり、
-  // overflow:hidden だと縦に長いエディタをスクロールできない。
-  // → flex は残したまま、高さと縦スクロールだけ足す。
+  // 指示㊿②: container 自体はスクロールさせない（キャンバスのみスクロールする）。
+  // overflow:hidden で外枠のスクロールを止め、キャンバス（quillEditorContentWrapper）だけ動かす。
   container.style.flex = '1'
   container.style.minWidth = '0'
   container.style.height = '100vh'
-  container.style.overflow = 'auto'
+  container.style.overflow = 'hidden'
   const root = document.createElement('div')
   root.style.cssText = 'height:100%'
   root.innerHTML = substrate
@@ -199,6 +198,21 @@ export async function renderEditor(
   wireMediaDrop(quill)
   // 指示㊵: 貼り付けた画像のサイズをドラッグで変更できるようにする
   wireImageResize(quill)
+
+  // ── 指示㊿②: キャンバスのみスクロール ──
+  // quillEditorContentWrapper = ヘッダー画像 + Quill + ファネルバーを囲む「赤枠」。
+  // ここだけ overflow-y:auto にし、外枠やバージョンパネルは動かさない。
+  const canvasWrapper = root.querySelector<HTMLElement>('[class*="quillEditorContentWrapper"]')
+  if (canvasWrapper !== null) {
+    canvasWrapper.style.overflowY = 'auto'
+    canvasWrapper.style.overflowX = 'hidden'
+  }
+  // バージョンパネルも独立スクロール（バージョンが多い場合に必要）
+  const versionPanel = root.querySelector<HTMLElement>('[class*="_abTestArticlesWrapper_"]')
+  if (versionPanel !== null) {
+    versionPanel.style.overflowY = 'auto'
+    versionPanel.style.overflowX = 'hidden'
+  }
 
   // Versionカードの雛形を、配線前のクリーンな状態でクローンして控える（採取した実物1枚が雛形）。
   const originalCard = root.querySelector<HTMLElement>('[data-article-uid]')
@@ -252,7 +266,9 @@ export async function renderEditor(
   wireTopRightIcons(root, abTestUid, folder?.uid ?? '')
   loadVersion(ctx, ctx.currentUid)
   // 指示㊻: エディタ右側にミニマップ（LP全体の縮小プレビュー）を表示
-  mountMinimap(root, container)
+  // 指示㊿②: スクロール対象はキャンバス（quillEditorContentWrapper）のみ
+  const minimapScroll = canvasWrapper ?? container
+  mountMinimap(root, minimapScroll)
   // 記事設定（Version設定）を編集画面の本文にも反映する（保存後は「更新」または再読込で最新化）。
   void applyMasterStyleToEditor(ctx)
 }
@@ -282,14 +298,16 @@ function mountQuill(root: HTMLElement): Quill {
     root.querySelector<HTMLIFrameElement>('iframe[class*="quillEditorWrapper"]')
   const host = document.createElement('div')
   if (frame !== null) {
-    // iframe の採取CSS（width:100% / height:calc(100vh-260px) / 角丸）を引き継いで、
-    // コンテンツ枠いっぱいに広げる（従来は 486px 固定で下に余白が出ていた）。
+    // 指示㊿②: Quillホストはスクロールしない（親の quillEditorContentWrapper がスクロール担当）。
+    // 固定heightとoverflowを外し、自然な高さでLP本文を全部展開させる。
     host.className = frame.className
     host.style.background = '#fff'
-    host.style.overflow = 'auto'
+    host.style.height = 'auto'
+    host.style.minHeight = '400px'
+    host.style.overflow = 'visible'
     frame.replaceWith(host)
   } else {
-    host.style.cssText = 'width:100%;height:calc(100vh - 260px);background:#fff;overflow:auto'
+    host.style.cssText = 'width:100%;min-height:400px;background:#fff;overflow:visible'
     root.append(host)
   }
   /**
@@ -698,10 +716,10 @@ function wireSideToolbar(ctx: EditorContext): void {
   mountWidgetLibrary(ctx.root, ctx.quill)
 
   // 指示㊶: 右レールをスクロール追従させる。
-  // 実DOMの構造:
-  //   container (overflow:auto, height:100vh) ← スクロールはここ
+  // 実DOMの構造（指示㊿② 更新後）:
+  //   container (overflow:hidden, height:100vh) ← 外枠はスクロールしない
   //     └ _editorWrapper_ (display:flex, height:calc(100%-120px))
-  //         └ _abTestArticleContent_ (display:flex, align-items:center)
+  //         └ quillEditorContentWrapper (overflow-y:auto) ← キャンバスのみスクロール
   //             └ _sideToolbarWrapper_ (width:50px, height:calc(100%-80px))
   // 親が flex で height 制約あり → sticky は効かない。position:fixed で viewport に固定する。
   const sideToolbarWrapper = ctx.root.querySelector<HTMLElement>('[class*="_sideToolbarWrapper_"]')

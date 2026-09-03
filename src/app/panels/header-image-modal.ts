@@ -16,6 +16,7 @@
 import rawModal from '../fragments/ab_tests__UID__articles__header-image-modal.portals.html?raw'
 import { toast } from '../ui.ts'
 import { bindBackdropClose, findByExactText, openPortal } from './portal.ts'
+import { convertImageToWebP } from './webp-convert.ts'
 
 /** アップロードしたヘッダー画像（dataURL・セッション内。実サーバーへは上げない） */
 const uploadedImages: string[] = []
@@ -111,16 +112,14 @@ function pickImage(modalRoot: HTMLElement, apply: (dataUrl: string) => void): vo
     const file = input.files?.[0]
     input.remove()
     if (file === undefined) return
-    const reader = new FileReader()
-    reader.addEventListener('load', () => {
-      const dataUrl = String(reader.result ?? '')
+    // 指示㊿③: 画像を WebP に変換してから保存（ファイルサイズ削減）
+    void convertImageToWebP(file).then((dataUrl) => {
       if (dataUrl === '') return
       if (!uploadedImages.includes(dataUrl)) uploadedImages.push(dataUrl)
       renderGrid(modalRoot, apply)
       apply(dataUrl)
       toast('ヘッダー画像を設定しました（クローン内保存・外部サーバーへは送信しません）')
     })
-    reader.readAsDataURL(file)
   })
   input.click()
 }

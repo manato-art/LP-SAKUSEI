@@ -11,6 +11,7 @@
  */
 import type Quill from 'quill'
 import { toast } from '../ui.ts'
+import { convertImageToWebP } from './webp-convert.ts'
 
 type MediaFormat = 'image' | 'sbvideo'
 
@@ -89,7 +90,8 @@ export async function insertMediaFilesAt(
   let images = 0
   let videos = 0
   for (const file of files) {
-    const url = await readAsDataUrl(file)
+    // 指示㊿③: 画像は WebP に変換してからエディタへ挿入（動画/GIFはそのまま）
+    const url = await convertImageToWebP(file)
     if (url === '') continue
     const format = embedFormat(file.type)
     quill.insertEmbed(index, format, url, 'user')
@@ -99,15 +101,6 @@ export async function insertMediaFilesAt(
   }
   quill.setSelection(index, 0, 'user')
   if (images > 0 || videos > 0) toast(mediaInsertedMessage(images, videos))
-}
-
-function readAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve) => {
-    const reader = new FileReader()
-    reader.addEventListener('load', () => resolve(String(reader.result ?? '')))
-    reader.addEventListener('error', () => resolve(''))
-    reader.readAsDataURL(file)
-  })
 }
 
 function dragHasFiles(event: DragEvent): boolean {
