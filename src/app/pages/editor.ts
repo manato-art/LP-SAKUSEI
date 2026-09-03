@@ -368,10 +368,11 @@ function mountQuill(root: HTMLElement): Quill {
     // Vite の CSS injection 順（JS import → <style> 注入）が index.html の <link> より後なので
     // 採取CSSの UID_2445 { height:calc(100vh-260px) } を同詳細度の後勝ちで上書きしてしまう。
     // inline style で明示的に高さを設定し、確実にスクロール領域として機能させる。
-    host.style.height = 'calc(100vh - 260px)'
+    // 下部バー（50px）は absolute 配置なので、キャンバスはバーの上端まで伸ばす。
+    host.style.height = 'calc(100vh - 204px)'
     frame.replaceWith(host)
   } else {
-    host.style.cssText = 'width:100%;height:calc(100vh - 260px);background:#fff;overflow:auto'
+    host.style.cssText = 'width:100%;height:calc(100vh - 204px);background:#fff;overflow:auto'
     root.append(host)
   }
   /**
