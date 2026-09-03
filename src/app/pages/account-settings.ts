@@ -328,7 +328,7 @@ async function renderAccessManagement(content: HTMLElement): Promise<void> {
   })
   desc.innerHTML = [
     'ここに登録したメールアドレスの人だけが、上記リンクからログイン画面へ進めます。',
-    '登録が0件のときはメールゲートが無効になり、リンクから直接パスワード画面が出ます。',
+    '登録が0件のときは上記リンクも404を返します（パスワード画面は表示されません）。',
   ].join('<br>')
   content.append(desc)
 
@@ -374,7 +374,7 @@ async function renderAccessManagement(content: HTMLElement): Promise<void> {
     if (emails.length === 0) {
       listArea.append(
         el('div', {
-          text: 'メールアドレスが登録されていません。共有リンクから直接パスワード画面が出ます。',
+          text: 'メールアドレスが登録されていません。共有リンクは404を返します。',
           style: `padding:20px;text-align:center;font-size:13px;color:${T.sub}`,
         }),
       )

@@ -212,13 +212,19 @@ adminAuthRouter.get(ADMIN_PATH, (req: Request, res: Response) => {
     res.redirect('/')
     return
   }
-  // メールゲートが有効 & まだメール認証していない → メール入力フォーム
-  if (isEmailGateEnabled() && !isEmailGateVerified(req)) {
-    res.type('html').send(renderEmailGatePage())
+  // メールゲートが有効（1件以上登録済み）のときだけログイン導線を出す
+  if (isEmailGateEnabled()) {
+    if (isEmailGateVerified(req)) {
+      // メール認証済み → パスワードログイン画面
+      res.type('html').send(renderLoginPage())
+    } else {
+      // 未認証 → メール入力フォーム
+      res.type('html').send(renderEmailGatePage())
+    }
     return
   }
-  // メールゲート無効 or メール認証済み → パスワードログイン画面
-  res.type('html').send(renderLoginPage())
+  // メール未登録 → 404（ログイン画面を見せない）
+  res.status(404).type('html').send(render404Page())
 })
 
 /** 未ログイン時に返すログイン画面。ログイン成功後は `/` へリダイレクト（SPAのトップ）。 */
