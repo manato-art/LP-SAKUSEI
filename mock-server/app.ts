@@ -51,7 +51,7 @@ export function createApp(): Express {
   app.get('/__mock/health', (_req, res) => {
     res.json({ ok: true })
   })
-  app.use(express.json({ limit: '64mb' })) // 採取DOMは数MBになりうる
+  app.use(express.json({ limit: '256mb' })) // LP本文に画像(base64)が含まれると数十MBになりうる
   app.use(express.urlencoded({ extended: true }))
   app.use(resetMiddleware)
   app.use(mockStateMiddleware)
@@ -63,6 +63,14 @@ export function createApp(): Express {
   }
 
   // ── 運用エンドポイント ──（health は上部・ボディパーサ前に登録済み）
+  // 最近のエラーを保持する（デバッグ用・最大20件）
+  const recentErrors: { time: string; method: string; url: string; message: string; type?: string; stack?: string }[] = []
+
+  // 診断エンドポイント: 最近のサーバーエラーを返す（SPAのcatch-allより前に登録する）
+  app.get('/__mock/errors', (_req, res) => {
+    res.json({ errors: recentErrors, count: recentErrors.length })
+  })
+
   app.post('/__mock/reset', (_req, res) => {
     resetAll()
     res.json({ ok: true })
@@ -135,14 +143,6 @@ export function createApp(): Express {
       res.sendFile(join(distDir, 'index.html'))
     })
   }
-
-  // 最近のエラーを保持する（デバッグ用・最大20件）
-  const recentErrors: { time: string; method: string; url: string; message: string; stack?: string }[] = []
-
-  // 診断エンドポイント: 最近のサーバーエラーを返す
-  app.get('/__mock/errors', (_req, res) => {
-    res.json({ errors: recentErrors, count: recentErrors.length })
-  })
 
   // エラーハンドラ（握りつぶさない・§12）
   app.use((err: Error & { type?: string; status?: number }, _req: Request, res: Response, _next: NextFunction) => {
