@@ -208,10 +208,13 @@ export async function renderEditor(
     canvasWrapper.style.overflowX = 'hidden'
   }
   // バージョンパネルも独立スクロール（バージョンが多い場合に必要）
+  // 指示㊼再修正: パネル幅を縮小してキャンバスに面積を譲る
   const versionPanel = root.querySelector<HTMLElement>('[class*="_abTestArticlesWrapper_"]')
   if (versionPanel !== null) {
     versionPanel.style.overflowY = 'auto'
     versionPanel.style.overflowX = 'hidden'
+    versionPanel.style.minWidth = '180px'
+    versionPanel.style.width = '180px'
   }
 
   // Versionカードの雛形を、配線前のクリーンな状態でクローンして控える（採取した実物1枚が雛形）。
@@ -538,6 +541,12 @@ function wireVersionCard(ctx: EditorContext, card: HTMLElement, version: Version
   card.setAttribute('data-id', String(model.id))
   const isCurrent = model.uid === ctx.currentUid
   card.querySelector<HTMLElement>(HOOK.currentVersion)?.classList.toggle(ACTIVE_CARD_CLASS, isCurrent)
+
+  // 指示㊼再修正: カードを詰めて次のバージョンをすぐ下に置く
+  const inner = card.querySelector<HTMLElement>(HOOK.currentVersion)
+  if (inner !== null) inner.style.padding = '8px 10px'
+  const buttons = card.querySelector<HTMLElement>('._articleButtons_1xibh_160')
+  if (buttons !== null) buttons.style.padding = '4px 0 2px'
 
   const name = card.querySelector<HTMLInputElement>(HOOK.versionName)
   const ratio = card.querySelector<HTMLInputElement>(HOOK.ratio)

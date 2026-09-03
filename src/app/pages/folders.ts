@@ -134,9 +134,8 @@ export async function renderFolders(
   if (selectedUid === null) {
     hidePageListAndDetail(body)
   } else if (context.abTests.length === 0) {
-    // 指示㊿: ページ0件でも余白だけにならないよう空状態を出す
+    // 指示㊿再修正: 空状態メッセージは不要（そのまま何も出さない）
     hidePageListAndDetail(body)
-    showEmptyPageState(body)
   } else {
     renderRealList(body, context)
   }
@@ -361,26 +360,6 @@ function hidePageListAndDetail(body: HTMLElement): void {
   // 右詳細パネルを非表示にする
   const panel = body.querySelector<HTMLElement>(FOLDERS_HOOK.detailPanel)
   if (panel !== null) panel.style.display = 'none'
-}
-
-/** 指示㊿: ページ0件のとき、余白ではなく案内を出す */
-function showEmptyPageState(body: HTMLElement): void {
-  const listArea = body.querySelector<HTMLElement>(FOLDERS_HOOK.listArea)
-  if (listArea === null) return
-  listArea.style.display = ''
-  const container = listArea.querySelector<HTMLElement>(FOLDERS_HOOK.pageRowList) ?? listArea
-  const msg = el('div', {
-    style: [
-      'display:flex;flex-direction:column;align-items:center;justify-content:center',
-      `gap:12px;padding:60px 24px;color:${T.sub};font-family:${T.font};font-size:14px`,
-      'text-align:center',
-    ].join(';'),
-  })
-  msg.innerHTML =
-    '<svg width="40" height="40" viewBox="0 0 24 24" fill="#CCC"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zM6 20V4h7v5h5v11H6z"/></svg>' +
-    '<div>このフォルダにはページがありません</div>' +
-    '<div style="font-size:12px;color:#BBB">「+ 新規ページを作成」で最初のページを作りましょう</div>'
-  container.append(msg)
 }
 
 // ── 中央: beyondページ一覧（採取した実KPI一覧をモックの現実に束ねる）──────

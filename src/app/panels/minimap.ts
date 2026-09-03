@@ -6,10 +6,15 @@
  *
  * 実装はCanvas描画ではなく、Quill本文のクローンをCSSで縮小表示する方式
  * （transform:scale）。軽量でリアルタイム追従できる。
+ *
+ * 修正（指示46再修正）: コンテンツが長い場合にビューポートインジケータの位置が
+ * ずれていたのを修正。動的スケール計算でLP全体が必ずミニマップ内に収まるようにし、
+ * クリック/ドラッグの位置もそれに合わせて正確にスクロールする。
  */
 
 const MINIMAP_WIDTH = 40
-const MINIMAP_SCALE = 0.06
+/** 理想スケール。コンテンツが長い場合はこれより小さくなる */
+const PREFERRED_SCALE = 0.06
 
 /** ミニマップを生成してエディタに差し込む */
 export function mountMinimap(editorRoot: HTMLElement, scrollContainer: HTMLElement): void {
@@ -39,9 +44,7 @@ export function mountMinimap(editorRoot: HTMLElement, scrollContainer: HTMLEleme
   // ── LP本文の縮小クローン ──
   const clone = document.createElement('div')
   clone.style.cssText = [
-    `transform:scale(${MINIMAP_SCALE})`,
     'transform-origin:top left',
-    `width:${100 / MINIMAP_SCALE}%`,
     'pointer-events:none',
     'position:absolute',
     'top:0',
@@ -64,8 +67,23 @@ export function mountMinimap(editorRoot: HTMLElement, scrollContainer: HTMLEleme
   wrapper.append(viewport)
 
   // ── サイドツールバーの右横に配置 ──
-  // fixed なので body 直下に置く
   document.body.append(wrapper)
+
+  /** 現在の実効スケール（コンテンツ量で変わる） */
+  let effectiveScale = PREFERRED_SCALE
+
+  /** クローンのスケールを再計算し、LP全体がミニマップ内に収まるようにする */
+  const recalcScale = (): void => {
+    const wrapperH = wrapper.clientHeight
+    if (wrapperH <= 0 || clone.scrollHeight <= 0) {
+      effectiveScale = PREFERRED_SCALE
+    } else {
+      // コンテンツが長い場合は PREFERRED_SCALE より小さくして全体を収める
+      effectiveScale = Math.min(PREFERRED_SCALE, wrapperH / clone.scrollHeight)
+    }
+    clone.style.transform = `scale(${effectiveScale})`
+    clone.style.width = `${100 / effectiveScale}%`
+  }
 
   // ── 同期: Quill本文をクローンへ転写 ──
   let syncTimer: ReturnType<typeof setTimeout> | null = null
@@ -73,11 +91,11 @@ export function mountMinimap(editorRoot: HTMLElement, scrollContainer: HTMLEleme
     const qlEditor = editorRoot.querySelector<HTMLElement>('.ql-editor')
     if (qlEditor === null) return
     clone.innerHTML = qlEditor.innerHTML
-    // 画像の max-width を制限して横溢れを防ぐ
     for (const img of clone.querySelectorAll<HTMLImageElement>('img')) {
       img.style.maxWidth = '100%'
       img.style.height = 'auto'
     }
+    recalcScale()
     updateViewport()
   }
 
@@ -88,13 +106,13 @@ export function mountMinimap(editorRoot: HTMLElement, scrollContainer: HTMLEleme
 
   // ── ビューポートインジケータの位置を更新 ──
   const updateViewport = (): void => {
-    const wrapperH = wrapper.clientHeight
-    const contentH = clone.scrollHeight * MINIMAP_SCALE
-    if (contentH <= 0) return
-    const scrollRatio = scrollContainer.scrollTop / scrollContainer.scrollHeight
-    const visibleRatio = scrollContainer.clientHeight / scrollContainer.scrollHeight
-    const top = scrollRatio * Math.min(wrapperH, contentH)
-    const height = visibleRatio * Math.min(wrapperH, contentH)
+    const scrollH = scrollContainer.scrollHeight
+    if (scrollH <= 0) return
+    const scaledH = clone.scrollHeight * effectiveScale
+    const scrollRatio = scrollContainer.scrollTop / scrollH
+    const visibleRatio = scrollContainer.clientHeight / scrollH
+    const top = scrollRatio * scaledH
+    const height = visibleRatio * scaledH
     viewport.style.top = `${top}px`
     viewport.style.height = `${Math.max(8, height)}px`
   }
@@ -102,10 +120,9 @@ export function mountMinimap(editorRoot: HTMLElement, scrollContainer: HTMLEleme
   // ── クリック/ドラッグでスクロール ──
   const scrollToY = (clientY: number): void => {
     const rect = wrapper.getBoundingClientRect()
-    const contentH = clone.scrollHeight * MINIMAP_SCALE
-    const mapH = Math.min(rect.height, contentH)
-    if (mapH <= 0) return
-    const ratio = Math.max(0, Math.min(1, (clientY - rect.top) / mapH))
+    const scaledH = clone.scrollHeight * effectiveScale
+    if (scaledH <= 0) return
+    const ratio = Math.max(0, Math.min(1, (clientY - rect.top) / scaledH))
     scrollContainer.scrollTop =
       ratio * (scrollContainer.scrollHeight - scrollContainer.clientHeight)
   }
@@ -128,13 +145,15 @@ export function mountMinimap(editorRoot: HTMLElement, scrollContainer: HTMLEleme
 
   // ── イベント購読 ──
   scrollContainer.addEventListener('scroll', updateViewport, { passive: true })
-  // MutationObserver で本文の変化を追う
   const qlEditor = editorRoot.querySelector<HTMLElement>('.ql-editor')
   if (qlEditor !== null) {
     const observer = new MutationObserver(scheduleSyncContent)
     observer.observe(qlEditor, { childList: true, subtree: true, characterData: true })
   }
-  addEventListener('resize', updateViewport)
+  addEventListener('resize', () => {
+    recalcScale()
+    updateViewport()
+  })
 
   // 初回描画
   syncContent()
