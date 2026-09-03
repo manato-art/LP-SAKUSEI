@@ -43,15 +43,15 @@ describe('Versionリンク popup の目印は採取物に実在する（task 3�
 })
 
 describe('コピーするURLの組み立て（純粋関数）', () => {
-  it('クローンのプレビュー系URL（#/ab/:abTestUid?version=）を作る', () => {
+  it('配信URL（/lp/:abTestUid?version=）を作る', () => {
     expect(buildVersionLinkUrl('http://localhost:5173', 'UID_1997', 'VERSION_0001')).toBe(
-      'http://localhost:5173/#/ab/UID_1997?version=VERSION_0001',
+      'http://localhost:5173/lp/UID_1997?version=VERSION_0001',
     )
   })
 
   it('versionUid が空なら version クエリを付けない', () => {
     expect(buildVersionLinkUrl('http://localhost:5173', 'UID_1997', '')).toBe(
-      'http://localhost:5173/#/ab/UID_1997',
+      'http://localhost:5173/lp/UID_1997',
     )
   })
 

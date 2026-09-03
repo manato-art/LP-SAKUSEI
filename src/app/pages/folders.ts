@@ -671,6 +671,18 @@ function wireRealDetailPanel(body: HTMLElement, context: PageContext): void {
   if (panel === null) return
 
   const baseUrl = paramUrlBase(panel, context)
+
+  // 採取フラグメント内の配信URLリンク（テキスト・href とも旧形式 /ab/ のまま）を実パス /lp/ へ書き換える。
+  // context.abTests はフォルダ未選択時に空なので、UID に依存せずテキストを置換する。
+  for (const deliveryLink of panel.querySelectorAll<HTMLAnchorElement>('a[href*="/ab/"]')) {
+    const oldHref = deliveryLink.getAttribute('href') ?? ''
+    const newHref = oldHref.replace('/ab/', '/lp/')
+    deliveryLink.setAttribute('href', newHref)
+    const oldText = (deliveryLink.textContent ?? '').trim()
+    deliveryLink.textContent = oldText.replace('/ab/', '/lp/')
+    deliveryLink.removeAttribute('target')
+  }
+
   const paramButton = findByText(panel, 'パラメータ付きURLの発行')
   if (paramButton !== null) {
     paramButton.style.cursor = 'pointer'
@@ -964,12 +976,12 @@ function buildPatchBody(key: string, value: string): Record<string, unknown> {
 /** URL発行/コピーの元になる配信URL。モックのbeyondページがあればそれを、無ければパネル表示値を使う。 */
 function paramUrlBase(panel: HTMLElement, context: PageContext): string {
   const first = context.abTests[0]
-  if (first !== undefined) return `${location.origin}/#/ab/${first.uid}`
+  if (first !== undefined) return `${location.origin}/lp/${first.uid}`
   const shown = Array.from(panel.querySelectorAll<HTMLElement>('a, div')).find((node) =>
-    /^\/ab\//.test((node.textContent ?? '').trim()),
+    /^\/(?:ab|lp)\//.test((node.textContent ?? '').trim()),
   )
-  const path = (shown?.textContent ?? '/ab/UID').trim()
-  return `${location.origin}/#${path}`
+  const path = (shown?.textContent ?? '/lp/UID').trim().replace(/^\/ab\//, '/lp/')
+  return `${location.origin}${path}`
 }
 
 /** 子孫から、指定文字列と完全一致するテキストだけを持つ最小要素を探す（アイコン等を巻き込まない）。 */

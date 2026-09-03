@@ -61,7 +61,7 @@ function wireUrlCards(root: HTMLElement, abTestUid: string, version: Version | u
   const origin = location.origin
   const urls = [
     version === undefined ? `${origin}/#/preview` : `${origin}/#/preview/${version.uid}`,
-    `${origin}/#/ab/${abTestUid}`,
+    `${origin}/lp/${abTestUid}`,
   ]
   // URLの入った <p>（テキストが http で始まる）を上から拾う
   const urlNodes = [...root.querySelectorAll<HTMLElement>('p')].filter((p) =>

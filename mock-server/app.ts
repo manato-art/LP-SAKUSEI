@@ -31,7 +31,7 @@ import { teamsRouter } from './routes/teams.ts'
 import { usersRouter } from './routes/users.ts'
 import { versionsRouter } from './routes/versions.ts'
 import { deliveryRouter } from './routes/delivery.ts'
-import { adminAuthRouter, isAdminAuthenticated, renderLoginPage } from './lib/admin-auth.ts'
+import { adminAuthRouter, isAdminAuthenticated, render404Page } from './lib/admin-auth.ts'
 
 /** `?reset=1` で新規アカウント発行直後（空）へ戻す（§10-9） */
 function resetAll(): void {
@@ -43,6 +43,20 @@ function resetAll(): void {
 function resetMiddleware(req: Request, _res: Response, next: NextFunction): void {
   if (req.query['reset'] === '1') resetAll()
   next()
+}
+
+/** API 認証ミドルウェア: Cookie が無ければ 401 を返す（本番のみ有効）。 */
+function apiAuthMiddleware(req: Request, res: Response, next: NextFunction): void {
+  // 開発モード（Vite経由）では認証をスキップ＝ログインなしで開発できるように。
+  if (SERVE_DIST === undefined) {
+    next()
+    return
+  }
+  if (isAdminAuthenticated(req)) {
+    next()
+    return
+  }
+  res.status(401).json(errorEnvelope('unauthorized', '認証が必要です。'))
 }
 
 export function createApp(): Express {
@@ -78,7 +92,8 @@ export function createApp(): Express {
     res.json({ ok: true })
   })
 
-  // 管理SPAのパスワード保護（ログイン/確認/ログアウト）。認証不要（これ自体が認証の入口）。
+  // 管理SPAのパスワード保護（ログイン/確認/ログアウト＋ADMIN_PATHでのログイン画面表示）。
+  // 認証不要（これ自体が認証の入口）。
   app.use(adminAuthRouter)
 
   const apiRouters = [
@@ -103,12 +118,13 @@ export function createApp(): Express {
   ]
 
   // [A] メインREST API（実物は v1 / v2 が混在するため両方に同じルーターを載せる）
-  app.use(PREFIX.api, ...apiRouters)
-  app.use(PREFIX.apiV2, ...apiRouters)
+  // 本番ではCookie認証を要求する（配信ページはAPIを使わないので影響なし）。
+  app.use(PREFIX.api, apiAuthMiddleware, ...apiRouters)
+  app.use(PREFIX.apiV2, apiAuthMiddleware, ...apiRouters)
   // [W] 重い集計系（同一モックに集約）
-  app.use(PREFIX.workers, ...apiRouters)
+  app.use(PREFIX.workers, apiAuthMiddleware, ...apiRouters)
   // [R] ランキング別ドメインのローカルミラー
-  app.use(PREFIX.report, reportRouter)
+  app.use(PREFIX.report, apiAuthMiddleware, reportRouter)
 
   // 未定義API は 404 を明示的に返す（spinner固定・未定義404を作らない・§13-B）
   app.use('/api', (_req, res) => {
@@ -129,20 +145,22 @@ export function createApp(): Express {
     const widgetRouter = widgetAssetsRouter()
     if (widgetRouter !== null) app.use(widgetRouter)
 
-    // 管理SPA本体（index.html）はパスワード保護する。CSS/JS/画像等の静的アセットは
-    // 素通し（下の express.static がそのまま配る）＝ログイン画面自体の描画にも使うため。
-    // index.html は毎回取り直す（no-cache）＝古いJSに固定されない。
-    const serveIndexOrLogin = (req: Request, res: Response): void => {
-      res.setHeader('Cache-Control', 'no-cache') // SPAのindex.html／ログイン画面は常に最新を配る
+    // 管理SPA本体（index.html）はパスワード保護する。
+    // ルート（`/`）は**ログイン済みならSPA、未ログインなら404**を返す。
+    // ログイン画面は `ADMIN_PATH`（既定 `/__admin`）でのみ表示する＝
+    // 配信URLを渡したクライアントがドメイン直打ちしても管理画面の存在を悟らせない。
+    const serveIndexOr404 = (req: Request, res: Response): void => {
+      res.setHeader('Cache-Control', 'no-cache')
       if (isAdminAuthenticated(req)) {
         res.sendFile(join(distDir, 'index.html'))
         return
       }
-      res.type('html').send(renderLoginPage())
+      // 未ログイン → 404（ログイン画面を見せない）
+      res.status(404).type('html').send(render404Page())
     }
     // `/` と `/index.html` は明示ルートで先取りする（後段の express.static がファイル名一致で
-    // 直接配ってしまい、ログイン画面を素通りしてしまうのを防ぐ）。
-    app.get(['/', '/index.html'], serveIndexOrLogin)
+    // 直接配ってしまい、認証を素通りしてしまうのを防ぐ）。
+    app.get(['/', '/index.html'], serveIndexOr404)
 
     // ハッシュ付きアセット（/assets/index-XXXX.js 等）はファイル名が変わるので長期キャッシュ可。
     // index: false＝ディレクトリ相当のリクエストで index.html を暗黙に配らせない
@@ -157,7 +175,7 @@ export function createApp(): Express {
         },
       }),
     )
-    // ハッシュルーティングなので、API/静的アセット以外の全パスは index.html（またはログイン画面）を返す。
+    // ハッシュルーティングなので、API/静的アセット以外の全パスは index.html（または404）を返す。
     // Express 5 は文字列ワイルドカード '*' を廃止したので、末尾ミドルウェアで受ける。
     // API系プレフィックスは上で処理済みなのでここには来ない。
     app.use((req, res, next) => {
@@ -165,7 +183,7 @@ export function createApp(): Express {
         next()
         return
       }
-      serveIndexOrLogin(req, res)
+      serveIndexOr404(req, res)
     })
   }
 

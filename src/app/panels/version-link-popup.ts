@@ -32,11 +32,11 @@ export const VERSION_LINK_HOOK = {
 /**
  * コピーする Version リンクを組み立てる（純粋関数・境界で検証）。
  * 実LPのURLは採取物では架空化済みなので**転記しない**。クローンのプレビュー系URLを作る
- * （openPreview の配信URLと同じ `#/ab/:abTestUid` 系列・§3-2 localhost固定）。
+ * （配信URLと同じ `/lp/:abTestUid` 実パス・§3-2 localhost固定）。
  */
 export function buildVersionLinkUrl(origin: string, abTestUid: string, versionUid: string): string {
   if (abTestUid.trim() === '') throw new Error('abTestUid が空です')
-  const base = `${origin}/#/ab/${abTestUid}`
+  const base = `${origin}/lp/${abTestUid}`
   return versionUid.trim() === '' ? base : `${base}?version=${versionUid}`
 }
 

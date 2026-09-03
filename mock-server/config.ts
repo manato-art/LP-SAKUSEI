@@ -12,6 +12,9 @@ export const SERVE_DIST = process.env['SERVE_DIST']
 /** 管理SPAのパスワード保護に使う合言葉（Railway等の環境変数で上書き可能）。 */
 export const ADMIN_PASSWORD = process.env['ADMIN_PASSWORD'] ?? 'ebiyon2026'
 
+/** 管理画面のログイン入口パス（Railway等の環境変数で上書き可能。知っている人だけアクセスする）。 */
+export const ADMIN_PATH = process.env['ADMIN_PATH'] ?? '/__admin'
+
 /** 3系統 + WS を localhost の同一モックにパスプレフィックスで集約（§10-1） */
 export const PREFIX = {
   api: '/api/v1',

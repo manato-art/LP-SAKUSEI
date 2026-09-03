@@ -3,23 +3,32 @@
  *
  * `ADMIN_PASSWORD`（Railway等の環境変数で上書き可能・既定 'ebiyon2026'）を知っている人だけが
  * 管理SPA（フォルダ一覧・エディタ等、サイドバーのある画面）を開ける。
- * 配信ページ（`/lp/:uid`）・API（`/api/*` 等）・`/__mock/*` は対象外
- * （配信ページはエンドユーザーが見るページなので認証を要求しない。API/`__mock`は
- * 配信ページ自身がクライアントから叩く必要があるため素通しする）。
+ * 配信ページ（`/lp/:uid`）は対象外（エンドユーザーが見るページなので認証を要求しない）。
+ * API（`/api/*` 等）も認証必須（管理画面からしか叩かない）。
+ *
+ * ログイン画面は `ADMIN_PATH`（既定 `/__admin`）でのみ表示する。
+ * ルート（`/`）を開いても404を返す＝配信URLを渡したクライアントに管理画面の存在を悟らせない。
  *
  * セッションは「パスワードのSHA-256ハッシュをそのままCookie値にする」薄い方式。
  * パスワードを知らない限り正しい値を作れない（一方向ハッシュ）ので、サーバー側に
  * セッションストアを持つ必要が無い。新規npmパッケージは入れず node:crypto だけで完結させる。
+ *
+ * ログイン試行は IP ベースでレート制限（5回失敗で60秒ロック）。
  */
 import { createHash, timingSafeEqual } from 'node:crypto'
 import { Router } from 'express'
-import type { Request } from 'express'
-import { ADMIN_PASSWORD } from '../config.ts'
+import type { Request, Response } from 'express'
+import { ADMIN_PASSWORD, ADMIN_PATH } from '../config.ts'
 
 export const ADMIN_SESSION_COOKIE = 'admin_session'
 
 /** 30日 */
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30
+
+/** レート制限: 最大試行回数 */
+const MAX_LOGIN_ATTEMPTS = 5
+/** レート制限: ロック時間（ミリ秒） */
+const LOCKOUT_MS = 60_000
 
 function sessionToken(password: string): string {
   return createHash('sha256').update(`ebiyon-admin-session:${password}`).digest('hex')
@@ -65,15 +74,79 @@ function cookieAttributes(req: Request, maxAgeSeconds: number): string {
   return attrs.join('; ')
 }
 
+// ── レート制限（IPベース・インメモリ）──
+interface LoginAttempt {
+  count: number
+  firstAt: number
+}
+const loginAttempts = new Map<string, LoginAttempt>()
+
+/** 古い記録を定期的に掃除（メモリリーク防止） */
+setInterval(() => {
+  const now = Date.now()
+  for (const [ip, attempt] of loginAttempts) {
+    if (now - attempt.firstAt > LOCKOUT_MS * 2) loginAttempts.delete(ip)
+  }
+}, LOCKOUT_MS * 2)
+
+function getClientIp(req: Request): string {
+  const xff = req.headers['x-forwarded-for']
+  if (typeof xff === 'string') return xff.split(',')[0]?.trim() ?? 'unknown'
+  return req.ip ?? 'unknown'
+}
+
+function isRateLimited(ip: string): { limited: boolean; retryAfterSeconds: number } {
+  const attempt = loginAttempts.get(ip)
+  if (attempt === undefined) return { limited: false, retryAfterSeconds: 0 }
+  if (attempt.count < MAX_LOGIN_ATTEMPTS) return { limited: false, retryAfterSeconds: 0 }
+  const elapsed = Date.now() - attempt.firstAt
+  if (elapsed >= LOCKOUT_MS) {
+    loginAttempts.delete(ip)
+    return { limited: false, retryAfterSeconds: 0 }
+  }
+  return { limited: true, retryAfterSeconds: Math.ceil((LOCKOUT_MS - elapsed) / 1000) }
+}
+
+function recordFailedLogin(ip: string): void {
+  const attempt = loginAttempts.get(ip)
+  if (attempt === undefined) {
+    loginAttempts.set(ip, { count: 1, firstAt: Date.now() })
+  } else {
+    attempt.count += 1
+  }
+}
+
+function clearLoginAttempts(ip: string): void {
+  loginAttempts.delete(ip)
+}
+
+// ── ルーター ──
 export const adminAuthRouter: Router = Router()
 
 adminAuthRouter.post('/__auth/login', (req, res) => {
+  const ip = getClientIp(req)
+  const rate = isRateLimited(ip)
+  if (rate.limited) {
+    res.status(429).json({
+      ok: false,
+      message: `試行回数の上限に達しました。${rate.retryAfterSeconds}秒後に再試行してください。`,
+    })
+    return
+  }
+
   const body = req.body as { password?: unknown } | null
   const password = typeof body?.password === 'string' ? body.password : ''
   if (!safeEqual(password, ADMIN_PASSWORD)) {
-    res.status(401).json({ ok: false, message: 'パスワードが違います。' })
+    recordFailedLogin(ip)
+    const attempt = loginAttempts.get(ip)
+    const remaining = MAX_LOGIN_ATTEMPTS - (attempt?.count ?? 0)
+    const message = remaining > 0
+      ? `パスワードが違います。（残り${remaining}回）`
+      : `試行回数の上限に達しました。${Math.ceil(LOCKOUT_MS / 1000)}秒後に再試行してください。`
+    res.status(401).json({ ok: false, message })
     return
   }
+  clearLoginAttempts(ip)
   res.setHeader(
     'Set-Cookie',
     `${ADMIN_SESSION_COOKIE}=${EXPECTED_TOKEN}; ${cookieAttributes(req, SESSION_MAX_AGE_SECONDS)}`,
@@ -90,7 +163,17 @@ adminAuthRouter.post('/__auth/logout', (req, res) => {
   res.json({ ok: true })
 })
 
-/** 未ログイン時に index.html の代わりに返すログイン画面。 */
+/** 管理画面入口（ADMIN_PATH）にログイン画面を返す */
+adminAuthRouter.get(ADMIN_PATH, (req: Request, res: Response) => {
+  if (isAdminAuthenticated(req)) {
+    // ログイン済みならSPAのルート（`/`）へ飛ばす（本番では serveIndexOrLogin がSPAを返す）
+    res.redirect('/')
+    return
+  }
+  res.type('html').send(renderLoginPage())
+})
+
+/** 未ログイン時に返すログイン画面。ログイン成功後は `/` へリダイレクト（SPAのトップ）。 */
 export function renderLoginPage(): string {
   return `<!doctype html><html lang="ja"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -142,7 +225,7 @@ export function renderLoginPage(): string {
         })
         .then(function (result) {
           if (result.ok && result.data.ok) {
-            location.reload()
+            location.href = '/'
           } else {
             errorEl.textContent = (result.data && result.data.message) || 'ログインに失敗しました。'
             btn.disabled = false
@@ -154,5 +237,25 @@ export function renderLoginPage(): string {
         })
     })
   </script>
+</body></html>`
+}
+
+/** 存在しないページ用の404ページ（管理画面の存在を悟らせない） */
+export function render404Page(): string {
+  return `<!doctype html><html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ページが見つかりません</title>
+<style>
+  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+    font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN",sans-serif;background:#F5F6F8;color:#333}
+  .card{text-align:center}
+  .code{font-size:64px;font-weight:700;color:#CCC;margin-bottom:8px}
+  .msg{font-size:14px;color:#888}
+</style></head>
+<body>
+  <div class="card">
+    <div class="code">404</div>
+    <div class="msg">ページが見つかりません</div>
+  </div>
 </body></html>`
 }

@@ -1,6 +1,6 @@
 {
   "version": "0.0.1",
   "configurations": [
-    { "name": "sb-clone", "runtimeExecutable": "npx", "runtimeArgs": ["vite", "--force"], "port": 5174, "autoPort": true }
+    { "name": "lp-sakusei", "runtimeExecutable": "npx", "runtimeArgs": ["vite", "--force"], "port": 5174, "autoPort": true }
   ]
 }
