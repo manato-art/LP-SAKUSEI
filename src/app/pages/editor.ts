@@ -694,13 +694,32 @@ function wireSideToolbar(ctx: EditorContext): void {
   // パズルピース（Widget管理ボタン）は実物では Widgetライブラリを開く
   mountWidgetLibrary(ctx.root, ctx.quill)
 
-  // 指示㊶: 右レールをスクロール追従させる（sticky）。
-  // エディタのコンテナは `overflow:auto` なので `position:sticky` が効く。
+  // 指示㊶: 右レールをスクロール追従させる。
+  // 実DOMの構造:
+  //   container (overflow:auto, height:100vh) ← スクロールはここ
+  //     └ _editorWrapper_ (display:flex, height:calc(100%-120px))
+  //         └ _abTestArticleContent_ (display:flex, align-items:center)
+  //             └ _sideToolbarWrapper_ (width:50px, height:calc(100%-80px))
+  // 親が flex で height 制約あり → sticky は効かない。position:fixed で viewport に固定する。
   const sideToolbarWrapper = ctx.root.querySelector<HTMLElement>('[class*="_sideToolbarWrapper_"]')
   if (sideToolbarWrapper !== null) {
-    sideToolbarWrapper.style.position = 'sticky'
-    sideToolbarWrapper.style.top = '0'
-    sideToolbarWrapper.style.alignSelf = 'flex-start'
+    // 初期位置を計測して fixed に切り替える
+    const pinToolbar = (): void => {
+      const rect = sideToolbarWrapper.getBoundingClientRect()
+      // 右端の x を viewport 右端からの距離で固定
+      sideToolbarWrapper.style.position = 'fixed'
+      sideToolbarWrapper.style.top = `${Math.max(rect.top, 80)}px`
+      sideToolbarWrapper.style.right = `${document.documentElement.clientWidth - rect.right}px`
+      sideToolbarWrapper.style.left = 'auto'
+      sideToolbarWrapper.style.height = 'auto'
+      sideToolbarWrapper.style.marginTop = '0'
+      sideToolbarWrapper.style.marginBottom = '0'
+      sideToolbarWrapper.style.zIndex = '50'
+    }
+    // 初回配置は DOM が安定してから
+    requestAnimationFrame(pinToolbar)
+    // ウィンドウリサイズで再計算
+    addEventListener('resize', pinToolbar)
   }
 
   const icons = [...ctx.root.querySelectorAll<HTMLElement>('[class*="sideToolbarIcon"]')]

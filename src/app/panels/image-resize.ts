@@ -2,11 +2,10 @@
  * 指示㊵: エディタ内の画像をクリックしたとき、リサイズハンドルを表示して
  * ドラッグでサイズ変更できるようにする。
  *
- * 仕組み:
- * - Quill のルート要素でクリックを監視
- * - img がクリックされたら四隅にハンドルを出す
- * - ハンドルのドラッグで画像の幅を変える（アスペクト比は保持）
- * - サイズ表示（「570 x 320」のようなバッジ）を画像の上に出す
+ * 実物の見た目（スクショより）:
+ * - 画像全体を囲む青い枠線
+ * - 右下に1つだけ丸いドラッグハンドル（青い円）
+ * - 画像の右下にサイズ表示バッジ（「570 x 320」）
  */
 import type Quill from 'quill'
 
@@ -17,8 +16,6 @@ interface ResizeState {
   startY: number
   startWidth: number
   startHeight: number
-  /** どの角を掴んでいるか */
-  corner: 'se' | 'sw' | 'ne' | 'nw'
 }
 
 /**
@@ -29,6 +26,7 @@ export function wireImageResize(quill: Quill): void {
   const root = quill.root
   let overlay: HTMLDivElement | null = null
   let sizeBadge: HTMLDivElement | null = null
+  let handle: HTMLDivElement | null = null
   let activeImg: HTMLImageElement | null = null
   let resizeState: ResizeState | null = null
 
@@ -41,6 +39,10 @@ export function wireImageResize(quill: Quill): void {
       sizeBadge.remove()
       sizeBadge = null
     }
+    if (handle !== null) {
+      handle.remove()
+      handle = null
+    }
     activeImg = null
   }
 
@@ -49,75 +51,74 @@ export function wireImageResize(quill: Quill): void {
     const w = Math.round(img.getBoundingClientRect().width)
     const h = Math.round(img.getBoundingClientRect().height)
     sizeBadge.textContent = `${w} x ${h}`
-    // Position badge at bottom-right of image
+    // バッジは画像の右下内側に配置
     const imgRect = img.getBoundingClientRect()
     const rootRect = root.getBoundingClientRect()
-    sizeBadge.style.left = `${imgRect.right - rootRect.left - sizeBadge.offsetWidth - 4 + root.scrollLeft}px`
-    sizeBadge.style.top = `${imgRect.bottom - rootRect.top - sizeBadge.offsetHeight - 4 + root.scrollTop}px`
+    const badgeW = sizeBadge.offsetWidth
+    const badgeH = sizeBadge.offsetHeight
+    sizeBadge.style.left = `${imgRect.right - rootRect.left - badgeW - 8 + root.scrollLeft}px`
+    sizeBadge.style.top = `${imgRect.bottom - rootRect.top - badgeH - 8 + root.scrollTop}px`
   }
 
   function positionOverlay(img: HTMLImageElement): void {
     if (overlay === null) return
     const imgRect = img.getBoundingClientRect()
     const rootRect = root.getBoundingClientRect()
-    overlay.style.left = `${imgRect.left - rootRect.left + root.scrollLeft}px`
-    overlay.style.top = `${imgRect.top - rootRect.top + root.scrollTop}px`
+    const left = imgRect.left - rootRect.left + root.scrollLeft
+    const top = imgRect.top - rootRect.top + root.scrollTop
+    overlay.style.left = `${left}px`
+    overlay.style.top = `${top}px`
     overlay.style.width = `${imgRect.width}px`
     overlay.style.height = `${imgRect.height}px`
+
+    // ハンドルは枠の右下角に配置
+    if (handle !== null) {
+      handle.style.left = `${left + imgRect.width - 6}px`
+      handle.style.top = `${top + imgRect.height - 6}px`
+    }
   }
 
   function showOverlay(img: HTMLImageElement): void {
     removeOverlay()
     activeImg = img
+    root.style.position = 'relative'
 
     // 青い枠線のオーバーレイ
     overlay = document.createElement('div')
     overlay.style.cssText =
       'position:absolute;border:2px solid #0091FF;pointer-events:none;z-index:10;box-sizing:border-box'
-    root.style.position = 'relative'
     root.append(overlay)
-    positionOverlay(img)
 
-    // 四隅のハンドル
-    const corners: ResizeState['corner'][] = ['nw', 'ne', 'sw', 'se']
-    for (const corner of corners) {
-      const handle = document.createElement('div')
-      handle.dataset['corner'] = corner
-      handle.style.cssText =
-        'position:absolute;width:10px;height:10px;background:#0091FF;border-radius:2px;' +
-        'pointer-events:auto;cursor:nwse-resize;z-index:11'
-      // 位置
-      if (corner.includes('n')) handle.style.top = '-5px'
-      if (corner.includes('s')) handle.style.bottom = '-5px'
-      if (corner.includes('w')) handle.style.left = '-5px'
-      if (corner.includes('e')) handle.style.right = '-5px'
-      // カーソル
-      if (corner === 'ne' || corner === 'sw') handle.style.cursor = 'nesw-resize'
+    // 右下に1つだけ丸いハンドル（実物と同じ）
+    handle = document.createElement('div')
+    handle.style.cssText =
+      'position:absolute;width:12px;height:12px;background:#0091FF;border-radius:50%;' +
+      'pointer-events:auto;cursor:nwse-resize;z-index:11;border:2px solid #fff;box-sizing:border-box'
+    root.append(handle)
 
-      handle.addEventListener('mousedown', (e: MouseEvent) => {
-        e.preventDefault()
-        e.stopPropagation()
-        resizeState = {
-          img,
-          startX: e.clientX,
-          startY: e.clientY,
-          startWidth: img.getBoundingClientRect().width,
-          startHeight: img.getBoundingClientRect().height,
-          corner,
-        }
-        document.body.style.cursor = handle.style.cursor
-        document.body.style.userSelect = 'none'
-      })
-      overlay.append(handle)
-    }
+    handle.addEventListener('mousedown', (e: MouseEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+      resizeState = {
+        img,
+        startX: e.clientX,
+        startY: e.clientY,
+        startWidth: img.getBoundingClientRect().width,
+        startHeight: img.getBoundingClientRect().height,
+      }
+      document.body.style.cursor = 'nwse-resize'
+      document.body.style.userSelect = 'none'
+    })
 
-    // サイズバッジ
+    // サイズバッジ（「570 x 320」）
     sizeBadge = document.createElement('div')
     sizeBadge.style.cssText =
-      'position:absolute;background:rgba(0,145,255,0.9);color:#fff;font-size:11px;' +
-      'padding:2px 6px;border-radius:3px;pointer-events:none;z-index:12;white-space:nowrap;' +
+      'position:absolute;background:rgba(0,145,255,0.85);color:#fff;font-size:11px;' +
+      'padding:2px 8px;border-radius:3px;pointer-events:none;z-index:12;white-space:nowrap;' +
       'font-family:-apple-system,BlinkMacSystemFont,sans-serif'
     root.append(sizeBadge)
+
+    positionOverlay(img)
     updateSizeBadge(img)
   }
 
@@ -127,28 +128,26 @@ export function wireImageResize(quill: Quill): void {
     if (target.tagName === 'IMG') {
       e.preventDefault()
       showOverlay(target as HTMLImageElement)
-    } else if (overlay !== null && !overlay.contains(target)) {
+    } else if (overlay !== null && !overlay.contains(target) && target !== handle) {
       removeOverlay()
     }
   })
 
-  // ドラッグでリサイズ
+  // ドラッグでリサイズ（右下ハンドルのみ → 右下方向が拡大）
   document.addEventListener('mousemove', (e: MouseEvent) => {
     if (resizeState === null) return
-    const { img, startX, startWidth, startHeight, corner } = resizeState
+    const { img, startX, startWidth, startHeight } = resizeState
     const ratio = startHeight / startWidth
 
-    // 右下・右上は右方向が拡大、左下・左上は左方向が拡大
-    const xDir = corner.includes('e') ? 1 : -1
-    const deltaX = (e.clientX - startX) * xDir
+    const deltaX = e.clientX - startX
     const newWidth = Math.max(50, startWidth + deltaX)
-    const newHeight = newWidth * ratio
+    const newHeight = Math.round(newWidth * ratio)
 
     img.style.width = `${Math.round(newWidth)}px`
-    img.style.height = `${Math.round(newHeight)}px`
+    img.style.height = `${newHeight}px`
     // img 属性の width/height も更新（Quill が HTML を保存するときに拾う）
     img.setAttribute('width', String(Math.round(newWidth)))
-    img.setAttribute('height', String(Math.round(newHeight)))
+    img.setAttribute('height', String(newHeight))
 
     positionOverlay(img)
     updateSizeBadge(img)
@@ -164,7 +163,8 @@ export function wireImageResize(quill: Quill): void {
   // エディタ外のクリックで解除
   document.addEventListener('mousedown', (e: MouseEvent) => {
     if (activeImg === null) return
-    if (!root.contains(e.target as Node)) {
+    const target = e.target as Node
+    if (!root.contains(target) && target !== handle) {
       removeOverlay()
     }
   })
