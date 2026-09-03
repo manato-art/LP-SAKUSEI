@@ -170,7 +170,12 @@ adminAuthRouter.get('/__auth/check', (req, res) => {
 })
 
 adminAuthRouter.post('/__auth/logout', (req, res) => {
-  res.setHeader('Set-Cookie', `${ADMIN_SESSION_COOKIE}=; ${cookieAttributes(req, 0)}`)
+  // 管理セッション + メールゲートの両方のCookieを消す（再アクセス時にメール認証からやり直し）
+  const expire = cookieAttributes(req, 0)
+  res.setHeader('Set-Cookie', [
+    `${ADMIN_SESSION_COOKIE}=; ${expire}`,
+    `${EMAIL_GATE_COOKIE}=; ${expire}`,
+  ])
   res.json({ ok: true })
 })
 
