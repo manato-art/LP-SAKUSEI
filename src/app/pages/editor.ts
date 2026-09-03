@@ -748,28 +748,37 @@ function wireSideToolbar(ctx: EditorContext): void {
   // 本文の自動保存。実物のエディタは自動保存が走る
   // （docs/findings-live-observation.md「エディタは『開くだけで自動保存』が走る」・DOMに _saveAnimation_）。
   // これが無いと、打った内容がサーバーに残らない。
-  /** 「更新」ボタンを一瞬オレンジにして保存成功を知らせる */
-  function flashSaveIndicator(): void {
-    const card = ctx.root.querySelector<HTMLElement>(`[data-article-uid="${ctx.currentUid}"]`)
-      ?? ctx.root.querySelector<HTMLElement>(HOOK.currentVersion)?.closest('[data-id]')
-      ?? ctx.root.querySelector<HTMLElement>('._articleButtons_1xibh_160')?.closest('[data-id]')
-    if (card === null) return
-    const btn = findUpdateButton(card as HTMLElement)
+  /** 「更新」ボタンの色で保存状態を示す: 青=保存済み / オレンジ=未保存あり */
+  function findCurrentUpdateButton(): HTMLElement | null {
+    const cards = ctx.root.querySelectorAll<HTMLElement>('[data-id]')
+    for (const card of cards) {
+      const btn = findUpdateButton(card)
+      if (btn !== null) return btn
+    }
+    return null
+  }
+
+  function markUnsaved(): void {
+    const btn = findCurrentUpdateButton()
     if (btn === null) return
     btn.style.transition = 'background-color 0.3s'
     btn.style.backgroundColor = '#f59e0b'
     btn.style.color = '#fff'
-    setTimeout(() => {
-      btn.style.backgroundColor = ''
-      btn.style.color = ''
-    }, 1500)
+  }
+
+  function markSaved(): void {
+    const btn = findCurrentUpdateButton()
+    if (btn === null) return
+    btn.style.transition = 'background-color 0.3s'
+    btn.style.backgroundColor = ''
+    btn.style.color = ''
   }
 
   const autosave = createAutosave({
     // 変更のたびに保存し、同時に履歴スナップショットを積む（指示⑪・サーバー側で最新100件に丸め）。
     save: async () => {
       await saveHtml(ctx)
-      flashSaveIndicator()
+      markSaved()
       try {
         await recordArticleHistory(ctx.articleUid, ctx.quill.root.innerHTML)
       } catch {
@@ -781,7 +790,10 @@ function wireSideToolbar(ctx: EditorContext): void {
   })
   ctx.quill.on('text-change', (_delta, _old, source) => {
     // 画面を切り替えた直後の再描画で保存が走ると、古い内容を書き戻してしまう。
-    if (source === 'user') autosave.schedule()
+    if (source === 'user') {
+      markUnsaved()
+      autosave.schedule()
+    }
   })
 
   // 保存（実物にはショートカットが無いが、作業用に足している）
