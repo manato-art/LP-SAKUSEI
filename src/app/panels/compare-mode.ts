@@ -53,14 +53,28 @@ interface DeviceDef {
 }
 
 const DEVICES: readonly DeviceDef[] = [
+  { label: 'iPhone SE (第1世代) (320×568)', width: 320, height: 568 },
+  { label: 'Galaxy S22 / S23 / S24 (360×780)', width: 360, height: 780 },
+  { label: 'iPhone SE (第2/3世代) (375×667)', width: 375, height: 667 },
+  { label: 'iPhone 12 / 13 / 14 (390×844)', width: 390, height: 844 },
+  { label: 'iPhone 15 / 15 Pro / 16 (393×852)', width: 393, height: 852 },
   { label: 'iPhone 16 Pro / 17 (402×874)', width: 402, height: 874 },
-  { label: 'iPhone 15 (393×852)', width: 393, height: 852 },
-  { label: 'iPhone SE (375×667)', width: 375, height: 667 },
-  { label: 'iPad mini (768×1024)', width: 768, height: 1024 },
+  { label: 'Pixel 7 / 8 (412×915)', width: 412, height: 915 },
+  { label: 'iPhone 15 Plus / 15 Pro Max / 16 Plus (430×932)', width: 430, height: 932 },
+  { label: 'iPhone 16 Pro Max / 17 Pro Max (440×956)', width: 440, height: 956 },
+  { label: '小型ノートPC (1024×768)', width: 1024, height: 768 },
+  { label: 'ノートPC (1280×800)', width: 1280, height: 800 },
+  { label: 'デスクトップ (1440×900)', width: 1440, height: 900 },
+  { label: 'デスクトップ (フルHD) (1920×1080)', width: 1920, height: 1080 },
 ]
 
-/** パネル幅（px） */
-const PANEL_W = 400
+/** デフォルト選択デバイスのインデックス（iPhone 16 Pro / 17） */
+const DEFAULT_DEVICE_INDEX = 5
+/** パネル初期幅（px） */
+const PANEL_W = 420
+/** パネル最小サイズ */
+const MIN_W = 320
+const MIN_H = 400
 
 /* ──────────────────── CSS 注入 ──────────────────── */
 
@@ -243,7 +257,7 @@ function injectStyles(): void {
 .sb-cmp-phone-area {
   flex: 1 1 0;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
   padding: 14px 10px 20px;
   min-height: 0;
@@ -291,6 +305,18 @@ function injectStyles(): void {
   padding: 40px 16px;
 }
 .sb-cmp-placeholder svg { opacity: .4; }
+
+/* ── リサイズハンドル（四隅） ── */
+.sb-cmp-resize {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  z-index: 2;
+}
+.sb-cmp-resize-tl { top: -2px; left: -2px; cursor: nwse-resize; }
+.sb-cmp-resize-tr { top: -2px; right: -2px; cursor: nesw-resize; }
+.sb-cmp-resize-bl { bottom: -2px; left: -2px; cursor: nesw-resize; }
+.sb-cmp-resize-br { bottom: -2px; right: -2px; cursor: nwse-resize; }
   `
   document.head.append(style)
 }
@@ -350,8 +376,8 @@ function openComparePanel(root: HTMLElement, deps: ComparePanelDeps): void {
   panelEl = buildPanel(deps)
   panelEl.style.top = `${initTop}px`
   panelEl.style.right = `${initRight}px`
-  // パネル高さ: ビューポートから上下余白を引いた分
-  panelEl.style.height = `${window.innerHeight - initTop - 16}px`
+  // パネル高さ: ビューポートいっぱい（上下8pxだけ余白）
+  panelEl.style.height = `${window.innerHeight - initTop - 8}px`
 
   document.body.append(panelEl)
 }
@@ -425,6 +451,14 @@ function buildPanel(deps: ComparePanelDeps): HTMLElement {
   renderTabContent(contentArea, 0, deps)
   panel.append(contentArea)
 
+  // ── 四隅リサイズハンドル ──
+  for (const corner of ['tl', 'tr', 'bl', 'br'] as const) {
+    const handle = document.createElement('div')
+    handle.className = `sb-cmp-resize sb-cmp-resize-${corner}`
+    wireResize(handle, panel, corner)
+    panel.append(handle)
+  }
+
   return panel
 }
 
@@ -463,6 +497,81 @@ function wireDrag(handle: HTMLElement, panel: HTMLElement): void {
     panel.style.left = `${rect.left}px`
     panel.style.right = 'auto'
     handle.style.cursor = 'grabbing'
+    document.addEventListener('mousemove', onMouseMove)
+    document.addEventListener('mouseup', onMouseUp)
+  })
+}
+
+/* ──────────────────── リサイズ（四隅ドラッグ） ──────────────────── */
+
+type Corner = 'tl' | 'tr' | 'bl' | 'br'
+
+function wireResize(handle: HTMLElement, panel: HTMLElement, corner: Corner): void {
+  let startX = 0
+  let startY = 0
+  let startRect = { left: 0, top: 0, width: 0, height: 0 }
+
+  function onMouseMove(e: MouseEvent): void {
+    e.preventDefault()
+    const dx = e.clientX - startX
+    const dy = e.clientY - startY
+
+    let newLeft = startRect.left
+    let newTop = startRect.top
+    let newW = startRect.width
+    let newH = startRect.height
+
+    if (corner === 'tl') {
+      newW = startRect.width - dx
+      newH = startRect.height - dy
+      newLeft = startRect.left + dx
+      newTop = startRect.top + dy
+    } else if (corner === 'tr') {
+      newW = startRect.width + dx
+      newH = startRect.height - dy
+      newTop = startRect.top + dy
+    } else if (corner === 'bl') {
+      newW = startRect.width - dx
+      newH = startRect.height + dy
+      newLeft = startRect.left + dx
+    } else {
+      // br
+      newW = startRect.width + dx
+      newH = startRect.height + dy
+    }
+
+    // 最小サイズ制約
+    if (newW < MIN_W) {
+      if (corner === 'tl' || corner === 'bl') newLeft = startRect.left + startRect.width - MIN_W
+      newW = MIN_W
+    }
+    if (newH < MIN_H) {
+      if (corner === 'tl' || corner === 'tr') newTop = startRect.top + startRect.height - MIN_H
+      newH = MIN_H
+    }
+
+    panel.style.left = `${newLeft}px`
+    panel.style.top = `${newTop}px`
+    panel.style.right = 'auto'
+    panel.style.width = `${newW}px`
+    panel.style.height = `${newH}px`
+  }
+
+  function onMouseUp(): void {
+    document.removeEventListener('mousemove', onMouseMove)
+    document.removeEventListener('mouseup', onMouseUp)
+  }
+
+  handle.addEventListener('mousedown', (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const rect = panel.getBoundingClientRect()
+    startX = e.clientX
+    startY = e.clientY
+    startRect = { left: rect.left, top: rect.top, width: rect.width, height: rect.height }
+    // left 基準に統一
+    panel.style.left = `${rect.left}px`
+    panel.style.right = 'auto'
     document.addEventListener('mousemove', onMouseMove)
     document.addEventListener('mouseup', onMouseUp)
   })
@@ -540,10 +649,13 @@ function renderTabContent(
 
   const deviceSelect = document.createElement('select')
   deviceSelect.className = 'sb-cmp-device-select'
-  for (const d of DEVICES) {
+  for (let di = 0; di < DEVICES.length; di += 1) {
+    const d = DEVICES[di]
+    if (d === undefined) continue
     const opt = document.createElement('option')
     opt.value = `${d.width}x${d.height}`
     opt.textContent = d.label
+    if (di === DEFAULT_DEVICE_INDEX) opt.selected = true
     deviceSelect.append(opt)
   }
 
@@ -554,7 +666,7 @@ function renderTabContent(
   const phoneArea = document.createElement('div')
   phoneArea.className = 'sb-cmp-phone-area'
 
-  const currentDevice = DEVICES[0]
+  const currentDevice = DEVICES[DEFAULT_DEVICE_INDEX] ?? DEVICES[0]
   if (currentDevice === undefined) return
   const phone = buildPhoneMockup(deps.getCurrentHtml(), currentDevice)
   phoneArea.append(phone)
@@ -571,22 +683,39 @@ function renderTabContent(
 }
 
 function buildPhoneMockup(html: string, device: DeviceDef): HTMLElement {
-  const maxScreenWidth = 300
+  // パネル内に収まるようにスケールを算出（パネル幅 - padding 分）
+  const panelContentWidth = (panelEl?.getBoundingClientRect().width ?? PANEL_W) - 40
+  const maxScreenWidth = Math.min(panelContentWidth, 360)
   const scale = Math.min(1, maxScreenWidth / device.width)
   const screenWidth = device.width * scale
   const screenHeight = device.height * scale
 
+  // デスクトップ等の横長デバイスはフォンベゼルなし
+  const isPhone = device.width < 768
+
   const phone = document.createElement('div')
   phone.className = 'sb-cmp-phone'
-  phone.style.width = `${screenWidth + 16}px`
+  if (isPhone) {
+    phone.style.width = `${screenWidth + 16}px`
+  } else {
+    phone.style.width = `${screenWidth + 8}px`
+    phone.style.borderRadius = '12px'
+    phone.style.padding = '4px'
+  }
 
-  const notch = document.createElement('div')
-  notch.className = 'sb-cmp-phone-notch'
+  if (isPhone) {
+    const notch = document.createElement('div')
+    notch.className = 'sb-cmp-phone-notch'
+    phone.append(notch)
+  }
 
   const screen = document.createElement('div')
   screen.className = 'sb-cmp-phone-screen'
   screen.style.width = `${screenWidth}px`
   screen.style.height = `${screenHeight}px`
+  if (!isPhone) {
+    screen.style.borderRadius = '8px'
+  }
 
   const iframe = document.createElement('iframe')
   iframe.setAttribute('data-cmp-iframe', '')
@@ -598,7 +727,7 @@ function buildPhoneMockup(html: string, device: DeviceDef): HTMLElement {
   iframe.style.transformOrigin = 'top left'
 
   screen.append(iframe)
-  phone.append(notch, screen)
+  phone.append(screen)
   return phone
 }
 
