@@ -25,7 +25,7 @@
  */
 import substrate from '../fragments/folders__detail.html?raw'
 import { isStale } from '../main.ts'
-import { api, type AbTest, type Folder } from '../api.ts'
+import { api, type AbTest, type Folder, type RelationCounts } from '../api.ts'
 import { T, button, el, emptyState, toast } from '../ui.ts'
 import {
   FOLDERS_HOOK,
@@ -83,6 +83,8 @@ interface PageContext {
   folders: readonly Folder[]
   folder: Folder | null
   abTests: readonly AbTest[]
+  /** Version数/ポップアップ数/中間ページ数（relation_counts API） */
+  relationCounts: readonly RelationCounts[]
 }
 
 export async function renderFolders(
@@ -104,6 +106,17 @@ export async function renderFolders(
   // 2本目のAPIのあとにも同じ確認が要る（フォルダを続けて切り替えると並走する）
   if (isStale(generation)) return
 
+  // Version数/ポップアップ数/中間ページ数を取得
+  let relationCounts: RelationCounts[] = []
+  if (detail !== null && detail.ab_tests.length > 0) {
+    const ids = detail.ab_tests.map((t) => t.id)
+    try {
+      const rc = await api.relationCounts(selectedUid as string, ids)
+      relationCounts = rc.relation_counts
+    } catch { /* 取得失敗でも画面は出す */ }
+    if (isStale(generation)) return
+  }
+
   const root = document.createElement('div')
   root.innerHTML = substrate
   // 断片は `#root` の中身そのままなので**グローバルサイドバーを含む**。
@@ -124,6 +137,7 @@ export async function renderFolders(
     folders,
     folder: detail?.folder ?? null,
     abTests: detail?.ab_tests ?? [],
+    relationCounts,
   }
 
   // 選択したフォルダを履歴に記録
@@ -1615,6 +1629,32 @@ function injectResizeHandleStyles(): void {
  * 指示㊾: 詳細パネルの各値をカーソルが当たっているページ(abTest)の情報で更新する。
  * 採取物のDOMから「サンプル施策NNN」の文言やURL・ステータスを探して差し替える。
  */
+/** UNIXタイムスタンプ（秒）を「2026年8月31日 19時27分」形式に変換 */
+function formatAbsoluteTime(ts: number | undefined): string {
+  if (ts === undefined || ts === 0) return '-'
+  const d = new Date(ts * 1000)
+  const y = d.getFullYear()
+  const mo = d.getMonth() + 1
+  const day = d.getDate()
+  const h = d.getHours()
+  const mi = String(d.getMinutes()).padStart(2, '0')
+  return `${y}年${mo}月${day}日 ${h}時${mi}分`
+}
+
+/** editor_version を表示名に変換 */
+function editorTypeName(v: number): string {
+  if (v === 2) return 'beyondエディター'
+  if (v === 3) return 'HTMLエディター'
+  return '-'
+}
+
+/** conversion_condition を表示名に変換 */
+function conversionConditionName(c: string | undefined): string {
+  if (c === 'click') return 'クリック'
+  if (c === 'access') return 'アクセス'
+  return '-'
+}
+
 function updateDetailPanelForAbTest(body: HTMLElement, abTest: AbTest, context: PageContext): void {
   const panel = body.querySelector<HTMLElement>(FOLDERS_HOOK.detailPanel)
   if (panel === null) return
@@ -1645,18 +1685,61 @@ function updateDetailPanelForAbTest(body: HTMLElement, abTest: AbTest, context: 
     }
   }
 
-  // 配信ステータス
+  // ── beyondページ情報セクション ──
+  const genreDd = findDdByDtText(panel, '商品ジャンル')
+  if (genreDd !== null) {
+    const genres = abTest.product_genres
+    setDdText(genreDd, genres !== undefined && genres.length > 0 ? genres.join(', ') : '-')
+  }
+
+  const createdDd = findDdByDtText(panel, '作成日')
+  if (createdDd !== null) setDdText(createdDd, formatAbsoluteTime(abTest.created_at))
+
+  const updatedDd = findDdByDtText(panel, '更新')
+  if (updatedDd !== null) setDdText(updatedDd, formatAbsoluteTime(abTest.updated_at))
+
+  const editorDd = findDdByDtText(panel, '編集タイプ')
+  if (editorDd !== null) setDdText(editorDd, editorTypeName(abTest.editor_version))
+
+  // relation_counts から Version数/ポップアップ数/中間ページ数を取得
+  const rc = context.relationCounts.find((r) => r.id === abTest.id)
+  const versionDd = findDdByDtText(panel, 'バージョン数')
+  if (versionDd !== null) setDdText(versionDd, String(rc?.versions_count ?? 0))
+
+  const popupDd = findDdByDtText(panel, 'ポップアップ数')
+  if (popupDd !== null) setDdText(popupDd, String(rc?.exit_popups_count ?? 0))
+
+  const redirectDd = findDdByDtText(panel, '中間ページ数')
+  if (redirectDd !== null) setDdText(redirectDd, String(rc?.funnel_steps_count ?? 0))
+
+  // ── 配信情報セクション ──
   const status = AD_STATUS_LABELS[abTest.ad_status] ?? abTest.ad_status
   const statusDd = findDdByDtText(panel, '配信ステータス')
   if (statusDd !== null) setDdText(statusDd, status)
+
+  const deliveryTypeDd = findDdByDtText(panel, '配信タイプ')
+  if (deliveryTypeDd !== null) setDdText(deliveryTypeDd, abTest.delivery_type ?? '同一URL配信')
+
+  const mediaDd = findDdByDtText(panel, '広告媒体')
+  if (mediaDd !== null) setDdText(mediaDd, abTest.media?.name ?? '-')
+
+  const cvPointDd = findDdByDtText(panel, 'コンバージョンポイント')
+  if (cvPointDd !== null) setDdText(cvPointDd, conversionConditionName(abTest.conversion_setting?.conversion_condition))
+
+  const cvPriceDd = findDdByDtText(panel, 'コンバージョン単価')
+  if (cvPriceDd !== null) {
+    const price = abTest.conversion_unit_price
+    setDdText(cvPriceDd, price !== undefined && price > 0 ? `¥${price.toLocaleString()}` : '-')
+  }
+
+  const measureDd = findDdByDtText(panel, '計測方法')
+  if (measureDd !== null) setDdText(measureDd, abTest.affiliate_service_provider ?? '-')
 
   // フォルダドメイン
   const folder = context.folder
   if (folder !== null) {
     const domainDd = findDdByDtText(panel, 'フォルダドメイン')
     if (domainDd !== null) {
-      // ドメインは実際にはフォルダごとに異なるが、モックにはドメイン情報が無い。
-      // フォルダ名で代用（実物の動作を正確に再現）。
       const nameSpan = domainDd.querySelector<HTMLElement>('span, div, p')
       if (nameSpan !== null) nameSpan.textContent = `${folder.name.toLowerCase().replace(/\s+/g, '-')}.example.test`
     }

@@ -42,6 +42,22 @@ export interface AbTest {
   editor_version: number
   folder_id: number | null
   media: { name: string } | null
+  delivery_type?: string
+  conversion_unit_price?: number
+  conversion_setting?: { conversion_condition: string }
+  affiliate_service_provider?: string | null
+  product_genres?: readonly string[]
+  created_at?: number
+  updated_at?: number
+  folder?: { uid: string; name: string } | null
+}
+
+export interface RelationCounts {
+  id: number
+  versions_count: number
+  exit_popups_count: number
+  funnel_steps_count: number
+  ab_test_uid: string | null
 }
 
 export interface Version {
@@ -122,6 +138,12 @@ export const api = {
       input,
     ),
   abTest: (uid: string) => request<{ ab_test: AbTest }>('GET', `/ab_tests/${uid}`),
+  /** Version数/ポップアップ数/中間ページ数。`ids` は ab_test.id のカンマ区切り */
+  relationCounts: (folderUid: string, ids: readonly number[]) =>
+    request<{ relation_counts: RelationCounts[] }>(
+      'GET',
+      `/folders/${folderUid}/ab_tests/relation_counts?ids=${ids.join(',')}`,
+    ),
   /** 基本情報の部分更新（PUT /ab_tests/:uid） */
   updateAbTest: (uid: string, patch: Record<string, unknown>) =>
     request<{ ab_test: AbTest }>('PUT', `/ab_tests/${uid}`, patch),
