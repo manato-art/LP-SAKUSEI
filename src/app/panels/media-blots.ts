@@ -67,7 +67,79 @@ export function registerMediaBlots(): void {
     }
   }
 
+  /**
+   * カスタム Image ブロット。標準の Image ブロットを上書きし、
+   * リンク設定・計測URL用の data 属性を保持する（image-link.ts）。
+   * Quill の reconcile はブロットが知らない属性を消すため、
+   * formats() で明示的に返す必要がある。
+   */
+  const InlineEmbed = Quill.import('blots/embed') as BlotConstructor & {
+    create(value: unknown): HTMLElement
+  }
+
+  /** 保持する data 属性のリスト */
+  const LINK_ATTRS = ['data-link-url', 'data-link-target', 'data-tracking-urls'] as const
+
+  class SbImageBlot extends InlineEmbed {
+    static blotName = 'image'
+    static tagName = 'IMG'
+
+    static override create(value: string | Record<string, string>): HTMLElement {
+      const node = super.create(value) as HTMLImageElement
+      if (typeof value === 'string') {
+        node.setAttribute('src', value)
+      } else {
+        node.setAttribute('src', value['src'] ?? '')
+        for (const attr of LINK_ATTRS) {
+          const v = value[attr]
+          if (v !== undefined && v !== '') node.setAttribute(attr, v)
+        }
+        // width 等の復元
+        if (value['width'] !== undefined) {
+          node.setAttribute('width', value['width'])
+          node.style.width = `${value['width']}px`
+        }
+      }
+      return node
+    }
+
+    static value(node: HTMLElement): Record<string, string> {
+      const val: Record<string, string> = { src: node.getAttribute('src') ?? '' }
+      for (const attr of LINK_ATTRS) {
+        const v = node.getAttribute(attr)
+        if (v !== null && v !== '') val[attr] = v
+      }
+      const w = node.getAttribute('width')
+      if (w !== null) val['width'] = w
+      return val
+    }
+
+    static formats(node: HTMLElement): Record<string, string> {
+      const fmt: Record<string, string> = {}
+      for (const attr of LINK_ATTRS) {
+        const v = node.getAttribute(attr)
+        if (v !== null && v !== '') fmt[attr] = v
+      }
+      const w = node.getAttribute('width')
+      if (w !== null) fmt['width'] = w
+      return fmt
+    }
+
+    format(name: string, value: string | false): void {
+      const dom = (this as unknown as { domNode: HTMLElement }).domNode
+      if (LINK_ATTRS.includes(name as typeof LINK_ATTRS[number]) || name === 'width') {
+        if (value === false || value === '') {
+          dom.removeAttribute(name)
+        } else {
+          dom.setAttribute(name, value)
+        }
+      }
+      // Quill の他の format（bold 等）は img には不要なので無視
+    }
+  }
+
   ;(Quill.register as (blot: unknown, silent?: boolean) => void)(SbVideoBlot, true)
   ;(Quill.register as (blot: unknown, silent?: boolean) => void)(SbWidgetBlot, true)
+  ;(Quill.register as (blot: unknown, silent?: boolean) => void)(SbImageBlot, true)
   blotsRegistered = true
 }

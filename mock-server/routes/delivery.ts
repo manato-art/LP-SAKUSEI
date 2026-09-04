@@ -23,6 +23,46 @@ export const deliveryRouter: Router = Router()
 /** 既定の配信Version幅（実物のデフォルト） */
 const DELIVERY_WIDTH = 620
 
+/**
+ * 配信ページ末尾に挿入するスクリプト。
+ * data-link-url / data-tracking-urls 属性を持つ `<img>` を
+ * クリック可能な `<a>` でラップし、計測URLへのビーコンも飛ばす。
+ */
+const IMAGE_LINK_SCRIPT = `<script>(function(){
+  document.querySelectorAll('img[data-link-url]').forEach(function(img){
+    var url=img.getAttribute('data-link-url');
+    if(!url)return;
+    var target=img.getAttribute('data-link-target')||'_blank';
+    var trackRaw=img.getAttribute('data-tracking-urls');
+    var tracks=[];
+    try{if(trackRaw)tracks=JSON.parse(trackRaw)}catch(e){}
+    var a=document.createElement('a');
+    a.href=url;
+    a.target=target;
+    if(target==='_blank')a.rel='noopener noreferrer';
+    a.style.display='inline-block';
+    img.parentNode.insertBefore(a,img);
+    a.appendChild(img);
+    a.addEventListener('click',function(){
+      tracks.forEach(function(t){
+        try{navigator.sendBeacon(t)}catch(e){new Image().src=t}
+      });
+    });
+  });
+  document.querySelectorAll('img[data-tracking-urls]:not([data-link-url])').forEach(function(img){
+    var trackRaw=img.getAttribute('data-tracking-urls');
+    var tracks=[];
+    try{if(trackRaw)tracks=JSON.parse(trackRaw)}catch(e){}
+    if(!tracks.length)return;
+    img.style.cursor='pointer';
+    img.addEventListener('click',function(){
+      tracks.forEach(function(t){
+        try{navigator.sendBeacon(t)}catch(e){new Image().src=t}
+      });
+    });
+  });
+})()</script>`
+
 type DeviceKind = 'sp' | 'tablet' | 'pc'
 
 /** 訪問者のデバイスを User-Agent から判定する（sp / tablet / pc）。クライアント版と同じ判定式。 */
@@ -158,7 +198,9 @@ deliveryRouter.get('/lp/:uid', (req, res) => {
     `<style>body{margin:0 auto;max-width:${DELIVERY_WIDTH}px;font-family:"Hiragino Sans",sans-serif;background:#fff}` +
     `${LP_BASE_CSS}${version.css}${styleCss}</style>` +
     headTags +
-    `</head><body>${withAutoplayVideos(version.html)}${bodyTags}${popupHtml}${followHtml}</body></html>`
+    `</head><body>${withAutoplayVideos(version.html)}${bodyTags}${popupHtml}${followHtml}` +
+    IMAGE_LINK_SCRIPT +
+    `</body></html>`
 
   // 配信内容はStateの更新に応じて即時反映すべきなのでキャッシュしない
   res.set('Cache-Control', 'no-cache')
