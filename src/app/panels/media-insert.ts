@@ -12,7 +12,6 @@
 import type Quill from 'quill'
 import { toast } from '../ui.ts'
 import { readFileAsDataUrl } from './webp-convert.ts'
-import { uploadImage } from './upload.ts'
 
 type MediaFormat = 'image' | 'sbvideo'
 
@@ -91,9 +90,8 @@ export async function insertMediaFilesAt(
   let images = 0
   let videos = 0
   for (const file of files) {
-    // サーバーにアップロードしてURLを取得（data URLだと本家に貼れない）
-    const dataUrl = await readFileAsDataUrl(file)
-    const url = await uploadImage(file.name, dataUrl)
+    // PNG/JPEG をそのまま挿入（WebP変換しない）
+    const url = await readFileAsDataUrl(file)
     if (url === '') continue
     const format = embedFormat(file.type)
     quill.insertEmbed(index, format, url, 'user')

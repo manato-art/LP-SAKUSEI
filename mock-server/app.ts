@@ -33,7 +33,6 @@ import { versionsRouter } from './routes/versions.ts'
 import { deliveryRouter } from './routes/delivery.ts'
 import { adminAuthRouter, isAdminAuthenticated, render404Page } from './lib/admin-auth.ts'
 import { allowedEmailsRouter } from './routes/allowed-emails.ts'
-import { uploadsRouter } from './routes/uploads.ts'
 
 /** `?reset=1` で新規アカウント発行直後（空）へ戻す（§10-9） */
 function resetAll(): void {
@@ -119,8 +118,6 @@ export function createApp(): Express {
     basicInfoRouter,
     // アクセス管理（許可メールアドレスCRUD）
     allowedEmailsRouter,
-    // 画像アップロード
-    uploadsRouter,
   ]
 
   // [A] メインREST API（実物は v1 / v2 が混在するため両方に同じルーターを載せる）
@@ -136,12 +133,6 @@ export function createApp(): Express {
   app.use('/api', (_req, res) => {
     res.status(404).json(errorEnvelope('not_found', 'エンドポイントが見つかりません。'))
   })
-
-  // アップロード済み画像の静的配信（認証なし＝画像URLは誰でもアクセスできる）
-  app.use('/uploads', express.static(join(import.meta.dirname, 'uploads'), {
-    maxAge: '7d',
-    immutable: true,
-  }))
 
   // 配信ページ（配信URLの実体・実パス）。SPAのシェルは出さず、ここで完結してSSR応答する。
   // 認証（管理SPAのパスワード保護）は掛けない＝エンドユーザーが見るページなので素通し。

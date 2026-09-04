@@ -43,6 +43,3 @@ Thumbs.db
 
 # 触ってよい範囲の実名（非コミット）
 .touch-scope.local
-
-# ── アップロード画像（一時） ──
-mock-server/uploads/
