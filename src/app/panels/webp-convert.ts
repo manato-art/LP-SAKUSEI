@@ -46,7 +46,7 @@ export async function convertImageToWebP(file: File): Promise<string> {
   }
 }
 
-export function readFileAsDataUrl(file: File): Promise<string> {
+function readFileAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve) => {
     const reader = new FileReader()
     reader.addEventListener('load', () => resolve(String(reader.result ?? '')))
