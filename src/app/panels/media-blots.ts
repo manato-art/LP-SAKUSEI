@@ -68,33 +68,33 @@ export function registerMediaBlots(): void {
   }
 
   /**
-   * カスタム Image ブロット。標準の Image ブロットを上書きし、
+   * カスタム Image ブロット。Quill 標準の Image ブロット（formats/image）を継承し、
    * リンク設定・計測URL用の data 属性を保持する（image-link.ts）。
-   * Quill の reconcile はブロットが知らない属性を消すため、
-   * formats() で明示的に返す必要がある。
+   *
+   * 重要: `blots/embed` ではなく `formats/image` を継承する。
+   * blots/embed はガードテキストノードを付加する非void要素向けで、
+   * <img>（void要素）には不適切。属性変更のMutationを無視してしまう。
    */
-  const InlineEmbed = Quill.import('blots/embed') as BlotConstructor & {
+  const BaseImage = Quill.import('formats/image') as BlotConstructor & {
     create(value: unknown): HTMLElement
   }
 
   /** 保持する data 属性のリスト */
   const LINK_ATTRS = ['data-link-url', 'data-link-target', 'data-tracking-urls'] as const
 
-  class SbImageBlot extends InlineEmbed {
+  class SbImageBlot extends BaseImage {
     static blotName = 'image'
     static tagName = 'IMG'
 
     static override create(value: string | Record<string, string>): HTMLElement {
-      const node = super.create(value) as HTMLImageElement
-      if (typeof value === 'string') {
-        node.setAttribute('src', value)
-      } else {
-        node.setAttribute('src', value['src'] ?? '')
+      // 標準の Image.create は string（src）を受け取る
+      const src = typeof value === 'string' ? value : (value['src'] ?? '')
+      const node = super.create(src) as HTMLImageElement
+      if (typeof value !== 'string') {
         for (const attr of LINK_ATTRS) {
           const v = value[attr]
           if (v !== undefined && v !== '') node.setAttribute(attr, v)
         }
-        // width 等の復元
         if (value['width'] !== undefined) {
           node.setAttribute('width', value['width'])
           node.style.width = `${value['width']}px`
@@ -133,8 +133,10 @@ export function registerMediaBlots(): void {
         } else {
           dom.setAttribute(name, value)
         }
+      } else {
+        // src 等の標準属性は親クラスに委譲
+        ;(BaseImage.prototype as unknown as { format: (n: string, v: unknown) => void }).format.call(this, name, value)
       }
-      // Quill の他の format（bold 等）は img には不要なので無視
     }
   }
 

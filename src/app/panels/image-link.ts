@@ -14,6 +14,7 @@
  * 配信ページ（delivery.ts）では、これらの属性を読んで
  * `<a>` タグでラップ＋計測ピクセル発火に変換する。
  */
+import type Quill from 'quill'
 import { T, el, toast } from '../ui.ts'
 
 // ── CSS 注入（1回だけ） ─────────────────────────────────
@@ -160,7 +161,7 @@ const TRACK_ICON = `<svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.or
  * リサイズオーバーレイ（wrap）にアクションバーを追加する。
  * 呼び出し元（image-resize.ts の showOverlay）が overlay を作った直後に呼ぶ。
  */
-export function attachImageActionBar(wrap: HTMLDivElement, img: HTMLImageElement): void {
+export function attachImageActionBar(wrap: HTMLDivElement, img: HTMLImageElement, quill: Quill): void {
   injectCss()
 
   const bar = document.createElement('div')
@@ -176,7 +177,7 @@ export function attachImageActionBar(wrap: HTMLDivElement, img: HTMLImageElement
   linkBtn.innerHTML = `${LINK_ICON} リンク`
   linkBtn.addEventListener('click', (e) => {
     e.stopPropagation()
-    openLinkPopover(linkBtn, img, () => {
+    openLinkPopover(linkBtn, img, quill, () => {
       // 値変更後にボタンの色を更新
       const hasVal = (img.getAttribute('data-link-url') ?? '') !== ''
       linkBtn.classList.toggle('has-value', hasVal)
@@ -192,7 +193,7 @@ export function attachImageActionBar(wrap: HTMLDivElement, img: HTMLImageElement
   trackBtn.innerHTML = `${TRACK_ICON} 計測${trackUrls.length > 0 ? ` (${trackUrls.length})` : ''}`
   trackBtn.addEventListener('click', (e) => {
     e.stopPropagation()
-    openTrackingPopover(trackBtn, img, () => {
+    openTrackingPopover(trackBtn, img, quill, () => {
       const urls = readTrackingUrls(img)
       trackBtn.classList.toggle('has-value', urls.length > 0)
       trackBtn.innerHTML = `${TRACK_ICON} 計測${urls.length > 0 ? ` (${urls.length})` : ''}`
@@ -249,7 +250,7 @@ function positionPopover(popover: HTMLElement, anchor: HTMLElement): void {
 
 // ── リンク設定ポップオーバー ─────────────────────────────
 
-function openLinkPopover(anchor: HTMLElement, img: HTMLImageElement, onChange: () => void): void {
+function openLinkPopover(anchor: HTMLElement, img: HTMLImageElement, quill: Quill, onChange: () => void): void {
   closeAllPopovers()
 
   const currentUrl = img.getAttribute('data-link-url') ?? ''
@@ -289,6 +290,7 @@ function openLinkPopover(anchor: HTMLElement, img: HTMLImageElement, onChange: (
     removeBtn.addEventListener('click', () => {
       img.removeAttribute('data-link-url')
       img.removeAttribute('data-link-target')
+      quill.update()
       onChange()
       closeAllPopovers()
       toast('リンクを解除しました')
@@ -314,6 +316,7 @@ function openLinkPopover(anchor: HTMLElement, img: HTMLImageElement, onChange: (
       img.setAttribute('data-link-url', url)
       img.setAttribute('data-link-target', checkbox.checked ? '_blank' : '_self')
     }
+    quill.update()
     onChange()
     closeAllPopovers()
     if (url !== '') toast('リンクを設定しました')
@@ -333,7 +336,7 @@ function openLinkPopover(anchor: HTMLElement, img: HTMLImageElement, onChange: (
 
 // ── 計測URLポップオーバー ────────────────────────────────
 
-function openTrackingPopover(anchor: HTMLElement, img: HTMLImageElement, onChange: () => void): void {
+function openTrackingPopover(anchor: HTMLElement, img: HTMLImageElement, quill: Quill, onChange: () => void): void {
   closeAllPopovers()
 
   const urls = readTrackingUrls(img)
@@ -410,6 +413,7 @@ function openTrackingPopover(anchor: HTMLElement, img: HTMLImageElement, onChang
       }
     }
     writeTrackingUrls(img, valid)
+    quill.update()
     onChange()
     closeAllPopovers()
     if (valid.length > 0) toast(`計測URL ${valid.length}件を設定しました`)

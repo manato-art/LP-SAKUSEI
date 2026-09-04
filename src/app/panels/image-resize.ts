@@ -172,7 +172,7 @@ export function wireImageResize(quill: Quill): void {
     wrap.append(badge)
 
     // リンク設定・計測URLのアクションバー
-    attachImageActionBar(wrap, img)
+    attachImageActionBar(wrap, img, quill)
 
     container.append(wrap)
     reposition()
