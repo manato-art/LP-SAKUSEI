@@ -30,7 +30,7 @@ import { isStale } from '../main.ts'
 import { applyBeyondTopBar, wireBeyondBack } from './beyond-topbar.ts'
 import { wireBeyondNavAnchors, type SplitTestTab } from './beyond-nav.ts'
 import { stripShellFromFragment } from './report-substrate.ts'
-import { wireAbTestTabs, setupHorizTabs } from './tab-nav.ts'
+import { wireAbTestTabs, setupHorizTabs, setupBreadcrumb } from './tab-nav.ts'
 import { toast } from '../ui.ts'
 
 interface SplitTestRule {
@@ -86,6 +86,7 @@ export async function renderSplitTestSettings(
   // 左レール4タブは共有の配線（基本情報タブ・エディタと同じ関数）
   wireAbTestTabs(root, abTestUid, folderUid)
   setupHorizTabs(root, 'version')  // オプション設定は Version 配下
+  setupBreadcrumb(root, folder?.name ?? '', ab_test.title, folder?.uid)
   wireBeyondBack(root, folderUid)
   // 出し分けトグル（オン/オフ）を実際に効かせてモックへ保存する。
   // デバイス別は **Version単位**（FAQ: 出し分けロジック＝配信割合 × デバイス別ON/OFF の掛け算）。

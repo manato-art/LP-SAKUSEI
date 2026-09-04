@@ -30,7 +30,7 @@ import { api } from '../api.ts'
 import { isStale } from '../main.ts'
 import { toast } from '../ui.ts'
 import { stripShellFromFragment } from './report-substrate.ts'
-import { wireAbTestTabs, setupHorizTabs } from './tab-nav.ts'
+import { wireAbTestTabs, setupHorizTabs, setupBreadcrumb } from './tab-nav.ts'
 
 /** 採取DOM内の目印（実物のクラス名。改名も追加もしていない） */
 const HOOK = {
@@ -91,6 +91,7 @@ export async function renderExitPopup(
   // 採取物の href は採取時点の uid を指しているので、ここで必ず上書きされる。
   wireAbTestTabs(root, abTestUid, folder?.uid ?? '')
   setupHorizTabs(root, 'popup')
+  setupBreadcrumb(root, folder?.name ?? '', ab_test.title, folder?.uid)
   wireBack(root, folder?.uid ?? null)
   wireContact(root)
 }

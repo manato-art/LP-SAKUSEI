@@ -14,7 +14,7 @@ import { isStale } from '../main.ts'
 import { toast } from '../ui.ts'
 import { openParamUrlModal } from '../panels/param-url-modal.ts'
 import { basicInfoApi, type MediaOption } from './basic-info-api.ts'
-import { wireAbTestTabs, setupHorizTabs } from './tab-nav.ts'
+import { wireAbTestTabs, setupHorizTabs, setupBreadcrumb } from './tab-nav.ts'
 import { recordHistory } from './folders.ts'
 import {
   AD_STATUS_LABELS,
@@ -109,6 +109,7 @@ export async function renderBasicInfo(
   wireAbTestTabs(root, target.abTestUid, ab_test.folder?.uid ?? target.folderUid)
   setupHorizTabs(root, 'info')
   wireTopBar(ctx)
+  setupBreadcrumb(root, ab_test.folder?.name ?? '', ab_test.title, ab_test.folder?.uid)
   applyAbTest(ctx, medias)
   wireSelects(ctx, medias)
   wireDeliveryUrl(ctx)

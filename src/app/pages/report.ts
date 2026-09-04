@@ -30,7 +30,7 @@ import {
   sectionByTitle,
 } from './report-tables.ts'
 import { defaultRange, resolvePreset, toRangeQuery, type DateRange } from './report-period.ts'
-import { wireAbTestTabs, setupHorizTabs } from './tab-nav.ts'
+import { wireAbTestTabs, setupHorizTabs, setupBreadcrumb } from './tab-nav.ts'
 import { mountMetaSummary } from './report-meta.ts'
 
 /** クローン側の注記に使う印（重複挿入を防ぐ） */
@@ -87,6 +87,7 @@ export async function renderReport(
   setupHorizTabs(root, 'report')
   wireBackLink(root, folder?.uid ?? null)
   setTopBarNames(root, ab_test.title, folderName)
+  setupBreadcrumb(root, folderName, ab_test.title, folder?.uid)
   wireThemeToggle(root)
 
   const alert = root.querySelector<HTMLElement>('.MuiAlert-message')

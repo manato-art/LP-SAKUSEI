@@ -71,8 +71,135 @@ function injectTabBarCss(): void {
       background: #1a7af8;
       font-weight: 600;
     }
+    /* ── パンくずリスト ── */
+    .sb-breadcrumb-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 12px;
+      background: #fff;
+      flex-shrink: 0;
+      min-height: 32px;
+    }
+    .sb-breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: #555;
+      min-width: 0;
+    }
+    .sb-breadcrumb-icon {
+      flex-shrink: 0;
+      width: 14px;
+      height: 14px;
+      opacity: 0.6;
+    }
+    .sb-breadcrumb-name {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .sb-breadcrumb-sep {
+      color: #bbb;
+      flex-shrink: 0;
+    }
+    .sb-breadcrumb-row-right {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      flex-shrink: 0;
+      margin-left: 12px;
+    }
   `
   document.head.append(style)
+}
+
+/** フォルダアイコン SVG（シンプル版） */
+const FOLDER_SVG = `<svg class="sb-breadcrumb-icon" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 4a1 1 0 011-1h3.586a1 1 0 01.707.293L8 4h5a1 1 0 011 1v7a1 1 0 01-1 1H3a1 1 0 01-1-1V4z" fill="#9B9B9B"/></svg>`
+
+/** ドキュメントアイコン SVG */
+const DOC_SVG = `<svg class="sb-breadcrumb-icon" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 2a1 1 0 00-1 1v10a1 1 0 001 1h8a1 1 0 001-1V5.414a1 1 0 00-.293-.707L10.293 2.293A1 1 0 009.586 2H4z" fill="#9B9B9B"/><path d="M5 7h6M5 9h6M5 11h4" stroke="#fff" stroke-width=".8" stroke-linecap="round"/></svg>`
+
+/**
+ * タブバーの下にパンくずリスト行を構築する。
+ * 採取 DOM の _currentAbTest_ は非表示にし、新規 DOM で描画する。
+ *
+ * @returns パンくず行の右端コンテナ（VersionフィルタなどページごとのUIを追加できる）
+ */
+export function setupBreadcrumb(
+  root: HTMLElement,
+  folderName: string,
+  title: string,
+  folderUid?: string,
+): HTMLElement | null {
+  if (root.querySelector('.sb-breadcrumb-row') !== null) return root.querySelector('.sb-breadcrumb-row-right')
+
+  // ── 採取 DOM の LP 情報を非表示にする ──
+  const currentAbTest = root.querySelector<HTMLElement>('[class*="_currentAbTest_"]')
+  if (currentAbTest !== null) currentAbTest.style.display = 'none'
+  // actionItems（戻るボタン+フォルダドロップダウン）も非表示にする
+  const actionItems = root.querySelector<HTMLElement>('[class*="_actionItems_"]')
+  if (actionItems !== null) actionItems.style.display = 'none'
+
+  // ── パンくず行を構築 ──
+  const row = document.createElement('div')
+  row.className = 'sb-breadcrumb-row'
+
+  const crumb = document.createElement('div')
+  crumb.className = 'sb-breadcrumb'
+
+  // 戻るボタン
+  const back = document.createElement('a')
+  back.style.cssText = 'cursor:pointer;color:#888;font-size:16px;text-decoration:none;line-height:1;margin-right:4px'
+  back.textContent = '←'
+  back.href = folderUid !== undefined ? `#/folders/${folderUid}/ab_tests` : '#/folders'
+  crumb.append(back)
+
+  // フォルダアイコン + フォルダ名
+  const folderIconSpan = document.createElement('span')
+  folderIconSpan.innerHTML = FOLDER_SVG
+  crumb.append(folderIconSpan)
+  const folderLabel = document.createElement('span')
+  folderLabel.className = 'sb-breadcrumb-name'
+  folderLabel.textContent = folderName || '板名'
+  crumb.append(folderLabel)
+
+  // セパレータ
+  const sep = document.createElement('span')
+  sep.className = 'sb-breadcrumb-sep'
+  sep.textContent = '>'
+  crumb.append(sep)
+
+  // ドキュメントアイコン + LP名
+  const docIconSpan = document.createElement('span')
+  docIconSpan.innerHTML = DOC_SVG
+  crumb.append(docIconSpan)
+  const titleLabel = document.createElement('span')
+  titleLabel.className = 'sb-breadcrumb-name'
+  titleLabel.style.fontWeight = '600'
+  titleLabel.style.color = '#333'
+  titleLabel.textContent = title || '検証'
+  crumb.append(titleLabel)
+
+  row.append(crumb)
+
+  // 右端コンテナ（ページごとに追加できる）
+  const right = document.createElement('div')
+  right.className = 'sb-breadcrumb-row-right'
+  row.append(right)
+
+  // タブバーの直後に挿入
+  const tabBar = root.querySelector('.sb-tab-bar')
+  if (tabBar !== null) {
+    tabBar.after(row)
+  } else {
+    const navWrapper = root.querySelector<HTMLElement>('[class*="_navArticleWrapper_"]')
+    if (navWrapper !== null) navWrapper.append(row)
+    else root.prepend(row)
+  }
+
+  return right
 }
 
 /**

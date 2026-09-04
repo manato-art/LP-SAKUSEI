@@ -34,7 +34,7 @@ import { wireMediaDrop } from '../panels/media-insert.ts'
 import { wireImageResize } from '../panels/image-resize.ts'
 import { mountMinimap } from '../panels/minimap.ts'
 import { toggleComparePanel, isComparePanelOpen, refreshComparePreview } from '../panels/compare-mode.ts'
-import { wireAbTestTabs, setupHorizTabs } from './tab-nav.ts'
+import { wireAbTestTabs, setupHorizTabs, setupBreadcrumb } from './tab-nav.ts'
 import { wireBeyondNavAnchors } from './beyond-nav.ts'
 import { masterStyleEditorDecls } from '../master-style.ts'
 
@@ -339,6 +339,14 @@ export async function renderEditor(
   hideStepNavigation(root)
   wireSideToolbar(ctx)
   wireTopBar(root, ab_test.title, folderName)
+  // パンくずリスト（📁板名 > 📄検証）＋ Version フィルタ（作成中 / アーカイブ済み）
+  const breadcrumbRight = setupBreadcrumb(root, folderName, ab_test.title, folder?.uid)
+  if (breadcrumbRight !== null) {
+    mountVersionFilter(breadcrumbRight, (mode) => {
+      ctx.listMode = mode
+      renderVersionList(ctx)
+    })
+  }
   // 4タブ（基本情報 / Version / ポップアップ / レポート）を相互に行き来できるようにする
   wireAbTestTabs(root, abTestUid, folder?.uid ?? '')
   wireTopRightIcons(root, abTestUid, folder?.uid ?? '')
@@ -1400,5 +1408,69 @@ function wireTopBar(root: HTMLElement, title: string, folderName: string): void 
     back.addEventListener('click', () => {
       location.hash = '/folders'
     })
+  }
+}
+
+/** CSS を1回だけ注入（Versionフィルタ用） */
+function injectVersionFilterCss(): void {
+  if (document.getElementById('sb-version-filter-css') !== null) return
+  const style = document.createElement('style')
+  style.id = 'sb-version-filter-css'
+  style.textContent = `
+    .sb-version-filter {
+      display: inline-block;
+      padding: 4px 12px;
+      font-size: 12px;
+      font-weight: 400;
+      color: #888;
+      border-radius: 4px;
+      cursor: pointer;
+      line-height: 1.4;
+      transition: color 0.15s, background 0.15s;
+      white-space: nowrap;
+    }
+    .sb-version-filter:hover {
+      color: #555;
+      background: #f0f0f2;
+    }
+    .sb-version-filter.sb-filter-active {
+      color: #333;
+      background: #e8e8ec;
+      font-weight: 600;
+    }
+  `
+  document.head.append(style)
+}
+
+type VersionListMode = 'active' | 'archived'
+
+/**
+ * パンくず行の右端に「作成中 / アーカイブ済み」フィルタボタンを設置する。
+ * 採取 DOM のドロップダウンは使わず、新規 DOM で構築する。
+ */
+function mountVersionFilter(
+  container: HTMLElement,
+  onSelectMode: (mode: VersionListMode) => void,
+): void {
+  injectVersionFilterCss()
+
+  const modes: readonly { mode: VersionListMode; label: string }[] = [
+    { mode: 'active', label: '作成中' },
+    { mode: 'archived', label: 'アーカイブ済み' },
+  ]
+
+  const buttons: HTMLElement[] = []
+  for (const { mode, label } of modes) {
+    const btn = document.createElement('span')
+    btn.className = 'sb-version-filter'
+    btn.textContent = label
+    if (mode === 'active') btn.classList.add('sb-filter-active')
+    btn.addEventListener('click', () => {
+      for (const b of buttons) b.classList.remove('sb-filter-active')
+      btn.classList.add('sb-filter-active')
+      onSelectMode(mode)
+    })
+    buttons.push(btn)
+    container.append(btn)
   }
 }

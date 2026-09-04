@@ -20,7 +20,7 @@ import {
 } from './report-dom.ts'
 import { defaultRange, toRangeQuery, type DateRange } from './report-period.ts'
 import { sortVersions, type HeatmapSortKey } from './heatmap-sort.ts'
-import { wireAbTestTabs, setupHorizTabs } from './tab-nav.ts'
+import { wireAbTestTabs, setupHorizTabs, setupBreadcrumb } from './tab-nav.ts'
 
 export async function renderHeatmap(
   container: HTMLElement,
@@ -47,6 +47,7 @@ export async function renderHeatmap(
   setupHorizTabs(root, 'report')  // ヒートマップはレポート配下
   wireBackLink(root, folder?.uid ?? null)
   setTopBarNames(root, ab_test.title, folder?.name ?? '')
+  setupBreadcrumb(root, folder?.name ?? '', ab_test.title, folder?.uid)
   wireThemeToggle(root)
 
   renderVersionList(root, report.rows)
