@@ -214,9 +214,16 @@ function wireCards(root: HTMLElement, quill: Quill, close: () => void): void {
     })
     add?.addEventListener('click', (event) => {
       event.stopPropagation()
-      insertWidget(quill, card, title)
-      toast(`「${title}」を追加しました`)
+      // 指示84: モーダルを先に閉じ、エディタにフォーカスを戻してから挿入する。
+      // モーダルが開いている状態だと window.getSelection() がモーダル側を指すため
+      // エディタへの挿入に失敗する。
       close()
+      // フォーカスを戻すために1フレーム待つ
+      requestAnimationFrame(() => {
+        quill.focus()
+        insertWidget(quill, card, title)
+        toast(`「${title}」を追加しました`)
+      })
     })
   }
 }
@@ -309,11 +316,17 @@ function insertWidget(quill: Quill, card: HTMLElement, title: string): void {
 
   // ── Quill の clipboard.dangerouslyPasteHTML は clipboard matcher が
   //    div/table 等の複雑なHTMLを blot 不在で削ぎ落とし、テキストだけになる。
-  //    → ql-editor の DOM に直接挿入し、Quill の内部モデルを update() で同期する。
+  //    → ql-editor の DOM に直接挿入する。
+  //
+  //    指示84修正: quill.update('user') を呼ぶと Quill が blot 不在の複雑なDOM を
+  //    内部モデルに変換できず、ノードごと消してしまう。
+  //    代わりに DOM 直接挿入のみ行い、保存時に quill.root.innerHTML を読むので永続化される。
+  //    autosave を発火させるため、挿入後に Quill API で改行を1つ足す。
   const qlEditor = quill.root // .ql-editor 要素
   const cleaned = doc.body.innerHTML
   const wrapper = document.createElement('div')
   wrapper.setAttribute('data-widget-block', 'true')
+  wrapper.style.cssText = 'margin:8px 0'
   wrapper.innerHTML = cleaned
   // カーソル位置に挿入（末尾の場合 or 選択なしの場合は append）
   const sel = window.getSelection()
@@ -335,8 +348,15 @@ function insertWidget(quill: Quill, card: HTMLElement, title: string): void {
   if (!inserted) {
     qlEditor.append(wrapper)
   }
-  // Quill の内部モデルとDOMを同期
-  quill.update('user')
+  // quill.update('user') は呼ばない（blot不在のHTMLを消してしまうため）。
+  // 保存は quill.root.innerHTML から読むので、DOM に入っていれば永続化される。
+  // autosave の text-change を発火させるため、Quill の末尾に改行を挿入する。
+  try {
+    const len = quill.getLength()
+    quill.insertText(len - 1, '\n', 'user')
+  } catch {
+    // Quill が reconcile で失敗しても widget は DOM に残っている
+  }
 }
 
 function escapeHtml(value: string): string {

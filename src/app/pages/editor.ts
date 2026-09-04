@@ -1258,6 +1258,23 @@ function wireSideToolbar(ctx: EditorContext): void {
     btn.style.color = '#fff'
   }
 
+  /** 指示83: 保存中スピナー表示 */
+  function markSaving(): void {
+    const btn = findCurrentUpdateButton()
+    if (btn === null) return
+    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="animation:ep-spin .7s linear infinite;vertical-align:middle;margin-right:4px"><circle cx="7" cy="7" r="5.5" stroke="#fff" stroke-width="2" stroke-dasharray="20 12" stroke-linecap="round"/></svg>保存中`
+    btn.style.transition = 'background-color 0.3s'
+    btn.style.backgroundColor = '#f59e0b'
+    btn.style.color = '#fff'
+    // スピナーのkeyframeを1回だけ注入
+    if (document.getElementById('ep-spin-kf') === null) {
+      const s = document.createElement('style')
+      s.id = 'ep-spin-kf'
+      s.textContent = '@keyframes ep-spin{to{transform:rotate(360deg)}}'
+      document.head.append(s)
+    }
+  }
+
   function markSaved(): void {
     const btn = findCurrentUpdateButton()
     if (btn === null) return
@@ -1270,6 +1287,7 @@ function wireSideToolbar(ctx: EditorContext): void {
   const autosave = createAutosave({
     // 変更のたびに保存し、同時に履歴スナップショットを積む（指示⑪・サーバー側で最新100件に丸め）。
     save: async () => {
+      markSaving()
       await saveHtml(ctx)
       markSaved()
       try {

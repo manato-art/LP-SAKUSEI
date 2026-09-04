@@ -119,6 +119,18 @@ function wireSidebar(nav: HTMLElement): void {
   for (const anchor of nav.querySelectorAll('a')) {
     anchor.addEventListener('click', (e) => e.preventDefault())
   }
+
+  // 指示82: ロゴ（エビアイコン）クリックでダッシュボードへ遷移
+  const logo = nav.querySelector<HTMLElement>('a img[alt*="Logo"], a img[alt*="logo"]')
+  const logoLink = logo?.closest('a')
+  if (logoLink !== null && logoLink !== undefined) {
+    logoLink.style.cursor = 'pointer'
+    logoLink.addEventListener('click', (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      location.hash = '/dashboard'
+    })
+  }
 }
 
 /** 折りたたみ/展開・ラベルの目印クラス（JSで付与するのでスタイルは採取クラスに依存しない） */
@@ -409,7 +421,7 @@ function injectRailStyles(): void {
     `opacity:.7;max-width:42px;font-size:11px;transition:opacity .16s ease,max-width .18s ease,font-size .16s ease}`,
     `@media (hover:hover){`,
     `.${RAIL_CLASS}:hover{width:160px !important}`,
-    `.${RAIL_CLASS}:hover .${RAIL_LABEL_CLASS}{opacity:1;max-width:120px;font-size:inherit}`,
+    `.${RAIL_CLASS}:hover .${RAIL_LABEL_CLASS}{opacity:1;max-width:120px;font-size:13px}`,
     // 指示63: 展開時にアイコン+ラベルを横並び左揃え
     `.${RAIL_CLASS}:hover [data-testid="list-menu-item"]{flex-direction:row !important;justify-content:flex-start !important;align-items:center !important;gap:8px;padding:6px 12px !important}`,
     `}`,
