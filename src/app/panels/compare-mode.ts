@@ -727,7 +727,7 @@ function buildPhoneMockup(html: string, device: DeviceDef, phoneArea: HTMLElemen
   // ── 1:1 でフォン構造を構築 ──
   const phone = document.createElement('div')
   phone.className = 'sb-cmp-phone'
-  phone.style.width = `${device.width + bezelPadX * 2}px`
+  phone.style.width = `${device.width}px`
   if (!isPhone) {
     phone.style.borderRadius = '12px'
     phone.style.padding = '4px'
