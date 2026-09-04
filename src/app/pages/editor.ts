@@ -18,7 +18,7 @@ import { mountTagSettings } from '../panels/tag-settings.ts'
 import { mountLinkReplace } from '../panels/link-replace.ts'
 import { mountHistory, recordArticleHistory } from '../panels/history.ts'
 import { mountEditorToolbar } from '../panels/editor-toolbar.ts'
-import { mountSidebarToolbar } from '../panels/editor-sidebar-toolbar.ts'
+import { mountContentToolbar } from '../panels/editor-content-toolbar.ts'
 import { createAutosave } from './autosave.ts'
 import { createPanelGroup } from '../panels/panel-group.ts'
 import { recordHistory } from './folders.ts'
@@ -370,7 +370,8 @@ function mountQuill(root: HTMLElement): Quill {
     // 採取CSSの UID_2445 { height:calc(100vh-260px) } を同詳細度の後勝ちで上書きしてしまう。
     // inline style で明示的に高さを設定し、確実にスクロール領域として機能させる。
     // 下部バー（50px）は absolute 配置なので、キャンバスはバーの上端まで伸ばす。
-    host.style.height = 'calc(100vh - 228px)'
+    // 指示77: 上部ツールバー(36px)分を追加で引く
+    host.style.height = 'calc(100vh - 264px)'
     frame.replaceWith(host)
   } else {
     host.style.cssText = 'width:100%;height:calc(100vh - 220px);background:#fff;overflow:auto'
@@ -415,61 +416,39 @@ function hideFloatingToolbar(root: HTMLElement): void {
 }
 
 /**
- * 左固定サイドバーツールバーを Versionパネルの下に配置する。
- * Versionパネルを flex column にし、Versionカードはスクロール可能、
- * ツールバーは常に下部に固定表示する。
+ * Versionパネルのレイアウト整理（指示77）。
+ * ツールバーはコンテンツ上部（mountContentToolbar）に移動したため、
+ * サイドバーは Versionカード + 最下部の「Version追加」だけにする。
+ * 「Version追加」は funnelBar と同じ高さに固定して "下でくっつける"。
  */
 function mountSidebarToolbarPanel(ctx: EditorContext): void {
   const versionPanel = ctx.root.querySelector<HTMLElement>('[class*="_abTestArticlesWrapper_"]')
   if (versionPanel === null) return
 
-  // 既存のパネルがあれば重複しない
-  if (versionPanel.querySelector('[data-sidebar-toolbar]') !== null) return
-
   // Versionパネルを flex column に変更
   versionPanel.style.display = 'flex'
   versionPanel.style.flexDirection = 'column'
-  versionPanel.style.overflow = 'hidden' // パネル自体はスクロールしない
+  versionPanel.style.overflow = 'hidden'
 
   // 既存の子要素（Versionカード等）をスクロール可能なラッパーに移動
   const cardsWrapper = document.createElement('div')
-  // flex:0 1 auto → カードの自然な高さだけ取る（引き伸ばさない）。
-  // カードが多い場合のみスクロールする。ツールバーはカードのすぐ下に来る。
-  cardsWrapper.style.cssText = 'flex:0 1 auto;overflow-y:auto;overflow-x:hidden;min-height:0'
+  // flex:1 → 残りスペースをカード領域が取る。スクロールは中で。
+  cardsWrapper.style.cssText = 'flex:1 1 0;overflow-y:auto;overflow-x:hidden;min-height:0'
   while (versionPanel.firstChild) {
     cardsWrapper.append(versionPanel.firstChild)
   }
   versionPanel.append(cardsWrapper)
 
-  // 指示71: 「Version追加」ボタンをカードスクロール領域から取り出して
-  // ツールバーの下（下部バーと同じ高さ）に固定する。
+  // 「Version追加」ボタンをカードスクロール領域から取り出して最下部に固定
   const addBtn = cardsWrapper.querySelector<HTMLElement>(HOOK.addVersion)
   if (addBtn !== null) {
-    // 採取CSSが position:absolute; bottom:0; width:100%; z-index:10 を持つ。
-    // versionPanelが position:static なので、そのままだと viewport 全幅に広がり
-    // 下部バー（funnelBar）を覆い隠してしまう（指示75）。
-    // flex column の子として自然に流れるよう static に戻す。
+    // 採取CSSの position:absolute を解除して flex 子要素として流す
     addBtn.style.position = 'static'
     addBtn.style.width = 'auto'
     addBtn.style.zIndex = 'auto'
     addBtn.style.flexShrink = '0'
     addBtn.style.borderTop = '1px solid #e0e0e0'
-  }
-
-  // ツールバーパネルを作成して flex の 2 番目の子に
-  const panel = mountSidebarToolbar(ctx.quill, ctx.root)
-  panel.style.width = '100%'
-  panel.style.minWidth = '0'
-  panel.style.borderRight = 'none'
-  panel.style.borderTop = '1px solid #e0e0e0'
-  panel.style.flexShrink = '0'
-  panel.style.overflowY = 'auto'
-  panel.style.maxHeight = '50%'
-
-  versionPanel.append(panel)
-
-  // 指示71: Version追加を最下部に移動（下部バーと同じ位置）
-  if (addBtn !== null) {
+    // パネル最下部に移動 → funnelBar と同じ高さに並ぶ
     versionPanel.append(addBtn)
   }
 }
@@ -517,6 +496,28 @@ function injectSideToolbarStyles(): void {
     }
   `
   document.head.append(style)
+}
+
+/**
+ * コンテンツ上部に水平ツールバーを挿入する（指示77）。
+ * ヘッダー画像の下、Quill ホストの上に差し込む。
+ */
+function mountContentToolbarInEditor(ctx: EditorContext): void {
+  const contentWrapper = ctx.root.querySelector<HTMLElement>('.quillEditorContentWrapper')
+  if (contentWrapper === null) return
+  // 既存チェック
+  if (contentWrapper.querySelector('[data-content-toolbar]') !== null) return
+
+  const toolbar = mountContentToolbar(ctx.quill)
+
+  // Quill ホスト（#quillIframe の後継 div）の直前に挿入
+  const quillHost = ctx.quill.container as HTMLElement
+  const hostParent = quillHost.parentElement
+  if (hostParent !== null) {
+    hostParent.insertBefore(toolbar, quillHost)
+  } else {
+    contentWrapper.prepend(toolbar)
+  }
 }
 
 /**
@@ -1029,9 +1030,10 @@ function wireSideToolbar(ctx: EditorContext): void {
   mountEditorToolbar(ctx.root, ctx.quill, {
     trackingSettingsHref: `#/folders/${ctx.folderUid}/ab_tests/${ctx.abTestUid}/edit`,
   })
-  // 旧フローティングツールバーを非表示にし、左固定パネルに置き換える
+  // 旧フローティングツールバーを非表示にし、コンテンツ上部の水平ツールバーに置き換える（指示77）
   hideFloatingToolbar(ctx.root)
   mountSidebarToolbarPanel(ctx)
+  mountContentToolbarInEditor(ctx)
   // パズルピース（Widget管理ボタン）は実物では Widgetライブラリを開く
   mountWidgetLibrary(ctx.root, ctx.quill)
 
