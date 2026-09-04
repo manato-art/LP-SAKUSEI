@@ -278,7 +278,7 @@ export async function renderEditor(
     editorWrapper.style.height = '0'
     editorWrapper.style.flex = '1 1 0px'
     editorWrapper.style.minHeight = '0'
-    editorWrapper.style.padding = '0 12px'
+    editorWrapper.style.padding = '0'
     editorWrapper.style.background = '#fff'
   }
   // boostEditorWrapper も同じ flex パターン
@@ -541,13 +541,15 @@ function injectCardSeamStyles(): void {
     [class*="_articleHeaderPhoto_"] {
       border-radius: 0 !important;
     }
-    /* Versionパネルの角丸を外す */
+    /* Versionパネルの角丸を外す + 右に区切り線 */
     [class*="_abTestArticlesWrapper_"] {
       border-radius: 0 !important;
+      border-right: 1px solid #e5e5ea;
     }
-    /* sideToolbarWrapper も白背景でつなげる */
+    /* sideToolbarWrapper: 参考に合わせて薄グレー + 左に区切り線 */
     [class*="_sideToolbarWrapper_"] {
-      background: #fff;
+      background: #f7f7f8;
+      border-left: 1px solid #e5e5ea;
     }
   `
   document.head.append(style)
@@ -562,6 +564,16 @@ function injectSideToolbarStyles(): void {
   const style = document.createElement('style')
   style.id = 'sb-side-toolbar-fix'
   style.textContent = `
+    /* 指示78: 丸い背景を完全に削除 */
+    [class*="_sideToolbarIcon_"]::before,
+    [class*="_sideToolbarIcon_"]::after {
+      display: none !important;
+    }
+    [class*="_sideToolbarIcon_"] {
+      background: none !important;
+      background-color: transparent !important;
+      border-radius: 0 !important;
+    }
     /* アイコン画像サイズを揃える */
     [class*="_sideToolbarIcon_"] img[class*="_icon_"] {
       width: 22px !important;
