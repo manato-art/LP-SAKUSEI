@@ -75,17 +75,17 @@ const REDO_TOOL_INDEX = 7
 
 const WIRED_TOOLS: readonly number[] = [0, 1, 2, 3, 4, 5]
 
-/** 右レール9ツールの実際の名前（実DOMの tooltip / aria-label より） */
+/** 右レール9ツールの表示名（指示77: ユーザーが指定した名称） */
 const SIDE_TOOLS: readonly string[] = [
   'プレビュー',
-  '変更・復元履歴',
-  'Widget管理',
+  '履歴',
+  'ライブラリ',
   'リンク置換',
-  'Version設定',
+  'LP設定',
   'タグ設定',
-  '元に戻す',
-  'やり直す',
-  '外部サーバー画像アップロード',
+  '戻る',
+  '進む',
+  '画像',
 ]
 
 interface EditorContext {
@@ -496,6 +496,25 @@ function injectSideToolbarStyles(): void {
     [class*="_sideToolbarIcon_"] img[class*="_icon_"] {
       width: 22px !important;
       height: 22px !important;
+    }
+  `
+  document.head.append(style)
+}
+
+/** 右レールアイコンの下にテキストラベルを表示するCSS（指示77） */
+function injectSideToolbarLabelStyles(): void {
+  if (document.getElementById('sb-side-label-css') !== null) return
+  const style = document.createElement('style')
+  style.id = 'sb-side-label-css'
+  style.textContent = `
+    .sb-side-label {
+      font-size: 9px;
+      color: #888;
+      line-height: 1;
+      white-space: nowrap;
+      pointer-events: none;
+      position: relative;
+      z-index: 1;
     }
   `
   document.head.append(style)
@@ -1043,11 +1062,29 @@ function wireSideToolbar(ctx: EditorContext): void {
   // 指示70: スクロール領域が変わったため、右レールの position:fixed は不要になった。
   // 採取CSSのままで問題なく表示される。
 
+  // 右レールにラベル表示用CSSを1回だけ注入
+  injectSideToolbarLabelStyles()
+
   const icons = [...ctx.root.querySelectorAll<HTMLElement>('[class*="sideToolbarIcon"]')]
   for (let index = 0; index < icons.length; index += 1) {
     const icon = icons[index]
     if (icon === undefined) continue
     icon.style.cursor = 'pointer'
+
+    // 指示77: 各アイコンにツールチップとテキストラベルを追加
+    const toolName = SIDE_TOOLS[index] ?? ''
+    icon.title = toolName
+    if (toolName !== '') {
+      const label = document.createElement('span')
+      label.className = 'sb-side-label'
+      label.textContent = toolName
+      icon.append(label)
+      // アイコンを縦に並べるため flex column に
+      icon.style.display = 'flex'
+      icon.style.flexDirection = 'column'
+      icon.style.alignItems = 'center'
+      icon.style.gap = '2px'
+    }
 
     if (index === PREVIEW_TOOL_INDEX) {
       // プレビューは右レールの1番目。aria-label で引くと別の要素に当たっていて、
