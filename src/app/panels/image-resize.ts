@@ -15,6 +15,7 @@
  * position:absolute をスクロール量込みで計算し、画像とともにスクロールする。
  */
 import type Quill from 'quill'
+import { attachImageActionBar } from './image-link.ts'
 
 /** リサイズ中の状態 */
 interface ResizeState {
@@ -170,6 +171,9 @@ export function wireImageResize(quill: Quill): void {
     badge.setAttribute('data-resize-badge', 'true')
     wrap.append(badge)
 
+    // リンク設定・計測URLのアクションバー
+    attachImageActionBar(wrap, img)
+
     container.append(wrap)
     reposition()
     updateBadge()
@@ -216,8 +220,10 @@ export function wireImageResize(quill: Quill): void {
   document.addEventListener('mousedown', (e: MouseEvent) => {
     if (activeImg === null || wrap === null) return
     const target = e.target as Node
-    // root 内（画像やテキスト）と wrap 内（ハンドル）のクリックは解除しない
+    // root 内（画像やテキスト）/ wrap 内（ハンドル）/ ポップオーバー内は解除しない
     if (!root.contains(target) && !wrap.contains(target)) {
+      const popover = document.querySelector('[data-img-link-popover]')
+      if (popover !== null && popover.contains(target)) return
       removeOverlay()
     }
   })
