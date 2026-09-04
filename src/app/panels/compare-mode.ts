@@ -1,8 +1,8 @@
 /**
- * 比較モードパネル
+ * 比較モードパネル（フローティング・ドラッグ移動可能）
  *
- * エディタのコンテンツ領域を一時的に隠し、
- * デバイスフレーム付き LP プレビューを表示する。
+ * エディタの上にフローティングパネルとして表示。
+ * 「…」ボタンでドラッグ移動できる。
  * 実物 SquadBeyond の比較モード UI を再現。
  */
 import { toast } from '../ui.ts'
@@ -59,6 +59,9 @@ const DEVICES: readonly DeviceDef[] = [
   { label: 'iPad mini (768×1024)', width: 768, height: 1024 },
 ]
 
+/** パネル幅（px） */
+const PANEL_W = 400
+
 /* ──────────────────── CSS 注入 ──────────────────── */
 
 function injectStyles(): void {
@@ -66,27 +69,29 @@ function injectStyles(): void {
   const style = document.createElement('style')
   style.id = 'sb-cmp-panel-css'
   style.textContent = `
-/* ── パネル外枠 ── */
+/* ── フローティングパネル ── */
 .sb-cmp-panel {
-  flex: 1 1 0;
-  min-width: 0;
+  position: fixed;
+  z-index: 9000;
+  width: ${PANEL_W}px;
   display: flex;
   flex-direction: column;
-  background: #fafafa;
-  border-left: 1px solid #e5e5ea;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 8px 40px rgba(0,0,0,.18), 0 0 0 1px rgba(0,0,0,.06);
   overflow: hidden;
-  animation: sb-cmp-fadein .18s ease;
+  animation: sb-cmp-fadein .15s ease;
+  user-select: none;
 }
-@keyframes sb-cmp-fadein { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sb-cmp-fadein { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: scale(1); } }
 
 /* ── ヘッダ ── */
 .sb-cmp-header {
   display: flex;
   align-items: center;
-  padding: 12px 16px;
+  padding: 10px 14px;
   gap: 8px;
   border-bottom: 1px solid #e5e5ea;
-  background: #fff;
   flex-shrink: 0;
 }
 .sb-cmp-title {
@@ -110,14 +115,15 @@ function injectStyles(): void {
   transition: background .12s;
 }
 .sb-cmp-hdr-btn:hover { background: #f0f0f0; }
+.sb-cmp-drag-handle { cursor: grab; }
+.sb-cmp-drag-handle:active { cursor: grabbing; }
 
 /* ── タブバー ── */
 .sb-cmp-tabs {
   display: flex;
   gap: 2px;
-  padding: 8px 12px;
+  padding: 6px 10px;
   border-bottom: 1px solid #e5e5ea;
-  background: #fff;
   flex-shrink: 0;
   overflow-x: auto;
 }
@@ -125,14 +131,14 @@ function injectStyles(): void {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 8px 10px;
+  gap: 3px;
+  padding: 6px 8px;
   border: none;
   background: none;
   border-radius: 8px;
   cursor: pointer;
   color: #888;
-  font-size: 11px;
+  font-size: 10px;
   font-family: inherit;
   white-space: pre-line;
   text-align: center;
@@ -151,8 +157,8 @@ function injectStyles(): void {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
 }
 
 /* ── コンテンツ ── */
@@ -169,9 +175,8 @@ function injectStyles(): void {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 10px 14px;
+  padding: 8px 12px;
   border-bottom: 1px solid #e5e5ea;
-  background: #fff;
   flex-shrink: 0;
 }
 .sb-cmp-url-label {
@@ -181,7 +186,7 @@ function injectStyles(): void {
   flex-shrink: 0;
 }
 .sb-cmp-url-text {
-  font-size: 12px;
+  font-size: 11px;
   color: #666;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -194,7 +199,7 @@ function injectStyles(): void {
   border: none;
   color: #888;
   cursor: pointer;
-  padding: 4px;
+  padding: 3px;
   border-radius: 4px;
   display: flex;
   align-items: center;
@@ -208,8 +213,7 @@ function injectStyles(): void {
 .sb-cmp-device {
   display: flex;
   align-items: center;
-  padding: 6px 14px 10px;
-  background: #fff;
+  padding: 6px 12px 8px;
   border-bottom: 1px solid #e5e5ea;
   flex-shrink: 0;
 }
@@ -220,7 +224,7 @@ function injectStyles(): void {
   background: #f5f5f7;
   border: 1px solid #e0e0e0;
   border-radius: 6px;
-  padding: 8px 32px 8px 12px;
+  padding: 7px 32px 7px 12px;
   font-size: 13px;
   color: #1a1a1a;
   font-family: inherit;
@@ -241,7 +245,7 @@ function injectStyles(): void {
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  padding: 16px 12px 24px;
+  padding: 14px 10px 20px;
   min-height: 0;
   overflow: auto;
 }
@@ -301,7 +305,6 @@ export interface ComparePanelDeps {
 }
 
 let panelEl: HTMLElement | null = null
-let contentRef: HTMLElement | null = null
 
 /* ──────────────────── 公開 API ──────────────────── */
 
@@ -322,10 +325,6 @@ export function closeComparePanel(): void {
     panelEl.remove()
     panelEl = null
   }
-  if (contentRef !== null) {
-    contentRef.style.display = ''
-    contentRef = null
-  }
 }
 
 /** Version 切り替え時にプレビューを更新する */
@@ -342,28 +341,22 @@ export function refreshComparePreview(html: string): void {
 function openComparePanel(root: HTMLElement, deps: ComparePanelDeps): void {
   injectStyles()
 
-  const editorWrapper = root.querySelector<HTMLElement>('[class*="_editorWrapper_"]')
-  if (editorWrapper === null) return
-
-  // コンテンツ領域を隠して比較パネルで置き換える
-  const contentWrapper = root.querySelector<HTMLElement>('.quillEditorContentWrapper')
-  if (contentWrapper !== null) {
-    contentRef = contentWrapper
-    contentWrapper.style.display = 'none'
-  }
-
-  panelEl = buildPanel(root, deps)
-
-  // 右レール（sideToolbarWrapper）の直前に挿入
+  // 右レールの左端を基準に初期位置を決める
   const sideToolbar = root.querySelector<HTMLElement>('[class*="_sideToolbarWrapper_"]')
-  if (sideToolbar !== null) {
-    editorWrapper.insertBefore(panelEl, sideToolbar)
-  } else {
-    editorWrapper.append(panelEl)
-  }
+  const toolbarRect = sideToolbar?.getBoundingClientRect()
+  const initRight = toolbarRect !== undefined ? window.innerWidth - toolbarRect.left + 4 : 80
+  const initTop = toolbarRect?.top ?? 60
+
+  panelEl = buildPanel(deps)
+  panelEl.style.top = `${initTop}px`
+  panelEl.style.right = `${initRight}px`
+  // パネル高さ: ビューポートから上下余白を引いた分
+  panelEl.style.height = `${window.innerHeight - initTop - 16}px`
+
+  document.body.append(panelEl)
 }
 
-function buildPanel(_root: HTMLElement, deps: ComparePanelDeps): HTMLElement {
+function buildPanel(deps: ComparePanelDeps): HTMLElement {
   const panel = document.createElement('div')
   panel.className = 'sb-cmp-panel'
   panel.setAttribute('data-compare-panel', '')
@@ -377,9 +370,10 @@ function buildPanel(_root: HTMLElement, deps: ComparePanelDeps): HTMLElement {
   title.textContent = '比較モード'
 
   const dotsBtn = document.createElement('button')
-  dotsBtn.className = 'sb-cmp-hdr-btn'
+  dotsBtn.className = 'sb-cmp-hdr-btn sb-cmp-drag-handle'
   dotsBtn.innerHTML = ICON_DOTS
-  dotsBtn.title = 'メニュー'
+  dotsBtn.title = 'ドラッグで移動'
+  wireDrag(dotsBtn, panel)
 
   const closeBtn = document.createElement('button')
   closeBtn.className = 'sb-cmp-hdr-btn'
@@ -434,6 +428,48 @@ function buildPanel(_root: HTMLElement, deps: ComparePanelDeps): HTMLElement {
   return panel
 }
 
+/* ──────────────────── ドラッグ移動 ──────────────────── */
+
+function wireDrag(handle: HTMLElement, panel: HTMLElement): void {
+  let startX = 0
+  let startY = 0
+  let startLeft = 0
+  let startTop = 0
+
+  function onMouseMove(e: MouseEvent): void {
+    e.preventDefault()
+    const dx = e.clientX - startX
+    const dy = e.clientY - startY
+    panel.style.left = `${startLeft + dx}px`
+    panel.style.top = `${startTop + dy}px`
+    // right を解除して left 基準に切り替える
+    panel.style.right = 'auto'
+  }
+
+  function onMouseUp(): void {
+    document.removeEventListener('mousemove', onMouseMove)
+    document.removeEventListener('mouseup', onMouseUp)
+    handle.style.cursor = 'grab'
+  }
+
+  handle.addEventListener('mousedown', (e) => {
+    e.preventDefault()
+    const rect = panel.getBoundingClientRect()
+    startX = e.clientX
+    startY = e.clientY
+    startLeft = rect.left
+    startTop = rect.top
+    // right → left に切り替え（ドラッグ中は left 基準のほうが直感的）
+    panel.style.left = `${rect.left}px`
+    panel.style.right = 'auto'
+    handle.style.cursor = 'grabbing'
+    document.addEventListener('mousemove', onMouseMove)
+    document.addEventListener('mouseup', onMouseUp)
+  })
+}
+
+/* ──────────────────── タブコンテンツ ──────────────────── */
+
 function renderTabContent(
   container: HTMLElement,
   tabIndex: number,
@@ -442,7 +478,6 @@ function renderTabContent(
   container.innerHTML = ''
 
   if (tabIndex !== 0) {
-    // プレビュー以外は準備中
     const tabDef = TABS[tabIndex]
     const placeholder = document.createElement('div')
     placeholder.className = 'sb-cmp-placeholder'
@@ -536,10 +571,7 @@ function renderTabContent(
 }
 
 function buildPhoneMockup(html: string, device: DeviceDef): HTMLElement {
-  // パネル幅に収まるようにスケール計算
-  // フォンフレーム: bezel 8px×2 + screen = 16px + screenWidth
-  // 目標: フレーム幅 ≤ 340px
-  const maxScreenWidth = 320
+  const maxScreenWidth = 300
   const scale = Math.min(1, maxScreenWidth / device.width)
   const screenWidth = device.width * scale
   const screenHeight = device.height * scale
@@ -560,7 +592,6 @@ function buildPhoneMockup(html: string, device: DeviceDef): HTMLElement {
   iframe.setAttribute('data-cmp-iframe', '')
   iframe.title = 'LPプレビュー'
   iframe.srcdoc = wrapHtmlForPreview(html)
-  // iframe の実寸をデバイスサイズに設定し、transform で縮小する
   iframe.style.width = `${device.width}px`
   iframe.style.height = `${device.height}px`
   iframe.style.transform = `scale(${scale})`
