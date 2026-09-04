@@ -188,6 +188,19 @@ export const api = {
   deleteExitPopup: (abTestUid: string, popupUid: string) =>
     request<void>('DELETE', `/ab_tests/${abTestUid}/exit_popups/${popupUid}`),
 
+  /** 追尾型ポップアップ一覧 */
+  followPopups: (abTestUid: string) =>
+    request<{ follow_popups: FollowPopup[] }>('GET', `/ab_tests/${abTestUid}/follow_popups`),
+  /** 追尾型ポップアップ作成 */
+  createFollowPopup: (abTestUid: string, body: Partial<FollowPopup> & { name: string }) =>
+    request<{ follow_popup: FollowPopup }>('POST', `/ab_tests/${abTestUid}/follow_popups`, body),
+  /** 追尾型ポップアップ更新 */
+  updateFollowPopup: (abTestUid: string, popupUid: string, patch: Partial<FollowPopup>) =>
+    request<{ follow_popup: FollowPopup }>('PUT', `/ab_tests/${abTestUid}/follow_popups/${popupUid}`, patch),
+  /** 追尾型ポップアップ削除 */
+  deleteFollowPopup: (abTestUid: string, popupUid: string) =>
+    request<void>('DELETE', `/ab_tests/${abTestUid}/follow_popups/${popupUid}`),
+
   /** レポートタブ（§10-3 `GET /ab_tests/:uid/reports?start_date&end_date`） */
   report: (abTestUid: string, query: string) =>
     request<ReportResponse>('GET', `/ab_tests/${abTestUid}/reports?${query}`),
@@ -302,6 +315,26 @@ export interface ExitPopup {
   javascript: string
   head_tag: string
   body_tag: string
+}
+
+/** 追尾型ポップアップ（指示85） */
+export interface FollowPopup {
+  id: number
+  uid: string
+  ab_test_id: number
+  name: string
+  enabled: boolean
+  preset_id: string | null
+  position: 'top' | 'bottom' | 'bottom-right' | 'bottom-left'
+  show_after_scroll: number
+  show_close_button: boolean
+  animation: string
+  device_sp: boolean
+  device_tablet: boolean
+  device_pc: boolean
+  html: string
+  javascript: string
+  css: string
 }
 
 /** 中間ページ（redirect page・指示⑮） */

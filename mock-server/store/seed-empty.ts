@@ -70,6 +70,7 @@ export function createEmptyState(): State {
     versions: [],
     redirectPages: [],
     exitPopups: [],
+    followPopups: [],
     splitTestSettings: [],
     conversions: [],
     conversionTags: [],

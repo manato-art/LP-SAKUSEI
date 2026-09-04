@@ -550,6 +550,12 @@ function injectSideToolbarStyles(): void {
       flex-direction: column !important;
       align-items: center !important;
       gap: 2px !important;
+      height: auto !important;
+    }
+    /* 指示87: Widget管理のMUIボタンが50px固定でラベルを押し出すのを修正 */
+    [class*="_sideToolbarIcon_"] [aria-label="Widget管理"] {
+      height: auto !important;
+      padding: 4px !important;
     }
     /* テキストラベル */
     .sb-side-label {

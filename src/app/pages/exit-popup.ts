@@ -9,11 +9,12 @@
  *   - ポップアップ編集（5タブ: 基本/表示/位置/出し分け/HTML）
  *   - LP上での離脱防止ポップアップ表示
  */
-import { api, type ExitPopup } from '../api.ts'
+import { api, type ExitPopup, type FollowPopup } from '../api.ts'
 import { isStale } from '../main.ts'
 import { T, el, button, toast } from '../ui.ts'
 import { setupHorizTabs, setupBreadcrumb } from './tab-nav.ts'
 import { PRESETS, type PopupPreset } from './exit-popup-presets.ts'
+import { FOLLOW_PRESETS, type FollowPreset } from './follow-popup-presets.ts'
 
 // ─── CSS注入 ────────────────────────────────────────
 
@@ -112,13 +113,18 @@ function injectPopupCss(): void {
 
 // ─── メインのrender関数 ─────────────────────────────
 
+/** 現在のサブタブ */
+type SubTab = 'exit' | 'follow'
+
 /** 現在の表示状態 */
 interface PopupPageState {
   abTestUid: string
   folderUid: string
   popups: ExitPopup[]
+  followPopups: FollowPopup[]
   deliveryEnabled: boolean
   editingPopup: ExitPopup | null
+  activeSubTab: SubTab
   root: HTMLElement
 }
 
@@ -130,10 +136,11 @@ export async function renderExitPopup(
   container.innerHTML = ''
   container.style.cssText = 'flex:1;min-width:0'
 
-  const [{ ab_test }, { folders }, { exit_popups }] = await Promise.all([
+  const [{ ab_test }, { folders }, { exit_popups }, { follow_popups }] = await Promise.all([
     api.abTest(abTestUid),
     api.folders(),
     api.exitPopups(abTestUid),
+    api.followPopups(abTestUid),
   ])
   if (generation !== undefined && isStale(generation)) return
 
@@ -153,8 +160,10 @@ export async function renderExitPopup(
     abTestUid,
     folderUid,
     popups: exit_popups,
+    followPopups: follow_popups,
     deliveryEnabled: exit_popups.some((p) => p.enabled),
     editingPopup: null,
+    activeSubTab: 'exit',
     root,
   }
 
@@ -173,18 +182,20 @@ function renderPanel(state: PopupPageState): void {
   // ── ヘッダ: 離脱防止 / 追従型タブ ──
   const head = el('div', { class: 'ep-panel-head' })
   const subtabs = el('div', { class: 'ep-subtabs' })
-  const tabExit = el('div', { class: 'ep-subtab active', text: '離脱防止' })
-  const tabFollow = el('div', { class: 'ep-subtab', text: '追従型' })
+  const isExit = state.activeSubTab === 'exit'
+  const tabExit = el('div', { class: `ep-subtab${isExit ? ' active' : ''}`, text: '離脱防止' })
+  const tabFollow = el('div', { class: `ep-subtab${!isExit ? ' active' : ''}`, text: '追従型' })
   subtabs.append(tabExit, tabFollow)
 
   tabExit.addEventListener('click', () => {
-    tabExit.classList.add('active')
-    tabFollow.classList.remove('active')
+    if (state.activeSubTab === 'exit') return
+    state.activeSubTab = 'exit'
+    renderPanel(state)
   })
   tabFollow.addEventListener('click', () => {
-    tabFollow.classList.add('active')
-    tabExit.classList.remove('active')
-    toast('追従型ポップアップは未実装です', 'error')
+    if (state.activeSubTab === 'follow') return
+    state.activeSubTab = 'follow'
+    renderPanel(state)
   })
 
   // 配信トグル
@@ -199,7 +210,17 @@ function renderPanel(state: PopupPageState): void {
   head.append(subtabs, delivery)
   panel.append(head)
 
-  // ── リストヘッダ ──
+  if (state.activeSubTab === 'exit') {
+    renderExitList(panel, state)
+  } else {
+    renderFollowList(panel, state)
+  }
+
+  state.root.append(panel)
+}
+
+/** 離脱防止タブの一覧 */
+function renderExitList(panel: HTMLElement, state: PopupPageState): void {
   const listHead = el('div', { class: 'ep-list-head' })
   const listTitle = el('h3', { text: '離脱防止一覧' })
   const addBtn = el('button', { class: 'ep-add-btn', html: `<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg> 追加` })
@@ -207,7 +228,6 @@ function renderPanel(state: PopupPageState): void {
   listHead.append(listTitle, addBtn)
   panel.append(listHead)
 
-  // ── ポップアップ一覧 ──
   if (state.popups.length === 0) {
     panel.append(el('div', { class: 'ep-empty', text: 'ポップアップはまだ追加されていません。上の ＋追加 ボタンからプリセットを選択してください。' }))
   } else {
@@ -215,8 +235,24 @@ function renderPanel(state: PopupPageState): void {
       panel.append(renderPopupCard(state, popup))
     }
   }
+}
 
-  state.root.append(panel)
+/** 追従型タブの一覧 */
+function renderFollowList(panel: HTMLElement, state: PopupPageState): void {
+  const listHead = el('div', { class: 'ep-list-head' })
+  const listTitle = el('h3', { text: '追従型一覧' })
+  const addBtn = el('button', { class: 'ep-add-btn', html: `<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg> 追加` })
+  addBtn.addEventListener('click', () => openFollowPresetModal(state))
+  listHead.append(listTitle, addBtn)
+  panel.append(listHead)
+
+  if (state.followPopups.length === 0) {
+    panel.append(el('div', { class: 'ep-empty', text: '追従型ポップアップはまだ追加されていません。上の ＋追加 ボタンからプリセットを選択してください。' }))
+  } else {
+    for (const fp of state.followPopups) {
+      panel.append(renderFollowCard(state, fp))
+    }
+  }
 }
 
 function renderPopupCard(state: PopupPageState, popup: ExitPopup): HTMLElement {
@@ -822,6 +858,497 @@ function previewPopup(popup: ExitPopup | Partial<ExitPopup>): void {
   }
   // ep-show イベントを発火して内部アニメを起動
   try { overlay.dispatchEvent(new CustomEvent('ep-show')) } catch (_) { /* noop */ }
+}
+
+// ─── 追従型ポップアップ ─────────────────────────────
+
+function renderFollowCard(state: PopupPageState, fp: FollowPopup): HTMLElement {
+  const card = el('div', { class: 'ep-card' })
+
+  const thumb = el('div', { class: 'ep-card-thumb' })
+  const preset = fp.preset_id !== null ? FOLLOW_PRESETS.find((p) => p.id === fp.preset_id) : null
+  if (preset !== null && preset !== undefined) {
+    thumb.innerHTML = preset.thumbnailSvg
+  } else {
+    thumb.textContent = 'NO IMAGE'
+  }
+  card.append(thumb)
+
+  const info = el('div', { class: 'ep-card-info' })
+  info.append(el('p', { class: 'ep-card-name', text: fp.name }))
+  const posLabels: Record<string, string> = { top: '上部', bottom: '下部', 'bottom-right': '右下', 'bottom-left': '左下' }
+  const meta: string[] = [`位置: ${posLabels[fp.position] ?? fp.position}`]
+  if (fp.show_after_scroll > 0) meta.push(`スクロール: ${fp.show_after_scroll}%`)
+  info.append(el('div', { class: 'ep-card-meta', text: meta.join(' / ') }))
+  card.append(info)
+
+  const actions = el('div', { class: 'ep-card-actions' })
+
+  // 配信トグル
+  const itemToggle = el('button', { class: `ep-toggle${fp.enabled ? ' on' : ''}` })
+  itemToggle.style.cssText = 'width:34px;height:18px'
+  itemToggle.addEventListener('click', (e) => {
+    e.stopPropagation()
+    const newEnabled = !fp.enabled
+    void api.updateFollowPopup(state.abTestUid, fp.uid, { enabled: newEnabled }).then(
+      () => {
+        fp.enabled = newEnabled
+        itemToggle.classList.toggle('on', newEnabled)
+      },
+      (err: unknown) => toast((err as Error).message, 'error'),
+    )
+  })
+  actions.append(itemToggle)
+
+  // メニュー
+  const menuWrap = el('div', { style: 'position:relative' })
+  const menuBtn = el('button', { class: 'ep-menu-btn', text: '⋯' })
+  menuBtn.addEventListener('click', (e) => {
+    e.stopPropagation()
+    toggleFollowDropdown(menuWrap, state, fp)
+  })
+  menuWrap.append(menuBtn)
+  actions.append(menuWrap)
+
+  card.append(actions)
+  card.addEventListener('click', () => openFollowEditor(state, fp))
+  return card
+}
+
+function toggleFollowDropdown(menuWrap: HTMLElement, state: PopupPageState, fp: FollowPopup): void {
+  const existing = menuWrap.querySelector('.ep-dropdown')
+  if (existing !== null) { existing.remove(); return }
+  for (const d of document.querySelectorAll('.ep-dropdown')) d.remove()
+
+  const dropdown = el('div', { class: 'ep-dropdown' })
+
+  const editBtn = el('button', { class: 'ep-dropdown-item', text: '編集' })
+  editBtn.addEventListener('click', (e) => {
+    e.stopPropagation()
+    dropdown.remove()
+    openFollowEditor(state, fp)
+  })
+
+  const previewBtn = el('button', { class: 'ep-dropdown-item', text: 'プレビュー' })
+  previewBtn.addEventListener('click', (e) => {
+    e.stopPropagation()
+    dropdown.remove()
+    previewFollowPopup(fp)
+  })
+
+  const deleteBtn = el('button', { class: 'ep-dropdown-item danger', text: '削除' })
+  deleteBtn.addEventListener('click', (e) => {
+    e.stopPropagation()
+    dropdown.remove()
+    if (!confirm('この追従型ポップアップを削除しますか？')) return
+    void api.deleteFollowPopup(state.abTestUid, fp.uid).then(
+      () => {
+        state.followPopups = state.followPopups.filter((p) => p.uid !== fp.uid)
+        renderPanel(state)
+        toast('追従型ポップアップを削除しました')
+      },
+      (err: unknown) => toast((err as Error).message, 'error'),
+    )
+  })
+
+  dropdown.append(editBtn, previewBtn, deleteBtn)
+  menuWrap.append(dropdown)
+
+  const close = (e: MouseEvent): void => {
+    if (!menuWrap.contains(e.target as Node)) {
+      dropdown.remove()
+      document.removeEventListener('click', close)
+    }
+  }
+  setTimeout(() => document.addEventListener('click', close), 0)
+}
+
+// ─── 追従型プリセット選択モーダル ─────────────────────
+
+function openFollowPresetModal(state: PopupPageState): void {
+  const overlay = el('div', { class: 'ep-modal-overlay' })
+  const modal = el('div', { class: 'ep-modal' })
+
+  const head = el('div', { class: 'ep-modal-head' })
+  head.append(el('h2', { text: '追従型ポップアップを追加' }))
+  const closeBtn = el('button', { class: 'ep-modal-close', text: '✕' })
+  closeBtn.addEventListener('click', () => overlay.remove())
+  head.append(closeBtn)
+  modal.append(head)
+
+  const tabs = el('div', { class: 'ep-modal-tabs' })
+  const tabPreset = el('button', { class: 'ep-modal-tab active', text: 'プリセット' })
+  const tabNew = el('button', { class: 'ep-modal-tab', text: '＋ 新規作成' })
+  tabs.append(tabPreset, tabNew)
+  modal.append(tabs)
+
+  const grid = el('div', { class: 'ep-preset-grid' })
+  for (const preset of FOLLOW_PRESETS) {
+    grid.append(renderFollowPresetCard(state, preset, overlay))
+  }
+  modal.append(grid)
+
+  tabNew.addEventListener('click', () => {
+    overlay.remove()
+    createBlankFollowPopup(state)
+  })
+
+  overlay.append(modal)
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) overlay.remove()
+  })
+  document.body.append(overlay)
+}
+
+function renderFollowPresetCard(
+  state: PopupPageState,
+  preset: FollowPreset,
+  overlay: HTMLElement,
+): HTMLElement {
+  const card = el('div', { class: 'ep-preset-card' })
+
+  const thumb = el('div', { class: 'ep-preset-thumb' })
+  thumb.innerHTML = preset.thumbnailSvg
+  card.append(thumb)
+
+  const info = el('div', { class: 'ep-preset-info' })
+  info.append(el('p', { class: 'ep-preset-name', text: preset.name }))
+
+  const addBtn = el('button', { class: 'ep-preset-add', text: '追加' })
+  info.append(addBtn)
+  card.append(info)
+
+  let adding = false
+  function doAdd(): void {
+    if (adding) return
+    adding = true
+    addBtn.disabled = true
+    addBtn.textContent = '追加中…'
+    void api.createFollowPopup(state.abTestUid, {
+      name: preset.name,
+      preset_id: preset.id,
+      html: preset.defaultHtml,
+      css: preset.defaultCss,
+      javascript: preset.defaultJavascript,
+      position: preset.defaults.position ?? 'bottom',
+      show_after_scroll: preset.defaults.show_after_scroll ?? 0,
+      show_close_button: preset.defaults.show_close_button ?? true,
+      animation: preset.defaults.animation ?? 'slideUp',
+    }).then(
+      ({ follow_popup }) => {
+        state.followPopups = [...state.followPopups, follow_popup]
+        overlay.remove()
+        renderPanel(state)
+        toast(`「${preset.name}」を追加しました`)
+      },
+      (err: unknown) => {
+        adding = false
+        addBtn.disabled = false
+        addBtn.textContent = '追加'
+        toast((err as Error).message, 'error')
+      },
+    )
+  }
+  card.addEventListener('click', doAdd)
+
+  return card
+}
+
+function createBlankFollowPopup(state: PopupPageState): void {
+  void api.createFollowPopup(state.abTestUid, {
+    name: '新規追従型ポップアップ',
+    html: '<div style="padding:12px 20px;background:#333;color:#fff;font-family:sans-serif;text-align:center;font-size:13px">追従型ポップアップの内容</div>',
+    position: 'bottom',
+  }).then(
+    ({ follow_popup }) => {
+      state.followPopups = [...state.followPopups, follow_popup]
+      renderPanel(state)
+      toast('新規追従型ポップアップを作成しました')
+      openFollowEditor(state, follow_popup)
+    },
+    (err: unknown) => toast((err as Error).message, 'error'),
+  )
+}
+
+// ─── 追従型ポップアップ編集画面 ─────────────────────
+
+type FollowEditorTab = 'settings' | 'device' | 'html'
+
+const FOLLOW_EDITOR_TABS: readonly { id: FollowEditorTab; label: string }[] = [
+  { id: 'settings', label: '表示設定' },
+  { id: 'device', label: '出し分け' },
+  { id: 'html', label: 'HTML' },
+]
+
+function openFollowEditor(state: PopupPageState, fp: FollowPopup): void {
+  const panel = state.root.querySelector('.ep-panel')
+  if (panel !== null) panel.remove()
+  const existingEditor = state.root.querySelector('.ep-editor')
+  if (existingEditor !== null) existingEditor.remove()
+
+  const draft = { ...fp }
+
+  const editor = el('div', { class: 'ep-editor' })
+
+  // ── ヘッダ ──
+  const head = el('div', { class: 'ep-editor-head' })
+  const headLeft = el('div', { class: 'ep-editor-head-left' })
+  const backLink = el('button', { class: 'ep-back-link', text: '← 一覧に戻る' })
+  backLink.addEventListener('click', () => {
+    editor.remove()
+    renderPanel(state)
+  })
+  headLeft.append(backLink)
+
+  const nameInput = document.createElement('input') as HTMLInputElement
+  nameInput.className = 'ep-editor-name'
+  nameInput.value = draft.name
+  nameInput.addEventListener('input', () => { draft.name = nameInput.value })
+  headLeft.append(nameInput)
+  head.append(headLeft)
+
+  const headRight = el('div', { style: 'display:flex;gap:8px;align-items:center' })
+  const previewBtn = button('プレビュー', 'ghost')
+  previewBtn.style.fontSize = '12px'
+  previewBtn.style.padding = '6px 12px'
+  previewBtn.addEventListener('click', () => previewFollowPopup(draft))
+
+  const saveBtn = button('保存')
+  saveBtn.style.fontSize = '12px'
+  saveBtn.style.padding = '6px 12px'
+  saveBtn.addEventListener('click', () => {
+    saveBtn.disabled = true
+    saveBtn.textContent = '保存中…'
+    const { id: _id, uid: _uid, ab_test_id: _abid, ...patch } = draft
+    void api.updateFollowPopup(state.abTestUid, fp.uid, patch).then(
+      ({ follow_popup }) => {
+        state.followPopups = state.followPopups.map((p) => (p.uid === fp.uid ? follow_popup : p))
+        Object.assign(fp, follow_popup)
+        saveBtn.disabled = false
+        saveBtn.textContent = '保存'
+        toast('追従型ポップアップを保存しました')
+      },
+      (err: unknown) => {
+        saveBtn.disabled = false
+        saveBtn.textContent = '保存'
+        toast((err as Error).message, 'error')
+      },
+    )
+  })
+
+  const editorToggle = el('button', { class: `ep-toggle${draft.enabled ? ' on' : ''}` })
+  editorToggle.addEventListener('click', () => {
+    draft.enabled = !draft.enabled
+    editorToggle.classList.toggle('on', draft.enabled)
+  })
+
+  headRight.append(previewBtn, saveBtn, editorToggle)
+  head.append(headRight)
+  editor.append(head)
+
+  // ── タブ ──
+  const tabBar = el('div', { class: 'ep-editor-tabs' })
+  const body = el('div', { class: 'ep-editor-body' })
+  let activeTab: FollowEditorTab = 'settings'
+
+  for (const tab of FOLLOW_EDITOR_TABS) {
+    const btn = el('button', { class: `ep-editor-tab${tab.id === activeTab ? ' active' : ''}`, text: tab.label })
+    btn.dataset['tab'] = tab.id
+    btn.addEventListener('click', () => {
+      activeTab = tab.id
+      for (const b of tabBar.querySelectorAll('.ep-editor-tab')) b.classList.remove('active')
+      btn.classList.add('active')
+      renderFollowEditorTab(body, draft)
+    })
+    tabBar.append(btn)
+  }
+  editor.append(tabBar)
+  editor.append(body)
+  renderFollowEditorTab(body, draft)
+
+  state.root.append(editor)
+
+  function renderFollowEditorTab(container: HTMLElement, d: typeof draft): void {
+    container.innerHTML = ''
+    switch (activeTab) {
+      case 'settings': renderFollowSettingsTab(container, d); break
+      case 'device': renderFollowDeviceTab(container, d); break
+      case 'html': renderFollowHtmlTab(container, d); break
+    }
+  }
+}
+
+function renderFollowSettingsTab(body: HTMLElement, draft: FollowPopup): void {
+  // 表示位置
+  const posField = el('div', { class: 'ep-field' })
+  posField.append(el('label', { text: '表示位置' }))
+  const posSelect = document.createElement('select')
+  const posOptions: { value: string; label: string }[] = [
+    { value: 'top', label: '上部（画面上端に固定）' },
+    { value: 'bottom', label: '下部（画面下端に固定）' },
+    { value: 'bottom-right', label: '右下（フローティング）' },
+    { value: 'bottom-left', label: '左下（フローティング）' },
+  ]
+  for (const opt of posOptions) {
+    const o = document.createElement('option')
+    o.value = opt.value
+    o.textContent = opt.label
+    if (opt.value === draft.position) o.selected = true
+    posSelect.append(o)
+  }
+  posSelect.addEventListener('change', () => {
+    draft.position = posSelect.value as typeof draft.position
+  })
+  posField.append(posSelect)
+  body.append(posField)
+
+  // 表示アニメーション
+  const animField = el('div', { class: 'ep-field' })
+  animField.append(el('label', { text: '表示アニメーション' }))
+  const animSelect = document.createElement('select')
+  for (const opt of ['slideUp', 'slideDown', 'fade', 'none']) {
+    const o = document.createElement('option')
+    o.value = opt
+    o.textContent = opt
+    if (opt === draft.animation) o.selected = true
+    animSelect.append(o)
+  }
+  animSelect.addEventListener('change', () => { draft.animation = animSelect.value })
+  animField.append(animSelect)
+  body.append(animField)
+
+  // スクロール%で表示
+  body.append(makeNumberField('スクロール表示位置 (%)', draft.show_after_scroll, (v) => { draft.show_after_scroll = v }))
+
+  // 閉じるボタン
+  const closeRow = el('div', { class: 'ep-toggle-row' })
+  const closeToggle = el('button', { class: `ep-toggle${draft.show_close_button ? ' on' : ''}` })
+  closeToggle.addEventListener('click', () => {
+    draft.show_close_button = !draft.show_close_button
+    closeToggle.classList.toggle('on', draft.show_close_button)
+  })
+  closeRow.append(closeToggle, el('span', { class: 'ep-toggle-label', text: '閉じるボタンを表示' }))
+  body.append(closeRow)
+}
+
+function renderFollowDeviceTab(body: HTMLElement, draft: FollowPopup): void {
+  body.append(el('div', { class: 'ep-field' }, [el('label', { text: 'デバイス別の表示制御' })]))
+  const devices: { key: 'device_sp' | 'device_tablet' | 'device_pc'; label: string }[] = [
+    { key: 'device_sp', label: 'スマートフォン (SP)' },
+    { key: 'device_tablet', label: 'タブレット' },
+    { key: 'device_pc', label: 'PC' },
+  ]
+  for (const device of devices) {
+    const row = el('div', { class: 'ep-device-row' })
+    const name = el('div', { class: 'ep-device-name', text: device.label })
+    const toggle = el('button', { class: `ep-toggle${draft[device.key] ? ' on' : ''}` })
+    toggle.addEventListener('click', () => {
+      draft[device.key] = !draft[device.key]
+      toggle.classList.toggle('on', draft[device.key])
+    })
+    row.append(name, toggle)
+    body.append(row)
+  }
+}
+
+function renderFollowHtmlTab(body: HTMLElement, draft: FollowPopup): void {
+  type HtmlSubTab = 'html' | 'css' | 'javascript'
+  const subTabs: { id: HtmlSubTab; label: string }[] = [
+    { id: 'html', label: 'HTML' },
+    { id: 'css', label: 'CSS' },
+    { id: 'javascript', label: 'JavaScript' },
+  ]
+
+  let activeSubTab: HtmlSubTab = 'html'
+  const tabBar = el('div', { class: 'ep-html-tabs' })
+  const editorArea = el('div')
+
+  function renderSubTab(): void {
+    editorArea.innerHTML = ''
+    const textarea = document.createElement('textarea')
+    textarea.className = 'ep-field'
+    textarea.style.cssText = 'width:100%;min-height:300px;padding:10px;border:1px solid #ddd;border-radius:4px;font-size:12px;font-family:monospace;box-sizing:border-box;resize:vertical'
+    textarea.value = draft[activeSubTab]
+    textarea.addEventListener('input', () => {
+      if (activeSubTab === 'html') draft.html = textarea.value
+      else if (activeSubTab === 'css') draft.css = textarea.value
+      else if (activeSubTab === 'javascript') draft.javascript = textarea.value
+    })
+    editorArea.append(textarea)
+  }
+
+  for (const sub of subTabs) {
+    const btn = el('button', { class: `ep-html-tab${sub.id === activeSubTab ? ' active' : ''}`, text: sub.label })
+    btn.addEventListener('click', () => {
+      activeSubTab = sub.id
+      for (const b of tabBar.querySelectorAll('.ep-html-tab')) b.classList.remove('active')
+      btn.classList.add('active')
+      renderSubTab()
+    })
+    tabBar.append(btn)
+  }
+
+  body.append(tabBar)
+  body.append(editorArea)
+  renderSubTab()
+}
+
+// ─── 追従型プレビュー ──────────────────────────────
+
+function previewFollowPopup(fp: FollowPopup | Partial<FollowPopup>): void {
+  document.getElementById('fp-preview-overlay')?.remove()
+
+  const overlay = el('div', {
+    style: `position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:9999;font-family:${T.font}`,
+  })
+  overlay.id = 'fp-preview-overlay'
+
+  // 追従型は位置に合わせて表示
+  const pos = fp.position ?? 'bottom'
+  const frame = el('div', { style: 'position:absolute;left:0;right:0' })
+
+  if (pos === 'top') {
+    frame.style.top = '0'
+  } else if (pos === 'bottom') {
+    frame.style.bottom = '0'
+  } else if (pos === 'bottom-right') {
+    frame.style.cssText = 'position:absolute;bottom:20px;right:20px;left:auto'
+  } else if (pos === 'bottom-left') {
+    frame.style.cssText = 'position:absolute;bottom:20px;left:20px;right:auto'
+  }
+
+  frame.innerHTML = fp.html ?? '<p>プレビューできるHTMLがありません</p>'
+
+  // CSSを適用
+  if (fp.css) {
+    const styleEl = document.createElement('style')
+    styleEl.textContent = fp.css
+    frame.prepend(styleEl)
+  }
+
+  overlay.append(frame)
+
+  const closeHint = el('div', {
+    text: 'クリックで閉じる',
+    style: 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);color:#fff;font-size:14px;opacity:.8;background:rgba(0,0,0,.5);padding:8px 16px;border-radius:6px',
+  })
+  overlay.append(closeHint)
+
+  overlay.addEventListener('click', (e) => {
+    if (frame.contains(e.target as Node)) return
+    overlay.remove()
+  })
+  document.body.append(overlay)
+
+  // JavaScriptを実行
+  if (fp.javascript) {
+    try {
+      const fn = new Function(fp.javascript)
+      fn()
+    } catch (e) {
+      console.warn('[fp-preview] JS実行エラー:', e)
+    }
+  }
 }
 
 // ─── ヘルパー ───────────────────────────────────────

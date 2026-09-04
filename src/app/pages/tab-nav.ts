@@ -69,26 +69,30 @@ function injectTabBarCss(): void {
       background: #fff;
       flex-shrink: 0;
     }
+    /* 指示86: 採取CSSに負けないよう !important で統一 */
     .sb-tab-bar a {
-      display: inline-block;
-      padding: 5px 16px;
-      font-size: 13px;
-      font-weight: 400;
-      color: #888;
-      text-decoration: none;
-      border-radius: 6px;
-      cursor: pointer;
-      line-height: 1.4;
-      transition: color 0.15s, background 0.15s;
+      display: inline-block !important;
+      padding: 5px 16px !important;
+      font-size: 13px !important;
+      font-weight: 400 !important;
+      color: #888 !important;
+      text-decoration: none !important;
+      border-radius: 6px !important;
+      cursor: pointer !important;
+      line-height: 1.4 !important;
+      transition: color 0.15s, background 0.15s !important;
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
     }
     .sb-tab-bar a:hover {
-      color: #333;
-      background: #f0f0f2;
+      color: #333 !important;
+      background: #f0f0f2 !important;
     }
     .sb-tab-bar a.sb-tab-active {
-      color: #fff;
-      background: #1a7af8;
-      font-weight: 600;
+      color: #fff !important;
+      background: #1a7af8 !important;
+      font-weight: 600 !important;
     }
     /* 採取物の3アイコン（エディタ/スプリット/リダイレクト）はテキストタブに置換済み→非表示 */
     [class*="_linksContainer_"], [class*="_links_dcd38"] {

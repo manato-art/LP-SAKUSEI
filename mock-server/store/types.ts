@@ -203,6 +203,32 @@ export interface ExitPopup {
   body_tag: string
 }
 
+/** 追尾型ポップアップ（指示85: スクロール追従バナー） */
+export interface FollowPopup {
+  id: number
+  uid: string
+  ab_test_id: number
+  name: string
+  enabled: boolean
+  preset_id: string | null
+
+  // 表示設定
+  position: 'top' | 'bottom' | 'bottom-right' | 'bottom-left'
+  show_after_scroll: number  // スクロール%で表示（0=即時）
+  show_close_button: boolean
+  animation: string
+
+  // 出し分け
+  device_sp: boolean
+  device_tablet: boolean
+  device_pc: boolean
+
+  // コンテンツ
+  html: string
+  javascript: string
+  css: string
+}
+
 export type SplitTestType = 'devices' | 'oses' | 'carriers' | 'hours' | 'periods' | 'params'
 
 export interface SplitTestRule {
@@ -464,6 +490,7 @@ export interface State {
   versions: readonly Version[]
   redirectPages: readonly RedirectPage[]
   exitPopups: readonly ExitPopup[]
+  followPopups: readonly FollowPopup[]
   splitTestSettings: readonly SplitTestSetting[]
   conversions: readonly Conversion[]
   conversionTags: readonly ConversionTag[]

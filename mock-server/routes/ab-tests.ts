@@ -300,6 +300,100 @@ abTestsRouter.delete('/ab_tests/:uid/exit_popups/:popup_uid', (req, res) => {
   res.status(204).end()
 })
 
+// ── 追尾型ポップアップ（指示85）──
+abTestsRouter.get('/ab_tests/:uid/follow_popups', (req, res) => {
+  const state = getState()
+  const abTest = findAbTest(state, req.params.uid)
+  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
+  const popups = state.followPopups.filter((p) => p.ab_test_id === abTest.id)
+  res.json({ follow_popups: applyEmptyState(req, popups) })
+})
+
+abTestsRouter.post('/ab_tests/:uid/follow_popups', (req, res) => {
+  const name = requireString(req.body, 'name', { maxLength: 100 })
+  if (!name.ok) {
+    res.status(422).json(errorEnvelope('validation_failed', name.message))
+    return
+  }
+  const state = getState()
+  const abTest = findAbTest(state, req.params.uid)
+  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
+  const body = req.body as Record<string, unknown>
+  const created = {
+    id: state.nextId,
+    uid: `FOLLOWPOPUP_${String(state.followPopups.length + 1).padStart(4, '0')}`,
+    ab_test_id: abTest.id,
+    name: name.value,
+    enabled: true,
+    preset_id: optionalString(req.body, 'preset_id') || null,
+    position: (['top', 'bottom', 'bottom-right', 'bottom-left'].includes(String(body.position)) ? String(body.position) : 'bottom') as 'top' | 'bottom' | 'bottom-right' | 'bottom-left',
+    show_after_scroll: optionalNumber(req.body, 'show_after_scroll') ?? 0,
+    show_close_button: body.show_close_button !== false,
+    animation: optionalString(req.body, 'animation') || 'slideUp',
+    device_sp: body.device_sp !== false,
+    device_tablet: body.device_tablet !== false,
+    device_pc: body.device_pc !== false,
+    html: optionalString(req.body, 'html') || '<div class="follow-popup-wrap"><p>追尾バナー</p></div>',
+    javascript: optionalString(req.body, 'javascript') || '',
+    css: optionalString(req.body, 'css') || '',
+  }
+  setState((s) => ({ ...s, followPopups: [...s.followPopups, created], nextId: s.nextId + 1 }))
+  res.status(201).json({ follow_popup: created })
+})
+
+abTestsRouter.put('/ab_tests/:uid/follow_popups/:popup_uid', (req, res) => {
+  const state = getState()
+  const abTest = findAbTest(state, req.params.uid)
+  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
+  const idx = state.followPopups.findIndex(
+    (p) => p.uid === req.params.popup_uid && p.ab_test_id === abTest.id,
+  )
+  if (idx === -1) {
+    res.status(404).json(errorEnvelope('not_found', '追尾ポップアップが見つかりません。'))
+    return
+  }
+  const existing = state.followPopups[idx]!
+  const body = req.body as Record<string, unknown>
+  const updated = {
+    ...existing,
+    ...(typeof body.name === 'string' ? { name: body.name } : {}),
+    ...(typeof body.enabled === 'boolean' ? { enabled: body.enabled } : {}),
+    ...(typeof body.position === 'string' && ['top', 'bottom', 'bottom-right', 'bottom-left'].includes(body.position) ? { position: body.position as 'top' | 'bottom' | 'bottom-right' | 'bottom-left' } : {}),
+    ...(typeof body.show_after_scroll === 'number' ? { show_after_scroll: body.show_after_scroll } : {}),
+    ...(typeof body.show_close_button === 'boolean' ? { show_close_button: body.show_close_button } : {}),
+    ...(typeof body.animation === 'string' ? { animation: body.animation } : {}),
+    ...(typeof body.device_sp === 'boolean' ? { device_sp: body.device_sp } : {}),
+    ...(typeof body.device_tablet === 'boolean' ? { device_tablet: body.device_tablet } : {}),
+    ...(typeof body.device_pc === 'boolean' ? { device_pc: body.device_pc } : {}),
+    ...(typeof body.html === 'string' ? { html: body.html } : {}),
+    ...(typeof body.javascript === 'string' ? { javascript: body.javascript } : {}),
+    ...(typeof body.css === 'string' ? { css: body.css } : {}),
+  }
+  setState((s) => ({
+    ...s,
+    followPopups: s.followPopups.map((p, i) => (i === idx ? updated : p)),
+  }))
+  res.json({ follow_popup: updated })
+})
+
+abTestsRouter.delete('/ab_tests/:uid/follow_popups/:popup_uid', (req, res) => {
+  const state = getState()
+  const abTest = findAbTest(state, req.params.uid)
+  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
+  const idx = state.followPopups.findIndex(
+    (p) => p.uid === req.params.popup_uid && p.ab_test_id === abTest.id,
+  )
+  if (idx === -1) {
+    res.status(404).json(errorEnvelope('not_found', '追尾ポップアップが見つかりません。'))
+    return
+  }
+  setState((s) => ({
+    ...s,
+    followPopups: s.followPopups.filter((_, i) => i !== idx),
+  }))
+  res.status(204).end()
+})
+
 // ── リダイレクトページ ──
 abTestsRouter.get('/ab_tests/:uid/redirect_pages', (req, res) => {
   const state = getState()

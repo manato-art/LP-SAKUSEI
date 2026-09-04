@@ -85,6 +85,13 @@ export async function renderReport(
   // 左レールの4タブと「戻る」は、採取元のフォルダuidが焼き付いているので専用の配線で上書きする
   wireAbTestTabs(root, abTestUid, folder?.uid ?? '')
   setupHorizTabs(root, 'report', { abTestUid, folderUid: folder?.uid ?? '' })
+  // 指示86: navWrapper の親に flex-column を設定し、採取CSSのレイアウト干渉を防ぐ
+  const navWrapper86 = root.querySelector<HTMLElement>('[class*="_navArticleWrapper_"]')
+  if (navWrapper86?.parentElement !== null && navWrapper86?.parentElement !== undefined) {
+    navWrapper86.parentElement.style.display = 'flex'
+    navWrapper86.parentElement.style.flexDirection = 'column'
+    navWrapper86.parentElement.style.background = '#fff'
+  }
   wireBackLink(root, folder?.uid ?? null)
   setTopBarNames(root, ab_test.title, folderName)
   setupBreadcrumb(root, folderName, ab_test.title, folder?.uid)

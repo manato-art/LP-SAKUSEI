@@ -60,6 +60,13 @@ export async function renderRedirectPages(
   wireBeyondNavAnchors(root, { abTestUid: ids.abTestUid, folderUid })
   wireAbTestTabs(root, ids.abTestUid, folderUid)
   setupHorizTabs(root, 'redirect', { abTestUid: ids.abTestUid, folderUid })
+  // 指示86: navWrapper の親に flex-column を設定し、採取CSSのレイアウト干渉を防ぐ
+  const navWrapper86 = root.querySelector<HTMLElement>('[class*="_navArticleWrapper_"]')
+  if (navWrapper86?.parentElement !== null && navWrapper86?.parentElement !== undefined) {
+    navWrapper86.parentElement.style.display = 'flex'
+    navWrapper86.parentElement.style.flexDirection = 'column'
+    navWrapper86.parentElement.style.background = '#fff'
+  }
   setupBreadcrumb(root, folder?.name ?? '', ab_test.title, folder?.uid)
   wireBeyondBack(root, folderUid)
 

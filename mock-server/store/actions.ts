@@ -239,6 +239,7 @@ export function deleteAbTest(state: State, uid: string): { state: State; deleted
       versions: state.versions.filter((v) => !articleIds.includes(v.article_id)),
       redirectPages: state.redirectPages.filter((r) => r.ab_test_id !== target.id),
       exitPopups: state.exitPopups.filter((p) => p.ab_test_id !== target.id),
+      followPopups: state.followPopups.filter((p) => p.ab_test_id !== target.id),
       splitTestSettings: state.splitTestSettings.filter((s) => s.ab_test_id !== target.id),
       conversions: state.conversions.filter((c) => c.ab_test_uid !== target.uid),
       metrics: state.metrics.filter((m) => m.entity_uid !== target.uid),

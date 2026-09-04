@@ -13,7 +13,7 @@ import { Router } from 'express'
 import { getState } from '../store/store.ts'
 import { getMasterStyleSheet } from '../store/master-style-sheet.ts'
 import { getHtmlSetting } from '../store/html-tags.ts'
-import type { AbTest, Article, ExitPopup, State, Version } from '../store/types.ts'
+import type { AbTest, Article, ExitPopup, FollowPopup, State, Version } from '../store/types.ts'
 import { LP_BASE_CSS } from '../../src/app/lp-base-css.ts'
 import { masterStyleIframeCss } from '../../src/app/master-style.ts'
 import { withAutoplayVideos } from '../../src/app/lp-video.ts'
@@ -142,6 +142,14 @@ deliveryRouter.get('/lp/:uid', (req, res) => {
     ? ''
     : exitPopups.map((p) => buildPopupSnippet(p, device)).join('')
 
+  // 追尾型ポップアップ（指示85）: 有効な追従バナーをLP末尾に挿入
+  const followPopups = state.followPopups.filter(
+    (p) => p.ab_test_id === abTest.id && p.enabled,
+  )
+  const followHtml = followPopups.length === 0
+    ? ''
+    : followPopups.map((p) => buildFollowPopupSnippet(p, device)).join('')
+
   const html =
     `<!doctype html><html lang="ja"><head><meta charset="utf-8">` +
     `<meta name="viewport" content="width=device-width, initial-scale=1">` +
@@ -150,7 +158,7 @@ deliveryRouter.get('/lp/:uid', (req, res) => {
     `<style>body{margin:0 auto;max-width:${DELIVERY_WIDTH}px;font-family:"Hiragino Sans",sans-serif;background:#fff}` +
     `${LP_BASE_CSS}${version.css}${styleCss}</style>` +
     headTags +
-    `</head><body>${withAutoplayVideos(version.html)}${bodyTags}${popupHtml}</body></html>`
+    `</head><body>${withAutoplayVideos(version.html)}${bodyTags}${popupHtml}${followHtml}</body></html>`
 
   // 配信内容はStateの更新に応じて即時反映すべきなのでキャッシュしない
   res.set('Cache-Control', 'no-cache')
@@ -248,5 +256,72 @@ function buildPopupSnippet(popup: ExitPopup, device: 'sp' | 'tablet' | 'pc'): st
     `</div></div>` +
     (popup.head_tag !== '' ? popup.head_tag : '') +
     (popup.body_tag !== '' ? popup.body_tag : '') +
+    `<script>${scriptBody}<\/script>`
+}
+
+/**
+ * 追尾型ポップアップのHTMLスニペットを構築する（指示85）。
+ * スクロール追従バナー: 画面の上端/下端/角に固定表示される。
+ * オーバーレイ無し、ページ閲覧を妨げない控えめな表示。
+ */
+function buildFollowPopupSnippet(fp: FollowPopup, device: 'sp' | 'tablet' | 'pc'): string {
+  if (device === 'sp' && !fp.device_sp) return ''
+  if (device === 'tablet' && !fp.device_tablet) return ''
+  if (device === 'pc' && !fp.device_pc) return ''
+
+  const fpId = `follow-popup-${fp.uid}`
+
+  // 位置に応じたCSS
+  const positionStyles: Record<string, string> = {
+    top: 'top:0;left:0;right:0',
+    bottom: 'bottom:0;left:0;right:0',
+    'bottom-right': 'bottom:16px;right:16px',
+    'bottom-left': 'bottom:16px;left:16px',
+  }
+  const posStyle = positionStyles[fp.position] ?? positionStyles.bottom
+
+  // アニメーション
+  const animMap: Record<string, string> = {
+    slideUp: 'fpSlideUp .4s ease',
+    slideDown: 'fpSlideDown .4s ease',
+    fade: 'fpFadeIn .3s ease',
+  }
+  const animValue = animMap[fp.animation] ?? ''
+
+  const css = `
+    @keyframes fpSlideUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes fpSlideDown { from{opacity:0;transform:translateY(-20px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes fpFadeIn { from{opacity:0} to{opacity:1} }
+    #${fpId} { position:fixed;${posStyle};z-index:99990;display:none;${animValue !== '' ? `animation:${animValue};` : ''} }
+    #${fpId}.fp-visible { display:block; }
+    #${fpId} .fp-close { position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:50%;background:rgba(0,0,0,.5);color:#fff;border:none;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;z-index:1; }
+    ${fp.css}
+  `
+
+  const showAfterScroll = fp.show_after_scroll
+  const scriptBody = `(function(){
+    var el=document.getElementById('${fpId}');if(!el)return;
+    var scrollThreshold=${showAfterScroll};
+    function show(){el.classList.add('fp-visible')}
+    ${showAfterScroll > 0
+      ? `window.addEventListener('scroll',function(){
+          var pct=(window.scrollY/(document.body.scrollHeight-window.innerHeight))*100;
+          if(pct>=scrollThreshold)show();
+        });`
+      : `show();`
+    }
+    el.querySelector('.fp-close')?.addEventListener('click',function(){el.remove()});
+    ${fp.javascript}
+  })()`
+
+  const closeButton = fp.show_close_button
+    ? `<button class="fp-close">✕</button>`
+    : ''
+
+  return `<style>${css}</style>` +
+    `<div id="${fpId}">` +
+    closeButton +
+    fp.html +
+    `</div>` +
     `<script>${scriptBody}<\/script>`
 }
