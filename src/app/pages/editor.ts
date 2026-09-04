@@ -245,18 +245,18 @@ export async function renderEditor(
   // contentWrapper の高さを Versionパネルと揃える。
   // 採取CSSの calc(100% - 86px) だと editorWrapper のpadding分だけ短くなるため、
   // Versionパネルと同じ calc(100vh - 84px) に統一して下端を合わせる。
+  // contentWrapper を flex column にして、ヘッダ画像→ツールバー→キャンバス→下部バー を
+  // 隙間なく縦に並べる。キャンバス（Quillホスト）が flex:1 で残りを埋める。
   const contentWrapper = root.querySelector<HTMLElement>('.quillEditorContentWrapper')
   if (contentWrapper !== null) {
     contentWrapper.style.height = 'calc(100vh - 92px)'
+    contentWrapper.style.display = 'flex'
+    contentWrapper.style.flexDirection = 'column'
   }
-  // 下部バー（_funnelStepWrapper_）を contentWrapper の底に固定して
-  // Versionパネルの「Version追加」と下端を揃える。
+  // 下部バーは flex の末尾子要素として自然に最下部へ（absolute 不要）
   const funnelBar = root.querySelector<HTMLElement>('[class*="_funnelStepWrapper_"]')
   if (funnelBar !== null) {
-    funnelBar.style.position = 'absolute'
-    funnelBar.style.bottom = '0'
-    funnelBar.style.left = '0'
-    funnelBar.style.width = '100%'
+    funnelBar.style.flexShrink = '0'
   }
   const versionPanel = root.querySelector<HTMLElement>('[class*="_abTestArticlesWrapper_"]')
   if (versionPanel !== null) {
@@ -371,9 +371,10 @@ function mountQuill(root: HTMLElement): Quill {
     // Vite の CSS injection 順（JS import → <style> 注入）が index.html の <link> より後なので
     // 採取CSSの UID_2445 { height:calc(100vh-260px) } を同詳細度の後勝ちで上書きしてしまう。
     // inline style で明示的に高さを設定し、確実にスクロール領域として機能させる。
-    // 上部ナビ(54px)+editorWrapper padding(8px)+ヘッダ画像(~100px)+ツールバー(36px)+下部バー(50px)
-    // = 合計約248px。余裕を持って310pxを引き、下部バーとの重なりを防ぐ。
-    host.style.height = 'calc(100vh - 310px)'
+    // contentWrapper が flex column なので、flex:1 で残りスペースを全て埋める。
+    // 上のヘッダ画像・ツールバーと、下の funnelBar の間にぴったり収まる。
+    host.style.flex = '1 1 0'
+    host.style.minHeight = '0'
     frame.replaceWith(host)
   } else {
     host.style.cssText = 'width:100%;height:calc(100vh - 220px);background:#fff;overflow:auto'
