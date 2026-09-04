@@ -59,7 +59,7 @@ export async function renderRedirectPages(
   })
   wireBeyondNavAnchors(root, { abTestUid: ids.abTestUid, folderUid })
   wireAbTestTabs(root, ids.abTestUid, folderUid)
-  setupHorizTabs(root, 'version')  // 中間ページは Version 配下
+  setupHorizTabs(root, 'redirect', { abTestUid: ids.abTestUid, folderUid })
   setupBreadcrumb(root, folder?.name ?? '', ab_test.title, folder?.uid)
   wireBeyondBack(root, folderUid)
 

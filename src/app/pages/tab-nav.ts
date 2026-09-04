@@ -1,21 +1,28 @@
 /**
- * beyondページの4タブ（基本情報 / Version / ポップアップ / レポート）の配線。
+ * beyondページの6タブ（基本情報 / Version / ポップアップ / レポート / 切り替え / 中間ページ）の配線。
  *
  * `setupHorizTabs` はキャプチャ DOM の nav を**一切使わず**、新規 DOM でタブバーを
  * 構築する。採取 CSS との干渉を根本的に排除するため。
  */
 import { tabHashRoutes } from './basic-info-form.ts'
+import { splitTestSettingsHash, redirectPagesHash } from './beyond-nav.ts'
 
-export type TabId = 'info' | 'version' | 'popup' | 'report'
+export type TabId = 'info' | 'version' | 'popup' | 'report' | 'split-test' | 'redirect'
 
-const TAB_IDS: readonly TabId[] = ['info', 'version', 'popup', 'report']
+const TAB_IDS: readonly TabId[] = ['info', 'version', 'popup', 'report', 'split-test', 'redirect']
 
 const TAB_LABELS: Readonly<Record<TabId, string>> = {
   info: '基本情報',
   version: 'Version',
   popup: 'ポップアップ',
   report: 'レポート',
+  'split-test': '切り替え',
+  redirect: '中間ページ',
 }
+
+/** 4タブ（採取DOM内）のIDリスト。切り替え/中間ページは採取DOMに無い */
+type CapturedTabId = 'info' | 'version' | 'popup' | 'report'
+const CAPTURED_TAB_IDS: readonly CapturedTabId[] = ['info', 'version', 'popup', 'report']
 
 /**
  * 採取 DOM 内のタブアンカー（a#info, a#version, …）の href を書き換える。
@@ -23,7 +30,7 @@ const TAB_LABELS: Readonly<Record<TabId, string>> = {
  */
 export function wireAbTestTabs(root: HTMLElement, abTestUid: string, folderUid: string): void {
   const routes = tabHashRoutes(folderUid, abTestUid)
-  for (const id of TAB_IDS) {
+  for (const id of CAPTURED_TAB_IDS) {
     const anchors = root.querySelectorAll<HTMLAnchorElement>(`a[id="${id}"]`)
     if (anchors.length === 0) {
       console.warn('[tab-nav] タブ', id, 'が土台に見つかりませんでした')
@@ -32,6 +39,18 @@ export function wireAbTestTabs(root: HTMLElement, abTestUid: string, folderUid: 
     for (const anchor of anchors) {
       anchor.setAttribute('href', routes[id])
     }
+  }
+}
+
+/** 全6タブのルートを構築する（4タブ + 切り替え + 中間ページ） */
+function allTabRoutes(
+  folderUid: string,
+  abTestUid: string,
+): Partial<Record<TabId, string>> {
+  return {
+    ...tabHashRoutes(folderUid, abTestUid),
+    'split-test': splitTestSettingsHash(abTestUid, 'devices'),
+    redirect: redirectPagesHash(folderUid, abTestUid),
   }
 }
 
@@ -71,20 +90,9 @@ function injectTabBarCss(): void {
       background: #1a7af8;
       font-weight: 600;
     }
-    /* タブバー内に移動した3アイコンの調整 */
-    .sb-tab-bar [class*="_linksContainer_"] [class*="_dropdown_x4j8w"] {
-      display: inline-flex;
-    }
-    .sb-tab-bar [class*="_linksContainer_"] [class*="_trigger_x4j8w"] {
-      display: inline-flex;
-      align-items: center;
-    }
-    .sb-tab-bar [class*="_linksContainer_"] [class*="_bodyWrapper_x4j8w"] {
+    /* 採取物の3アイコン（エディタ/スプリット/リダイレクト）はテキストタブに置換済み→非表示 */
+    [class*="_linksContainer_"], [class*="_links_dcd38"] {
       display: none !important;
-    }
-    .sb-tab-bar [class*="_linksContainer_"] a {
-      padding: 4px 6px;
-      border-radius: 4px;
     }
     /* ── パンくずリスト ── */
     .sb-breadcrumb-row {
@@ -146,7 +154,7 @@ export function setupBreadcrumb(
   root: HTMLElement,
   folderName: string,
   title: string,
-  folderUid?: string,
+  _folderUid?: string,
 ): HTMLElement | null {
   if (root.querySelector('.sb-breadcrumb-row') !== null) return root.querySelector('.sb-breadcrumb-row-right')
 
@@ -231,18 +239,29 @@ export function setupBreadcrumb(
  *
  * @param root 採取物のルート要素
  * @param activeTab 現在のページに対応するタブ
+ * @param ids  abTestUid / folderUid — 切り替え / 中間ページタブの href 構築に必要
  */
-export function setupHorizTabs(root: HTMLElement, activeTab: TabId): void {
+export function setupHorizTabs(
+  root: HTMLElement,
+  activeTab: TabId,
+  ids?: { abTestUid: string; folderUid: string },
+): void {
   // 既に設置済みなら何もしない（二重描画防止）
   if (root.querySelector('.sb-tab-bar') !== null) return
 
   injectTabBarCss()
 
-  // ── 1. wireAbTestTabs が書き込んだ href を読み取る ──
+  // ── 1. wireAbTestTabs が書き込んだ href を読み取る（採取DOM 4タブ分） ──
   const hrefs: Partial<Record<TabId, string>> = {}
-  for (const id of TAB_IDS) {
+  for (const id of CAPTURED_TAB_IDS) {
     const anchor = root.querySelector<HTMLAnchorElement>(`a[id="${id}"]`)
     if (anchor !== null) hrefs[id] = anchor.getAttribute('href') ?? ''
+  }
+  // 切り替え / 中間ページは採取DOMに無いので ids から構築
+  if (ids !== undefined) {
+    const extra = allTabRoutes(ids.folderUid, ids.abTestUid)
+    hrefs['split-test'] = extra['split-test']
+    hrefs.redirect = extra.redirect
   }
 
   // ── 2. 採取ナビを全て非表示 ──
@@ -254,21 +273,6 @@ export function setupHorizTabs(root: HTMLElement, activeTab: TabId): void {
   // ── 3. 新規タブバーを構築 ──
   const bar = document.createElement('div')
   bar.className = 'sb-tab-bar'
-
-  // ── 3a. 採取物の3アイコン（エディタ/スプリット/リダイレクト）をタブバーに移動 ──
-  const linksContainer = root.querySelector<HTMLElement>('[class*="_linksContainer_"]')
-  if (linksContainer !== null) {
-    const linksParent = linksContainer.closest<HTMLElement>('[class*="_links_dcd38"]')
-    bar.append(linksContainer)
-    linksContainer.style.display = 'flex'
-    linksContainer.style.alignItems = 'center'
-    linksContainer.style.gap = '0'
-    linksContainer.style.marginRight = '4px'
-    linksContainer.style.paddingRight = '8px'
-    linksContainer.style.borderRight = '1px solid #e0e0e0'
-    // 元の _links_ ラッパーは空になるので非表示
-    if (linksParent !== null) linksParent.style.display = 'none'
-  }
 
   for (const id of TAB_IDS) {
     const link = document.createElement('a')

@@ -44,7 +44,7 @@ export async function renderHeatmap(
   const root = mountCapturedPage(container, substrate)
   wireCapturedLinks(root, substrate, abTestUid)
   wireAbTestTabs(root, abTestUid, folder?.uid ?? '')
-  setupHorizTabs(root, 'report')  // ヒートマップはレポート配下
+  setupHorizTabs(root, 'report', { abTestUid, folderUid: folder?.uid ?? '' })
   wireBackLink(root, folder?.uid ?? null)
   setTopBarNames(root, ab_test.title, folder?.name ?? '')
   setupBreadcrumb(root, folder?.name ?? '', ab_test.title, folder?.uid)

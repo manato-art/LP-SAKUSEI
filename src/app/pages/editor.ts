@@ -220,7 +220,7 @@ export async function renderEditor(
     }
 
     // ── 指示78+: 縦ナビを非表示にし、水平タブを上部帯に表示（共通関数） ──
-    setupHorizTabs(root, 'version')
+    setupHorizTabs(root, 'version', { abTestUid, folderUid: folder?.uid ?? '' })
 
     // ── 指示78: LP情報を左寄せ ──
     const currentAbTest = navWrapper.querySelector<HTMLElement>('[class*="_currentAbTest_"]')

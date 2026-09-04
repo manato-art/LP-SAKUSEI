@@ -84,7 +84,7 @@ export async function renderReport(
   wireCapturedLinks(root, substrate, abTestUid)
   // 左レールの4タブと「戻る」は、採取元のフォルダuidが焼き付いているので専用の配線で上書きする
   wireAbTestTabs(root, abTestUid, folder?.uid ?? '')
-  setupHorizTabs(root, 'report')
+  setupHorizTabs(root, 'report', { abTestUid, folderUid: folder?.uid ?? '' })
   wireBackLink(root, folder?.uid ?? null)
   setTopBarNames(root, ab_test.title, folderName)
   setupBreadcrumb(root, folderName, ab_test.title, folder?.uid)

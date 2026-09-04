@@ -90,7 +90,7 @@ export async function renderExitPopup(
   // 4タブの配線は共有（基本情報タブ・エディタと同じ関数）。
   // 採取物の href は採取時点の uid を指しているので、ここで必ず上書きされる。
   wireAbTestTabs(root, abTestUid, folder?.uid ?? '')
-  setupHorizTabs(root, 'popup')
+  setupHorizTabs(root, 'popup', { abTestUid, folderUid: folder?.uid ?? '' })
   setupBreadcrumb(root, folder?.name ?? '', ab_test.title, folder?.uid)
   wireBack(root, folder?.uid ?? null)
   wireContact(root)

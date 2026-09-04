@@ -85,7 +85,7 @@ export async function renderSplitTestSettings(
   wireBeyondNavAnchors(root, { abTestUid, folderUid })
   // 左レール4タブは共有の配線（基本情報タブ・エディタと同じ関数）
   wireAbTestTabs(root, abTestUid, folderUid)
-  setupHorizTabs(root, 'version')  // オプション設定は Version 配下
+  setupHorizTabs(root, 'split-test', { abTestUid, folderUid })
   setupBreadcrumb(root, folder?.name ?? '', ab_test.title, folder?.uid)
   wireBeyondBack(root, folderUid)
   // 出し分けトグル（オン/オフ）を実際に効かせてモックへ保存する。

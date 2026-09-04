@@ -107,7 +107,7 @@ export async function renderBasicInfo(
   const ctx: PageContext = { root, form, abTest: ab_test, abTestUid: target.abTestUid }
 
   wireAbTestTabs(root, target.abTestUid, ab_test.folder?.uid ?? target.folderUid)
-  setupHorizTabs(root, 'info')
+  setupHorizTabs(root, 'info', { abTestUid: target.abTestUid, folderUid: ab_test.folder?.uid ?? target.folderUid })
   wireTopBar(ctx)
   setupBreadcrumb(root, ab_test.folder?.name ?? '', ab_test.title, ab_test.folder?.uid)
   applyAbTest(ctx, medias)
