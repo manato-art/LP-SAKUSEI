@@ -251,17 +251,19 @@ export function setupHorizTabs(
 
   injectTabBarCss()
 
-  // ── 1. wireAbTestTabs が書き込んだ href を読み取る（採取DOM 4タブ分） ──
-  const hrefs: Partial<Record<TabId, string>> = {}
-  for (const id of CAPTURED_TAB_IDS) {
-    const anchor = root.querySelector<HTMLAnchorElement>(`a[id="${id}"]`)
-    if (anchor !== null) hrefs[id] = anchor.getAttribute('href') ?? ''
-  }
-  // 切り替え / 中間ページは採取DOMに無いので ids から構築
-  if (ids !== undefined) {
-    const extra = allTabRoutes(ids.folderUid, ids.abTestUid)
-    hrefs['split-test'] = extra['split-test']
-    hrefs.redirect = extra.redirect
+  // ── 1. 全6タブの href を構築 ──
+  // ids が渡されている場合は allTabRoutes で正しいハッシュルートを構築する。
+  // 採取DOMのアンカーには焼き付いた UID（非ハッシュURL）が入っているため、
+  // そこから読むと遷移が壊れる。
+  const hrefs: Partial<Record<TabId, string>> = ids !== undefined
+    ? allTabRoutes(ids.folderUid, ids.abTestUid)
+    : {}
+  // ids が無い場合のフォールバック: 採取DOMから読む（従来互換）
+  if (ids === undefined) {
+    for (const id of CAPTURED_TAB_IDS) {
+      const anchor = root.querySelector<HTMLAnchorElement>(`a[id="${id}"]`)
+      if (anchor !== null) hrefs[id] = anchor.getAttribute('href') ?? ''
+    }
   }
 
   // ── 2. 採取ナビを全て非表示 ──
