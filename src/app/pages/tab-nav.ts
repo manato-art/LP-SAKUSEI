@@ -14,7 +14,7 @@ const TAB_IDS: readonly TabId[] = ['info', 'version', 'popup', 'report', 'split-
 const TAB_LABELS: Readonly<Record<TabId, string>> = {
   info: '基本情報',
   version: 'Version',
-  popup: 'ポップアップ',
+  popup: '離脱防止ポップ',
   report: 'レポート',
   'split-test': '切り替え',
   redirect: '中間ページ',

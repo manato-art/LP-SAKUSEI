@@ -13,7 +13,7 @@ import { Router } from 'express'
 import { getState } from '../store/store.ts'
 import { getMasterStyleSheet } from '../store/master-style-sheet.ts'
 import { getHtmlSetting } from '../store/html-tags.ts'
-import type { AbTest, Article, State, Version } from '../store/types.ts'
+import type { AbTest, Article, ExitPopup, State, Version } from '../store/types.ts'
 import { LP_BASE_CSS } from '../../src/app/lp-base-css.ts'
 import { masterStyleIframeCss } from '../../src/app/master-style.ts'
 import { withAutoplayVideos } from '../../src/app/lp-video.ts'
@@ -134,6 +134,14 @@ deliveryRouter.get('/lp/:uid', (req, res) => {
     .join('')
   const robotsMeta = htmlSetting.noindex ? '<meta name="robots" content="noindex,nofollow">' : ''
 
+  // 離脱防止ポップアップ（指示80）: 有効なポップアップのHTML/JS/CSSをLP末尾に挿入
+  const exitPopups = state.exitPopups.filter(
+    (p) => p.ab_test_id === abTest.id && p.enabled,
+  )
+  const popupHtml = exitPopups.length === 0
+    ? ''
+    : exitPopups.map((p) => buildPopupSnippet(p, device)).join('')
+
   const html =
     `<!doctype html><html lang="ja"><head><meta charset="utf-8">` +
     `<meta name="viewport" content="width=device-width, initial-scale=1">` +
@@ -142,9 +150,96 @@ deliveryRouter.get('/lp/:uid', (req, res) => {
     `<style>body{margin:0 auto;max-width:${DELIVERY_WIDTH}px;font-family:"Hiragino Sans",sans-serif;background:#fff}` +
     `${LP_BASE_CSS}${version.css}${styleCss}</style>` +
     headTags +
-    `</head><body>${withAutoplayVideos(version.html)}${bodyTags}</body></html>`
+    `</head><body>${withAutoplayVideos(version.html)}${bodyTags}${popupHtml}</body></html>`
 
   // 配信内容はStateの更新に応じて即時反映すべきなのでキャッシュしない
   res.set('Cache-Control', 'no-cache')
   res.type('html').send(html)
 })
+
+/**
+ * 離脱防止ポップアップのHTMLスニペットを構築する（指示80）。
+ * デバイスフィルタを適用し、マッチしないポップアップは出さない。
+ * 離脱防止トリガー: ページ離脱（mouseout / visibilitychange）で表示。
+ */
+function buildPopupSnippet(popup: ExitPopup, device: 'sp' | 'tablet' | 'pc'): string {
+  // デバイスフィルタ
+  if (device === 'sp' && !popup.device_sp) return ''
+  if (device === 'tablet' && !popup.device_tablet) return ''
+  if (device === 'pc' && !popup.device_pc) return ''
+
+  const popupId = `exit-popup-${popup.uid}`
+  const animClass = popup.animation !== 'none' ? popup.animation : ''
+
+  // アニメーションCSS
+  const animCss = `
+    @keyframes epFadeIn { from { opacity:0 } to { opacity:1 } }
+    @keyframes epSlideUp { from { opacity:0; transform:translateY(30px) } to { opacity:1; transform:translateY(0) } }
+    @keyframes epSlideDown { from { opacity:0; transform:translateY(-30px) } to { opacity:1; transform:translateY(0) } }
+    @keyframes epZoomIn { from { opacity:0; transform:scale(.8) } to { opacity:1; transform:scale(1) } }
+    .ep-overlay { position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:99999; display:none; align-items:center; justify-content:center; }
+    .ep-overlay.visible { display:flex; }
+    .ep-content { max-width:500px; width:90%; max-height:80vh; overflow:auto; position:relative; }
+    .ep-content.fade { animation: epFadeIn .3s ease; }
+    .ep-content.slideUp { animation: epSlideUp .4s ease; }
+    .ep-content.slideDown { animation: epSlideDown .4s ease; }
+    .ep-content.zoomIn { animation: epZoomIn .3s ease; }
+    .ep-close { position:absolute; top:-12px; right:-12px; width:28px; height:28px; border-radius:50%; background:#fff; border:1px solid #ddd; cursor:pointer; font-size:14px; display:flex; align-items:center; justify-content:center; box-shadow:0 1px 4px rgba(0,0,0,.15); z-index:1; }
+  `
+
+  // トリガーJS: 離脱防止（PCはmouseout、モバイルはvisibilitychange）
+  const triggerJs = `
+    (function(){
+      var overlay = document.getElementById('${popupId}');
+      if (!overlay) return;
+      var shown = false;
+      var delay = ${popup.delay_seconds * 1000};
+      var scrollTrigger = ${popup.scroll_trigger};
+      var scrollPos = ${popup.scroll_position};
+
+      function showPopup() {
+        if (shown) return;
+        shown = true;
+        overlay.classList.add('visible');
+      }
+
+      // 離脱防止トリガー（マウスがビューポート外へ出たとき）
+      setTimeout(function(){
+        document.addEventListener('mouseout', function(e) {
+          if (e.clientY <= 0 || e.clientX <= 0 || e.clientX >= window.innerWidth || e.clientY >= window.innerHeight) {
+            showPopup();
+          }
+        });
+        // モバイル: タブ切り替え/ブラウザ閉じ
+        document.addEventListener('visibilitychange', function() {
+          if (document.hidden) showPopup();
+        });
+      }, delay);
+
+      // スクロールトリガー
+      if (scrollTrigger) {
+        window.addEventListener('scroll', function() {
+          var scrolled = (window.scrollY / (document.body.scrollHeight - window.innerHeight)) * 100;
+          if (scrolled >= scrollPos) showPopup();
+        });
+      }
+
+      // 閉じるボタン
+      overlay.addEventListener('click', function(e) {
+        if (e.target === overlay || e.target.classList.contains('ep-close')) {
+          overlay.classList.remove('visible');
+        }
+      });
+    })();
+  `
+
+  return `<style>${animCss}</style>` +
+    `<div id="${popupId}" class="ep-overlay">` +
+    `<div class="ep-content ${animClass}">` +
+    `<button class="ep-close">✕</button>` +
+    popup.html +
+    `</div></div>` +
+    (popup.head_tag !== '' ? popup.head_tag : '') +
+    (popup.body_tag !== '' ? popup.body_tag : '') +
+    `<script>${popup.javascript}${triggerJs}<\/script>`
+}

@@ -170,9 +170,37 @@ export interface ExitPopup {
   uid: string
   ab_test_id: number
   name: string
-  trigger: string
-  html: string
+  ratio: number
   enabled: boolean
+  preset_id: string | null
+
+  // 基本タブ
+  visit_count: string
+  phone_number: string
+  link_url: string
+
+  // 表示タブ
+  animation: string
+  delay_seconds: number
+  scroll_trigger: boolean
+  scroll_position: number
+  countdown_trigger: boolean
+  countdown_seconds: number
+
+  // 位置タブ
+  position_x: number
+  position_y: number
+
+  // 出し分けタブ
+  device_sp: boolean
+  device_tablet: boolean
+  device_pc: boolean
+
+  // HTMLタブ
+  html: string
+  javascript: string
+  head_tag: string
+  body_tag: string
 }
 
 export type SplitTestType = 'devices' | 'oses' | 'carriers' | 'hours' | 'periods' | 'params'

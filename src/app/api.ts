@@ -175,6 +175,19 @@ export const api = {
       `/articles/${articleUid}/master_style_sheet`,
     ),
 
+  /** 離脱ポップアップ一覧 */
+  exitPopups: (abTestUid: string) =>
+    request<{ exit_popups: ExitPopup[] }>('GET', `/ab_tests/${abTestUid}/exit_popups`),
+  /** 離脱ポップアップ作成 */
+  createExitPopup: (abTestUid: string, body: Partial<ExitPopup> & { name: string }) =>
+    request<{ exit_popup: ExitPopup }>('POST', `/ab_tests/${abTestUid}/exit_popups`, body),
+  /** 離脱ポップアップ更新 */
+  updateExitPopup: (abTestUid: string, popupUid: string, patch: Partial<ExitPopup>) =>
+    request<{ exit_popup: ExitPopup }>('PUT', `/ab_tests/${abTestUid}/exit_popups/${popupUid}`, patch),
+  /** 離脱ポップアップ削除 */
+  deleteExitPopup: (abTestUid: string, popupUid: string) =>
+    request<void>('DELETE', `/ab_tests/${abTestUid}/exit_popups/${popupUid}`),
+
   /** レポートタブ（§10-3 `GET /ab_tests/:uid/reports?start_date&end_date`） */
   report: (abTestUid: string, query: string) =>
     request<ReportResponse>('GET', `/ab_tests/${abTestUid}/reports?${query}`),
@@ -260,6 +273,35 @@ export interface MetaAdAccountsResponse {
   configured: boolean
   accounts: MetaAdAccount[]
   error?: string
+}
+
+/** 離脱ポップアップ（指示80） */
+export interface ExitPopup {
+  id: number
+  uid: string
+  ab_test_id: number
+  name: string
+  ratio: number
+  enabled: boolean
+  preset_id: string | null
+  visit_count: string
+  phone_number: string
+  link_url: string
+  animation: string
+  delay_seconds: number
+  scroll_trigger: boolean
+  scroll_position: number
+  countdown_trigger: boolean
+  countdown_seconds: number
+  position_x: number
+  position_y: number
+  device_sp: boolean
+  device_tablet: boolean
+  device_pc: boolean
+  html: string
+  javascript: string
+  head_tag: string
+  body_tag: string
 }
 
 /** 中間ページ（redirect page・指示⑮） */

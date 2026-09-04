@@ -206,17 +206,98 @@ abTestsRouter.post('/ab_tests/:uid/exit_popups', (req, res) => {
   const state = getState()
   const abTest = findAbTest(state, req.params.uid)
   if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
+  const body = req.body as Record<string, unknown>
   const created = {
     id: state.nextId,
     uid: `EXITPOPUP_${String(state.exitPopups.length + 1).padStart(4, '0')}`,
     ab_test_id: abTest.id,
     name: name.value,
-    trigger: optionalString(req.body, 'trigger') || 'exit_intent',
-    html: '<div>サンプルポップアップ</div>',
+    ratio: typeof body.ratio === 'number' ? body.ratio : 0,
     enabled: true,
+    preset_id: optionalString(req.body, 'preset_id') || null,
+    visit_count: optionalString(req.body, 'visit_count') || 'all',
+    phone_number: optionalString(req.body, 'phone_number') || '',
+    link_url: optionalString(req.body, 'link_url') || '',
+    animation: optionalString(req.body, 'animation') || 'fade',
+    delay_seconds: optionalNumber(req.body, 'delay_seconds') ?? 0,
+    scroll_trigger: body.scroll_trigger === true,
+    scroll_position: optionalNumber(req.body, 'scroll_position') ?? 50,
+    countdown_trigger: body.countdown_trigger === true,
+    countdown_seconds: optionalNumber(req.body, 'countdown_seconds') ?? 0,
+    position_x: optionalNumber(req.body, 'position_x') ?? 50,
+    position_y: optionalNumber(req.body, 'position_y') ?? 50,
+    device_sp: body.device_sp !== false,
+    device_tablet: body.device_tablet !== false,
+    device_pc: body.device_pc !== false,
+    html: optionalString(req.body, 'html') || '<div class="popup-wrap"><p>ポップアップ</p></div>',
+    javascript: optionalString(req.body, 'javascript') || '',
+    head_tag: optionalString(req.body, 'head_tag') || '',
+    body_tag: optionalString(req.body, 'body_tag') || '',
   }
   setState((s) => ({ ...s, exitPopups: [...s.exitPopups, created], nextId: s.nextId + 1 }))
   res.status(201).json({ exit_popup: created })
+})
+
+abTestsRouter.put('/ab_tests/:uid/exit_popups/:popup_uid', (req, res) => {
+  const state = getState()
+  const abTest = findAbTest(state, req.params.uid)
+  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
+  const idx = state.exitPopups.findIndex(
+    (p) => p.uid === req.params.popup_uid && p.ab_test_id === abTest.id,
+  )
+  if (idx === -1) {
+    res.status(404).json(errorEnvelope('not_found', 'ポップアップが見つかりません。'))
+    return
+  }
+  const existing = state.exitPopups[idx]!
+  const body = req.body as Record<string, unknown>
+  const updated = {
+    ...existing,
+    ...(typeof body.name === 'string' ? { name: body.name } : {}),
+    ...(typeof body.ratio === 'number' ? { ratio: body.ratio } : {}),
+    ...(typeof body.enabled === 'boolean' ? { enabled: body.enabled } : {}),
+    ...(typeof body.visit_count === 'string' ? { visit_count: body.visit_count } : {}),
+    ...(typeof body.phone_number === 'string' ? { phone_number: body.phone_number } : {}),
+    ...(typeof body.link_url === 'string' ? { link_url: body.link_url } : {}),
+    ...(typeof body.animation === 'string' ? { animation: body.animation } : {}),
+    ...(typeof body.delay_seconds === 'number' ? { delay_seconds: body.delay_seconds } : {}),
+    ...(typeof body.scroll_trigger === 'boolean' ? { scroll_trigger: body.scroll_trigger } : {}),
+    ...(typeof body.scroll_position === 'number' ? { scroll_position: body.scroll_position } : {}),
+    ...(typeof body.countdown_trigger === 'boolean' ? { countdown_trigger: body.countdown_trigger } : {}),
+    ...(typeof body.countdown_seconds === 'number' ? { countdown_seconds: body.countdown_seconds } : {}),
+    ...(typeof body.position_x === 'number' ? { position_x: body.position_x } : {}),
+    ...(typeof body.position_y === 'number' ? { position_y: body.position_y } : {}),
+    ...(typeof body.device_sp === 'boolean' ? { device_sp: body.device_sp } : {}),
+    ...(typeof body.device_tablet === 'boolean' ? { device_tablet: body.device_tablet } : {}),
+    ...(typeof body.device_pc === 'boolean' ? { device_pc: body.device_pc } : {}),
+    ...(typeof body.html === 'string' ? { html: body.html } : {}),
+    ...(typeof body.javascript === 'string' ? { javascript: body.javascript } : {}),
+    ...(typeof body.head_tag === 'string' ? { head_tag: body.head_tag } : {}),
+    ...(typeof body.body_tag === 'string' ? { body_tag: body.body_tag } : {}),
+  }
+  setState((s) => ({
+    ...s,
+    exitPopups: s.exitPopups.map((p, i) => (i === idx ? updated : p)),
+  }))
+  res.json({ exit_popup: updated })
+})
+
+abTestsRouter.delete('/ab_tests/:uid/exit_popups/:popup_uid', (req, res) => {
+  const state = getState()
+  const abTest = findAbTest(state, req.params.uid)
+  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
+  const idx = state.exitPopups.findIndex(
+    (p) => p.uid === req.params.popup_uid && p.ab_test_id === abTest.id,
+  )
+  if (idx === -1) {
+    res.status(404).json(errorEnvelope('not_found', 'ポップアップが見つかりません。'))
+    return
+  }
+  setState((s) => ({
+    ...s,
+    exitPopups: s.exitPopups.filter((_, i) => i !== idx),
+  }))
+  res.status(204).end()
 })
 
 // ── リダイレクトページ ──
