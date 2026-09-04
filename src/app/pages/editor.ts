@@ -33,6 +33,7 @@ import { registerMediaBlots } from '../panels/media-blots.ts'
 import { wireMediaDrop } from '../panels/media-insert.ts'
 import { wireImageResize } from '../panels/image-resize.ts'
 import { mountMinimap } from '../panels/minimap.ts'
+import { toggleComparePanel, isComparePanelOpen, refreshComparePreview } from '../panels/compare-mode.ts'
 import { wireAbTestTabs } from './tab-nav.ts'
 import { wireBeyondNavAnchors } from './beyond-nav.ts'
 import { masterStyleEditorDecls } from '../master-style.ts'
@@ -506,7 +507,7 @@ function injectSideToolbarStyles(): void {
  * 右レールアイコン群の下、ミニマップの上に「比較モード」ボタンを配置する（指示77）。
  * ツールバーの最後のアイコンの bottom を計測し、そこに合わせて fixed 配置する。
  */
-function mountCompareButton(root: HTMLElement): void {
+function mountCompareButton(root: HTMLElement, onClick: () => void): void {
   if (document.querySelector('[data-compare-btn]') !== null) return
 
   const splitIcon = `<svg viewBox="0 0 18 18" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4">
@@ -539,9 +540,7 @@ function mountCompareButton(root: HTMLElement): void {
     btn.style.background = '#fff'
     btn.style.color = '#888'
   })
-  btn.addEventListener('click', () => {
-    toast('比較モードは準備中です', 'error')
-  })
+  btn.addEventListener('click', onClick)
 
   // _sideToolbarTop_ の先頭（プレビューアイコンの上）に挿入。
   // ツールバーwrapperの flex プロパティは変更しない（採取CSSを壊さない）。
@@ -725,6 +724,8 @@ function loadVersion(ctx: EditorContext, uid: string): void {
     ctx.quill.root.innerHTML = v.html
     renderVersionList(ctx)
     overlay?.remove()
+    // 比較パネルが開いていればプレビューも更新
+    if (isComparePanelOpen()) refreshComparePreview(v.html)
   }, 50)
 }
 
@@ -1155,7 +1156,12 @@ function wireSideToolbar(ctx: EditorContext): void {
   }
 
   // 指示77: 右レールアイコンの下に「比較モード」ボタンを追加
-  mountCompareButton(ctx.root)
+  mountCompareButton(ctx.root, () => {
+    toggleComparePanel(ctx.root, {
+      getCurrentHtml: () => ctx.quill.root.innerHTML,
+      getVersionUid: () => ctx.currentUid,
+    })
+  })
 
   // 本文の自動保存。実物のエディタは自動保存が走る
   // （docs/findings-live-observation.md「エディタは『開くだけで自動保存』が走る」・DOMに _saveAnimation_）。
