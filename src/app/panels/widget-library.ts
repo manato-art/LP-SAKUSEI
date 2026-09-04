@@ -227,12 +227,25 @@ function wireCards(root: HTMLElement, quill: Quill, close: () => void): void {
   }
 }
 
-/** カードのプレビュー iframe（srcdoc に実Widgetの中身が入っている）から本文HTMLを取り出す。 */
+/**
+ * カードのプレビュー iframe（srcdoc に実Widgetの中身が入っている）から
+ * 本文HTML＋CSSを取り出す。
+ *
+ * Widget の CSS は srcdoc の `<head>` 内 `<style>` に入っている。
+ * body だけ返すと CSS が丸ごと失われ、ただの文言になってしまう。
+ * `<style>` を先頭に含めて返すことで、insertWidget() の既存ロジック
+ * （`<style>` を document.head へ退避）が正しく動く。
+ */
 function widgetBodyHtml(card: HTMLElement): string | null {
   const srcdoc = card.querySelector('iframe')?.getAttribute('srcdoc')
   if (srcdoc === null || srcdoc === undefined || srcdoc === '') return null
   const doc = new DOMParser().parseFromString(srcdoc, 'text/html')
-  return doc.body.innerHTML.trim() === '' ? null : doc.body.innerHTML
+  if (doc.body.innerHTML.trim() === '') return null
+  // <head> 内の <style> を含めて返す（insertWidget が document.head へ退避する）
+  const headStyles = [...doc.head.querySelectorAll('style')]
+    .map((s) => s.outerHTML)
+    .join('')
+  return headStyles + doc.body.innerHTML
 }
 
 /** 「プレビュー」= そのWidgetの中身を大きな iframe で開く（採取した実プレビューを原寸で見せる）。 */
