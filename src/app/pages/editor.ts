@@ -209,24 +209,83 @@ export async function renderEditor(
   // padding-top を 4px に、editorWrapper の 120px を 68px に縮め、padding を詰める。
   const navWrapper = root.querySelector<HTMLElement>('[class*="_navArticleWrapper_"]')
   if (navWrapper !== null) {
-    navWrapper.style.paddingTop = '14px'
-    navWrapper.style.height = '54px'
+    navWrapper.style.paddingTop = '8px'
+    navWrapper.style.height = 'auto'
     navWrapper.style.background = '#fff'
-    // navArticleWrapper の親コンテナ（MuiBox）に白背景を設定して
-    // editorWrapper との幅差分に見えるグレー隙間を埋める
+    // navArticleWrapper の親コンテナ（MuiBox）に白背景 + flex-column で
+    // editorWrapper が残り高さを自動で埋めるようにする
     const contentBox = navWrapper.parentElement
-    if (contentBox !== null) contentBox.style.background = '#fff'
+    if (contentBox !== null) {
+      contentBox.style.background = '#fff'
+      contentBox.style.display = 'flex'
+      contentBox.style.flexDirection = 'column'
+    }
+
+    // ── 指示78: 非表示の水平ナビ（基本情報/Version/ポップアップ/レポート）を上部帯に表示 ──
+    const shellWrapper = contentBox?.parentElement
+    if (shellWrapper !== null) {
+      const shellNavs = shellWrapper.querySelectorAll<HTMLElement>(':scope > nav')
+      for (const nav of shellNavs) {
+        if (getComputedStyle(nav).display === 'none') {
+          // 非表示の水平ナビを navWrapper 先頭に移動して表示
+          navWrapper.prepend(nav)
+          // CSSルールで !important を使ってオリジナルスタイルを上書き
+          const tabCss = document.createElement('style')
+          tabCss.id = 'sb-horiz-tabs-css'
+          tabCss.textContent = `
+            .sb-horiz-tabs { display:flex!important; width:100%!important; padding:0!important; margin:0 0 4px!important; border-bottom:1px solid #e5e5ea!important; overflow:visible!important; height:auto!important; min-height:0!important; }
+            .sb-horiz-tabs ul { display:flex!important; flex-direction:row!important; list-style:none!important; margin:0!important; padding:0!important; gap:0!important; height:auto!important; }
+            .sb-horiz-tabs li { display:block!important; margin:0!important; padding:0!important; height:auto!important; }
+            .sb-horiz-tabs a { display:flex!important; align-items:center!important; gap:4px!important; padding:4px 12px!important; font-size:12px!important; color:#666!important; text-decoration:none!important; white-space:nowrap!important; border-bottom:2px solid transparent!important; transition:color 0.15s,border-color 0.15s!important; height:auto!important; }
+            .sb-horiz-tabs a:hover { color:#333!important; }
+            .sb-horiz-tabs a.sb-tab-active { color:#1a7af8!important; border-bottom-color:#1a7af8!important; font-weight:600!important; }
+            .sb-horiz-tabs a svg { width:14px; height:14px; }
+          `
+          document.head.append(tabCss)
+          nav.className = 'sb-horiz-tabs'
+          const links = nav.querySelectorAll<HTMLElement>('a')
+          for (const link of links) {
+            // アイコンの hidden クラスを解除して表示
+            const iconSpan = link.querySelector<HTMLElement>('span.hidden')
+            if (iconSpan !== null) iconSpan.style.display = 'flex'
+            // テキスト内の改行を除去（「ポップ\nアップ」→「ポップアップ」）
+            for (const child of link.childNodes) {
+              if (child.nodeType === Node.ELEMENT_NODE) {
+                const el = child as HTMLElement
+                el.style.whiteSpace = 'nowrap'
+                if (el.textContent !== null) el.textContent = el.textContent.replace(/\n/g, '')
+              }
+            }
+            // Version タブをアクティブに
+            const text = link.textContent?.trim().replace(/\n/g, '') ?? ''
+            if (text === 'Version') link.classList.add('sb-tab-active')
+          }
+          break
+        }
+      }
+    }
+
+    // ── 指示78: LP情報を左寄せ ──
+    const currentAbTest = navWrapper.querySelector<HTMLElement>('[class*="_currentAbTest_"]')
+    if (currentAbTest !== null) {
+      currentAbTest.style.justifyContent = 'flex-start'
+      currentAbTest.style.flex = '1'
+    }
   }
   const editorWrapper = root.querySelector<HTMLElement>('[class*="_editorWrapper_"]')
   if (editorWrapper !== null) {
-    editorWrapper.style.height = 'calc(100% - 78px)'
+    editorWrapper.style.height = ''
+    editorWrapper.style.flex = '1'
+    editorWrapper.style.minHeight = '0'
     editorWrapper.style.padding = '0 12px'
     editorWrapper.style.background = '#fff'
   }
-  // boostEditorWrapper も同じ calc を使う
+  // boostEditorWrapper も flex:1 に合わせる
   const boostWrapper = root.querySelector<HTMLElement>('[class*="_boostEditorWrapper_"]')
   if (boostWrapper !== null) {
-    boostWrapper.style.height = 'calc(100% - 78px)'
+    boostWrapper.style.height = ''
+    boostWrapper.style.flex = '1'
+    boostWrapper.style.minHeight = '0'
   }
   // Versionパネル（_abTestArticlesWrapper_）も同じ 120px を引いている
   const articlesWrapper = root.querySelector<HTMLElement>('[class*="_abTestArticlesWrapper_"]')
@@ -494,45 +553,36 @@ function injectCardSeamStyles(): void {
 }
 
 /**
- * 右レール（_sideToolbarWrapper_）のアイコンを実物と同じ丸い背景付きに揃える CSS を注入。
- * 実物では各アイコンが 36×36 の円形背景に入り、hover で少し濃くなる。
- * プレビュー（index 0）は採取 CSS で既にスタイル済みなので除外。
- * ::before 疑似要素で背景円を描くことで、内部構造に依存しない。
+ * 右レール（_sideToolbarWrapper_）のスタイル。
+ * 丸い背景は削除し、各アイコンの下にテキストラベルを表示する（指示78）。
  */
 function injectSideToolbarStyles(): void {
   if (document.getElementById('sb-side-toolbar-fix') !== null) return
   const style = document.createElement('style')
   style.id = 'sb-side-toolbar-fix'
   style.textContent = `
-    /* ── 右レール: アイコンに丸い背景を付ける ── */
-    [class*="_sideToolbarIcon_"]:not([class*="_preview_"]) {
-      position: relative;
-    }
-    [class*="_sideToolbarIcon_"]:not([class*="_preview_"])::before {
-      content: "";
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      background: #f0f0f0;
-      transition: background 0.15s ease;
-      z-index: 0;
-    }
-    [class*="_sideToolbarIcon_"]:not([class*="_preview_"]):hover::before {
-      background: #e0e0e0;
-    }
-    /* アイコンの中身を ::before より前面に */
-    [class*="_sideToolbarIcon_"]:not([class*="_preview_"]) > * {
-      position: relative;
-      z-index: 1;
-    }
     /* アイコン画像サイズを揃える */
     [class*="_sideToolbarIcon_"] img[class*="_icon_"] {
       width: 22px !important;
       height: 22px !important;
+    }
+    /* アイコン + テキストラベルを縦に並べる */
+    [class*="_sideToolbarIcon_"] {
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: center !important;
+      gap: 2px !important;
+    }
+    /* テキストラベル */
+    .sb-side-label {
+      font-size: 9px;
+      color: #666;
+      line-height: 1.1;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 48px;
     }
   `
   document.head.append(style)
@@ -1143,8 +1193,15 @@ function wireSideToolbar(ctx: EditorContext): void {
     if (icon === undefined) continue
     icon.style.cursor = 'pointer'
 
-    // 指示77: ホバーでツールチップ表示（50px幅にテキストラベルは入らない）
-    icon.title = SIDE_TOOLS[index] ?? ''
+    // 指示78: アイコン下にテキストラベルを表示
+    const labelText = SIDE_TOOLS[index] ?? ''
+    icon.title = labelText
+    if (icon.querySelector('.sb-side-label') === null) {
+      const label = document.createElement('span')
+      label.className = 'sb-side-label'
+      label.textContent = labelText
+      icon.append(label)
+    }
 
     if (index === PREVIEW_TOOL_INDEX) {
       // プレビューは右レールの1番目。aria-label で引くと別の要素に当たっていて、
