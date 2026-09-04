@@ -543,20 +543,15 @@ function mountCompareButton(root: HTMLElement): void {
     toast('比較モードは準備中です', 'error')
   })
 
-  // ツールバーアイコン群の直後に挿入（ツールバーwrapperの中、アイコンの下）
+  // プレビューアイコンの上に配置。ツールバーwrapperの先頭に挿入。
   const toolbar = root.querySelector<HTMLElement>('[class*="_sideToolbarWrapper_"]')
   if (toolbar !== null) {
-    // ツールバーを flex column にしてボタンをアイコン群の下に自然配置
+    toolbar.style.overflow = 'visible'
     toolbar.style.display = 'flex'
     toolbar.style.flexDirection = 'column'
     toolbar.style.alignItems = 'center'
-    // アイコン群は _sideToolbarTop_ の中にある。その後にボタンを追加
-    const topSection = toolbar.querySelector<HTMLElement>('[class*="_sideToolbarTop_"]')
-    if (topSection !== null) {
-      topSection.after(btn)
-    } else {
-      toolbar.append(btn)
-    }
+    btn.style.marginBottom = '8px'
+    toolbar.prepend(btn)
   }
 }
 
