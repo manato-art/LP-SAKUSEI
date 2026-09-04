@@ -412,6 +412,7 @@ function renderPresetCard(
       name: preset.name,
       preset_id: preset.id,
       html: preset.defaultHtml,
+      javascript: preset.defaultJavascript,
       animation: preset.defaults.animation ?? 'fade',
       scroll_trigger: preset.defaults.scroll_trigger ?? false,
       scroll_position: preset.defaults.scroll_position ?? 50,
@@ -605,7 +606,7 @@ function renderDisplayTab(body: HTMLElement, draft: ExitPopup): void {
   const animField = el('div', { class: 'ep-field' })
   animField.append(el('label', { text: '表示アニメーション' }))
   const animSelect = document.createElement('select')
-  for (const opt of ['fade', 'slideUp', 'slideDown', 'slideLeft', 'slideRight', 'zoomIn', 'none']) {
+  for (const opt of ['fade', 'slideUp', 'slideDown', 'slideLeft', 'slideRight', 'zoomIn', 'bounceIn', 'elastic', 'flipIn', 'none']) {
     const o = document.createElement('option')
     o.value = opt
     o.textContent = opt

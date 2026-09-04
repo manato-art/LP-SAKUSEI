@@ -171,67 +171,74 @@ function buildPopupSnippet(popup: ExitPopup, device: 'sp' | 'tablet' | 'pc'): st
   const popupId = `exit-popup-${popup.uid}`
   const animClass = popup.animation !== 'none' ? popup.animation : ''
 
-  // アニメーションCSS
+  // アニメーションCSS（エントランス9種 + 内部アニメ用キーフレーム）
   const animCss = `
-    @keyframes epFadeIn { from { opacity:0 } to { opacity:1 } }
-    @keyframes epSlideUp { from { opacity:0; transform:translateY(30px) } to { opacity:1; transform:translateY(0) } }
-    @keyframes epSlideDown { from { opacity:0; transform:translateY(-30px) } to { opacity:1; transform:translateY(0) } }
-    @keyframes epZoomIn { from { opacity:0; transform:scale(.8) } to { opacity:1; transform:scale(1) } }
+    @keyframes epFadeIn { from{opacity:0} to{opacity:1} }
+    @keyframes epSlideUp { from{opacity:0;transform:translateY(30px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes epSlideDown { from{opacity:0;transform:translateY(-30px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes epSlideLeft { from{opacity:0;transform:translateX(-50px)} to{opacity:1;transform:translateX(0)} }
+    @keyframes epSlideRight { from{opacity:0;transform:translateX(50px)} to{opacity:1;transform:translateX(0)} }
+    @keyframes epZoomIn { from{opacity:0;transform:scale(.8)} to{opacity:1;transform:scale(1)} }
+    @keyframes epBounceIn { 0%{opacity:0;transform:scale(.3)} 50%{opacity:1;transform:scale(1.05)} 70%{transform:scale(.95)} 100%{opacity:1;transform:scale(1)} }
+    @keyframes epElastic { 0%{opacity:0;transform:scale(.5)} 55%{opacity:1;transform:scale(1.12)} 75%{transform:scale(.96)} 100%{opacity:1;transform:scale(1)} }
+    @keyframes epFlipIn { 0%{opacity:0;transform:perspective(400px) rotateX(90deg)} 40%{transform:perspective(400px) rotateX(-10deg)} 70%{transform:perspective(400px) rotateX(10deg)} 100%{opacity:1;transform:perspective(400px) rotateX(0)} }
+    @keyframes epConfettiFall { 0%{transform:translateY(0) rotate(0deg);opacity:1} 100%{transform:translateY(400px) rotate(720deg);opacity:0} }
+    @keyframes epPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.06)} }
     .ep-overlay { position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:99999; display:none; align-items:center; justify-content:center; }
     .ep-overlay.visible { display:flex; }
     .ep-content { max-width:500px; width:90%; max-height:80vh; overflow:auto; position:relative; }
-    .ep-content.fade { animation: epFadeIn .3s ease; }
-    .ep-content.slideUp { animation: epSlideUp .4s ease; }
-    .ep-content.slideDown { animation: epSlideDown .4s ease; }
-    .ep-content.zoomIn { animation: epZoomIn .3s ease; }
+    .ep-content.fade { animation:epFadeIn .3s ease }
+    .ep-content.slideUp { animation:epSlideUp .4s ease }
+    .ep-content.slideDown { animation:epSlideDown .4s ease }
+    .ep-content.slideLeft { animation:epSlideLeft .4s ease }
+    .ep-content.slideRight { animation:epSlideRight .4s ease }
+    .ep-content.zoomIn { animation:epZoomIn .3s ease }
+    .ep-content.bounceIn { animation:epBounceIn .6s ease }
+    .ep-content.elastic { animation:epElastic .8s ease }
+    .ep-content.flipIn { animation:epFlipIn .6s ease }
     .ep-close { position:absolute; top:-12px; right:-12px; width:28px; height:28px; border-radius:50%; background:#fff; border:1px solid #ddd; cursor:pointer; font-size:14px; display:flex; align-items:center; justify-content:center; box-shadow:0 1px 4px rgba(0,0,0,.15); z-index:1; }
   `
 
-  // トリガーJS: 離脱防止（PCはmouseout、モバイルはvisibilitychange）
-  const triggerJs = `
-    (function(){
-      var overlay = document.getElementById('${popupId}');
-      if (!overlay) return;
-      var shown = false;
-      var delay = ${popup.delay_seconds * 1000};
-      var scrollTrigger = ${popup.scroll_trigger};
-      var scrollPos = ${popup.scroll_position};
+  // 統合IIFE: 内部アニメJS(popup.javascript) + トリガーJS を1つのスコープにまとめ、
+  // overlay / epId をスコープ変数として共有。'ep-show' カスタムイベントで内部アニメを起動。
+  const scriptBody = `(function(){
+    var epId='${popupId}';
+    var overlay=document.getElementById(epId);
+    if(!overlay)return;
+    var shown=false;
+    var delay=${popup.delay_seconds * 1000};
+    var scrollTrigger=${popup.scroll_trigger};
+    var scrollPos=${popup.scroll_position};
 
-      function showPopup() {
-        if (shown) return;
-        shown = true;
-        overlay.classList.add('visible');
-      }
+    function showPopup(){
+      if(shown)return;
+      shown=true;
+      overlay.classList.add('visible');
+      try{overlay.dispatchEvent(new CustomEvent('ep-show'))}catch(e){}
+    }
 
-      // 離脱防止トリガー（マウスがビューポート外へ出たとき）
-      setTimeout(function(){
-        document.addEventListener('mouseout', function(e) {
-          if (e.clientY <= 0 || e.clientX <= 0 || e.clientX >= window.innerWidth || e.clientY >= window.innerHeight) {
-            showPopup();
-          }
-        });
-        // モバイル: タブ切り替え/ブラウザ閉じ
-        document.addEventListener('visibilitychange', function() {
-          if (document.hidden) showPopup();
-        });
-      }, delay);
+    // ── 内部アニメーションJS（プリセットが設定）──
+    ${popup.javascript}
 
-      // スクロールトリガー
-      if (scrollTrigger) {
-        window.addEventListener('scroll', function() {
-          var scrolled = (window.scrollY / (document.body.scrollHeight - window.innerHeight)) * 100;
-          if (scrolled >= scrollPos) showPopup();
-        });
-      }
-
-      // 閉じるボタン
-      overlay.addEventListener('click', function(e) {
-        if (e.target === overlay || e.target.classList.contains('ep-close')) {
-          overlay.classList.remove('visible');
-        }
+    // ── 離脱防止トリガー ──
+    setTimeout(function(){
+      document.addEventListener('mouseout',function(e){
+        if(e.clientY<=0||e.clientX<=0||e.clientX>=window.innerWidth||e.clientY>=window.innerHeight)showPopup();
       });
-    })();
-  `
+      document.addEventListener('visibilitychange',function(){if(document.hidden)showPopup()});
+    },delay);
+
+    if(scrollTrigger){
+      window.addEventListener('scroll',function(){
+        var pct=(window.scrollY/(document.body.scrollHeight-window.innerHeight))*100;
+        if(pct>=scrollPos)showPopup();
+      });
+    }
+
+    overlay.addEventListener('click',function(e){
+      if(e.target===overlay||e.target.classList.contains('ep-close'))overlay.classList.remove('visible');
+    });
+  })()`
 
   return `<style>${animCss}</style>` +
     `<div id="${popupId}" class="ep-overlay">` +
@@ -241,5 +248,5 @@ function buildPopupSnippet(popup: ExitPopup, device: 'sp' | 'tablet' | 'pc'): st
     `</div></div>` +
     (popup.head_tag !== '' ? popup.head_tag : '') +
     (popup.body_tag !== '' ? popup.body_tag : '') +
-    `<script>${popup.javascript}${triggerJs}<\/script>`
+    `<script>${scriptBody}<\/script>`
 }
