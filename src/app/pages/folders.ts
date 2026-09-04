@@ -1534,6 +1534,9 @@ function wireResizeHandle(body: HTMLElement): void {
   const mainPane = body.querySelector<HTMLElement>(FOLDERS_HOOK.mainPane)
   if (mainPane === null) return
 
+  // ── 実物と同じ hover スタイル（青い縦線 + ←→ アイコン）──
+  injectResizeHandleStyles()
+
   let isDragging = false
   let startX = 0
   let startWidth = 0
@@ -1544,6 +1547,7 @@ function wireResizeHandle(body: HTMLElement): void {
     startX = e.clientX
     startWidth = treeContainer.getBoundingClientRect().width
     handle.style.zIndex = '100'
+    handle.classList.add('sb-handle-active')
     document.body.style.cursor = 'col-resize'
     document.body.style.userSelect = 'none'
   })
@@ -1563,9 +1567,48 @@ function wireResizeHandle(body: HTMLElement): void {
     if (!isDragging) return
     isDragging = false
     handle.style.zIndex = ''
+    handle.classList.remove('sb-handle-active')
     document.body.style.cursor = ''
     document.body.style.userSelect = ''
   })
+}
+
+/** リサイズハンドルの hover / active スタイルを1回だけ注入 */
+function injectResizeHandleStyles(): void {
+  if (document.getElementById('sb-resize-handle-css') !== null) return
+  const style = document.createElement('style')
+  style.id = 'sb-resize-handle-css'
+  style.textContent = `
+    /* hover で青い縦線 */
+    .css-1tixm3t:hover,
+    .css-1tixm3t.sb-handle-active {
+      background: #4A90D9 !important;
+    }
+    /* ←→ アイコン：hover/active で表示 */
+    .css-1tixm3t::after {
+      content: "↔";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 24px;
+      height: 24px;
+      border-radius: 4px;
+      background: #4A90D9;
+      color: #fff;
+      font-size: 14px;
+      line-height: 24px;
+      text-align: center;
+      opacity: 0;
+      transition: opacity 0.2s;
+      pointer-events: none;
+    }
+    .css-1tixm3t:hover::after,
+    .css-1tixm3t.sb-handle-active::after {
+      opacity: 1;
+    }
+  `
+  document.head.append(style)
 }
 
 /**
