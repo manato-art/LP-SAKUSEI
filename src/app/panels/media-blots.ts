@@ -42,6 +42,32 @@ export function registerMediaBlots(): void {
       return node.getAttribute('src') ?? ''
     }
   }
+  /**
+   * Widget ブロット（`sbwidget`）。Widget ライブラリから挿入した任意 HTML を
+   * `<section class="sb-widget-block">` として Quill に登録し、reconcile で
+   * 消されないようにする（指示88）。BlockEmbed なので Quill は中身を解析せず、
+   * ひとかたまりの編集不可ブロックとして扱う。
+   */
+  class SbWidgetBlot extends BlockEmbed {
+    static blotName = 'sbwidget'
+    static tagName = 'section'
+    static className = 'sb-widget-block'
+
+    static override create(html: string): HTMLElement {
+      const node = super.create(html) as HTMLElement
+      node.setAttribute('data-widget-block', 'true')
+      node.setAttribute('contenteditable', 'false')
+      node.innerHTML = html
+      node.style.cssText = 'margin:8px 0'
+      return node
+    }
+
+    static value(node: HTMLElement): string {
+      return node.innerHTML
+    }
+  }
+
   ;(Quill.register as (blot: unknown, silent?: boolean) => void)(SbVideoBlot, true)
+  ;(Quill.register as (blot: unknown, silent?: boolean) => void)(SbWidgetBlot, true)
   blotsRegistered = true
 }

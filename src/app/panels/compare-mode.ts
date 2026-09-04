@@ -257,7 +257,7 @@ function injectStyles(): void {
 .sb-cmp-phone-area {
   flex: 1 1 0;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
   padding: 14px 10px 20px;
   min-height: 0;
@@ -773,7 +773,7 @@ function buildPhoneMockup(html: string, device: DeviceDef, phoneArea: HTMLElemen
 
     const scale = Math.min(1, areaW / phoneNatW, areaH / phoneNatH)
     phone.style.transform = `scale(${scale})`
-    phone.style.transformOrigin = 'top left'
+    phone.style.transformOrigin = 'top center'
     // ラッパーに縮小後の寸法を設定（layout 上のサイズ）
     wrapper.style.width = `${phoneNatW * scale}px`
     wrapper.style.height = `${phoneNatH * scale}px`

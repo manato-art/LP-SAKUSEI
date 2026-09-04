@@ -442,7 +442,7 @@ function injectRailStyles(): void {
     `border-radius:50%;background:currentColor;margin-right:8px;flex-shrink:0}`,
   // 指示66: 採取CSSの body ラッパーは padding-left:60px（元のサイドバー幅）を持つが、
   // シェルが同じサイドバーを既に描いているため空白帯になる。全画面で一括除去。
-  `.css-4qo2ft,.css-155ijxb{padding-left:0 !important}`,
+  `.css-4qo2ft,.css-155ijxb,.css-1n8b1pi{padding-left:0 !important}`,
   ].join('')
   document.head.append(style)
 }

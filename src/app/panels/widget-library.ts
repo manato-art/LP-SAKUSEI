@@ -214,14 +214,13 @@ function wireCards(root: HTMLElement, quill: Quill, close: () => void): void {
     })
     add?.addEventListener('click', (event) => {
       event.stopPropagation()
-      // 指示84: モーダルを先に閉じ、エディタにフォーカスを戻してから挿入する。
-      // モーダルが開いている状態だと window.getSelection() がモーダル側を指すため
-      // エディタへの挿入に失敗する。
+      // 指示88: モーダルを閉じる前にWidgetのHTMLを取り出す
+      // （close() でポータルがDOMから外れた後も参照は残るが、念のため先に取得）
+      const bodyHtml = widgetBodyHtml(card)
       close()
       // フォーカスを戻すために1フレーム待つ
       requestAnimationFrame(() => {
-        quill.focus()
-        insertWidget(quill, card, title)
+        insertWidget(quill, bodyHtml, title)
         toast(`「${title}」を追加しました`)
       })
     })
@@ -283,10 +282,14 @@ function openLargePreview(card: HTMLElement, title: string): void {
  * ノードとして描画してしまう（CSSコードがキャンバスに文字として出る）。
  * → `<style>` を除去し、必要ならエディタ外に移す。Widget の見た目は採取CSSが担保するか、
  *   inline style がすでに付いている。
+ *
+ * 指示88修正: 以前の DOM 直接挿入 + quill.insertText() は、Quill の
+ * MutationObserver/reconcile が blot 不在のノードを消してしまうのが根本原因だった。
+ * → SbWidgetBlot（BlockEmbed・media-blots.ts）を登録し、quill.insertEmbed() で
+ *   正規ブロットとして挿入する。text-change も自動発火し autosave が正常に動く。
  */
-function insertWidget(quill: Quill, card: HTMLElement, title: string): void {
-  const body = widgetBodyHtml(card)
-  if (body === null) {
+function insertWidget(quill: Quill, bodyHtml: string | null, title: string): void {
+  if (bodyHtml === null) {
     const range = quill.getSelection(true)
     const index = range?.index ?? quill.getLength()
     const placeholder =
@@ -296,7 +299,7 @@ function insertWidget(quill: Quill, card: HTMLElement, title: string): void {
     return
   }
   // <style> タグを本文から除去し、<head> 側へ退避（同じ style が既にあれば足さない）
-  const doc = new DOMParser().parseFromString(body, 'text/html')
+  const doc = new DOMParser().parseFromString(bodyHtml, 'text/html')
   for (const style of doc.querySelectorAll('style')) {
     const css = style.textContent ?? ''
     if (css.trim() !== '') {
@@ -314,49 +317,13 @@ function insertWidget(quill: Quill, card: HTMLElement, title: string): void {
   // <script> も除去（Quill内で実行されると壊れる）
   for (const script of doc.querySelectorAll('script')) script.remove()
 
-  // ── Quill の clipboard.dangerouslyPasteHTML は clipboard matcher が
-  //    div/table 等の複雑なHTMLを blot 不在で削ぎ落とし、テキストだけになる。
-  //    → ql-editor の DOM に直接挿入する。
-  //
-  //    指示84修正: quill.update('user') を呼ぶと Quill が blot 不在の複雑なDOM を
-  //    内部モデルに変換できず、ノードごと消してしまう。
-  //    代わりに DOM 直接挿入のみ行い、保存時に quill.root.innerHTML を読むので永続化される。
-  //    autosave を発火させるため、挿入後に Quill API で改行を1つ足す。
-  const qlEditor = quill.root // .ql-editor 要素
+  // ── quill.insertEmbed で SbWidgetBlot（BlockEmbed）として挿入する。
+  //    Quill が正規のブロットとして管理するため reconcile で消されず、
+  //    text-change イベントも自動発火して autosave が正常に動く。
   const cleaned = doc.body.innerHTML
-  const wrapper = document.createElement('div')
-  wrapper.setAttribute('data-widget-block', 'true')
-  wrapper.style.cssText = 'margin:8px 0'
-  wrapper.innerHTML = cleaned
-  // カーソル位置に挿入（末尾の場合 or 選択なしの場合は append）
-  const sel = window.getSelection()
-  let inserted = false
-  if (sel !== null && sel.rangeCount > 0) {
-    const range = sel.getRangeAt(0)
-    // カーソルが ql-editor 内にあるか確認
-    if (qlEditor.contains(range.commonAncestorContainer)) {
-      range.collapse(false) // 選択範囲の末尾へ
-      range.insertNode(wrapper)
-      // カーソルを挿入ノードの後ろへ
-      range.setStartAfter(wrapper)
-      range.collapse(true)
-      sel.removeAllRanges()
-      sel.addRange(range)
-      inserted = true
-    }
-  }
-  if (!inserted) {
-    qlEditor.append(wrapper)
-  }
-  // quill.update('user') は呼ばない（blot不在のHTMLを消してしまうため）。
-  // 保存は quill.root.innerHTML から読むので、DOM に入っていれば永続化される。
-  // autosave の text-change を発火させるため、Quill の末尾に改行を挿入する。
-  try {
-    const len = quill.getLength()
-    quill.insertText(len - 1, '\n', 'user')
-  } catch {
-    // Quill が reconcile で失敗しても widget は DOM に残っている
-  }
+  const range = quill.getSelection(true)
+  const index = range?.index ?? quill.getLength()
+  quill.insertEmbed(index, 'sbwidget', cleaned, 'user')
 }
 
 function escapeHtml(value: string): string {
