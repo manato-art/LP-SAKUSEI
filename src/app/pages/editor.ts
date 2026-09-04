@@ -209,13 +209,7 @@ export async function renderEditor(
   // padding-top を 4px に、editorWrapper の 120px を 68px に縮め、padding を詰める。
   const navWrapper = root.querySelector<HTMLElement>('[class*="_navArticleWrapper_"]')
   if (navWrapper !== null) {
-    navWrapper.style.paddingTop = '8px'
-    navWrapper.style.height = 'auto'
-    navWrapper.style.background = '#fff'
-    navWrapper.style.position = 'sticky'
-    navWrapper.style.top = '0'
-    navWrapper.style.zIndex = '50'
-    navWrapper.style.borderBottom = '1px solid #e5e5ea'
+    // navWrapper のスタイルは setupHorizTabs() 内で共通設定される
     // navArticleWrapper の親コンテナ（MuiBox）に白背景 + flex-column で
     // editorWrapper が残り高さを自動で埋めるようにする
     const contentBox = navWrapper.parentElement

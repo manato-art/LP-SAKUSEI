@@ -120,6 +120,15 @@ export function setupHorizTabs(root: HTMLElement, activeTab: TabId): void {
   const navWrapper = root.querySelector<HTMLElement>('[class*="_navArticleWrapper_"]')
   if (navWrapper !== null) {
     navWrapper.prepend(bar)
+    // ── 4. navWrapper をタブバー追加に対応させる（全ページ共通） ──
+    // 採取 CSS の固定 height ではタブバー分が足りず見切れる → auto に
+    navWrapper.style.height = 'auto'
+    navWrapper.style.paddingTop = '8px'
+    navWrapper.style.background = '#fff'
+    navWrapper.style.position = 'sticky'
+    navWrapper.style.top = '0'
+    navWrapper.style.zIndex = '50'
+    navWrapper.style.borderBottom = '1px solid #e5e5ea'
   } else {
     root.prepend(bar)
   }
