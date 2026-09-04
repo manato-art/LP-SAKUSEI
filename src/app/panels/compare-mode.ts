@@ -773,7 +773,7 @@ function buildPhoneMockup(html: string, device: DeviceDef, phoneArea: HTMLElemen
 
     const scale = Math.min(1, areaW / phoneNatW, areaH / phoneNatH)
     phone.style.transform = `scale(${scale})`
-    phone.style.transformOrigin = 'top center'
+    phone.style.transformOrigin = 'top left'
     // ラッパーに縮小後の寸法を設定（layout 上のサイズ）
     wrapper.style.width = `${phoneNatW * scale}px`
     wrapper.style.height = `${phoneNatH * scale}px`
