@@ -332,6 +332,8 @@ export interface ComparePanelDeps {
 }
 
 let panelEl: HTMLElement | null = null
+/** 閉じたときの位置・サイズを記憶し、再度開いたときに復元する */
+let savedPanelRect: { top: number; right: number; width: number; height: number } | null = null
 
 /* ──────────────────── 公開 API ──────────────────── */
 
@@ -353,6 +355,14 @@ export function closeComparePanel(): void {
     cleanupPhoneResize = null
   }
   if (panelEl !== null) {
+    // 閉じる前に位置・サイズを記憶
+    const rect = panelEl.getBoundingClientRect()
+    savedPanelRect = {
+      top: rect.top,
+      right: window.innerWidth - rect.right,
+      width: rect.width,
+      height: rect.height,
+    }
     panelEl.remove()
     panelEl = null
   }
@@ -372,17 +382,25 @@ export function refreshComparePreview(html: string): void {
 function openComparePanel(root: HTMLElement, deps: ComparePanelDeps): void {
   injectStyles()
 
-  // 右レールの左端を基準に初期位置を決める
-  const sideToolbar = root.querySelector<HTMLElement>('[class*="_sideToolbarWrapper_"]')
-  const toolbarRect = sideToolbar?.getBoundingClientRect()
-  const initRight = toolbarRect !== undefined ? window.innerWidth - toolbarRect.left + 4 : 80
-  const initTop = toolbarRect?.top ?? 60
-
   panelEl = buildPanel(deps)
-  panelEl.style.top = `${initTop}px`
-  panelEl.style.right = `${initRight}px`
-  // パネル高さ: ビューポートいっぱい（上下8pxだけ余白）
-  panelEl.style.height = `${window.innerHeight - initTop - 8}px`
+
+  if (savedPanelRect !== null) {
+    // 前回閉じた位置・サイズを復元
+    panelEl.style.top = `${savedPanelRect.top}px`
+    panelEl.style.right = `${savedPanelRect.right}px`
+    panelEl.style.width = `${savedPanelRect.width}px`
+    panelEl.style.height = `${savedPanelRect.height}px`
+  } else {
+    // 初回: 右レールの左端を基準に初期位置を決める
+    const sideToolbar = root.querySelector<HTMLElement>('[class*="_sideToolbarWrapper_"]')
+    const toolbarRect = sideToolbar?.getBoundingClientRect()
+    const initRight = toolbarRect !== undefined ? window.innerWidth - toolbarRect.left + 4 : 80
+    const initTop = toolbarRect?.top ?? 60
+    panelEl.style.top = `${initTop}px`
+    panelEl.style.right = `${initRight}px`
+    // パネル高さ: ビューポートいっぱい（上下8pxだけ余白）
+    panelEl.style.height = `${window.innerHeight - initTop - 8}px`
+  }
 
   document.body.append(panelEl)
 }

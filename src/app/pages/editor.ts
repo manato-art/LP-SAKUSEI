@@ -212,6 +212,10 @@ export async function renderEditor(
     navWrapper.style.paddingTop = '14px'
     navWrapper.style.height = '54px'
     navWrapper.style.background = '#fff'
+    // navArticleWrapper の親コンテナ（MuiBox）に白背景を設定して
+    // editorWrapper との幅差分に見えるグレー隙間を埋める
+    const contentBox = navWrapper.parentElement
+    if (contentBox !== null) contentBox.style.background = '#fff'
   }
   const editorWrapper = root.querySelector<HTMLElement>('[class*="_editorWrapper_"]')
   if (editorWrapper !== null) {
