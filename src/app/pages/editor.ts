@@ -211,11 +211,13 @@ export async function renderEditor(
   if (navWrapper !== null) {
     navWrapper.style.paddingTop = '14px'
     navWrapper.style.height = '54px'
+    navWrapper.style.background = '#fff'
   }
   const editorWrapper = root.querySelector<HTMLElement>('[class*="_editorWrapper_"]')
   if (editorWrapper !== null) {
     editorWrapper.style.height = 'calc(100% - 78px)'
-    editorWrapper.style.padding = '8px 12px'
+    editorWrapper.style.padding = '0 12px'
+    editorWrapper.style.background = '#fff'
   }
   // boostEditorWrapper も同じ calc を使う
   const boostWrapper = root.querySelector<HTMLElement>('[class*="_boostEditorWrapper_"]')
@@ -455,6 +457,36 @@ function mountSidebarToolbarPanel(ctx: EditorContext): void {
     // パネル最下部に移動 → funnelBar と同じ高さに並ぶ
     versionPanel.append(addBtn)
   }
+}
+
+/**
+ * エディタ領域のカードを隙間なくつなげるCSS。
+ * navWrapper / editorWrapper / versionPanel / contentWrapper を白背景で一体化。
+ */
+function injectCardSeamStyles(): void {
+  if (document.getElementById('sb-card-seam-css') !== null) return
+  const style = document.createElement('style')
+  style.id = 'sb-card-seam-css'
+  style.textContent = `
+    /* ── カード接続: 隙間を白で埋める ── */
+    /* contentWrapper の角丸を上部だけ外す（nav と繋がる） */
+    .quillEditorContentWrapper {
+      border-radius: 0 0 10px 10px !important;
+    }
+    /* ヘッダ画像の角丸も上部を外す */
+    [class*="_articleHeaderPhoto_"] {
+      border-radius: 0 !important;
+    }
+    /* Versionパネルの角丸を外す */
+    [class*="_abTestArticlesWrapper_"] {
+      border-radius: 0 !important;
+    }
+    /* sideToolbarWrapper も白背景でつなげる */
+    [class*="_sideToolbarWrapper_"] {
+      background: #fff;
+    }
+  `
+  document.head.append(style)
 }
 
 /**
@@ -1071,6 +1103,8 @@ async function saveHtml(ctx: EditorContext): Promise<void> {
 }
 
 function wireSideToolbar(ctx: EditorContext): void {
+  // カード接続部分の隙間を埋める
+  injectCardSeamStyles()
   // 右レールアイコンのスタイルを実物に合わせる（丸い背景付き）
   injectSideToolbarStyles()
   // ── 各パネルを配線（実装は src/app/panels/ に分かれている）──

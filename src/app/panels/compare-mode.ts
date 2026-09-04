@@ -257,11 +257,12 @@ function injectStyles(): void {
 .sb-cmp-phone-area {
   flex: 1 1 0;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   padding: 14px 10px 20px;
   min-height: 0;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 .sb-cmp-phone {
   background: #1a1a1a;
@@ -347,6 +348,10 @@ export function toggleComparePanel(root: HTMLElement, deps: ComparePanelDeps): v
 }
 
 export function closeComparePanel(): void {
+  if (cleanupPhoneResize !== null) {
+    cleanupPhoneResize()
+    cleanupPhoneResize = null
+  }
   if (panelEl !== null) {
     panelEl.remove()
     panelEl = null
@@ -668,8 +673,7 @@ function renderTabContent(
 
   const currentDevice = DEVICES[DEFAULT_DEVICE_INDEX] ?? DEVICES[0]
   if (currentDevice === undefined) return
-  const phone = buildPhoneMockup(deps.getCurrentHtml(), currentDevice)
-  phoneArea.append(phone)
+  phoneArea.append(buildPhoneMockup(deps.getCurrentHtml(), currentDevice, phoneArea))
   container.append(phoneArea)
 
   // デバイス変更
@@ -678,27 +682,35 @@ function renderTabContent(
     const dev = DEVICES.find((d) => d.width === w && d.height === h) ?? DEVICES[0]
     if (dev === undefined) return
     phoneArea.innerHTML = ''
-    phoneArea.append(buildPhoneMockup(deps.getCurrentHtml(), dev))
+    phoneArea.append(buildPhoneMockup(deps.getCurrentHtml(), dev, phoneArea))
   })
 }
 
-function buildPhoneMockup(html: string, device: DeviceDef): HTMLElement {
-  // パネル内に収まるようにスケールを算出（パネル幅 - padding 分）
-  const panelContentWidth = (panelEl?.getBoundingClientRect().width ?? PANEL_W) - 40
-  const maxScreenWidth = Math.min(panelContentWidth, 360)
-  const scale = Math.min(1, maxScreenWidth / device.width)
-  const screenWidth = device.width * scale
-  const screenHeight = device.height * scale
+/* ──────── ResizeObserver クリーンアップ ──────── */
+let cleanupPhoneResize: (() => void) | null = null
 
-  // デスクトップ等の横長デバイスはフォンベゼルなし
+/**
+ * スマホモック構築。
+ * 1:1 で組み立て → CSS transform で全体を縮小 → ResizeObserver でパネルリサイズに追従。
+ * 常にスマホ全体が見える（見切れない）。
+ */
+function buildPhoneMockup(html: string, device: DeviceDef, phoneArea: HTMLElement): HTMLElement {
+  // 前の Observer を切断
+  if (cleanupPhoneResize !== null) {
+    cleanupPhoneResize()
+    cleanupPhoneResize = null
+  }
+
   const isPhone = device.width < 768
+  const bezelPadX = isPhone ? 8 : 4
+  const bezelPadY = isPhone ? 12 : 4
+  const notchH = isPhone ? 22 : 0
 
+  // ── 1:1 でフォン構造を構築 ──
   const phone = document.createElement('div')
   phone.className = 'sb-cmp-phone'
-  if (isPhone) {
-    phone.style.width = `${screenWidth + 16}px`
-  } else {
-    phone.style.width = `${screenWidth + 8}px`
+  phone.style.width = `${device.width + bezelPadX * 2}px`
+  if (!isPhone) {
     phone.style.borderRadius = '12px'
     phone.style.padding = '4px'
   }
@@ -711,11 +723,9 @@ function buildPhoneMockup(html: string, device: DeviceDef): HTMLElement {
 
   const screen = document.createElement('div')
   screen.className = 'sb-cmp-phone-screen'
-  screen.style.width = `${screenWidth}px`
-  screen.style.height = `${screenHeight}px`
-  if (!isPhone) {
-    screen.style.borderRadius = '8px'
-  }
+  screen.style.width = `${device.width}px`
+  screen.style.height = `${device.height}px`
+  if (!isPhone) screen.style.borderRadius = '8px'
 
   const iframe = document.createElement('iframe')
   iframe.setAttribute('data-cmp-iframe', '')
@@ -723,12 +733,41 @@ function buildPhoneMockup(html: string, device: DeviceDef): HTMLElement {
   iframe.srcdoc = wrapHtmlForPreview(html)
   iframe.style.width = `${device.width}px`
   iframe.style.height = `${device.height}px`
-  iframe.style.transform = `scale(${scale})`
-  iframe.style.transformOrigin = 'top left'
+  // iframe は 1:1（phone 全体を transform するので個別スケール不要）
 
   screen.append(iframe)
   phone.append(screen)
-  return phone
+
+  // ── ラッパー（phone の視覚サイズを layout に反映する） ──
+  const wrapper = document.createElement('div')
+  wrapper.style.cssText = 'display:inline-block;flex-shrink:0'
+  wrapper.append(phone)
+
+  // phone の自然サイズ（1:1）
+  const phoneNatW = device.width + bezelPadX * 2
+  const phoneNatH = device.height + bezelPadY * 2 + notchH
+
+  // ── パネルサイズに合わせてスマホ全体を縮小 ──
+  function fitToArea(): void {
+    const areaW = phoneArea.clientWidth - 20
+    const areaH = phoneArea.clientHeight - 40
+    if (areaW <= 0 || areaH <= 0) return
+
+    const scale = Math.min(1, areaW / phoneNatW, areaH / phoneNatH)
+    phone.style.transform = `scale(${scale})`
+    phone.style.transformOrigin = 'top left'
+    // ラッパーに縮小後の寸法を設定（layout 上のサイズ）
+    wrapper.style.width = `${phoneNatW * scale}px`
+    wrapper.style.height = `${phoneNatH * scale}px`
+  }
+
+  const ro = new ResizeObserver(fitToArea)
+  ro.observe(phoneArea)
+  cleanupPhoneResize = () => ro.disconnect()
+  // 初回サイズ計算（レイアウト確定後に実行）
+  requestAnimationFrame(fitToArea)
+
+  return wrapper
 }
 
 /** Quill の HTML 本文をプレビュー用の完全なページに包む */
