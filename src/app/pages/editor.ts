@@ -296,6 +296,8 @@ export async function renderEditor(
       renderVersionList(ctx)
     },
   })
+  // 指示78: Version ∨ ドロップダウンをナビバーへ移動し、配信割合を非表示にする
+  relocateVersionDropdownToNav(root)
   mountHeaderImageModal(root)
   mountVersionLinkPopup(root, { abTestUid, getCurrentUid: () => ctx.currentUid })
   // 下部バーの「+」＝ファネルステップ追加（指示⑮）。作成したら新ステップへ移動する。
@@ -1200,6 +1202,59 @@ function wireTopRightIcons(root: HTMLElement, abTestUid: string, folderUid: stri
     return
   }
   wireBeyondNavAnchors(container, { abTestUid, folderUid })
+}
+
+/**
+ * 指示78: Version ∨ ドロップダウンをVersionパネル上部からナビバーへ移動する。
+ * フォルダアイコンの右に配置し、テーマをライトに切り替える。
+ * 配信割合ラベルも非表示にする。
+ */
+function relocateVersionDropdownToNav(root: HTMLElement): void {
+  // Version ∨ ドロップダウンを探す（articleListType を含む要素から最寄りの dropdown）
+  const listType = root.querySelector<HTMLElement>('[class*="articleListType"]')
+  const versionDropdown = listType?.closest<HTMLElement>('[class*="dropdown_x4j8w"]') ?? null
+  if (versionDropdown === null) return
+
+  // ナビバーの actionItems を探す
+  const actionItems = root.querySelector<HTMLElement>('._navArticleItems_dcd38_19._actionItems_dcd38_26')
+  if (actionItems === null) return
+
+  // フォルダアイコンのドロップダウンを探す（移動先の基準）
+  const folderIcon = actionItems.querySelector<HTMLElement>('[class*="folderIcon"]')
+  const folderDropdown = folderIcon?.closest<HTMLElement>('[class*="dropdown_x4j8w"]') ?? null
+
+  // Version ∨ をフォルダアイコンの後に挿入
+  if (folderDropdown !== null) {
+    folderDropdown.after(versionDropdown)
+  } else {
+    actionItems.append(versionDropdown)
+  }
+
+  // テーマをダークからライトに切り替え（ナビバーのライトテーマに合わせる）
+  versionDropdown.classList.remove('_darkTheme_x4j8w_116')
+  versionDropdown.classList.add('_lightTheme_x4j8w_88')
+
+  // 配信割合ラベルと？アイコンを非表示にする
+  const subscriptText = root.querySelector<HTMLElement>('[data-testid="subscript-text"]')
+  if (subscriptText !== null) {
+    // subscript-text の親スタック（MuiStack-root）ごと非表示にする
+    const stack = subscriptText.closest<HTMLElement>('.MuiStack-root')
+    if (stack !== null) stack.style.display = 'none'
+    else subscriptText.style.display = 'none'
+  }
+  // 配信割合のさらに親コンテナ（css-odz94x）も非表示
+  const odz = subscriptText?.closest<HTMLElement>('.css-odz94x') ?? null
+  if (odz !== null) odz.style.display = 'none'
+
+  // ドロップダウンを移動した結果、Versionパネル上部（_abTestArticlesTop_）が空になるので
+  // スペースの無駄を無くすために高さを縮める
+  const articlesTop = root.querySelector<HTMLElement>('[class*="_abTestArticlesTop"]')
+  if (articlesTop !== null) {
+    articlesTop.style.padding = '0'
+    articlesTop.style.minHeight = '0'
+    articlesTop.style.height = '0'
+    articlesTop.style.overflow = 'hidden'
+  }
 }
 
 function wireTopBar(root: HTMLElement, title: string, folderName: string): void {
