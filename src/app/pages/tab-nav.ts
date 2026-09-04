@@ -71,6 +71,21 @@ function injectTabBarCss(): void {
       background: #1a7af8;
       font-weight: 600;
     }
+    /* タブバー内に移動した3アイコンの調整 */
+    .sb-tab-bar [class*="_linksContainer_"] [class*="_dropdown_x4j8w"] {
+      display: inline-flex;
+    }
+    .sb-tab-bar [class*="_linksContainer_"] [class*="_trigger_x4j8w"] {
+      display: inline-flex;
+      align-items: center;
+    }
+    .sb-tab-bar [class*="_linksContainer_"] [class*="_bodyWrapper_x4j8w"] {
+      display: none !important;
+    }
+    .sb-tab-bar [class*="_linksContainer_"] a {
+      padding: 4px 6px;
+      border-radius: 4px;
+    }
     /* ── パンくずリスト ── */
     .sb-breadcrumb-row {
       display: flex;
@@ -234,6 +249,22 @@ export function setupHorizTabs(root: HTMLElement, activeTab: TabId): void {
   // ── 3. 新規タブバーを構築 ──
   const bar = document.createElement('div')
   bar.className = 'sb-tab-bar'
+
+  // ── 3a. 採取物の3アイコン（エディタ/スプリット/リダイレクト）をタブバーに移動 ──
+  const linksContainer = root.querySelector<HTMLElement>('[class*="_linksContainer_"]')
+  if (linksContainer !== null) {
+    const linksParent = linksContainer.closest<HTMLElement>('[class*="_links_dcd38"]')
+    bar.append(linksContainer)
+    linksContainer.style.display = 'flex'
+    linksContainer.style.alignItems = 'center'
+    linksContainer.style.gap = '0'
+    linksContainer.style.marginRight = '4px'
+    linksContainer.style.paddingRight = '8px'
+    linksContainer.style.borderRight = '1px solid #e0e0e0'
+    // 元の _links_ ラッパーは空になるので非表示
+    if (linksParent !== null) linksParent.style.display = 'none'
+  }
+
   for (const id of TAB_IDS) {
     const link = document.createElement('a')
     link.textContent = TAB_LABELS[id]
