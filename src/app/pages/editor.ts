@@ -371,9 +371,9 @@ function mountQuill(root: HTMLElement): Quill {
     // Vite の CSS injection 順（JS import → <style> 注入）が index.html の <link> より後なので
     // 採取CSSの UID_2445 { height:calc(100vh-260px) } を同詳細度の後勝ちで上書きしてしまう。
     // inline style で明示的に高さを設定し、確実にスクロール領域として機能させる。
-    // 下部バー（50px）は absolute 配置なので、キャンバスはバーの上端まで伸ばす。
-    // 指示77: 上部ツールバー(36px)分を追加で引く
-    host.style.height = 'calc(100vh - 264px)'
+    // 上部ナビ(54px)+editorWrapper padding(8px)+ヘッダ画像(~100px)+ツールバー(36px)+下部バー(50px)
+    // = 合計約248px。余裕を持って310pxを引き、下部バーとの重なりを防ぐ。
+    host.style.height = 'calc(100vh - 310px)'
     frame.replaceWith(host)
   } else {
     host.style.cssText = 'width:100%;height:calc(100vh - 220px);background:#fff;overflow:auto'
