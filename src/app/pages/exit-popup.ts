@@ -404,8 +404,14 @@ function renderPresetCard(
   info.append(el('p', { class: 'ep-preset-name', text: preset.name }))
 
   const addBtn = el('button', { class: 'ep-preset-add', text: '追加' })
-  addBtn.addEventListener('click', (e) => {
-    e.stopPropagation()
+  info.append(addBtn)
+  card.append(info)
+
+  // カード全体をクリック可能にする（ボタンだけでなくサムネ・名前どこでも押せる）
+  let adding = false
+  function doAdd(): void {
+    if (adding) return
+    adding = true
     addBtn.disabled = true
     addBtn.textContent = '追加中…'
     void api.createExitPopup(state.abTestUid, {
@@ -426,14 +432,14 @@ function renderPresetCard(
         toast(`「${preset.name}」を追加しました`)
       },
       (err: unknown) => {
+        adding = false
         addBtn.disabled = false
         addBtn.textContent = '追加'
         toast((err as Error).message, 'error')
       },
     )
-  })
-  info.append(addBtn)
-  card.append(info)
+  }
+  card.addEventListener('click', doAdd)
 
   return card
 }
