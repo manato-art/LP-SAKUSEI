@@ -95,6 +95,8 @@ function wireSidebar(nav: HTMLElement): void {
 
   // 指示㊷: イベント・セミナー / ランキング / 新UI OFF をサイドバーから除去
   removeUnwantedItems(nav)
+  // 採取時の通知バッジ（オレンジ赤丸）を全て除去
+  for (const dot of nav.querySelectorAll<HTMLElement>('.css-shot6p')) dot.remove()
 
   // ツールのアコーディオン配線（指示㊲㊳）
   wireToolAccordion(nav)
