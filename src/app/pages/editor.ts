@@ -520,6 +520,51 @@ function injectSideToolbarLabelStyles(): void {
   document.head.append(style)
 }
 
+/** 右レールの最下部とミニマップの間に「比較モード」ボタンを配置する（指示77） */
+function mountCompareButton(root: HTMLElement): void {
+  const toolbar = root.querySelector<HTMLElement>('[class*="_sideToolbarWrapper_"]')
+  if (toolbar === null) return
+  if (toolbar.querySelector('[data-compare-btn]') !== null) return
+
+  // 分割画面アイコン SVG
+  const splitIcon = `<svg viewBox="0 0 18 18" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4">
+    <rect x="1" y="2" width="16" height="14" rx="1.5"/>
+    <line x1="9" y1="2" x2="9" y2="16"/>
+  </svg>`
+
+  const btn = document.createElement('button')
+  btn.setAttribute('data-compare-btn', 'true')
+  btn.title = '比較モード'
+  btn.innerHTML = `比較モード ${splitIcon}`
+  btn.style.cssText = [
+    'display:flex', 'align-items:center', 'gap:4px', 'justify-content:center',
+    'margin:12px auto 0',
+    'padding:6px 12px',
+    'background:#fff',
+    'border:1px solid #e0e0e0',
+    'border-radius:20px',
+    'font-size:12px',
+    'color:#888',
+    'cursor:pointer',
+    'white-space:nowrap',
+    'box-shadow:0 1px 3px rgba(0,0,0,0.06)',
+    'transition:background 0.15s, color 0.15s',
+  ].join(';')
+  btn.addEventListener('mouseenter', () => {
+    btn.style.background = '#f5f5f5'
+    btn.style.color = '#555'
+  })
+  btn.addEventListener('mouseleave', () => {
+    btn.style.background = '#fff'
+    btn.style.color = '#888'
+  })
+  btn.addEventListener('click', () => {
+    toast('比較モードは準備中です', 'error')
+  })
+
+  toolbar.append(btn)
+}
+
 /**
  * コンテンツ上部に水平ツールバーを挿入する（指示77）。
  * ヘッダー画像の下、Quill ホストの上に差し込む。
@@ -1132,6 +1177,9 @@ function wireSideToolbar(ctx: EditorContext): void {
     const name = SIDE_TOOLS[index] ?? 'このツール'
     icon.addEventListener('click', () => toast(`${name} は未実装です`, 'error'))
   }
+
+  // 指示77: 右レールアイコンの下に「比較モード」ボタンを追加
+  mountCompareButton(ctx.root)
 
   // 本文の自動保存。実物のエディタは自動保存が走る
   // （docs/findings-live-observation.md「エディタは『開くだけで自動保存』が走る」・DOMに _saveAnimation_）。
