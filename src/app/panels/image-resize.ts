@@ -196,6 +196,9 @@ export function wireImageResize(quill: Quill): void {
     const newWidth = Math.max(30, Math.round(startWidth + delta))
     img.style.width = `${newWidth}px`
     img.style.height = 'auto'
+    img.style.display = 'block'
+    img.style.marginLeft = 'auto'
+    img.style.marginRight = 'auto'
     img.setAttribute('width', String(newWidth))
     img.removeAttribute('height')
     reposition()
