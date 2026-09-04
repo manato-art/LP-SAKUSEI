@@ -1206,7 +1206,7 @@ function wireTopRightIcons(root: HTMLElement, abTestUid: string, folderUid: stri
 
 /**
  * 指示78: Version ∨ ドロップダウンをVersionパネル上部からナビバーへ移動する。
- * フォルダアイコンの右に配置し、テーマをライトに切り替える。
+ * フォルダアイコンを消し、その位置にVersion/アーカイブ切替を置く。
  * 配信割合ラベルも非表示にする。
  */
 function relocateVersionDropdownToNav(root: HTMLElement): void {
@@ -1219,15 +1219,18 @@ function relocateVersionDropdownToNav(root: HTMLElement): void {
   const actionItems = root.querySelector<HTMLElement>('._navArticleItems_dcd38_19._actionItems_dcd38_26')
   if (actionItems === null) return
 
-  // フォルダアイコンのドロップダウンを探す（移動先の基準）
+  // フォルダアイコンのドロップダウンを探して、その位置にVersion切替を差し替える
   const folderIcon = actionItems.querySelector<HTMLElement>('[class*="folderIcon"]')
   const folderDropdown = folderIcon?.closest<HTMLElement>('[class*="dropdown_x4j8w"]') ?? null
 
-  // Version ∨ をフォルダアイコンの後に挿入
   if (folderDropdown !== null) {
-    folderDropdown.after(versionDropdown)
+    // フォルダマークの位置にVersion切替を入れ、フォルダマークは消す
+    folderDropdown.replaceWith(versionDropdown)
   } else {
-    actionItems.append(versionDropdown)
+    // フォルダマークが見つからなければ戻るボタンの後に挿入
+    const backBtn = actionItems.querySelector<HTMLElement>('[class*="_back_"]')
+    if (backBtn !== null) backBtn.after(versionDropdown)
+    else actionItems.prepend(versionDropdown)
   }
 
   // テーマをダークからライトに切り替え（ナビバーのライトテーマに合わせる）
@@ -1237,12 +1240,10 @@ function relocateVersionDropdownToNav(root: HTMLElement): void {
   // 配信割合ラベルと？アイコンを非表示にする
   const subscriptText = root.querySelector<HTMLElement>('[data-testid="subscript-text"]')
   if (subscriptText !== null) {
-    // subscript-text の親スタック（MuiStack-root）ごと非表示にする
     const stack = subscriptText.closest<HTMLElement>('.MuiStack-root')
     if (stack !== null) stack.style.display = 'none'
     else subscriptText.style.display = 'none'
   }
-  // 配信割合のさらに親コンテナ（css-odz94x）も非表示
   const odz = subscriptText?.closest<HTMLElement>('.css-odz94x') ?? null
   if (odz !== null) odz.style.display = 'none'
 
