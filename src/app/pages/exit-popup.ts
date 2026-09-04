@@ -771,12 +771,27 @@ function renderHtmlTab(body: HTMLElement, draft: ExitPopup): void {
 // ─── プレビュー ─────────────────────────────────────
 
 function previewPopup(popup: ExitPopup | Partial<ExitPopup>): void {
+  // 既存プレビューを除去（二重表示防止）
+  document.getElementById('ep-preview-overlay')?.remove()
+  document.getElementById('ep-preview-style')?.remove()
+
+  // 内部アニメーション用キーフレームを注入
+  const styleEl = document.createElement('style')
+  styleEl.id = 'ep-preview-style'
+  styleEl.textContent = `
+    @keyframes epConfettiFall{0%{transform:translateY(0) rotate(0deg);opacity:1}100%{transform:translateY(400px) rotate(720deg);opacity:0}}
+    @keyframes epPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+    @keyframes epBounceIn{0%{opacity:0;transform:scale(.3)}50%{opacity:1;transform:scale(1.05)}70%{transform:scale(.95)}100%{opacity:1;transform:scale(1)}}
+  `
+  document.head.append(styleEl)
+
   const overlay = el('div', {
     style: `position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;
       display:flex;align-items:center;justify-content:center;font-family:${T.font}`,
   })
+  overlay.id = 'ep-preview-overlay'
 
-  const frame = el('div', { style: 'max-width:500px;max-height:80vh;overflow:auto' })
+  const frame = el('div', { style: 'max-width:500px;max-height:80vh;overflow:auto;position:relative' })
   frame.innerHTML = popup.html ?? '<p>プレビューできるHTMLがありません</p>'
   overlay.append(frame)
 
@@ -786,8 +801,27 @@ function previewPopup(popup: ExitPopup | Partial<ExitPopup>): void {
   })
   overlay.append(closeHint)
 
-  overlay.addEventListener('click', () => overlay.remove())
+  overlay.addEventListener('click', (e) => {
+    // frame 内のクリック（ボタン等）は閉じない
+    if (frame.contains(e.target as Node)) return
+    overlay.remove()
+    styleEl.remove()
+  })
   document.body.append(overlay)
+
+  // ポップアップのJavaScriptを実行（delivery.ts と同じスコープ変数を提供）
+  if (popup.javascript) {
+    try {
+      const epId = 'ep-preview-overlay'
+      // overlay / epId をスコープに入れて実行
+      const fn = new Function('overlay', 'epId', popup.javascript)
+      fn(overlay, epId)
+    } catch (e) {
+      console.warn('[ep-preview] JS実行エラー:', e)
+    }
+  }
+  // ep-show イベントを発火して内部アニメを起動
+  try { overlay.dispatchEvent(new CustomEvent('ep-show')) } catch (_) { /* noop */ }
 }
 
 // ─── ヘルパー ───────────────────────────────────────
