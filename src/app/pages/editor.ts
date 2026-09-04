@@ -433,7 +433,9 @@ function mountSidebarToolbarPanel(ctx: EditorContext): void {
 
   // 既存の子要素（Versionカード等）をスクロール可能なラッパーに移動
   const cardsWrapper = document.createElement('div')
-  cardsWrapper.style.cssText = 'flex:1 1 0;overflow-y:auto;overflow-x:hidden;min-height:0'
+  // flex:0 1 auto → カードの自然な高さだけ取る（引き伸ばさない）。
+  // カードが多い場合のみスクロールする。ツールバーはカードのすぐ下に来る。
+  cardsWrapper.style.cssText = 'flex:0 1 auto;overflow-y:auto;overflow-x:hidden;min-height:0'
   while (versionPanel.firstChild) {
     cardsWrapper.append(versionPanel.firstChild)
   }
@@ -443,6 +445,13 @@ function mountSidebarToolbarPanel(ctx: EditorContext): void {
   // ツールバーの下（下部バーと同じ高さ）に固定する。
   const addBtn = cardsWrapper.querySelector<HTMLElement>(HOOK.addVersion)
   if (addBtn !== null) {
+    // 採取CSSが position:absolute; bottom:0; width:100%; z-index:10 を持つ。
+    // versionPanelが position:static なので、そのままだと viewport 全幅に広がり
+    // 下部バー（funnelBar）を覆い隠してしまう（指示75）。
+    // flex column の子として自然に流れるよう static に戻す。
+    addBtn.style.position = 'static'
+    addBtn.style.width = 'auto'
+    addBtn.style.zIndex = 'auto'
     addBtn.style.flexShrink = '0'
     addBtn.style.borderTop = '1px solid #e0e0e0'
   }
