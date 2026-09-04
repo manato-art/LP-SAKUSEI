@@ -274,17 +274,18 @@ export async function renderEditor(
   }
   const editorWrapper = root.querySelector<HTMLElement>('[class*="_editorWrapper_"]')
   if (editorWrapper !== null) {
-    editorWrapper.style.height = ''
-    editorWrapper.style.flex = '1'
+    // flex-column 親の残り高さを埋める: height:0 + flex:1 が正しいパターン
+    editorWrapper.style.height = '0'
+    editorWrapper.style.flex = '1 1 0px'
     editorWrapper.style.minHeight = '0'
     editorWrapper.style.padding = '0 12px'
     editorWrapper.style.background = '#fff'
   }
-  // boostEditorWrapper も flex:1 に合わせる
+  // boostEditorWrapper も同じ flex パターン
   const boostWrapper = root.querySelector<HTMLElement>('[class*="_boostEditorWrapper_"]')
   if (boostWrapper !== null) {
-    boostWrapper.style.height = ''
-    boostWrapper.style.flex = '1'
+    boostWrapper.style.height = '0'
+    boostWrapper.style.flex = '1 1 0px'
     boostWrapper.style.minHeight = '0'
   }
   // Versionパネル（_abTestArticlesWrapper_）も同じ 120px を引いている
