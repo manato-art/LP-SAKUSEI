@@ -131,7 +131,14 @@ function openMetaModal(meta: { configured: boolean; accounts: MetaAdAccount[] })
     'background:#ECECEC;border-radius:12px;width:min(1100px,96vw);padding:0 0 8px;' +
     'font-family:"Hiragino Sans",sans-serif;box-shadow:0 8px 40px rgba(0,0,0,.25)'
 
-  panel.append(buildHeader(close), buildAuthForm(meta), buildAccountsTable(meta))
+  const tableWrap = document.createElement('div')
+  const renderTable = (): void => {
+    tableWrap.innerHTML = ''
+    tableWrap.append(buildAccountsTable(meta))
+  }
+  renderTable()
+
+  panel.append(buildHeader(close), buildAuthForm(meta, renderTable), tableWrap)
   overlay.append(panel)
   document.body.append(overlay)
 }
@@ -153,7 +160,7 @@ function buildHeader(close: () => void): HTMLElement {
   return head
 }
 
-function buildAuthForm(meta: { configured: boolean; accounts: MetaAdAccount[] }): HTMLElement {
+function buildAuthForm(meta: { configured: boolean; accounts: MetaAdAccount[] }, renderTable: () => void): HTMLElement {
   const wrap = document.createElement('div')
   wrap.style.cssText =
     'display:flex;align-items:center;justify-content:center;gap:24px;padding:16px 16px 28px'
@@ -178,28 +185,60 @@ function buildAuthForm(meta: { configured: boolean; accounts: MetaAdAccount[] })
   authBtn.style.cssText =
     'align-self:flex-start;padding:10px 26px;border:none;border-radius:8px;background:#2B7CFF;' +
     'color:#fff;font-size:14px;cursor:pointer'
-  authBtn.addEventListener('click', () => authenticate(input.value.trim(), meta))
+  authBtn.addEventListener('click', () => {
+    authenticate(input.value.trim(), meta, renderTable)
+    input.value = ''
+  })
   col.append(label, input, authBtn)
   wrap.append(fb, col)
   return wrap
 }
 
-/** 認証: 入力IDがトークンで見えるアカウントに在るか確かめる（クローンはOAuthを踏まずトークンで検証） */
-function authenticate(id: string, meta: { configured: boolean; accounts: MetaAdAccount[] }): void {
+/**
+ * 認証: 入力IDでアカウントを連携する。
+ * トークン設定済みなら実アカウント検索、未設定ならモックアカウントを作成。
+ * クローンなので OAuth を踏まず、IDを入力すれば連携できる。
+ */
+function authenticate(
+  id: string,
+  meta: { configured: boolean; accounts: MetaAdAccount[] },
+  renderTable: () => void,
+): void {
   if (id === '') {
     toast('広告アカウントIDを入力してください', 'error')
     return
   }
-  if (!meta.configured) {
-    toast('Metaのアクセストークンが未設定です（環境変数 META_ACCESS_TOKEN）', 'error')
+  const cleanId = id.replace(/^act_/, '')
+
+  // 重複チェック
+  if (meta.accounts.some((a) => a.account_id === cleanId)) {
+    toast('このアカウントは既に連携済みです', 'error')
     return
   }
-  const found = meta.accounts.find((a) => a.account_id === id.replace(/^act_/, ''))
-  if (found === undefined) {
-    toast('このトークンでは見つからない広告アカウントIDです', 'error')
-    return
+
+  if (meta.configured) {
+    // トークンあり: 実アカウント検索
+    const found = meta.accounts.find((a) => a.account_id === cleanId)
+    if (found === undefined) {
+      toast('このトークンでは見つからない広告アカウントIDです', 'error')
+      return
+    }
+    toast(`${found.name}（${found.account_id}）を認証しました`)
+  } else {
+    // トークンなし: モックアカウントを作成して一覧に追加
+    const today = new Date().toISOString().split('T')[0] ?? ''
+    const mockAccount: MetaAdAccount = {
+      account_id: cleanId,
+      name: `広告アカウント ${cleanId}`,
+      account_status: 1,
+      currency: 'JPY',
+      created_date: today,
+    }
+    meta.accounts.push(mockAccount)
+    meta.configured = true
+    toast(`広告アカウント ${cleanId} を連携しました`)
   }
-  toast(`${found.name}（${found.account_id}）を認証しました：接続可`)
+  renderTable()
 }
 
 function buildAccountsTable(meta: { configured: boolean; accounts: MetaAdAccount[] }): HTMLElement {
