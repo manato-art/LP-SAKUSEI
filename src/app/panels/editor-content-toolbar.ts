@@ -41,20 +41,20 @@ function injectStyles(): void {
   const s = document.createElement('style')
   s.id = 'sb-content-toolbar-css'
   s.textContent = `
-    .sb-ct { display:flex; align-items:center; gap:2px; padding:4px 8px;
+    .sb-ct { display:flex; align-items:center; gap:1px; padding:4px 6px;
       background:#fff; border-bottom:1px solid #e5e5ea; flex-shrink:0;
       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
       font-size:13px; user-select:none; flex-wrap:nowrap; min-height:36px; }
     .sb-ct-btn { display:inline-flex; align-items:center; justify-content:center;
-      width:28px; height:28px; border:none; border-radius:4px; background:transparent;
+      width:26px; height:26px; border:none; border-radius:4px; background:transparent;
       color:#444; cursor:pointer; padding:0; flex-shrink:0; }
     .sb-ct-btn:hover { background:#f0f0f0; }
     .sb-ct-btn.active { background:#e3f2fd; color:#1976d2; }
     .sb-ct-btn:disabled { opacity:.3; cursor:default; }
-    .sb-ct-sep { width:1px; height:20px; background:#ddd; margin:0 4px; flex-shrink:0; }
-    .sb-ct-select { height:28px; border:1px solid #ddd; border-radius:4px;
-      font-size:12px; padding:0 4px; background:#fff; cursor:pointer; outline:none;
-      max-width:110px; }
+    .sb-ct-sep { width:1px; height:18px; background:#ddd; margin:0 3px; flex-shrink:0; }
+    .sb-ct-select { height:26px; border:1px solid #ddd; border-radius:4px;
+      font-size:11px; padding:0 2px; background:#fff; cursor:pointer; outline:none;
+      max-width:72px; }
     .sb-ct-select:focus { border-color:#90caf9; }
     .sb-ct-size { display:inline-flex; align-items:center; gap:0; }
     .sb-ct-size-btn { width:22px; height:26px; border:1px solid #ddd; background:#fff;
