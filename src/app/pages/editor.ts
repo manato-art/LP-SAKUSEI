@@ -509,15 +509,15 @@ function injectSideToolbarLabelCss(): void {
   s.textContent = `
     .sb-side-label {
       position: absolute;
-      bottom: -12px;
+      bottom: 2px;
       left: 50%;
       transform: translateX(-50%);
-      font-size: 9px;
+      font-size: 8px;
       color: #888;
       line-height: 1;
       white-space: nowrap;
       pointer-events: none;
-      z-index: 1;
+      z-index: 2;
     }
   `
   document.head.append(s)
@@ -564,15 +564,16 @@ function mountCompareButton(root: HTMLElement): void {
     toast('比較モードは準備中です', 'error')
   })
 
-  // プレビューアイコンの上に配置。ツールバーwrapperの先頭に挿入。
+  // _sideToolbarTop_ の先頭（プレビューアイコンの上）に挿入。
+  // ツールバーwrapperの flex プロパティは変更しない（採取CSSを壊さない）。
   const toolbar = root.querySelector<HTMLElement>('[class*="_sideToolbarWrapper_"]')
   if (toolbar !== null) {
     toolbar.style.overflow = 'visible'
-    toolbar.style.display = 'flex'
-    toolbar.style.flexDirection = 'column'
-    toolbar.style.alignItems = 'center'
-    btn.style.marginBottom = '8px'
-    toolbar.prepend(btn)
+  }
+  const topSection = toolbar?.querySelector<HTMLElement>('[class*="_sideToolbarTop_"]') ?? null
+  if (topSection !== null) {
+    btn.style.margin = '0 auto 4px'
+    topSection.prepend(btn)
   }
 }
 
