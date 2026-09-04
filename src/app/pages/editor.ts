@@ -501,32 +501,14 @@ function injectSideToolbarStyles(): void {
   document.head.append(style)
 }
 
-/** 右レールアイコンの下にテキストラベルを表示するCSS（指示77） */
-function injectSideToolbarLabelStyles(): void {
-  if (document.getElementById('sb-side-label-css') !== null) return
-  const style = document.createElement('style')
-  style.id = 'sb-side-label-css'
-  style.textContent = `
-    .sb-side-label {
-      font-size: 9px;
-      color: #888;
-      line-height: 1;
-      white-space: nowrap;
-      pointer-events: none;
-      position: relative;
-      z-index: 1;
-    }
-  `
-  document.head.append(style)
-}
 
-/** 右レールの最下部とミニマップの間に「比較モード」ボタンを配置する（指示77） */
+/**
+ * 右レールアイコン群の下、ミニマップの上に「比較モード」ボタンを配置する（指示77）。
+ * ツールバーの最後のアイコンの bottom を計測し、そこに合わせて fixed 配置する。
+ */
 function mountCompareButton(root: HTMLElement): void {
-  const toolbar = root.querySelector<HTMLElement>('[class*="_sideToolbarWrapper_"]')
-  if (toolbar === null) return
-  if (toolbar.querySelector('[data-compare-btn]') !== null) return
+  if (document.querySelector('[data-compare-btn]') !== null) return
 
-  // 分割画面アイコン SVG
   const splitIcon = `<svg viewBox="0 0 18 18" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4">
     <rect x="1" y="2" width="16" height="14" rx="1.5"/>
     <line x1="9" y1="2" x2="9" y2="16"/>
@@ -538,7 +520,6 @@ function mountCompareButton(root: HTMLElement): void {
   btn.innerHTML = `比較モード ${splitIcon}`
   btn.style.cssText = [
     'display:flex', 'align-items:center', 'gap:4px', 'justify-content:center',
-    'margin:12px auto 0',
     'padding:6px 12px',
     'background:#fff',
     'border:1px solid #e0e0e0',
@@ -562,7 +543,21 @@ function mountCompareButton(root: HTMLElement): void {
     toast('比較モードは準備中です', 'error')
   })
 
-  toolbar.append(btn)
+  // ツールバーアイコン群の直後に挿入（ツールバーwrapperの中、アイコンの下）
+  const toolbar = root.querySelector<HTMLElement>('[class*="_sideToolbarWrapper_"]')
+  if (toolbar !== null) {
+    // ツールバーを flex column にしてボタンをアイコン群の下に自然配置
+    toolbar.style.display = 'flex'
+    toolbar.style.flexDirection = 'column'
+    toolbar.style.alignItems = 'center'
+    // アイコン群は _sideToolbarTop_ の中にある。その後にボタンを追加
+    const topSection = toolbar.querySelector<HTMLElement>('[class*="_sideToolbarTop_"]')
+    if (topSection !== null) {
+      topSection.after(btn)
+    } else {
+      toolbar.append(btn)
+    }
+  }
 }
 
 /**
@@ -1107,29 +1102,14 @@ function wireSideToolbar(ctx: EditorContext): void {
   // 指示70: スクロール領域が変わったため、右レールの position:fixed は不要になった。
   // 採取CSSのままで問題なく表示される。
 
-  // 右レールにラベル表示用CSSを1回だけ注入
-  injectSideToolbarLabelStyles()
-
   const icons = [...ctx.root.querySelectorAll<HTMLElement>('[class*="sideToolbarIcon"]')]
   for (let index = 0; index < icons.length; index += 1) {
     const icon = icons[index]
     if (icon === undefined) continue
     icon.style.cursor = 'pointer'
 
-    // 指示77: 各アイコンにツールチップとテキストラベルを追加
-    const toolName = SIDE_TOOLS[index] ?? ''
-    icon.title = toolName
-    if (toolName !== '') {
-      const label = document.createElement('span')
-      label.className = 'sb-side-label'
-      label.textContent = toolName
-      icon.append(label)
-      // アイコンを縦に並べるため flex column に
-      icon.style.display = 'flex'
-      icon.style.flexDirection = 'column'
-      icon.style.alignItems = 'center'
-      icon.style.gap = '2px'
-    }
+    // 指示77: ホバーで名称ツールチップを表示（レイアウトは壊さない）
+    icon.title = SIDE_TOOLS[index] ?? ''
 
     if (index === PREVIEW_TOOL_INDEX) {
       // プレビューは右レールの1番目。aria-label で引くと別の要素に当たっていて、
