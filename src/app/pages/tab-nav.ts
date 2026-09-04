@@ -105,9 +105,10 @@ export function setupHorizTabs(root: HTMLElement, activeTab: TabId): void {
     // テキスト改行を除去し、アクティブタブをマーク
     const links = hiddenNav.querySelectorAll<HTMLElement>('a')
     for (const link of links) {
-      // アイコンは非表示（テキストのみ）
+      // span.hidden はテキストも含むので span 自体は表示し、中の SVG だけ非表示にする
+      // （CSS で .sb-horiz-tabs a svg { display:none } も効いている）
       const iconSpan = link.querySelector<HTMLElement>('span.hidden')
-      if (iconSpan !== null) iconSpan.style.display = 'none'
+      if (iconSpan !== null) iconSpan.style.display = 'inline'
       // テキスト改行除去
       for (const child of link.childNodes) {
         if (child.nodeType === Node.ELEMENT_NODE) {
