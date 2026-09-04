@@ -13,6 +13,7 @@ import { api, type ExitPopup, type Version } from '../api.ts'
 import { isStale } from '../main.ts'
 import { toast } from '../ui.ts'
 import { mountCapturedPage, setTopBarNames, wireBackLink, wireCapturedLinks } from './report-dom.ts'
+import { setupHorizTabs, setupBreadcrumb } from './tab-nav.ts'
 import { LP_BASE_CSS } from '../lp-base-css.ts'
 import { masterStyleIframeCss } from '../master-style.ts'
 import { withAutoplayVideos } from '../lp-video.ts'
@@ -49,6 +50,10 @@ export async function renderPreview(
   wireCapturedLinks(root, substrate, abTestUid)
   wireBackLink(root, folder?.uid ?? null)
   setTopBarNames(root, ab_test.title, folder?.name ?? '')
+
+  // 旧ナビを新タブバー＋パンくずに置き換え（他ページと統一）
+  setupHorizTabs(root, 'version', { abTestUid, folderUid: folder?.uid ?? '' })
+  setupBreadcrumb(root, folder?.name ?? '', ab_test.title, folder?.uid)
 
   wireUrlCards(root, abTestUid, version)
   fillPreviewIframe(root, version, styleCss, exit_popups.filter((p) => p.enabled))
