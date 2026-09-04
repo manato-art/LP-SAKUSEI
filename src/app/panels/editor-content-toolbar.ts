@@ -19,8 +19,8 @@ import { pickAndInsertMedia } from './media-insert.ts'
 // ── SVG アイコン（16px）──
 
 const SVG = {
-  undo: '<svg viewBox="0 0 18 18" width="16" height="16"><path d="M4 8l4-4v3h4a4 4 0 010 8H8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-  redo: '<svg viewBox="0 0 18 18" width="16" height="16"><path d="M14 8l-4-4v3H6a4 4 0 000 8h4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  undo: '<svg viewBox="0 0 20 20" width="18" height="18"><path d="M6 9l-4-3.5L6 2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 5.5h10a5 5 0 010 10H9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  redo: '<svg viewBox="0 0 20 20" width="18" height="18"><path d="M14 9l4-3.5L14 2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M18 5.5H8a5 5 0 000 10h3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
   bold: '<svg viewBox="0 0 18 18" width="14" height="14"><path d="M5 3h5a3 3 0 010 6H5zm0 6h6a3 3 0 010 6H5z" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
   underline: '<svg viewBox="0 0 18 18" width="14" height="14"><path d="M5 2v7a4 4 0 008 0V2" fill="none" stroke="currentColor" stroke-width="2"/><line x1="4" y1="16" x2="14" y2="16" stroke="currentColor" stroke-width="1.5"/></svg>',
   strike: '<svg viewBox="0 0 18 18" width="14" height="14"><line x1="3" y1="9" x2="15" y2="9" stroke="currentColor" stroke-width="1.5"/><path d="M6 3h6a2 2 0 010 4H6m0 4h7a2 2 0 000-4" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>',
