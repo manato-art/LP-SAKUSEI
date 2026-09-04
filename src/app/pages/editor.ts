@@ -501,27 +501,6 @@ function injectSideToolbarStyles(): void {
   document.head.append(style)
 }
 
-/** 右レールアイコン下のテキストラベルCSS。absolute配置でアイコンのレイアウトを壊さない。 */
-function injectSideToolbarLabelCss(): void {
-  if (document.getElementById('sb-side-label-css') !== null) return
-  const s = document.createElement('style')
-  s.id = 'sb-side-label-css'
-  s.textContent = `
-    .sb-side-label {
-      position: absolute;
-      bottom: 2px;
-      left: 50%;
-      transform: translateX(-50%);
-      font-size: 8px;
-      color: #888;
-      line-height: 1;
-      white-space: nowrap;
-      pointer-events: none;
-      z-index: 2;
-    }
-  `
-  document.head.append(s)
-}
 
 /**
  * 右レールアイコン群の下、ミニマップの上に「比較モード」ボタンを配置する（指示77）。
@@ -1119,25 +1098,14 @@ function wireSideToolbar(ctx: EditorContext): void {
   // 指示70: スクロール領域が変わったため、右レールの position:fixed は不要になった。
   // 採取CSSのままで問題なく表示される。
 
-  // 指示77: ラベル用CSS（absolute配置でレイアウトに影響しない）
-  injectSideToolbarLabelCss()
-
   const icons = [...ctx.root.querySelectorAll<HTMLElement>('[class*="sideToolbarIcon"]')]
   for (let index = 0; index < icons.length; index += 1) {
     const icon = icons[index]
     if (icon === undefined) continue
     icon.style.cursor = 'pointer'
 
-    // 指示77: 各アイコンにツールチップ＋テキストラベルを追加
-    const toolName = SIDE_TOOLS[index] ?? ''
-    icon.title = toolName
-    if (toolName !== '') {
-      icon.style.position = 'relative'
-      const label = document.createElement('span')
-      label.className = 'sb-side-label'
-      label.textContent = toolName
-      icon.append(label)
-    }
+    // 指示77: ホバーでツールチップ表示（50px幅にテキストラベルは入らない）
+    icon.title = SIDE_TOOLS[index] ?? ''
 
     if (index === PREVIEW_TOOL_INDEX) {
       // プレビューは右レールの1番目。aria-label で引くと別の要素に当たっていて、
