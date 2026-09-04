@@ -164,21 +164,26 @@ export function setupBreadcrumb(
   const crumb = document.createElement('div')
   crumb.className = 'sb-breadcrumb'
 
-  // 戻るボタン
+  // 戻るボタン（フォルダ一覧へ）
+  const backHref = '#/folders'
   const back = document.createElement('a')
   back.style.cssText = 'cursor:pointer;color:#888;font-size:16px;text-decoration:none;line-height:1;margin-right:4px'
   back.textContent = '←'
-  back.href = folderUid !== undefined ? `#/folders/${folderUid}/ab_tests` : '#/folders'
+  back.href = backHref
   crumb.append(back)
 
-  // フォルダアイコン + フォルダ名
+  // フォルダアイコン + フォルダ名（クリックでフォルダ一覧へ戻る）
+  const folderLink = document.createElement('a')
+  folderLink.href = backHref
+  folderLink.style.cssText = 'display:inline-flex;align-items:center;gap:4px;text-decoration:none;color:inherit;cursor:pointer'
   const folderIconSpan = document.createElement('span')
   folderIconSpan.innerHTML = FOLDER_SVG
-  crumb.append(folderIconSpan)
+  folderLink.append(folderIconSpan)
   const folderLabel = document.createElement('span')
   folderLabel.className = 'sb-breadcrumb-name'
   folderLabel.textContent = folderName || '板名'
-  crumb.append(folderLabel)
+  folderLink.append(folderLabel)
+  crumb.append(folderLink)
 
   // セパレータ
   const sep = document.createElement('span')
