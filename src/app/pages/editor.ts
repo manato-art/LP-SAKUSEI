@@ -34,7 +34,7 @@ import { wireMediaDrop } from '../panels/media-insert.ts'
 import { wireImageResize } from '../panels/image-resize.ts'
 import { mountMinimap } from '../panels/minimap.ts'
 import { toggleComparePanel, isComparePanelOpen, refreshComparePreview } from '../panels/compare-mode.ts'
-import { wireAbTestTabs } from './tab-nav.ts'
+import { wireAbTestTabs, setupHorizTabs } from './tab-nav.ts'
 import { wireBeyondNavAnchors } from './beyond-nav.ts'
 import { masterStyleEditorDecls } from '../master-style.ts'
 
@@ -212,6 +212,10 @@ export async function renderEditor(
     navWrapper.style.paddingTop = '8px'
     navWrapper.style.height = 'auto'
     navWrapper.style.background = '#fff'
+    navWrapper.style.position = 'sticky'
+    navWrapper.style.top = '0'
+    navWrapper.style.zIndex = '50'
+    navWrapper.style.borderBottom = '1px solid #e5e5ea'
     // navArticleWrapper の親コンテナ（MuiBox）に白背景 + flex-column で
     // editorWrapper が残り高さを自動で埋めるようにする
     const contentBox = navWrapper.parentElement
@@ -221,49 +225,8 @@ export async function renderEditor(
       contentBox.style.flexDirection = 'column'
     }
 
-    // ── 指示78: 非表示の水平ナビ（基本情報/Version/ポップアップ/レポート）を上部帯に表示 ──
-    const shellWrapper = contentBox?.parentElement
-    if (shellWrapper !== null) {
-      const shellNavs = shellWrapper.querySelectorAll<HTMLElement>(':scope > nav')
-      for (const nav of shellNavs) {
-        if (getComputedStyle(nav).display === 'none') {
-          // 非表示の水平ナビを navWrapper 先頭に移動して表示
-          navWrapper.prepend(nav)
-          // CSSルールで !important を使ってオリジナルスタイルを上書き
-          const tabCss = document.createElement('style')
-          tabCss.id = 'sb-horiz-tabs-css'
-          tabCss.textContent = `
-            .sb-horiz-tabs { display:flex!important; width:100%!important; padding:0!important; margin:0 0 4px!important; border-bottom:1px solid #e5e5ea!important; overflow:visible!important; height:auto!important; min-height:0!important; }
-            .sb-horiz-tabs ul { display:flex!important; flex-direction:row!important; list-style:none!important; margin:0!important; padding:0!important; gap:0!important; height:auto!important; }
-            .sb-horiz-tabs li { display:block!important; margin:0!important; padding:0!important; height:auto!important; }
-            .sb-horiz-tabs a { display:flex!important; align-items:center!important; gap:4px!important; padding:4px 12px!important; font-size:12px!important; color:#666!important; text-decoration:none!important; white-space:nowrap!important; border-bottom:2px solid transparent!important; transition:color 0.15s,border-color 0.15s!important; height:auto!important; }
-            .sb-horiz-tabs a:hover { color:#333!important; }
-            .sb-horiz-tabs a.sb-tab-active { color:#1a7af8!important; border-bottom-color:#1a7af8!important; font-weight:600!important; }
-            .sb-horiz-tabs a svg { width:14px; height:14px; }
-          `
-          document.head.append(tabCss)
-          nav.className = 'sb-horiz-tabs'
-          const links = nav.querySelectorAll<HTMLElement>('a')
-          for (const link of links) {
-            // アイコンの hidden クラスを解除して表示
-            const iconSpan = link.querySelector<HTMLElement>('span.hidden')
-            if (iconSpan !== null) iconSpan.style.display = 'flex'
-            // テキスト内の改行を除去（「ポップ\nアップ」→「ポップアップ」）
-            for (const child of link.childNodes) {
-              if (child.nodeType === Node.ELEMENT_NODE) {
-                const el = child as HTMLElement
-                el.style.whiteSpace = 'nowrap'
-                if (el.textContent !== null) el.textContent = el.textContent.replace(/\n/g, '')
-              }
-            }
-            // Version タブをアクティブに
-            const text = link.textContent?.trim().replace(/\n/g, '') ?? ''
-            if (text === 'Version') link.classList.add('sb-tab-active')
-          }
-          break
-        }
-      }
-    }
+    // ── 指示78+: 縦ナビを非表示にし、水平タブを上部帯に表示（共通関数） ──
+    setupHorizTabs(root, 'version')
 
     // ── 指示78: LP情報を左寄せ ──
     const currentAbTest = navWrapper.querySelector<HTMLElement>('[class*="_currentAbTest_"]')

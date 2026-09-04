@@ -14,7 +14,7 @@ import { isStale } from '../main.ts'
 import { toast } from '../ui.ts'
 import { openParamUrlModal } from '../panels/param-url-modal.ts'
 import { basicInfoApi, type MediaOption } from './basic-info-api.ts'
-import { wireAbTestTabs } from './tab-nav.ts'
+import { wireAbTestTabs, setupHorizTabs } from './tab-nav.ts'
 import { recordHistory } from './folders.ts'
 import {
   AD_STATUS_LABELS,
@@ -107,6 +107,7 @@ export async function renderBasicInfo(
   const ctx: PageContext = { root, form, abTest: ab_test, abTestUid: target.abTestUid }
 
   wireAbTestTabs(root, target.abTestUid, ab_test.folder?.uid ?? target.folderUid)
+  setupHorizTabs(root, 'info')
   wireTopBar(ctx)
   applyAbTest(ctx, medias)
   wireSelects(ctx, medias)

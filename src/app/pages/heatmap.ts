@@ -20,7 +20,7 @@ import {
 } from './report-dom.ts'
 import { defaultRange, toRangeQuery, type DateRange } from './report-period.ts'
 import { sortVersions, type HeatmapSortKey } from './heatmap-sort.ts'
-import { wireAbTestTabs } from './tab-nav.ts'
+import { wireAbTestTabs, setupHorizTabs } from './tab-nav.ts'
 
 export async function renderHeatmap(
   container: HTMLElement,
@@ -44,6 +44,7 @@ export async function renderHeatmap(
   const root = mountCapturedPage(container, substrate)
   wireCapturedLinks(root, substrate, abTestUid)
   wireAbTestTabs(root, abTestUid, folder?.uid ?? '')
+  setupHorizTabs(root, 'report')  // ヒートマップはレポート配下
   wireBackLink(root, folder?.uid ?? null)
   setTopBarNames(root, ab_test.title, folder?.name ?? '')
   wireThemeToggle(root)

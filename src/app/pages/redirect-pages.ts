@@ -17,7 +17,7 @@ import { toast } from '../ui.ts'
 import { applyBeyondTopBar, wireBeyondBack } from './beyond-topbar.ts'
 import { wireBeyondNavAnchors } from './beyond-nav.ts'
 import { stripShellFromFragment } from './report-substrate.ts'
-import { wireAbTestTabs } from './tab-nav.ts'
+import { wireAbTestTabs, setupHorizTabs } from './tab-nav.ts'
 
 const HOOK = {
   left: '[class*="_left_1tjuv"]',
@@ -59,6 +59,7 @@ export async function renderRedirectPages(
   })
   wireBeyondNavAnchors(root, { abTestUid: ids.abTestUid, folderUid })
   wireAbTestTabs(root, ids.abTestUid, folderUid)
+  setupHorizTabs(root, 'version')  // 中間ページは Version 配下
   wireBeyondBack(root, folderUid)
 
   // 一覧項目の雛形を控える（採取物の1件目をクリーンにクローン）

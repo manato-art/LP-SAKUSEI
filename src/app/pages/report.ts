@@ -30,7 +30,7 @@ import {
   sectionByTitle,
 } from './report-tables.ts'
 import { defaultRange, resolvePreset, toRangeQuery, type DateRange } from './report-period.ts'
-import { wireAbTestTabs } from './tab-nav.ts'
+import { wireAbTestTabs, setupHorizTabs } from './tab-nav.ts'
 import { mountMetaSummary } from './report-meta.ts'
 
 /** クローン側の注記に使う印（重複挿入を防ぐ） */
@@ -84,6 +84,7 @@ export async function renderReport(
   wireCapturedLinks(root, substrate, abTestUid)
   // 左レールの4タブと「戻る」は、採取元のフォルダuidが焼き付いているので専用の配線で上書きする
   wireAbTestTabs(root, abTestUid, folder?.uid ?? '')
+  setupHorizTabs(root, 'report')
   wireBackLink(root, folder?.uid ?? null)
   setTopBarNames(root, ab_test.title, folderName)
   wireThemeToggle(root)
