@@ -70,6 +70,35 @@ function injectStyles(): void {
     .sb-ct-color-input { position:absolute; opacity:0; width:0; height:0; pointer-events:none; }
     .sb-ct-color-bar { position:absolute; bottom:3px; left:50%; transform:translateX(-50%);
       width:16px; height:3px; border-radius:1px; }
+    /* リンクポップオーバー */
+    .sb-ct-link-pop { position:absolute; top:100%; left:50%; transform:translateX(-50%);
+      z-index:300; background:#fff; border:1px solid #ddd; border-radius:8px;
+      box-shadow:0 4px 16px rgba(0,0,0,.12); padding:12px; width:320px;
+      display:flex; flex-direction:column; gap:8px; margin-top:4px; }
+    .sb-ct-link-pop::before { content:''; position:absolute; top:-6px; left:50%;
+      transform:translateX(-50%) rotate(45deg); width:10px; height:10px;
+      background:#fff; border-top:1px solid #ddd; border-left:1px solid #ddd; }
+    .sb-ct-link-label { font:600 12px/1.4 -apple-system,sans-serif; color:#333; }
+    .sb-ct-link-input { width:100%; height:34px; border:1px solid #ddd; border-radius:6px;
+      padding:0 10px; font-size:13px; outline:none; box-sizing:border-box; }
+    .sb-ct-link-input:focus { border-color:#0091ff; box-shadow:0 0 0 2px rgba(0,145,255,.15); }
+    .sb-ct-link-row { display:flex; align-items:center; gap:8px; }
+    .sb-ct-link-row label { font:400 12px/1.4 -apple-system,sans-serif; color:#555;
+      display:flex; align-items:center; gap:4px; cursor:pointer; }
+    .sb-ct-link-btns { display:flex; gap:8px; justify-content:flex-end; margin-top:4px; }
+    .sb-ct-link-cancel { height:32px; padding:0 16px; border:1px solid #ddd; border-radius:6px;
+      background:#fff; font-size:13px; color:#333; cursor:pointer; }
+    .sb-ct-link-cancel:hover { background:#f5f5f5; }
+    .sb-ct-link-submit { height:32px; padding:0 16px; border:none; border-radius:6px;
+      background:#0091ff; font-size:13px; color:#fff; cursor:pointer; font-weight:600; }
+    .sb-ct-link-submit:hover { background:#007ae6; }
+    .sb-ct-link-submit:disabled { background:#ccc; cursor:default; }
+    .sb-ct-link-remove { height:32px; padding:0 12px; border:1px solid #e53935; border-radius:6px;
+      background:#fff; font-size:12px; color:#e53935; cursor:pointer; }
+    .sb-ct-link-remove:hover { background:#ffebee; }
+    .sb-ct-link-target { display:flex; gap:12px; margin-top:2px; }
+    .sb-ct-link-target label { font:400 12px/1.4 -apple-system,sans-serif; color:#555;
+      display:flex; align-items:center; gap:4px; cursor:pointer; }
   `
   document.head.append(s)
 }
@@ -248,21 +277,129 @@ export function mountContentToolbar(quill: Quill): HTMLElement {
   })
   bar.append(brBtn)
 
-  // ── 11. Link ──
+  // ── 11. Link（インラインポップオーバー） ──
+  const linkWrap = document.createElement('div')
+  linkWrap.style.cssText = 'position:relative;display:inline-flex'
   const linkBtn = makeBtn(SVG.link, 'link', 'リンク')
+
+  /** 既存のポップオーバーを閉じる */
+  const closeLinkPop = (): void => {
+    linkWrap.querySelector('.sb-ct-link-pop')?.remove()
+  }
+
+  /** ポップオーバーを開く */
+  const openLinkPop = (savedRange: { index: number; length: number }, existingUrl: string): void => {
+    closeLinkPop()
+    const pop = document.createElement('div')
+    pop.className = 'sb-ct-link-pop'
+    pop.addEventListener('mousedown', (e) => e.stopPropagation()) // Quill の選択解除を防ぐ
+
+    // URL 入力
+    const label = document.createElement('div')
+    label.className = 'sb-ct-link-label'
+    label.textContent = 'リンクURL'
+    const input = document.createElement('input')
+    input.className = 'sb-ct-link-input'
+    input.type = 'url'
+    input.placeholder = 'https://...'
+    input.value = existingUrl || 'https://'
+
+    // ページ遷移設定
+    const targetDiv = document.createElement('div')
+    targetDiv.className = 'sb-ct-link-target'
+    const mkRadio = (val: string, text: string, checked: boolean): HTMLLabelElement => {
+      const lb = document.createElement('label')
+      const rb = document.createElement('input')
+      rb.type = 'radio'
+      rb.name = 'sb-link-target'
+      rb.value = val
+      rb.checked = checked
+      lb.append(rb, ` ${text}`)
+      return lb
+    }
+    targetDiv.append(
+      mkRadio('_self', '現在のウィンドウ（推奨）', true),
+      mkRadio('_blank', '新しいタブ', false),
+    )
+
+    // ボタン行
+    const btns = document.createElement('div')
+    btns.className = 'sb-ct-link-btns'
+    const cancelB = document.createElement('button')
+    cancelB.className = 'sb-ct-link-cancel'
+    cancelB.textContent = 'キャンセル'
+    cancelB.addEventListener('click', closeLinkPop)
+    const submitB = document.createElement('button')
+    submitB.className = 'sb-ct-link-submit'
+    submitB.textContent = existingUrl ? '更新' : 'リンクを追加'
+    submitB.addEventListener('click', () => {
+      const urlVal = input.value.trim()
+      if (urlVal === '' || urlVal === 'https://') return
+      quill.formatText(savedRange.index, savedRange.length, 'link', urlVal, 'user')
+      // target 設定
+      const target = (targetDiv.querySelector<HTMLInputElement>('input[name="sb-link-target"]:checked'))?.value
+      if (target === '_blank') {
+        for (const line of quill.getLines(savedRange.index, savedRange.length)) {
+          const node = line.domNode as HTMLElement
+          for (const a of node.querySelectorAll<HTMLAnchorElement>(`a[href="${urlVal}"]`)) {
+            a.setAttribute('target', '_blank')
+          }
+        }
+      }
+      closeLinkPop()
+      refresh()
+    })
+    btns.append(cancelB, submitB)
+
+    // リンク削除（既存リンクがある場合のみ）
+    if (existingUrl) {
+      const removeB = document.createElement('button')
+      removeB.className = 'sb-ct-link-remove'
+      removeB.textContent = 'リンクを削除'
+      removeB.addEventListener('click', () => {
+        quill.formatText(savedRange.index, savedRange.length, 'link', false, 'user')
+        closeLinkPop()
+        refresh()
+      })
+      btns.prepend(removeB)
+    }
+
+    pop.append(label, input, targetDiv, btns)
+    linkWrap.append(pop)
+
+    // 開いたら即フォーカス + 全選択
+    requestAnimationFrame(() => {
+      input.focus()
+      input.select()
+    })
+
+    // Enter で確定
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); submitB.click() }
+      if (e.key === 'Escape') { e.preventDefault(); closeLinkPop() }
+    })
+  }
+
   linkBtn.addEventListener('click', () => {
+    // ポップオーバーが既に開いていたら閉じる
+    if (linkWrap.querySelector('.sb-ct-link-pop') !== null) { closeLinkPop(); return }
     const r = getRange()
     if (r === null || r.length === 0) return
     const fmt = quill.getFormat(r.index, r.length)
-    if (typeof fmt['link'] === 'string' && fmt['link'] !== '') {
-      quill.formatText(r.index, r.length, 'link', false, 'user')
-      return
-    }
-    const url = prompt('リンクURL', 'https://')
-    if (url === null || url.trim() === '' || url.trim() === 'https://') return
-    quill.formatText(r.index, r.length, 'link', url.trim(), 'user')
+    const existing = typeof fmt['link'] === 'string' ? fmt['link'] : ''
+    openLinkPop({ index: r.index, length: r.length }, existing)
   })
-  bar.append(linkBtn)
+
+  // 外部クリックで閉じる
+  document.addEventListener('mousedown', (e) => {
+    const pop = linkWrap.querySelector('.sb-ct-link-pop')
+    if (pop !== null && !pop.contains(e.target as Node) && !linkBtn.contains(e.target as Node)) {
+      closeLinkPop()
+    }
+  })
+
+  linkWrap.append(linkBtn)
+  bar.append(linkWrap)
 
   // ── 12. Clear format ──
   const clearBtn = makeBtn(SVG.clearFmt, 'clear', '書式をクリア')

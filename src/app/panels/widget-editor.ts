@@ -156,7 +156,7 @@ function openWidgetEditor(quill: Quill, target: WidgetEditTarget): void {
     `flex:1;display:flex;background:${COLOR.container};overflow:hidden;min-height:0`
 
   // 左: ビジュアルエディタ
-  const leftPane = buildVisualEditor(target)
+  const { pane: leftPane, contentDiv } = buildVisualEditor(target)
 
   // 仕切り（本番実測: ~10px幅, cursor:col-resize, 中身は空＝ドットなし）
   const divider = document.createElement('div')
@@ -168,6 +168,17 @@ function openWidgetEditor(quill: Quill, target: WidgetEditTarget): void {
   const rightPane = buildCodePanels(target)
 
   darkContainer.append(leftPane, divider, rightPane)
+
+  // ビジュアルエディタ → コードパネルの同期（入力イベントで反映）
+  const htmlArea = panel.querySelector<HTMLTextAreaElement>('[data-code-html]')
+  const syncFn = (): void => {
+    if (htmlArea !== null && contentDiv !== null) {
+      htmlArea.value = contentDiv.innerHTML
+    }
+  }
+  // buildVisualEditor 内で定義した syncContentToCode を後から差し替え
+  // （クロージャ経由でアクセスするため、遅延バインドが必要）
+  contentDiv.addEventListener('input', syncFn)
 
   /* ── 組み立て ── */
   panel.append(header, titleBar, darkContainer)
@@ -277,7 +288,7 @@ function buildTitleBar(target: WidgetEditTarget): HTMLElement {
  *  左ペイン: ビジュアルエディタ
  * ================================================================ */
 
-function buildVisualEditor(target: WidgetEditTarget): HTMLElement {
+function buildVisualEditor(target: WidgetEditTarget): { pane: HTMLElement; contentDiv: HTMLElement } {
   const pane = document.createElement('div')
   pane.style.cssText = `flex:1;display:flex;flex-direction:column;min-width:0`
 
@@ -287,8 +298,16 @@ function buildVisualEditor(target: WidgetEditTarget): HTMLElement {
     `background:#fff;border-bottom:1px solid #ddd;flex-shrink:0;height:64px;box-sizing:border-box;` +
     `display:flex;flex-wrap:wrap;gap:2px;padding:6px 10px;align-items:center`
 
+  /** contentDiv への参照（ツールバーからの書式操作に使用） */
+  let contentRef: HTMLElement | null = null
+
   /** ツールバーアイコンボタンを生成 */
-  const mkBtn = (innerHtml: string, title: string, wide?: boolean): HTMLButtonElement => {
+  const mkBtn = (
+    innerHtml: string,
+    title: string,
+    action?: () => void,
+    wide?: boolean,
+  ): HTMLButtonElement => {
     const btn = document.createElement('button')
     btn.type = 'button'
     btn.innerHTML = innerHtml
@@ -299,9 +318,15 @@ function buildVisualEditor(target: WidgetEditTarget): HTMLElement {
       `min-width:${wide === true ? '80' : '28'}px;height:28px;border-radius:2px`
     btn.addEventListener('mouseenter', () => { btn.style.background = '#f0f0f0' })
     btn.addEventListener('mouseleave', () => { btn.style.background = 'none' })
-    btn.addEventListener('click', (e) => { e.preventDefault() })
+    btn.addEventListener('mousedown', (e) => { e.preventDefault() }) // 選択を維持
+    if (action !== undefined) {
+      btn.addEventListener('click', () => { action(); syncContentToCode() })
+    }
     return btn
   }
+
+  /** ビジュアルエディタの変更をコードパネルに反映する（後で配線） */
+  let syncContentToCode: () => void = () => {}
 
   /** ツールバーセパレータ（本番実測: 1px × 16px） */
   const mkSep = (): HTMLElement => {
@@ -320,31 +345,86 @@ function buildVisualEditor(target: WidgetEditTarget): HTMLElement {
     return el
   }
 
-  // ツールバーアイテム配置（本番の順序を再現）
+  /** execCommand ラッパー */
+  const exec = (cmd: string, val?: string): void => {
+    contentRef?.focus()
+    document.execCommand(cmd, false, val)
+  }
+
+  // 整列サイクル
+  const ALIGNS = ['left', 'center', 'right', 'justifyFull'] as const
+  let alignIdx = 0
+
+  // サイズ表示
+  const sizeNum = mkSizeNum('19')
+
+  // ツールバーアイテム配置（本番の順序を再現 + 実動作接続）
   toolbar.append(
-    mkBtn(svgToolUndo(), '元に戻す'),
-    mkBtn(svgToolRedo(), 'やり直す'),
+    mkBtn(svgToolUndo(), '元に戻す', () => exec('undo')),
+    mkBtn(svgToolRedo(), 'やり直す', () => exec('redo')),
     mkSep(),
-    mkBtn(`<span style="font:12px/1 ${FONT};white-space:nowrap">sans-serif</span>${svgDropdownArrow()}`, 'フォント', true),
+    mkBtn(`<span style="font:12px/1 ${FONT};white-space:nowrap">sans-serif</span>${svgDropdownArrow()}`, 'フォント', () => {
+      const name = prompt('フォント名', 'sans-serif')
+      if (name !== null && name.trim() !== '') exec('fontName', name.trim())
+    }, true),
     mkSep(),
-    mkBtn(svgToolSizeMinus(), 'サイズ−'),
-    mkSizeNum('19'),
-    mkBtn(svgToolSizePlus(), 'サイズ+'),
+    mkBtn(svgToolSizeMinus(), 'サイズ−', () => {
+      const cur = parseInt(sizeNum.textContent ?? '19', 10)
+      const next = Math.max(8, cur - 1)
+      exec('fontSize', '3')
+      // fontSize command uses 1-7 scale; use inline style for exact px
+      const sel = window.getSelection()
+      if (sel !== null && sel.rangeCount > 0) {
+        const range = sel.getRangeAt(0)
+        const span = range.commonAncestorContainer.parentElement
+        if (span !== null) span.style.fontSize = `${next}px`
+      }
+      sizeNum.textContent = String(next)
+    }),
+    sizeNum,
+    mkBtn(svgToolSizePlus(), 'サイズ+', () => {
+      const cur = parseInt(sizeNum.textContent ?? '19', 10)
+      const next = Math.min(72, cur + 1)
+      exec('fontSize', '5')
+      const sel = window.getSelection()
+      if (sel !== null && sel.rangeCount > 0) {
+        const range = sel.getRangeAt(0)
+        const span = range.commonAncestorContainer.parentElement
+        if (span !== null) span.style.fontSize = `${next}px`
+      }
+      sizeNum.textContent = String(next)
+    }),
     mkSep(),
-    mkBtn(svgToolBold(), '太字'),
-    mkBtn(svgToolUnderline(), '下線'),
-    mkBtn(svgToolStrikethrough(), '取り消し線'),
-    mkBtn(svgToolAlign(), '配置'),
-    mkBtn(svgToolItalic(), '斜体'),
-    mkBtn(svgToolTextColor(), '文字色'),
-    mkBtn(svgToolBgColor(), '背景色'),
-    mkBtn(svgToolImage(), '画像'),
-    mkBtn(svgToolMarker(), 'マーカー'),
-    mkBtn(svgToolLink(), 'リンク'),
-    mkBtn(svgToolClearFormat(), '書式クリア'),
+    mkBtn(svgToolBold(), '太字', () => exec('bold')),
+    mkBtn(svgToolUnderline(), '下線', () => exec('underline')),
+    mkBtn(svgToolStrikethrough(), '取り消し線', () => exec('strikeThrough')),
+    mkBtn(svgToolAlign(), '配置', () => {
+      alignIdx = (alignIdx + 1) % ALIGNS.length
+      const a = ALIGNS[alignIdx] ?? 'left'
+      exec(`justify${a.charAt(0).toUpperCase()}${a.slice(1)}`)
+    }),
+    mkBtn(svgToolItalic(), '斜体', () => exec('italic')),
+    mkBtn(svgToolTextColor(), '文字色', () => {
+      const c = prompt('文字色 (例: #ff0000)', '#000000')
+      if (c !== null && c.trim() !== '') exec('foreColor', c.trim())
+    }),
+    mkBtn(svgToolBgColor(), '背景色', () => {
+      const c = prompt('背景色 (例: #ffff00)', '#ffffff')
+      if (c !== null && c.trim() !== '') exec('hiliteColor', c.trim())
+    }),
+    mkBtn(svgToolImage(), '画像', () => {
+      const url = prompt('画像URL', 'https://')
+      if (url !== null && url.trim() !== '' && url.trim() !== 'https://') exec('insertImage', url.trim())
+    }),
+    mkBtn(svgToolMarker(), 'マーカー', () => exec('hiliteColor', '#fff176')),
+    mkBtn(svgToolLink(), 'リンク', () => {
+      const url = prompt('リンクURL', 'https://')
+      if (url !== null && url.trim() !== '' && url.trim() !== 'https://') exec('createLink', url.trim())
+    }),
+    mkBtn(svgToolClearFormat(), '書式クリア', () => exec('removeFormat')),
   )
 
-  // エディタ本文（本番実測: padding:20px）
+  // エディタ本文（本番実測: padding:20px, contenteditable で書式操作を可能に）
   const editorBody = document.createElement('div')
   editorBody.style.cssText =
     `flex:1;background:#fff;overflow-y:auto;padding:20px;min-height:0`
@@ -355,11 +435,16 @@ function buildVisualEditor(target: WidgetEditTarget): HTMLElement {
     editorBody.append(styleTag)
   }
   const contentDiv = document.createElement('div')
+  contentDiv.setAttribute('contenteditable', 'true')
+  contentDiv.style.cssText = 'outline:none;min-height:100px'
   contentDiv.innerHTML = target.html
   editorBody.append(contentDiv)
 
+  // ツールバーから参照できるようにする
+  contentRef = contentDiv
+
   pane.append(toolbar, editorBody)
-  return pane
+  return { pane, contentDiv }
 }
 
 /* ================================================================
