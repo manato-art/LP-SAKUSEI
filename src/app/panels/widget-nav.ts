@@ -16,11 +16,11 @@ import { guessWidgetName, openWidgetEditorForNode } from './widget-editor.ts'
 
 /* ── 定数 ── */
 
-const SIDEBAR_W = 200
-const CARD_W = 180
-const CARD_PAD_H = 10
+const SIDEBAR_W = 220
+const CARD_W = 196
+const CARD_PAD_H = 12
 const CARD_PAD_V = 4
-const PREVIEW_H = 56
+const PREVIEW_H = 64
 const NAME_COLOR = '#0091ff'
 const NAME_FONT_SIZE = '10px'
 const BORDER_COLOR = '#eaeaea'
@@ -56,15 +56,22 @@ export function mountWidgetNav(root: HTMLElement, quill: Quill): void {
   sidebar.style.cssText =
     `width:${SIDEBAR_W}px;flex-shrink:0;overflow-y:auto;overflow-x:hidden;` +
     `display:none;flex-direction:column;gap:8px;padding:8px 0;` +
-    `border-right:1px solid #eee;background:#fff;box-sizing:border-box`
+    `border-right:1px solid #eee;background:#fff;box-sizing:border-box;` +
+    `height:calc(100vh - 92px);align-self:stretch`
 
   // editorWrapper の子として、contentWrapper の直前に挿入
   editorWrapper.insertBefore(sidebar, contentWrapper)
 
   // 初回スキャン＋MutationObserver で Widget の増減を検知
+  // デバウンスして過剰な再描画を防止（カードクリック直後の DOM 変化で再構築されるのを回避）
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null
   const refresh = (): void => refreshCards(sidebar, editor, quill)
+  const debouncedRefresh = (): void => {
+    if (debounceTimer !== null) clearTimeout(debounceTimer)
+    debounceTimer = setTimeout(refresh, 200)
+  }
   refresh()
-  const observer = new MutationObserver(refresh)
+  const observer = new MutationObserver(debouncedRefresh)
   observer.observe(editor, { childList: true, subtree: true })
 }
 
@@ -99,7 +106,7 @@ function createWidgetCard(widgetNode: HTMLElement, quill: Quill): HTMLElement {
   card.style.cssText =
     `display:flex;flex-direction:column;gap:4px;` +
     `padding:${CARD_PAD_V}px ${CARD_PAD_H}px;cursor:pointer;border-radius:4px;` +
-    `transition:background .15s`
+    `transition:background .15s;max-width:100%;box-sizing:border-box`
   card.addEventListener('mouseenter', () => { card.style.background = '#f5f5f5' })
   card.addEventListener('mouseleave', () => { card.style.background = 'transparent' })
 
@@ -117,16 +124,16 @@ function createWidgetCard(widgetNode: HTMLElement, quill: Quill): HTMLElement {
   nameEl.title = widgetName
   nameEl.style.cssText =
     `color:${NAME_COLOR};font:${NAME_FONT_SIZE}/1.4 ${FONT};` +
-    `overflow:hidden;text-overflow:ellipsis;white-space:nowrap`
+    `overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0`
 
   nameRow.append(icon, nameEl)
 
   // 縮小プレビュー
   const previewWrap = document.createElement('div')
   previewWrap.style.cssText =
-    `width:${CARD_W}px;height:${PREVIEW_H}px;background:#fff;` +
+    `width:${CARD_W}px;max-width:100%;height:${PREVIEW_H}px;background:#fff;` +
     `border:1px solid ${BORDER_COLOR};border-radius:4px;overflow:hidden;` +
-    `position:relative`
+    `position:relative;box-sizing:border-box`
 
   const previewContent = document.createElement('div')
   // Widget の中身を縮小表示（transform: scale で縮小）
