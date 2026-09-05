@@ -175,7 +175,7 @@ deliveryRouter.get('/lp/:uid', (req, res) => {
   const robotsMeta = htmlSetting.noindex ? '<meta name="robots" content="noindex,nofollow">' : ''
 
   // 離脱防止ポップアップ（指示80）: 有効なポップアップのHTML/JS/CSSをLP末尾に挿入
-  const exitPopups = state.exitPopups.filter(
+  const exitPopups = (state.exitPopups ?? []).filter(
     (p) => p.ab_test_id === abTest.id && p.enabled,
   )
   const popupHtml = exitPopups.length === 0
@@ -183,7 +183,7 @@ deliveryRouter.get('/lp/:uid', (req, res) => {
     : exitPopups.map((p) => buildPopupSnippet(p, device)).join('')
 
   // 追尾型ポップアップ（指示85）: 有効な追従バナーをLP末尾に挿入
-  const followPopups = state.followPopups.filter(
+  const followPopups = (state.followPopups ?? []).filter(
     (p) => p.ab_test_id === abTest.id && p.enabled,
   )
   const followHtml = followPopups.length === 0

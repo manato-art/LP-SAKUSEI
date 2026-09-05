@@ -35,7 +35,7 @@ export const HTML_TAG_DOCUMENT_PROPERTIES: readonly HtmlTagDocumentProperty[] = 
 export const DEFAULT_NOINDEX = true
 
 function slice(state: State): readonly ArticleHtmlSetting[] {
-  return state.htmlTags
+  return state.htmlTags ?? []
 }
 
 export function emptyHtmlSetting(articleUid: string): ArticleHtmlSetting {
