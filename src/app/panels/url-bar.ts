@@ -90,21 +90,38 @@ export function updateUrlBar(
   config: Partial<UrlBarConfig>,
 ): void {
   if (config.testUrl !== undefined) {
-    const field = bar.querySelector<HTMLElement>('[data-url-type="test"] .sb-url-field')
-    if (field !== null) field.textContent = config.testUrl
+    const group = bar.querySelector<HTMLElement>('[data-url-type="test"]')
+    if (group !== null) {
+      const field = group.querySelector<HTMLElement>('.sb-url-field')
+      if (field !== null) {
+        field.textContent = config.testUrl
+        field.title = config.testUrl
+      }
+      // コピーボタンのURLも更新（stale closure 防止）
+      group.dataset['currentUrl'] = config.testUrl
+    }
   }
   if (config.prodUrl !== undefined) {
-    const field = bar.querySelector<HTMLElement>('[data-url-type="prod"] .sb-url-field')
-    if (field !== null) field.textContent = config.prodUrl
+    const group = bar.querySelector<HTMLElement>('[data-url-type="prod"]')
+    if (group !== null) {
+      const field = group.querySelector<HTMLElement>('.sb-url-field')
+      if (field !== null) {
+        field.textContent = config.prodUrl
+        field.title = config.prodUrl
+      }
+      group.dataset['currentUrl'] = config.prodUrl
+    }
   }
 }
 
 /* ── internal ── */
 
 function createUrlGroup(label: string, type: 'test' | 'prod', url: string): HTMLElement {
-  const group = document.createElement('div')
-  group.className = 'sb-url-group'
-  group.setAttribute('data-url-type', type)
+  const grp = document.createElement('div')
+  grp.className = 'sb-url-group'
+  grp.setAttribute('data-url-type', type)
+  // 現在のURLをデータ属性に保持（updateUrlBar で更新される）
+  grp.dataset['currentUrl'] = url
 
   const labelEl = document.createElement('span')
   labelEl.className = `sb-url-label sb-url-label-${type}`
@@ -121,14 +138,16 @@ function createUrlGroup(label: string, type: 'test' | 'prod', url: string): HTML
   btn.title = 'コピー'
   btn.innerHTML = COPY_ICON
   btn.addEventListener('click', () => {
-    void navigator.clipboard.writeText(url).then(
+    // stale closure 防止: data-current-url から最新URLを読み取る
+    const currentUrl = grp.dataset['currentUrl'] ?? url
+    void navigator.clipboard.writeText(currentUrl).then(
       () => toast(`${label}URLをコピーしました`),
       () => toast('コピーに失敗しました', 'error'),
     )
   })
 
-  group.append(labelEl, field, btn)
-  return group
+  grp.append(labelEl, field, btn)
+  return grp
 }
 
 function createSep(): HTMLElement {

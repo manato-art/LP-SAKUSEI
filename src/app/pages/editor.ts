@@ -1506,7 +1506,12 @@ function findUpdateButton(card: HTMLElement): HTMLElement | null {
 
 /** 「Version追加」ボタンを1回だけ配線する（カード再描画で消えない要素なので使い回す） */
 function wireAddVersion(ctx: EditorContext): void {
-  ctx.root.querySelector(HOOK.addVersion)?.addEventListener('click', async () => {
+  const addBtn = ctx.root.querySelector<HTMLElement>(HOOK.addVersion)
+  if (addBtn === null) return
+  // 指示100: ボタンテキストを「バージョンを追加」に変更
+  const spanLabel = addBtn.querySelector('span')
+  if (spanLabel !== null) spanLabel.textContent = 'バージョンを追加'
+  addBtn.addEventListener('click', async () => {
     try {
       await saveHtml(ctx)
       const { version } = await api.addVersion(ctx.articleUid)
