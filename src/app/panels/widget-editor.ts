@@ -135,29 +135,14 @@ function openWidgetEditor(quill: Quill, target: WidgetEditTarget): void {
     closeWidgetPanel(existingEditor as HTMLElement)
   }
 
-  // エディタ内のキャンバス部分を探して差し替える（フルスクリーンではなくインラインパネル）
-  const qlEditor = quill.root
-  const contentWrapper = qlEditor.closest('.quillEditorContentWrapper') as HTMLElement | null
-  const editorWrapper = contentWrapper?.closest('[class*="_editorWrapper_"]') as HTMLElement | null
-
+  // 本番と同じモーダルカード: キャンバスの前面に浮かぶ固定オーバーレイ
   const panel = document.createElement('div')
   panel.dataset['widgetEditor'] = 'true'
   panel.style.cssText =
-    `flex:1;display:flex;flex-direction:column;background:#fff;min-width:0;` +
-    `overflow:hidden;font-family:${FONT};height:calc(100vh - 92px)`
-
-  // キャンバスを隠してパネルを差し込む
-  if (contentWrapper !== null && editorWrapper !== null) {
-    contentWrapper.style.display = 'none'
-    // Widget ナビの直後（= contentWrapper の位置）に挿入
-    editorWrapper.insertBefore(panel, contentWrapper)
-  } else {
-    // フォールバック: 従来通りフルスクリーン
-    panel.style.cssText =
-      `position:fixed;inset:0;z-index:9000;background:#fff;display:flex;flex-direction:column;` +
-      `font-family:${FONT}`
-    document.body.append(panel)
-  }
+    `position:fixed;top:92px;left:60px;right:0;bottom:0;z-index:200;` +
+    `display:flex;flex-direction:column;background:#fff;` +
+    `overflow:hidden;font-family:${FONT};box-shadow:-4px 0 24px rgba(0,0,0,.12)`
+  document.body.append(panel)
 
   /* ── ヘッダー ── */
   const header = buildHeader(panel, quill, target)
@@ -188,18 +173,8 @@ function openWidgetEditor(quill: Quill, target: WidgetEditTarget): void {
   panel.append(header, titleBar, darkContainer)
 }
 
-/** Widget 編集パネルを閉じてキャンバスを復帰する */
+/** Widget 編集パネルを閉じる */
 function closeWidgetPanel(panel: HTMLElement): void {
-  // 隠していた contentWrapper を復帰
-  const editorWrapper = panel.parentElement
-  if (editorWrapper !== null) {
-    const hidden = editorWrapper.querySelector<HTMLElement>(
-      '.quillEditorContentWrapper[style*="display: none"], .quillEditorContentWrapper[style*="display:none"]',
-    )
-    if (hidden !== null) {
-      hidden.style.display = 'flex'
-    }
-  }
   panel.remove()
 }
 
