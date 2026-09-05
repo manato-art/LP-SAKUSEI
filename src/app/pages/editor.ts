@@ -1621,11 +1621,16 @@ function wireSideToolbar(ctx: EditorContext): void {
     icon.style.cursor = 'pointer'
     icon.classList.add('rail-item')
 
-    // 指示92: 基板アイコン画像をモック準拠のSVGに差し替え
+    // 指示92: 基板アイコンをモック準拠のSVGに完全差し替え
+    // 基板の子要素（button, img, svg, dropdown trigger 等）を全て隠し、
+    // モック準拠SVGだけを表示する
     const mockupSvg = RAIL_ICON_SVGS[index]
     if (mockupSvg !== undefined) {
-      const img = icon.querySelector<HTMLElement>('img')
-      if (img !== null) img.style.display = 'none'
+      for (const child of icon.children) {
+        if (child instanceof HTMLElement && !child.hasAttribute('data-rail-svg') && !child.classList.contains('sb-side-label')) {
+          child.style.display = 'none'
+        }
+      }
       // 既存のSVG差し替え済みチェック
       if (icon.querySelector('[data-rail-svg]') === null) {
         const svgWrap = document.createElement('span')

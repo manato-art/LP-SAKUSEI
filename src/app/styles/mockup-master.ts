@@ -285,6 +285,49 @@ const MOCKUP_CSS = `
     height: auto !important;
     overflow-y: auto !important;
   }
+  /* 基板の各アイコン: サイズ・余白を統一 */
+  [class*="_sideToolbarIcon_"] {
+    width: 40px !important;
+    height: auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 2px !important;
+    padding: 5px 0 !important;
+    cursor: pointer !important;
+    border-radius: 5px !important;
+    background: none !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+  }
+  [class*="_sideToolbarIcon_"]:hover {
+    background: var(--border-light) !important;
+  }
+  /* プレビューアイコンのオレンジ背景を削除 */
+  [class*="_preview_"][class*="_sideToolbarIcon_"],
+  [class*="_sideToolbarIcon_"][class*="_preview_"] {
+    background: none !important;
+    background-color: transparent !important;
+  }
+  /* 基板アイコンの ::before/::after 装飾（丸背景など）を削除 */
+  [class*="_sideToolbarIcon_"]::before,
+  [class*="_sideToolbarIcon_"]::after {
+    display: none !important;
+  }
+  /* モック差し替えSVGのサイズ統一 */
+  [class*="_sideToolbarIcon_"] [data-rail-svg] svg {
+    width: 18px !important;
+    height: 18px !important;
+    color: var(--sidebar-icon) !important;
+  }
+  /* テキストラベル */
+  [class*="_sideToolbarIcon_"] .sb-side-label {
+    font-size: 8px !important;
+    color: var(--text-muted) !important;
+    line-height: 1.1 !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+  }
 
   /* ボトムバー */
   [class*="_funnelStepWrapper_"] {
