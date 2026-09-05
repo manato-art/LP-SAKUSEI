@@ -254,26 +254,14 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
   })
   header.append(title, closeBtn)
 
-  // ── タブ ──
+  // ── タブ（スタイル統一） ──
   const tabs = document.createElement('div')
   tabs.className = 'sb-props-tabs'
-  const contentTab = document.createElement('button')
-  contentTab.type = 'button'
-  contentTab.className = 'sb-props-tab active'
-  contentTab.textContent = 'コンテンツ'
   const styleTab = document.createElement('button')
   styleTab.type = 'button'
-  styleTab.className = 'sb-props-tab'
+  styleTab.className = 'sb-props-tab active'
   styleTab.textContent = 'スタイル'
-  contentTab.addEventListener('click', () => {
-    contentTab.classList.add('active')
-    styleTab.classList.remove('active')
-  })
-  styleTab.addEventListener('click', () => {
-    styleTab.classList.add('active')
-    contentTab.classList.remove('active')
-  })
-  tabs.append(contentTab, styleTab)
+  tabs.append(styleTab)
 
   // ── ボディ（コンテンツタブ） ──
   const body = document.createElement('div')
