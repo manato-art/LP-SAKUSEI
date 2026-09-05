@@ -863,13 +863,17 @@ function addVersionCardExtras(card: HTMLElement, version: Version, isCurrent: bo
       overflow:hidden; position:relative; border:1px solid #f0f0f2;
       margin-top:6px;
     `
-    // HTML コンテンツがあればグラデーションで簡易表示、なければプレースホルダー
+    // HTML コンテンツがあればミニチュア表示、なければプレースホルダー
     const html = version.html || ''
     if (html.includes('background') || html.includes('img')) {
-      // コンテンツがある場合、HTML の抜粋をミニチュア表示
+      // LP幅640pxを基準にサムネ幅（約220px）にスケールダウンする
+      const LP_W = 640
+      const THUMB_SCALE = 220 / LP_W  // ≈ 0.344
       const preview = document.createElement('div')
       preview.style.cssText = `
-        width:100%; height:100%; transform:scale(0.15); transform-origin:top left;
+        position:absolute; top:0; left:0;
+        width:${LP_W}px; height:${Math.round(50 / THUMB_SCALE)}px;
+        transform:scale(${THUMB_SCALE}); transform-origin:top left;
         pointer-events:none; overflow:hidden;
       `
       preview.innerHTML = html
