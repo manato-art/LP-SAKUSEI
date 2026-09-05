@@ -720,12 +720,16 @@ function mountHeaderExtras(
     window.open(url, '_blank', 'noopener')
   })
 
-  // ── 公開ボタン ──
-  const publishBtn = document.createElement('button')
-  publishBtn.className = 'sb-header-btn-publish btn-publish'
-  publishBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><polyline points="20 6 9 17 4 12"/></svg>公開する<span class="sb-header-new-badge new-badge" style="background:rgba(255,255,255,.25)">NEW</span>`
-  publishBtn.addEventListener('click', () => {
-    toast('公開機能は準備中です')
+  // ── 指示93: 比較するボタン（公開するボタンを置換） ──
+  const compareBtn = document.createElement('button')
+  compareBtn.className = 'sb-header-btn-publish btn-publish'
+  compareBtn.setAttribute('data-header-compare-btn', 'true')
+  compareBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="3" x2="12" y2="21"/></svg>比較する`
+  compareBtn.addEventListener('click', () => {
+    toggleComparePanel(ctx.root, {
+      getCurrentHtml: () => ctx.quill.root.innerHTML,
+      getVersionUid: () => ctx.currentUid,
+    })
   })
 
   // ── ⋮メニュー ──
@@ -758,7 +762,7 @@ function mountHeaderExtras(
   }
 
   // パンくず行に追加（既存の breadcrumb + filter の後ろにスペーサー+ボタン群）
-  breadcrumbRow.append(spacer, saveStatus, sep1, previewBtn, publishBtn, moreBtn, sep2, rightIcons)
+  breadcrumbRow.append(spacer, saveStatus, sep1, previewBtn, compareBtn, moreBtn, sep2, rightIcons)
 }
 
 function injectHeaderExtrasCss(): void {
@@ -1029,57 +1033,7 @@ function relativeTime(iso: string): string {
   return `${days}日前`
 }
 
-/**
- * 右レールアイコン群の下、ミニマップの上に「比較モード」ボタンを配置する（指示77）。
- * ツールバーの最後のアイコンの bottom を計測し、そこに合わせて fixed 配置する。
- */
-function mountCompareButton(root: HTMLElement, onClick: () => void): void {
-  if (document.querySelector('[data-compare-btn]') !== null) return
-
-  const splitIcon = `<svg viewBox="0 0 18 18" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4">
-    <rect x="1" y="2" width="16" height="14" rx="1.5"/>
-    <line x1="9" y1="2" x2="9" y2="16"/>
-  </svg>`
-
-  const btn = document.createElement('button')
-  btn.setAttribute('data-compare-btn', 'true')
-  btn.title = '比較モード'
-  btn.innerHTML = `比較モード ${splitIcon}`
-  btn.style.cssText = [
-    'display:flex', 'align-items:center', 'gap:4px', 'justify-content:center',
-    'padding:6px 12px',
-    'background:#fff',
-    'border:1px solid #e0e0e0',
-    'border-radius:20px',
-    'font-size:12px',
-    'color:#888',
-    'cursor:pointer',
-    'white-space:nowrap',
-    'box-shadow:0 1px 3px rgba(0,0,0,0.06)',
-    'transition:background 0.15s, color 0.15s',
-  ].join(';')
-  btn.addEventListener('mouseenter', () => {
-    btn.style.background = '#f5f5f5'
-    btn.style.color = '#555'
-  })
-  btn.addEventListener('mouseleave', () => {
-    btn.style.background = '#fff'
-    btn.style.color = '#888'
-  })
-  btn.addEventListener('click', onClick)
-
-  // _sideToolbarTop_ の先頭（プレビューアイコンの上）に挿入。
-  // ツールバーwrapperの flex プロパティは変更しない（採取CSSを壊さない）。
-  const toolbar = root.querySelector<HTMLElement>('[class*="_sideToolbarWrapper_"]')
-  if (toolbar !== null) {
-    toolbar.style.overflow = 'visible'
-  }
-  const topSection = toolbar?.querySelector<HTMLElement>('[class*="_sideToolbarTop_"]') ?? null
-  if (topSection !== null) {
-    btn.style.margin = '0 auto 4px'
-    topSection.prepend(btn)
-  }
-}
+// 指示93: mountCompareButton は削除。比較機能はヘッダーの「比較する」ボタンに移動。
 
 /**
  * コンテンツ上部にURLコピーバーを挿入する。
@@ -1614,6 +1568,19 @@ async function saveHtml(ctx: EditorContext): Promise<void> {
   if (v !== undefined) v.html = html
 }
 
+/** モック準拠: 右レールアイコンの SVG（指示92） */
+const RAIL_ICON_SVGS: readonly string[] = [
+  /* 0: プレビュー */ '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:18px;height:18px"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>',
+  /* 1: 履歴 */     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:18px;height:18px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+  /* 2: ライブラリ */ '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:18px;height:18px"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>',
+  /* 3: リンク置換 */ '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:18px;height:18px"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>',
+  /* 4: LP設定 */   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:18px;height:18px"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>',
+  /* 5: タグ設定 */  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:18px;height:18px"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>',
+  /* 6: 戻る */     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:18px;height:18px"><path d="M3 7h8a4 4 0 0 1 0 8H7"/><polyline points="6 4 3 7 6 10"/></svg>',
+  /* 7: 進む */     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:18px;height:18px"><path d="M21 7h-8a4 4 0 0 0 0 8h4"/><polyline points="18 4 21 7 18 10"/></svg>',
+  /* 8: 画像 */     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:18px;height:18px"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>',
+]
+
 function wireSideToolbar(ctx: EditorContext): void {
   // カード接続部分の隙間を埋める
   injectCardSeamStyles()
@@ -1656,6 +1623,21 @@ function wireSideToolbar(ctx: EditorContext): void {
     const icon = icons[index]
     if (icon === undefined) continue
     icon.style.cursor = 'pointer'
+    icon.classList.add('rail-item')
+
+    // 指示92: 基板アイコン画像をモック準拠のSVGに差し替え
+    const mockupSvg = RAIL_ICON_SVGS[index]
+    if (mockupSvg !== undefined) {
+      const img = icon.querySelector<HTMLElement>('img')
+      if (img !== null) img.style.display = 'none'
+      // 既存のSVG差し替え済みチェック
+      if (icon.querySelector('[data-rail-svg]') === null) {
+        const svgWrap = document.createElement('span')
+        svgWrap.setAttribute('data-rail-svg', 'true')
+        svgWrap.innerHTML = mockupSvg
+        icon.prepend(svgWrap)
+      }
+    }
 
     // 指示78: アイコン下にテキストラベルを表示
     const labelText = SIDE_TOOLS[index] ?? ''
@@ -1714,13 +1696,8 @@ function wireSideToolbar(ctx: EditorContext): void {
     icon.addEventListener('click', () => toast(`${name} は未実装です`, 'error'))
   }
 
-  // 指示77: 右レールアイコンの下に「比較モード」ボタンを追加
-  mountCompareButton(ctx.root, () => {
-    toggleComparePanel(ctx.root, {
-      getCurrentHtml: () => ctx.quill.root.innerHTML,
-      getVersionUid: () => ctx.currentUid,
-    })
-  })
+  // 指示93: 比較モードはヘッダーの「比較する」ボタンに移動。
+  // 右レールの旧 mountCompareButton は削除。
 
   // 本文の自動保存。実物のエディタは自動保存が走る
   // （docs/findings-live-observation.md「エディタは『開くだけで自動保存』が走る」・DOMに _saveAnimation_）。

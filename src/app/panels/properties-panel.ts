@@ -286,7 +286,14 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
   emptyMsg.style.whiteSpace = 'pre-line'
 
   // ── helpers ──
-  const getRange = () => quill.getSelection()
+  // 指示94: Quill の getSelection() がフォーカス喪失で null を返すケースに対応。
+  // selection-change イベントから受け取った有効レンジを保持しフォールバックにする。
+  let lastKnownRange: { index: number; length: number } | null = null
+  const getRange = (): { index: number; length: number } | null => {
+    const r = quill.getSelection()
+    if (r !== null) return r
+    return lastKnownRange
+  }
   const getFormats = () => {
     const r = getRange()
     return r !== null ? quill.getFormat(r.index, r.length) : {}
@@ -732,8 +739,22 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
     }
   }
 
-  quill.on('selection-change', () => refresh())
+  quill.on('selection-change', (range: { index: number; length: number } | null) => {
+    // selection-change のパラメータを直接使い、getSelection() の再取得遅延を回避する
+    if (range !== null && range.length > 0) {
+      lastKnownRange = range
+    }
+    refresh()
+  })
   quill.on('text-change', () => refresh())
+  // ブラウザの selectionchange イベントでも検知する（Quill が発火しないケースの補完）
+  document.addEventListener('selectionchange', () => {
+    const r = quill.getSelection()
+    if (r !== null && r.length > 0) {
+      lastKnownRange = r
+      refresh()
+    }
+  })
   setTimeout(refresh, 100)
 
   // mousedown で Quill の選択を奪わないようにする
