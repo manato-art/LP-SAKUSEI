@@ -50,17 +50,24 @@ export function mountWidgetNav(root: HTMLElement, quill: Quill): void {
   const editor = root.querySelector<HTMLElement>('.ql-editor')
   if (editor === null) return
 
-  // サイドバーコンテナ（バージョンリストとキャンバスの間に挿入）
+  // サイドバーコンテナ（キャンバスの位置を動かさないよう absolute 配置）
+  // editorWrapper に position 基準を設定
+  editorWrapper.style.position = 'relative'
+
+  // バージョンパネルの幅を取得して widget nav の left を決定
+  const versionPanel = editorWrapper.querySelector<HTMLElement>('[class*="_abTestArticlesWrapper_"]')
+  const vpWidth = versionPanel !== null ? versionPanel.getBoundingClientRect().width : 230
+
   const sidebar = document.createElement('div')
   sidebar.dataset['widgetNav'] = 'true'
   sidebar.style.cssText =
-    `width:${SIDEBAR_W}px;flex-shrink:0;overflow-y:auto;overflow-x:hidden;` +
+    `position:absolute;left:${vpWidth}px;top:0;z-index:100;` +
+    `width:${SIDEBAR_W}px;overflow-y:auto;overflow-x:hidden;` +
     `display:none;flex-direction:column;gap:8px;padding:8px 0;` +
     `border-right:1px solid #eee;background:#fff;box-sizing:border-box;` +
-    `height:calc(100vh - 92px);align-self:stretch`
+    `height:calc(100vh - 92px);box-shadow:2px 0 8px rgba(0,0,0,.06)`
 
-  // editorWrapper の子として、contentWrapper の直前に挿入
-  editorWrapper.insertBefore(sidebar, contentWrapper)
+  editorWrapper.append(sidebar)
 
   // 初回スキャン＋MutationObserver で Widget の増減を検知
   // デバウンスして過剰な再描画を防止（カードクリック直後の DOM 変化で再構築されるのを回避）
