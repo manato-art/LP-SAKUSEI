@@ -546,6 +546,10 @@ function injectSideToolbarStyles(): void {
       width: 22px !important;
       height: 22px !important;
     }
+    /* アイコン間の縦余白（本番実測: 各アイコン+ラベルの間に十分な余白） */
+    [class*="_sideToolbarTop_"] {
+      gap: 4px !important;
+    }
     /* アイコン + テキストラベルを縦に並べる */
     [class*="_sideToolbarIcon_"] {
       display: flex !important;
@@ -553,6 +557,7 @@ function injectSideToolbarStyles(): void {
       align-items: center !important;
       gap: 2px !important;
       height: auto !important;
+      padding: 4px 0 !important;
     }
     /* 指示87: Widget管理のMUIボタンが50px固定でラベルを押し出すのを修正 */
     [class*="_sideToolbarIcon_"] [aria-label="Widget管理"] {
