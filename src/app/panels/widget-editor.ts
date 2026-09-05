@@ -6,21 +6,11 @@
  *   - 全体コンテナ背景: #2B2B2B (rgb(43,43,43))
  *   - コードパネル背景: #151515 (rgb(21,21,21))
  *   - ラベル文字色: #fff
- *
- * 構造:
- *   ┌─ ヘッダー（閉じる ｜ Widget編集 ｜ + Widgetとして登録 ｜ 更新する）──┐
- *   ├─ タイトル行（≡ Widget名（カテゴリー））────────────────────────────────┤
- *   ├─ ダークコンテナ (#2B2B2B) ─────────────────────────────────────────────┤
- *   │  ┌──── 左: ビジュアルエディタ(白背景) ────┐ ┌──── 右: コードパネル ────┐│
- *   │  │  ツールバー                            │ │  デフォルト時のコード表示 ││
- *   │  │  ─────────────────────                 │ │  HTML(カスタム)  [#151515]││
- *   │  │  エディタ本文                          │ │  ────────────────────────││
- *   │  │                                        │ │  CSS(カスタム)   [#151515]││
- *   │  └────────────────────────────────────────┘ └────────────────────────┘│
- *   └──────────────────────────────────────────────────────────────────────┘
+ *   - 構文ハイライト: Material Theme 系
  */
 import type Quill from 'quill'
 import { toast } from '../ui.ts'
+import { highlightHtml, highlightCss } from './syntax-highlight.ts'
 
 /* ================================================================
  *  定数
@@ -33,16 +23,46 @@ const COLOR = {
   codeBorder: '#333',
   codeText: '#eeffff',
   labelText: '#fff',
-  labelBg: '#151515',
-  lineNumber: '#555',
-  lineNumberText: '#888',
+  lineNumberText: '#555',
   divider: '#444',
   toggleBg: '#3a3a3a',
   toggleBgOn: '#1976d2',
+  // Widget 選択UI
+  selectBorder: '#1976d2',
+  selectLabel: '#333',
+  selectLabelBg: 'rgba(25,118,210,.9)',
 } as const
 
 const FONT = '"Hiragino Sans","Hiragino Kaku Gothic ProN",sans-serif'
 const MONO = '"SF Mono",Menlo,"Fira Code",monospace'
+
+/* ================================================================
+ *  Widget 選択 CSS（一度だけ注入）
+ * ================================================================ */
+
+let selectionCssInjected = false
+
+function injectSelectionCss(): void {
+  if (selectionCssInjected) return
+  selectionCssInjected = true
+  const style = document.createElement('style')
+  style.setAttribute('data-widget-selection', 'true')
+  style.textContent = `
+    section.sb-widget-block { cursor:pointer; transition:outline .15s, box-shadow .15s; position:relative; }
+    section.sb-widget-block:hover { outline:2px solid ${COLOR.selectBorder}; outline-offset:-2px; }
+    section.sb-widget-block:hover::after {
+      content:attr(data-widget-name);
+      position:absolute; bottom:8px; left:50%; transform:translateX(-50%);
+      background:${COLOR.selectLabelBg}; color:#fff; font:600 12px/1.4 ${FONT};
+      padding:4px 12px; border-radius:4px; white-space:nowrap; pointer-events:none;
+      z-index:5; box-shadow:0 2px 8px rgba(0,0,0,.3);
+    }
+    section.sb-widget-block[data-widget-selected="true"] {
+      outline:2px solid ${COLOR.selectBorder}; outline-offset:-2px;
+    }
+  `
+  document.head.append(style)
+}
 
 /* ================================================================
  *  公開 API
@@ -64,6 +84,15 @@ export function wireWidgetClick(root: HTMLElement, quill: Quill): void {
   const editor = root.querySelector<HTMLElement>('.ql-editor')
   if (editor === null) return
 
+  injectSelectionCss()
+
+  // 既存の Widget ブロックに名前ラベルを付与
+  labelAllWidgets(editor)
+
+  // MutationObserver で後から追加される Widget にもラベルを付与
+  const observer = new MutationObserver(() => labelAllWidgets(editor))
+  observer.observe(editor, { childList: true, subtree: true })
+
   editor.addEventListener('click', (event) => {
     const target = event.target as HTMLElement
     const widgetBlock = target.closest<HTMLElement>('section.sb-widget-block')
@@ -83,6 +112,14 @@ export function wireWidgetClick(root: HTMLElement, quill: Quill): void {
       length: blotIndex.length,
     })
   })
+}
+
+/** 全 Widget ブロックに data-widget-name 属性を付与（ホバー時のラベル表示用）。 */
+function labelAllWidgets(editor: HTMLElement): void {
+  for (const block of editor.querySelectorAll<HTMLElement>('section.sb-widget-block')) {
+    if (block.dataset['widgetName'] !== undefined) continue
+    block.dataset['widgetName'] = guessWidgetName(block.innerHTML)
+  }
 }
 
 /* ================================================================
@@ -178,7 +215,6 @@ function buildHeader(
     `border:none;background:#1976d2;color:#fff;border-radius:4px;padding:6px 20px;` +
     `font:600 13px/1 ${FONT};cursor:pointer`
   updateBtn.addEventListener('click', () => {
-    // コードパネルの HTML/CSS を取得して Widget を更新
     const htmlArea = overlay.querySelector<HTMLTextAreaElement>('[data-code-html]')
     const cssArea = overlay.querySelector<HTMLTextAreaElement>('[data-code-css]')
     const htmlCode = htmlArea?.value.trim() ?? ''
@@ -190,8 +226,6 @@ function buildHeader(
     }
 
     const finalHtml = cssCode !== '' ? `<style>${cssCode}</style>${htmlCode}` : htmlCode
-
-    // Quill 上の既存 Widget を差し替え
     quill.deleteText(target.index, target.length, 'user')
     quill.insertEmbed(target.index, 'sbwidget', finalHtml, 'user')
 
@@ -213,12 +247,10 @@ function buildTitleBar(target: WidgetEditTarget): HTMLElement {
   bar.style.cssText =
     `display:flex;align-items:center;gap:8px;padding:12px 20px;border-bottom:1px solid #eee;flex-shrink:0`
 
-  // ドラッグハンドル
   const handle = document.createElement('span')
   handle.innerHTML = svgDragHandle()
   handle.style.cssText = 'color:#999;cursor:grab;flex-shrink:0'
 
-  // Widget名（HTML内容から推定）
   const nameEl = document.createElement('div')
   nameEl.textContent = guessWidgetName(target.html)
   nameEl.style.cssText =
@@ -234,13 +266,11 @@ function buildTitleBar(target: WidgetEditTarget): HTMLElement {
 
 function buildVisualEditor(target: WidgetEditTarget): HTMLElement {
   const pane = document.createElement('div')
-  pane.style.cssText =
-    `flex:1;display:flex;flex-direction:column;min-width:0`
+  pane.style.cssText = `flex:1;display:flex;flex-direction:column;min-width:0`
 
   // ツールバー
   const toolbar = document.createElement('div')
-  toolbar.style.cssText =
-    `background:#fff;border-bottom:1px solid #ddd;flex-shrink:0`
+  toolbar.style.cssText = `background:#fff;border-bottom:1px solid #ddd;flex-shrink:0`
 
   const toolbarRow1 = document.createElement('div')
   toolbarRow1.style.cssText =
@@ -291,11 +321,19 @@ function buildVisualEditor(target: WidgetEditTarget): HTMLElement {
   }
   toolbar.append(toolbarRow1, toolbarRow2)
 
-  // エディタ本文（Widgetの実HTMLをレンダリング）
+  // エディタ本文
   const editorBody = document.createElement('div')
   editorBody.style.cssText =
     `flex:1;background:#fff;overflow-y:auto;padding:16px;min-height:0`
-  editorBody.innerHTML = target.html
+  // CSS を style タグとして注入してからHTMLをレンダリング
+  if (target.css.trim() !== '') {
+    const styleTag = document.createElement('style')
+    styleTag.textContent = target.css
+    editorBody.append(styleTag)
+  }
+  const contentDiv = document.createElement('div')
+  contentDiv.innerHTML = target.html
+  editorBody.append(contentDiv)
 
   pane.append(toolbar, editorBody)
   return pane
@@ -307,16 +345,17 @@ function buildVisualEditor(target: WidgetEditTarget): HTMLElement {
 
 function buildCodePanels(target: WidgetEditTarget): HTMLElement {
   const pane = document.createElement('div')
-  pane.style.cssText =
-    `flex:1;display:flex;flex-direction:column;min-width:0`
+  pane.style.cssText = `flex:1;display:flex;flex-direction:column;min-width:0`
 
-  // 「デフォルト時のコードを表示」トグル行
+  // 「デフォルト時のコードを表示」トグル行 + ビューアイコン
   const toggleRow = document.createElement('div')
   toggleRow.style.cssText =
     `display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:8px 12px;flex-shrink:0`
+
   const toggleLabel = document.createElement('span')
   toggleLabel.textContent = 'デフォルト時のコードを表示'
   toggleLabel.style.cssText = `font:12px/1 ${FONT};color:#aaa`
+
   const toggle = document.createElement('button')
   toggle.type = 'button'
   toggle.role = 'switch'
@@ -335,28 +374,55 @@ function buildCodePanels(target: WidgetEditTarget): HTMLElement {
     toggle.style.background = on ? COLOR.toggleBg : COLOR.toggleBgOn
     toggleKnob.style.left = on ? '2px' : '18px'
   })
-  toggleRow.append(toggleLabel, toggle)
+
+  // ビュー切替アイコン（本番の2つのアイコンボタン）
+  const viewBtns = document.createElement('div')
+  viewBtns.style.cssText = 'display:flex;gap:2px;margin-left:8px'
+  const viewSplit = makeViewButton(svgViewSplit(), '分割表示')
+  const viewCode = makeViewButton(svgViewCode(), 'コード表示')
+  viewCode.style.background = '#444' // アクティブ
+  viewBtns.append(viewSplit, viewCode)
+
+  toggleRow.append(toggleLabel, toggle, viewBtns)
 
   // HTML(カスタム) パネル
-  const htmlPanel = createDarkCodePanel('HTML(カスタム)', target.html, 'data-code-html')
+  const htmlPanel = createHighlightedCodePanel('HTML(カスタム)', target.html, 'data-code-html', 'html')
 
   // 分割線
   const codeDivider = document.createElement('div')
-  codeDivider.style.cssText =
-    `height:10px;background:${COLOR.container};flex-shrink:0`
+  codeDivider.style.cssText = `height:10px;background:${COLOR.container};flex-shrink:0`
 
   // CSS(カスタム) パネル
-  const cssPanel = createDarkCodePanel('CSS(カスタム)', target.css, 'data-code-css')
+  const cssPanel = createHighlightedCodePanel('CSS(カスタム)', target.css, 'data-code-css', 'css')
 
   pane.append(toggleRow, htmlPanel, codeDivider, cssPanel)
   return pane
 }
 
-/**
- * 本番準拠のダークコードパネル。
- * 背景 #151515、白ラベル、行番号付き。
- */
-function createDarkCodePanel(title: string, content: string, dataAttr: string): HTMLElement {
+function makeViewButton(svgHtml: string, title: string): HTMLButtonElement {
+  const btn = document.createElement('button')
+  btn.type = 'button'
+  btn.title = title
+  btn.innerHTML = svgHtml
+  btn.style.cssText =
+    `border:1px solid #555;background:${COLOR.container};color:#aaa;border-radius:3px;` +
+    `padding:4px 6px;cursor:pointer;display:flex;align-items:center`
+  return btn
+}
+
+/* ================================================================
+ *  構文ハイライト付きコードパネル
+ *
+ *  textareaを透明にして重ね、背後にハイライト済み pre を置く
+ *  「overlay editor」パターン。
+ * ================================================================ */
+
+function createHighlightedCodePanel(
+  title: string,
+  content: string,
+  dataAttr: string,
+  lang: 'html' | 'css',
+): HTMLElement {
   const panel = document.createElement('div')
   panel.style.cssText =
     `flex:1;display:flex;flex-direction:column;background:${COLOR.codePanel};overflow:hidden;min-height:0`
@@ -367,7 +433,7 @@ function createDarkCodePanel(title: string, content: string, dataAttr: string): 
   label.style.cssText =
     `padding:8px 12px;font:12px/1.4 ${MONO};color:${COLOR.labelText};flex-shrink:0`
 
-  // コードエリア（行番号 + textarea）
+  // コードエリア
   const codeWrap = document.createElement('div')
   codeWrap.style.cssText = `flex:1;display:flex;overflow:hidden;min-height:0`
 
@@ -375,24 +441,43 @@ function createDarkCodePanel(title: string, content: string, dataAttr: string): 
   const gutter = document.createElement('div')
   gutter.style.cssText =
     `width:40px;background:${COLOR.codePanel};border-right:1px solid ${COLOR.codeBorder};` +
-    `overflow:hidden;flex-shrink:0;padding:4px 0;text-align:right;box-sizing:border-box;` +
+    `overflow:hidden;flex-shrink:0;padding:4px 6px 4px 0;text-align:right;box-sizing:border-box;` +
     `font:12px/1.6 ${MONO};color:${COLOR.lineNumberText};user-select:none`
   updateLineNumbers(gutter, content)
 
-  // textarea
+  // エディタコンテナ（overlay パターン）
+  const editorBox = document.createElement('div')
+  editorBox.style.cssText = `flex:1;position:relative;overflow:auto;min-height:0`
+
+  // ハイライト表示用 pre
+  const highlight = document.createElement('pre')
+  highlight.style.cssText =
+    `position:absolute;inset:0;margin:0;padding:4px 12px;` +
+    `font:12px/1.6 ${MONO};white-space:pre;pointer-events:none;overflow:hidden;` +
+    `tab-size:2;word-wrap:normal`
+  highlight.innerHTML = (lang === 'html' ? highlightHtml(content) : highlightCss(content))
+
+  // textarea（透明・入力受付）
   const textarea = document.createElement('textarea')
   textarea.value = content
   textarea.spellcheck = false
   textarea.setAttribute(dataAttr, 'true')
   textarea.style.cssText =
-    `flex:1;border:none;resize:none;padding:4px 12px;` +
-    `font:12px/1.6 ${MONO};color:${COLOR.codeText};` +
-    `background:${COLOR.codePanel};outline:none;min-height:0;white-space:pre;overflow:auto;` +
-    `tab-size:2`
+    `position:relative;z-index:1;width:100%;height:100%;border:none;resize:none;padding:4px 12px;` +
+    `font:12px/1.6 ${MONO};color:transparent;caret-color:${COLOR.codeText};` +
+    `background:transparent;outline:none;white-space:pre;overflow:auto;` +
+    `tab-size:2;box-sizing:border-box`
 
-  // 行番号の同期
-  textarea.addEventListener('input', () => updateLineNumbers(gutter, textarea.value))
-  textarea.addEventListener('scroll', () => { gutter.scrollTop = textarea.scrollTop })
+  // 入力同期
+  const sync = (): void => {
+    highlight.innerHTML = (lang === 'html' ? highlightHtml(textarea.value) : highlightCss(textarea.value))
+    updateLineNumbers(gutter, textarea.value)
+  }
+  textarea.addEventListener('input', sync)
+  textarea.addEventListener('scroll', () => {
+    highlight.style.transform = `translate(-${textarea.scrollLeft}px,-${textarea.scrollTop}px)`
+    gutter.scrollTop = textarea.scrollTop
+  })
 
   // Tab キーでインデント
   textarea.addEventListener('keydown', (e) => {
@@ -402,23 +487,25 @@ function createDarkCodePanel(title: string, content: string, dataAttr: string): 
       const end = textarea.selectionEnd
       textarea.value = textarea.value.substring(0, start) + '  ' + textarea.value.substring(end)
       textarea.selectionStart = textarea.selectionEnd = start + 2
-      updateLineNumbers(gutter, textarea.value)
+      sync()
     }
   })
 
-  codeWrap.append(gutter, textarea)
+  editorBox.append(highlight, textarea)
+  codeWrap.append(gutter, editorBox)
   panel.append(label, codeWrap)
   return panel
 }
 
+/* ================================================================
+ *  行番号
+ * ================================================================ */
+
 function updateLineNumbers(gutter: HTMLElement, content: string): void {
   const count = (content.match(/\n/g)?.length ?? 0) + 1
   const lines: string[] = []
-  for (let i = 1; i <= Math.max(count, 20); i++) {
-    lines.push(String(i))
-  }
+  for (let i = 1; i <= Math.max(count, 20); i++) lines.push(String(i))
   gutter.textContent = lines.join('\n')
-  gutter.style.padding = '4px 6px 4px 0'
 }
 
 /* ================================================================
@@ -440,14 +527,12 @@ function getBlotIndex(quill: Quill, node: HTMLElement): { index: number; length:
   }
 }
 
-/** Widget の HTML から名前を推定する（最初のテキストやクラス名から）。 */
+/** Widget の HTML から名前を推定する（最初のクラス名またはテキストから）。 */
 function guessWidgetName(html: string): string {
   const doc = new DOMParser().parseFromString(html, 'text/html')
-  // クラス名ベースの推定
   const firstEl = doc.body.firstElementChild
   const cls = firstEl?.className ?? ''
-  // テキストベースの推定
-  const firstText = doc.body.textContent?.trim().substring(0, 40) ?? ''
+  const firstText = doc.body.textContent?.trim().substring(0, 30) ?? ''
   if (cls !== '') return (cls.split(/\s+/)[0] ?? firstText) || 'Widget'
   return firstText || 'Widget'
 }
@@ -458,7 +543,6 @@ function extractCss(node: HTMLElement): string {
   for (const style of node.querySelectorAll('style')) {
     styles.push(style.textContent ?? '')
   }
-  // head に注入されたwidget CSSも探す
   for (const style of document.head.querySelectorAll('style[data-widget-css]')) {
     styles.push(style.textContent ?? '')
   }
@@ -472,18 +556,37 @@ function extractHtml(node: HTMLElement): string {
   return clone.innerHTML.trim()
 }
 
-/** + アイコン SVG */
+/* ================================================================
+ *  SVG アイコン
+ * ================================================================ */
+
 function svgPlus(): string {
   return `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="vertical-align:middle">
     <path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
   </svg>`
 }
 
-/** ドラッグハンドル SVG（≡ 的な3本線） */
 function svgDragHandle(): string {
   return `<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style="vertical-align:middle">
     <rect x="3" y="3" width="10" height="1.5" rx=".75"/>
     <rect x="3" y="7.25" width="10" height="1.5" rx=".75"/>
     <rect x="3" y="11.5" width="10" height="1.5" rx=".75"/>
+  </svg>`
+}
+
+/** 分割表示アイコン（本番の左側アイコン） */
+function svgViewSplit(): string {
+  return `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2">
+    <rect x="1" y="2" width="14" height="12" rx="1.5"/>
+    <line x1="8" y1="2" x2="8" y2="14"/>
+  </svg>`
+}
+
+/** コード表示アイコン（本番の右側アイコン） */
+function svgViewCode(): string {
+  return `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2">
+    <path d="M5 4 L2 8 L5 12"/>
+    <path d="M11 4 L14 8 L11 12"/>
+    <line x1="9" y1="3" x2="7" y2="13"/>
   </svg>`
 }

@@ -15,6 +15,7 @@ import type Quill from 'quill'
 import rawLibrary from '../fragments/ab_tests__UID__articles__widget-library.portals.html?raw'
 import { toast } from '../ui.ts'
 import { bindBackdropClose, findByExactText, openPortal } from './portal.ts'
+import { highlight } from './syntax-highlight.ts'
 
 const HOOK = {
   trigger: '[aria-label="Widget管理"]',
@@ -684,6 +685,7 @@ function createEditorToolbar(): HTMLDivElement {
 }
 
 function createCodePanel(title: string, placeholder: string): HTMLDivElement {
+  const lang = title.toLowerCase().includes('css') ? 'css' : 'html'
   const panel = document.createElement('div')
   panel.style.cssText =
     'flex:1;display:flex;flex-direction:column;border:1px solid #333;overflow:hidden'
@@ -708,15 +710,35 @@ function createCodePanel(title: string, placeholder: string): HTMLDivElement {
   }
   header.append(btnGroup)
 
+  // overlay パターン: pre(ハイライト) + textarea(入力)
+  const editorBox = document.createElement('div')
+  editorBox.style.cssText =
+    'flex:1;position:relative;overflow:auto;min-height:100px;background:#151515'
+
+  const pre = document.createElement('pre')
+  pre.style.cssText =
+    'position:absolute;inset:0;margin:0;padding:10px 12px;' +
+    'font:13px/1.5 "SF Mono",Menlo,monospace;white-space:pre;pointer-events:none;' +
+    'overflow:hidden;tab-size:2;word-wrap:normal'
+  pre.innerHTML = highlight(placeholder, lang)
+
   const textarea = document.createElement('textarea')
   textarea.value = placeholder
   textarea.spellcheck = false
   textarea.style.cssText =
-    'flex:1;border:none;resize:none;padding:10px 12px;' +
-    'font:13px/1.5 "SF Mono",Menlo,monospace;color:#eeffff;' +
-    'background:#151515;outline:none;min-height:100px'
+    'position:relative;z-index:1;width:100%;height:100%;border:none;resize:none;padding:10px 12px;' +
+    'font:13px/1.5 "SF Mono",Menlo,monospace;color:transparent;caret-color:#eeffff;' +
+    'background:transparent;outline:none;white-space:pre;tab-size:2;box-sizing:border-box'
 
-  panel.append(header, textarea)
+  textarea.addEventListener('input', () => {
+    pre.innerHTML = highlight(textarea.value, lang)
+  })
+  textarea.addEventListener('scroll', () => {
+    pre.style.transform = `translate(-${textarea.scrollLeft}px,-${textarea.scrollTop}px)`
+  })
+
+  editorBox.append(pre, textarea)
+  panel.append(header, editorBox)
   return panel
 }
 

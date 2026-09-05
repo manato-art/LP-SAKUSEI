@@ -14,6 +14,7 @@ import { isStale } from '../main.ts'
 import { T, el, button, toast } from '../ui.ts'
 import { setupHorizTabs, setupBreadcrumb } from './tab-nav.ts'
 import { PRESETS, type PopupPreset } from './exit-popup-presets.ts'
+import { highlight } from '../panels/syntax-highlight.ts'
 import { FOLLOW_PRESETS, type FollowPreset } from './follow-popup-presets.ts'
 
 // ─── CSS注入 ────────────────────────────────────────
@@ -114,7 +115,9 @@ function injectPopupCss(): void {
     .ep-html-code-wrap { background:#151515; border-radius:0 0 4px 4px; overflow:hidden; }
     .ep-html-code-inner { display:flex; min-height:300px; }
     .ep-html-gutter { width:40px; background:#151515; border-right:1px solid #333; padding:10px 6px 10px 0; text-align:right; font:12px/1.6 "SF Mono",Menlo,monospace; color:#555; user-select:none; flex-shrink:0; overflow:hidden; }
-    .ep-html-textarea { flex:1; border:none; resize:none; padding:10px 12px; font:12px/1.6 "SF Mono",Menlo,monospace; color:#eeffff; background:#151515; outline:none; white-space:pre; tab-size:2; }
+    .ep-html-textarea { position:relative; z-index:1; width:100%; height:100%; border:none; resize:none; padding:10px 12px; font:12px/1.6 "SF Mono",Menlo,monospace; color:transparent; caret-color:#eeffff; background:transparent; outline:none; white-space:pre; tab-size:2; box-sizing:border-box; }
+    .ep-html-editor-box { flex:1; position:relative; overflow:auto; min-height:0; background:#151515; }
+    .ep-html-highlight { position:absolute; inset:0; margin:0; padding:10px 12px; font:12px/1.6 "SF Mono",Menlo,monospace; white-space:pre; pointer-events:none; overflow:hidden; tab-size:2; word-wrap:normal; }
     .ep-back-link { background:none; border:none; cursor:pointer; font-size:13px; color:${T.primary}; font-family:${T.font}; padding:0; }
     .ep-back-link:hover { text-decoration:underline; }
 
@@ -820,6 +823,12 @@ function renderHtmlTab(body: HTMLElement, draft: ExitPopup): void {
   const tabBar = el('div', { class: 'ep-html-tabs' })
   const editorArea = el('div')
 
+  /** サブタブIDから構文ハイライト言語を判定 */
+  function langOf(tab: HtmlSubTab): string {
+    if (tab === 'javascript') return 'javascript'
+    return 'html'
+  }
+
   function renderSubTab(): void {
     editorArea.innerHTML = ''
     const wrap = el('div', { class: 'ep-html-code-wrap' })
@@ -830,18 +839,30 @@ function renderHtmlTab(body: HTMLElement, draft: ExitPopup): void {
     const content = draft[activeSubTab]
     updateGutter(gutter, content)
 
+    // overlay パターン: pre(ハイライト) + textarea(入力)
+    const editorBox = el('div', { class: 'ep-html-editor-box' })
+    const pre = document.createElement('pre')
+    pre.className = 'ep-html-highlight'
+    pre.innerHTML = highlight(content, langOf(activeSubTab))
+
     const textarea = document.createElement('textarea')
     textarea.className = 'ep-html-textarea'
     textarea.spellcheck = false
     textarea.value = content
-    textarea.addEventListener('input', () => {
+
+    const sync = (): void => {
       if (activeSubTab === 'html') draft.html = textarea.value
       else if (activeSubTab === 'javascript') draft.javascript = textarea.value
       else if (activeSubTab === 'head_tag') draft.head_tag = textarea.value
       else if (activeSubTab === 'body_tag') draft.body_tag = textarea.value
+      pre.innerHTML = highlight(textarea.value, langOf(activeSubTab))
       updateGutter(gutter, textarea.value)
+    }
+    textarea.addEventListener('input', sync)
+    textarea.addEventListener('scroll', () => {
+      pre.style.transform = `translate(-${textarea.scrollLeft}px,-${textarea.scrollTop}px)`
+      gutter.scrollTop = textarea.scrollTop
     })
-    textarea.addEventListener('scroll', () => { gutter.scrollTop = textarea.scrollTop })
     // Tab キーでインデント
     textarea.addEventListener('keydown', (ev) => {
       if (ev.key === 'Tab') {
@@ -850,11 +871,12 @@ function renderHtmlTab(body: HTMLElement, draft: ExitPopup): void {
         const end = textarea.selectionEnd
         textarea.value = textarea.value.substring(0, start) + '  ' + textarea.value.substring(end)
         textarea.selectionStart = textarea.selectionEnd = start + 2
-        updateGutter(gutter, textarea.value)
+        sync()
       }
     })
 
-    inner.append(gutter, textarea)
+    editorBox.append(pre, textarea)
+    inner.append(gutter, editorBox)
     wrap.append(inner)
     editorArea.append(wrap)
   }
@@ -1387,17 +1409,29 @@ function renderFollowHtmlTab(body: HTMLElement, draft: FollowPopup): void {
     const content = draft[activeSubTab]
     updateGutter(gutter, content)
 
+    // overlay パターン: pre(ハイライト) + textarea(入力)
+    const editorBox = el('div', { class: 'ep-html-editor-box' })
+    const pre = document.createElement('pre')
+    pre.className = 'ep-html-highlight'
+    pre.innerHTML = highlight(content, activeSubTab)
+
     const textarea = document.createElement('textarea')
     textarea.className = 'ep-html-textarea'
     textarea.spellcheck = false
     textarea.value = content
-    textarea.addEventListener('input', () => {
+
+    const sync = (): void => {
       if (activeSubTab === 'html') draft.html = textarea.value
       else if (activeSubTab === 'css') draft.css = textarea.value
       else if (activeSubTab === 'javascript') draft.javascript = textarea.value
+      pre.innerHTML = highlight(textarea.value, activeSubTab)
       updateGutter(gutter, textarea.value)
+    }
+    textarea.addEventListener('input', sync)
+    textarea.addEventListener('scroll', () => {
+      pre.style.transform = `translate(-${textarea.scrollLeft}px,-${textarea.scrollTop}px)`
+      gutter.scrollTop = textarea.scrollTop
     })
-    textarea.addEventListener('scroll', () => { gutter.scrollTop = textarea.scrollTop })
     textarea.addEventListener('keydown', (ev) => {
       if (ev.key === 'Tab') {
         ev.preventDefault()
@@ -1405,11 +1439,12 @@ function renderFollowHtmlTab(body: HTMLElement, draft: FollowPopup): void {
         const end = textarea.selectionEnd
         textarea.value = textarea.value.substring(0, start) + '  ' + textarea.value.substring(end)
         textarea.selectionStart = textarea.selectionEnd = start + 2
-        updateGutter(gutter, textarea.value)
+        sync()
       }
     })
 
-    inner.append(gutter, textarea)
+    editorBox.append(pre, textarea)
+    inner.append(gutter, editorBox)
     wrap.append(inner)
     editorArea.append(wrap)
   }
