@@ -527,8 +527,24 @@ function getBlotIndex(quill: Quill, node: HTMLElement): { index: number; length:
   }
 }
 
+/**
+ * Widget ノード（section.sb-widget-block）を指定して Widget 編集オーバーレイを開く。
+ * widget-nav.ts の左カードからの呼び出し用。
+ */
+export function openWidgetEditorForNode(quill: Quill, widgetNode: HTMLElement): void {
+  const blotIndex = getBlotIndex(quill, widgetNode)
+  if (blotIndex === null) return
+  openWidgetEditor(quill, {
+    node: widgetNode,
+    html: extractHtml(widgetNode),
+    css: extractCss(widgetNode),
+    index: blotIndex.index,
+    length: blotIndex.length,
+  })
+}
+
 /** Widget の HTML から名前を推定する（最初のクラス名またはテキストから）。 */
-function guessWidgetName(html: string): string {
+export function guessWidgetName(html: string): string {
   const doc = new DOMParser().parseFromString(html, 'text/html')
   const firstEl = doc.body.firstElementChild
   const cls = firstEl?.className ?? ''
