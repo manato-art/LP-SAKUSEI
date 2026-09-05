@@ -135,14 +135,24 @@ function openWidgetEditor(quill: Quill, target: WidgetEditTarget): void {
     closeWidgetPanel(existingEditor as HTMLElement)
   }
 
-  // 本番と同じモーダルカード: キャンバスの前面に浮かぶ固定オーバーレイ
+  // 本番と同じモーダルカード: キャンバスの前面に浮かぶフローティングカード
   const panel = document.createElement('div')
   panel.dataset['widgetEditor'] = 'true'
   panel.style.cssText =
-    `position:fixed;top:92px;left:60px;right:0;bottom:0;z-index:200;` +
+    `position:fixed;top:50%;left:calc(60px + 50%);z-index:200;` +
+    `transform:translate(-50%,-50%);` +
+    `width:min(88vw, 1100px);height:min(78vh, 680px);` +
     `display:flex;flex-direction:column;background:#fff;` +
-    `overflow:hidden;font-family:${FONT};box-shadow:-4px 0 24px rgba(0,0,0,.12)`
-  document.body.append(panel)
+    `overflow:hidden;font-family:${FONT};border-radius:12px;` +
+    `box-shadow:0 8px 40px rgba(0,0,0,.18),0 0 0 1px rgba(0,0,0,.06)`
+
+  // 背景オーバーレイ（半透明の暗幕）
+  const backdrop = document.createElement('div')
+  backdrop.dataset['widgetBackdrop'] = 'true'
+  backdrop.style.cssText =
+    `position:fixed;inset:0;z-index:199;background:rgba(0,0,0,.25)`
+  backdrop.addEventListener('click', () => closeWidgetPanel(panel))
+  document.body.append(backdrop, panel)
 
   /* ── ヘッダー ── */
   const header = buildHeader(panel, quill, target)
@@ -186,6 +196,8 @@ function openWidgetEditor(quill: Quill, target: WidgetEditTarget): void {
 
 /** Widget 編集パネルを閉じる */
 function closeWidgetPanel(panel: HTMLElement): void {
+  // 背景オーバーレイも一緒に消す
+  document.querySelector('[data-widget-backdrop]')?.remove()
   panel.remove()
 }
 

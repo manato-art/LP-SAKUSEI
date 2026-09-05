@@ -44,7 +44,8 @@ function injectStyles(): void {
     .sb-ct { display:flex; align-items:center; gap:2px; padding:6px 8px;
       background:#fff; border-bottom:1px solid #e5e5ea; flex-shrink:0;
       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
-      font-size:13px; user-select:none; flex-wrap:nowrap; min-height:40px; }
+      font-size:13px; user-select:none; flex-wrap:nowrap; min-height:40px;
+      overflow:hidden; max-width:100%; box-sizing:border-box; }
     .sb-ct-btn { display:inline-flex; align-items:center; justify-content:center;
       width:30px; height:30px; border:none; border-radius:6px; background:transparent;
       color:#333; cursor:pointer; padding:0; flex-shrink:0; transition:background .12s; }
