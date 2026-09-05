@@ -28,6 +28,7 @@ import { mountHeaderImageModal } from '../panels/header-image-modal.ts'
 import { mountVersionLinkPopup } from '../panels/version-link-popup.ts'
 import { mountStepAddModal } from '../panels/step-add-modal.ts'
 import { mountWidgetLibrary } from '../panels/widget-library.ts'
+import { wireWidgetClick } from '../panels/widget-editor.ts'
 import { EXTERNAL_IMAGE_TOOL_INDEX, mountExternalImage } from '../panels/external-image.ts'
 import { registerMediaBlots } from '../panels/media-blots.ts'
 import { wireMediaDrop } from '../panels/media-insert.ts'
@@ -1167,6 +1168,8 @@ function wireSideToolbar(ctx: EditorContext): void {
   mountContentToolbarInEditor(ctx)
   // パズルピース（Widget管理ボタン）は実物では Widgetライブラリを開く
   mountWidgetLibrary(ctx.root, ctx.quill)
+  // Widget ブロットクリックで本番同様の Widget編集オーバーレイを開く
+  wireWidgetClick(ctx.root, ctx.quill)
 
   // 指示70: スクロール領域が変わったため、右レールの position:fixed は不要になった。
   // 採取CSSのままで問題なく表示される。

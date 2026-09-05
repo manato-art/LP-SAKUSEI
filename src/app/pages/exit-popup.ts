@@ -105,11 +105,16 @@ function injectPopupCss(): void {
     .ep-device-row { display:flex; align-items:center; gap:16px; padding:8px 0; border-bottom:1px solid #f0f0f0; }
     .ep-device-row:last-child { border-bottom:none; }
     .ep-device-name { font-size:13px; width:80px; font-weight:500; }
-    .ep-html-tabs { display:flex; gap:0; margin-bottom:12px; }
-    .ep-html-tab { padding:6px 14px; font-size:12px; cursor:pointer; background:#f5f5f5; border:1px solid #ddd; color:${T.sub}; font-family:${T.font}; }
-    .ep-html-tab:first-child { border-radius:4px 0 0 4px; }
-    .ep-html-tab:last-child { border-radius:0 4px 4px 0; }
-    .ep-html-tab.active { background:${T.primary}; color:#fff; border-color:${T.primary}; }
+    .ep-html-tabs { display:flex; gap:0; margin-bottom:0; }
+    .ep-html-tab { padding:8px 16px; font-size:12px; cursor:pointer; background:#2B2B2B; border:none; border-bottom:2px solid transparent; color:#888; font-family:${T.font}; }
+    .ep-html-tab:first-child { border-radius:0; }
+    .ep-html-tab:last-child { border-radius:0; }
+    .ep-html-tab:hover { color:#ccc; }
+    .ep-html-tab.active { color:#fff; border-bottom-color:#1976d2; }
+    .ep-html-code-wrap { background:#151515; border-radius:0 0 4px 4px; overflow:hidden; }
+    .ep-html-code-inner { display:flex; min-height:300px; }
+    .ep-html-gutter { width:40px; background:#151515; border-right:1px solid #333; padding:10px 6px 10px 0; text-align:right; font:12px/1.6 "SF Mono",Menlo,monospace; color:#555; user-select:none; flex-shrink:0; overflow:hidden; }
+    .ep-html-textarea { flex:1; border:none; resize:none; padding:10px 12px; font:12px/1.6 "SF Mono",Menlo,monospace; color:#eeffff; background:#151515; outline:none; white-space:pre; tab-size:2; }
     .ep-back-link { background:none; border:none; cursor:pointer; font-size:13px; color:${T.primary}; font-family:${T.font}; padding:0; }
     .ep-back-link:hover { text-decoration:underline; }
 
@@ -817,19 +822,41 @@ function renderHtmlTab(body: HTMLElement, draft: ExitPopup): void {
 
   function renderSubTab(): void {
     editorArea.innerHTML = ''
+    const wrap = el('div', { class: 'ep-html-code-wrap' })
+    const inner = el('div', { class: 'ep-html-code-inner' })
+
+    // 行番号ガター
+    const gutter = el('div', { class: 'ep-html-gutter' })
+    const content = draft[activeSubTab]
+    updateGutter(gutter, content)
+
     const textarea = document.createElement('textarea')
-    textarea.className = 'ep-field'
-    textarea.style.cssText = 'width:100%;min-height:300px;padding:10px;border:1px solid #ddd;border-radius:4px;font-size:12px;font-family:monospace;box-sizing:border-box;resize:vertical'
-    textarea.value = draft[activeSubTab]
+    textarea.className = 'ep-html-textarea'
+    textarea.spellcheck = false
+    textarea.value = content
     textarea.addEventListener('input', () => {
-      // activeSubTab は 'html' | 'javascript' | 'head_tag' | 'body_tag' のいずれか
-      // TypeScriptのindex signatureの制約回避: 個別に代入する
       if (activeSubTab === 'html') draft.html = textarea.value
       else if (activeSubTab === 'javascript') draft.javascript = textarea.value
       else if (activeSubTab === 'head_tag') draft.head_tag = textarea.value
       else if (activeSubTab === 'body_tag') draft.body_tag = textarea.value
+      updateGutter(gutter, textarea.value)
     })
-    editorArea.append(textarea)
+    textarea.addEventListener('scroll', () => { gutter.scrollTop = textarea.scrollTop })
+    // Tab キーでインデント
+    textarea.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Tab') {
+        ev.preventDefault()
+        const start = textarea.selectionStart
+        const end = textarea.selectionEnd
+        textarea.value = textarea.value.substring(0, start) + '  ' + textarea.value.substring(end)
+        textarea.selectionStart = textarea.selectionEnd = start + 2
+        updateGutter(gutter, textarea.value)
+      }
+    })
+
+    inner.append(gutter, textarea)
+    wrap.append(inner)
+    editorArea.append(wrap)
   }
 
   for (const sub of subTabs) {
@@ -1353,16 +1380,38 @@ function renderFollowHtmlTab(body: HTMLElement, draft: FollowPopup): void {
 
   function renderSubTab(): void {
     editorArea.innerHTML = ''
+    const wrap = el('div', { class: 'ep-html-code-wrap' })
+    const inner = el('div', { class: 'ep-html-code-inner' })
+
+    const gutter = el('div', { class: 'ep-html-gutter' })
+    const content = draft[activeSubTab]
+    updateGutter(gutter, content)
+
     const textarea = document.createElement('textarea')
-    textarea.className = 'ep-field'
-    textarea.style.cssText = 'width:100%;min-height:300px;padding:10px;border:1px solid #ddd;border-radius:4px;font-size:12px;font-family:monospace;box-sizing:border-box;resize:vertical'
-    textarea.value = draft[activeSubTab]
+    textarea.className = 'ep-html-textarea'
+    textarea.spellcheck = false
+    textarea.value = content
     textarea.addEventListener('input', () => {
       if (activeSubTab === 'html') draft.html = textarea.value
       else if (activeSubTab === 'css') draft.css = textarea.value
       else if (activeSubTab === 'javascript') draft.javascript = textarea.value
+      updateGutter(gutter, textarea.value)
     })
-    editorArea.append(textarea)
+    textarea.addEventListener('scroll', () => { gutter.scrollTop = textarea.scrollTop })
+    textarea.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Tab') {
+        ev.preventDefault()
+        const start = textarea.selectionStart
+        const end = textarea.selectionEnd
+        textarea.value = textarea.value.substring(0, start) + '  ' + textarea.value.substring(end)
+        textarea.selectionStart = textarea.selectionEnd = start + 2
+        updateGutter(gutter, textarea.value)
+      }
+    })
+
+    inner.append(gutter, textarea)
+    wrap.append(inner)
+    editorArea.append(wrap)
   }
 
   for (const sub of subTabs) {
@@ -1475,4 +1524,12 @@ function makeNumberField(
   })
   field.append(input)
   return field
+}
+
+/** コードエディタの行番号ガターを更新する。 */
+function updateGutter(gutter: HTMLElement, content: string): void {
+  const count = (content.match(/\n/g)?.length ?? 0) + 1
+  const lines: string[] = []
+  for (let i = 1; i <= Math.max(count, 20); i++) lines.push(String(i))
+  gutter.textContent = lines.join('\n')
 }

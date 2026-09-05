@@ -690,7 +690,7 @@ function createCodePanel(title: string, placeholder: string): HTMLDivElement {
 
   const header = document.createElement('div')
   header.style.cssText =
-    'background:#263238;color:#aaa;padding:8px 12px;font:12px/1.4 monospace;' +
+    'background:#151515;color:#fff;padding:8px 12px;font:12px/1.4 monospace;' +
     'display:flex;align-items:center;justify-content:space-between;flex-shrink:0'
   header.textContent = title
 
@@ -702,7 +702,7 @@ function createCodePanel(title: string, placeholder: string): HTMLDivElement {
     b.type = 'button'
     b.textContent = icon
     b.style.cssText =
-      'border:1px solid #555;background:#37474f;color:#ccc;border-radius:3px;' +
+      'border:1px solid #555;background:#2B2B2B;color:#ccc;border-radius:3px;' +
       'padding:2px 6px;font:11px monospace;cursor:pointer'
     btnGroup.append(b)
   }
@@ -714,7 +714,7 @@ function createCodePanel(title: string, placeholder: string): HTMLDivElement {
   textarea.style.cssText =
     'flex:1;border:none;resize:none;padding:10px 12px;' +
     'font:13px/1.5 "SF Mono",Menlo,monospace;color:#eeffff;' +
-    'background:#263238;outline:none;min-height:100px'
+    'background:#151515;outline:none;min-height:100px'
 
   panel.append(header, textarea)
   return panel
