@@ -322,12 +322,15 @@ export interface ExitPopup {
   visit_count: string
   phone_number: string
   link_url: string
+  callback_url: string
   animation: string
   delay_seconds: number
   scroll_trigger: boolean
   scroll_position: number
   countdown_trigger: boolean
   countdown_seconds: number
+  back_button_trigger: boolean
+  exit_trigger: boolean
   position_x: number
   position_y: number
   device_sp: boolean

@@ -11,7 +11,7 @@
  */
 import { api, type ExitPopup, type FollowPopup } from '../api.ts'
 import { isStale } from '../main.ts'
-import { T, el, button, toast } from '../ui.ts'
+import { T, el, toast } from '../ui.ts'
 import { setupHorizTabs, setupBreadcrumb } from './tab-nav.ts'
 import { PRESETS, type PopupPreset } from './exit-popup-presets.ts'
 import { highlight } from '../panels/syntax-highlight.ts'
@@ -87,7 +87,27 @@ function injectPopupCss(): void {
     .ep-editor { max-width:900px; width:100%; margin:16px auto; background:#fff; border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,.06); overflow:hidden; }
     .ep-editor-head { display:flex; align-items:center; justify-content:space-between; padding:14px 20px; border-bottom:1px solid #eee; gap:12px; }
     .ep-editor-head-left { display:flex; align-items:center; gap:8px; }
-    .ep-editor-name { border:1px solid #ddd; border-radius:4px; padding:6px 10px; font-size:13px; font-family:${T.font}; width:200px; }
+    .ep-editor-name { border:1px solid #ddd; border-radius:4px; padding:6px 10px; font-size:13px; font-family:${T.font}; width:100%; }
+    /* 本番準拠: 2行ヘッダ */
+    .ep-editor-head-top { display:flex; align-items:center; padding:14px 20px; border-bottom:1px solid #eee; }
+    .ep-editor-head-top-left { flex:1; }
+    .ep-editor-head-top-center { font-size:15px; font-weight:600; }
+    .ep-editor-head-top-right { flex:1; }
+    .ep-editor-head-back { background:none; border:none; cursor:pointer; font-size:13px; color:${T.sub}; font-family:${T.font}; padding:0; }
+    .ep-editor-head-back:hover { color:${T.text}; }
+    .ep-editor-btn-bar { display:flex; align-items:center; justify-content:space-between; padding:10px 20px; border-bottom:1px solid #eee; }
+    .ep-editor-btn-group { display:flex; align-items:center; gap:8px; }
+    .ep-editor-btn-draft { padding:6px 14px; font-size:12px; background:#fff; color:${T.text}; border:1px solid #ddd; border-radius:4px; cursor:pointer; font-family:${T.font}; }
+    .ep-editor-btn-draft:hover { background:#f5f5f5; }
+    .ep-editor-btn-prod { padding:6px 14px; font-size:12px; background:${T.primary}; color:#fff; border:none; border-radius:4px; cursor:pointer; font-family:${T.font}; font-weight:600; }
+    .ep-editor-btn-prod:hover { opacity:.9; }
+    .ep-editor-btn-more { background:none; border:1px solid #ddd; border-radius:4px; cursor:pointer; padding:4px 8px; font-size:16px; color:${T.sub}; line-height:1; }
+    .ep-editor-btn-more:hover { background:#f5f5f5; }
+    /* フォーム上部: サムネイル + フィールド */
+    .ep-form-top { display:flex; gap:16px; padding:16px 20px; border-bottom:1px solid #f0f0f0; }
+    .ep-form-thumb { width:120px; height:126px; background:#f5f5f5; border-radius:6px; flex-shrink:0; overflow:hidden; display:flex; align-items:center; justify-content:center; color:${T.sub}; font-size:11px; position:relative; }
+    .ep-form-thumb svg { width:100%; height:100%; }
+    .ep-form-fields { flex:1; display:flex; flex-direction:column; gap:10px; min-width:0; }
     .ep-editor-tabs { display:flex; gap:0; border-bottom:1px solid #eee; }
     .ep-editor-tab { padding:10px 20px; font-size:13px; cursor:pointer; background:none; border:none; border-bottom:2px solid transparent; color:${T.sub}; font-family:${T.font}; }
     .ep-editor-tab.active { color:${T.primary}; border-bottom-color:${T.primary}; font-weight:600; }
@@ -571,64 +591,121 @@ function openEditor(state: PopupPageState, popup: ExitPopup): void {
 
   const editor = el('div', { class: 'ep-editor' })
 
-  // ── ヘッダ ──
-  const head = el('div', { class: 'ep-editor-head' })
-  const headLeft = el('div', { class: 'ep-editor-head-left' })
-  const backLink = el('button', { class: 'ep-back-link', text: '← 一覧に戻る' })
-  backLink.addEventListener('click', () => {
+  // ── ヘッダ上段: 戻る | ポップアップ | (spacer) ──
+  const headTop = el('div', { class: 'ep-editor-head-top' })
+  const headTopLeft = el('div', { class: 'ep-editor-head-top-left' })
+  const backBtn = el('button', { class: 'ep-editor-head-back', text: '戻る' })
+  backBtn.addEventListener('click', () => {
     editor.remove()
     renderPanel(state)
   })
-  headLeft.append(backLink)
+  headTopLeft.append(backBtn)
+  const headTopCenter = el('div', { class: 'ep-editor-head-top-center', text: 'ポップアップ' })
+  const headTopRight = el('div', { class: 'ep-editor-head-top-right' })
+  headTop.append(headTopLeft, headTopCenter, headTopRight)
+  editor.append(headTop)
 
-  const nameInput = document.createElement('input') as HTMLInputElement
-  nameInput.className = 'ep-editor-name'
-  nameInput.value = draft.name
-  nameInput.addEventListener('input', () => { draft.name = nameInput.value })
-  headLeft.append(nameInput)
-  head.append(headLeft)
+  // ── ヘッダ下段: ボタン群 ──
+  const btnBar = el('div', { class: 'ep-editor-btn-bar' })
+  const btnLeft = el('div', { class: 'ep-editor-btn-group' })
 
-  // 保存ボタン群
-  const headRight = el('div', { style: 'display:flex;gap:8px;align-items:center' })
-  const previewBtn = button('プレビュー', 'ghost')
-  previewBtn.style.fontSize = '12px'
-  previewBtn.style.padding = '6px 12px'
+  const previewBtn = el('button', { class: 'ep-editor-btn-draft', text: 'プレビュー' })
   previewBtn.addEventListener('click', () => previewPopup(draft))
+  const checkDraftBtn = el('button', { class: 'ep-editor-btn-draft' })
+  checkDraftBtn.innerHTML = `下書きを確認 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>`
+  btnLeft.append(previewBtn, checkDraftBtn)
 
-  const saveBtn = button('保存')
-  saveBtn.style.fontSize = '12px'
-  saveBtn.style.padding = '6px 12px'
-  saveBtn.addEventListener('click', () => {
-    saveBtn.disabled = true
-    saveBtn.textContent = '保存中…'
+  const btnRight = el('div', { class: 'ep-editor-btn-group' })
+  const saveDraftBtn = el('button', { class: 'ep-editor-btn-draft', text: '下書き反映' })
+  const saveProdBtn = el('button', { class: 'ep-editor-btn-prod', text: '本番反映' })
+
+  /** 保存処理の共通化 */
+  const handleSave = (btn: HTMLElement): void => {
+    const origText = btn.textContent ?? ''
+    btn.textContent = '保存中…'
+    ;(btn as HTMLButtonElement).disabled = true
     const { id: _id, uid: _uid, ab_test_id: _abid, ...patch } = draft
     void api.updateExitPopup(state.abTestUid, popup.uid, patch).then(
       ({ exit_popup }) => {
-        // state のポップアップリストを更新
         state.popups = state.popups.map((p) => (p.uid === popup.uid ? exit_popup : p))
         Object.assign(popup, exit_popup)
-        saveBtn.disabled = false
-        saveBtn.textContent = '保存'
+        ;(btn as HTMLButtonElement).disabled = false
+        btn.textContent = origText
         toast('ポップアップを保存しました')
       },
       (err: unknown) => {
-        saveBtn.disabled = false
-        saveBtn.textContent = '保存'
+        ;(btn as HTMLButtonElement).disabled = false
+        btn.textContent = origText
         toast((err as Error).message, 'error')
       },
     )
-  })
+  }
+  saveDraftBtn.addEventListener('click', () => handleSave(saveDraftBtn))
+  saveProdBtn.addEventListener('click', () => handleSave(saveProdBtn))
+
+  const moreBtn = el('button', { class: 'ep-editor-btn-more', text: '⋯' })
+  btnRight.append(saveDraftBtn, saveProdBtn, moreBtn)
+  btnBar.append(btnLeft, btnRight)
+  editor.append(btnBar)
+
+  // ── フォーム上部: サムネイル + 配信/名前/割合 ──
+  const formTop = el('div', { class: 'ep-form-top' })
+
+  // サムネイル（プリセットSVGまたは縮小HTML）
+  const thumbWrap = el('div', { class: 'ep-form-thumb' })
+  const presetDef = popup.preset_id !== null ? PRESETS.find((p) => p.id === popup.preset_id) : null
+  if (presetDef !== null && presetDef !== undefined) {
+    thumbWrap.innerHTML = presetDef.thumbnailSvg
+  } else if (popup.html) {
+    const miniPreview = document.createElement('div')
+    miniPreview.style.cssText = 'transform:scale(0.15);transform-origin:top left;width:667%;pointer-events:none;position:absolute;top:0;left:0'
+    miniPreview.innerHTML = popup.html
+    thumbWrap.append(miniPreview)
+  } else {
+    thumbWrap.textContent = 'NO IMAGE'
+  }
+  formTop.append(thumbWrap)
+
+  const fields = el('div', { class: 'ep-form-fields' })
 
   // 配信トグル
+  const deliveryRow = el('div', { style: 'display:flex;align-items:center;gap:8px' })
+  const deliveryLabel = el('span', { style: 'font-size:13px', text: '配信' })
   const editorToggle = el('button', { class: `ep-toggle${draft.enabled ? ' on' : ''}` })
   editorToggle.addEventListener('click', () => {
     draft.enabled = !draft.enabled
     editorToggle.classList.toggle('on', draft.enabled)
   })
+  deliveryRow.append(deliveryLabel, editorToggle)
+  fields.append(deliveryRow)
 
-  headRight.append(previewBtn, saveBtn, editorToggle)
-  head.append(headRight)
-  editor.append(head)
+  // 名前
+  const nameField = el('div', { class: 'ep-field', style: 'margin-bottom:0' })
+  nameField.append(el('label', { text: '名前' }))
+  const nameInput = document.createElement('input') as HTMLInputElement
+  nameInput.className = 'ep-editor-name'
+  nameInput.value = draft.name
+  nameInput.addEventListener('input', () => { draft.name = nameInput.value })
+  nameField.append(nameInput)
+  fields.append(nameField)
+
+  // 割合
+  const ratioField = el('div', { class: 'ep-field', style: 'margin-bottom:0' })
+  ratioField.append(el('label', { text: '割合' }))
+  const ratioInput = document.createElement('input') as HTMLInputElement
+  ratioInput.type = 'number'
+  ratioInput.min = '0'
+  ratioInput.value = String(draft.ratio)
+  ratioInput.style.cssText = 'width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:4px;font-size:13px;box-sizing:border-box'
+  ratioInput.addEventListener('input', () => {
+    const n = Number(ratioInput.value)
+    if (Number.isFinite(n)) draft.ratio = n
+  })
+  ratioField.append(ratioInput)
+  fields.append(ratioField)
+
+  formTop.append(fields)
+  editor.append(formTop)
 
   // ── タブ ──
   const tabBar = el('div', { class: 'ep-editor-tabs' })
@@ -691,20 +768,40 @@ function renderBasicTab(body: HTMLElement, draft: ExitPopup): void {
   body.append(makeTextField('電話番号', draft.phone_number, (v) => { draft.phone_number = v }, '電話番号を入力'))
   // リンク
   body.append(makeTextField('リンク', draft.link_url, (v) => { draft.link_url = v }, 'https://example.com'))
+  // 呼び出しリンク
+  body.append(makeTextField('呼び出しリンク', draft.callback_url, (v) => { draft.callback_url = v }, 'https://example.com'))
 }
 
 // ── 表示タブ ──
 
+/** 表示アニメーションの選択肢（本番準拠: 日本語名） */
+const ANIMATION_OPTIONS: { value: string; label: string }[] = [
+  { value: 'fade', label: 'フェード' },
+  { value: 'spiral', label: '渦巻' },
+  { value: 'slideUp', label: 'スライドアップ' },
+  { value: 'slideDown', label: 'スライドダウン' },
+  { value: 'slideLeft', label: 'スライドレフト' },
+  { value: 'slideRight', label: 'スライドライト' },
+  { value: 'zoomIn', label: 'ズームイン' },
+  { value: 'bounceIn', label: 'バウンスイン' },
+  { value: 'elastic', label: 'エラスティック' },
+  { value: 'flipIn', label: 'フリップイン' },
+  { value: 'none', label: 'なし' },
+]
+
 function renderDisplayTab(body: HTMLElement, draft: ExitPopup): void {
+  // セクションヘッダ
+  body.append(el('div', { style: 'font-size:14px;font-weight:600;margin-bottom:16px', text: '表示設定' }))
+
   // 表示アニメーション
   const animField = el('div', { class: 'ep-field' })
   animField.append(el('label', { text: '表示アニメーション' }))
   const animSelect = document.createElement('select')
-  for (const opt of ['fade', 'slideUp', 'slideDown', 'slideLeft', 'slideRight', 'zoomIn', 'bounceIn', 'elastic', 'flipIn', 'none']) {
+  for (const opt of ANIMATION_OPTIONS) {
     const o = document.createElement('option')
-    o.value = opt
-    o.textContent = opt
-    if (opt === draft.animation) o.selected = true
+    o.value = opt.value
+    o.textContent = opt.label
+    if (opt.value === draft.animation) o.selected = true
     animSelect.append(o)
   }
   animSelect.addEventListener('change', () => { draft.animation = animSelect.value })
@@ -712,7 +809,7 @@ function renderDisplayTab(body: HTMLElement, draft: ExitPopup): void {
   body.append(animField)
 
   // 秒数
-  body.append(makeNumberField('表示までの秒数', draft.delay_seconds, (v) => { draft.delay_seconds = v }))
+  body.append(makeSuffixField('秒数', draft.delay_seconds, '秒', (v) => { draft.delay_seconds = v }))
 
   // スクロールで表示
   const scrollRow = el('div', { class: 'ep-toggle-row' })
@@ -720,28 +817,12 @@ function renderDisplayTab(body: HTMLElement, draft: ExitPopup): void {
   scrollToggle.addEventListener('click', () => {
     draft.scroll_trigger = !draft.scroll_trigger
     scrollToggle.classList.toggle('on', draft.scroll_trigger)
-    scrollSlider.disabled = !draft.scroll_trigger
   })
   scrollRow.append(scrollToggle, el('span', { class: 'ep-toggle-label', text: 'スクロールで表示' }))
   body.append(scrollRow)
 
-  // スクロール位置スライダー
-  const scrollField = el('div', { class: 'ep-field' })
-  scrollField.append(el('label', { text: `スクロール位置: ${draft.scroll_position}%` }))
-  const scrollSlider = document.createElement('input')
-  scrollSlider.type = 'range'
-  scrollSlider.min = '0'
-  scrollSlider.max = '100'
-  scrollSlider.value = String(draft.scroll_position)
-  scrollSlider.disabled = !draft.scroll_trigger
-  scrollSlider.style.cssText = 'width:100%'
-  scrollSlider.addEventListener('input', () => {
-    draft.scroll_position = Number(scrollSlider.value)
-    const label = scrollField.querySelector('label')
-    if (label !== null) label.textContent = `スクロール位置: ${draft.scroll_position}%`
-  })
-  scrollField.append(scrollSlider)
-  body.append(scrollField)
+  // 表示位置（number input + %）
+  body.append(makeSuffixField('表示位置', draft.scroll_position, '%', (v) => { draft.scroll_position = v }))
 
   // カウントダウンで表示
   const cdRow = el('div', { class: 'ep-toggle-row' })
@@ -753,7 +834,27 @@ function renderDisplayTab(body: HTMLElement, draft: ExitPopup): void {
   cdRow.append(cdToggle, el('span', { class: 'ep-toggle-label', text: 'カウントダウンで表示' }))
   body.append(cdRow)
 
-  body.append(makeNumberField('カウントダウン秒数', draft.countdown_seconds, (v) => { draft.countdown_seconds = v }))
+  body.append(makeSuffixField('秒数', draft.countdown_seconds, '秒', (v) => { draft.countdown_seconds = v }))
+
+  // バックボタンで表示
+  const backRow = el('div', { class: 'ep-toggle-row' })
+  const backToggle = el('button', { class: `ep-toggle${draft.back_button_trigger ? ' on' : ''}` })
+  backToggle.addEventListener('click', () => {
+    draft.back_button_trigger = !draft.back_button_trigger
+    backToggle.classList.toggle('on', draft.back_button_trigger)
+  })
+  backRow.append(backToggle, el('span', { class: 'ep-toggle-label', text: 'バックボタンで表示' }))
+  body.append(backRow)
+
+  // 離脱で表示
+  const exitRow = el('div', { class: 'ep-toggle-row' })
+  const exitToggle = el('button', { class: `ep-toggle${draft.exit_trigger ? ' on' : ''}` })
+  exitToggle.addEventListener('click', () => {
+    draft.exit_trigger = !draft.exit_trigger
+    exitToggle.classList.toggle('on', draft.exit_trigger)
+  })
+  exitRow.append(exitToggle, el('span', { class: 'ep-toggle-label', text: '離脱で表示' }))
+  body.append(exitRow)
 }
 
 // ── 位置タブ ──
@@ -1227,61 +1328,96 @@ function openFollowEditor(state: PopupPageState, fp: FollowPopup): void {
 
   const editor = el('div', { class: 'ep-editor' })
 
-  // ── ヘッダ ──
-  const head = el('div', { class: 'ep-editor-head' })
-  const headLeft = el('div', { class: 'ep-editor-head-left' })
-  const backLink = el('button', { class: 'ep-back-link', text: '← 一覧に戻る' })
-  backLink.addEventListener('click', () => {
+  // ── ヘッダ上段: 戻る | ポップアップ | (spacer) ──
+  const headTop = el('div', { class: 'ep-editor-head-top' })
+  const headTopLeft = el('div', { class: 'ep-editor-head-top-left' })
+  const backBtn = el('button', { class: 'ep-editor-head-back', text: '戻る' })
+  backBtn.addEventListener('click', () => {
     editor.remove()
     renderPanel(state)
   })
-  headLeft.append(backLink)
+  headTopLeft.append(backBtn)
+  const headTopCenter = el('div', { class: 'ep-editor-head-top-center', text: 'ポップアップ' })
+  const headTopRight = el('div', { class: 'ep-editor-head-top-right' })
+  headTop.append(headTopLeft, headTopCenter, headTopRight)
+  editor.append(headTop)
 
-  const nameInput = document.createElement('input') as HTMLInputElement
-  nameInput.className = 'ep-editor-name'
-  nameInput.value = draft.name
-  nameInput.addEventListener('input', () => { draft.name = nameInput.value })
-  headLeft.append(nameInput)
-  head.append(headLeft)
+  // ── ヘッダ下段: ボタン群 ──
+  const btnBar = el('div', { class: 'ep-editor-btn-bar' })
+  const btnLeft = el('div', { class: 'ep-editor-btn-group' })
 
-  const headRight = el('div', { style: 'display:flex;gap:8px;align-items:center' })
-  const previewBtn = button('プレビュー', 'ghost')
-  previewBtn.style.fontSize = '12px'
-  previewBtn.style.padding = '6px 12px'
+  const previewBtn = el('button', { class: 'ep-editor-btn-draft', text: 'プレビュー' })
   previewBtn.addEventListener('click', () => previewFollowPopup(draft))
+  const checkDraftBtn = el('button', { class: 'ep-editor-btn-draft' })
+  checkDraftBtn.innerHTML = `下書きを確認 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>`
+  btnLeft.append(previewBtn, checkDraftBtn)
 
-  const saveBtn = button('保存')
-  saveBtn.style.fontSize = '12px'
-  saveBtn.style.padding = '6px 12px'
-  saveBtn.addEventListener('click', () => {
-    saveBtn.disabled = true
-    saveBtn.textContent = '保存中…'
+  const btnRight = el('div', { class: 'ep-editor-btn-group' })
+  const saveDraftBtn = el('button', { class: 'ep-editor-btn-draft', text: '下書き反映' })
+  const saveProdBtn = el('button', { class: 'ep-editor-btn-prod', text: '本番反映' })
+
+  const handleSave = (btn: HTMLElement): void => {
+    const origText = btn.textContent ?? ''
+    btn.textContent = '保存中…'
+    ;(btn as HTMLButtonElement).disabled = true
     const { id: _id, uid: _uid, ab_test_id: _abid, ...patch } = draft
     void api.updateFollowPopup(state.abTestUid, fp.uid, patch).then(
       ({ follow_popup }) => {
         state.followPopups = state.followPopups.map((p) => (p.uid === fp.uid ? follow_popup : p))
         Object.assign(fp, follow_popup)
-        saveBtn.disabled = false
-        saveBtn.textContent = '保存'
+        ;(btn as HTMLButtonElement).disabled = false
+        btn.textContent = origText
         toast('追従型ポップアップを保存しました')
       },
       (err: unknown) => {
-        saveBtn.disabled = false
-        saveBtn.textContent = '保存'
+        ;(btn as HTMLButtonElement).disabled = false
+        btn.textContent = origText
         toast((err as Error).message, 'error')
       },
     )
-  })
+  }
+  saveDraftBtn.addEventListener('click', () => handleSave(saveDraftBtn))
+  saveProdBtn.addEventListener('click', () => handleSave(saveProdBtn))
 
+  const moreBtn = el('button', { class: 'ep-editor-btn-more', text: '⋯' })
+  btnRight.append(saveDraftBtn, saveProdBtn, moreBtn)
+  btnBar.append(btnLeft, btnRight)
+  editor.append(btnBar)
+
+  // ── フォーム上部: サムネイル + 配信/名前 ──
+  const formTop = el('div', { class: 'ep-form-top' })
+  const thumbWrap = el('div', { class: 'ep-form-thumb' })
+  const presetDef = fp.preset_id !== null ? FOLLOW_PRESETS.find((p) => p.id === fp.preset_id) : null
+  if (presetDef !== null && presetDef !== undefined) {
+    thumbWrap.innerHTML = presetDef.thumbnailSvg
+  } else {
+    thumbWrap.textContent = 'NO IMAGE'
+  }
+  formTop.append(thumbWrap)
+
+  const fields = el('div', { class: 'ep-form-fields' })
+
+  const deliveryRow = el('div', { style: 'display:flex;align-items:center;gap:8px' })
+  const deliveryLabel = el('span', { style: 'font-size:13px', text: '配信' })
   const editorToggle = el('button', { class: `ep-toggle${draft.enabled ? ' on' : ''}` })
   editorToggle.addEventListener('click', () => {
     draft.enabled = !draft.enabled
     editorToggle.classList.toggle('on', draft.enabled)
   })
+  deliveryRow.append(deliveryLabel, editorToggle)
+  fields.append(deliveryRow)
 
-  headRight.append(previewBtn, saveBtn, editorToggle)
-  head.append(headRight)
-  editor.append(head)
+  const nameField = el('div', { class: 'ep-field', style: 'margin-bottom:0' })
+  nameField.append(el('label', { text: '名前' }))
+  const nameInput = document.createElement('input') as HTMLInputElement
+  nameInput.className = 'ep-editor-name'
+  nameInput.value = draft.name
+  nameInput.addEventListener('input', () => { draft.name = nameInput.value })
+  nameField.append(nameInput)
+  fields.append(nameField)
+
+  formTop.append(fields)
+  editor.append(formTop)
 
   // ── タブ ──
   const tabBar = el('div', { class: 'ep-editor-tabs' })
@@ -1558,6 +1694,31 @@ function makeNumberField(
     if (Number.isFinite(n)) onChange(n)
   })
   field.append(input)
+  return field
+}
+
+/** 数値入力 + サフィックスラベル（本番準拠: 「秒」「%」等） */
+function makeSuffixField(
+  label: string,
+  value: number,
+  suffix: string,
+  onChange: (v: number) => void,
+): HTMLElement {
+  const field = el('div', { class: 'ep-field' })
+  field.append(el('label', { text: label }))
+  const row = el('div', { style: 'display:flex;align-items:center;gap:6px' })
+  const input = document.createElement('input')
+  input.type = 'number'
+  input.value = String(value)
+  input.min = '0'
+  input.style.cssText = 'flex:1;padding:8px 10px;border:1px solid #ddd;border-radius:4px;font-size:13px;box-sizing:border-box'
+  input.addEventListener('input', () => {
+    const n = Number(input.value)
+    if (Number.isFinite(n)) onChange(n)
+  })
+  const suffixEl = el('span', { text: suffix, style: `font-size:13px;color:${T.sub};flex-shrink:0` })
+  row.append(input, suffixEl)
+  field.append(row)
   return field
 }
 
