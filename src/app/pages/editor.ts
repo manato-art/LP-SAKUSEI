@@ -18,7 +18,8 @@ import { mountTagSettings } from '../panels/tag-settings.ts'
 import { mountLinkReplace } from '../panels/link-replace.ts'
 import { mountHistory, recordArticleHistory } from '../panels/history.ts'
 import { mountEditorToolbar } from '../panels/editor-toolbar.ts'
-import { mountContentToolbar } from '../panels/editor-content-toolbar.ts'
+import { mountUrlBar, updateUrlBar } from '../panels/url-bar.ts'
+import { mountPropertiesPanel } from '../panels/properties-panel.ts'
 import { createAutosave } from './autosave.ts'
 import { createPanelGroup } from '../panels/panel-group.ts'
 import { recordHistory } from './folders.ts'
@@ -341,6 +342,8 @@ export async function renderEditor(
   hideStepNavigation(root)
   wireSideToolbar(ctx)
   wireTopBar(root, ab_test.title, folderName)
+  // ヘッダーに保存ステータス・プレビュー・公開ボタン・ページ名を追加
+  mountHeaderExtras(root, ctx, { pageTitle: ab_test.title })
   // パンくずリスト（📁板名 > 📄検証）＋ Version フィルタ（作成中 / アーカイブ済み）
   const breadcrumbRight = setupBreadcrumb(root, folderName, ab_test.title, folder?.uid)
   if (breadcrumbRight !== null) {
@@ -581,6 +584,210 @@ function injectSideToolbarStyles(): void {
 
 
 /**
+ * 右プロパティパネルを editorWrapper の最右端に挿入する。
+ * レイアウト: [versionPanel] [widgetNav?] [contentWrapper] [iconRail] [propsPanel]
+ */
+function mountPropertiesPanelInEditor(ctx: EditorContext): void {
+  const editorWrapper = ctx.root.querySelector<HTMLElement>('[class*="_editorWrapper_"]')
+  if (editorWrapper === null) return
+  if (editorWrapper.querySelector('[data-props-panel]') !== null) return
+
+  const panel = mountPropertiesPanel(ctx.quill)
+  editorWrapper.append(panel)
+}
+
+/**
+ * ヘッダー行に保存ステータス・プレビュー・公開ボタン・⋮メニューを追加する。
+ * 既存のパンくず・Versionフィルタ・右3アイコンの間に挿入する。
+ */
+function mountHeaderExtras(
+  root: HTMLElement,
+  ctx: EditorContext,
+  deps: { pageTitle: string },
+): void {
+  // navArticleItems (右上エリア) を探す
+  const actionItems = root.querySelector<HTMLElement>('._navArticleItems_dcd38_19._actionItems_dcd38_26')
+  if (actionItems === null) return
+
+  // linksContainer（右3アイコンの入れ物）の直前に新要素群を差し込む
+  const linksContainer = actionItems.querySelector<HTMLElement>('._linksContainer_dcd38_102')
+
+  // CSS注入
+  injectHeaderExtrasCss()
+
+  // ── ページ名表示 ──
+  const pageName = document.createElement('span')
+  pageName.className = 'sb-header-page-name'
+  pageName.setAttribute('data-header-page-name', 'true')
+  pageName.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:13px;height:13px;color:#b0b0b0;flex-shrink:0"><rect x="4" y="3" width="16" height="18" rx="2"/><line x1="8" y1="7" x2="16" y2="7"/></svg>`
+  const nameText = document.createElement('span')
+  nameText.textContent = deps.pageTitle
+  pageName.append(nameText)
+
+  // ── 保存ステータス ──
+  const saveStatus = document.createElement('span')
+  saveStatus.className = 'sb-header-save-status'
+  saveStatus.setAttribute('data-header-save-status', 'true')
+  saveStatus.innerHTML = `<span style="color:#00b341">✓</span><span>保存済み</span>`
+
+  // ── セパレータ ──
+  const sep1 = document.createElement('span')
+  sep1.className = 'sb-header-sep'
+  const sep2 = document.createElement('span')
+  sep2.className = 'sb-header-sep'
+
+  // ── プレビューボタン ──
+  const previewBtn = document.createElement('button')
+  previewBtn.className = 'sb-header-btn-preview'
+  previewBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>プレビュー`
+  previewBtn.addEventListener('click', async () => {
+    await saveHtml(ctx)
+    const url =
+      `${location.origin}${location.pathname}` +
+      `#/ab_tests/${ctx.abTestUid}/articles/${ctx.currentUid}/previews`
+    window.open(url, '_blank', 'noopener')
+  })
+
+  // ── 公開ボタン ──
+  const publishBtn = document.createElement('button')
+  publishBtn.className = 'sb-header-btn-publish'
+  publishBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><polyline points="20 6 9 17 4 12"/></svg>公開する`
+  publishBtn.addEventListener('click', () => {
+    toast('公開機能は準備中です')
+  })
+
+  // ── ⋮メニュー ──
+  const moreBtn = document.createElement('button')
+  moreBtn.className = 'sb-header-btn-icon'
+  moreBtn.title = 'メニュー'
+  moreBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>`
+  moreBtn.addEventListener('click', () => {
+    toast('メニューは準備中です')
+  })
+
+  // スペーサー
+  const spacer = document.createElement('div')
+  spacer.style.flex = '1'
+
+  // linksContainer の前に差し込む（右3アイコンは末尾に残す）
+  if (linksContainer !== null) {
+    linksContainer.before(pageName, spacer, saveStatus, sep1, previewBtn, publishBtn, moreBtn, sep2)
+  } else {
+    actionItems.append(pageName, spacer, saveStatus, sep1, previewBtn, publishBtn, moreBtn)
+  }
+}
+
+function injectHeaderExtrasCss(): void {
+  if (document.getElementById('sb-header-extras-css') !== null) return
+  const s = document.createElement('style')
+  s.id = 'sb-header-extras-css'
+  s.textContent = `
+    .sb-header-page-name {
+      display:flex; align-items:center; gap:4px;
+      font-size:13px; font-weight:600; color:#1a1a1a;
+      flex-shrink:0; margin-left:8px;
+    }
+    .sb-header-save-status {
+      display:flex; align-items:center; gap:5px;
+      font-size:12px; color:#666; flex-shrink:0;
+    }
+    .sb-header-sep {
+      width:1px; height:20px; background:#e5e5ea; flex-shrink:0;
+    }
+    .sb-header-btn-preview {
+      display:flex; align-items:center; gap:4px;
+      padding:5px 12px; border:1px solid #e5e5ea; border-radius:6px;
+      background:#fff; font-size:12px; color:#1a1a1a; cursor:pointer;
+      font-weight:500; font-family:inherit; flex-shrink:0;
+      transition:background .12s;
+    }
+    .sb-header-btn-preview:hover { background:#f0f0f2; }
+    .sb-header-btn-publish {
+      display:flex; align-items:center; gap:4px;
+      padding:5px 14px; border:none; border-radius:6px;
+      background:#00b341; font-size:12px; color:#fff; cursor:pointer;
+      font-weight:600; font-family:inherit; flex-shrink:0;
+      transition:background .12s;
+    }
+    .sb-header-btn-publish:hover { background:#009936; }
+    .sb-header-btn-icon {
+      width:30px; height:30px; border:none; background:none; cursor:pointer;
+      display:flex; align-items:center; justify-content:center;
+      border-radius:6px; color:#666; flex-shrink:0;
+      transition:background .12s;
+    }
+    .sb-header-btn-icon:hover { background:#f0f0f2; }
+  `
+  document.head.append(s)
+}
+
+/**
+ * Versionカードにバッジ（編集中/保存済み）とタイムスタンプを追加する。
+ * wireVersionCard の末尾で呼ぶ。
+ */
+function addVersionCardExtras(card: HTMLElement, version: Version, isCurrent: boolean): void {
+  const inner = card.querySelector<HTMLElement>(HOOK.currentVersion)
+  if (inner === null) return
+
+  // バッジ: 名前入力の後に追加
+  const nameInput = card.querySelector<HTMLElement>(HOOK.versionName)
+  if (nameInput !== null) {
+    const existingBadge = card.querySelector('[data-version-badge]')
+    if (existingBadge === null) {
+      const badge = document.createElement('span')
+      badge.setAttribute('data-version-badge', 'true')
+      badge.style.cssText = `
+        font-size:9px; font-weight:600; padding:2px 7px; border-radius:10px;
+        white-space:nowrap; flex-shrink:0;
+      `
+      if (isCurrent) {
+        badge.textContent = '編集中'
+        badge.style.background = 'rgba(255,140,0,.12)'
+        badge.style.color = '#ff8c00'
+      } else {
+        badge.textContent = '保存済み'
+        badge.style.background = 'rgba(0,145,255,.1)'
+        badge.style.color = '#0091ff'
+      }
+      nameInput.after(badge)
+    }
+  }
+
+  // タイムスタンプ（カード末尾に追加）
+  if (inner.querySelector('[data-version-meta]') === null) {
+    const meta = document.createElement('div')
+    meta.setAttribute('data-version-meta', 'true')
+    meta.style.cssText = `
+      display:flex; align-items:center; gap:4px; margin-top:4px;
+      font-size:10px; color:#b0b0b0;
+    `
+    meta.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;flex-shrink:0"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`
+    const timeText = document.createElement('span')
+    // version.updated_at があれば相対時間を表示
+    const updatedAt = (version as unknown as Record<string, unknown>)['updated_at']
+    if (typeof updatedAt === 'string') {
+      timeText.textContent = relativeTime(updatedAt) + 'に保存'
+    } else {
+      timeText.textContent = '保存済み'
+    }
+    meta.append(timeText)
+    inner.append(meta)
+  }
+}
+
+/** ISO 日時文字列を相対表現に変換する */
+function relativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'たった今'
+  if (mins < 60) return `${mins}分前`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours}時間前`
+  const days = Math.floor(hours / 24)
+  return `${days}日前`
+}
+
+/**
  * 右レールアイコン群の下、ミニマップの上に「比較モード」ボタンを配置する（指示77）。
  * ツールバーの最後のアイコンの bottom を計測し、そこに合わせて fixed 配置する。
  */
@@ -633,25 +840,32 @@ function mountCompareButton(root: HTMLElement, onClick: () => void): void {
 }
 
 /**
- * コンテンツ上部に水平ツールバーを挿入する（指示77）。
- * ヘッダー画像の下、Quill ホストの上に差し込む。
+ * コンテンツ上部にURLコピーバーを挿入する。
+ * 旧コンテンツツールバーを置き換え、検証用/本番用URLのワンクリックコピーを提供する。
+ * 編集機能はすべて右プロパティパネルに集約された。
  */
-function mountContentToolbarInEditor(ctx: EditorContext): void {
+function mountUrlBarInEditor(ctx: EditorContext): HTMLElement | null {
   const contentWrapper = ctx.root.querySelector<HTMLElement>('.quillEditorContentWrapper')
-  if (contentWrapper === null) return
+  if (contentWrapper === null) return null
+  // 既存の旧ツールバーがあれば除去
+  contentWrapper.querySelector('[data-content-toolbar]')?.remove()
   // 既存チェック
-  if (contentWrapper.querySelector('[data-content-toolbar]') !== null) return
+  if (contentWrapper.querySelector('[data-url-bar]') !== null) return null
 
-  const toolbar = mountContentToolbar(ctx.quill)
+  const testUrl = `https://sb-draft-preview.squadbeyond.com/articles/${ctx.currentUid}/draft`
+  const prodUrl = `https://squadbeyond.com/articles/${ctx.currentUid}`
+
+  const bar = mountUrlBar({ testUrl, prodUrl })
 
   // Quill ホスト（#quillIframe の後継 div）の直前に挿入
   const quillHost = ctx.quill.container as HTMLElement
   const hostParent = quillHost.parentElement
   if (hostParent !== null) {
-    hostParent.insertBefore(toolbar, quillHost)
+    hostParent.insertBefore(bar, quillHost)
   } else {
-    contentWrapper.prepend(toolbar)
+    contentWrapper.prepend(bar)
   }
+  return bar
 }
 
 /**
@@ -801,6 +1015,14 @@ function loadVersion(ctx: EditorContext, uid: string): void {
     ctx.quill.root.innerHTML = v.html
     renderVersionList(ctx)
     overlay?.remove()
+    // URLバーを新しい Version UID で更新
+    const urlBarEl = ctx.root.querySelector<HTMLElement>('[data-url-bar]')
+    if (urlBarEl !== null) {
+      updateUrlBar(urlBarEl, {
+        testUrl: `https://sb-draft-preview.squadbeyond.com/articles/${uid}/draft`,
+        prodUrl: `https://squadbeyond.com/articles/${uid}`,
+      })
+    }
     // 比較パネルが開いていればプレビューも更新
     if (isComparePanelOpen()) refreshComparePreview(v.html)
   }, 50)
@@ -1057,6 +1279,9 @@ function wireVersionCard(ctx: EditorContext, card: HTMLElement, version: Version
     void saveHtml(ctx).then(() => loadVersion(ctx, model.uid))
   })
 
+  // バッジ・タイムスタンプを追加
+  addVersionCardExtras(card, model, isCurrent)
+
   // このカードの「…」メニューは**このVersion**を対象にする。
   mountVersionDotsMenu(card, {
     abTestUid: ctx.abTestUid,
@@ -1168,10 +1393,12 @@ function wireSideToolbar(ctx: EditorContext): void {
   mountEditorToolbar(ctx.root, ctx.quill, {
     trackingSettingsHref: `#/folders/${ctx.folderUid}/ab_tests/${ctx.abTestUid}/edit`,
   })
-  // 旧フローティングツールバーを非表示にし、コンテンツ上部の水平ツールバーに置き換える（指示77）
+  // 旧フローティングツールバーを非表示にし、URLコピーバー + 右プロパティパネルに置き換える
   hideFloatingToolbar(ctx.root)
   mountSidebarToolbarPanel(ctx)
-  mountContentToolbarInEditor(ctx)
+  mountUrlBarInEditor(ctx)
+  // 右プロパティパネル（全編集機能を集約）
+  mountPropertiesPanelInEditor(ctx)
   // パズルピース（Widget管理ボタン）は実物では Widgetライブラリを開く
   mountWidgetLibrary(ctx.root, ctx.quill)
   // Widget ブロットクリックで本番同様の Widget編集オーバーレイを開く
