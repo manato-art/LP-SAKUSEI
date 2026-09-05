@@ -56,6 +56,7 @@ function allTabRoutes(
 
 /** CSS を1回だけ注入 */
 function injectTabBarCss(): void {
+  if (document.getElementById('lps-mockup-master') !== null) return
   if (document.getElementById('sb-tab-bar-css') !== null) return
   const style = document.createElement('style')
   style.id = 'sb-tab-bar-css'
@@ -174,10 +175,10 @@ export function setupBreadcrumb(
 
   // ── パンくず行を構築 ──
   const row = document.createElement('div')
-  row.className = 'sb-breadcrumb-row'
+  row.className = 'sb-breadcrumb-row header-row'
 
   const crumb = document.createElement('div')
-  crumb.className = 'sb-breadcrumb'
+  crumb.className = 'sb-breadcrumb breadcrumb'
 
   // 戻るボタン（フォルダ一覧へ）
   const backHref = '#/folders'
@@ -281,14 +282,18 @@ export function setupHorizTabs(
 
   // ── 3. 新規タブバーを構築 ──
   const bar = document.createElement('div')
-  bar.className = 'sb-tab-bar'
+  bar.className = 'sb-tab-bar topnav'
 
   for (const id of TAB_IDS) {
     const link = document.createElement('a')
+    link.className = 'topnav-tab'
     link.textContent = TAB_LABELS[id]
     const href = hrefs[id]
     if (href !== undefined) link.href = href
-    if (id === activeTab) link.classList.add('sb-tab-active')
+    if (id === activeTab) {
+      link.classList.add('sb-tab-active')
+      link.classList.add('active')
+    }
     bar.append(link)
   }
 

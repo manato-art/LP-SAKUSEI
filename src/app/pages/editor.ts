@@ -40,6 +40,7 @@ import { toggleComparePanel, isComparePanelOpen, refreshComparePreview } from '.
 import { wireAbTestTabs, setupHorizTabs, setupBreadcrumb } from './tab-nav.ts'
 import { wireBeyondNavAnchors } from './beyond-nav.ts'
 import { masterStyleEditorDecls } from '../master-style.ts'
+import { injectMockupMasterStyles, applyMockupClasses } from '../styles/mockup-master.ts'
 
 /** 採取DOM内の目印（実物の data-test 属性。採取のたびに増える） */
 const HOOK = {
@@ -195,6 +196,9 @@ export async function renderEditor(
   root.innerHTML = substrate
   container.append(root)
 
+  // ── モック準拠マスタースタイルシート（全CSSを1枚で注入） ──
+  injectMockupMasterStyles()
+
   // ── 重複サイドバーの除去 ──
   // 採取テンプレートにはサイドバー（css-1v797yu）が丸ごと含まれており、
   // position:fixed; left:0; z-index:101 でシェルの本物サイドバーを覆い隠す。
@@ -327,6 +331,8 @@ export async function renderEditor(
   relocateVersionDropdownToNav(root)
   // モック準拠: Versionパネル上部に「Version」ヘッダーを表示
   addVersionPanelHeader(root)
+  // モック準拠: 基板DOM要素にモックclass名を付与（CSSが直接適用される）
+  applyMockupClasses(root)
   mountHeaderImageModal(root)
   mountVersionLinkPopup(root, { abTestUid, getCurrentUid: () => ctx.currentUid })
   // 下部バーの「+」＝ファネルステップ追加（指示⑮）。作成したら新ステップへ移動する。
@@ -500,6 +506,7 @@ function mountSidebarToolbarPanel(ctx: EditorContext): void {
  * navWrapper / editorWrapper / versionPanel / contentWrapper を白背景で一体化。
  */
 function injectCardSeamStyles(): void {
+  if (document.getElementById('lps-mockup-master') !== null) return
   if (document.getElementById('sb-card-seam-css') !== null) return
   const style = document.createElement('style')
   style.id = 'sb-card-seam-css'
@@ -600,6 +607,7 @@ function injectCardSeamStyles(): void {
  * 丸い背景は削除し、各アイコンの下にテキストラベルを表示する（指示78）。
  */
 function injectSideToolbarStyles(): void {
+  if (document.getElementById('lps-mockup-master') !== null) return
   if (document.getElementById('sb-side-toolbar-fix') !== null) return
   const style = document.createElement('style')
   style.id = 'sb-side-toolbar-fix'
@@ -684,7 +692,7 @@ function mountHeaderExtras(
   // CSS注入
   injectHeaderExtrasCss()
 
-  const newBadge = `<span class="sb-header-new-badge">NEW</span>`
+  const newBadge = `<span class="sb-header-new-badge new-badge">NEW</span>`
 
   // ── スペーサー（左のパンくず+フィルタと右のボタン群を分ける） ──
   const spacer = document.createElement('div')
@@ -692,17 +700,17 @@ function mountHeaderExtras(
 
   // ── 保存ステータス ──
   const saveStatus = document.createElement('span')
-  saveStatus.className = 'sb-header-save-status'
+  saveStatus.className = 'sb-header-save-status save-status'
   saveStatus.setAttribute('data-header-save-status', 'true')
   saveStatus.innerHTML = `<span style="color:#00b341">✓</span><span>保存済み</span><span style="font-size:10px;color:#b0b0b0">2分前</span>${newBadge}`
 
   // ── セパレータ ──
   const sep1 = document.createElement('span')
-  sep1.className = 'sb-header-sep'
+  sep1.className = 'sb-header-sep header-sep'
 
   // ── プレビューボタン ──
   const previewBtn = document.createElement('button')
-  previewBtn.className = 'sb-header-btn-preview'
+  previewBtn.className = 'sb-header-btn-preview btn-preview'
   previewBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>プレビュー`
   previewBtn.addEventListener('click', async () => {
     await saveHtml(ctx)
@@ -714,15 +722,15 @@ function mountHeaderExtras(
 
   // ── 公開ボタン ──
   const publishBtn = document.createElement('button')
-  publishBtn.className = 'sb-header-btn-publish'
-  publishBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><polyline points="20 6 9 17 4 12"/></svg>公開する<span class="sb-header-new-badge" style="background:rgba(255,255,255,.25)">NEW</span>`
+  publishBtn.className = 'sb-header-btn-publish btn-publish'
+  publishBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><polyline points="20 6 9 17 4 12"/></svg>公開する<span class="sb-header-new-badge new-badge" style="background:rgba(255,255,255,.25)">NEW</span>`
   publishBtn.addEventListener('click', () => {
     toast('公開機能は準備中です')
   })
 
   // ── ⋮メニュー ──
   const moreBtn = document.createElement('button')
-  moreBtn.className = 'sb-header-btn-icon'
+  moreBtn.className = 'sb-header-btn-icon btn-icon'
   moreBtn.title = 'メニュー'
   moreBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>`
   moreBtn.addEventListener('click', () => {
@@ -731,11 +739,11 @@ function mountHeaderExtras(
 
   // ── セパレータ2（⋮の後ろ） ──
   const sep2 = document.createElement('span')
-  sep2.className = 'sb-header-sep'
+  sep2.className = 'sb-header-sep header-sep'
 
   // ── 右端3アイコン（モック準拠: 編集/設定/中間ページ） ──
   const rightIcons = document.createElement('div')
-  rightIcons.className = 'sb-header-right-icons'
+  rightIcons.className = 'sb-header-right-icons header-right-icons'
   const iconSvgs = [
     { title: '編集', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:16px;height:16px"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>' },
     { title: 'Versionオプション設定', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:16px;height:16px"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09"/></svg>' },
@@ -743,7 +751,7 @@ function mountHeaderExtras(
   ]
   for (const { title: t, svg } of iconSvgs) {
     const btn = document.createElement('button')
-    btn.className = 'sb-header-btn-icon'
+    btn.className = 'sb-header-btn-icon btn-icon'
     btn.title = t
     btn.innerHTML = svg
     rightIcons.append(btn)
@@ -754,6 +762,7 @@ function mountHeaderExtras(
 }
 
 function injectHeaderExtrasCss(): void {
+  if (document.getElementById('lps-mockup-master') !== null) return
   if (document.getElementById('sb-header-extras-css') !== null) return
   const s = document.createElement('style')
   s.id = 'sb-header-extras-css'
@@ -902,6 +911,7 @@ function addVersionCardExtras(card: HTMLElement, version: Version, isCurrent: bo
 
 /** バージョンカードのCSS（モック準拠）を注入する */
 function injectVersionCardCss(): void {
+  if (document.getElementById('lps-mockup-master') !== null) return
   if (document.getElementById('sb-version-card-css') !== null) return
   const s = document.createElement('style')
   s.id = 'sb-version-card-css'
@@ -1936,6 +1946,7 @@ function wireTopBar(root: HTMLElement, title: string, folderName: string): void 
 
 /** CSS を1回だけ注入（Versionフィルタ用） */
 function injectVersionFilterCss(): void {
+  if (document.getElementById('lps-mockup-master') !== null) return
   if (document.getElementById('sb-version-filter-css') !== null) return
   const style = document.createElement('style')
   style.id = 'sb-version-filter-css'
@@ -1998,17 +2009,24 @@ function mountVersionFilter(
   ]
 
   const wrap = document.createElement('div')
-  wrap.className = 'sb-version-filter-wrap'
+  wrap.className = 'sb-version-filter-wrap version-filter'
 
   const buttons: HTMLElement[] = []
   for (const { mode, label } of modes) {
     const btn = document.createElement('span')
-    btn.className = 'sb-version-filter'
+    btn.className = 'sb-version-filter version-filter-btn'
     btn.textContent = label
-    if (mode === 'active') btn.classList.add('sb-filter-active')
-    btn.addEventListener('click', () => {
-      for (const b of buttons) b.classList.remove('sb-filter-active')
+    if (mode === 'active') {
       btn.classList.add('sb-filter-active')
+      btn.classList.add('active')
+    }
+    btn.addEventListener('click', () => {
+      for (const b of buttons) {
+        b.classList.remove('sb-filter-active')
+        b.classList.remove('active')
+      }
+      btn.classList.add('sb-filter-active')
+      btn.classList.add('active')
       onSelectMode(mode)
     })
     buttons.push(btn)
