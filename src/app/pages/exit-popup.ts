@@ -24,51 +24,62 @@ function injectPopupCss(): void {
   s.id = 'sb-exit-popup-css'
   s.textContent = `
     .ep-root { display:flex; flex-direction:column; flex:1; min-width:0; font-family:${T.font}; color:${T.text}; background:#f9f9fb; }
-    .ep-panel { max-width:900px; width:100%; margin:24px auto; background:#fff; border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,.06); overflow:hidden; }
-    .ep-panel-head { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:1px solid #eee; }
-    .ep-subtabs { display:flex; gap:0; }
-    .ep-subtab { padding:8px 16px; font-size:13px; cursor:pointer; border:1px solid #ddd; background:#f5f5f5; color:${T.sub}; }
-    .ep-subtab:first-child { border-radius:6px 0 0 6px; }
-    .ep-subtab:last-child { border-radius:0 6px 6px 0; }
-    .ep-subtab.active { background:${T.primary}; color:#fff; border-color:${T.primary}; }
-    .ep-delivery { display:flex; align-items:center; gap:8px; font-size:13px; color:${T.sub}; }
-    .ep-toggle { width:40px; height:22px; border-radius:11px; background:#ccc; position:relative; cursor:pointer; transition:background .2s; border:none; padding:0; }
+    /* ── 管理パネル（モーダル風オーバーレイ） ── */
+    .ep-panel { position:fixed; inset:0; z-index:8000; background:rgba(0,0,0,.15); display:flex; align-items:center; justify-content:center; font-family:${T.font}; }
+    .ep-panel-inner { background:#fff; border-radius:10px; width:820px; max-width:92vw; max-height:85vh; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 8px 32px rgba(0,0,0,.12); }
+    .ep-panel-head { display:flex; align-items:center; padding:16px 20px; border-bottom:1px solid #eee; position:relative; }
+    .ep-panel-close { background:none; border:none; cursor:pointer; font-size:13px; color:${T.sub}; font-family:${T.font}; padding:0; }
+    .ep-panel-close:hover { color:${T.text}; }
+    .ep-panel-title { position:absolute; left:50%; transform:translateX(-50%); font-size:15px; font-weight:600; }
+    .ep-subtabs { display:flex; gap:0; padding:0 20px; }
+    .ep-subtab { padding:10px 16px; font-size:13px; cursor:pointer; border:none; border-bottom:2px solid transparent; background:none; color:${T.sub}; font-family:${T.font}; }
+    .ep-subtab.active { color:${T.text}; border-bottom-color:${T.text}; font-weight:600; }
+    .ep-delivery { display:flex; align-items:center; justify-content:space-between; padding:12px 20px; border-bottom:1px solid #f0f0f0; }
+    .ep-delivery-label { font-size:13px; color:${T.text}; }
+    .ep-toggle { width:40px; height:22px; border-radius:11px; background:#ccc; position:relative; cursor:pointer; transition:background .2s; border:none; padding:0; flex-shrink:0; }
     .ep-toggle.on { background:${T.primary}; }
     .ep-toggle::after { content:''; position:absolute; top:2px; left:2px; width:18px; height:18px; border-radius:50%; background:#fff; transition:left .2s; box-shadow:0 1px 2px rgba(0,0,0,.2); }
     .ep-toggle.on::after { left:20px; }
-    .ep-list-head { display:flex; align-items:center; justify-content:space-between; padding:12px 20px; }
+    .ep-list-head { display:flex; align-items:center; justify-content:space-between; padding:14px 20px; }
     .ep-list-head h3 { font-size:14px; font-weight:600; margin:0; }
     .ep-add-btn { display:flex; align-items:center; gap:4px; font-size:13px; color:${T.primary}; cursor:pointer; background:none; border:none; font-family:${T.font}; }
     .ep-add-btn:hover { text-decoration:underline; }
     .ep-empty { padding:40px 20px; text-align:center; color:${T.sub}; font-size:13px; }
-    .ep-card { display:flex; align-items:center; gap:12px; padding:12px 20px; border-top:1px solid #f0f0f0; cursor:pointer; transition:background .15s; }
-    .ep-card:hover { background:#f8f8fa; }
-    .ep-card.selected { background:#EBF5FF; }
-    .ep-card-thumb { width:72px; height:52px; border-radius:4px; background:#f0f0f0; overflow:hidden; flex-shrink:0; display:flex; align-items:center; justify-content:center; color:${T.sub}; font-size:10px; }
-    .ep-card-info { flex:1; min-width:0; }
-    .ep-card-name { font-size:13px; font-weight:500; margin:0 0 4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .ep-card-meta { font-size:11px; color:${T.sub}; }
-    .ep-card-actions { display:flex; align-items:center; gap:8px; flex-shrink:0; }
-    .ep-card-ratio { font-size:12px; color:${T.sub}; display:flex; align-items:center; gap:4px; }
-    .ep-card-ratio select { border:1px solid #ddd; border-radius:4px; padding:2px 4px; font-size:12px; font-family:${T.font}; }
-    .ep-menu-btn { background:none; border:none; cursor:pointer; font-size:16px; color:${T.sub}; padding:4px; line-height:1; }
+    .ep-card-grid { display:flex; flex-wrap:wrap; gap:16px; padding:4px 20px 20px; overflow-y:auto; flex:1; min-height:0; }
+    .ep-card { width:180px; border:1px solid #e8e8e8; border-radius:8px; overflow:hidden; cursor:pointer; transition:box-shadow .15s; position:relative; background:#fff; }
+    .ep-card:hover { box-shadow:0 2px 8px rgba(0,0,0,.08); }
+    .ep-card-thumb { width:100%; aspect-ratio:16/11; background:#f5f5f5; display:flex; align-items:center; justify-content:center; color:${T.sub}; font-size:11px; overflow:hidden; }
+    .ep-card-body { padding:10px 12px; }
+    .ep-card-name { font-size:12px; font-weight:500; margin:0 0 8px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .ep-card-footer { display:flex; align-items:center; justify-content:space-between; }
+    .ep-card-ratio { font-size:11px; color:${T.sub}; display:flex; align-items:center; gap:4px; }
+    .ep-card-menu { position:absolute; top:6px; right:6px; background:rgba(255,255,255,.9); border:none; cursor:pointer; font-size:18px; color:${T.sub}; padding:2px 6px; border-radius:4px; line-height:1; }
+    .ep-card-menu:hover { background:#f0f0f0; }
 
     /* プリセットモーダル */
     .ep-modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:9000; display:flex; align-items:center; justify-content:center; font-family:${T.font}; }
     .ep-modal { background:#fff; border-radius:10px; width:680px; max-width:92vw; max-height:85vh; display:flex; flex-direction:column; overflow:hidden; }
-    .ep-modal-head { display:flex; align-items:center; justify-content:space-between; padding:14px 18px; border-bottom:1px solid #eee; }
-    .ep-modal-head h2 { font-size:15px; margin:0; font-weight:600; }
-    .ep-modal-close { background:none; border:none; cursor:pointer; font-size:18px; color:${T.sub}; }
-    .ep-modal-tabs { display:flex; gap:0; padding:0 18px; border-bottom:1px solid #eee; }
-    .ep-modal-tab { padding:10px 16px; font-size:13px; cursor:pointer; border-bottom:2px solid transparent; color:${T.sub}; background:none; border-top:none; border-left:none; border-right:none; font-family:${T.font}; }
-    .ep-modal-tab.active { color:${T.primary}; border-bottom-color:${T.primary}; font-weight:600; }
-    .ep-preset-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:14px; padding:18px; overflow-y:auto; }
-    .ep-preset-card { border:1px solid #e8e8e8; border-radius:8px; overflow:hidden; cursor:pointer; transition:box-shadow .15s, border-color .15s; }
-    .ep-preset-card:hover { box-shadow:0 2px 8px rgba(0,0,0,.1); border-color:${T.primary}; }
-    .ep-preset-thumb { aspect-ratio:200/140; background:#f5f5f5; }
-    .ep-preset-info { padding:10px 12px; }
-    .ep-preset-name { font-size:12px; font-weight:500; margin:0 0 6px; line-height:1.4; }
-    .ep-preset-add { display:block; width:100%; padding:6px; font-size:11px; background:${T.primary}; color:#fff; border:none; border-radius:4px; cursor:pointer; font-family:${T.font}; }
+    .ep-modal-head { display:flex; align-items:center; padding:14px 18px; border-bottom:1px solid #eee; position:relative; }
+    .ep-modal-head h2 { font-size:15px; margin:0; font-weight:600; position:absolute; left:50%; transform:translateX(-50%); white-space:nowrap; }
+    .ep-modal-close { background:none; border:none; cursor:pointer; font-size:13px; color:${T.sub}; font-family:${T.font}; padding:0; }
+    .ep-modal-close:hover { color:${T.text}; }
+    .ep-modal-search { padding:12px 18px; }
+    .ep-modal-search input { width:100%; padding:8px 12px 8px 32px; border:1px solid #ddd; border-radius:6px; font-size:13px; font-family:${T.font}; background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E") 10px center no-repeat; box-sizing:border-box; }
+    .ep-modal-toolbar { display:flex; align-items:center; padding:0 18px 0; gap:12px; border-bottom:1px solid #eee; }
+    .ep-modal-tabs { display:flex; gap:0; }
+    .ep-modal-tab { padding:10px 16px; font-size:13px; cursor:pointer; border-bottom:2px solid transparent; color:${T.sub}; background:none; border:none; border-bottom:2px solid transparent; font-family:${T.font}; }
+    .ep-modal-tab.active { color:${T.text}; border-bottom-color:${T.text}; font-weight:600; }
+    .ep-modal-new { margin-left:auto; font-size:12px; color:${T.primary}; background:none; border:none; cursor:pointer; font-family:${T.font}; white-space:nowrap; padding:10px 0; }
+    .ep-modal-new:hover { text-decoration:underline; }
+    .ep-preset-list { flex:1; overflow-y:auto; }
+    .ep-preset-item { display:flex; align-items:center; gap:14px; padding:14px 18px; border-bottom:1px solid #f0f0f0; }
+    .ep-preset-item:hover { background:#fafafa; }
+    .ep-preset-thumb { width:100px; height:70px; background:#f5f5f5; border-radius:6px; flex-shrink:0; overflow:hidden; display:flex; align-items:center; justify-content:center; }
+    .ep-preset-info { flex:1; min-width:0; }
+    .ep-preset-name { font-size:13px; font-weight:600; margin:0 0 6px; line-height:1.4; }
+    .ep-preset-detail { font-size:11px; color:${T.sub}; line-height:1.6; }
+    .ep-preset-detail span { margin-right:16px; }
+    .ep-preset-add { padding:6px 16px; font-size:12px; background:${T.primary}; color:#fff; border:none; border-radius:4px; cursor:pointer; font-family:${T.font}; flex-shrink:0; white-space:nowrap; }
     .ep-preset-add:hover { background:${T.primaryDark}; }
 
     /* 編集画面 */
@@ -103,8 +114,8 @@ function injectPopupCss(): void {
     .ep-back-link:hover { text-decoration:underline; }
 
     /* ドロップダウンメニュー */
-    .ep-dropdown { position:absolute; right:0; top:100%; background:#fff; border-radius:6px; box-shadow:0 4px 16px rgba(0,0,0,.15); z-index:100; min-width:140px; overflow:hidden; }
-    .ep-dropdown-item { display:block; width:100%; padding:10px 14px; font-size:13px; text-align:left; cursor:pointer; background:none; border:none; font-family:${T.font}; color:${T.text}; }
+    .ep-dropdown { position:absolute; right:8px; top:32px; background:#fff; border-radius:6px; box-shadow:0 4px 16px rgba(0,0,0,.15); z-index:100; min-width:160px; overflow:hidden; }
+    .ep-dropdown-item { display:flex; align-items:center; width:100%; padding:10px 14px; font-size:13px; text-align:left; cursor:pointer; background:none; border:none; font-family:${T.font}; color:${T.text}; gap:8px; }
     .ep-dropdown-item:hover { background:#f5f5f5; }
     .ep-dropdown-item.danger { color:#D0021B; }
   `
@@ -173,19 +184,28 @@ export async function renderExitPopup(
 // ─── 管理パネル（一覧画面） ─────────────────────────
 
 function renderPanel(state: PopupPageState): void {
-  // ep-root の中でタブバー・パンくず以外をクリアして再描画
+  // 既存のパネルを除去して再描画
   const existing = state.root.querySelector('.ep-panel, .ep-editor')
   if (existing !== null) existing.remove()
 
   const panel = el('div', { class: 'ep-panel' })
+  const inner = el('div', { class: 'ep-panel-inner' })
 
-  // ── ヘッダ: 離脱防止 / 追従型タブ ──
+  // ── ヘッダ: 閉じる + タイトル ──
   const head = el('div', { class: 'ep-panel-head' })
+  const closeBtn = el('button', { class: 'ep-panel-close', text: '閉じる' })
+  closeBtn.addEventListener('click', () => panel.remove())
+  head.append(closeBtn)
+  head.append(el('span', { class: 'ep-panel-title', text: 'ポップアップ' }))
+  inner.append(head)
+
+  // ── サブタブ: 離脱防止 / 追従型 ──
   const subtabs = el('div', { class: 'ep-subtabs' })
   const isExit = state.activeSubTab === 'exit'
-  const tabExit = el('div', { class: `ep-subtab${isExit ? ' active' : ''}`, text: '離脱防止' })
-  const tabFollow = el('div', { class: `ep-subtab${!isExit ? ' active' : ''}`, text: '追従型' })
+  const tabExit = el('button', { class: `ep-subtab${isExit ? ' active' : ''}`, text: '離脱防止' })
+  const tabFollow = el('button', { class: `ep-subtab${!isExit ? ' active' : ''}`, text: '追従型' })
   subtabs.append(tabExit, tabFollow)
+  inner.append(subtabs)
 
   tabExit.addEventListener('click', () => {
     if (state.activeSubTab === 'exit') return
@@ -198,65 +218,81 @@ function renderPanel(state: PopupPageState): void {
     renderPanel(state)
   })
 
-  // 配信トグル
+  // ── 配信トグル ──
   const delivery = el('div', { class: 'ep-delivery' })
-  const deliveryLabel = el('span', { text: 'このVersionで配信' })
+  const deliveryLabel = el('span', { class: 'ep-delivery-label', text: 'このVersionで配信' })
   const toggle = el('button', { class: `ep-toggle${state.deliveryEnabled ? ' on' : ''}` })
   toggle.addEventListener('click', () => {
     state.deliveryEnabled = !state.deliveryEnabled
     toggle.classList.toggle('on', state.deliveryEnabled)
   })
   delivery.append(deliveryLabel, toggle)
-  head.append(subtabs, delivery)
-  panel.append(head)
+  inner.append(delivery)
 
   if (state.activeSubTab === 'exit') {
-    renderExitList(panel, state)
+    renderExitList(inner, state)
   } else {
-    renderFollowList(panel, state)
+    renderFollowList(inner, state)
   }
 
+  panel.append(inner)
+  // パネル背景クリックで閉じる
+  panel.addEventListener('click', (e) => {
+    if (e.target === panel) panel.remove()
+  })
   state.root.append(panel)
 }
 
 /** 離脱防止タブの一覧 */
-function renderExitList(panel: HTMLElement, state: PopupPageState): void {
+function renderExitList(container: HTMLElement, state: PopupPageState): void {
   const listHead = el('div', { class: 'ep-list-head' })
   const listTitle = el('h3', { text: '離脱防止一覧' })
   const addBtn = el('button', { class: 'ep-add-btn', html: `<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg> 追加` })
   addBtn.addEventListener('click', () => openPresetModal(state))
   listHead.append(listTitle, addBtn)
-  panel.append(listHead)
+  container.append(listHead)
 
   if (state.popups.length === 0) {
-    panel.append(el('div', { class: 'ep-empty', text: 'ポップアップはまだ追加されていません。上の ＋追加 ボタンからプリセットを選択してください。' }))
+    container.append(el('div', { class: 'ep-empty', text: 'ポップアップがまだ設定されていません。上にある「+追加」ボタンから選択してみましょう。' }))
   } else {
+    const grid = el('div', { class: 'ep-card-grid' })
     for (const popup of state.popups) {
-      panel.append(renderPopupCard(state, popup))
+      grid.append(renderPopupCard(state, popup))
     }
+    container.append(grid)
   }
 }
 
 /** 追従型タブの一覧 */
-function renderFollowList(panel: HTMLElement, state: PopupPageState): void {
+function renderFollowList(container: HTMLElement, state: PopupPageState): void {
   const listHead = el('div', { class: 'ep-list-head' })
   const listTitle = el('h3', { text: '追従型一覧' })
   const addBtn = el('button', { class: 'ep-add-btn', html: `<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg> 追加` })
   addBtn.addEventListener('click', () => openFollowPresetModal(state))
   listHead.append(listTitle, addBtn)
-  panel.append(listHead)
+  container.append(listHead)
 
   if (state.followPopups.length === 0) {
-    panel.append(el('div', { class: 'ep-empty', text: '追従型ポップアップはまだ追加されていません。上の ＋追加 ボタンからプリセットを選択してください。' }))
+    container.append(el('div', { class: 'ep-empty', text: 'ポップアップがまだ設定されていません。上にある「+追加」ボタンから選択してみましょう。' }))
   } else {
+    const grid = el('div', { class: 'ep-card-grid' })
     for (const fp of state.followPopups) {
-      panel.append(renderFollowCard(state, fp))
+      grid.append(renderFollowCard(state, fp))
     }
+    container.append(grid)
   }
 }
 
 function renderPopupCard(state: PopupPageState, popup: ExitPopup): HTMLElement {
   const card = el('div', { class: 'ep-card' })
+
+  // ⋯ メニューボタン（サムネイル右上に配置）
+  const menuBtn = el('button', { class: 'ep-card-menu', text: '⋯' })
+  menuBtn.addEventListener('click', (e) => {
+    e.stopPropagation()
+    toggleDropdown(card, state, popup)
+  })
+  card.append(menuBtn)
 
   // サムネイル
   const thumb = el('div', { class: 'ep-card-thumb' })
@@ -268,37 +304,16 @@ function renderPopupCard(state: PopupPageState, popup: ExitPopup): HTMLElement {
   }
   card.append(thumb)
 
-  // 情報
-  const info = el('div', { class: 'ep-card-info' })
-  info.append(el('p', { class: 'ep-card-name', text: popup.name }))
-  const meta: string[] = []
-  if (popup.animation !== '') meta.push(`アニメ: ${popup.animation}`)
-  if (popup.scroll_trigger) meta.push(`スクロール: ${popup.scroll_position}%`)
-  info.append(el('div', { class: 'ep-card-meta', text: meta.join(' / ') || '設定なし' }))
-  card.append(info)
+  // カード下部
+  const body = el('div', { class: 'ep-card-body' })
+  body.append(el('p', { class: 'ep-card-name', text: popup.name }))
 
-  // アクション
-  const actions = el('div', { class: 'ep-card-actions' })
+  const footer = el('div', { class: 'ep-card-footer' })
 
   // 割合
   const ratioWrap = el('div', { class: 'ep-card-ratio' })
-  const ratioSelect = document.createElement('select')
-  for (let i = 0; i <= 100; i += 10) {
-    const opt = document.createElement('option')
-    opt.value = String(i)
-    opt.textContent = String(i)
-    if (i === popup.ratio) opt.selected = true
-    ratioSelect.append(opt)
-  }
-  ratioSelect.addEventListener('change', () => {
-    const newRatio = Number(ratioSelect.value)
-    void api.updateExitPopup(state.abTestUid, popup.uid, { ratio: newRatio }).then(
-      () => { popup.ratio = newRatio },
-      (err: unknown) => toast((err as Error).message, 'error'),
-    )
-  })
-  ratioWrap.append(ratioSelect, el('span', { text: '%' }))
-  actions.append(ratioWrap)
+  ratioWrap.append(el('span', { text: `割合 : ${popup.ratio}` }))
+  footer.append(ratioWrap)
 
   // 配信トグル
   const itemToggle = el('button', { class: `ep-toggle${popup.enabled ? ' on' : ''}` })
@@ -314,19 +329,10 @@ function renderPopupCard(state: PopupPageState, popup: ExitPopup): HTMLElement {
       (err: unknown) => toast((err as Error).message, 'error'),
     )
   })
-  actions.append(itemToggle)
+  footer.append(itemToggle)
 
-  // ... メニュー
-  const menuWrap = el('div', { style: 'position:relative' })
-  const menuBtn = el('button', { class: 'ep-menu-btn', text: '⋯' })
-  menuBtn.addEventListener('click', (e) => {
-    e.stopPropagation()
-    toggleDropdown(menuWrap, state, popup)
-  })
-  menuWrap.append(menuBtn)
-  actions.append(menuWrap)
-
-  card.append(actions)
+  body.append(footer)
+  card.append(body)
 
   // カードクリック → 編集
   card.addEventListener('click', () => openEditor(state, popup))
@@ -334,10 +340,9 @@ function renderPopupCard(state: PopupPageState, popup: ExitPopup): HTMLElement {
   return card
 }
 
-function toggleDropdown(menuWrap: HTMLElement, state: PopupPageState, popup: ExitPopup): void {
-  const existing = menuWrap.querySelector('.ep-dropdown')
+function toggleDropdown(cardEl: HTMLElement, state: PopupPageState, popup: ExitPopup): void {
+  const existing = cardEl.querySelector('.ep-dropdown')
   if (existing !== null) { existing.remove(); return }
-  // 他のドロップダウンを閉じる
   for (const d of document.querySelectorAll('.ep-dropdown')) d.remove()
 
   const dropdown = el('div', { class: 'ep-dropdown' })
@@ -356,7 +361,7 @@ function toggleDropdown(menuWrap: HTMLElement, state: PopupPageState, popup: Exi
     previewPopup(popup)
   })
 
-  const deleteBtn = el('button', { class: 'ep-dropdown-item danger', text: '削除' })
+  const deleteBtn = el('button', { class: 'ep-dropdown-item danger', html: `削除 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left:auto"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>` })
   deleteBtn.addEventListener('click', (e) => {
     e.stopPropagation()
     dropdown.remove()
@@ -372,11 +377,10 @@ function toggleDropdown(menuWrap: HTMLElement, state: PopupPageState, popup: Exi
   })
 
   dropdown.append(editBtn, previewBtn, deleteBtn)
-  menuWrap.append(dropdown)
+  cardEl.append(dropdown)
 
-  // 外側クリックで閉じる
   const close = (e: MouseEvent): void => {
-    if (!menuWrap.contains(e.target as Node)) {
+    if (!cardEl.contains(e.target as Node)) {
       dropdown.remove()
       document.removeEventListener('click', close)
     }
@@ -390,32 +394,67 @@ function openPresetModal(state: PopupPageState): void {
   const overlay = el('div', { class: 'ep-modal-overlay' })
   const modal = el('div', { class: 'ep-modal' })
 
-  // ヘッダ
+  // ヘッダ（閉じる + センタータイトル）
   const head = el('div', { class: 'ep-modal-head' })
-  head.append(el('h2', { text: 'ポップアップを追加' }))
-  const closeBtn = el('button', { class: 'ep-modal-close', text: '✕' })
+  const closeBtn = el('button', { class: 'ep-modal-close', text: '閉じる' })
   closeBtn.addEventListener('click', () => overlay.remove())
   head.append(closeBtn)
+  head.append(el('h2', { text: 'ポップアップ追加（離脱防止）' }))
   modal.append(head)
 
-  // タブ
+  // 検索バー
+  const searchWrap = el('div', { class: 'ep-modal-search' })
+  const searchInput = document.createElement('input')
+  searchInput.type = 'text'
+  searchInput.placeholder = '入力してください'
+  searchWrap.append(searchInput)
+  modal.append(searchWrap)
+
+  // ツールバー（タブ + 新規作成）
+  const toolbar = el('div', { class: 'ep-modal-toolbar' })
   const tabs = el('div', { class: 'ep-modal-tabs' })
   const tabPreset = el('button', { class: 'ep-modal-tab active', text: 'プリセット' })
-  const tabNew = el('button', { class: 'ep-modal-tab', text: '＋ 新規ポップアップ作成' })
-  tabs.append(tabPreset, tabNew)
-  modal.append(tabs)
-
-  // プリセットグリッド
-  const grid = el('div', { class: 'ep-preset-grid' })
-  for (const preset of PRESETS) {
-    grid.append(renderPresetCard(state, preset, overlay))
-  }
-  modal.append(grid)
-
-  // 新規作成タブ切替
-  tabNew.addEventListener('click', () => {
+  const tabCopy = el('button', { class: 'ep-modal-tab', text: '複製' })
+  tabs.append(tabPreset, tabCopy)
+  toolbar.append(tabs)
+  const newBtn = el('button', { class: 'ep-modal-new', text: '+ 新規ポップアップ作成' })
+  newBtn.addEventListener('click', () => {
     overlay.remove()
     createBlankPopup(state)
+  })
+  toolbar.append(newBtn)
+  modal.append(toolbar)
+
+  // プリセットリスト
+  const list = el('div', { class: 'ep-preset-list' })
+  for (const preset of PRESETS) {
+    list.append(renderPresetItem(state, preset, overlay))
+  }
+  modal.append(list)
+
+  // 検索フィルタリング
+  searchInput.addEventListener('input', () => {
+    const query = searchInput.value.trim().toLowerCase()
+    for (const item of list.querySelectorAll<HTMLElement>('.ep-preset-item')) {
+      const name = (item.querySelector('.ep-preset-name')?.textContent ?? '').toLowerCase()
+      item.style.display = query === '' || name.includes(query) ? '' : 'none'
+    }
+  })
+
+  // 複製タブ（空状態）
+  tabCopy.addEventListener('click', () => {
+    tabPreset.classList.remove('active')
+    tabCopy.classList.add('active')
+    list.innerHTML = ''
+    list.append(el('div', { class: 'ep-empty', text: '複製可能なポップアップはありません。' }))
+  })
+  tabPreset.addEventListener('click', () => {
+    tabCopy.classList.remove('active')
+    tabPreset.classList.add('active')
+    list.innerHTML = ''
+    for (const preset of PRESETS) {
+      list.append(renderPresetItem(state, preset, overlay))
+    }
   })
 
   overlay.append(modal)
@@ -425,27 +464,34 @@ function openPresetModal(state: PopupPageState): void {
   document.body.append(overlay)
 }
 
-function renderPresetCard(
+function renderPresetItem(
   state: PopupPageState,
   preset: PopupPreset,
   overlay: HTMLElement,
 ): HTMLElement {
-  const card = el('div', { class: 'ep-preset-card' })
+  const item = el('div', { class: 'ep-preset-item' })
 
+  // サムネイル
   const thumb = el('div', { class: 'ep-preset-thumb' })
   thumb.innerHTML = preset.thumbnailSvg
-  card.append(thumb)
+  item.append(thumb)
 
+  // 情報（名前 + 詳細）
   const info = el('div', { class: 'ep-preset-info' })
   info.append(el('p', { class: 'ep-preset-name', text: preset.name }))
+  const details = el('div', { class: 'ep-preset-detail' })
+  const scrollPos = preset.defaults.scroll_position ?? 50
+  const scrollText = preset.defaults.scroll_trigger ? `${scrollPos}%到達後0秒で表示` : '2%到達後0秒で表示'
+  const animText = preset.defaults.animation ?? 'fade'
+  details.innerHTML = `<span>スクロール位置　　${scrollText}</span><br><span>出現アニメーション　　${animText}</span><br><span>出現場所　　中央</span>`
+  info.append(details)
+  item.append(info)
 
+  // 追加ボタン
   const addBtn = el('button', { class: 'ep-preset-add', text: '追加' })
-  info.append(addBtn)
-  card.append(info)
-
-  // カード全体をクリック可能にする（ボタンだけでなくサムネ・名前どこでも押せる）
   let adding = false
-  function doAdd(): void {
+  addBtn.addEventListener('click', (e) => {
+    e.stopPropagation()
     if (adding) return
     adding = true
     addBtn.disabled = true
@@ -474,10 +520,10 @@ function renderPresetCard(
         toast((err as Error).message, 'error')
       },
     )
-  }
-  card.addEventListener('click', doAdd)
+  })
+  item.append(addBtn)
 
-  return card
+  return item
 }
 
 function createBlankPopup(state: PopupPageState): void {
@@ -508,11 +554,9 @@ const EDITOR_TABS: readonly { id: EditorTab; label: string }[] = [
 ]
 
 function openEditor(state: PopupPageState, popup: ExitPopup): void {
-  // パネルを隠してエディタを出す
-  const panel = state.root.querySelector('.ep-panel')
-  if (panel !== null) panel.remove()
-  const existingEditor = state.root.querySelector('.ep-editor')
-  if (existingEditor !== null) existingEditor.remove()
+  // モーダルパネルとエディタを除去してから再描画
+  for (const p of state.root.querySelectorAll('.ep-panel')) p.remove()
+  for (const e of state.root.querySelectorAll('.ep-editor')) e.remove()
 
   // 編集用のコピー（保存まで元データを壊さない）
   const draft = { ...popup }
@@ -865,6 +909,15 @@ function previewPopup(popup: ExitPopup | Partial<ExitPopup>): void {
 function renderFollowCard(state: PopupPageState, fp: FollowPopup): HTMLElement {
   const card = el('div', { class: 'ep-card' })
 
+  // ⋯ メニューボタン
+  const menuBtn = el('button', { class: 'ep-card-menu', text: '⋯' })
+  menuBtn.addEventListener('click', (e) => {
+    e.stopPropagation()
+    toggleFollowDropdown(card, state, fp)
+  })
+  card.append(menuBtn)
+
+  // サムネイル
   const thumb = el('div', { class: 'ep-card-thumb' })
   const preset = fp.preset_id !== null ? FOLLOW_PRESETS.find((p) => p.id === fp.preset_id) : null
   if (preset !== null && preset !== undefined) {
@@ -874,15 +927,16 @@ function renderFollowCard(state: PopupPageState, fp: FollowPopup): HTMLElement {
   }
   card.append(thumb)
 
-  const info = el('div', { class: 'ep-card-info' })
-  info.append(el('p', { class: 'ep-card-name', text: fp.name }))
-  const posLabels: Record<string, string> = { top: '上部', bottom: '下部', 'bottom-right': '右下', 'bottom-left': '左下' }
-  const meta: string[] = [`位置: ${posLabels[fp.position] ?? fp.position}`]
-  if (fp.show_after_scroll > 0) meta.push(`スクロール: ${fp.show_after_scroll}%`)
-  info.append(el('div', { class: 'ep-card-meta', text: meta.join(' / ') }))
-  card.append(info)
+  // カード下部
+  const body = el('div', { class: 'ep-card-body' })
+  body.append(el('p', { class: 'ep-card-name', text: fp.name }))
 
-  const actions = el('div', { class: 'ep-card-actions' })
+  const footer = el('div', { class: 'ep-card-footer' })
+
+  const posLabels: Record<string, string> = { top: '上部', bottom: '下部', 'bottom-right': '右下', 'bottom-left': '左下' }
+  const ratioWrap = el('div', { class: 'ep-card-ratio' })
+  ratioWrap.append(el('span', { text: posLabels[fp.position] ?? fp.position }))
+  footer.append(ratioWrap)
 
   // 配信トグル
   const itemToggle = el('button', { class: `ep-toggle${fp.enabled ? ' on' : ''}` })
@@ -898,25 +952,17 @@ function renderFollowCard(state: PopupPageState, fp: FollowPopup): HTMLElement {
       (err: unknown) => toast((err as Error).message, 'error'),
     )
   })
-  actions.append(itemToggle)
+  footer.append(itemToggle)
 
-  // メニュー
-  const menuWrap = el('div', { style: 'position:relative' })
-  const menuBtn = el('button', { class: 'ep-menu-btn', text: '⋯' })
-  menuBtn.addEventListener('click', (e) => {
-    e.stopPropagation()
-    toggleFollowDropdown(menuWrap, state, fp)
-  })
-  menuWrap.append(menuBtn)
-  actions.append(menuWrap)
+  body.append(footer)
+  card.append(body)
 
-  card.append(actions)
   card.addEventListener('click', () => openFollowEditor(state, fp))
   return card
 }
 
-function toggleFollowDropdown(menuWrap: HTMLElement, state: PopupPageState, fp: FollowPopup): void {
-  const existing = menuWrap.querySelector('.ep-dropdown')
+function toggleFollowDropdown(cardEl: HTMLElement, state: PopupPageState, fp: FollowPopup): void {
+  const existing = cardEl.querySelector('.ep-dropdown')
   if (existing !== null) { existing.remove(); return }
   for (const d of document.querySelectorAll('.ep-dropdown')) d.remove()
 
@@ -936,7 +982,7 @@ function toggleFollowDropdown(menuWrap: HTMLElement, state: PopupPageState, fp: 
     previewFollowPopup(fp)
   })
 
-  const deleteBtn = el('button', { class: 'ep-dropdown-item danger', text: '削除' })
+  const deleteBtn = el('button', { class: 'ep-dropdown-item danger', html: `削除 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left:auto"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>` })
   deleteBtn.addEventListener('click', (e) => {
     e.stopPropagation()
     dropdown.remove()
@@ -952,10 +998,10 @@ function toggleFollowDropdown(menuWrap: HTMLElement, state: PopupPageState, fp: 
   })
 
   dropdown.append(editBtn, previewBtn, deleteBtn)
-  menuWrap.append(dropdown)
+  cardEl.append(dropdown)
 
   const close = (e: MouseEvent): void => {
-    if (!menuWrap.contains(e.target as Node)) {
+    if (!cardEl.contains(e.target as Node)) {
       dropdown.remove()
       document.removeEventListener('click', close)
     }
@@ -969,28 +1015,67 @@ function openFollowPresetModal(state: PopupPageState): void {
   const overlay = el('div', { class: 'ep-modal-overlay' })
   const modal = el('div', { class: 'ep-modal' })
 
+  // ヘッダ
   const head = el('div', { class: 'ep-modal-head' })
-  head.append(el('h2', { text: '追従型ポップアップを追加' }))
-  const closeBtn = el('button', { class: 'ep-modal-close', text: '✕' })
+  const closeBtn = el('button', { class: 'ep-modal-close', text: '閉じる' })
   closeBtn.addEventListener('click', () => overlay.remove())
   head.append(closeBtn)
+  head.append(el('h2', { text: 'ポップアップ追加（追従型）' }))
   modal.append(head)
 
+  // 検索バー
+  const searchWrap = el('div', { class: 'ep-modal-search' })
+  const searchInput = document.createElement('input')
+  searchInput.type = 'text'
+  searchInput.placeholder = '入力してください'
+  searchWrap.append(searchInput)
+  modal.append(searchWrap)
+
+  // ツールバー
+  const toolbar = el('div', { class: 'ep-modal-toolbar' })
   const tabs = el('div', { class: 'ep-modal-tabs' })
   const tabPreset = el('button', { class: 'ep-modal-tab active', text: 'プリセット' })
-  const tabNew = el('button', { class: 'ep-modal-tab', text: '＋ 新規作成' })
-  tabs.append(tabPreset, tabNew)
-  modal.append(tabs)
-
-  const grid = el('div', { class: 'ep-preset-grid' })
-  for (const preset of FOLLOW_PRESETS) {
-    grid.append(renderFollowPresetCard(state, preset, overlay))
-  }
-  modal.append(grid)
-
-  tabNew.addEventListener('click', () => {
+  const tabCopy = el('button', { class: 'ep-modal-tab', text: '複製' })
+  tabs.append(tabPreset, tabCopy)
+  toolbar.append(tabs)
+  const newBtn = el('button', { class: 'ep-modal-new', text: '+ 新規ポップアップ作成' })
+  newBtn.addEventListener('click', () => {
     overlay.remove()
     createBlankFollowPopup(state)
+  })
+  toolbar.append(newBtn)
+  modal.append(toolbar)
+
+  // プリセットリスト
+  const list = el('div', { class: 'ep-preset-list' })
+  for (const preset of FOLLOW_PRESETS) {
+    list.append(renderFollowPresetItem(state, preset, overlay))
+  }
+  modal.append(list)
+
+  // 検索フィルタリング
+  searchInput.addEventListener('input', () => {
+    const query = searchInput.value.trim().toLowerCase()
+    for (const item of list.querySelectorAll<HTMLElement>('.ep-preset-item')) {
+      const name = (item.querySelector('.ep-preset-name')?.textContent ?? '').toLowerCase()
+      item.style.display = query === '' || name.includes(query) ? '' : 'none'
+    }
+  })
+
+  // 複製タブ
+  tabCopy.addEventListener('click', () => {
+    tabPreset.classList.remove('active')
+    tabCopy.classList.add('active')
+    list.innerHTML = ''
+    list.append(el('div', { class: 'ep-empty', text: '複製可能なポップアップはありません。' }))
+  })
+  tabPreset.addEventListener('click', () => {
+    tabCopy.classList.remove('active')
+    tabPreset.classList.add('active')
+    list.innerHTML = ''
+    for (const preset of FOLLOW_PRESETS) {
+      list.append(renderFollowPresetItem(state, preset, overlay))
+    }
   })
 
   overlay.append(modal)
@@ -1000,26 +1085,31 @@ function openFollowPresetModal(state: PopupPageState): void {
   document.body.append(overlay)
 }
 
-function renderFollowPresetCard(
+function renderFollowPresetItem(
   state: PopupPageState,
   preset: FollowPreset,
   overlay: HTMLElement,
 ): HTMLElement {
-  const card = el('div', { class: 'ep-preset-card' })
+  const item = el('div', { class: 'ep-preset-item' })
 
   const thumb = el('div', { class: 'ep-preset-thumb' })
   thumb.innerHTML = preset.thumbnailSvg
-  card.append(thumb)
+  item.append(thumb)
 
   const info = el('div', { class: 'ep-preset-info' })
   info.append(el('p', { class: 'ep-preset-name', text: preset.name }))
+  const details = el('div', { class: 'ep-preset-detail' })
+  const posLabels: Record<string, string> = { top: '上部', bottom: '下部', 'bottom-right': '右下', 'bottom-left': '左下' }
+  const posText = posLabels[preset.defaults.position ?? 'bottom'] ?? preset.defaults.position ?? '下部'
+  const animText = preset.defaults.animation ?? 'slideUp'
+  details.innerHTML = `<span>表示位置　　${posText}</span><br><span>出現アニメーション　　${animText}</span>`
+  info.append(details)
+  item.append(info)
 
   const addBtn = el('button', { class: 'ep-preset-add', text: '追加' })
-  info.append(addBtn)
-  card.append(info)
-
   let adding = false
-  function doAdd(): void {
+  addBtn.addEventListener('click', (e) => {
+    e.stopPropagation()
     if (adding) return
     adding = true
     addBtn.disabled = true
@@ -1048,10 +1138,10 @@ function renderFollowPresetCard(
         toast((err as Error).message, 'error')
       },
     )
-  }
-  card.addEventListener('click', doAdd)
+  })
+  item.append(addBtn)
 
-  return card
+  return item
 }
 
 function createBlankFollowPopup(state: PopupPageState): void {
@@ -1081,10 +1171,8 @@ const FOLLOW_EDITOR_TABS: readonly { id: FollowEditorTab; label: string }[] = [
 ]
 
 function openFollowEditor(state: PopupPageState, fp: FollowPopup): void {
-  const panel = state.root.querySelector('.ep-panel')
-  if (panel !== null) panel.remove()
-  const existingEditor = state.root.querySelector('.ep-editor')
-  if (existingEditor !== null) existingEditor.remove()
+  for (const p of state.root.querySelectorAll('.ep-panel')) p.remove()
+  for (const e of state.root.querySelectorAll('.ep-editor')) e.remove()
 
   const draft = { ...fp }
 
