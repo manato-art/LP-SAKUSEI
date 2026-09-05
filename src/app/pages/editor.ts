@@ -325,6 +325,8 @@ export async function renderEditor(
   })
   // 指示78: Version ∨ ドロップダウンをナビバーへ移動し、配信割合を非表示にする
   relocateVersionDropdownToNav(root)
+  // モック準拠: Versionパネル上部に「Version」ヘッダーを表示
+  addVersionPanelHeader(root)
   mountHeaderImageModal(root)
   mountVersionLinkPopup(root, { abTestUid, getCurrentUid: () => ctx.currentUid })
   // 下部バーの「+」＝ファネルステップ追加（指示⑮）。作成したら新ステップへ移動する。
@@ -342,8 +344,6 @@ export async function renderEditor(
   hideStepNavigation(root)
   wireSideToolbar(ctx)
   wireTopBar(root, ab_test.title, folderName)
-  // ヘッダーに保存ステータス・プレビュー・公開ボタン・ページ名を追加
-  mountHeaderExtras(root, ctx, { pageTitle: ab_test.title })
   // パンくずリスト（📁板名 > 📄検証）＋ Version フィルタ（作成中 / アーカイブ済み）
   const breadcrumbRight = setupBreadcrumb(root, folderName, ab_test.title, folder?.uid)
   if (breadcrumbRight !== null) {
@@ -352,6 +352,8 @@ export async function renderEditor(
       renderVersionList(ctx)
     })
   }
+  // ヘッダーに保存ステータス・プレビュー・公開ボタンを追加（breadcrumb行の構築後に呼ぶ）
+  mountHeaderExtras(root, ctx, { pageTitle: ab_test.title })
   // 4タブ（基本情報 / Version / ポップアップ / レポート）を相互に行き来できるようにする
   wireAbTestTabs(root, abTestUid, folder?.uid ?? '')
   wireTopRightIcons(root, abTestUid, folder?.uid ?? '')
@@ -503,23 +505,91 @@ function injectCardSeamStyles(): void {
   style.id = 'sb-card-seam-css'
   style.textContent = `
     /* ── カード接続: 隙間を白で埋める ── */
-    /* contentWrapper の角丸を上部だけ外す（nav と繋がる） */
+    /* contentWrapper: モック準拠でグレー背景 + 角丸外す */
     .quillEditorContentWrapper {
-      border-radius: 0 0 10px 10px !important;
+      border-radius: 0 !important;
+      background: #f5f6f8 !important;
+      position: relative !important;
+      display: flex !important;
+      flex-direction: column !important;
+    }
+    /* Quillコンテナ: グレー背景内の白カード（モック .canvas-inner） */
+    .quillEditorContentWrapper .ql-container {
+      flex: 1 !important;
+      overflow: auto !important;
+      padding: 20px !important;
+      display: flex !important;
+      justify-content: center !important;
+      background: transparent !important;
+    }
+    .quillEditorContentWrapper .ql-editor {
+      width: 100% !important;
+      max-width: 640px !important;
+      background: #fff !important;
+      border: 1px solid #e5e5ea !important;
+      border-radius: 4px !important;
+      min-height: 400px !important;
+      padding: 24px !important;
+      box-shadow: 0 1px 4px rgba(0,0,0,.04) !important;
     }
     /* ヘッダ画像の角丸も上部を外す */
     [class*="_articleHeaderPhoto_"] {
       border-radius: 0 !important;
     }
-    /* Versionパネルの角丸を外す + 右に区切り線 */
+    /* Versionパネルの角丸を外す + 右に区切り線 + 幅260px（モック準拠） */
     [class*="_abTestArticlesWrapper_"] {
       border-radius: 0 !important;
       border-right: 1px solid #e5e5ea;
+      width: 260px !important;
+      min-width: 260px !important;
+      flex-shrink: 0 !important;
     }
-    /* sideToolbarWrapper: 参考に合わせて薄グレー + 左に区切り線 */
+    /* sideToolbarWrapper: モック準拠で薄グレー + 左に区切り線 + フル高さ */
     [class*="_sideToolbarWrapper_"] {
-      background: #f7f7f8;
+      background: #fafbfc;
       border-left: 1px solid #e5e5ea;
+      align-self: stretch !important;
+      height: auto !important;
+    }
+    /* editorWrapper: 高さをフルに伸ばす + 幅を親に合わせる（基板のmax-width:1100pxを解除） */
+    [class*="_editorWrapper_"] {
+      flex: 1 !important;
+      min-height: 0 !important;
+      overflow: hidden !important;
+      width: 100% !important;
+      max-width: none !important;
+      margin: 0 !important;
+      align-self: stretch !important;
+    }
+    /* 基板の浮遊ドロップダウンを非表示 */
+    [class*="_editorWrapper_"] > [class*="_dropdown_"] {
+      display: none !important;
+    }
+    /* ── 基板DOMの漏れ要素を確実に隠す ── */
+    /* 基板の作成中/アーカイブ済みフィルタ（新規DOMで置換済み） */
+    [class*="_navArticleItems_"],
+    [class*="_actionItems_"] {
+      display: none !important;
+    }
+    /* 基板のLP情報行（パンくずで置換済み） */
+    [class*="_currentAbTest_"] {
+      display: none !important;
+    }
+    /* navArticleWrapper の余白を詰める */
+    [class*="_navArticleWrapper_"] {
+      padding-top: 0 !important;
+      border-bottom: none !important;
+    }
+    /* ボトムバー（funnelStepWrapper）: モック準拠で白背景 + 上ボーダー + 34px高 */
+    [class*="_funnelStepWrapper_"] {
+      height: 34px !important;
+      background: #fff !important;
+      border-top: 1px solid #e5e5ea !important;
+      overflow: hidden !important;
+    }
+    /* funnelStepWrapper内の溢れドロップダウンを非表示 */
+    [class*="_funnelStepWrapper_"] > [class*="_lightTheme_"] {
+      display: none !important;
     }
   `
   document.head.append(style)
@@ -597,44 +667,38 @@ function mountPropertiesPanelInEditor(ctx: EditorContext): void {
 }
 
 /**
- * ヘッダー行に保存ステータス・プレビュー・公開ボタン・⋮メニューを追加する。
- * 既存のパンくず・Versionフィルタ・右3アイコンの間に挿入する。
+ * ヘッダー行（sb-breadcrumb-row）に保存ステータス・プレビュー・公開ボタン・⋮メニューを追加する。
+ * パンくずとVersionフィルタの右側にスペーサーを挟んで挿入する。
  */
 function mountHeaderExtras(
   root: HTMLElement,
   ctx: EditorContext,
-  deps: { pageTitle: string },
+  _deps: { pageTitle: string },
 ): void {
-  // navArticleItems (右上エリア) を探す
-  const actionItems = root.querySelector<HTMLElement>('._navArticleItems_dcd38_19._actionItems_dcd38_26')
-  if (actionItems === null) return
-
-  // linksContainer（右3アイコンの入れ物）の直前に新要素群を差し込む
-  const linksContainer = actionItems.querySelector<HTMLElement>('._linksContainer_dcd38_102')
+  // sb-breadcrumb-row（可視のヘッダー行）を探す
+  const breadcrumbRow = root.querySelector<HTMLElement>('.sb-breadcrumb-row')
+  if (breadcrumbRow === null) return
+  // 二重挿入防止
+  if (breadcrumbRow.querySelector('[data-header-save-status]') !== null) return
 
   // CSS注入
   injectHeaderExtrasCss()
 
-  // ── ページ名表示 ──
-  const pageName = document.createElement('span')
-  pageName.className = 'sb-header-page-name'
-  pageName.setAttribute('data-header-page-name', 'true')
-  pageName.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:13px;height:13px;color:#b0b0b0;flex-shrink:0"><rect x="4" y="3" width="16" height="18" rx="2"/><line x1="8" y1="7" x2="16" y2="7"/></svg>`
-  const nameText = document.createElement('span')
-  nameText.textContent = deps.pageTitle
-  pageName.append(nameText)
+  const newBadge = `<span class="sb-header-new-badge">NEW</span>`
+
+  // ── スペーサー（左のパンくず+フィルタと右のボタン群を分ける） ──
+  const spacer = document.createElement('div')
+  spacer.style.flex = '1'
 
   // ── 保存ステータス ──
   const saveStatus = document.createElement('span')
   saveStatus.className = 'sb-header-save-status'
   saveStatus.setAttribute('data-header-save-status', 'true')
-  saveStatus.innerHTML = `<span style="color:#00b341">✓</span><span>保存済み</span>`
+  saveStatus.innerHTML = `<span style="color:#00b341">✓</span><span>保存済み</span><span style="font-size:10px;color:#b0b0b0">2分前</span>${newBadge}`
 
   // ── セパレータ ──
   const sep1 = document.createElement('span')
   sep1.className = 'sb-header-sep'
-  const sep2 = document.createElement('span')
-  sep2.className = 'sb-header-sep'
 
   // ── プレビューボタン ──
   const previewBtn = document.createElement('button')
@@ -651,7 +715,7 @@ function mountHeaderExtras(
   // ── 公開ボタン ──
   const publishBtn = document.createElement('button')
   publishBtn.className = 'sb-header-btn-publish'
-  publishBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><polyline points="20 6 9 17 4 12"/></svg>公開する`
+  publishBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><polyline points="20 6 9 17 4 12"/></svg>公開する<span class="sb-header-new-badge" style="background:rgba(255,255,255,.25)">NEW</span>`
   publishBtn.addEventListener('click', () => {
     toast('公開機能は準備中です')
   })
@@ -665,16 +729,28 @@ function mountHeaderExtras(
     toast('メニューは準備中です')
   })
 
-  // スペーサー
-  const spacer = document.createElement('div')
-  spacer.style.flex = '1'
+  // ── セパレータ2（⋮の後ろ） ──
+  const sep2 = document.createElement('span')
+  sep2.className = 'sb-header-sep'
 
-  // linksContainer の前に差し込む（右3アイコンは末尾に残す）
-  if (linksContainer !== null) {
-    linksContainer.before(pageName, spacer, saveStatus, sep1, previewBtn, publishBtn, moreBtn, sep2)
-  } else {
-    actionItems.append(pageName, spacer, saveStatus, sep1, previewBtn, publishBtn, moreBtn)
+  // ── 右端3アイコン（モック準拠: 編集/設定/中間ページ） ──
+  const rightIcons = document.createElement('div')
+  rightIcons.className = 'sb-header-right-icons'
+  const iconSvgs = [
+    { title: '編集', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:16px;height:16px"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>' },
+    { title: 'Versionオプション設定', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:16px;height:16px"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09"/></svg>' },
+    { title: '中間ページ', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:16px;height:16px"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>' },
+  ]
+  for (const { title: t, svg } of iconSvgs) {
+    const btn = document.createElement('button')
+    btn.className = 'sb-header-btn-icon'
+    btn.title = t
+    btn.innerHTML = svg
+    rightIcons.append(btn)
   }
+
+  // パンくず行に追加（既存の breadcrumb + filter の後ろにスペーサー+ボタン群）
+  breadcrumbRow.append(spacer, saveStatus, sep1, previewBtn, publishBtn, moreBtn, sep2, rightIcons)
 }
 
 function injectHeaderExtrasCss(): void {
@@ -717,6 +793,15 @@ function injectHeaderExtrasCss(): void {
       transition:background .12s;
     }
     .sb-header-btn-icon:hover { background:#f0f0f2; }
+    .sb-header-new-badge {
+      display:inline-block; font-size:8px; font-weight:700; color:#fff;
+      background:#ff8c00; padding:1px 4px; border-radius:2px;
+      letter-spacing:.3px; vertical-align:middle; margin-left:3px;
+      line-height:1.3;
+    }
+    .sb-header-right-icons {
+      display:flex; align-items:center; gap:2px; flex-shrink:0;
+    }
   `
   document.head.append(s)
 }
@@ -728,6 +813,9 @@ function injectHeaderExtrasCss(): void {
 function addVersionCardExtras(card: HTMLElement, version: Version, isCurrent: boolean): void {
   const inner = card.querySelector<HTMLElement>(HOOK.currentVersion)
   if (inner === null) return
+
+  // カードのスタイルオーバーライド（モック準拠）
+  injectVersionCardCss()
 
   // バッジ: 名前入力の後に追加
   const nameInput = card.querySelector<HTMLElement>(HOOK.versionName)
@@ -753,6 +841,44 @@ function addVersionCardExtras(card: HTMLElement, version: Version, isCurrent: bo
     }
   }
 
+  // サムネイルプレビュー（カードの配信割合行の後に追加）
+  if (inner.querySelector('[data-version-thumb]') === null) {
+    const thumb = document.createElement('div')
+    thumb.setAttribute('data-version-thumb', 'true')
+    thumb.style.cssText = `
+      width:100%; height:50px; background:#f5f6f8; border-radius:4px;
+      overflow:hidden; position:relative; border:1px solid #f0f0f2;
+      margin-top:6px;
+    `
+    // HTML コンテンツがあればグラデーションで簡易表示、なければプレースホルダー
+    const html = version.html || ''
+    if (html.includes('background') || html.includes('img')) {
+      // コンテンツがある場合、HTML の抜粋をミニチュア表示
+      const preview = document.createElement('div')
+      preview.style.cssText = `
+        width:100%; height:100%; transform:scale(0.15); transform-origin:top left;
+        pointer-events:none; overflow:hidden;
+      `
+      preview.innerHTML = html
+      thumb.append(preview)
+    } else {
+      const placeholder = document.createElement('div')
+      placeholder.style.cssText = `
+        width:100%; height:100%; display:flex; align-items:center;
+        justify-content:center; color:#b0b0b0; font-size:10px;
+      `
+      placeholder.textContent = 'プレビュー'
+      thumb.append(placeholder)
+    }
+    // 保存ボタンの後に挿入
+    const saveBtn = inner.querySelector('[data-save-btn]')
+    if (saveBtn !== null) {
+      saveBtn.closest('[class*="_articleButtons_"]')?.after(thumb)
+    } else {
+      inner.append(thumb)
+    }
+  }
+
   // タイムスタンプ（カード末尾に追加）
   if (inner.querySelector('[data-version-meta]') === null) {
     const meta = document.createElement('div')
@@ -763,7 +889,6 @@ function addVersionCardExtras(card: HTMLElement, version: Version, isCurrent: bo
     `
     meta.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;flex-shrink:0"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`
     const timeText = document.createElement('span')
-    // version.updated_at があれば相対時間を表示
     const updatedAt = (version as unknown as Record<string, unknown>)['updated_at']
     if (typeof updatedAt === 'string') {
       timeText.textContent = relativeTime(updatedAt) + 'に保存'
@@ -773,6 +898,113 @@ function addVersionCardExtras(card: HTMLElement, version: Version, isCurrent: bo
     meta.append(timeText)
     inner.append(meta)
   }
+}
+
+/** バージョンカードのCSS（モック準拠）を注入する */
+function injectVersionCardCss(): void {
+  if (document.getElementById('sb-version-card-css') !== null) return
+  const s = document.createElement('style')
+  s.id = 'sb-version-card-css'
+  s.textContent = `
+    /* ── バージョンカードをモック準拠に ── */
+    [class*="_currentVersion_"] {
+      border:1px solid #e5e5ea !important;
+      border-radius:8px !important;
+      padding:8px 10px !important;
+      margin-bottom:8px !important;
+      transition:border-color .12s,box-shadow .12s !important;
+      position:relative !important;
+    }
+    [class*="_currentVersion_"]:hover {
+      border-color:#0091ff !important;
+      box-shadow:0 0 0 1px #0091ff !important;
+    }
+    /* アクティブカード */
+    [class*="_currentVersion_"][class*="_active_"] {
+      border-color:#0091ff !important;
+      box-shadow:0 0 0 2px rgba(0,145,255,.2) !important;
+    }
+    /* Version追加ボタンをモック準拠に */
+    [data-test="Article-BtnCreateNewArticle"] {
+      background:#0091ff !important;
+      color:#fff !important;
+      font-weight:600 !important;
+      font-size:12px !important;
+      border-radius:0 !important;
+      border:none !important;
+      padding:10px !important;
+      display:flex !important;
+      align-items:center !important;
+      justify-content:center !important;
+      gap:4px !important;
+      cursor:pointer !important;
+    }
+    [data-test="Article-BtnCreateNewArticle"]:hover {
+      background:#007ae6 !important;
+    }
+    /* バージョン名入力をモック準拠に */
+    [data-test="ArticleList-InputMemo"] {
+      font-size:12px !important;
+      font-weight:600 !important;
+      color:#1a1a1a !important;
+      border:1px solid transparent !important;
+      border-radius:3px !important;
+      padding:2px 4px !important;
+      background:transparent !important;
+      transition:border-color .12s !important;
+    }
+    [data-test="ArticleList-InputMemo"]:hover {
+      border-color:#e5e5ea !important;
+    }
+    [data-test="ArticleList-InputMemo"]:focus {
+      border-color:#0091ff !important;
+      outline:none !important;
+      background:#fff !important;
+    }
+    /* 配信割合の入力 */
+    [data-test="ArticleList-DeriveryRateForm"] {
+      width:44px !important;
+      height:24px !important;
+      border:1px solid #e5e5ea !important;
+      border-radius:3px !important;
+      font-size:11px !important;
+      text-align:center !important;
+      font-variant-numeric:tabular-nums !important;
+    }
+    /* 保存ボタン */
+    [data-save-btn] {
+      font-size:10px !important;
+      padding:3px 8px !important;
+      border:none !important;
+      border-radius:4px !important;
+      font-weight:500 !important;
+      background:rgba(0,145,255,.1) !important;
+      color:#0091ff !important;
+    }
+    /* Versionパネル全体 */
+    [class*="_abTestArticlesWrapper_"] {
+      background:#fff !important;
+    }
+    /* ⋮メニューボタン */
+    button.css-3tls8 {
+      position:absolute !important;
+      top:6px !important;
+      right:6px !important;
+      width:22px !important;
+      height:22px !important;
+      border:none !important;
+      background:transparent !important;
+      border-radius:4px !important;
+      cursor:pointer !important;
+      color:#b0b0b0 !important;
+      transition:background .12s !important;
+    }
+    button.css-3tls8:hover {
+      background:#f0f0f2 !important;
+      color:#666 !important;
+    }
+  `
+  document.head.append(s)
 }
 
 /** ISO 日時文字列を相対表現に変換する */
@@ -1650,15 +1882,44 @@ function relocateVersionDropdownToNav(root: HTMLElement): void {
   const odz = subscriptText?.closest<HTMLElement>('.css-odz94x') ?? null
   if (odz !== null) odz.style.display = 'none'
 
-  // ドロップダウンを移動した結果、Versionパネル上部（_abTestArticlesTop_）が空になるので
-  // スペースの無駄を無くすために高さを縮める
+  // ドロップダウンを移動した結果、Versionパネル上部（_abTestArticlesTop_）の中身は空。
+  // モック準拠で「Version」ヘッダーテキストに置き換える。
   const articlesTop = root.querySelector<HTMLElement>('[class*="_abTestArticlesTop"]')
   if (articlesTop !== null) {
-    articlesTop.style.padding = '0'
+    articlesTop.style.padding = '10px 12px 6px'
     articlesTop.style.minHeight = '0'
-    articlesTop.style.height = '0'
-    articlesTop.style.overflow = 'hidden'
+    articlesTop.style.height = 'auto'
+    articlesTop.style.overflow = 'visible'
+    articlesTop.style.display = 'flex'
+    articlesTop.style.alignItems = 'center'
+    articlesTop.style.justifyContent = 'space-between'
+    // 中身をクリアして「Version」ヘッダーを入れる
+    articlesTop.innerHTML = ''
+    const vhdr = document.createElement('h3')
+    vhdr.textContent = 'Version'
+    vhdr.style.cssText = 'font-size:13px;font-weight:600;color:#1a1a1a;margin:0'
+    articlesTop.append(vhdr)
   }
+}
+
+/**
+ * Versionパネル上部に「Version」ヘッダーテキストを表示する。
+ * relocateVersionDropdownToNav が成功した場合でも独立して動作するよう別関数にしている。
+ */
+function addVersionPanelHeader(root: HTMLElement): void {
+  const articlesTop = root.querySelector<HTMLElement>('[class*="_abTestArticlesTop"]')
+  if (articlesTop === null) return
+  // 既にヘッダー設置済みなら何もしない
+  if (articlesTop.querySelector('[data-version-panel-header]') !== null) return
+  // 基板の中身をクリアし、モック準拠の「Version」ヘッダーに置き換える
+  articlesTop.innerHTML = ''
+  articlesTop.style.cssText =
+    'padding:10px 12px 6px;min-height:0;height:auto;overflow:visible;display:flex;align-items:center;justify-content:space-between'
+  const vhdr = document.createElement('h3')
+  vhdr.setAttribute('data-version-panel-header', 'true')
+  vhdr.textContent = 'Version'
+  vhdr.style.cssText = 'font-size:13px;font-weight:600;color:#1a1a1a;margin:0'
+  articlesTop.append(vhdr)
 }
 
 function wireTopBar(root: HTMLElement, title: string, folderName: string): void {
@@ -1679,26 +1940,41 @@ function injectVersionFilterCss(): void {
   const style = document.createElement('style')
   style.id = 'sb-version-filter-css'
   style.textContent = `
+    .sb-version-filter-wrap {
+      display: flex;
+      gap: 0;
+      flex-shrink: 0;
+    }
     .sb-version-filter {
       display: inline-block;
       padding: 4px 12px;
-      font-size: 12px;
-      font-weight: 400;
-      color: #888;
-      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 500;
+      color: #666;
+      border: 1px solid #e5e5ea;
+      background: #fff;
       cursor: pointer;
       line-height: 1.4;
-      transition: color 0.15s, background 0.15s;
+      transition: color 0.15s, background 0.15s, border-color 0.15s;
       white-space: nowrap;
+      font-family: inherit;
+    }
+    .sb-version-filter:first-child {
+      border-radius: 4px 0 0 4px;
+    }
+    .sb-version-filter:last-child {
+      border-radius: 0 4px 4px 0;
+      border-left: none;
     }
     .sb-version-filter:hover {
-      color: #555;
+      color: #333;
       background: #f0f0f2;
     }
     .sb-version-filter.sb-filter-active {
-      color: #333;
-      background: #e8e8ec;
-      font-weight: 600;
+      background: #0091ff;
+      color: #fff;
+      border-color: #0091ff;
+      font-weight: 500;
     }
   `
   document.head.append(style)
@@ -1721,6 +1997,9 @@ function mountVersionFilter(
     { mode: 'archived', label: 'アーカイブ済み' },
   ]
 
+  const wrap = document.createElement('div')
+  wrap.className = 'sb-version-filter-wrap'
+
   const buttons: HTMLElement[] = []
   for (const { mode, label } of modes) {
     const btn = document.createElement('span')
@@ -1733,6 +2012,7 @@ function mountVersionFilter(
       onSelectMode(mode)
     })
     buttons.push(btn)
-    container.append(btn)
+    wrap.append(btn)
   }
+  container.append(wrap)
 }

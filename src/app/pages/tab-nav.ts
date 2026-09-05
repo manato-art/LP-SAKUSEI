@@ -64,37 +64,39 @@ function injectTabBarCss(): void {
       display: flex;
       align-items: center;
       gap: 2px;
-      padding: 6px 8px 5px;
-      border-bottom: 1px solid #e0e0e0;
-      background: #fff;
+      padding: 0 16px;
+      height: 40px;
+      border-bottom: none;
+      background: #0091ff;
       flex-shrink: 0;
     }
     /* 指示86: 採取CSSに負けないよう !important で統一 */
     .sb-tab-bar a {
       display: inline-block !important;
-      padding: 5px 16px !important;
+      padding: 8px 16px !important;
       font-size: 13px !important;
-      font-weight: 400 !important;
-      color: #888 !important;
+      font-weight: 500 !important;
+      color: rgba(255,255,255,.7) !important;
       text-decoration: none !important;
-      border-radius: 6px !important;
+      border-radius: 6px 6px 0 0 !important;
       cursor: pointer !important;
       line-height: 1.4 !important;
       transition: color 0.15s, background 0.15s !important;
       background: transparent !important;
       border: none !important;
       box-shadow: none !important;
+      white-space: nowrap !important;
     }
     .sb-tab-bar a:hover {
-      color: #333 !important;
-      background: #f0f0f2 !important;
+      color: #fff !important;
+      background: rgba(255,255,255,.1) !important;
     }
     .sb-tab-bar a.sb-tab-active {
-      color: #fff !important;
-      background: #1a7af8 !important;
-      font-weight: 600 !important;
+      color: #1a1a1a !important;
+      background: #fff !important;
+      font-weight: 500 !important;
     }
-    /* 採取物の3アイコン（エディタ/スプリット/リダイレクト）はテキストタブに置換済み→非表示 */
+    /* 採取物の3アイコン → ヘッダー行に新規DOM版を配置済み→非表示 */
     [class*="_linksContainer_"], [class*="_links_dcd38"] {
       display: none !important;
     }
@@ -102,11 +104,12 @@ function injectTabBarCss(): void {
     .sb-breadcrumb-row {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      padding: 6px 12px;
+      gap: 8px;
+      padding: 0 12px;
       background: #fff;
       flex-shrink: 0;
-      min-height: 32px;
+      height: 48px;
+      border-bottom: 1px solid #e5e5ea;
     }
     .sb-breadcrumb {
       display: flex;
@@ -114,7 +117,7 @@ function injectTabBarCss(): void {
       gap: 6px;
       font-size: 13px;
       color: #555;
-      min-width: 0;
+      flex-shrink: 0;
     }
     .sb-breadcrumb-icon {
       flex-shrink: 0;

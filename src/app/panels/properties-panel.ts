@@ -170,6 +170,36 @@ function injectStyles(): void {
       justify-content:center; gap:3px; transition:background .12s; padding:0;
     }
     .sb-ins-btn:hover { background:#f0f0f2; }
+    .sb-pr-size-grid {
+      display:grid; grid-template-columns:auto 1fr auto auto 1fr auto;
+      gap:3px; align-items:center;
+    }
+    .sb-pr-size-label {
+      font-size:10px; color:#b0b0b0; font-weight:500;
+    }
+    .sb-pr-size-input {
+      width:100%; height:26px; border:1px solid #e5e5ea; border-radius:3px;
+      padding:0 4px; font-size:11px; color:#1a1a1a;
+      font-family:inherit; text-align:center;
+      font-variant-numeric:tabular-nums; box-sizing:border-box;
+      outline:none;
+    }
+    .sb-pr-size-input:focus { border-color:#0091ff; }
+    .sb-pr-size-unit {
+      font-size:9px; color:#b0b0b0;
+    }
+    .sb-pr-stepper-wrap {
+      display:flex; flex-direction:column; gap:0; margin-left:2px;
+    }
+    .sb-pr-stepper-btn {
+      width:16px; height:12px; border:1px solid #e5e5ea; background:#fff;
+      cursor:pointer; font-size:7px; display:flex;
+      align-items:center; justify-content:center; color:#666;
+      padding:0; line-height:1;
+    }
+    .sb-pr-stepper-btn:first-child { border-radius:2px 2px 0 0; }
+    .sb-pr-stepper-btn:last-child { border-radius:0 0 2px 2px; border-top:none; }
+    .sb-pr-stepper-btn:hover { background:#f0f0f2; }
   `
   document.head.append(s)
 }
@@ -213,7 +243,7 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
   const header = document.createElement('div')
   header.className = 'sb-props-header'
   const title = document.createElement('h3')
-  title.textContent = 'プロパティ'
+  title.innerHTML = 'プロパティ'
   const closeBtn = document.createElement('button')
   closeBtn.type = 'button'
   closeBtn.className = 'sb-props-close'
@@ -313,10 +343,33 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
     if (Number.isNaN(v) || v < 1) return
     applyInline('size', `${v}px`)
   })
+  const sizeStepWrap = document.createElement('div')
+  sizeStepWrap.className = 'sb-pr-stepper-wrap'
+  const sizeUp = document.createElement('button')
+  sizeUp.type = 'button'
+  sizeUp.className = 'sb-pr-stepper-btn'
+  sizeUp.textContent = '▲'
+  sizeUp.addEventListener('click', () => {
+    const v = parseInt(sizeInput.value, 10)
+    if (Number.isNaN(v)) return
+    sizeInput.value = String(v + 1)
+    sizeInput.dispatchEvent(new Event('change'))
+  })
+  const sizeDown = document.createElement('button')
+  sizeDown.type = 'button'
+  sizeDown.className = 'sb-pr-stepper-btn'
+  sizeDown.textContent = '▼'
+  sizeDown.addEventListener('click', () => {
+    const v = parseInt(sizeInput.value, 10)
+    if (Number.isNaN(v) || v <= 1) return
+    sizeInput.value = String(v - 1)
+    sizeInput.dispatchEvent(new Event('change'))
+  })
+  sizeStepWrap.append(sizeUp, sizeDown)
   const sizeUnit = document.createElement('span')
   sizeUnit.className = 'sb-pr-unit'
   sizeUnit.textContent = 'px'
-  sizeRow.append(sizeInput, sizeUnit)
+  sizeRow.append(sizeInput, sizeStepWrap, sizeUnit)
 
   // ── 太字 ──
   const boldRow = row('太字')
@@ -420,6 +473,63 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
     }
   })
   lhRow.append(lhInput)
+
+  // ── 位置・サイズ ──
+  const posGroup = group('位置・サイズ')
+  const posGrid = document.createElement('div')
+  posGrid.className = 'sb-pr-size-grid'
+
+  const posXLabel = document.createElement('span')
+  posXLabel.className = 'sb-pr-size-label'
+  posXLabel.textContent = 'X'
+  const posXInput = document.createElement('input')
+  posXInput.className = 'sb-pr-size-input'
+  posXInput.type = 'number'
+  posXInput.value = '0'
+  const posXUnit = document.createElement('span')
+  posXUnit.className = 'sb-pr-size-unit'
+  posXUnit.textContent = 'px'
+
+  const posYLabel = document.createElement('span')
+  posYLabel.className = 'sb-pr-size-label'
+  posYLabel.textContent = 'Y'
+  const posYInput = document.createElement('input')
+  posYInput.className = 'sb-pr-size-input'
+  posYInput.type = 'number'
+  posYInput.value = '0'
+  const posYUnit = document.createElement('span')
+  posYUnit.className = 'sb-pr-size-unit'
+  posYUnit.textContent = 'px'
+
+  const posWLabel = document.createElement('span')
+  posWLabel.className = 'sb-pr-size-label'
+  posWLabel.textContent = 'W'
+  const posWInput = document.createElement('input')
+  posWInput.className = 'sb-pr-size-input'
+  posWInput.type = 'number'
+  posWInput.value = '0'
+  const posWUnit = document.createElement('span')
+  posWUnit.className = 'sb-pr-size-unit'
+  posWUnit.textContent = 'px'
+
+  const posHLabel = document.createElement('span')
+  posHLabel.className = 'sb-pr-size-label'
+  posHLabel.textContent = 'H'
+  const posHInput = document.createElement('input')
+  posHInput.className = 'sb-pr-size-input'
+  posHInput.type = 'number'
+  posHInput.value = '0'
+  const posHUnit = document.createElement('span')
+  posHUnit.className = 'sb-pr-size-unit'
+  posHUnit.textContent = 'px'
+
+  posGrid.append(
+    posXLabel, posXInput, posXUnit,
+    posYLabel, posYInput, posYUnit,
+    posWLabel, posWInput, posWUnit,
+    posHLabel, posHInput, posHUnit,
+  )
+  posGroup.append(posGrid)
 
   // ── 配置 ──
   const alignGroup = group('配置')
@@ -541,6 +651,7 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
     textColorRow, bgColorRow,
     lsRow, lhRow,
     alignGroup,
+    posGroup,
     fmtGroup,
     insGroup,
     actGroup,
@@ -553,14 +664,15 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
     const r = getRange()
     const hasSelection = r !== null && r.length > 0
 
+    const newBadge = '<span style="display:inline-block;font-size:8px;font-weight:700;color:#fff;background:#ff8c00;padding:1px 4px;border-radius:2px;letter-spacing:.3px;vertical-align:middle;margin-left:4px;line-height:1.3">NEW</span>'
     if (hasSelection) {
       body.style.display = 'flex'
       emptyMsg.style.display = 'none'
-      title.textContent = '選択中：テキスト'
+      title.innerHTML = `選択中：テキスト ${newBadge}`
     } else {
       body.style.display = 'none'
       emptyMsg.style.display = 'block'
-      title.textContent = 'プロパティ'
+      title.innerHTML = 'プロパティ'
       return
     }
 
@@ -607,6 +719,17 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
     ulBtn.classList.toggle('active', fmt['underline'] === true)
     stBtn.classList.toggle('active', fmt['strike'] === true)
     linkBtn.classList.toggle('active', fmt['link'] !== undefined && fmt['link'] !== false)
+
+    // 位置・サイズ（選択テキストの最初の行ブロックの矩形を読み取る）
+    if (r !== null) {
+      const bounds = quill.getBounds(r.index, r.length)
+      if (bounds !== null) {
+        posXInput.value = String(Math.round(bounds.left))
+        posYInput.value = String(Math.round(bounds.top))
+        posWInput.value = String(Math.round(bounds.width))
+        posHInput.value = String(Math.round(bounds.height))
+      }
+    }
   }
 
   quill.on('selection-change', () => refresh())
