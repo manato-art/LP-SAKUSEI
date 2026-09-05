@@ -18,6 +18,7 @@
  */
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { createEmptyState } from './seed-empty.ts'
 import type { State } from './types.ts'
 
 const DATA_DIR = process.env['DATA_DIR']
@@ -45,14 +46,30 @@ function archivesNewestFirst(): string[] {
 }
 
 /**
+ * 永続化データにスキーマ進化で追加されたフィールドが欠けている場合、
+ * 空シードのデフォルト値で補完する（マイグレーション）。
+ * これにより古い state.json でも新しいコードで安全に読める。
+ */
+function migrateState(raw: Record<string, unknown>): State {
+  const defaults = createEmptyState() as unknown as Record<string, unknown>
+  const migrated = { ...defaults }
+  for (const key of Object.keys(defaults)) {
+    migrated[key] = key in raw ? raw[key] : defaults[key]
+  }
+  return migrated as unknown as State
+}
+
+/**
  * 保存済み state を読む。本体が壊れていたら**最新アーカイブ**へ順にフォールバックする。
+ * 読み込み後にマイグレーションを適用し、欠けているフィールドをデフォルト値で補完する。
  */
 export function loadPersistedState(): State | null {
   const candidates = [FILE, ...archivesNewestFirst()].filter((p): p is string => p !== null)
   for (const path of candidates) {
     if (!existsSync(path)) continue
     try {
-      return JSON.parse(readFileSync(path, 'utf8')) as State
+      const raw = JSON.parse(readFileSync(path, 'utf8')) as Record<string, unknown>
+      return migrateState(raw)
     } catch {
       // 次の候補（アーカイブ）へ
     }

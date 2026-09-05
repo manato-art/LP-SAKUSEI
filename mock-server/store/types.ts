@@ -178,6 +178,7 @@ export interface ExitPopup {
   visit_count: string
   phone_number: string
   link_url: string
+  callback_url: string
 
   // 表示タブ
   animation: string
@@ -186,6 +187,8 @@ export interface ExitPopup {
   scroll_position: number
   countdown_trigger: boolean
   countdown_seconds: number
+  back_button_trigger: boolean
+  exit_trigger: boolean
 
   // 位置タブ
   position_x: number
