@@ -1,12 +1,13 @@
 /**
  * Widget編集オーバーレイ（本番 SquadBeyond の Widget 編集 UI の再現）。
  *
- * エディタ上の Widget（SbWidgetBlot）をクリックすると開くフルスクリーンパネル。
+ * エディタ上の Widget（SbWidgetBlot）をクリックすると開くインラインパネル。
  * 本番の実測色:
  *   - 全体コンテナ背景: #2B2B2B (rgb(43,43,43))
  *   - コードパネル背景: #151515 (rgb(21,21,21))
  *   - ラベル文字色: #fff
  *   - 構文ハイライト: Material Theme 系
+ *   - ブランドカラー: #0091ff (rgb(0,145,255))
  */
 import type Quill from 'quill'
 import { toast } from '../ui.ts'
@@ -26,11 +27,12 @@ const COLOR = {
   lineNumberText: '#555',
   divider: '#444',
   toggleBg: '#3a3a3a',
-  toggleBgOn: '#1976d2',
+  toggleBgOn: '#0091ff',
+  brand: '#0091ff',
   // Widget 選択UI
-  selectBorder: '#1976d2',
+  selectBorder: '#0091ff',
   selectLabel: '#333',
-  selectLabelBg: 'rgba(25,118,210,.9)',
+  selectLabelBg: 'rgba(0,145,255,.9)',
 } as const
 
 const FONT = '"Hiragino Sans","Hiragino Kaku Gothic ProN",sans-serif'
@@ -171,15 +173,11 @@ function openWidgetEditor(quill: Quill, target: WidgetEditTarget): void {
   // 左: ビジュアルエディタ
   const leftPane = buildVisualEditor(target)
 
-  // 仕切り
+  // 仕切り（本番実測: ~10px幅, cursor:col-resize, 中身は空＝ドットなし）
   const divider = document.createElement('div')
   divider.style.cssText =
     `width:10px;background:${COLOR.container};cursor:col-resize;flex-shrink:0;` +
     `display:flex;align-items:center;justify-content:center`
-  const dividerDot = document.createElement('div')
-  dividerDot.style.cssText =
-    `width:4px;height:32px;border-radius:2px;background:${COLOR.divider}`
-  divider.append(dividerDot)
 
   // 右: コードパネル
   const rightPane = buildCodePanels(target)
@@ -206,7 +204,7 @@ function closeWidgetPanel(panel: HTMLElement): void {
 }
 
 /* ================================================================
- *  ヘッダー
+ *  ヘッダー（本番実測: padding:12px, borderBottom:1px solid #f4f4f4）
  * ================================================================ */
 
 function buildHeader(
@@ -216,14 +214,14 @@ function buildHeader(
 ): HTMLElement {
   const header = document.createElement('div')
   header.style.cssText =
-    `display:flex;align-items:center;padding:12px 20px;border-bottom:1px solid #eee;flex-shrink:0`
+    `display:flex;align-items:center;padding:12px;border-bottom:1px solid #f4f4f4;flex-shrink:0`
 
-  // 閉じる
+  // 閉じる（本番実測: fontSize:12px, color:rgb(128,128,128), padding:0 8px）
   const closeBtn = document.createElement('button')
   closeBtn.type = 'button'
   closeBtn.textContent = '閉じる'
   closeBtn.style.cssText =
-    `border:none;background:none;color:#666;font:14px/1 ${FONT};cursor:pointer;padding:4px 8px`
+    `border:none;background:none;color:rgb(128,128,128);font:12px/1 ${FONT};cursor:pointer;padding:0 8px`
   closeBtn.addEventListener('click', () => closeWidgetPanel(panel))
 
   // Widget編集（中央）
@@ -236,22 +234,24 @@ function buildHeader(
   const rightBtns = document.createElement('div')
   rightBtns.style.cssText = 'display:flex;gap:8px;align-items:center'
 
+  // 「Widgetとして登録」（本番実測: fontSize:12px, color:#0091ff, border:none, SVG plus icon）
   const registerBtn = document.createElement('button')
   registerBtn.type = 'button'
   registerBtn.innerHTML = svgPlus() + ' Widgetとして登録'
   registerBtn.style.cssText =
-    `display:flex;align-items:center;gap:4px;border:1px solid #ddd;background:#fff;` +
-    `color:#333;border-radius:4px;padding:6px 14px;font:13px/1 ${FONT};cursor:pointer`
+    `display:flex;align-items:center;gap:4px;border:none;background:none;` +
+    `color:${COLOR.brand};padding:6px 14px;font:12px/1 ${FONT};cursor:pointer`
   registerBtn.addEventListener('click', () => {
     toast('Widgetとして登録はクローンでは未対応です')
   })
 
+  // 「更新する」（本番実測: fontSize:12px, color:white, bg:#0091ff, borderRadius:4px）
   const updateBtn = document.createElement('button')
   updateBtn.type = 'button'
   updateBtn.textContent = '更新する'
   updateBtn.style.cssText =
-    `border:none;background:#1976d2;color:#fff;border-radius:4px;padding:6px 20px;` +
-    `font:600 13px/1 ${FONT};cursor:pointer`
+    `border:none;background:${COLOR.brand};color:#fff;border-radius:4px;padding:6px 20px;` +
+    `font:12px/1 ${FONT};cursor:pointer`
   updateBtn.addEventListener('click', () => {
     const htmlArea = panel.querySelector<HTMLTextAreaElement>('[data-code-html]')
     const cssArea = panel.querySelector<HTMLTextAreaElement>('[data-code-css]')
@@ -277,22 +277,22 @@ function buildHeader(
 }
 
 /* ================================================================
- *  タイトル行
+ *  タイトル行（本番実測: fontSize:16px, fontWeight:400, icon:fa-hand-point-up, border:none）
  * ================================================================ */
 
 function buildTitleBar(target: WidgetEditTarget): HTMLElement {
   const bar = document.createElement('div')
   bar.style.cssText =
-    `display:flex;align-items:center;gap:8px;padding:12px 20px;border-bottom:1px solid #eee;flex-shrink:0`
+    `display:flex;align-items:center;gap:8px;padding:12px;flex-shrink:0`
 
   const handle = document.createElement('span')
-  handle.innerHTML = svgDragHandle()
-  handle.style.cssText = 'color:#999;cursor:grab;flex-shrink:0'
+  handle.innerHTML = svgPointingHand()
+  handle.style.cssText = 'color:#999;flex-shrink:0'
 
   const nameEl = document.createElement('div')
   nameEl.textContent = guessWidgetName(target.html)
   nameEl.style.cssText =
-    `font:600 14px/1.4 ${FONT};color:#333;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap`
+    `font:400 16px/1.4 ${FONT};color:#333;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap`
 
   bar.append(handle, nameEl)
   return bar
@@ -306,63 +306,73 @@ function buildVisualEditor(target: WidgetEditTarget): HTMLElement {
   const pane = document.createElement('div')
   pane.style.cssText = `flex:1;display:flex;flex-direction:column;min-width:0`
 
-  // ツールバー
+  // ── ツールバー（本番実測: 1行 flex-wrap, height:64px, 20項目, 1px×16pxセパレータ） ──
   const toolbar = document.createElement('div')
-  toolbar.style.cssText = `background:#fff;border-bottom:1px solid #ddd;flex-shrink:0`
-
-  const toolbarRow1 = document.createElement('div')
-  toolbarRow1.style.cssText =
+  toolbar.style.cssText =
+    `background:#fff;border-bottom:1px solid #ddd;flex-shrink:0;height:64px;box-sizing:border-box;` +
     `display:flex;flex-wrap:wrap;gap:2px;padding:6px 10px;align-items:center`
 
-  const tools = [
-    { label: '↩', title: '元に戻す' },
-    { label: '↪', title: 'やり直す' },
-    { label: 'sans-serif', title: 'フォント', wide: true },
-    { label: '−', title: 'フォントサイズを小さく' },
-    { label: '19', title: 'フォントサイズ' },
-    { label: '+', title: 'フォントサイズを大きく' },
-    { label: 'B', title: '太字', bold: true },
-    { label: 'U', title: '下線' },
-    { label: 'S', title: '取り消し線' },
-    { label: '≡', title: '配置' },
-    { label: 'A', title: '文字色' },
-    { label: '■', title: '背景色' },
-    { label: '🖼', title: '画像' },
-    { label: '💡', title: 'マーカー' },
-    { label: '⏎', title: '改行' },
-  ]
-  for (const t of tools) {
+  /** ツールバーアイコンボタンを生成 */
+  const mkBtn = (innerHtml: string, title: string, wide?: boolean): HTMLButtonElement => {
     const btn = document.createElement('button')
     btn.type = 'button'
-    btn.textContent = t.label
-    btn.title = t.title
+    btn.innerHTML = innerHtml
+    btn.title = title
     btn.style.cssText =
-      `border:none;background:none;padding:4px 6px;font:${t.bold ? 'bold ' : ''}13px/1 ${FONT};` +
-      `color:#555;cursor:pointer;min-width:24px;border-radius:2px`
+      `border:none;background:none;padding:4px;color:#555;cursor:pointer;` +
+      `display:flex;align-items:center;justify-content:center;gap:2px;` +
+      `min-width:${wide === true ? '80' : '28'}px;height:28px;border-radius:2px`
     btn.addEventListener('mouseenter', () => { btn.style.background = '#f0f0f0' })
     btn.addEventListener('mouseleave', () => { btn.style.background = 'none' })
     btn.addEventListener('click', (e) => { e.preventDefault() })
-    toolbarRow1.append(btn)
+    return btn
   }
 
-  const toolbarRow2 = document.createElement('div')
-  toolbarRow2.style.cssText = `display:flex;gap:2px;padding:2px 10px 6px;align-items:center`
-  for (const t of [{ label: '🔗', title: 'リンク' }, { label: 'Tx', title: '書式クリア' }]) {
-    const btn = document.createElement('button')
-    btn.type = 'button'
-    btn.textContent = t.label
-    btn.title = t.title
-    btn.style.cssText =
-      `border:none;background:none;padding:4px 6px;font:13px/1 ${FONT};color:#555;cursor:pointer;min-width:24px;border-radius:2px`
-    btn.addEventListener('click', (e) => { e.preventDefault() })
-    toolbarRow2.append(btn)
+  /** ツールバーセパレータ（本番実測: 1px × 16px） */
+  const mkSep = (): HTMLElement => {
+    const s = document.createElement('div')
+    s.style.cssText = 'width:1px;height:16px;background:#ddd;margin:0 4px;flex-shrink:0'
+    return s
   }
-  toolbar.append(toolbarRow1, toolbarRow2)
 
-  // エディタ本文
+  /** フォントサイズ数値表示 */
+  const mkSizeNum = (value: string): HTMLElement => {
+    const el = document.createElement('span')
+    el.textContent = value
+    el.style.cssText =
+      `display:flex;align-items:center;justify-content:center;min-width:28px;height:24px;` +
+      `border:1px solid #ddd;border-radius:2px;font:12px/1 ${FONT};color:#555;padding:0 4px`
+    return el
+  }
+
+  // ツールバーアイテム配置（本番の順序を再現）
+  toolbar.append(
+    mkBtn(svgToolUndo(), '元に戻す'),
+    mkBtn(svgToolRedo(), 'やり直す'),
+    mkSep(),
+    mkBtn(`<span style="font:12px/1 ${FONT};white-space:nowrap">sans-serif</span>${svgDropdownArrow()}`, 'フォント', true),
+    mkSep(),
+    mkBtn(svgToolSizeMinus(), 'サイズ−'),
+    mkSizeNum('19'),
+    mkBtn(svgToolSizePlus(), 'サイズ+'),
+    mkSep(),
+    mkBtn(svgToolBold(), '太字'),
+    mkBtn(svgToolUnderline(), '下線'),
+    mkBtn(svgToolStrikethrough(), '取り消し線'),
+    mkBtn(svgToolAlign(), '配置'),
+    mkBtn(svgToolItalic(), '斜体'),
+    mkBtn(svgToolTextColor(), '文字色'),
+    mkBtn(svgToolBgColor(), '背景色'),
+    mkBtn(svgToolImage(), '画像'),
+    mkBtn(svgToolMarker(), 'マーカー'),
+    mkBtn(svgToolLink(), 'リンク'),
+    mkBtn(svgToolClearFormat(), '書式クリア'),
+  )
+
+  // エディタ本文（本番実測: padding:20px）
   const editorBody = document.createElement('div')
   editorBody.style.cssText =
-    `flex:1;background:#fff;overflow-y:auto;padding:16px;min-height:0`
+    `flex:1;background:#fff;overflow-y:auto;padding:20px;min-height:0`
   // CSS を style タグとして注入してからHTMLをレンダリング
   if (target.css.trim() !== '') {
     const styleTag = document.createElement('style')
@@ -611,7 +621,7 @@ function extractHtml(node: HTMLElement): string {
 }
 
 /* ================================================================
- *  SVG アイコン
+ *  SVG アイコン — ヘッダー / タイトル / ビュー切替
  * ================================================================ */
 
 function svgPlus(): string {
@@ -620,15 +630,12 @@ function svgPlus(): string {
   </svg>`
 }
 
-function svgDragHandle(): string {
-  return `<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style="vertical-align:middle">
-    <rect x="3" y="3" width="10" height="1.5" rx=".75"/>
-    <rect x="3" y="7.25" width="10" height="1.5" rx=".75"/>
-    <rect x="3" y="11.5" width="10" height="1.5" rx=".75"/>
-  </svg>`
+/** 人差し指アイコン（本番の fa-hand-point-up 再現） */
+function svgPointingHand(): string {
+  return `<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style="vertical-align:middle"><path d="M7 1c.55 0 1 .45 1 1v5h1c.55 0 1 .45 1 1l1-1c.55 0 1 .45 1 1v3c0 2.2-1.8 4-4 4H6c-2.2 0-4-1.8-4-4V8c0-.55.45-1 1-1s1 .45 1 1V7c0-.55.45-1 1-1s1 .45 1 1V2c0-.55.45-1 1-1z"/></svg>`
 }
 
-/** 分割表示アイコン（本番の左側アイコン） */
+/** 分割表示アイコン（コードパネルのビュー切替） */
 function svgViewSplit(): string {
   return `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2">
     <rect x="1" y="2" width="14" height="12" rx="1.5"/>
@@ -636,11 +643,95 @@ function svgViewSplit(): string {
   </svg>`
 }
 
-/** コード表示アイコン（本番の右側アイコン） */
+/** コード表示アイコン（コードパネルのビュー切替） */
 function svgViewCode(): string {
   return `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2">
     <path d="M5 4 L2 8 L5 12"/>
     <path d="M11 4 L14 8 L11 12"/>
     <line x1="9" y1="3" x2="7" y2="13"/>
   </svg>`
+}
+
+/* ================================================================
+ *  SVG アイコン — ツールバー（本番のSVGアイコンを再現）
+ * ================================================================ */
+
+/** ドロップダウン矢印（フォント選択などの▼） */
+function svgDropdownArrow(): string {
+  return `<svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-left:2px"><path d="M2 3l2 2 2-2"/></svg>`
+}
+
+/** 元に戻す */
+function svgToolUndo(): string {
+  return `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 5h7a3.5 3.5 0 0 1 0 7H8"/><path d="M5 2L2 5l3 3"/></svg>`
+}
+
+/** やり直す */
+function svgToolRedo(): string {
+  return `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5H5a3.5 3.5 0 0 0 0 7h1"/><path d="M9 2l3 3-3 3"/></svg>`
+}
+
+/** サイズ小 (−) */
+function svgToolSizeMinus(): string {
+  return `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="3" y1="7" x2="11" y2="7"/></svg>`
+}
+
+/** サイズ大 (+) */
+function svgToolSizePlus(): string {
+  return `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="7" y1="3" x2="7" y2="11"/><line x1="3" y1="7" x2="11" y2="7"/></svg>`
+}
+
+/** 太字 (B) */
+function svgToolBold(): string {
+  return `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 2h4a2.5 2.5 0 0 1 0 5H4zm0 5h4.5a2.5 2.5 0 0 1 0 5H4z"/></svg>`
+}
+
+/** 下線 (U) */
+function svgToolUnderline(): string {
+  return `<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3.5 2v4.5a3.5 3.5 0 0 0 7 0V2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><line x1="2" y1="13" x2="12" y2="13" stroke="currentColor" stroke-width="1.2"/></svg>`
+}
+
+/** 取り消し線 (S) */
+function svgToolStrikethrough(): string {
+  return `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><line x1="1" y1="7" x2="13" y2="7" stroke-width="1.4"/><path d="M9.5 3.5C9 2.8 8.1 2.2 7 2.2c-1.5 0-2.7.9-2.7 2 0 .6.3 1.1.8 1.5"/><path d="M4.5 10.5c.5.7 1.4 1.3 2.5 1.3 1.5 0 2.7-.9 2.7-2 0-.5-.2-.9-.5-1.3"/></svg>`
+}
+
+/** 配置（左揃えアイコン + ドロップダウン） */
+function svgToolAlign(): string {
+  return `<svg width="18" height="14" viewBox="0 0 18 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><line x1="1" y1="2.5" x2="11" y2="2.5"/><line x1="1" y1="5.5" x2="8" y2="5.5"/><line x1="1" y1="8.5" x2="11" y2="8.5"/><line x1="1" y1="11.5" x2="8" y2="11.5"/><path d="M14 5.5l2 2-2 2" stroke-width="1.2"/></svg>`
+}
+
+/** 斜体 (I) */
+function svgToolItalic(): string {
+  return `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><line x1="6" y1="2" x2="10" y2="2"/><line x1="4" y1="12" x2="8" y2="12"/><line x1="8" y1="2" x2="6" y2="12"/></svg>`
+}
+
+/** 文字色 (A + カラーバー) */
+function svgToolTextColor(): string {
+  return `<svg width="14" height="14" viewBox="0 0 14 14"><path d="M3.5 10L7 2l3.5 8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><line x1="4.8" y1="8" x2="9.2" y2="8" stroke="currentColor" stroke-width="1.2"/><rect x="2" y="12" width="10" height="2" rx=".5" fill="#e53935"/></svg>`
+}
+
+/** 背景色 (A + 背景カラーバー) */
+function svgToolBgColor(): string {
+  return `<svg width="14" height="14" viewBox="0 0 14 14"><rect x="1" y="10" width="12" height="3.5" rx=".5" fill="#ffca28"/><path d="M3.5 9L7 1l3.5 8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><line x1="4.8" y1="7" x2="9.2" y2="7" stroke="currentColor" stroke-width="1.2"/></svg>`
+}
+
+/** 画像 */
+function svgToolImage(): string {
+  return `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><rect x="1.5" y="2" width="11" height="10" rx="1.5"/><circle cx="4.5" cy="5" r="1.2" fill="currentColor" stroke="none"/><path d="M1.5 10l3-3.5 2.5 3 2-1.5L12.5 11"/></svg>`
+}
+
+/** マーカー（ペンアイコン） */
+function svgToolMarker(): string {
+  return `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 1l3 3-7 7H3v-3z"/><line x1="8" y1="3" x2="11" y2="6"/></svg>`
+}
+
+/** リンク（チェーンアイコン） */
+function svgToolLink(): string {
+  return `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M6 8a3 3 0 0 0 4.24 0l1.5-1.5a3 3 0 0 0-4.24-4.24L6.62 3.14"/><path d="M8 6a3 3 0 0 0-4.24 0L2.26 7.5a3 3 0 0 0 4.24 4.24l.88-.88"/></svg>`
+}
+
+/** 書式クリア（消しゴムアイコン） */
+function svgToolClearFormat(): string {
+  return `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 2l4.5 4.5-5 5H3.5L1 9l4-4.5z"/><line x1="5" y1="5.5" x2="9.5" y2="10"/><line x1="1" y1="12.5" x2="13" y2="12.5"/></svg>`
 }
