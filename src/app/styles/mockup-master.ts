@@ -256,13 +256,12 @@ const MOCKUP_CSS = `
     flex: 1 !important;
     overflow: auto !important;
     padding: 20px !important;
-    display: flex !important;
-    justify-content: center !important;
+    display: block !important;
     background: transparent !important;
   }
   .quillEditorContentWrapper .ql-editor {
-    width: 100% !important;
     max-width: 640px !important;
+    margin: 0 auto !important;
     background: var(--surface) !important;
     border: 1px solid var(--border) !important;
     border-radius: 4px !important;
