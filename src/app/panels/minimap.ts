@@ -12,7 +12,7 @@
  * クリック/ドラッグの位置もそれに合わせて正確にスクロールする。
  */
 
-const MINIMAP_WIDTH = 40
+const MINIMAP_WIDTH = 36
 /** 理想スケール。コンテンツが長い場合はこれより小さくなる */
 const PREFERRED_SCALE = 0.06
 
@@ -25,18 +25,20 @@ export function mountMinimap(editorRoot: HTMLElement, scrollContainer: HTMLEleme
   if (quillHost === null) return
 
   // ── ミニマップの外枠 ──
+  // キャンバスエリア（.quillEditorContentWrapper, position:relative）内に
+  // absolute で配置し、キャンバス右端〜アイコンレール左端の間に表示する
   const wrapper = document.createElement('div')
   wrapper.setAttribute('data-clone-minimap', 'true')
   wrapper.style.cssText = [
-    'position:fixed',
-    'top:76px',
+    'position:absolute',
+    'top:0',
     'right:0',
     `width:${MINIMAP_WIDTH}px`,
-    'bottom:64px',
+    'height:100%',
     'overflow:hidden',
-    'z-index:40',
-    'background:#F5F5F5',
-    'border-left:1px solid #E0E0E0',
+    'z-index:5',
+    'background:rgba(255,255,255,.85)',
+    'border-left:1px solid var(--border-light, #f0f0f0)',
     'cursor:pointer',
     'user-select:none',
   ].join(';')
@@ -66,8 +68,16 @@ export function mountMinimap(editorRoot: HTMLElement, scrollContainer: HTMLEleme
   ].join(';')
   wrapper.append(viewport)
 
-  // ── サイドツールバーの右横に配置 ──
-  document.body.append(wrapper)
+  // ── キャンバスエリア内に配置（position:relative な親の右端に absolute で吸着） ──
+  const canvasArea =
+    editorRoot.querySelector<HTMLElement>('.quillEditorContentWrapper') ??
+    quillHost.closest<HTMLElement>('[class*="quillEditorContentWrapper"]')
+  if (canvasArea !== null) {
+    canvasArea.append(wrapper)
+  } else {
+    // フォールバック: 親が見つからなければ body に配置
+    document.body.append(wrapper)
+  }
 
   /** 現在の実効スケール（コンテンツ量で変わる） */
   let effectiveScale = PREFERRED_SCALE

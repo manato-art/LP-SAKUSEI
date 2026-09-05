@@ -67,7 +67,7 @@ async function route(): Promise<void> {
   content.innerHTML = ''
   // 前のページが設定したスタイルをリセット（エディタは overflow:hidden / height:100vh を設定する）
   content.style.cssText = 'flex:1;min-width:0'
-  // エディタのミニマップは document.body に直接追加されるため、ページ遷移で残る。除去する。
+  // エディタのミニマップはページ遷移で残る可能性がある。除去する。
   for (const orphan of document.querySelectorAll('[data-clone-minimap]')) orphan.remove()
   markActiveNav(path ?? '')
 
