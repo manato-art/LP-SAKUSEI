@@ -41,6 +41,10 @@ function svgPuzzle(): string {
 /**
  * Widget ナビサイドバーをエディタにマウントする。
  * editor.ts の wireWidgetClick() の後に呼ぶ。
+ *
+ * 本番 SquadBeyond と同様に、バージョンパネルとキャンバスの**間**に
+ * flex 子要素として挿入する。キャンバス（contentWrapper）は flex:1 で
+ * 残りスペースを埋めるため、Widget nav が出現しても自然に幅が縮む。
  */
 export function mountWidgetNav(root: HTMLElement, quill: Quill): void {
   const editorWrapper = root.querySelector<HTMLElement>('[class*="_editorWrapper_"]')
@@ -50,24 +54,22 @@ export function mountWidgetNav(root: HTMLElement, quill: Quill): void {
   const editor = root.querySelector<HTMLElement>('.ql-editor')
   if (editor === null) return
 
-  // サイドバーコンテナ（キャンバスの位置を動かさないよう absolute 配置）
-  // editorWrapper に position 基準を設定
-  editorWrapper.style.position = 'relative'
-
-  // バージョンパネルの幅を取得して widget nav の left を決定
-  const versionPanel = editorWrapper.querySelector<HTMLElement>('[class*="_abTestArticlesWrapper_"]')
-  const vpWidth = versionPanel !== null ? versionPanel.getBoundingClientRect().width : 230
+  // contentWrapper を flex:1 に変更して、Widget nav の出入りに応じて
+  // キャンバス幅が自動調整されるようにする（採取CSSの width:56% を上書き）
+  contentWrapper.style.flex = '1 1 0'
+  contentWrapper.style.width = 'auto'
+  contentWrapper.style.minWidth = '0'
 
   const sidebar = document.createElement('div')
   sidebar.dataset['widgetNav'] = 'true'
   sidebar.style.cssText =
-    `position:absolute;left:${vpWidth}px;top:0;z-index:100;` +
-    `width:${SIDEBAR_W}px;overflow-y:auto;overflow-x:hidden;` +
+    `width:${SIDEBAR_W}px;flex-shrink:0;overflow-y:auto;overflow-x:hidden;` +
     `display:none;flex-direction:column;gap:8px;padding:8px 0;` +
     `border-right:1px solid #eee;background:#fff;box-sizing:border-box;` +
-    `height:calc(100vh - 92px);box-shadow:2px 0 8px rgba(0,0,0,.06)`
+    `height:calc(100vh - 92px)`
 
-  editorWrapper.append(sidebar)
+  // バージョンパネルの直後、キャンバスの直前に挿入する（flex 子要素として自然に並ぶ）
+  editorWrapper.insertBefore(sidebar, contentWrapper)
 
   // 初回スキャン＋MutationObserver で Widget の増減を検知
   // デバウンスして過剰な再描画を防止（カードクリック直後の DOM 変化で再構築されるのを回避）
