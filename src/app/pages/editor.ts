@@ -690,11 +690,25 @@ function mountHeaderExtras(
   const spacer = document.createElement('div')
   spacer.style.flex = '1'
 
-  // ── 保存ステータス ──
+  // ── 保存ステータス（指示97: 実際の保存時刻を表示） ──
   const saveStatus = document.createElement('span')
   saveStatus.className = 'sb-header-save-status save-status'
   saveStatus.setAttribute('data-header-save-status', 'true')
-  saveStatus.innerHTML = `<span style="color:#00b341">✓</span><span>保存済み</span><span style="font-size:10px;color:#b0b0b0">2分前</span>${newBadge}`
+  const timeSpan = document.createElement('span')
+  timeSpan.style.cssText = 'font-size:10px;color:#b0b0b0'
+  timeSpan.setAttribute('data-save-time', 'true')
+  // 初期表示: 現在時刻を「読み込み時刻」として表示
+  const initialTime = new Date()
+  timeSpan.textContent = formatSaveTime(initialTime)
+  timeSpan.dataset['savedAt'] = String(initialTime.getTime())
+  saveStatus.innerHTML = `<span style="color:#00b341">✓</span><span>保存済み</span>`
+  saveStatus.append(timeSpan)
+  saveStatus.insertAdjacentHTML('beforeend', newBadge)
+  // 1分ごとに相対時刻を更新
+  setInterval(() => {
+    const ts = Number(timeSpan.dataset['savedAt'] ?? '0')
+    if (ts > 0) timeSpan.textContent = formatSaveTime(new Date(ts))
+  }, 60_000)
 
   // ── セパレータ ──
   const sep1 = document.createElement('span')
@@ -724,37 +738,9 @@ function mountHeaderExtras(
     })
   })
 
-  // ── ⋮メニュー ──
-  const moreBtn = document.createElement('button')
-  moreBtn.className = 'sb-header-btn-icon btn-icon'
-  moreBtn.title = 'メニュー'
-  moreBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>`
-  moreBtn.addEventListener('click', () => {
-    toast('メニューは準備中です')
-  })
-
-  // ── セパレータ2（⋮の後ろ） ──
-  const sep2 = document.createElement('span')
-  sep2.className = 'sb-header-sep header-sep'
-
-  // ── 右端3アイコン（モック準拠: 編集/設定/中間ページ） ──
-  const rightIcons = document.createElement('div')
-  rightIcons.className = 'sb-header-right-icons header-right-icons'
-  const iconSvgs = [
-    { title: '編集', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:16px;height:16px"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>' },
-    { title: 'Versionオプション設定', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:16px;height:16px"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09"/></svg>' },
-    { title: '中間ページ', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:16px;height:16px"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>' },
-  ]
-  for (const { title: t, svg } of iconSvgs) {
-    const btn = document.createElement('button')
-    btn.className = 'sb-header-btn-icon btn-icon'
-    btn.title = t
-    btn.innerHTML = svg
-    rightIcons.append(btn)
-  }
-
   // パンくず行に追加（既存の breadcrumb + filter の後ろにスペーサー+ボタン群）
-  breadcrumbRow.append(spacer, saveStatus, sep1, previewBtn, compareBtn, moreBtn, sep2, rightIcons)
+  // 指示96: 右端の4アイコン（⋮ / 編集 / 設定 / モニター）は削除
+  breadcrumbRow.append(spacer, saveStatus, sep1, previewBtn, compareBtn)
 }
 
 function injectHeaderExtrasCss(): void {
@@ -1691,7 +1677,15 @@ function wireSideToolbar(ctx: EditorContext): void {
       mountExternalImage(icon, ctx.quill)
       continue
     }
-    if (WIRED_TOOLS.includes(index)) continue
+    if (WIRED_TOOLS.includes(index)) {
+      // 指示99: 基板の子要素はdisplay:noneで隠しているが、mount関数がそこに
+      // click handlerを配線済み。親アイコンのクリックを隠れた子に中継する。
+      icon.addEventListener('click', () => {
+        const target = icon.querySelector<HTMLElement>('button, [role="button"], [class*="_trigger_"]')
+        if (target !== null) target.click()
+      })
+      continue
+    }
     // それでも残るツールがあれば正直にトースト
     const name = SIDE_TOOLS[index] ?? 'このツール'
     icon.addEventListener('click', () => toast(`${name} は未実装です`, 'error'))
@@ -1746,6 +1740,8 @@ function wireSideToolbar(ctx: EditorContext): void {
     btn.style.transition = 'background-color 0.3s'
     btn.style.backgroundColor = ''
     btn.style.color = ''
+    // 指示97: ヘッダーの保存時刻を更新
+    updateSaveTimestamp()
   }
 
   const autosave = createAutosave({
@@ -2011,4 +2007,29 @@ function mountVersionFilter(
     wrap.append(btn)
   }
   container.append(wrap)
+}
+
+// ── 指示97: 保存時刻の相対表示 ──
+
+/** Date → 「たった今」「N分前」「N時間前」「HH:MM」形式 */
+function formatSaveTime(saved: Date): string {
+  const diff = Math.floor((Date.now() - saved.getTime()) / 1000)
+  if (diff < 30) return 'たった今'
+  if (diff < 60) return `${diff}秒前`
+  const mins = Math.floor(diff / 60)
+  if (mins < 60) return `${mins}分前`
+  const hours = Math.floor(mins / 60)
+  if (hours < 12) return `${hours}時間前`
+  const hh = String(saved.getHours()).padStart(2, '0')
+  const mm = String(saved.getMinutes()).padStart(2, '0')
+  return `${hh}:${mm}`
+}
+
+/** ヘッダーの保存時刻表示を「今」に更新 */
+function updateSaveTimestamp(): void {
+  const el = document.querySelector<HTMLElement>('[data-save-time]')
+  if (el === null) return
+  const now = new Date()
+  el.dataset['savedAt'] = String(now.getTime())
+  el.textContent = formatSaveTime(now)
 }

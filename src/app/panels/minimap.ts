@@ -68,14 +68,27 @@ export function mountMinimap(editorRoot: HTMLElement, scrollContainer: HTMLEleme
   ].join(';')
   wrapper.append(viewport)
 
-  // ── キャンバスエリア内に配置（position:relative な親の右端に absolute で吸着） ──
+  // ── 指示98: キャンバスと同じ高さからスタートする ──
+  // .quillEditorContentWrapper (position:relative) 内に absolute 配置。
+  // top を .ql-container の offsetTop に合わせ、bottom を funnelBar の高さ分空ける。
   const canvasArea =
     editorRoot.querySelector<HTMLElement>('.quillEditorContentWrapper') ??
     quillHost.closest<HTMLElement>('[class*="quillEditorContentWrapper"]')
   if (canvasArea !== null) {
     canvasArea.append(wrapper)
+    // .ql-container の位置に合わせて top/bottom を算出
+    const alignToCanvas = (): void => {
+      const qlTop = scrollContainer.offsetTop
+      const parentH = canvasArea.clientHeight
+      const qlBottom = parentH - scrollContainer.offsetTop - scrollContainer.clientHeight
+      wrapper.style.top = `${qlTop}px`
+      wrapper.style.bottom = `${Math.max(0, qlBottom)}px`
+      wrapper.style.height = 'auto'
+    }
+    // 初回 + リサイズ時に再算出
+    requestAnimationFrame(alignToCanvas)
+    addEventListener('resize', alignToCanvas)
   } else {
-    // フォールバック: 親が見つからなければ body に配置
     document.body.append(wrapper)
   }
 

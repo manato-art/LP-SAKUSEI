@@ -13,9 +13,7 @@
  * ①グリッドにサムネイルとして足し、②本文上部のヘッダー画像枠へ実際に反映する＝クローン内で完結。
  * 採取物に焼き付いた実画像（架空ホスト）は出さない。
  */
-import rawModal from '../fragments/ab_tests__UID__articles__header-image-modal.portals.html?raw'
 import { toast } from '../ui.ts'
-import { bindBackdropClose, findByExactText, openPortal } from './portal.ts'
 import { convertImageToWebP } from './webp-convert.ts'
 
 /** アップロードしたヘッダー画像（dataURL・セッション内。実サーバーへは上げない） */
@@ -52,8 +50,6 @@ export const HEADER_IMAGE_TABS: readonly string[] = [
   'Version内',
 ]
 
-let isOpen = false
-
 /**
  * 本文上部の破線ボックスにヘッダー画像モーダルを配線する。
  * 土台にトリガーが居ることが前提（居なければ何も配線しない）。
@@ -67,58 +63,62 @@ export function mountHeaderImageModal(root: HTMLElement): void {
   if (trigger.dataset['cloneHeaderImageWired'] === 'true') return
   trigger.dataset['cloneHeaderImageWired'] = 'true'
   trigger.style.cursor = 'pointer'
+
+  // 指示95: モーダルは開かず、直接Finder（ファイル選択ダイアログ）を開く
   trigger.addEventListener('click', (event) => {
-    // 破線ボックス内には隠しファイル入力の form があるが、そこは触らない
     const target = event.target as HTMLElement | null
     if (target !== null && target.closest('form') !== null) return
-    open(trigger)
+    // 削除ボタンのクリックは伝播させない（setHeaderImage 内で stopPropagation 済み）
+    if (target !== null && target.closest('[data-clone-header-remove]') !== null) return
+    pickImageDirect(trigger)
+  })
+
+  // 指示95: ドラッグ&ドロップでも画像を受け付ける
+  trigger.addEventListener('dragover', (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    trigger.style.outline = '2px dashed #0091ff'
+    trigger.style.outlineOffset = '-2px'
+  })
+  trigger.addEventListener('dragleave', () => {
+    trigger.style.outline = ''
+    trigger.style.outlineOffset = ''
+  })
+  trigger.addEventListener('drop', (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    trigger.style.outline = ''
+    trigger.style.outlineOffset = ''
+    const file = e.dataTransfer?.files[0]
+    if (file === undefined || !file.type.startsWith('image/')) {
+      toast('画像ファイルをドロップしてください', 'error')
+      return
+    }
+    void convertImageToWebP(file).then((dataUrl) => {
+      if (dataUrl === '') return
+      if (!uploadedImages.includes(dataUrl)) uploadedImages.push(dataUrl)
+      setHeaderImage(trigger, dataUrl)
+      toast('ヘッダー画像を設定しました')
+    })
   })
 }
 
-function open(headerBox: HTMLElement): void {
-  if (isOpen) return
-  const portal = openPortal(rawModal, HEADER_IMAGE_HOOK.overlay, () => {
-    isOpen = false
-  })
-  if (portal === null) {
-    toast('ヘッダー画像設定のマークアップが壊れています', 'error')
-    return
-  }
-  isOpen = true
-
-  bindBackdropClose(portal.root, portal.close)
-  const applyAndClose = (dataUrl: string): void => {
-    setHeaderImage(headerBox, dataUrl)
-    portal.close()
-  }
-  renderGrid(portal.root, applyAndClose)
-  wireTabs(portal.root)
-
-  const closeButton = findByExactText(portal.root, HEADER_IMAGE_HOOK.button, HEADER_IMAGE_HOOK.close)
-  closeButton?.addEventListener('click', () => portal.close())
-
-  const uploadButton = findByExactText(portal.root, HEADER_IMAGE_HOOK.button, HEADER_IMAGE_HOOK.upload)
-  uploadButton?.addEventListener('click', () => pickImage(portal.root, applyAndClose))
-}
-
-/** 標準のファイル選択で画像を読み、dataURL 化して控え、その場で反映する（実サーバーへは上げない） */
-function pickImage(modalRoot: HTMLElement, apply: (dataUrl: string) => void): void {
+/** 指示95: モーダルを開かず直接Finderのファイル選択を開く */
+function pickImageDirect(headerBox: HTMLElement): void {
   const input = document.createElement('input')
   input.type = 'file'
   input.accept = 'image/*'
   input.style.display = 'none'
-  modalRoot.append(input)
+  document.body.append(input)
   input.addEventListener('change', () => {
     const file = input.files?.[0]
     input.remove()
     if (file === undefined) return
-    // 指示㊿③: 画像を WebP に変換してから保存（ファイルサイズ削減）
     void convertImageToWebP(file).then((dataUrl) => {
       if (dataUrl === '') return
       if (!uploadedImages.includes(dataUrl)) uploadedImages.push(dataUrl)
-      renderGrid(modalRoot, apply)
-      apply(dataUrl)
-      toast('ヘッダー画像を設定しました（クローン内保存・外部サーバーへは送信しません）')
+      setHeaderImage(headerBox, dataUrl)
+      toast('ヘッダー画像を設定しました')
     })
   })
   input.click()
@@ -189,59 +189,4 @@ function findPrompt(headerBox: HTMLElement): HTMLElement | null {
   )
 }
 
-/**
- * グリッドを描く。アップロード済みが無ければ採取物の空状態（「画像がありません」）、
- * あればサムネイルを並べ、クリックでヘッダー画像に反映する。
- * 採取物に焼き付いた実画像（架空ホスト）は出さない。
- */
-function renderGrid(root: HTMLElement, apply: (dataUrl: string) => void): void {
-  const grid = root.querySelector<HTMLElement>(HEADER_IMAGE_HOOK.grid)
-  if (grid === null) return
-  grid.innerHTML = ''
-  if (uploadedImages.length === 0) {
-    const empty = document.createElement('div')
-    empty.className = HEADER_IMAGE_HOOK.emptyClass
-    empty.textContent = HEADER_IMAGE_HOOK.emptyText
-    grid.append(empty)
-    return
-  }
-  // 実物は横幅いっぱいのバナーを縦に積む一覧（ユーザー提示の実画面）。同じ並びにする。
-  grid.style.cssText = 'display:flex;flex-direction:column;gap:12px;padding:12px'
-  // 新しく足したものが上に来るよう逆順で
-  for (const dataUrl of [...uploadedImages].reverse()) {
-    const item = document.createElement('div')
-    item.style.cssText = 'position:relative;cursor:pointer;border-radius:6px;overflow:hidden'
-    const thumb = document.createElement('img')
-    thumb.src = dataUrl
-    thumb.style.cssText = 'display:block;width:100%;height:auto'
-    item.addEventListener('click', () => apply(dataUrl))
-    // 一覧からの削除（過去追加したヘッダーを消す）
-    const del = document.createElement('button')
-    del.type = 'button'
-    del.textContent = '削除'
-    del.style.cssText =
-      'position:absolute;top:8px;right:8px;padding:6px 12px;border:none;border-radius:6px;background:#fff;' +
-      'color:#0091FF;font-size:13px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.2)'
-    del.addEventListener('click', (event) => {
-      event.stopPropagation()
-      const idx = uploadedImages.indexOf(dataUrl)
-      if (idx >= 0) uploadedImages.splice(idx, 1)
-      renderGrid(root, apply)
-      toast('一覧から削除しました')
-    })
-    item.append(thumb, del)
-    grid.append(item)
-  }
-}
-
-/** タブの見た目上の切り替え（active クラスを移す・採取物のクラスだけ使う） */
-function wireTabs(root: HTMLElement): void {
-  const tabs = [...root.querySelectorAll<HTMLElement>(HEADER_IMAGE_HOOK.tab)]
-  for (const tab of tabs) {
-    tab.style.cursor = 'pointer'
-    tab.addEventListener('click', () => {
-      for (const other of tabs) other.classList.remove(HEADER_IMAGE_HOOK.tabActive)
-      tab.classList.add(HEADER_IMAGE_HOOK.tabActive)
-    })
-  }
-}
+// 旧モーダル用の renderGrid / wireTabs は指示95で廃止（直接ファイル選択に移行）
