@@ -143,8 +143,8 @@ function openWidgetEditor(quill: Quill, target: WidgetEditTarget): void {
   const panel = document.createElement('div')
   panel.dataset['widgetEditor'] = 'true'
   panel.style.cssText =
-    `flex:1;display:flex;flex-direction:column;background:#fff;min-width:0;min-height:0;` +
-    `overflow:hidden;font-family:${FONT}`
+    `flex:1;display:flex;flex-direction:column;background:#fff;min-width:0;` +
+    `overflow:hidden;font-family:${FONT};height:calc(100vh - 92px)`
 
   // キャンバスを隠してパネルを差し込む
   if (contentWrapper !== null && editorWrapper !== null) {
