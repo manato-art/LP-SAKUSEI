@@ -1000,6 +1000,32 @@ function buildImageBody(
   linkTargetRow.append(linkTargetSelect)
   linkGroup.append(linkUrlRow, linkTargetRow)
 
+  // ── 計測URL ──
+  const trackGroup = group('計測URL')
+  const trackDesc = document.createElement('div')
+  trackDesc.style.cssText = 'font-size:10px;color:#999;line-height:1.5;margin-bottom:2px'
+  trackDesc.textContent = 'クリック時にリクエストを送信するURL'
+
+  const trackList = document.createElement('div')
+  trackList.setAttribute('data-tracking-list', '')
+
+  const trackAddBtn = document.createElement('button')
+  trackAddBtn.type = 'button'
+  trackAddBtn.style.cssText =
+    'display:inline-flex;align-items:center;gap:4px;padding:4px 0;font-size:11px;' +
+    'color:#0091ff;background:none;border:none;cursor:pointer;font-family:inherit'
+  trackAddBtn.textContent = '+ URLを追加'
+  trackAddBtn.addEventListener('click', () => {
+    const img = getImg()
+    if (img === null) return
+    appendTrackingRow(trackList, img, '')
+    const inputs = trackList.querySelectorAll('input')
+    const last = inputs[inputs.length - 1]
+    if (last instanceof HTMLInputElement) last.focus()
+  })
+
+  trackGroup.append(trackDesc, trackList, trackAddBtn)
+
   // ── アクション ──
   const actGroup = group('アクション')
   actGroup.style.gap = '6px'
@@ -1055,7 +1081,7 @@ function buildImageBody(
   actGroup.append(replaceBtn, removeBtn)
 
   // ── 組み立て ──
-  container.append(previewGroup, srcRow, altRow, sizeGroup, linkGroup, actGroup)
+  container.append(previewGroup, srcRow, altRow, sizeGroup, linkGroup, trackGroup, actGroup)
 
   // データ属性で内部要素への参照を保持（refreshImageBody で使う）
   container.dataset['ready'] = 'true'
@@ -1087,4 +1113,68 @@ function refreshImageBody(container: HTMLElement, img: HTMLImageElement): void {
 
   const targetSelect = container.querySelector<HTMLSelectElement>('select')
   if (targetSelect !== null) targetSelect.value = img.getAttribute('data-link-target') ?? '_blank'
+
+  // 計測URL
+  const trackList = container.querySelector<HTMLElement>('[data-tracking-list]')
+  if (trackList !== null) {
+    trackList.innerHTML = ''
+    const raw = img.getAttribute('data-tracking-urls')
+    if (raw !== null && raw !== '') {
+      try {
+        const parsed: unknown = JSON.parse(raw)
+        if (Array.isArray(parsed)) {
+          const urls = parsed.filter((u): u is string => typeof u === 'string' && u !== '')
+          for (const url of urls) {
+            appendTrackingRow(trackList, img, url)
+          }
+        }
+      } catch { /* invalid JSON → skip */ }
+    }
+  }
+}
+
+/** 計測URLリストから img の data-tracking-urls 属性を同期 */
+function syncTrackingUrls(list: HTMLElement, img: HTMLImageElement): void {
+  const urls: string[] = []
+  for (const input of list.querySelectorAll<HTMLInputElement>('input[type="url"]')) {
+    const v = input.value.trim()
+    if (v !== '') urls.push(v)
+  }
+  if (urls.length === 0) {
+    img.removeAttribute('data-tracking-urls')
+  } else {
+    img.setAttribute('data-tracking-urls', JSON.stringify(urls))
+  }
+}
+
+/** 計測URL入力行を1行追加 */
+function appendTrackingRow(list: HTMLElement, img: HTMLImageElement, value: string): void {
+  const rowEl = document.createElement('div')
+  rowEl.style.cssText = 'display:flex;align-items:center;gap:4px;margin-bottom:4px'
+
+  const input = document.createElement('input')
+  input.className = 'sb-pr-input'
+  input.type = 'url'
+  input.placeholder = 'https://tracking.example.com/'
+  input.value = value
+  input.style.cssText = 'flex:1;min-width:0'
+  input.addEventListener('change', () => syncTrackingUrls(list, img))
+
+  const rmBtn = document.createElement('button')
+  rmBtn.type = 'button'
+  rmBtn.title = '削除'
+  rmBtn.textContent = '✕'
+  rmBtn.style.cssText =
+    'flex-shrink:0;width:24px;height:24px;display:flex;align-items:center;' +
+    'justify-content:center;border:none;background:none;color:#e5573f;' +
+    'cursor:pointer;border-radius:4px;font-size:13px'
+  rmBtn.addEventListener('mouseenter', () => { rmBtn.style.background = '#FEE' })
+  rmBtn.addEventListener('mouseleave', () => { rmBtn.style.background = 'none' })
+  rmBtn.addEventListener('click', () => {
+    rowEl.remove()
+    syncTrackingUrls(list, img)
+  })
+
+  rowEl.append(input, rmBtn)
+  list.append(rowEl)
 }
