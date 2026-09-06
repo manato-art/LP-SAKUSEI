@@ -35,7 +35,6 @@ import { EXTERNAL_IMAGE_TOOL_INDEX, mountExternalImage } from '../panels/externa
 import { registerMediaBlots } from '../panels/media-blots.ts'
 import { wireMediaDrop } from '../panels/media-insert.ts'
 import { wireImageResize } from '../panels/image-resize.ts'
-import { mountMinimap } from '../panels/minimap.ts'
 import { toggleComparePanel, isComparePanelOpen, refreshComparePreview } from '../panels/compare-mode.ts'
 import { deliveryUrl } from './basic-info-form.ts'
 import { wireAbTestTabs, setupHorizTabs, setupBreadcrumb } from './tab-nav.ts'
@@ -362,10 +361,6 @@ export async function renderEditor(
   wireAbTestTabs(root, abTestUid, folder?.uid ?? '')
   wireTopRightIcons(root, abTestUid, folder?.uid ?? '')
   loadVersion(ctx, ctx.currentUid)
-  // 指示㊻: エディタ右側にミニマップ（LP全体の縮小プレビュー）を表示
-  // 指示㊿②: スクロール対象は Quill ホスト（LP本文のスクロール領域）
-  const quillHost = quill.container as HTMLElement
-  mountMinimap(root, quillHost)
   // キャンバスのみズームできる − 100% + コントロール（下部バーの < > 位置に配置）
   mountZoomControl(root, quill)
   // 記事設定（Version設定）を編集画面の本文にも反映する（保存後は「更新」または再読込で最新化）。
