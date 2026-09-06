@@ -357,7 +357,8 @@ function wireBackButton(panel: HTMLElement, onClose?: () => void): void {
   const btn = document.createElement('button')
   btn.type = 'button'
   btn.className = 'sb-clone-back-btn'
-  btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>`
+  btn.title = '戻る'
+  btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 5l-7 7 7 7"/></svg>`
   btn.addEventListener('click', () => {
     if (onClose !== undefined) {
       // パネルマネージャー経由で閉じる（内部状態を同期させる）

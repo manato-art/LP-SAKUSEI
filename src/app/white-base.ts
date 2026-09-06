@@ -273,42 +273,63 @@ const OVERRIDES = /* css */ `
 [data-clone-panel-host="link-replace"] ._body_x4j8w_8 {
   background: #fff !important;
 }
+/* コンテンツ領域本体（rgb(55,56,56)の灰背景を白に） */
+[data-clone-panel-host="link-replace"] ._replaceLinkContent_id5w4_76 {
+  background-color: #f7f7f7 !important;
+  color: #333 !important;
+}
 [data-clone-panel-host="link-replace"] ._headerTitle_id5w4_24 {
   color: #333 !important;
 }
+/* タブ */
 [data-clone-panel-host="link-replace"] ._tab_id5w4_28 {
   color: #999 !important;
+  background-color: transparent !important;
 }
 [data-clone-panel-host="link-replace"] ._tab_id5w4_28._active_id5w4_48 {
   color: #f0960a !important;
+  background-color: #f7f7f7 !important;
   border-bottom: 2px solid #f0960a;
 }
+[data-clone-panel-host="link-replace"] ._tab_id5w4_28._active_id5w4_48::before,
+[data-clone-panel-host="link-replace"] ._tab_id5w4_28._active_id5w4_48::after {
+  display: none !important;
+}
+/* ソートタブ */
 [data-clone-panel-host="link-replace"] ._sortTab_id5w4_93 {
   color: #666 !important;
-  background: transparent !important;
+  background: #e8e8e8 !important;
 }
 [data-clone-panel-host="link-replace"] ._sortTab_id5w4_93._active_id5w4_48 {
   background: #f0960a !important;
   color: #fff !important;
 }
+/* 全て選択/選択解除 */
 [data-clone-panel-host="link-replace"] ._btn_id5w4_117 {
   color: #555 !important;
   background: #f0f0f0 !important;
   border: 1px solid #d0d0d0 !important;
   border-radius: 4px;
 }
-[data-clone-panel-host="link-replace"] input,
+/* 入力欄・セレクト (background shorthand で image も上書き) */
+[data-clone-panel-host="link-replace"] input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
 [data-clone-panel-host="link-replace"] select {
-  background: #f5f5f5 !important;
+  background: #fff !important;
   color: #333 !important;
   border: 1px solid #d0d0d0 !important;
 }
+/* リンク入力のアイコン背景は維持しつつ白基調に */
+[data-clone-panel-host="link-replace"] ._replaceLinkInput_id5w4_246 input {
+  background: url("/assets/link_gray-c566ade7.svg") left 7px center / 17px no-repeat #fff !important;
+}
+/* チェックボックス */
 [data-clone-panel-host="link-replace"] ._checkbox_1dpzf_16 {
-  border-color: #ccc !important;
+  border: 1px solid #ccc !important;
 }
 [data-clone-panel-host="link-replace"] ._checkboxLabel_id5w4_268 {
   color: #333 !important;
 }
+/* ツールチップ／説明文 */
 [data-clone-panel-host="link-replace"] ._description_1uihv_17 {
   background: #fff !important;
   color: #333 !important;
@@ -319,6 +340,7 @@ const OVERRIDES = /* css */ `
 [data-clone-panel-host="link-replace"] ._arrow_x4j8w_25 {
   display: none !important;
 }
+/* 置換ボタン */
 [data-clone-panel-host="link-replace"] ._btnReplace_id5w4_297 {
   background: #f0960a !important;
   color: #fff !important;
@@ -326,23 +348,36 @@ const OVERRIDES = /* css */ `
 [data-clone-panel-host="link-replace"] ._btnReplace_id5w4_297._disable_1bcs1_22 {
   opacity: .4 !important;
 }
+/* 空状態テキスト */
 [data-clone-panel-host="link-replace"] ._noLinksDescription_id5w4_411 {
   color: #999 !important;
 }
+/* リンク行 (採取できた場合の安全網) */
+[data-clone-panel-host="link-replace"] ._targetLinkList_id5w4_134 {
+  background-color: #fff !important;
+  color: #333 !important;
+}
+/* infoアイコン */
 [data-clone-panel-host="link-replace"] svg._light_v5c05_1 {
   fill: #888 !important;
 }
 /* 戻るボタン */
 [data-clone-panel-host="link-replace"] .sb-clone-back-btn {
-  background: none;
-  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: #f0f0f0;
+  border: 1px solid #d0d0d0;
+  border-radius: 6px;
   cursor: pointer;
-  padding: 4px 8px;
-  font: 600 13px/1 "Hiragino Sans",sans-serif;
-  color: #999;
-  transition: color .15s;
+  color: #666;
+  transition: background .15s, color .15s;
+  flex-shrink: 0;
 }
 [data-clone-panel-host="link-replace"] .sb-clone-back-btn:hover {
+  background: #e0e0e0;
   color: #333;
 }
 `
