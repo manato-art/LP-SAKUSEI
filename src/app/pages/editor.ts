@@ -629,9 +629,14 @@ function injectSideToolbarStyles(): void {
       width: 22px !important;
       height: 22px !important;
     }
-    /* アイコン間の縦余白（本番実測: 各アイコン+ラベルの間に十分な余白） */
+    /* アイコン間の縦余白 + 上揃え・横中央 */
     [class*="_sideToolbarTop_"] {
       gap: 4px !important;
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: center !important;
+      justify-content: flex-start !important;
+      padding-top: 0 !important;
     }
     /* アイコン + テキストラベルを縦に並べる */
     [class*="_sideToolbarIcon_"] {
