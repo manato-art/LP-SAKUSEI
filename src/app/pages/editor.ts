@@ -203,11 +203,27 @@ export async function renderEditor(
   // position:fixed; left:0; z-index:101 でシェルの本物サイドバーを覆い隠す。
   // 除去してシェル側の配線済みサイドバーを露出させる。
   const dupSidebar = root.querySelector<HTMLElement>('.css-1v797yu')
+  const dupSidebarParent = dupSidebar?.parentElement ?? null
   if (dupSidebar !== null) dupSidebar.remove()
   // 除去したサイドバーの幅分（60px）のパディングが残っているので消す。
-  // これが残ると左サイドバーと4タブナビの間に空白ができる。
+  // これが残ると左サイドバーと4タブナビの間に空白ができる（指示137）。
   const mainContent = root.querySelector<HTMLElement>('.css-1n8b1pi')
-  if (mainContent !== null) mainContent.style.paddingLeft = '0'
+  if (mainContent !== null) mainContent.style.setProperty('padding-left', '0', 'important')
+  // 指示137: 採取物のクラスが変わっても空白が残らないよう、サイドバーが入っていた
+  // コンテナ（親）の**直下要素だけ**を見て、~サイドバー幅(40〜80px)の左パディング/
+  // マージンを詰める。全要素の総当りは正当な余白まで消すのでしない。
+  if (dupSidebarParent !== null) {
+    for (const child of dupSidebarParent.children) {
+      if (!(child instanceof HTMLElement)) continue
+      const cs = getComputedStyle(child)
+      if (parseFloat(cs.paddingLeft) >= 40 && parseFloat(cs.paddingLeft) <= 80) {
+        child.style.setProperty('padding-left', '0', 'important')
+      }
+      if (parseFloat(cs.marginLeft) >= 40 && parseFloat(cs.marginLeft) <= 80) {
+        child.style.setProperty('margin-left', '0', 'important')
+      }
+    }
+  }
 
   // ── 指示57: 上部ナビ周辺の縦空白を詰める ──
   // 採取CSSの _navArticleWrapper_ は height:60px + padding-top:20px = 80px、

@@ -343,7 +343,23 @@ async function save(abTestUid: string, tab: SplitTestTab, rules: SplitTestRule[]
  * 指示123: Versionオプション設定ページの Emotion 直書きダーク背景を白基調に上書き。
  * `.css-gofv8i` = バナー領域、`.css-160345m` = アクティブタブ（rgb(69,70,71)）。
  */
+/**
+ * 指示136: アクティブタブ `.css-160345m` の `::before` / `::after` を消す。
+ * これは元のダークタブ設計で角丸をつなぐための box-shadow 装飾（`rgb(69,70,71)`）で、
+ * 白基調化すると暗い曲線マークが2個だけ浮いて残る（指示132で取りこぼした本体）。
+ * 疑似要素はインラインstyleで消せないので、1回だけ<style>で display:none にする。
+ */
+function hideActiveTabPseudo(): void {
+  if (document.getElementById('sb-split-hide-pseudo') !== null) return
+  const style = document.createElement('style')
+  style.id = 'sb-split-hide-pseudo'
+  style.textContent = '.css-160345m::before, .css-160345m::after { display: none !important; }'
+  document.head.append(style)
+}
+
 function applySplitTestWhiteTheme(root: HTMLElement): void {
+  // 指示136: アクティブタブの暗い角丸マーク2個(::before/::after)を消す
+  hideActiveTabPseudo()
   // バナー領域（デバイスアイコン等の説明帯）
   for (const banner of root.querySelectorAll<HTMLElement>('.css-gofv8i')) {
     banner.style.setProperty('background-color', '#f5f6f8', 'important')
