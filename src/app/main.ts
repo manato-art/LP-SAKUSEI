@@ -17,6 +17,7 @@ import { renderPreview } from './pages/preview-page.ts'
 import { renderTasks } from './pages/tasks.ts'
 import { renderSbAi } from './pages/sb-ai.ts'
 import { renderExternalIntegration } from './pages/external-integration.ts'
+import { renderCvTracking } from './pages/cv-tracking-page.ts'
 import {
   renderDashboard,
   renderConversions,
@@ -192,6 +193,11 @@ async function route(): Promise<void> {
     }
     if (sidebarPage === 'external') {
       await renderExternalIntegration(content, generation)
+      return
+    }
+    // 外部連携 > CV計測連携（/teams/asp_accounts）
+    if (path === '/teams/asp_accounts') {
+      renderCvTracking(content)
       return
     }
     if (sidebarPage === 'dashboard') {

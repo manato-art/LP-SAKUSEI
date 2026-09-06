@@ -243,7 +243,7 @@ const ACCORDION_LABEL = '外部連携'
 /** アコーディオンのサブ項目。href が null の項目はトーストを出す（指示⑰: CV計測連携は未実装）。 */
 const ACCORDION_ITEMS: readonly { label: string; href: string | null }[] = [
   { label: '広告媒体連携', href: '#/teams/ad_accounts' },
-  { label: 'CV計測連携', href: null },
+  { label: 'CV計測連携', href: '#/teams/asp_accounts' },
 ]
 
 /** chevron-down SVG（10x10）。閉じ状態では CSS で -90deg 回転して右向きになる。 */
