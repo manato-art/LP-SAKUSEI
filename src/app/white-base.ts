@@ -147,14 +147,26 @@ const OVERRIDES = /* css */ `
 
 /* コンテンツパネル (暗灰 rgb(69,70,71)) */
 [data-clone-theme="light"] .css-137m1kt,
-[data-clone-theme="light"] .css-160345m,
 [data-clone-theme="light"] .css-1q0mywx,
 [data-clone-theme="light"] .css-1qivsvc,
 [data-clone-theme="light"] .css-5d8qdd,
-[data-clone-theme="light"] .css-gofv8i,
 [data-clone-theme="light"] .css-jrygb4 {
   background-color: #fff !important;
   color: #333 !important;
+}
+
+/* 切り替えページ: バナー部 — ダーク背景を維持（白SVGイラスト＋白文字が載るため） */
+[data-clone-theme="light"] .css-gofv8i .MuiTypography-root {
+  color: inherit !important;
+}
+
+/* 切り替えページ: 右サイドバーのアクティブタブ — ダーク背景＋丸角の形状を維持 */
+[data-clone-theme="light"] .css-160345m {
+  background-color: rgb(69, 70, 71) !important;
+  color: #fff !important;
+}
+[data-clone-theme="light"] .css-160345m .MuiTypography-root {
+  color: #fff !important;
 }
 
 /* 設定パネル (暗灰 rgb(55,56,56)) */
