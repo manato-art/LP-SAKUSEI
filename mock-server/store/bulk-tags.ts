@@ -31,6 +31,7 @@ export function createBulkTag(state: State, teamId: number): { state: State; tag
     folder_group_ids: [],
     folder_ids: [],
     asp_account_id: null,
+    asp: null,
     cv_condition: null,
     noindex: false,
     head_js: '',

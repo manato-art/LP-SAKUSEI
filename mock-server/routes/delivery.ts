@@ -211,6 +211,27 @@ function pickDeliveryVersion(versions: readonly Version[], ctx: VisitorContext):
   return pool[0] ?? null
 }
 
+/** ランダムな計測用uid（訪問ごとに変わる。SBのsquadbeyond_uid相当） */
+function genSquadbeyondUid(): string {
+  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`
+}
+
+/**
+ * AFFILICODE連携: 本文中の外部リンク(http/https)へ計測用パラメーターを付与する。
+ * SB公式FAQ準拠: squadbeyond_uid / sb_tracking=true / sb_article_uid。
+ * 既にクエリがあれば & で連結する。アンカー(#)やパラメーター重複は素朴に扱う。
+ */
+function appendAffilicodeParams(html: string, articleUid: string): string {
+  const uid = genSquadbeyondUid()
+  const params = `squadbeyond_uid=${encodeURIComponent(uid)}&sb_tracking=true&sb_article_uid=${encodeURIComponent(articleUid)}`
+  return html.replace(/href="(https?:\/\/[^"]*)"/g, (_m, url: string) => {
+    if (url.includes('sb_tracking=true')) return `href="${url}"`
+    const [base, hash = ''] = url.split('#')
+    const sep = (base ?? '').includes('?') ? '&' : '?'
+    return `href="${base}${sep}${params}${hash ? `#${hash}` : ''}"`
+  })
+}
+
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, '&amp;')
@@ -294,6 +315,11 @@ deliveryRouter.get('/lp/:uid', (req, res) => {
   const noindexOn = htmlSetting.noindex || bulkTags.some((b) => b.noindex)
   const robotsMeta = noindexOn ? '<meta name="robots" content="noindex,nofollow">' : ''
 
+  // 計測ツール・ASP＝AFFILICODE のとき、SB公式FAQ準拠の連携用パラメーターを本文リンクへ付与する。
+  // 付与するパラメーター: squadbeyond_uid / sb_tracking=true / sb_article_uid
+  const affilicodeOn = bulkTags.some((b) => b.asp === 'AFFILICODE')
+  const versionHtml = affilicodeOn ? appendAffilicodeParams(version.html, article.uid) : version.html
+
   // 離脱防止ポップアップ（指示80）: 有効なポップアップのHTML/JS/CSSをLP末尾に挿入
   const exitPopups = (state.exitPopups ?? []).filter(
     (p) => p.ab_test_id === abTest.id && p.enabled,
@@ -319,7 +345,7 @@ deliveryRouter.get('/lp/:uid', (req, res) => {
     `<style>body{margin:0 auto;max-width:${DELIVERY_WIDTH}px;font-family:"Hiragino Sans",sans-serif;background:#fff}` +
     `${LP_BASE_CSS}${version.css}${styleCss}</style>` +
     headTags +
-    `</head><body>${withAutoplayVideos(version.html)}${bodyTags}${popupHtml}${followHtml}` +
+    `</head><body>${withAutoplayVideos(versionHtml)}${bodyTags}${popupHtml}${followHtml}` +
     IMAGE_LINK_SCRIPT +
     `</body></html>`
 

@@ -168,9 +168,11 @@ function buildForm(
   const opts = h('div', 'bt-section bt-opts')
   const aspOptions: [string, string][] = [
     ['', '指定なし'],
-    ...aspAccounts.map((a) => [String(a.id), a.asp_name] as [string, string]),
+    ['AFFILICODE', 'AFFILICODE'],
+    // 接続済みASPがあれば名前で追加（重複するAFFILICODEは除く）
+    ...aspAccounts.filter((a) => a.asp_name !== 'AFFILICODE').map((a) => [a.asp_name, a.asp_name] as [string, string]),
   ]
-  const aspSel = selectInput(aspOptions, tag.asp_account_id === null ? '' : String(tag.asp_account_id))
+  const aspSel = selectInput(aspOptions, tag.asp ?? '')
   const cvSel = selectInput(CV_OPTIONS, tag.cv_condition ?? '')
   const noindexToggle = toggle(tag.noindex)
   opts.append(
@@ -200,7 +202,7 @@ function buildForm(
       // チームONのときはフォルダグループ/フォルダはリセット（実SB挙動）
       folder_group_ids: teamWide ? [] : groupSel.get(),
       folder_ids: teamWide ? [] : folderSel.get(),
-      asp_account_id: aspSel.value === '' ? null : Number(aspSel.value),
+      asp: aspSel.value === '' ? null : aspSel.value,
       cv_condition: cvSel.value === '' ? null : cvSel.value,
       noindex: noindexToggle.get(),
       head_js: headTa.value,

@@ -421,6 +421,11 @@ export interface BulkTagSetting {
   folder_ids: number[]
   /** 計測ツール・ASP（連携用パラメーター自動付与の対象）。未設定は null */
   asp_account_id: number | null
+  /**
+   * 計測ツール・ASP名。'AFFILICODE' のとき配信リンクへ連携用パラメーターを自動付与する
+   * （SB公式FAQ準拠: squadbeyond_uid / sb_tracking=true / sb_article_uid）。未設定は null。
+   */
+  asp: string | null
   /** CV条件。未設定は null */
   cv_condition: string | null
   /** noindexを含める */

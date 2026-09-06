@@ -19,6 +19,7 @@ function serialize(t: BulkTagSetting): Record<string, unknown> {
     folder_group_ids: t.folder_group_ids,
     folder_ids: t.folder_ids,
     asp_account_id: t.asp_account_id,
+    asp: t.asp,
     cv_condition: t.cv_condition,
     noindex: t.noindex,
     head_js: t.head_js,
@@ -52,6 +53,7 @@ bulkTagsRouter.patch('/bulk_tags/:uid', (req, res) => {
   if (Array.isArray(body['folder_group_ids'])) patch.folder_group_ids = (body['folder_group_ids'] as number[]).filter((n) => typeof n === 'number')
   if (Array.isArray(body['folder_ids'])) patch.folder_ids = (body['folder_ids'] as number[]).filter((n) => typeof n === 'number')
   if (body['asp_account_id'] === null || typeof body['asp_account_id'] === 'number') patch.asp_account_id = body['asp_account_id'] as number | null
+  if (body['asp'] === null || typeof body['asp'] === 'string') patch.asp = body['asp'] as string | null
   if (body['cv_condition'] === null || typeof body['cv_condition'] === 'string') patch.cv_condition = body['cv_condition'] as string | null
   if (typeof body['noindex'] === 'boolean') patch.noindex = body['noindex']
   if (typeof body['head_js'] === 'string') patch.head_js = body['head_js']

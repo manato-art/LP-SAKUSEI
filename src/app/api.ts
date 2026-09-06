@@ -67,6 +67,7 @@ export interface BulkTag {
   folder_group_ids: number[]
   folder_ids: number[]
   asp_account_id: number | null
+  asp: string | null
   cv_condition: string | null
   noindex: boolean
   head_js: string
