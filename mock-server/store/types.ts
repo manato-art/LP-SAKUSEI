@@ -128,6 +128,32 @@ export interface Article {
 /** Versionの状態バッジ。AbTestのad_statusとは別軸（企画書§10-2の混同を是正） */
 export type VersionStatus = '準備中' | '公開中' | '停止'
 
+/** 流入元別ルール1件（URLクエリの照合） */
+export interface ParamRule {
+  /** パラメータ名（例: utm_creative）。空なら「どのパラメータでも」 */
+  name: string
+  /** 照合方法。exact=完全一致 / prefix=前方一致 / suffix=後方一致 / contains=部分一致 */
+  match: 'exact' | 'prefix' | 'suffix' | 'contains'
+  /** 値（例: summer） */
+  value: string
+}
+
+/** 時間帯1件（HH:MM 24h） */
+export interface TimeRange {
+  from: string
+  to: string
+}
+
+/** 配信期間1件 */
+export interface DatePeriod {
+  /** YYYY-MM-DD */
+  from: string
+  /** YYYY-MM-DD */
+  to: string
+  /** on=配信する / off=配信しない */
+  mode: 'on' | 'off'
+}
+
 export interface Version {
   id: number
   uid: string
@@ -144,6 +170,19 @@ export interface Version {
    * OFFにしたデバイスではこのVersionは配信されず、別の配信可能Versionが表示される。既定は全ON。
    */
   device_targets: { sp: boolean; tablet: boolean; pc: boolean }
+  /**
+   * 流入元別（旧・パラメーター別）。配信URLのクエリが登録ルールのいずれかに一致したとき
+   * このVersionを表示する。未登録（空配列/未定義）なら常に対象（フォールバック）。
+   */
+  param_rules?: ParamRule[]
+  /** モバイルOS別。ONにしたOSからのアクセス時のみ表示（いずれかON指定でPCは対象外）。未指定=制限なし。 */
+  os_targets?: { android: boolean; ios: boolean }
+  /** キャリア別。ONにした回線からのアクセス時のみ表示。未指定=制限なし。 */
+  carrier_targets?: { docomo: boolean; au: boolean; softbank: boolean }
+  /** 時間別。登録した時間帯（HH:MM〜HH:MM）内のみ表示。未登録=制限なし。 */
+  time_ranges?: TimeRange[]
+  /** 日付別。期間ごとに配信する/しない。未登録=日付別は適用しない。 */
+  date_periods?: DatePeriod[]
   html: string
   css: string
   thumbnail_url: string | null

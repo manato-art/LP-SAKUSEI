@@ -12,6 +12,7 @@ import {
   duplicateVersion,
   duplicateVersionToArticle,
   setDeviceTargets,
+  setVersionTargeting,
   publishVersion,
   updateVersion,
 } from '../store/actions.ts'
@@ -147,6 +148,35 @@ versionsRouter.patch('/versions/:uid/device_targets', (req, res) => {
   let updated: Version | null = null
   setState((state) => {
     const out = setDeviceTargets(state, req.params.uid, targets)
+    updated = out.version
+    return out.state
+  })
+  if (updated === null) {
+    res.status(404).json(errorEnvelope('not_found', 'Versionが見つかりません。'))
+    return
+  }
+  res.json({ version: serializeVersion(updated) })
+})
+
+/**
+ * 流入元別/モバイルOS別/キャリア別/時間別/日付別 の版ごと設定を更新する。
+ * body に含まれた項目だけ上書きする（部分更新）。
+ */
+versionsRouter.patch('/versions/:uid/targeting', (req, res) => {
+  const body = (req.body ?? {}) as Record<string, unknown>
+  const patch: Parameters<typeof setVersionTargeting>[2] = {}
+  if (Array.isArray(body['param_rules'])) patch.param_rules = body['param_rules'] as never
+  if (Array.isArray(body['time_ranges'])) patch.time_ranges = body['time_ranges'] as never
+  if (Array.isArray(body['date_periods'])) patch.date_periods = body['date_periods'] as never
+  if (body['os_targets'] === null || typeof body['os_targets'] === 'object') {
+    patch.os_targets = body['os_targets'] as never
+  }
+  if (body['carrier_targets'] === null || typeof body['carrier_targets'] === 'object') {
+    patch.carrier_targets = body['carrier_targets'] as never
+  }
+  let updated: Version | null = null
+  setState((state) => {
+    const out = setVersionTargeting(state, req.params.uid, patch)
     updated = out.version
     return out.state
   })

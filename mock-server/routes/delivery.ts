@@ -64,6 +64,23 @@ const IMAGE_LINK_SCRIPT = `<script>(function(){
 })()</script>`
 
 type DeviceKind = 'sp' | 'tablet' | 'pc'
+type MobileOS = 'android' | 'ios'
+type Carrier = 'docomo' | 'au' | 'softbank'
+
+/** 訪問者の出し分け判定に使う文脈（1リクエストぶん） */
+interface VisitorContext {
+  device: DeviceKind
+  /** モバイルOS。PC等では null */
+  mobileOS: MobileOS | null
+  /** 回線キャリア。ブラウザだけでは判定不可のため通常 null。?__carrier= で検証用に指定可 */
+  carrier: Carrier | null
+  /** URLクエリ（流入元別の照合に使う） */
+  query: Record<string, string>
+  /** 現在時刻 HH:MM（時間別） */
+  nowHHMM: string
+  /** 今日 YYYY-MM-DD（日付別） */
+  today: string
+}
 
 /** 訪問者のデバイスを User-Agent から判定する（sp / tablet / pc）。クライアント版と同じ判定式。 */
 function detectDevice(userAgent: string): DeviceKind {
@@ -72,21 +89,117 @@ function detectDevice(userAgent: string): DeviceKind {
   return 'pc'
 }
 
+/** モバイルOSを User-Agent から判定（PC等は null） */
+function detectMobileOS(userAgent: string): MobileOS | null {
+  if (/iPhone|iPad|iPod/i.test(userAgent)) return 'ios'
+  if (/Android/i.test(userAgent)) return 'android'
+  return null
+}
+
+/** キャリアは通常判定不可。検証用に ?__carrier=docomo|au|softbank で指定できる。 */
+function detectCarrier(raw: unknown): Carrier | null {
+  return raw === 'docomo' || raw === 'au' || raw === 'softbank' ? raw : null
+}
+
+function pad2(n: number): string {
+  return n < 10 ? `0${n}` : String(n)
+}
+
+function buildVisitorContext(req: import('express').Request): VisitorContext {
+  const ua = req.headers['user-agent'] ?? ''
+  const query: Record<string, string> = {}
+  for (const [k, v] of Object.entries(req.query)) {
+    query[k] = Array.isArray(v) ? String(v[0] ?? '') : String(v ?? '')
+  }
+  const now = new Date()
+  return {
+    device: detectDevice(ua),
+    mobileOS: detectMobileOS(ua),
+    carrier: detectCarrier(req.query['__carrier']),
+    query,
+    nowHHMM: `${pad2(now.getHours())}:${pad2(now.getMinutes())}`,
+    today: `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`,
+  }
+}
+
 /** そのVersionが、指定デバイスへ配信可か（デバイス別ON/OFF）。未設定は全ON扱い。 */
 function targetsDevice(version: Version, device: DeviceKind): boolean {
   return version.device_targets?.[device] !== false
 }
 
+/** 流入元別: URLクエリが1件のルールに一致するか */
+function matchesParamRule(rule: { name: string; match: string; value: string }, query: Record<string, string>): boolean {
+  const candidates = rule.name !== '' ? [query[rule.name]] : Object.values(query)
+  for (const raw of candidates) {
+    if (raw === undefined) continue
+    if (rule.match === 'exact' && raw === rule.value) return true
+    if (rule.match === 'prefix' && raw.startsWith(rule.value)) return true
+    if (rule.match === 'suffix' && raw.endsWith(rule.value)) return true
+    if (rule.match === 'contains' && raw.includes(rule.value)) return true
+  }
+  return false
+}
+
+/** 時間別: now が from〜to（HH:MM）内か。日をまたぐ範囲(22:00〜02:00)も許容 */
+function inTimeRange(now: string, from: string, to: string): boolean {
+  if (from === '' || to === '') return true
+  return from <= to ? now >= from && now <= to : now >= from || now <= to
+}
+
+/** 日付別: today が from〜to（YYYY-MM-DD、ISO文字列比較）内か */
+function inDatePeriod(today: string, from: string, to: string): boolean {
+  if (from === '' && to === '') return true
+  if (from !== '' && today < from) return false
+  if (to !== '' && today > to) return false
+  return true
+}
+
 /**
- * 配信するVersionを1つ選ぶ（FAQ「出し分けロジック＝Branch Operation × デバイス別ON/OFF の掛け算」）。
- * ①非アーカイブ ②配信割合1以上 ③デバイスON を満たすVersionから配信割合で重み付け抽選する。
- * 満たすVersionが無ければ段階的にフォールバックする（デバイス条件だけ→生存Version全体）。
+ * そのVersionが、この訪問者に配信可能か（6条件すべてを掛け算で判定）。
+ * 各設定は「未設定＝制限なし（対象）」がデフォルト。デバイス別・パラメーター未登録は常に対象。
  */
-function pickDeliveryVersion(versions: readonly Version[], device: DeviceKind): Version | null {
+function isEligible(v: Version, ctx: VisitorContext): boolean {
+  // デバイス別
+  if (!targetsDevice(v, ctx.device)) return false
+  // モバイルOS別: いずれかON指定があれば「モバイル かつ そのOS」のみ対象（PCは除外）
+  if (v.os_targets && (v.os_targets.android || v.os_targets.ios)) {
+    if (ctx.mobileOS === null) return false
+    if (!v.os_targets[ctx.mobileOS]) return false
+  }
+  // キャリア別: 判定できた場合のみ適用（通常は判定不可＝スキップ＝対象）
+  if (ctx.carrier !== null && v.carrier_targets && (v.carrier_targets.docomo || v.carrier_targets.au || v.carrier_targets.softbank)) {
+    if (!v.carrier_targets[ctx.carrier]) return false
+  }
+  // 流入元別（旧パラメーター別）: ルールがあれば1件以上一致が必要。未登録は常に対象。
+  if (v.param_rules && v.param_rules.length > 0) {
+    if (!v.param_rules.some((r) => matchesParamRule(r, ctx.query))) return false
+  }
+  // 時間別: 範囲があれば1件以上に該当する時刻のみ対象
+  if (v.time_ranges && v.time_ranges.length > 0) {
+    if (!v.time_ranges.some((r) => inTimeRange(ctx.nowHHMM, r.from, r.to))) return false
+  }
+  // 日付別: off期間中は除外。on期間があれば on期間中のみ対象。期間無しは適用しない。
+  if (v.date_periods && v.date_periods.length > 0) {
+    const inOff = v.date_periods.some((p) => p.mode === 'off' && inDatePeriod(ctx.today, p.from, p.to))
+    if (inOff) return false
+    const onPeriods = v.date_periods.filter((p) => p.mode === 'on')
+    if (onPeriods.length > 0 && !onPeriods.some((p) => inDatePeriod(ctx.today, p.from, p.to))) return false
+  }
+  return true
+}
+
+/**
+ * 配信するVersionを1つ選ぶ。6条件（デバイス/OS/キャリア/流入元/時間/日付）を満たすVersionから
+ * 配信割合で重み付け抽選する。満たすVersionが無ければ段階的にフォールバック
+ * （割合条件を外す→デバイス条件だけ→生存Version全体）して「何も出ない」を避ける。
+ */
+function pickDeliveryVersion(versions: readonly Version[], ctx: VisitorContext): Version | null {
   const alive = versions.filter((v) => v.archived !== true)
-  const eligible = alive.filter((v) => v.distribution_ratio >= 1 && targetsDevice(v, device))
-  const deviceAlive = alive.filter((v) => targetsDevice(v, device))
-  const pool = eligible.length > 0 ? eligible : deviceAlive.length > 0 ? deviceAlive : alive
+  const eligible = alive.filter((v) => v.distribution_ratio >= 1 && isEligible(v, ctx))
+  const eligibleAny = alive.filter((v) => isEligible(v, ctx))
+  const deviceAlive = alive.filter((v) => targetsDevice(v, ctx.device))
+  const pool =
+    eligible.length > 0 ? eligible : eligibleAny.length > 0 ? eligibleAny : deviceAlive.length > 0 ? deviceAlive : alive
   if (pool.length === 0) return null
   const total = pool.reduce((sum, v) => sum + Math.max(1, v.distribution_ratio), 0)
   let ticket = Math.random() * total
@@ -146,8 +259,9 @@ deliveryRouter.get('/lp/:uid', (req, res) => {
   if (article === undefined) return renderNotice(res, req.params.uid)
 
   const versions = state.versions.filter((v) => v.article_id === article.id)
-  const device = detectDevice(req.headers['user-agent'] ?? '')
-  const version = pickDeliveryVersion(versions, device)
+  const ctx = buildVisitorContext(req)
+  const device = ctx.device
+  const version = pickDeliveryVersion(versions, ctx)
   if (version === null) {
     res
       .status(404)

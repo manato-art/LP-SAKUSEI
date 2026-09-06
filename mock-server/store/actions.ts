@@ -339,6 +339,24 @@ export function setDeviceTargets(
 }
 
 /**
+ * 流入元別/モバイルOS別/キャリア別/時間別/日付別 の版ごと設定を保存する（部分マージ）。
+ * 渡された項目だけ上書きし、他は温存する。
+ */
+export function setVersionTargeting(
+  state: State,
+  uid: string,
+  patch: Partial<Pick<Version, 'param_rules' | 'os_targets' | 'carrier_targets' | 'time_ranges' | 'date_periods'>>,
+): { state: State; version: Version | null } {
+  const target = state.versions.find((v) => v.uid === uid)
+  if (target === undefined) return { state, version: null }
+  const updated: Version = { ...target, ...patch, updated_at: nowTs() }
+  return {
+    state: { ...state, versions: state.versions.map((v) => (v.uid === uid ? updated : v)) },
+    version: updated,
+  }
+}
+
+/**
  * 本文HTMLが「実質空」か（テキストもメディアも無い）。node側なのでDOMは使わず素朴に判定する。
  */
 function htmlIsEffectivelyEmpty(html: string | undefined): boolean {
