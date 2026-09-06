@@ -95,6 +95,19 @@ function wireUrlCards(root: HTMLElement, abTestUid: string, version: Version | u
   })
 }
 
+/** 保存HTMLからヘッダー画像コメントを抽出し、imgタグ + 本文に分離 */
+function extractHeaderImage(html: string): { headerHtml: string; body: string } {
+  const m = html.match(/^<!--header-image:(.+?)-->/)
+  if (m !== null) {
+    const src = m[1] ?? ''
+    return {
+      headerHtml: `<img src="${src}" style="display:block;width:100%;object-fit:cover" alt="ヘッダー画像">`,
+      body: html.slice(m[0].length),
+    }
+  }
+  return { headerHtml: '', body: html }
+}
+
 /** 中央のプレビュー iframe に、保存済みの html/css を流し込む（本番へは出さない） */
 function fillPreviewIframe(
   root: HTMLElement,
@@ -110,11 +123,14 @@ function fillPreviewIframe(
   // 離脱防止ポップアップのHTMLを構築（プレビュー用: 即時表示ボタン付き）
   const popupSnippets = popups.map((p) => buildPreviewPopupSnippet(p)).join('')
 
+  // ヘッダー画像をHTMLコメントから復元
+  const { headerHtml, body } = extractHeaderImage(version.html)
+
   doc.open()
   doc.write(
     `<!doctype html><html lang="ja"><head><meta charset="utf-8">` +
       `<style>body{margin:0;font-family:"Hiragino Sans",sans-serif}${LP_BASE_CSS}${version.css}${styleCss}</style>` +
-      `</head><body>${withAutoplayVideos(version.html)}${popupSnippets}</body></html>`,
+      `</head><body>${headerHtml}${withAutoplayVideos(body)}${popupSnippets}</body></html>`,
   )
   doc.close()
 }

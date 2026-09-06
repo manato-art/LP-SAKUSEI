@@ -888,14 +888,17 @@ function buildVersionCardEl(version: Version, isCurrent: boolean): HTMLElement {
   const thumb = document.createElement('div')
   thumb.setAttribute('data-version-thumb', 'true')
   thumb.className = 'sb-vc-thumb'
-  const html = version.html || ''
-  if (html.includes('background') || html.includes('img')) {
+  const rawHtml = version.html || ''
+  // ヘッダー画像コメントを<img>タグに展開してサムネイルに含める
+  const { headerSrc, body: thumbBody } = splitHeaderFromHtml(rawHtml)
+  const thumbHtml = (headerSrc !== null ? `<img src="${headerSrc}" style="display:block;width:100%;object-fit:cover">` : '') + thumbBody
+  if (thumbHtml.includes('background') || thumbHtml.includes('img')) {
     const LP_W = 640
     const THUMB_H = 80
     const THUMB_SCALE = 210 / LP_W
     const preview = document.createElement('div')
     preview.style.cssText = `position:absolute;top:0;left:0;width:${LP_W}px;height:${Math.round(THUMB_H / THUMB_SCALE)}px;transform:scale(${THUMB_SCALE});transform-origin:top left;pointer-events:none;overflow:hidden`
-    preview.innerHTML = html
+    preview.innerHTML = thumbHtml
     thumb.append(preview)
   } else {
     const placeholder = document.createElement('div')

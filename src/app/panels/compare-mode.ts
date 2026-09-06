@@ -790,6 +790,14 @@ function buildPhoneMockup(html: string, device: DeviceDef, phoneArea: HTMLElemen
 
 /** Quill の HTML 本文をプレビュー用の完全なページに包む */
 function wrapHtmlForPreview(bodyHtml: string): string {
+  // ヘッダー画像コメントを<img>タグに展開
+  let headerHtml = ''
+  let body = bodyHtml
+  const m = bodyHtml.match(/^<!--header-image:(.+?)-->/)
+  if (m !== null) {
+    headerHtml = `<img src="${m[1] ?? ''}" style="display:block;width:100%;object-fit:cover" alt="ヘッダー画像">`
+    body = bodyHtml.slice(m[0].length)
+  }
   return `<!doctype html>
 <html><head>
 <meta charset="utf-8">
@@ -802,6 +810,6 @@ img,video{max-width:100%;height:auto;display:block}
 a{color:#1a73e8}
 </style>
 </head><body>
-<div class="article-body">${bodyHtml}</div>
+${headerHtml}<div class="article-body">${body}</div>
 </body></html>`
 }
