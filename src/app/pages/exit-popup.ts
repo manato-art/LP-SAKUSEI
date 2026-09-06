@@ -25,6 +25,7 @@ function injectPopupCss(): void {
   s.id = 'sb-exit-popup-css'
   s.textContent = `
     .ep-root { display:flex; flex-direction:column; flex:1; min-width:0; font-family:${T.font}; color:${T.text}; background:#f9f9fb; }
+    .ep-section-title { font-size:14px; font-weight:600; margin-bottom:16px; }
     /* ── 管理パネル（モーダル風オーバーレイ） ── */
     .ep-panel { position:fixed; inset:0; z-index:8000; background:rgba(0,0,0,.15); display:flex; align-items:center; justify-content:center; font-family:${T.font}; }
     .ep-panel-inner { background:#fff; border-radius:10px; width:820px; max-width:92vw; max-height:85vh; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 8px 32px rgba(0,0,0,.12); }
@@ -573,10 +574,12 @@ function createBlankPopup(state: PopupPageState): void {
 
 // ─── ポップアップ編集画面 ───────────────────────────
 
-type EditorTab = 'basic' | 'display' | 'position' | 'device' | 'html'
+type EditorTab = 'basic' | 'design' | 'display' | 'position' | 'device' | 'html'
 
 const EDITOR_TABS: readonly { id: EditorTab; label: string }[] = [
   { id: 'basic', label: '基本' },
+  // デザイン: HTMLを要素ごとのカードに分解して文言・色を編集できる（クローン独自の編集支援）
+  { id: 'design', label: 'デザイン' },
   { id: 'display', label: '表示' },
   { id: 'position', label: '位置' },
   { id: 'device', label: '出し分け' },
@@ -736,6 +739,7 @@ function renderEditorTab(body: HTMLElement, draft: ExitPopup, tab: EditorTab): v
   body.innerHTML = ''
   switch (tab) {
     case 'basic': renderBasicTab(body, draft); break
+    case 'design': renderDesignTab(body, draft); break
     case 'display': renderDisplayTab(body, draft); break
     case 'position': renderPositionTab(body, draft); break
     case 'device': renderDeviceTab(body, draft); break
@@ -746,6 +750,8 @@ function renderEditorTab(body: HTMLElement, draft: ExitPopup, tab: EditorTab): v
 // ── 基本タブ ──
 
 function renderBasicTab(body: HTMLElement, draft: ExitPopup): void {
+  // セクション見出し（実SB準拠: 「基本設定」）
+  body.append(el('div', { class: 'ep-section-title', text: '基本設定' }))
   // 訪問回数
   const visitField = el('div', { class: 'ep-field' })
   visitField.append(el('label', { text: '訪問回数' }))
@@ -772,6 +778,186 @@ function renderBasicTab(body: HTMLElement, draft: ExitPopup): void {
   body.append(makeTextField('リンク', draft.link_url, (v) => { draft.link_url = v }, 'https://example.com'))
   // 呼び出しリンク
   body.append(makeTextField('呼び出しリンク', draft.callback_url, (v) => { draft.callback_url = v }, 'https://example.com'))
+}
+
+// ── デザインタブ（HTMLを要素カードに分解して文言・色を編集） ──
+
+/** CSSの色文字列（hex/rgb/名前）を input[type=color] 用の #rrggbb に正規化する。 */
+function colorToHex(value: string): string {
+  const v = value.trim()
+  if (v === '' || v === 'transparent') return ''
+  const probe = document.createElement('span')
+  probe.style.color = ''
+  probe.style.color = v
+  if (probe.style.color === '') return '' // 不正な色
+  document.body.append(probe)
+  const rgb = getComputedStyle(probe).color
+  probe.remove()
+  const m = /rgba?\(([^)]+)\)/.exec(rgb)
+  if (m === null || m[1] === undefined) return ''
+  const parts = m[1].split(',').map((s) => parseFloat(s.trim()))
+  const [r, g, b] = parts
+  if (r === undefined || g === undefined || b === undefined) return ''
+  const toHex = (n: number): string => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, '0')
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`
+}
+
+/** 要素の直下テキスト（子要素を除く自分のテキストノードだけ）を取り出す。 */
+function directText(elm: Element): string {
+  let t = ''
+  for (const n of elm.childNodes) {
+    if (n.nodeType === Node.TEXT_NODE) t += n.textContent ?? ''
+  }
+  return t
+}
+
+/** style属性から特定プロパティの値を読む（無ければ ''）。 */
+function readStyleProp(elm: Element, prop: string): string {
+  const style = elm.getAttribute('style') ?? ''
+  const re = new RegExp(`(?:^|;)\\s*${prop}\\s*:\\s*([^;]+)`, 'i')
+  const m = re.exec(style)
+  return m?.[1]?.trim() ?? ''
+}
+
+/** style属性に特定プロパティを設定/更新する（インラインstyleを壊さない）。 */
+function writeStyleProp(elm: HTMLElement, prop: string, value: string): void {
+  elm.style.setProperty(prop, value)
+}
+
+/**
+ * デザインタブ本体。draft.html を1つの生きたDOMに展開し、
+ * 「文言」「文字色」「背景色」などの編集可能な要素を1個ずつのカードに分解する。
+ * カードを編集すると、その生きたDOMを直接書き換え → draft.html を再シリアライズする
+ * （＝大元のHTMLが変わる）。指示: ユーザー提案のカード分解方式。
+ */
+function renderDesignTab(body: HTMLElement, draft: ExitPopup): void {
+  injectDesignTabCss()
+  body.append(el('div', { class: 'ep-section-title', text: 'デザイン（要素ごとに編集）' }))
+  body.append(el('div', {
+    class: 'ep-design-note',
+    text: 'HTMLの要素を1個ずつカードに分解しています。ここで文言や色を変えると、大元のHTMLへ自動で反映されます。',
+  }))
+
+  // draft.html を生きたDOMへ（このタブが開いている間は保持し、直接書き換える）
+  const holder = document.createElement('div')
+  holder.innerHTML = draft.html
+
+  const sync = (): void => { draft.html = holder.innerHTML }
+
+  // 編集対象の収集: 直下テキストを持つ要素 / 文字色・背景色を持つ要素 / ボタン・リンク
+  const editable: HTMLElement[] = []
+  for (const node of Array.from(holder.querySelectorAll<HTMLElement>('*'))) {
+    if (node.tagName === 'SCRIPT' || node.tagName === 'STYLE') continue
+    const isLeafText = node.children.length === 0 && directText(node).trim() !== ''
+    const hasColor = readStyleProp(node, 'color') !== ''
+    const hasBg = readStyleProp(node, 'background-color') !== '' || readStyleProp(node, 'background') !== ''
+    const isBtn = node.tagName === 'BUTTON' || node.tagName === 'A'
+    if (isLeafText || hasColor || hasBg || isBtn) editable.push(node)
+  }
+
+  const grid = el('div', { class: 'ep-design-grid' })
+
+  if (editable.length === 0) {
+    grid.append(el('div', {
+      class: 'ep-design-empty',
+      text: '編集できるテキスト・色の要素が見つかりませんでした（画像のみのポップアップ等）。HTMLタブで直接編集してください。',
+    }))
+  }
+
+  editable.forEach((node, idx) => {
+    grid.append(buildDesignCard(node, idx, sync))
+  })
+
+  body.append(grid)
+}
+
+/** 1要素ぶんの編集カードを作る（文言 / 文字色 / 背景色 / ボタン色）。 */
+function buildDesignCard(node: HTMLElement, idx: number, sync: () => void): HTMLElement {
+  const card = el('div', { class: 'ep-design-card' })
+
+  // ── カード見出し: 種別 + 中身プレビュー ──
+  const tag = node.tagName.toLowerCase()
+  const isBtn = tag === 'button' || tag === 'a'
+  const leafText = node.children.length === 0 ? directText(node).trim() : ''
+  const kind = isBtn ? 'ボタン' : leafText !== '' ? 'テキスト' : '要素'
+  const snippet = leafText !== '' ? leafText.slice(0, 24) : `<${tag}>`
+  const head = el('div', { class: 'ep-design-card-head' })
+  head.append(el('span', { class: 'ep-design-card-kind', text: `${kind}${idx + 1}` }))
+  head.append(el('span', { class: 'ep-design-card-snippet', text: snippet }))
+  card.append(head)
+
+  // ── 文言（直下テキストを持つ葉要素のみ） ──
+  if (node.children.length === 0 && directText(node).trim() !== '') {
+    const row = el('div', { class: 'ep-design-row' })
+    row.append(el('label', { class: 'ep-design-label', text: '文言' }))
+    const input = document.createElement('input')
+    input.type = 'text'
+    input.className = 'ep-design-input'
+    input.value = directText(node)
+    input.addEventListener('input', () => {
+      node.textContent = input.value
+      sync()
+    })
+    row.append(input)
+    card.append(row)
+  }
+
+  // ── 文字色 ──
+  card.append(buildColorRow('文字色', colorToHex(readStyleProp(node, 'color')), (hex) => {
+    writeStyleProp(node, 'color', hex)
+    sync()
+  }))
+
+  // ── 背景色 ──
+  const bgCurrent = readStyleProp(node, 'background-color') || readStyleProp(node, 'background')
+  card.append(buildColorRow('背景色', colorToHex(bgCurrent), (hex) => {
+    writeStyleProp(node, 'background-color', hex)
+    sync()
+  }))
+
+  return card
+}
+
+/** 色編集の1行（スウォッチ + カラーピッカー + 反映ボタン）。 */
+function buildColorRow(label: string, currentHex: string, onChange: (hex: string) => void): HTMLElement {
+  const row = el('div', { class: 'ep-design-row' })
+  row.append(el('label', { class: 'ep-design-label', text: label }))
+  const picker = document.createElement('input')
+  picker.type = 'color'
+  picker.className = 'ep-design-color'
+  picker.value = currentHex !== '' ? currentHex : '#ffffff'
+  picker.addEventListener('input', () => onChange(picker.value))
+  const hexLabel = el('span', { class: 'ep-design-hex', text: currentHex !== '' ? currentHex.toUpperCase() : '未設定' })
+  picker.addEventListener('input', () => { hexLabel.textContent = picker.value.toUpperCase() })
+  row.append(picker, hexLabel)
+  return row
+}
+
+function injectDesignTabCss(): void {
+  if (document.getElementById('ep-design-css') !== null) return
+  const s = document.createElement('style')
+  s.id = 'ep-design-css'
+  s.textContent = `
+    .ep-design-note { font-size:12px; color:${T.sub}; line-height:1.7; margin-bottom:14px;
+      background:#f5f8ff; border:1px solid #dbe7ff; border-radius:8px; padding:10px 12px; }
+    .ep-design-grid { display:flex; flex-direction:column; gap:12px; }
+    .ep-design-empty { font-size:13px; color:${T.sub}; padding:24px 8px; text-align:center;
+      border:1px dashed #d6dae1; border-radius:8px; }
+    .ep-design-card { border:1px solid #e5e5ea; border-radius:10px; padding:12px 14px; background:#fff; }
+    .ep-design-card-head { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+    .ep-design-card-kind { font-size:11px; font-weight:700; color:#fff; background:${T.primary};
+      border-radius:5px; padding:2px 8px; flex:none; }
+    .ep-design-card-snippet { font-size:12px; color:${T.sub}; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .ep-design-row { display:flex; align-items:center; gap:10px; margin-top:8px; }
+    .ep-design-label { font-size:12px; color:${T.text}; width:52px; flex:none; }
+    .ep-design-input { flex:1; padding:7px 10px; border:1px solid #ddd; border-radius:6px; font-size:13px;
+      font-family:${T.font}; box-sizing:border-box; }
+    .ep-design-input:focus { outline:none; border-color:${T.primary}; }
+    .ep-design-color { width:40px; height:28px; border:1px solid #ddd; border-radius:6px; padding:0;
+      background:none; cursor:pointer; flex:none; }
+    .ep-design-hex { font-size:12px; color:${T.sub}; font-variant-numeric:tabular-nums; }
+  `
+  document.head.append(s)
 }
 
 // ── 表示タブ ──
@@ -823,8 +1009,26 @@ function renderDisplayTab(body: HTMLElement, draft: ExitPopup): void {
   scrollRow.append(scrollToggle, el('span', { class: 'ep-toggle-label', text: 'スクロールで表示' }))
   body.append(scrollRow)
 
-  // 表示位置（number input + %）
-  body.append(makeSuffixField('表示位置', draft.scroll_position, '%', (v) => { draft.scroll_position = v }))
+  // 表示位置（number input + % ＋ スライダー: 実SB準拠）
+  const posField = makeSuffixField('表示位置', draft.scroll_position, '%', (v) => {
+    draft.scroll_position = v
+    posSlider.value = String(v)
+  })
+  const posSlider = document.createElement('input')
+  posSlider.type = 'range'
+  posSlider.min = '0'
+  posSlider.max = '100'
+  posSlider.value = String(draft.scroll_position)
+  posSlider.className = 'ep-range'
+  posSlider.style.cssText = 'width:100%;margin-top:6px;accent-color:' + T.primary
+  posSlider.addEventListener('input', () => {
+    const v = Number(posSlider.value)
+    draft.scroll_position = v
+    const numInput = posField.querySelector('input')
+    if (numInput !== null) numInput.value = String(v)
+  })
+  posField.append(posSlider)
+  body.append(posField)
 
   // カウントダウンで表示
   const cdRow = el('div', { class: 'ep-toggle-row' })
@@ -861,30 +1065,86 @@ function renderDisplayTab(body: HTMLElement, draft: ExitPopup): void {
 
 // ── 位置タブ ──
 
+/**
+ * 表示位置。実SB準拠で「9分割グリッド（上/中/下 × 左/中/右）」で選ぶ方式にする。
+ * 以前は自由X/Yクリックだったが、本物は9箇所の離散選択なので合わせる。
+ * 保存は既存の position_x / position_y（%）に 0/50/100 でマッピングする。
+ */
+const POSITION_CELLS: readonly { x: number; y: number; icon: string; title: string }[] = [
+  { x: 0, y: 0, icon: '↖', title: '左上' }, { x: 50, y: 0, icon: '↑', title: '上' }, { x: 100, y: 0, icon: '↗', title: '右上' },
+  { x: 0, y: 50, icon: '←', title: '左' }, { x: 50, y: 50, icon: '◉', title: '中央' }, { x: 100, y: 50, icon: '→', title: '右' },
+  { x: 0, y: 100, icon: '↙', title: '左下' }, { x: 50, y: 100, icon: '↓', title: '下' }, { x: 100, y: 100, icon: '↘', title: '右下' },
+]
+
+/** 自由座標を最寄りの 0/50/100 に丸める（旧データの互換） */
+function snapPos(v: number): number {
+  if (v < 25) return 0
+  if (v > 75) return 100
+  return 50
+}
+
 function renderPositionTab(body: HTMLElement, draft: ExitPopup): void {
-  body.append(el('div', { class: 'ep-field' }, [el('label', { text: 'ポップアップの表示位置（クリックで変更）' })]))
+  injectPositionGridCss()
+  body.append(el('div', { class: 'ep-section-title', text: '表示位置' }))
 
-  const picker = el('div', { class: 'ep-position-picker' })
-  const dot = el('div', { class: 'ep-position-dot' })
-  dot.style.left = `${draft.position_x}%`
-  dot.style.top = `${draft.position_y}%`
-  picker.append(dot)
+  const layout = el('div', { class: 'ep-pos-layout' })
+  const grid = el('div', { class: 'ep-pos-grid' })
+  const preview = el('div', { class: 'ep-pos-preview' })
+  const bar = el('div', { class: 'ep-pos-preview-bar' })
+  preview.append(bar)
 
-  picker.addEventListener('click', (e) => {
-    const rect = picker.getBoundingClientRect()
-    draft.position_x = Math.round(((e.clientX - rect.left) / rect.width) * 100)
-    draft.position_y = Math.round(((e.clientY - rect.top) / rect.height) * 100)
-    dot.style.left = `${draft.position_x}%`
-    dot.style.top = `${draft.position_y}%`
-    posLabel.textContent = `位置: X=${draft.position_x}%, Y=${draft.position_y}%`
-  })
+  const curX = snapPos(draft.position_x)
+  const curY = snapPos(draft.position_y)
 
-  body.append(picker)
-  const posLabel = el('div', {
-    style: `font-size:12px;color:${T.sub};margin-top:8px`,
-    text: `位置: X=${draft.position_x}%, Y=${draft.position_y}%`,
-  })
-  body.append(posLabel)
+  const updatePreview = (): void => {
+    bar.style.left = `${snapPos(draft.position_x)}%`
+    bar.style.top = `${snapPos(draft.position_y)}%`
+    const tx = snapPos(draft.position_x)
+    const ty = snapPos(draft.position_y)
+    bar.style.transform = `translate(-${tx}%, -${ty}%)`
+  }
+
+  const cellButtons: HTMLElement[] = []
+  for (const cell of POSITION_CELLS) {
+    const btn = el('button', { class: 'ep-pos-cell', text: cell.icon })
+    btn.title = cell.title
+    if (cell.x === curX && cell.y === curY) btn.classList.add('active')
+    btn.addEventListener('click', () => {
+      draft.position_x = cell.x
+      draft.position_y = cell.y
+      for (const b of cellButtons) b.classList.remove('active')
+      btn.classList.add('active')
+      updatePreview()
+    })
+    cellButtons.push(btn)
+    grid.append(btn)
+  }
+
+  layout.append(grid, preview)
+  body.append(layout)
+  updatePreview()
+}
+
+function injectPositionGridCss(): void {
+  if (document.getElementById('ep-pos-grid-css') !== null) return
+  const s = document.createElement('style')
+  s.id = 'ep-pos-grid-css'
+  s.textContent = `
+    .ep-pos-layout { display:flex; gap:16px; align-items:stretch; flex-wrap:wrap; }
+    .ep-pos-grid { display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr);
+      gap:1px; background:#1f2430; border-radius:10px; padding:1px; width:220px; height:200px; flex:none; }
+    .ep-pos-cell { display:flex; align-items:center; justify-content:center; font-size:20px; color:#c7ccd6;
+      background:#2a303c; border:none; cursor:pointer; transition:background .12s,color .12s; }
+    .ep-pos-cell:first-child { border-top-left-radius:9px; } .ep-pos-cell:nth-child(3){ border-top-right-radius:9px; }
+    .ep-pos-cell:nth-child(7){ border-bottom-left-radius:9px; } .ep-pos-cell:last-child{ border-bottom-right-radius:9px; }
+    .ep-pos-cell:hover { background:#39414f; color:#fff; }
+    .ep-pos-cell.active { background:${T.primary}; color:#fff; }
+    .ep-pos-preview { position:relative; flex:1; min-width:220px; height:200px; border:1px solid #e5e5ea;
+      border-radius:10px; background:#f7f8fa; overflow:hidden; }
+    .ep-pos-preview-bar { position:absolute; width:64px; height:22px; border-radius:6px; background:${T.primary};
+      box-shadow:0 2px 6px rgba(0,0,0,.15); }
+  `
+  document.head.append(s)
 }
 
 // ── 出し分けタブ ──
