@@ -68,6 +68,12 @@ export interface Version {
   status: string
   archived?: boolean
   device_targets?: { sp: boolean; tablet: boolean; pc: boolean }
+  /** 流入元別/OS別/キャリア別/時間別/日付別 の版ごと設定（配信の出し分けに使う） */
+  param_rules?: { name: string; match: 'exact' | 'prefix' | 'suffix' | 'contains'; value: string }[]
+  os_targets?: { android: boolean; ios: boolean } | null
+  carrier_targets?: { docomo: boolean; au: boolean; softbank: boolean } | null
+  time_ranges?: { from: string; to: string }[]
+  date_periods?: { from: string; to: string; mode: 'on' | 'off' }[]
   html: string
   css: string
 }
@@ -192,6 +198,9 @@ export const api = {
     request<{ version: Version }>('POST', `/versions/${uid}/unarchive`),
   setDeviceTargets: (uid: string, targets: { sp: boolean; tablet: boolean; pc: boolean }) =>
     request<{ version: Version }>('PATCH', `/versions/${uid}/device_targets`, targets),
+  /** 流入元別/OS別/キャリア別/時間別/日付別 の版ごと設定を保存（渡した項目だけ更新） */
+  setVersionTargeting: (uid: string, patch: Record<string, unknown>) =>
+    request<{ version: Version }>('PATCH', `/versions/${uid}/targeting`, patch),
   masterStyleSheet: (articleUid: string) =>
     request<{ master_style_sheet: MasterStyleSheet }>(
       'GET',

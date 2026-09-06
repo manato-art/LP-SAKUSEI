@@ -25,7 +25,7 @@ import hours from '../fragments/ab_tests__UID__articles__split_test_settings__ho
 import periods from '../fragments/ab_tests__UID__articles__split_test_settings__periods.html?raw'
 import oses from '../fragments/ab_tests__UID__articles__split_test_settings__oses.html?raw'
 import carriers from '../fragments/ab_tests__UID__articles__split_test_settings__carriers.html?raw'
-import { api } from '../api.ts'
+import { api, type Version } from '../api.ts'
 import { isStale } from '../main.ts'
 import { applyBeyondTopBar, wireBeyondBack } from './beyond-topbar.ts'
 import { wireBeyondNavAnchors, type SplitTestTab } from './beyond-nav.ts'
@@ -34,12 +34,6 @@ import { stripShellFromFragment } from './report-substrate.ts'
 import { wireAbTestTabs, setupHorizTabs, setupBreadcrumb } from './tab-nav.ts'
 import { toast } from '../ui.ts'
 
-interface SplitTestRule {
-  key: string
-  label: string
-  ratio: number
-  enabled: boolean
-}
 
 /** タブ → 採取した土台。ルートで受け取ったタブに対応する断片を選ぶ。 */
 const SUBSTRATE_BY_TAB: Readonly<Record<SplitTestTab, string>> = {
@@ -99,6 +93,8 @@ export async function renderSplitTestSettings(
   applyLightTheme(root)
   // 指示123: Emotion直書きのダーク背景を白基調に上書き
   applySplitTestWhiteTheme(root)
+  // タブ名「パラメーター別」→「流入元別」に変更（わかりやすさ優先）
+  renameParamTab(root)
   // 出し分けトグル（オン/オフ）を実際に効かせてモックへ保存する。
   // デバイス別は **Version単位**（FAQ: 出し分けロジック＝配信割合 × デバイス別ON/OFF の掛け算）。
   if (tab === 'devices') {
@@ -107,8 +103,6 @@ export async function renderSplitTestSettings(
     void wireSplitTestToggles(root, abTestUid, tab)
   }
 }
-
-const API_BASE = '/api/v1'
 
 /** MUIスイッチの見た目（つまみ位置・トラック色）を on/off に合わせる。 */
 function setSwitch(sw: HTMLElement, on: boolean): void {
@@ -231,58 +225,60 @@ async function wireSplitTestToggles(
   abTestUid: string,
   tab: SplitTestTab,
 ): Promise<void> {
-  // ── 指示㊽: Version行を全版ぶん描く（デバイス別と同じパターン）──
-  await wireTabVersionRows(root, abTestUid)
+  // ── 版行を全版ぶん描き、版ごとに設定を保存する配線を付ける ──
+  await wireTabVersionRows(root, abTestUid, (row, version) => {
+    if (tab === 'oses') wireToggleRow(row, version, ['android', 'ios'], 'os_targets')
+    else if (tab === 'carriers') wireToggleRow(row, version, ['docomo', 'au', 'softbank'], 'carrier_targets')
+    else if (tab === 'params') wireParamRow(row, version)
+    else if (tab === 'hours') wirePeriodRow(row, version, 'time')
+    else if (tab === 'periods') wirePeriodRow(row, version, 'date')
+  })
+}
 
-  // 時間別/日付別の「追加」ボタンを機能させる（スイッチが無いタブでも先に配線する）
-  wireAddButtons(root)
+/** MUIスイッチの見た目を on/off に合わせる（switchBase の Mui-checked と隠しinput）。 */
+function setSwitchVisual(sw: HTMLElement, on: boolean): void {
+  sw.querySelector('.MuiSwitch-switchBase')?.classList.toggle('Mui-checked', on)
+  const input = sw.querySelector<HTMLInputElement>('input')
+  if (input !== null) input.checked = on
+}
 
-  const switches = [...root.querySelectorAll<HTMLElement>('.MuiSwitch-root')]
-  if (switches.length === 0) return
-
-  let rules: SplitTestRule[]
-  try {
-    const res = await fetch(`${API_BASE}/ab_tests/${abTestUid}/split_test_settings/${tab}`)
-    const body = (await res.json()) as { split_test_setting?: { rules?: SplitTestRule[] } }
-    rules = [...(body.split_test_setting?.rules ?? [])]
-  } catch {
-    return
-  }
-
-  const setVisual = (sw: HTMLElement, on: boolean): void => {
-    // MUI は switchBase の `Mui-checked` で見た目（つまみ位置・トラック色）が決まる
-    sw.querySelector('.MuiSwitch-switchBase')?.classList.toggle('Mui-checked', on)
-    const input = sw.querySelector<HTMLInputElement>('input')
-    if (input !== null) input.checked = on
-  }
-
-  switches.forEach((sw, index) => {
-    const rule = rules[index]
-    if (rule === undefined) {
-      // 複製した版のトグルなど rules に対応が無いスイッチ。
-      // 少なくともクリックで見た目が切り替わるようにする（選択できる状態にする・保存は今後API）。
-      const input = sw.querySelector<HTMLInputElement>('input')
-      let on = sw.querySelector('.Mui-checked') !== null || (input?.checked ?? false)
-      setVisual(sw, on)
-      sw.addEventListener('click', (event) => {
-        event.preventDefault()
-        on = !on
-        setVisual(sw, on)
-      })
-      return
-    }
-    setVisual(sw, rule.enabled)
+/**
+ * モバイルOS別/キャリア別: 行内のスイッチを keys の順（位置）で対応づけ、
+ * クリックのたびに版の os_targets / carrier_targets を保存する。
+ * 既定は全OFF（＝制限なし。ONにした対象だけに絞り込む）。
+ */
+function wireToggleRow(
+  row: HTMLElement,
+  version: Version,
+  keys: readonly string[],
+  field: 'os_targets' | 'carrier_targets',
+): void {
+  const switches = [...row.querySelectorAll<HTMLElement>('.MuiSwitch-root')]
+  const saved = (version[field] ?? null) as Record<string, boolean> | null
+  const state: Record<string, boolean> = {}
+  for (const k of keys) state[k] = saved?.[k] ?? false
+  switches.forEach((sw, i) => {
+    const key = keys[i]
+    if (key === undefined) return
+    setSwitchVisual(sw, state[key] ?? false)
     sw.addEventListener('click', (event) => {
-      // ネイティブの checkbox 二重トグルを止め、rules を唯一の真実にする
       event.preventDefault()
-      const next = !(rules[index]?.enabled ?? true)
-      rules[index] = { ...rule, enabled: next }
-      setVisual(sw, next)
-      void save(abTestUid, tab, rules).then(() => {
-        toast(next ? `${rule.label} をオンにしました` : `${rule.label} をオフにしました（他Versionを配信）`)
+      state[key] = !(state[key] ?? false)
+      setSwitchVisual(sw, state[key] ?? false)
+      void api.setVersionTargeting(version.uid, { [field]: { ...state } }).then(() => {
+        const label = TOGGLE_LABELS[key] ?? key
+        toast(state[key] ? `${version.name}: ${label} をオンにしました` : `${version.name}: ${label} をオフにしました`)
       })
     })
   })
+}
+
+const TOGGLE_LABELS: Readonly<Record<string, string>> = {
+  android: 'Android',
+  ios: 'iOS',
+  docomo: 'docomo',
+  au: 'au',
+  softbank: 'SoftBank',
 }
 
 /**
@@ -311,7 +307,11 @@ function findRatioCell(row: HTMLElement, nameCell: HTMLElement): HTMLElement | n
  * 採取物にはVer.3873の1行だけが入っているので、それを雛形に全Versionぶん複製する。
  * タブごとにEmotionクラスが違うため、版名は `findVersionNameCell`（Ver.テキスト）で探す。
  */
-async function wireTabVersionRows(root: HTMLElement, abTestUid: string): Promise<void> {
+async function wireTabVersionRows(
+  root: HTMLElement,
+  abTestUid: string,
+  onRow?: (row: HTMLElement, version: Version) => void,
+): Promise<void> {
   const nameCell = findVersionNameCell(root)
   if (nameCell === null) return
 
@@ -386,72 +386,207 @@ async function wireTabVersionRows(root: HTMLElement, abTestUid: string): Promise
     }
     const nameWrapper = row.querySelector<HTMLElement>('.css-1r20ns4')
     if (nameWrapper !== null) nameWrapper.style.paddingBottom = '0'
+    row.dataset['cloneVersionUid'] = version.uid
     container.append(row)
+    if (onRow !== undefined) onRow(row, version)
   }
+}
+
+/** 「パラメーター別」表記を「流入元別」に置き換える（サブナビのラベルと本文見出し）。 */
+function renameParamTab(root: HTMLElement): void {
+  for (const el of root.querySelectorAll<HTMLElement>('*')) {
+    if (el.children.length === 0 && (el.textContent ?? '').trim() === 'パラメーター別') {
+      el.textContent = '流入元別'
+    }
+  }
+}
+
+function escapeText(s: string): string {
+  return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] ?? c))
+}
+
+const MATCH_OPTIONS: readonly [string, string][] = [
+  ['exact', '完全に一致'],
+  ['prefix', '〜で始まる'],
+  ['suffix', '〜で終わる'],
+  ['contains', '〜を含む'],
+]
+
+/**
+ * 流入元別（旧・パラメーター別）: 採取物の1入力欄を「パラメータ名 / 条件 / 値 ＋ プレビュー」の
+ * 分かりやすい3項目UIに置き換え、版ごとに param_rules を保存する。
+ */
+function wireParamRow(row: HTMLElement, version: Version): void {
+  const input = row.querySelector<HTMLInputElement>('input[placeholder*="utm"], input[placeholder*="xxx"]')
+  const host = input?.closest<HTMLElement>('.MuiFormControl-root') ?? input?.parentElement ?? null
+  if (host === null) return
+
+  const rule = version.param_rules?.[0] ?? { name: 'utm_creative', match: 'exact' as const, value: '' }
+
+  const editor = document.createElement('div')
+  editor.setAttribute('data-clone-param-editor', '')
+  editor.style.cssText =
+    'display:flex;flex-direction:column;gap:8px;padding:12px 14px;background:#fff;' +
+    'border:1px solid #e5e5ea;border-radius:8px'
+
+  const fields = document.createElement('div')
+  fields.style.cssText = 'display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end'
+  const field = (labelText: string, el: HTMLElement): HTMLElement => {
+    const wrap = document.createElement('label')
+    wrap.style.cssText = 'display:flex;flex-direction:column;gap:3px;font-size:11px;color:#8a94a6'
+    const lb = document.createElement('span')
+    lb.textContent = labelText
+    wrap.append(lb, el)
+    return wrap
+  }
+  const inputStyle = 'padding:7px 10px;border:1px solid #d6dae1;border-radius:6px;font-size:13px'
+  const nameInput = document.createElement('input')
+  nameInput.type = 'text'
+  nameInput.value = rule.name
+  nameInput.placeholder = 'utm_creative'
+  nameInput.style.cssText = inputStyle
+  const matchSel = document.createElement('select')
+  matchSel.style.cssText = `${inputStyle};cursor:pointer`
+  for (const [v, l] of MATCH_OPTIONS) {
+    const o = document.createElement('option')
+    o.value = v
+    o.textContent = l
+    if (v === rule.match) o.selected = true
+    matchSel.append(o)
+  }
+  const valInput = document.createElement('input')
+  valInput.type = 'text'
+  valInput.value = rule.value
+  valInput.placeholder = 'summer'
+  valInput.style.cssText = inputStyle
+  fields.append(field('パラメータ名', nameInput), field('条件', matchSel), field('値', valInput))
+
+  const preview = document.createElement('div')
+  preview.style.cssText = 'font-size:12px;color:#5b6577'
+  const renderPreview = (): void => {
+    const n = nameInput.value.trim() || 'utm_creative'
+    const v = valInput.value.trim()
+    const note =
+      { exact: '', prefix: '（で始まる）', suffix: '（で終わる）', contains: '（を含む）' }[matchSel.value] ?? ''
+    preview.innerHTML =
+      v === ''
+        ? '<span style="color:#aaa">値を入れると、その広告リンクから来た人にこのVersionを表示します（未入力なら常に表示）</span>'
+        : `→ <b>?${escapeText(n)}=${escapeText(v)}</b>${note} で来た人にこのVersionを表示`
+  }
+  const saveRule = (): void => {
+    const n = nameInput.value.trim()
+    const v = valInput.value.trim()
+    const rules = v === '' ? [] : [{ name: n, match: matchSel.value, value: v }]
+    void api.setVersionTargeting(version.uid, { param_rules: rules }).then(() => toast('流入元の条件を保存しました'))
+  }
+  for (const el of [nameInput, valInput]) {
+    el.addEventListener('input', renderPreview)
+    el.addEventListener('blur', saveRule)
+  }
+  matchSel.addEventListener('change', () => {
+    renderPreview()
+    saveRule()
+  })
+  renderPreview()
+
+  editor.append(fields, preview)
+  host.replaceWith(editor)
 }
 
 /**
- * 時間別「時間設定を追加する」/ 日付別「＋(AddBoxIcon)」ボタンを機能させる。
- * 採取物ではクリックしても何も起きなかった（配線されていなかった）ため、
- * クリックで「配信期間の行（開始〜終了＋配信する/しない＋削除）」をその場に足す。
- * ※バックエンド未接続のため保存はしない（見た目・操作のみ。あとでAPI）。
+ * 時間別/日付別: 行内の追加ボタン（時間設定を追加 / ＋AddBoxIcon）を機能させ、
+ * 「開始〜終了（＋配信する/しない）」の行を足せるようにして、版ごとに time_ranges / date_periods を保存する。
  */
-function wireAddButtons(root: HTMLElement): void {
-  for (const btn of root.querySelectorAll<HTMLElement>('button')) {
-    if (!(btn.textContent ?? '').includes('時間設定を追加')) continue
-    if (btn.dataset['clonePeriodWired'] === '1') continue
-    btn.dataset['clonePeriodWired'] = '1'
-    btn.style.cursor = 'pointer'
-    btn.addEventListener('click', (event) => {
-      event.preventDefault()
-      appendPeriodEditor(btn, 'time')
-    })
+function wirePeriodRow(row: HTMLElement, version: Version, kind: 'time' | 'date'): void {
+  const addBtn =
+    kind === 'time'
+      ? [...row.querySelectorAll<HTMLElement>('button')].find((b) => (b.textContent ?? '').includes('時間設定を追加')) ?? null
+      : row.querySelector<SVGElement>('svg[data-testid="AddBoxIcon"]')?.closest<HTMLElement>('button, [role="button"], a') ??
+        (row.querySelector<SVGElement>('svg[data-testid="AddBoxIcon"]')?.parentElement as HTMLElement | null)
+
+  const list = document.createElement('div')
+  list.style.cssText = 'display:flex;flex-direction:column;gap:6px;margin:8px 0 4px'
+  ;(addBtn?.closest<HTMLElement>('.css-1q0mywx') ?? row).append(list)
+
+  const collectAndSave = (): void => {
+    const editors = [...list.querySelectorAll<HTMLElement>('[data-period-editor]')]
+    if (kind === 'time') {
+      const ranges = editors
+        .map((e) => ({
+          from: e.querySelector<HTMLInputElement>('[data-from]')?.value ?? '',
+          to: e.querySelector<HTMLInputElement>('[data-to]')?.value ?? '',
+        }))
+        .filter((r) => r.from !== '' || r.to !== '')
+      void api.setVersionTargeting(version.uid, { time_ranges: ranges })
+    } else {
+      const periods = editors
+        .map((e) => ({
+          from: e.querySelector<HTMLInputElement>('[data-from]')?.value ?? '',
+          to: e.querySelector<HTMLInputElement>('[data-to]')?.value ?? '',
+          mode: (e.querySelector<HTMLSelectElement>('[data-mode]')?.value as 'on' | 'off') ?? 'on',
+        }))
+        .filter((p) => p.from !== '' || p.to !== '')
+      void api.setVersionTargeting(version.uid, { date_periods: periods })
+    }
   }
-  for (const icon of root.querySelectorAll<SVGElement>('svg[data-testid="AddBoxIcon"]')) {
-    const clickable =
-      icon.closest<HTMLElement>('button, [role="button"], a') ?? (icon.parentElement as HTMLElement | null)
-    if (clickable === null || clickable.dataset['clonePeriodWired'] === '1') continue
-    clickable.dataset['clonePeriodWired'] = '1'
-    clickable.style.cursor = 'pointer'
-    clickable.addEventListener('click', (event) => {
+
+  const addEditor = (initial?: { from?: string; to?: string; mode?: string }): void => {
+    list.append(buildPeriodEditor(kind, initial, collectAndSave))
+  }
+
+  const existing =
+    kind === 'time' ? version.time_ranges ?? [] : version.date_periods ?? []
+  for (const it of existing) addEditor(it)
+
+  if (addBtn !== null) {
+    addBtn.style.cursor = 'pointer'
+    addBtn.addEventListener('click', (event) => {
       event.preventDefault()
-      appendPeriodEditor(clickable, 'date')
+      addEditor()
     })
   }
 }
 
-/** 追加ボタンの近くに「配信期間の行」を1つ挿入する（time=時間別 / date=日付別）。 */
-function appendPeriodEditor(anchor: HTMLElement, kind: 'time' | 'date'): void {
-  // 挿入位置: ボタンを含む版行（MuiBox）の直後。無ければボタンの親の直後。
-  const row = anchor.closest<HTMLElement>('.css-1q0mywx, [class*="_row_"]') ?? anchor.parentElement
-  const host = row?.parentElement ?? anchor.parentElement
-  if (host === null || host === undefined) return
-
+/** 配信期間の編集行を1つ作る（time=開始〜終了 / date=開始〜終了＋配信する/しない＋削除）。 */
+function buildPeriodEditor(
+  kind: 'time' | 'date',
+  initial: { from?: string; to?: string; mode?: string } | undefined,
+  onChange: () => void,
+): HTMLElement {
   const editor = document.createElement('div')
-  editor.setAttribute('data-clone-period-row', kind)
+  editor.setAttribute('data-period-editor', kind)
   editor.style.cssText =
-    'display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:8px 0 0;padding:10px 14px;' +
-    'background:#fff;border:1px solid #e5e5ea;border-radius:8px;font-size:13px;color:#333'
+    'display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 12px;background:#fff;' +
+    'border:1px solid #e5e5ea;border-radius:8px;font-size:13px;color:#333'
 
-  const inputType = kind === 'time' ? 'time' : 'date'
-  const mk = (): HTMLInputElement => {
+  const mk = (attr: string, value: string): HTMLInputElement => {
     const i = document.createElement('input')
-    i.type = inputType
+    i.type = kind === 'time' ? 'time' : 'date'
+    i.setAttribute(attr, '')
+    i.value = value
     i.style.cssText = 'padding:6px 8px;border:1px solid #d6dae1;border-radius:6px;font-size:13px'
+    i.addEventListener('change', onChange)
     return i
   }
-  const from = mk()
-  const to = mk()
+  const from = mk('data-from', initial?.from ?? '')
+  const to = mk('data-to', initial?.to ?? '')
   const tilde = document.createElement('span')
   tilde.textContent = '〜'
+  editor.append(from, tilde, to)
 
-  const mode = document.createElement('select')
-  mode.style.cssText = 'padding:6px 8px;border:1px solid #d6dae1;border-radius:6px;font-size:13px;cursor:pointer'
-  for (const [v, label] of [['on', '配信する'], ['off', '配信しない']]) {
-    const opt = document.createElement('option')
-    opt.value = v!
-    opt.textContent = label!
-    mode.append(opt)
+  if (kind === 'date') {
+    const mode = document.createElement('select')
+    mode.setAttribute('data-mode', '')
+    mode.style.cssText = 'padding:6px 8px;border:1px solid #d6dae1;border-radius:6px;font-size:13px;cursor:pointer'
+    for (const [v, l] of [['on', '配信する'], ['off', '配信しない']]) {
+      const o = document.createElement('option')
+      o.value = v!
+      o.textContent = l!
+      if (v === (initial?.mode ?? 'on')) o.selected = true
+      mode.append(o)
+    }
+    mode.addEventListener('change', onChange)
+    editor.append(mode)
   }
 
   const del = document.createElement('button')
@@ -460,27 +595,12 @@ function appendPeriodEditor(anchor: HTMLElement, kind: 'time' | 'date'): void {
   del.style.cssText =
     'margin-left:auto;padding:6px 12px;border:1px solid #f0b4b4;border-radius:6px;background:#fff;' +
     'color:#d64545;font-size:12px;cursor:pointer'
-  del.addEventListener('click', () => editor.remove())
-
-  const label = document.createElement('span')
-  label.textContent = kind === 'time' ? '時間帯' : '期間'
-  label.style.cssText = 'font-weight:600;color:#48526b'
-
-  editor.append(label, from, tilde, to, mode, del)
-
-  if (row !== null && row !== undefined) row.after(editor)
-  else host.append(editor)
-
-  from.focus()
-  toast(kind === 'time' ? '時間帯を追加しました（保存は今後対応）' : '配信期間を追加しました（保存は今後対応）')
-}
-
-async function save(abTestUid: string, tab: SplitTestTab, rules: SplitTestRule[]): Promise<void> {
-  await fetch(`${API_BASE}/ab_tests/${abTestUid}/split_test_settings/${tab}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ type: tab, rules }),
-  }).catch(() => undefined)
+  del.addEventListener('click', () => {
+    editor.remove()
+    onChange()
+  })
+  editor.append(del)
+  return editor
 }
 
 /**
