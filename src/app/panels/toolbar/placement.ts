@@ -4,7 +4,11 @@
  * 矢印（`_editorToolbarArrow_`）に `left` を書き込んでいた（採取物の inline style）。
  */
 import type Quill from 'quill'
-import { CLS, HOOK } from './hooks.ts'
+import { HOOK } from './hooks.ts'
+import { SCROLLBAR_BAR_WIDTH } from '../editor-scrollbar.ts'
+
+/** 指示135: ツールバーはスクロールバーの左横に置く。スクロールバー幅＋余白の分だけ右端から空ける。 */
+const SCROLLBAR_GUTTER = SCROLLBAR_BAR_WIDTH + 6
 
 /** Quill の選択範囲（Range を値として import しないための最小形） */
 export interface QuillRange {
@@ -79,13 +83,30 @@ export function positionToolbar(wrapper: HTMLElement, quill: Quill, range: Quill
     { width: hostRect.width, height: hostRect.height },
   )
 
-  wrapper.style.setProperty('left', `${placement.left}px`)
+  // 指示135: 横位置は選択範囲の中央ではなく「スクロールバーの左横」に固定する。
+  // 縦位置(top)は選択範囲に追従させたまま、横はスクロールバーの左端の少し内側へ寄せる。
+  // スクロールバーとツールバーの offsetParent が異なる場合があるので、
+  // スクロールバーの実位置(viewport)を host 座標へ変換してから左に置く。
+  const scrollbar = findScrollbar(quill)
+  const toolbarW = wrapper.offsetWidth
+  let leftPx: number
+  if (scrollbar !== null) {
+    const sbLeftInHost = scrollbar.getBoundingClientRect().left - hostRect.left
+    leftPx = clamp(sbLeftInHost - toolbarW - 6, 0, Math.max(0, hostRect.width - toolbarW))
+  } else {
+    leftPx = clamp(hostRect.width - toolbarW - SCROLLBAR_GUTTER, 0, Math.max(0, hostRect.width - toolbarW))
+  }
+  wrapper.style.setProperty('left', `${leftPx}px`)
   wrapper.style.setProperty('top', `${placement.top}px`)
 
   const arrow = wrapper.querySelector<HTMLElement>(HOOK.arrow)
   if (arrow === null) return
-  arrow.classList.remove(CLS.arrowTop, CLS.arrowBottom)
-  arrow.classList.add(placement.placement === 'above' ? CLS.arrowBottom : CLS.arrowTop)
-  // 実物も矢印には `left` だけを inline で書いていた（中央寄せの margin-left は実CSS側にある）
-  arrow.style.setProperty('left', `${placement.arrowLeft}px`)
+  // 右寄せ固定なので選択範囲を指す矢印は意味を持たない → 隠す
+  arrow.style.setProperty('display', 'none', 'important')
+}
+
+/** エディタ内のカスタムスクロールバー要素を探す（指示135のツールバー配置基準） */
+function findScrollbar(quill: Quill): HTMLElement | null {
+  const scope = quill.container.closest<HTMLElement>('.quillEditorContentWrapper') ?? document
+  return scope.querySelector<HTMLElement>('[data-clone-scrollbar]')
 }

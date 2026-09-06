@@ -11,8 +11,9 @@
  * 読み書きするだけ。ミニマップと同じ alignToCanvas でキャンバス高さに追従する。
  */
 
-/** バー帯の幅（触れる当たり判定込み） */
-const BAR_WIDTH = 14
+/** バー帯の幅（触れる当たり判定込み）。ツールバー配置(指示135)でも参照する */
+export const SCROLLBAR_BAR_WIDTH = 14
+const BAR_WIDTH = SCROLLBAR_BAR_WIDTH
 /** つまみの最小高さ（短くなり過ぎて掴めなくなるのを防ぐ） */
 const MIN_THUMB_H = 36
 
