@@ -318,8 +318,7 @@ export async function renderEditor(
 
   // Versionパネルは ctx.versions から**1枚ずつカードを描く**（複製/追加した分も下に増える）。
   renderVersionList(ctx)
-  // 「Version追加」ボタンはカードの下に据え置き（再描画で消えない）。1回だけ配線する。
-  wireAddVersion(ctx)
+  // 「Version追加」は renderVersionList 内の「Versionを追加」カードに統合済み
   // 「Version ▼」一覧ドロップダウンの開閉（task 2・採取済みマークアップに挙動だけ付ける）
   mountVersionListDropdown(root, {
     onSelectMode: (mode) => {
@@ -479,10 +478,10 @@ function mountSidebarToolbarPanel(ctx: EditorContext): void {
   }
   versionPanel.append(cardsWrapper)
 
-  // 青い「バージョンを追加」ボタンは不要（「Versionを追加」カードに統合済み）→ 非表示
+  // 青い「バージョンを追加」ボタンは不要（「Versionを追加」カードに統合済み）→ 削除
   const addBtn = cardsWrapper.querySelector<HTMLElement>(HOOK.addVersion)
   if (addBtn !== null) {
-    addBtn.style.display = 'none'
+    addBtn.remove()
   }
 }
 
@@ -1099,14 +1098,8 @@ function mountUrlBarInEditor(ctx: EditorContext): HTMLElement | null {
 
   const bar = mountUrlBar({ testUrl, prodUrl })
 
-  // Quill ホスト（#quillIframe の後継 div）の直前に挿入
-  const quillHost = ctx.quill.container as HTMLElement
-  const hostParent = quillHost.parentElement
-  if (hostParent !== null) {
-    hostParent.insertBefore(bar, quillHost)
-  } else {
-    contentWrapper.prepend(bar)
-  }
+  // URLバーはヘッダー画像の上（コンテンツ領域の最上部）に配置
+  contentWrapper.prepend(bar)
   return bar
 }
 
@@ -1581,25 +1574,6 @@ function findUpdateButton(card: HTMLElement): HTMLElement | null {
   return null
 }
 
-/** 「Version追加」ボタンを1回だけ配線する（カード再描画で消えない要素なので使い回す） */
-function wireAddVersion(ctx: EditorContext): void {
-  const addBtn = ctx.root.querySelector<HTMLElement>(HOOK.addVersion)
-  if (addBtn === null) return
-  // 指示100: ボタンテキストを「バージョンを追加」に変更
-  const spanLabel = addBtn.querySelector('span')
-  if (spanLabel !== null) spanLabel.textContent = 'バージョンを追加'
-  addBtn.addEventListener('click', async () => {
-    try {
-      await saveHtml(ctx)
-      const { version } = await api.addVersion(ctx.articleUid)
-      ctx.versions = [...ctx.versions, version]
-      toast(`${version.name} を追加しました`)
-      loadVersion(ctx, version.uid)
-    } catch (error) {
-      toast((error as Error).message, 'error')
-    }
-  })
-}
 
 /**
  * 本文が「実質空」か。テキストも画像/動画等のメディアも無ければ空とみなす。
