@@ -479,10 +479,14 @@ function mountSidebarToolbarPanel(ctx: EditorContext): void {
   versionPanel.append(cardsWrapper)
 
   // 青い「バージョンを追加」ボタンは不要（「Versionを追加」カードに統合済み）→ 削除
+  // ※ 以前はaddBtnをversionPanel最下部に固定していたが、削除したので
+  //    cardsWrapperがパネル全高を使い切る（見切れ防止）
   const addBtn = cardsWrapper.querySelector<HTMLElement>(HOOK.addVersion)
   if (addBtn !== null) {
     addBtn.remove()
   }
+  // addBtn分の余白が残らないよう、cardsWrapperでパネル全体を埋める
+  cardsWrapper.style.paddingBottom = '12px'
 }
 
 /**
@@ -1039,17 +1043,9 @@ function injectVersionCardCss(): void {
     .sb-vc-dots-area button.css-3tls8:hover {
       background:#f0f0f2 !important;color:#666 !important;
     }
-    /* ── Version追加ボタン（最下部固定・青） ── */
+    /* ── Version追加ボタン（削除済み・採取CSSの残留を打ち消す） ── */
     [data-test="Article-BtnCreateNewArticle"] {
-      background:#0091ff !important;color:#fff !important;
-      font-weight:600 !important;font-size:12px !important;
-      border-radius:0 !important;border:none !important;
-      padding:10px !important;display:flex !important;
-      align-items:center !important;justify-content:center !important;
-      gap:4px !important;cursor:pointer !important;
-    }
-    [data-test="Article-BtnCreateNewArticle"]:hover {
-      background:#007ae6 !important;
+      display:none !important;
     }
     /* ── 「さらに読み込む」カード（カード一覧末尾） ── */
     .sb-vc-load-more {
