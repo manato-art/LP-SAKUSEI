@@ -60,6 +60,19 @@ export interface RelationCounts {
   ab_test_uid: string | null
 }
 
+export interface BulkTag {
+  uid: string
+  name: string
+  team_wide: boolean
+  folder_group_ids: number[]
+  folder_ids: number[]
+  asp_account_id: number | null
+  cv_condition: string | null
+  noindex: boolean
+  head_js: string
+  body_js: string
+}
+
 export interface Version {
   id: number
   uid: string
@@ -125,6 +138,15 @@ export interface HeatmapEntry {
 
 export const api = {
   folders: () => request<{ folders: Folder[] }>('GET', '/folders?per_page=200'),
+  // 計測ツール・ASPアカウント一覧（一括タグ/基本情報で使う）
+  aspAccounts: () =>
+    request<{ asp_accounts: { id: number; asp_name: string }[] }>('GET', '/teams/asp_accounts'),
+  // 一括タグ設定（/teams/tags）
+  bulkTags: () => request<{ bulk_tags: BulkTag[] }>('GET', '/bulk_tags'),
+  createBulkTag: () => request<{ bulk_tag: BulkTag }>('POST', '/bulk_tags'),
+  updateBulkTag: (uid: string, patch: Record<string, unknown>) =>
+    request<{ bulk_tag: BulkTag }>('PATCH', `/bulk_tags/${uid}`, patch),
+  deleteBulkTag: (uid: string) => request<{ ok: boolean }>('DELETE', `/bulk_tags/${uid}`),
   createFolder: (name: string) => request<{ folder: Folder }>('POST', '/folders', { name }),
   folderDetail: (uid: string) =>
     request<{ folder: Folder; ab_tests: AbTest[] }>('GET', `/folders/${uid}`),

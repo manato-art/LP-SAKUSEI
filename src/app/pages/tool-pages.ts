@@ -21,6 +21,7 @@ import inspectionsFragment from '../fragments/inspections__folders__default.html
 import formsFragment from '../fragments/folders__forms__default.html?raw'
 import { stripGlobalSidebar } from './sidebar-shell.ts'
 import { rewireToolSubnav, type ToolPage } from './tool-subnav.ts'
+import { renderBulkTagsPage } from './bulk-tags-page.ts'
 import { toast } from '../ui.ts'
 
 /**
@@ -59,11 +60,13 @@ function wireUnimplementedByText(root: HTMLElement, labels: readonly string[]): 
   }
 }
 
-// ── 一括タグ（/teams/tags）＝空。追加ボタンだけ ─────────────────
+// ── 一括タグ（/teams/tags）＝実SB同等の機能実装（一覧＋追加＋設定フォーム） ──
 export function renderToolTags(container: HTMLElement): void {
   const root = mountToolFragment(container, tagsFragment)
-  // 「タグ設定を追加」＝作成起点（POST相当）。作成フォームは未採取。
-  wireUnimplementedByText(root, ['タグ設定を追加'])
+  // 採取フラグメントの本文領域(.ehppitp0)を機能UIに差し替える。無ければ container 直下へ。
+  const host = root.querySelector<HTMLElement>('.ehppitp0') ?? root
+  if (host !== root) host.style.paddingLeft = '0'
+  void renderBulkTagsPage(host)
 }
 
 // ── マジック置換（/articles/bulk_replaces）＝設定フォーム。実行系のみ配線 ──

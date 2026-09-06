@@ -13,6 +13,7 @@ import { Router } from 'express'
 import { getState } from '../store/store.ts'
 import { getMasterStyleSheet } from '../store/master-style-sheet.ts'
 import { getHtmlSetting } from '../store/html-tags.ts'
+import { bulkTagsForFolder } from '../store/bulk-tags.ts'
 import type { AbTest, Article, ExitPopup, FollowPopup, State, Version } from '../store/types.ts'
 import { LP_BASE_CSS } from '../../src/app/lp-base-css.ts'
 import { masterStyleIframeCss } from '../../src/app/master-style.ts'
@@ -276,17 +277,22 @@ deliveryRouter.get('/lp/:uid', (req, res) => {
 
   // 記事設定（Version設定）をLPへ反映する
   const styleCss = masterStyleIframeCss(getMasterStyleSheet(state, article.uid))
-  // タグ設定（noindex・head/bodyへの差し込みタグ）
+  // タグ設定（noindex・head/bodyへの差し込みタグ）＝ 個別タグ(Article) ＋ 一括タグ(範囲一致)
   const htmlSetting = getHtmlSetting(state, article.uid)
-  const headTags = htmlSetting.html_tags
-    .filter((t) => t.document_property === 'head')
-    .map((t) => t.body)
-    .join('')
-  const bodyTags = htmlSetting.html_tags
-    .filter((t) => t.document_property === 'body')
-    .map((t) => t.body)
-    .join('')
-  const robotsMeta = htmlSetting.noindex ? '<meta name="robots" content="noindex,nofollow">' : ''
+  const bulkTags = bulkTagsForFolder(state, abTest.team_id, abTest.folder_id)
+  const headTags =
+    htmlSetting.html_tags
+      .filter((t) => t.document_property === 'head')
+      .map((t) => t.body)
+      .join('') + bulkTags.map((b) => b.head_js).join('')
+  const bodyTags =
+    htmlSetting.html_tags
+      .filter((t) => t.document_property === 'body')
+      .map((t) => t.body)
+      .join('') + bulkTags.map((b) => b.body_js).join('')
+  // noindex は 個別タグ or いずれかの一括タグが指定していれば含める
+  const noindexOn = htmlSetting.noindex || bulkTags.some((b) => b.noindex)
+  const robotsMeta = noindexOn ? '<meta name="robots" content="noindex,nofollow">' : ''
 
   // 離脱防止ポップアップ（指示80）: 有効なポップアップのHTML/JS/CSSをLP末尾に挿入
   const exitPopups = (state.exitPopups ?? []).filter(

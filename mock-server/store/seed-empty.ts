@@ -82,6 +82,7 @@ export function createEmptyState(): State {
     aspAccounts: [],
     domains: [],
     tags: [],
+    bulkTags: [],
     productSearchForms: [],
     sbAiConversations: [],
     sbAiMessages: [],

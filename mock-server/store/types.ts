@@ -403,6 +403,36 @@ export interface Tag {
   color: string
 }
 
+/**
+ * 一括タグ設定（実SB「ツール>一括タグ」＝/teams/tags）。
+ * 範囲(チーム/フォルダグループ/フォルダ)で対象を決め、HEAD/BODYのJSタグ・noindex・
+ * 計測ASP・CV条件を、対象フォルダ配下の配信ページ(/lp)へまとめて差し込む。
+ */
+export interface BulkTagSetting {
+  id: number
+  uid: string
+  team_id: number
+  name: string
+  /** 範囲: チーム全体(全フォルダ)に設置 */
+  team_wide: boolean
+  /** 範囲: フォルダグループ(＝親フォルダ)id。配下の全フォルダに設置 */
+  folder_group_ids: number[]
+  /** 範囲: 個別フォルダ id */
+  folder_ids: number[]
+  /** 計測ツール・ASP（連携用パラメーター自動付与の対象）。未設定は null */
+  asp_account_id: number | null
+  /** CV条件。未設定は null */
+  cv_condition: string | null
+  /** noindexを含める */
+  noindex: boolean
+  /** JavaScript HEAD に差し込むタグ */
+  head_js: string
+  /** JavaScript BODY に差し込むタグ */
+  body_js: string
+  created_at: number
+  updated_at: number
+}
+
 export interface ProductSearchForm {
   id: number
   uid: string
@@ -544,6 +574,7 @@ export interface State {
   aspAccounts: readonly AspAccount[]
   domains: readonly Domain[]
   tags: readonly Tag[]
+  bulkTags: readonly BulkTagSetting[]
   productSearchForms: readonly ProductSearchForm[]
   sbAiConversations: readonly SbAiConversation[]
   sbAiMessages: readonly SbAiMessage[]
