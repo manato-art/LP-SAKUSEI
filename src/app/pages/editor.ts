@@ -1771,6 +1771,32 @@ function wireSideToolbar(ctx: EditorContext): void {
   // 指示70: スクロール領域が変わったため、右レールの position:fixed は不要になった。
   // 採取CSSのままで問題なく表示される。
 
+  // 採取CSSのクラスセレクタ(._sideToolbarWrapper_1hcbn_1)は
+  // 属性セレクタ([class*=])より高特異度のため、CSSの!importantでも負ける場面がある。
+  // インラインスタイルで直接上書きする（インラインstyleは最高特異度）。
+  const sideWrapper = ctx.root.querySelector<HTMLElement>('[class*="_sideToolbarWrapper_"]')
+  if (sideWrapper !== null) {
+    sideWrapper.style.setProperty('margin-top', '0', 'important')
+    sideWrapper.style.setProperty('margin-bottom', '0', 'important')
+    sideWrapper.style.setProperty('padding', '8px 0 0', 'important')
+    sideWrapper.style.setProperty('height', '100%', 'important')
+    sideWrapper.style.setProperty('display', 'flex', 'important')
+    sideWrapper.style.setProperty('flex-direction', 'column', 'important')
+    sideWrapper.style.setProperty('align-items', 'center', 'important')
+    sideWrapper.style.setProperty('justify-content', 'flex-start', 'important')
+    sideWrapper.style.setProperty('box-sizing', 'border-box', 'important')
+  }
+  const sideTop = ctx.root.querySelector<HTMLElement>('[class*="_sideToolbarTop_"]')
+  if (sideTop !== null) {
+    sideTop.style.setProperty('display', 'flex', 'important')
+    sideTop.style.setProperty('flex-direction', 'column', 'important')
+    sideTop.style.setProperty('align-items', 'center', 'important')
+    sideTop.style.setProperty('justify-content', 'flex-start', 'important')
+    sideTop.style.setProperty('padding-top', '0', 'important')
+    sideTop.style.setProperty('gap', '4px', 'important')
+    sideTop.style.setProperty('width', '100%', 'important')
+  }
+
   const icons = [...ctx.root.querySelectorAll<HTMLElement>('[class*="sideToolbarIcon"]')]
   for (let index = 0; index < icons.length; index += 1) {
     const icon = icons[index]
