@@ -632,7 +632,7 @@ function renderTabContent(
   urlLabel.className = 'sb-cmp-url-label'
   urlLabel.textContent = '確認'
 
-  const previewUrl = `${location.origin}/#/preview/${versionUid}`
+  const previewUrl = `${location.origin}/preview/${versionUid}`
   const urlText = document.createElement('span')
   urlText.className = 'sb-cmp-url-text'
   urlText.textContent = previewUrl

@@ -75,8 +75,9 @@ export async function renderPreview(
  */
 function wireUrlCards(root: HTMLElement, _abTestUid: string, version: Version | undefined): void {
   const origin = location.origin
+  // 実パス（認証不要・SSR）のプレビューURLを使う（ハッシュルートは認証必須で共有できない）
   const previewUrl =
-    version === undefined ? `${origin}/#/preview` : `${origin}/#/preview/${version.uid}`
+    version === undefined ? `${origin}/preview` : `${origin}/preview/${version.uid}`
 
   // URLの入った <p>（テキストが http で始まる or sample で始まる）を上から拾う
   const urlNodes = [...root.querySelectorAll<HTMLElement>('p')].filter((p) =>

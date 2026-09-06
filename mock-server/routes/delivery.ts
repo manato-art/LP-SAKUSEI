@@ -209,6 +209,91 @@ deliveryRouter.get('/lp/:uid', (req, res) => {
 })
 
 /**
+ * プレビューページ（サーバー側・実パス `/preview/:versionUid`）。
+ *
+ * 配信URLと同じくSSRで完結する。認証不要＝プレビューURLは共有用途（§9-1）。
+ * 配信との違い:
+ *   - version uid で直引き（配信はab_test uidで抽選）
+ *   - 計測OFF（tracking URL のビーコンは飛ばさない）
+ *   - 警告バナー表示（「このLPは検証用です」）
+ */
+deliveryRouter.get('/preview/:versionUid', (req, res) => {
+  const state = getState()
+  const versionUid = req.params.versionUid
+
+  // version uid → version → article → ab_test を逆引き
+  const version = state.versions.find((v) => v.uid === versionUid)
+  if (version === undefined) {
+    res.status(404).type('html').send(renderPreviewNotice(versionUid))
+    return
+  }
+  const article = state.articles.find((a) => a.id === version.article_id)
+  if (article === undefined) {
+    res.status(404).type('html').send(renderPreviewNotice(versionUid))
+    return
+  }
+  const abTest = state.abTests.find((t) => t.id === article.ab_test_id)
+
+  // 記事設定（Version設定）をLPへ反映する
+  const styleCss = masterStyleIframeCss(getMasterStyleSheet(state, article.uid))
+
+  // ヘッダー画像をHTMLコメントから復元
+  const headerMatch = version.html.match(/^<!--header-image:(.+?)-->/)
+  const headerHtml = headerMatch !== null
+    ? `<img src="${escapeHtml(headerMatch[1] ?? '')}" style="display:block;width:100%;object-fit:cover;position:sticky;top:0;z-index:10;max-height:200px" alt="ヘッダー画像">`
+    : ''
+  const bodyHtml = headerMatch !== null ? version.html.slice(headerMatch[0].length) : version.html
+
+  const title = abTest !== undefined
+    ? `${escapeHtml(abTest.title)} - ${escapeHtml(version.name)} プレビュー`
+    : `${escapeHtml(version.name)} プレビュー`
+
+  const html =
+    `<!doctype html><html lang="ja"><head><meta charset="utf-8">` +
+    `<meta name="viewport" content="width=device-width, initial-scale=1">` +
+    `<meta name="robots" content="noindex,nofollow">` +
+    `<title>${title}</title>` +
+    `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Noto+Serif+JP:wght@400;700&family=M+PLUS+Rounded+1c:wght@400;700&family=Kosugi+Maru&family=Sawarabi+Gothic&display=swap">` +
+    `<style>body{margin:0 auto;max-width:${DELIVERY_WIDTH}px;font-family:"Hiragino Sans",sans-serif;background:#fff}` +
+    `${LP_BASE_CSS}${version.css}${styleCss}` +
+    `.preview-banner{background:#fff3cd;border:1px solid #ffc107;padding:10px 16px;margin:0;` +
+    `display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:#856404;` +
+    `font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}` +
+    `.preview-banner svg{flex-shrink:0}` +
+    `.preview-note{font-weight:400;font-size:11px;color:#a07a00;margin-left:auto;white-space:nowrap}` +
+    `</style>` +
+    `</head><body>` +
+    `<div class="preview-banner">` +
+    `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>` +
+    `<span>このLPは検証用です。入稿しないでください。</span>` +
+    `<span class="preview-note">※計測されません</span>` +
+    `</div>` +
+    headerHtml +
+    withAutoplayVideos(bodyHtml) +
+    `</body></html>`
+
+  res.set('Cache-Control', 'no-cache')
+  res.type('html').send(html)
+})
+
+/** プレビューが見つからないときの案内 */
+function renderPreviewNotice(versionUid: string): string {
+  return `<!doctype html><html lang="ja"><head><meta charset="utf-8">` +
+    `<meta name="viewport" content="width=device-width, initial-scale=1">` +
+    `<title>プレビューが見つかりません</title>` +
+    `<style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;` +
+    `padding:24px;font-family:"Hiragino Sans",sans-serif;background:#ECECEC}` +
+    `.card{background:#fff;border-radius:8px;padding:28px 32px;max-width:520px;text-align:center;` +
+    `box-shadow:0 1px 6px rgba(0,0,0,.12);line-height:1.9}` +
+    `.title{font-size:16px;font-weight:600;margin-bottom:8px}` +
+    `.desc{font-size:13px;color:#555}</style></head><body>` +
+    `<div class="card">` +
+    `<div class="title">このプレビューURLは見つかりません</div>` +
+    `<div class="desc">Version「${escapeHtml(versionUid)}」が存在しないか、削除されています。</div>` +
+    `</div></body></html>`
+}
+
+/**
  * 離脱防止ポップアップのHTMLスニペットを構築する（指示80）。
  * デバイスフィルタを適用し、マッチしないポップアップは出さない。
  * 離脱防止トリガー: ページ離脱（mouseout / visibilitychange）で表示。

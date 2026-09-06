@@ -14,6 +14,8 @@ export default defineConfig({
       '/report': `http://localhost:${MOCK_PORT}`,
       // 配信ページ（実パス配信URL・SSR）はモックサーバー側が応答を作る
       '/lp': `http://localhost:${MOCK_PORT}`,
+      // プレビューページ（実パス・認証不要）もモックサーバー側SSR
+      '/preview': `http://localhost:${MOCK_PORT}`,
       '/cable': { target: `ws://localhost:${MOCK_PORT}`, ws: true },
     },
   },

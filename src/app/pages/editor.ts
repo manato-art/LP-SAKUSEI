@@ -1225,7 +1225,7 @@ function mountUrlBarInEditor(ctx: EditorContext): HTMLElement | null {
   // 既存チェック
   if (contentWrapper.querySelector('[data-url-bar]') !== null) return null
 
-  const testUrl = `${location.origin}/#/preview/${ctx.currentUid}`
+  const testUrl = `${location.origin}/preview/${ctx.currentUid}`
   const prodUrl = deliveryUrl(location.origin, ctx.abTestUid)
 
   const bar = mountUrlBar({ testUrl, prodUrl })
@@ -1392,7 +1392,7 @@ function loadVersion(ctx: EditorContext, uid: string): void {
     const urlBarEl = ctx.root.querySelector<HTMLElement>('[data-url-bar]')
     if (urlBarEl !== null) {
       updateUrlBar(urlBarEl, {
-        testUrl: `${location.origin}/#/preview/${uid}`,
+        testUrl: `${location.origin}/preview/${uid}`,
         // 配信URLはABテスト単位なのでVersion切替では変わらない
       })
     }
