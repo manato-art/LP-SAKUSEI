@@ -12,7 +12,7 @@ import { describe, expect, it } from 'vitest'
 import { stripGlobalSidebar } from '../src/app/pages/sidebar-shell.ts'
 import {
   ACCOUNT_SETTINGS_ROUTE,
-  ADDON_ROUTE,
+  // 指示124: ADDON_ROUTE 削除
   CONVERSIONS_ROUTE,
   DASHBOARD_ROUTE,
   DOMAINS_ROUTE,
@@ -31,34 +31,9 @@ function read(slug: string): string {
   return readFileSync(`${FRAGMENT_DIR}/${slug}.html`, 'utf8')
 }
 
-const ADDON = 'addon__option-list__default'
+// 指示124: 拡張機能のテストは削除（データごと撤去）
 const TASKS = 'tasks__default'
 const SB_AI = 'sb_ai__default'
-
-describe('採取物に、配線が前提にする文言・クラスが実在する（拡張機能）', () => {
-  const html = read(ADDON)
-  const marks = [
-    'AIと連携する（MCP）',
-    'レポートデータ一括取得',
-    'ポップアップ',
-    'LP高速表示',
-    'かんたんLP移行',
-    'ファイル容量アップ',
-    'データベース連携',
-    'フォーム',
-    'トライアル可能',
-    'ご契約中',
-    'トライアルで利用する',
-    'AI対応（MCP）',
-  ] as const
-  it.each(marks)('「%s」がカタログに実在する', (mark) => {
-    expect(html).toContain(mark)
-  })
-  it('カード（role="button"）とMUIのリスト土台が実在する', () => {
-    expect(html).toContain('role="button"')
-    expect(html).toContain('css-acxrf6') // カテゴリ行
-  })
-})
 
 describe('採取物に、配線が前提にする文言・クラスが実在する（タスク）', () => {
   const html = read(TASKS)
@@ -93,12 +68,7 @@ describe('採取物に、配線が前提にする文言・クラスが実在す�
 })
 
 describe('グローバルサイドバーを落とす純粋関数', () => {
-  it('拡張機能: 本体を残しつつグローバルサイドバーを落とす', () => {
-    const body = stripGlobalSidebar(read(ADDON))
-    expect(body).not.toContain('Squadbeyond Logo')
-    expect(body).not.toContain('data-testid="list-menu-item"')
-    expect(body).toContain('AI対応（MCP）')
-  })
+  // 指示124: 拡張機能のテストは削除
   it('タスク: 本体を残しつつグローバルサイドバーを落とす', () => {
     const body = stripGlobalSidebar(read(TASKS))
     expect(body).not.toContain('Squadbeyond Logo')
@@ -122,7 +92,7 @@ describe('グローバルサイドバーを落とす純粋関数', () => {
 
 describe('ルート解決の純粋関数', () => {
   it('各ルートを対応するページへ解決する', () => {
-    expect(matchSidebarPage(ADDON_ROUTE)).toBe('addon')
+    // 指示124: ADDON_ROUTE 削除
     expect(matchSidebarPage(TASKS_ROUTE)).toBe('tasks')
     expect(matchSidebarPage(SB_AI_ROUTE)).toBe('sb_ai')
     expect(matchSidebarPage(EXTERNAL_ROUTE)).toBe('external')
@@ -140,7 +110,7 @@ describe('ルート解決の純粋関数', () => {
   })
   it('ルート定数の一覧がそろっている（サイドバーのデータ画面を含む）', () => {
     expect(SIDEBAR_PAGE_ROUTES).toEqual([
-      ADDON_ROUTE,
+      // 指示124: ADDON_ROUTE 削除
       TASKS_ROUTE,
       SB_AI_ROUTE,
       EXTERNAL_ROUTE,
@@ -158,9 +128,9 @@ describe('ルート解決の純粋関数', () => {
 describe('シェルのサイドバー配線（NAV_TARGETS）が、登録するルートと一致する', () => {
   const shellSrc = readFileSync('src/app/shell.ts', 'utf8')
   it.each([
-    ['AI', SB_AI_ROUTE],
+    // 指示68: AI はサイドバーから除去済み（NAV_TARGETSに無い）→ テストからも除去
     ['タスク', TASKS_ROUTE],
-    ['拡張機能', ADDON_ROUTE],
+    // 指示124: 拡張機能は撤去
   ])('「%s」の遷移先が #%s', (label, route) => {
     // NAV_TARGETS の行（label と href が同じ行に並ぶ）を形で照合する
     const pattern = new RegExp(`label: '${label}',\\s*href: '#${route}'`)

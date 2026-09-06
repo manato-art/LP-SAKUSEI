@@ -97,6 +97,8 @@ export async function renderSplitTestSettings(
   setupBreadcrumb(root, folder?.name ?? '', ab_test.title, folder?.uid)
   wireBeyondBack(root, folderUid)
   applyLightTheme(root)
+  // 指示123: Emotion直書きのダーク背景を白基調に上書き
+  applySplitTestWhiteTheme(root)
   // 出し分けトグル（オン/オフ）を実際に効かせてモックへ保存する。
   // デバイス別は **Version単位**（FAQ: 出し分けロジック＝配信割合 × デバイス別ON/OFF の掛け算）。
   if (tab === 'devices') {
@@ -335,4 +337,38 @@ async function save(abTestUid: string, tab: SplitTestTab, rules: SplitTestRule[]
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ type: tab, rules }),
   }).catch(() => undefined)
+}
+
+/**
+ * 指示123: Versionオプション設定ページの Emotion 直書きダーク背景を白基調に上書き。
+ * `.css-gofv8i` = バナー領域、`.css-160345m` = アクティブタブ（rgb(69,70,71)）。
+ */
+function applySplitTestWhiteTheme(root: HTMLElement): void {
+  // バナー領域（デバイスアイコン等の説明帯）
+  for (const banner of root.querySelectorAll<HTMLElement>('.css-gofv8i')) {
+    banner.style.setProperty('background-color', '#f5f6f8', 'important')
+    banner.style.setProperty('color', '#333', 'important')
+    banner.style.setProperty('border', '1px solid #e5e5ea', 'important')
+    banner.style.setProperty('border-radius', '10px', 'important')
+  }
+  // アクティブタブ（暗灰 → 白+オレンジ下線）
+  for (const tab of root.querySelectorAll<HTMLElement>('.css-160345m')) {
+    tab.style.setProperty('background-color', '#fff', 'important')
+    tab.style.setProperty('color', '#333', 'important')
+    tab.style.setProperty('border-bottom', '2px solid #f0960a', 'important')
+  }
+  // バナー内の白文字 → 黒文字
+  for (const text of root.querySelectorAll<HTMLElement>('.css-9ofnmi')) {
+    text.style.setProperty('color', '#333', 'important')
+  }
+  // バナー内のすべての子要素の文字色を黒に
+  for (const banner of root.querySelectorAll<HTMLElement>('.css-gofv8i')) {
+    for (const child of banner.querySelectorAll<HTMLElement>('*')) {
+      const color = getComputedStyle(child).color
+      const [r, g, b] = color.match(/\d+/g)?.map(Number) ?? []
+      if (r !== undefined && g !== undefined && b !== undefined && (r + g + b) > 500) {
+        child.style.setProperty('color', '#333', 'important')
+      }
+    }
+  }
 }

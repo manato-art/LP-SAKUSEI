@@ -22,7 +22,7 @@ const NAV_TARGETS: readonly { label: string; href: string }[] = [
   // ツールはアコーディオン親（指示㊲㊳）。直接遷移しないので NAV_TARGETS から外す。
   // 外部連携はアコーディオン親（指示⑯）。直接遷移しないので NAV_TARGETS から外す。
   { label: 'ドメイン', href: '#/teams/domains' },
-  { label: '拡張機能', href: '#/addon/option-list' },
+  // 指示124: 拡張機能はサイドバーから削除（データごと撤去）
   { label: 'レポー', href: '#/report-exclusions' },
   // 指示㊷: イベント・セミナー / ランキング / 新UI OFF はサイドバーから除去。
 ]
@@ -82,7 +82,7 @@ function wireSidebar(nav: HTMLElement): void {
   // 指示63: 高さを全画面に（採取CSSの225pxだとアイテムが切れる）
   if (rail !== null) {
     rail.style.height = '100vh'
-    rail.style.overflowY = 'auto'
+    rail.style.overflowY = 'scroll'
     rail.style.position = 'sticky'
     rail.style.top = '0'
     rail.style.flexShrink = '0'
@@ -146,7 +146,7 @@ const RAIL_LABEL_CLASS = 'sb-rail-label'
 
 /** 採取HTMLからイベント・セミナー / ランキング / 新UI OFF を削除する */
 function removeUnwantedItems(nav: HTMLElement): void {
-  const REMOVE_LABELS = ['イベント・セミナー', 'ランキング', 'AI']  // 指示68: AI 追加
+  const REMOVE_LABELS = ['イベント・セミナー', 'ランキング', 'AI', '拡張機能']  // 指示68: AI 追加, 指示124: 拡張機能追加
   for (const item of nav.querySelectorAll<HTMLElement>('[data-testid="list-menu-item"]')) {
     const text = (item.textContent ?? '').trim()
     if (REMOVE_LABELS.some((label) => text === label || text.startsWith(label))) {
@@ -445,6 +445,12 @@ function injectRailStyles(): void {
     `.sb-accordion-item.sb-accordion-item-active{color:#333;font-weight:500}`,
     `.sb-accordion-item::before{content:'';display:inline-block;width:5px;height:5px;`,
     `border-radius:50%;background:currentColor;margin-right:8px;flex-shrink:0}`,
+  // 指示125: サイドバーに常時表示のスクロールバー
+  `.${RAIL_CLASS}::-webkit-scrollbar{width:6px}`,
+  `.${RAIL_CLASS}::-webkit-scrollbar-track{background:transparent}`,
+  `.${RAIL_CLASS}::-webkit-scrollbar-thumb{background:rgba(0,0,0,.18);border-radius:3px}`,
+  `.${RAIL_CLASS}::-webkit-scrollbar-thumb:hover{background:rgba(0,0,0,.3)}`,
+  `.${RAIL_CLASS}{scrollbar-width:thin;scrollbar-color:rgba(0,0,0,.18) transparent}`,
   // 指示66: 採取CSSの body ラッパーは padding-left:60px（元のサイドバー幅）を持つが、
   // シェルが同じサイドバーを既に描いているため空白帯になる。全画面で一括除去。
   `.css-4qo2ft,.css-155ijxb,.css-1n8b1pi{padding-left:0 !important}`,

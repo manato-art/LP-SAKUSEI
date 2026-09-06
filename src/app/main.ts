@@ -12,7 +12,8 @@ import { renderHeatmap } from './pages/heatmap.ts'
 import { renderSplitTestSettings } from './pages/split-test-settings.ts'
 import { renderRedirectPages } from './pages/redirect-pages.ts'
 import { renderPreview } from './pages/preview-page.ts'
-import { renderAddon } from './pages/addon.ts'
+// 指示124: 拡張機能は撤去 — import 削除
+// import { renderAddon } from './pages/addon.ts'
 import { renderTasks } from './pages/tasks.ts'
 import { renderSbAi } from './pages/sb-ai.ts'
 import { renderExternalIntegration } from './pages/external-integration.ts'
@@ -179,10 +180,8 @@ async function route(): Promise<void> {
     // サイドバー3画面（拡張機能 / タスク / AI）。固定パスなので純粋関数で解決する。
     // どれもモックAPI不要（カタログ・空状態・チャットUIの土台をそのまま描く）。
     const sidebarPage = matchSidebarPage(path ?? '')
-    if (sidebarPage === 'addon') {
-      renderAddon(content)
-      return
-    }
+    // 指示124: 拡張機能は撤去 — ルーティング削除
+    // if (sidebarPage === 'addon') { renderAddon(content); return }
     if (sidebarPage === 'tasks') {
       renderTasks(content)
       return

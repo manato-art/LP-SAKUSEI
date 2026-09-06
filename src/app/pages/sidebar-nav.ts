@@ -6,8 +6,7 @@
  * 一箇所に置き、`main.ts` から参照させて表記ゆれを防ぐ。
  */
 
-/** 拡張機能（アドオンのカタログ） */
-export const ADDON_ROUTE = '/addon/option-list'
+// 指示124: 拡張機能は撤去 — ADDON_ROUTE 削除
 /** タスク（空状態） */
 export const TASKS_ROUTE = '/tasks'
 /** AI（チャットUI） */
@@ -25,7 +24,7 @@ export const SEMINAR_ROUTE = '/seminar'
 export const ACCOUNT_SETTINGS_ROUTE = '/settings/account'
 
 export const SIDEBAR_PAGE_ROUTES = [
-  ADDON_ROUTE,
+  // 指示124: ADDON_ROUTE 削除
   TASKS_ROUTE,
   SB_AI_ROUTE,
   EXTERNAL_ROUTE,
@@ -39,7 +38,7 @@ export const SIDEBAR_PAGE_ROUTES = [
 ] as const
 
 export type SidebarPage =
-  | 'addon'
+  // 指示124: 'addon' 削除
   | 'tasks'
   | 'sb_ai'
   | 'external'
@@ -54,8 +53,7 @@ export type SidebarPage =
 /** パスを対応するページ種別へ解決する。未知のパスは null（推測で埋めない）。 */
 export function matchSidebarPage(path: string): SidebarPage | null {
   switch (path) {
-    case ADDON_ROUTE:
-      return 'addon'
+    // 指示124: ADDON_ROUTE case 削除
     case TASKS_ROUTE:
       return 'tasks'
     case SB_AI_ROUTE:
