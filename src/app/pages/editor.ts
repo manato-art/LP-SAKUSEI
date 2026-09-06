@@ -801,204 +801,261 @@ function injectHeaderExtrasCss(): void {
  * Versionカードにバッジ（編集中/保存済み）とタイムスタンプを追加する。
  * wireVersionCard の末尾で呼ぶ。
  */
-function addVersionCardExtras(card: HTMLElement, version: Version, isCurrent: boolean): void {
-  const inner = card.querySelector<HTMLElement>(HOOK.currentVersion)
-  if (inner === null) return
-
-  // カードのスタイルオーバーライド（モック準拠）
+/**
+ * バージョンカードのDOM要素を一から組み立てる。
+ * 採取テンプレートのクローンではなく、スクリーンショット準拠の構造を生成する。
+ * wireVersionCard / wireArchivedCard が配線するための data-test 属性は全て保持する。
+ */
+function buildVersionCardEl(version: Version, isCurrent: boolean): HTMLElement {
   injectVersionCardCss()
 
-  // バッジ: 名前入力の後に追加
-  const nameInput = card.querySelector<HTMLElement>(HOOK.versionName)
-  if (nameInput !== null) {
-    const existingBadge = card.querySelector('[data-version-badge]')
-    if (existingBadge === null) {
-      const badge = document.createElement('span')
-      badge.setAttribute('data-version-badge', 'true')
-      badge.style.cssText = `
-        font-size:9px; font-weight:600; padding:2px 7px; border-radius:10px;
-        white-space:nowrap; flex-shrink:0;
-      `
-      if (isCurrent) {
-        badge.textContent = '編集中'
-        badge.style.background = 'rgba(255,140,0,.12)'
-        badge.style.color = '#ff8c00'
-      } else {
-        badge.textContent = '保存済み'
-        badge.style.background = 'rgba(0,145,255,.1)'
-        badge.style.color = '#0091ff'
-      }
-      nameInput.after(badge)
-    }
+  const card = document.createElement('div')
+  card.dataset['articleUid'] = version.uid
+  card.setAttribute('data-id', String(version.id))
+  card.style.cursor = 'pointer'
+
+  const inner = document.createElement('div')
+  inner.setAttribute('data-test', 'ArticleList-CurrentArticle')
+  inner.className = `_currentVersion_vc${isCurrent ? ` ${ACTIVE_CARD_CLASS}` : ''}`
+
+  // ── Row 1: Version名 + バッジ ──
+  const nameRow = document.createElement('div')
+  nameRow.className = 'sb-vc-name-row'
+
+  const nameInput = document.createElement('input')
+  nameInput.setAttribute('data-test', 'ArticleList-InputMemo')
+  nameInput.value = version.name
+  nameInput.className = 'sb-vc-name'
+
+  const badge = document.createElement('span')
+  badge.setAttribute('data-version-badge', 'true')
+  badge.className = `sb-vc-badge ${isCurrent ? 'sb-vc-badge--editing' : 'sb-vc-badge--saved'}`
+  badge.textContent = isCurrent ? '編集中' : '保存済み'
+
+  nameRow.append(nameInput, badge)
+
+  // ── Row 2: 配信割合 + 保存状態 ──
+  const ratioRow = document.createElement('div')
+  ratioRow.className = 'sb-vc-ratio-row'
+
+  const ratioLabel = document.createElement('span')
+  ratioLabel.className = 'sb-vc-ratio-label'
+  ratioLabel.textContent = '配信割合'
+
+  const ratioInput = document.createElement('input')
+  ratioInput.setAttribute('data-test', 'ArticleList-DeriveryRateForm')
+  ratioInput.type = 'number'
+  ratioInput.value = String(version.distribution_ratio)
+  ratioInput.className = 'sb-vc-ratio-input'
+
+  const pct = document.createElement('span')
+  pct.className = 'sb-vc-ratio-pct'
+  pct.textContent = '%'
+
+  const stepperWrap = document.createElement('div')
+  stepperWrap.className = 'sb-vc-stepper'
+  const upBtn = document.createElement('button')
+  upBtn.setAttribute('data-test', 'ArticleList-DeriveryUpRateForm')
+  upBtn.type = 'button'
+  upBtn.className = 'sb-vc-stepper-btn sb-vc-stepper-up'
+  upBtn.textContent = '▲'
+  const downBtn = document.createElement('button')
+  downBtn.setAttribute('data-test', 'ArticleList-DeriveryDownRateForm')
+  downBtn.type = 'button'
+  downBtn.className = 'sb-vc-stepper-btn sb-vc-stepper-down'
+  downBtn.textContent = '▼'
+  stepperWrap.append(upBtn, downBtn)
+
+  const spacer = document.createElement('div')
+  spacer.style.flex = '1'
+
+  const saveBtn = document.createElement('button')
+  saveBtn.setAttribute('data-save-btn', 'true')
+  saveBtn.type = 'button'
+  saveBtn.className = 'sb-vc-save-btn'
+  saveBtn.textContent = '保存済み'
+
+  ratioRow.append(ratioLabel, ratioInput, pct, stepperWrap, spacer, saveBtn)
+
+  // ── サムネイル ──
+  const thumb = document.createElement('div')
+  thumb.setAttribute('data-version-thumb', 'true')
+  thumb.className = 'sb-vc-thumb'
+  const html = version.html || ''
+  if (html.includes('background') || html.includes('img')) {
+    const LP_W = 640
+    const THUMB_H = 80
+    const THUMB_SCALE = 210 / LP_W
+    const preview = document.createElement('div')
+    preview.style.cssText = `position:absolute;top:0;left:0;width:${LP_W}px;height:${Math.round(THUMB_H / THUMB_SCALE)}px;transform:scale(${THUMB_SCALE});transform-origin:top left;pointer-events:none;overflow:hidden`
+    preview.innerHTML = html
+    thumb.append(preview)
+  } else {
+    const placeholder = document.createElement('div')
+    placeholder.className = 'sb-vc-thumb-placeholder'
+    placeholder.textContent = 'プレビュー'
+    thumb.append(placeholder)
   }
 
-  // サムネイルプレビュー（カードの配信割合行の後に追加）
-  if (inner.querySelector('[data-version-thumb]') === null) {
-    const thumb = document.createElement('div')
-    thumb.setAttribute('data-version-thumb', 'true')
-    thumb.style.cssText = `
-      width:100%; height:50px; background:#f5f6f8; border-radius:4px;
-      overflow:hidden; position:relative; border:1px solid #f0f0f2;
-      margin-top:6px;
-    `
-    // HTML コンテンツがあればミニチュア表示、なければプレースホルダー
-    const html = version.html || ''
-    if (html.includes('background') || html.includes('img')) {
-      // LP幅640pxを基準にサムネ幅（約220px）にスケールダウンする
-      const LP_W = 640
-      const THUMB_SCALE = 220 / LP_W  // ≈ 0.344
-      const preview = document.createElement('div')
-      preview.style.cssText = `
-        position:absolute; top:0; left:0;
-        width:${LP_W}px; height:${Math.round(50 / THUMB_SCALE)}px;
-        transform:scale(${THUMB_SCALE}); transform-origin:top left;
-        pointer-events:none; overflow:hidden;
-      `
-      preview.innerHTML = html
-      thumb.append(preview)
-    } else {
-      const placeholder = document.createElement('div')
-      placeholder.style.cssText = `
-        width:100%; height:100%; display:flex; align-items:center;
-        justify-content:center; color:#b0b0b0; font-size:10px;
-      `
-      placeholder.textContent = 'プレビュー'
-      thumb.append(placeholder)
-    }
-    // 保存ボタンの後に挿入
-    const saveBtn = inner.querySelector('[data-save-btn]')
-    if (saveBtn !== null) {
-      saveBtn.closest('[class*="_articleButtons_"]')?.after(thumb)
-    } else {
-      inner.append(thumb)
-    }
-  }
+  // ── タイムスタンプ + NEW ──
+  const meta = document.createElement('div')
+  meta.setAttribute('data-version-meta', 'true')
+  meta.className = 'sb-vc-meta'
+  meta.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;flex-shrink:0"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'
+  const timeText = document.createElement('span')
+  const updatedAt = (version as unknown as Record<string, unknown>)['updated_at']
+  timeText.textContent = typeof updatedAt === 'string' ? relativeTime(updatedAt) + 'に保存' : '保存済み'
+  meta.append(timeText)
+  const newBadge = document.createElement('span')
+  newBadge.className = 'sb-vc-new-badge'
+  newBadge.textContent = 'NEW'
+  meta.append(newBadge)
 
-  // タイムスタンプ（カード末尾に追加）
-  if (inner.querySelector('[data-version-meta]') === null) {
-    const meta = document.createElement('div')
-    meta.setAttribute('data-version-meta', 'true')
-    meta.style.cssText = `
-      display:flex; align-items:center; gap:4px; margin-top:4px;
-      font-size:10px; color:#b0b0b0;
-    `
-    meta.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;flex-shrink:0"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`
-    const timeText = document.createElement('span')
-    const updatedAt = (version as unknown as Record<string, unknown>)['updated_at']
-    if (typeof updatedAt === 'string') {
-      timeText.textContent = relativeTime(updatedAt) + 'に保存'
-    } else {
-      timeText.textContent = '保存済み'
-    }
-    meta.append(timeText)
-    inner.append(meta)
-  }
+  // ── ⋮ ドットメニュートリガー ──
+  const buttonsArea = document.createElement('div')
+  buttonsArea.className = '_articleButtons_1xibh_160 sb-vc-dots-area'
+  const dotsBtn = document.createElement('button')
+  dotsBtn.type = 'button'
+  dotsBtn.className = 'css-3tls8'
+  dotsBtn.innerHTML = '<svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>'
+  buttonsArea.append(dotsBtn)
+
+  // ── コンテンツラッパー（選択モードのチェックボックス挿入先） ──
+  const content = document.createElement('div')
+  content.className = '_abTestArticleContent_vc'
+  content.append(nameRow, ratioRow, thumb, meta)
+
+  inner.append(content, buttonsArea)
+  card.append(inner)
+  return card
 }
 
-/** バージョンカードのCSS（モック準拠）を注入する */
+/** バージョンカードのCSS（スクリーンショット準拠）を注入する */
 function injectVersionCardCss(): void {
-  if (document.getElementById('lps-mockup-master') !== null) return
   if (document.getElementById('sb-version-card-css') !== null) return
   const s = document.createElement('style')
   s.id = 'sb-version-card-css'
   s.textContent = `
-    /* ── バージョンカードをモック準拠に ── */
-    [class*="_currentVersion_"] {
-      border:1px solid #e5e5ea !important;
-      border-radius:8px !important;
-      padding:8px 10px !important;
-      margin-bottom:8px !important;
-      transition:border-color .12s,box-shadow .12s !important;
-      position:relative !important;
+    /* ── カード外枠 ── */
+    ._currentVersion_vc {
+      border:2px solid #e5e5ea;
+      border-radius:12px;
+      padding:14px;
+      margin-bottom:10px;
+      transition:border-color .15s,box-shadow .15s;
+      position:relative;
+      background:#fff;
+      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,
+        "Hiragino Sans","Hiragino Kaku Gothic ProN",sans-serif;
     }
-    [class*="_currentVersion_"]:hover {
-      border-color:#0091ff !important;
-      box-shadow:0 0 0 1px #0091ff !important;
+    ._currentVersion_vc:hover {
+      border-color:#0091ff;
     }
-    /* アクティブカード */
-    [class*="_currentVersion_"][class*="_active_"] {
-      border-color:#0091ff !important;
-      box-shadow:0 0 0 2px rgba(0,145,255,.2) !important;
+    ._currentVersion_vc.${ACTIVE_CARD_CLASS} {
+      border-color:#0091ff;
+      box-shadow:0 0 0 3px rgba(0,145,255,.15);
     }
-    /* Version追加ボタンをモック準拠に */
+    /* ── Version名行 ── */
+    .sb-vc-name-row {
+      display:flex;align-items:center;gap:8px;margin-bottom:10px;
+    }
+    .sb-vc-name {
+      flex:1;min-width:0;font-size:16px;font-weight:700;color:#1a1a1a;
+      border:1px solid transparent;border-radius:4px;padding:2px 4px;
+      background:transparent;outline:none;font-family:inherit;
+      transition:border-color .12s;
+    }
+    .sb-vc-name:hover { border-color:#e5e5ea; }
+    .sb-vc-name:focus { border-color:#0091ff;background:#fff; }
+    /* ── バッジ ── */
+    .sb-vc-badge {
+      font-size:11px;font-weight:600;padding:3px 10px;border-radius:12px;
+      white-space:nowrap;flex-shrink:0;
+    }
+    .sb-vc-badge--editing { background:rgba(255,140,0,.15);color:#ff8c00; }
+    .sb-vc-badge--saved   { background:rgba(0,145,255,.1);color:#0091ff; }
+    /* ── 配信割合行 ── */
+    .sb-vc-ratio-row {
+      display:flex;align-items:center;gap:6px;margin-bottom:10px;
+    }
+    .sb-vc-ratio-label { font-size:12px;color:#666;white-space:nowrap; }
+    .sb-vc-ratio-input {
+      width:50px;height:28px;border:1px solid #e5e5ea;border-radius:4px;
+      font-size:13px;text-align:center;font-variant-numeric:tabular-nums;
+      outline:none;font-family:inherit;-moz-appearance:textfield;padding:0 4px;
+      box-sizing:border-box;
+    }
+    .sb-vc-ratio-input:focus { border-color:#0091ff; }
+    .sb-vc-ratio-input::-webkit-inner-spin-button,
+    .sb-vc-ratio-input::-webkit-outer-spin-button { -webkit-appearance:none;margin:0; }
+    .sb-vc-ratio-pct { font-size:12px;color:#666; }
+    /* ── ステッパー ── */
+    .sb-vc-stepper { display:flex;flex-direction:column;gap:0; }
+    .sb-vc-stepper-btn {
+      width:18px;height:14px;border:1px solid #e5e5ea;background:#fff;
+      font-size:7px;cursor:pointer;display:flex;align-items:center;
+      justify-content:center;color:#666;padding:0;line-height:1;
+    }
+    .sb-vc-stepper-up { border-radius:3px 3px 0 0; }
+    .sb-vc-stepper-down { border-radius:0 0 3px 3px;border-top:none; }
+    .sb-vc-stepper-btn:hover { background:#f0f0f2; }
+    /* ── 保存ボタン ── */
+    .sb-vc-save-btn {
+      font-size:11px;padding:4px 10px;border:1px solid #ff8c00;
+      border-radius:12px;font-weight:500;background:#fff;color:#ff8c00;
+      cursor:pointer;white-space:nowrap;font-family:inherit;
+      transition:background .12s;
+    }
+    .sb-vc-save-btn:hover { background:rgba(255,140,0,.06); }
+    /* ── サムネイル ── */
+    .sb-vc-thumb {
+      width:100%;height:80px;background:#f5f6f8;border-radius:6px;
+      overflow:hidden;position:relative;border:1px solid #f0f0f2;
+      margin-bottom:8px;
+    }
+    .sb-vc-thumb-placeholder {
+      width:100%;height:100%;display:flex;align-items:center;
+      justify-content:center;color:#b0b0b0;font-size:10px;
+    }
+    /* ── タイムスタンプ ── */
+    .sb-vc-meta {
+      display:flex;align-items:center;gap:4px;
+      font-size:10px;color:#b0b0b0;
+    }
+    .sb-vc-new-badge {
+      display:inline-block;font-size:8px;font-weight:700;color:#fff;
+      background:#ff8c00;padding:1px 5px;border-radius:3px;
+      letter-spacing:.3px;line-height:1.3;margin-left:2px;
+    }
+    /* ── ⋮ メニュー ── */
+    .sb-vc-dots-area {
+      position:absolute !important;top:10px !important;right:10px !important;
+      padding:0 !important;
+    }
+    .sb-vc-dots-area button.css-3tls8 {
+      position:static !important;
+      width:22px !important;height:22px !important;
+      border:none !important;background:transparent !important;
+      border-radius:4px !important;cursor:pointer !important;
+      color:#b0b0b0 !important;transition:background .12s !important;
+    }
+    .sb-vc-dots-area button.css-3tls8:hover {
+      background:#f0f0f2 !important;color:#666 !important;
+    }
+    /* ── Version追加ボタン ── */
     [data-test="Article-BtnCreateNewArticle"] {
-      background:#0091ff !important;
-      color:#fff !important;
-      font-weight:600 !important;
-      font-size:12px !important;
-      border-radius:0 !important;
-      border:none !important;
-      padding:10px !important;
-      display:flex !important;
-      align-items:center !important;
-      justify-content:center !important;
-      gap:4px !important;
-      cursor:pointer !important;
+      background:#0091ff !important;color:#fff !important;
+      font-weight:600 !important;font-size:12px !important;
+      border-radius:0 !important;border:none !important;
+      padding:10px !important;display:flex !important;
+      align-items:center !important;justify-content:center !important;
+      gap:4px !important;cursor:pointer !important;
     }
     [data-test="Article-BtnCreateNewArticle"]:hover {
       background:#007ae6 !important;
     }
-    /* バージョン名入力をモック準拠に */
-    [data-test="ArticleList-InputMemo"] {
-      font-size:12px !important;
-      font-weight:600 !important;
-      color:#1a1a1a !important;
-      border:1px solid transparent !important;
-      border-radius:3px !important;
-      padding:2px 4px !important;
-      background:transparent !important;
-      transition:border-color .12s !important;
-    }
-    [data-test="ArticleList-InputMemo"]:hover {
-      border-color:#e5e5ea !important;
-    }
-    [data-test="ArticleList-InputMemo"]:focus {
-      border-color:#0091ff !important;
-      outline:none !important;
-      background:#fff !important;
-    }
-    /* 配信割合の入力 */
-    [data-test="ArticleList-DeriveryRateForm"] {
-      width:44px !important;
-      height:24px !important;
-      border:1px solid #e5e5ea !important;
-      border-radius:3px !important;
-      font-size:11px !important;
-      text-align:center !important;
-      font-variant-numeric:tabular-nums !important;
-    }
-    /* 保存ボタン */
-    [data-save-btn] {
-      font-size:10px !important;
-      padding:3px 8px !important;
-      border:none !important;
-      border-radius:4px !important;
-      font-weight:500 !important;
-      background:rgba(0,145,255,.1) !important;
-      color:#0091ff !important;
-    }
-    /* Versionパネル全体 */
-    [class*="_abTestArticlesWrapper_"] {
-      background:#fff !important;
-    }
-    /* ⋮メニューボタン */
-    button.css-3tls8 {
-      position:absolute !important;
-      top:6px !important;
-      right:6px !important;
-      width:22px !important;
-      height:22px !important;
-      border:none !important;
-      background:transparent !important;
-      border-radius:4px !important;
-      cursor:pointer !important;
-      color:#b0b0b0 !important;
-      transition:background .12s !important;
-    }
-    button.css-3tls8:hover {
-      background:#f0f0f2 !important;
-      color:#666 !important;
-    }
+    /* ── Versionパネル全体 ── */
+    [class*="_abTestArticlesWrapper_"] { background:#fff !important; }
   `
   document.head.append(s)
 }
@@ -1238,7 +1295,8 @@ function renderVersionList(ctx: EditorContext): void {
   }
 
   for (const version of shown) {
-    const card = ctx.cardTemplate.cloneNode(true) as HTMLElement
+    const isCurrent = version.uid === ctx.currentUid
+    const card = buildVersionCardEl(version, isCurrent)
     if (archivedMode) wireArchivedCard(ctx, card, version)
     else wireVersionCard(ctx, card, version)
     if (addButton !== null) list.insertBefore(card, addButton)
@@ -1367,29 +1425,17 @@ function wireArchivedCard(ctx: EditorContext, card: HTMLElement, version: Versio
   }
 }
 
-/** 1枚のVersionカードに、そのVersionの値と操作（名前/配信割合/更新/「…」/クリック切替）を配線する */
+/** 1枚のVersionカードに操作（名前/配信割合/更新/「…」/クリック切替）を配線する */
 function wireVersionCard(ctx: EditorContext, card: HTMLElement, version: Version): void {
   // このカードが表す最新のVersion（保存のたびに新しいオブジェクトへ差し替える＝イミュータブル・§12）。
   let model = version
-  card.dataset['articleUid'] = model.uid
-  card.setAttribute('data-id', String(model.id))
   const isCurrent = model.uid === ctx.currentUid
-  card.querySelector<HTMLElement>(HOOK.currentVersion)?.classList.toggle(ACTIVE_CARD_CLASS, isCurrent)
-
-  // 指示㊼再修正: カードを詰めて次のバージョンをすぐ下に置く
-  const inner = card.querySelector<HTMLElement>(HOOK.currentVersion)
-  if (inner !== null) inner.style.padding = '8px 10px'
-  const buttons = card.querySelector<HTMLElement>('._articleButtons_1xibh_160')
-  if (buttons !== null) buttons.style.padding = '4px 0 2px'
 
   const name = card.querySelector<HTMLInputElement>(HOOK.versionName)
   const ratio = card.querySelector<HTMLInputElement>(HOOK.ratio)
-  if (name !== null) name.value = model.name
-  if (ratio !== null) ratio.value = String(model.distribution_ratio)
 
-  // 指示㉘: 切替の当たり判定が狭い問題。非選択カードでは名前入力がカードの大半を覆って
-  // クリックを食う（＝切替できる余白が僅か）ので、名前入力のクリックをカードへ通す
-  // （pointer-events:none）。名前編集は切替後に行う（実物と同じ「まず選択」動線）。
+  // 指示㉘: 非選択カードでは名前入力のクリックをカードへ通す（pointer-events:none）。
+  // 名前編集は切替後に行う（実物と同じ「まず選択」動線）。
   if (name !== null && !isCurrent) name.style.pointerEvents = 'none'
 
   const save = async (): Promise<void> => {
@@ -1430,11 +1476,9 @@ function wireVersionCard(ctx: EditorContext, card: HTMLElement, version: Version
     ratio.value = String(Math.max(0, Number(ratio.value) - 1))
     void save()
   })
-  // 保存ボタン（旧「更新」→「保存済み/未保存」表示に変更: 指示62）
+  // 保存ボタンの配線
   const saveBtn = findUpdateButton(card)
   if (saveBtn !== null) {
-    saveBtn.setAttribute('data-save-btn', 'true')
-    saveBtn.textContent = '保存済み'
     saveBtn.addEventListener('click', (event) => {
       event.stopPropagation()
       void save()
@@ -1456,9 +1500,6 @@ function wireVersionCard(ctx: EditorContext, card: HTMLElement, version: Version
     if (model.uid === ctx.currentUid) return
     void saveHtml(ctx).then(() => loadVersion(ctx, model.uid))
   })
-
-  // バッジ・タイムスタンプを追加
-  addVersionCardExtras(card, model, isCurrent)
 
   // このカードの「…」メニューは**このVersion**を対象にする。
   mountVersionDotsMenu(card, {
