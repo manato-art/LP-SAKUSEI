@@ -26,6 +26,7 @@ import { recordHistory } from './folders.ts'
 import { mountVersionListDropdown, setVersionListMode } from '../panels/version-actions.ts'
 import { mountVersionDotsMenu } from '../panels/version-dots-menu.ts'
 import { mountHeaderImageModal } from '../panels/header-image-modal.ts'
+import { mountEditorScrollbar } from '../panels/editor-scrollbar.ts'
 import { mountVersionLinkPopup } from '../panels/version-link-popup.ts'
 import { mountStepAddModal } from '../panels/step-add-modal.ts'
 import { mountWidgetLibrary } from '../panels/widget-library.ts'
@@ -294,6 +295,10 @@ export async function renderEditor(
     versionPanel.style.minWidth = '230px'
     versionPanel.style.width = '230px'
   }
+
+  // 旧ミニマップの位置（キャンバス右端）に、常時表示の触れるスクロールバーを置く。
+  const scrollHost = root.querySelector<HTMLElement>('.ql-container')
+  if (scrollHost !== null) mountEditorScrollbar(root, scrollHost)
 
   // Versionカードの雛形を、配線前のクリーンな状態でクローンして控える（採取した実物1枚が雛形）。
   const originalCard = root.querySelector<HTMLElement>('[data-article-uid]')

@@ -53,7 +53,9 @@ const MOCKUP_CSS = `
 
   /* ── Top nav tabs ── */
   .topnav { height:40px; background:var(--brand); display:flex; align-items:center; padding:0 16px; flex-shrink:0; }
-  .topnav-tab { padding:8px 16px; color:rgba(255,255,255,.7); font-size:13px; font-weight:500; cursor:pointer; border-radius:6px 6px 0 0; transition:color .12s,background .12s; white-space:nowrap; text-decoration:none; display:inline-block; }
+  /* タブは青バーの全高に伸ばす（align-self:stretch）。inline-block+縦paddingだと
+     タブがバーより低く、選択中の白タブ下に青い隙間が出る（指示: 下の空白）。 */
+  .topnav-tab { display:inline-flex; align-items:center; align-self:stretch; padding:0 16px; color:rgba(255,255,255,.7); font-size:13px; font-weight:500; cursor:pointer; border-radius:6px 6px 0 0; transition:color .12s,background .12s; white-space:nowrap; text-decoration:none; }
   .topnav-tab:hover { color:#fff; background:rgba(255,255,255,.1); }
   .topnav-tab.active { background:var(--surface); color:var(--text-primary); }
 
