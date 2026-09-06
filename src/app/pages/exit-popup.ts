@@ -11,7 +11,7 @@
  */
 import { api, type ExitPopup, type FollowPopup } from '../api.ts'
 import { isStale } from '../main.ts'
-import { T, el, toast } from '../ui.ts'
+import { T, el, toast, confirmCard } from '../ui.ts'
 import { setupHorizTabs, setupBreadcrumb } from './tab-nav.ts'
 import { PRESETS, type PopupPreset } from './exit-popup-presets.ts'
 import { highlight } from '../panels/syntax-highlight.ts'
@@ -393,15 +393,17 @@ function toggleDropdown(cardEl: HTMLElement, state: PopupPageState, popup: ExitP
   deleteBtn.addEventListener('click', (e) => {
     e.stopPropagation()
     dropdown.remove()
-    if (!confirm('このポップアップを削除しますか？')) return
-    void api.deleteExitPopup(state.abTestUid, popup.uid).then(
-      () => {
-        state.popups = state.popups.filter((p) => p.uid !== popup.uid)
-        renderPanel(state)
-        toast('ポップアップを削除しました')
-      },
-      (err: unknown) => toast((err as Error).message, 'error'),
-    )
+    void confirmCard('このポップアップを削除しますか？', '削除する').then((ok) => {
+      if (!ok) return
+      void api.deleteExitPopup(state.abTestUid, popup.uid).then(
+        () => {
+          state.popups = state.popups.filter((p) => p.uid !== popup.uid)
+          renderPanel(state)
+          toast('ポップアップを削除しました')
+        },
+        (err: unknown) => toast((err as Error).message, 'error'),
+      )
+    })
   })
 
   dropdown.append(editBtn, previewBtn, deleteBtn)
@@ -1136,15 +1138,17 @@ function toggleFollowDropdown(cardEl: HTMLElement, state: PopupPageState, fp: Fo
   deleteBtn.addEventListener('click', (e) => {
     e.stopPropagation()
     dropdown.remove()
-    if (!confirm('この追従型ポップアップを削除しますか？')) return
-    void api.deleteFollowPopup(state.abTestUid, fp.uid).then(
-      () => {
-        state.followPopups = state.followPopups.filter((p) => p.uid !== fp.uid)
-        renderPanel(state)
-        toast('追従型ポップアップを削除しました')
-      },
-      (err: unknown) => toast((err as Error).message, 'error'),
-    )
+    void confirmCard('この追従型ポップアップを削除しますか？', '削除する').then((ok) => {
+      if (!ok) return
+      void api.deleteFollowPopup(state.abTestUid, fp.uid).then(
+        () => {
+          state.followPopups = state.followPopups.filter((p) => p.uid !== fp.uid)
+          renderPanel(state)
+          toast('追従型ポップアップを削除しました')
+        },
+        (err: unknown) => toast((err as Error).message, 'error'),
+      )
+    })
   })
 
   dropdown.append(editBtn, previewBtn, deleteBtn)

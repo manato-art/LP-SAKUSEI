@@ -113,6 +113,58 @@ export function textInput(placeholder = ''): HTMLInputElement {
   return i
 }
 
+/**
+ * ネイティブ confirm() の代替。カード型モーダルで確認を取る。
+ * 指示108: ブラウザの confirm ダイアログは異質なので、アプリ内カードに置き換える。
+ */
+export function confirmCard(message: string, submitLabel = 'OK'): Promise<boolean> {
+  return new Promise((resolve) => {
+    const overlay = el('div', {
+      style: `position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:9500;display:flex;
+        align-items:center;justify-content:center;font-family:${T.font}`,
+    })
+    const card = el('div', {
+      style: `background:#fff;border-radius:10px;width:380px;max-width:90vw;
+        box-shadow:0 8px 32px rgba(0,0,0,.18);overflow:hidden`,
+    })
+    const body = el('div', {
+      text: message,
+      style: 'padding:24px 24px 16px;font-size:14px;color:#1a1a1a;line-height:1.6;text-align:center',
+    })
+    const footer = el('div', {
+      style: 'display:flex;gap:10px;padding:12px 24px 20px;justify-content:center',
+    })
+    const cancelBtn = el('button', {
+      text: 'キャンセル',
+      style: `font-family:${T.font};font-size:13px;padding:8px 20px;border-radius:6px;
+        cursor:pointer;border:1px solid #ddd;background:#f5f5f5;color:#333;min-width:100px`,
+    })
+    const okBtn = el('button', {
+      text: submitLabel,
+      style: `font-family:${T.font};font-size:13px;padding:8px 20px;border-radius:6px;
+        cursor:pointer;border:none;background:${T.primary};color:#fff;min-width:100px`,
+    })
+    footer.append(cancelBtn, okBtn)
+    card.append(body, footer)
+    overlay.append(card)
+    document.body.append(overlay)
+
+    const close = (result: boolean): void => {
+      overlay.remove()
+      resolve(result)
+    }
+    cancelBtn.addEventListener('click', () => close(false))
+    okBtn.addEventListener('click', () => close(true))
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(false) })
+    // Escキーでキャンセル
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') { document.removeEventListener('keydown', onKey); close(false) }
+    }
+    document.addEventListener('keydown', onKey)
+    okBtn.focus()
+  })
+}
+
 export function emptyState(message: string, action?: HTMLElement): HTMLElement {
   return el(
     'div',

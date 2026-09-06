@@ -337,15 +337,22 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
   const textArea = document.createElement('textarea')
   textArea.className = 'sb-pr-textarea'
   // 指示107: 直接編集可能にする
+  // ⚠️ isEditingText: deleteText→text-change→refresh が再帰して textarea.value を上書きするのを防ぐ
+  let isEditingText = false
   textArea.addEventListener('input', () => {
     const r = getRange()
     if (r === null || r.length === 0) return
-    // 選択範囲のフォーマットを保持したまま、テキスト内容を差し替える
     const currentFmt = getFormats()
-    quill.deleteText(r.index, r.length)
-    quill.insertText(r.index, textArea.value, currentFmt)
-    // 新しいテキスト範囲を再選択
-    quill.setSelection(r.index, textArea.value.length)
+    const newText = textArea.value
+    isEditingText = true
+    try {
+      quill.deleteText(r.index, r.length)
+      quill.insertText(r.index, newText, currentFmt)
+      quill.setSelection(r.index, newText.length)
+      lastKnownRange = { index: r.index, length: newText.length }
+    } finally {
+      isEditingText = false
+    }
   })
   textGroup.append(textArea)
 
@@ -705,6 +712,8 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
   }
 
   function refresh(): void {
+    // テキスト編集中は再帰的なrefreshを抑止する（deleteText→text-change→refresh の連鎖防止）
+    if (isEditingText) return
     // 画像選択中は画像モードを維持する
     if (selectedImage !== null && document.contains(selectedImage)) {
       return

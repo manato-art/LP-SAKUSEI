@@ -571,9 +571,42 @@ function injectCardSeamStyles(): void {
       margin: 0 !important;
       align-self: stretch !important;
     }
-    /* 基板の浮遊ドロップダウンを非表示 */
-    [class*="_editorWrapper_"] > [class*="_dropdown_"] {
+    /* 基板の浮遊ドロップダウンを非表示（パネルで使われるものは除く） */
+    [class*="_editorWrapper_"] > [class*="_dropdown_"]:not([data-clone-panel-host]) {
       display: none !important;
+    }
+    /* 指示109: 全パネルを白基調に（_darkTheme_ を上書き） */
+    [class*="_darkTheme_x4j8w_"] ._bodyWrapper_x4j8w_8 ._body_x4j8w_8,
+    ._darkTheme_x4j8w_116 ._bodyWrapper_x4j8w_8 ._body_x4j8w_8 {
+      background-color: #fff !important;
+      color: #1a1a1a !important;
+      box-shadow: 0 4px 24px rgba(0,0,0,.12) !important;
+      border: 1px solid #e5e5ea !important;
+      border-radius: 8px !important;
+    }
+    [class*="_darkTheme_x4j8w_"] ._bodyWrapper_x4j8w_8 [class*="_arrow_x4j8w_"],
+    ._darkTheme_x4j8w_116 ._bodyWrapper_x4j8w_8 [class*="_arrow_x4j8w_"] {
+      border-color: #fff transparent transparent !important;
+    }
+    /* 指示109: モーダル系パネル（タグ設定等）も白基調に */
+    ._modal_11n4w_1._darkTheme_11n4w_23 {
+      background-color: #fff !important;
+      color: #1a1a1a !important;
+    }
+    ._modal_11n4w_1._darkTheme_11n4w_23 select,
+    ._modal_11n4w_1._darkTheme_11n4w_23 textarea,
+    ._modal_11n4w_1._darkTheme_11n4w_23 input {
+      background-color: #fff !important;
+      color: #1a1a1a !important;
+      border: 1px solid #e5e5ea !important;
+    }
+    ._modal_11n4w_1._darkTheme_11n4w_23 label {
+      color: #1a1a1a !important;
+    }
+    ._modal_11n4w_1._darkTheme_11n4w_23 [class*="_modalHeader_"] {
+      background-color: #fff !important;
+      color: #1a1a1a !important;
+      border-bottom: 1px solid #e5e5ea !important;
     }
     /* ── 基板DOMの漏れ要素を確実に隠す ── */
     /* 基板の作成中/アーカイブ済みフィルタ（新規DOMで置換済み） */

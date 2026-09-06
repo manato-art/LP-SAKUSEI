@@ -60,39 +60,91 @@ export async function renderPreview(
 }
 
 /**
- * URLカードのURLを、クローンの（localhost起点の）URLへ差し替え、コピー/別タブを配線する。
- * 実DOMでは URL は `<p>` に入り、直後にコピー・QR・別タブのアイコンボタンが並ぶ。
+ * URLカードを実SBの表示に合わせて配線する。
+ *
+ * 実SBの構成（指示111・スクショ確認済み）:
+ *   配信URL:       「ドメインを設定すると使えるようになります」（更新ボタン付き）
+ *   プレビューURL:  https://sb-draft-preview.… + 「※計測されません」
+ *
+ * クローンではドメイン設定機能が無いので:
+ *   配信URL:       「ドメインを設定すると使えるようになります」（そのまま）
+ *   プレビューURL:  localhost起点のプレビューURL + 「※計測されません」
+ *
+ * ⚠️ squadbeyond.com は使わない（実サイトへ飛んでしまう）。
  */
-function wireUrlCards(root: HTMLElement, abTestUid: string, version: Version | undefined): void {
+function wireUrlCards(root: HTMLElement, _abTestUid: string, version: Version | undefined): void {
   const origin = location.origin
-  const urls = [
-    version === undefined ? `${origin}/#/preview` : `${origin}/#/preview/${version.uid}`,
-    `${origin}/lp/${abTestUid}`,
-  ]
-  // URLの入った <p>（テキストが http で始まる）を上から拾う
+  const previewUrl =
+    version === undefined ? `${origin}/#/preview` : `${origin}/#/preview/${version.uid}`
+
+  // URLの入った <p>（テキストが http で始まる or sample で始まる）を上から拾う
   const urlNodes = [...root.querySelectorAll<HTMLElement>('p')].filter((p) =>
     /^https?:\/\//.test((p.textContent ?? '').trim()),
   )
+
+  // ラベルのテキストノード書き換え（採取DOM: 「作成中の確認用URL」→「プレビューURL」）
+  for (const el of root.querySelectorAll<HTMLElement>('*')) {
+    for (const child of el.childNodes) {
+      if (child.nodeType !== Node.TEXT_NODE) continue
+      const t = child.textContent ?? ''
+      if (t.includes('作成中の確認用URL')) child.textContent = t.replace('作成中の確認用URL', 'プレビューURL')
+    }
+  }
+
   urlNodes.forEach((node, index) => {
-    const url = urls[Math.min(index, urls.length - 1)] ?? ''
-    node.textContent = url
-    // カード内のアイコンボタン: 1つ目＝コピー / 最後＝別タブ（実物のアイコン並び）
     const card = node.parentElement
     if (card === null) return
-    const buttons = [...card.querySelectorAll('button')]
-    const copyBtn = buttons[0]
-    const openBtn = buttons[buttons.length - 1]
-    copyBtn?.addEventListener('click', (event) => {
-      event.stopPropagation()
-      void navigator.clipboard.writeText(url).then(() => toast('URLをコピーしました'))
-    })
-    if (openBtn !== undefined && openBtn !== copyBtn) {
-      openBtn.addEventListener('click', (event) => {
-        event.stopPropagation()
-        window.open(url, '_blank', 'noopener')
-      })
+
+    if (index === 0) {
+      // ── プレビューURL ──
+      node.textContent = previewUrl
+      // 「※計測されません」注釈を追加
+      const note = document.createElement('span')
+      note.textContent = '※計測されません'
+      note.style.cssText =
+        'margin-left:12px;font-size:12px;color:#999;white-space:nowrap;flex-shrink:0'
+      card.append(note)
+      wireCardButtons(card, previewUrl)
+    } else {
+      // ── 配信URL ──
+      node.textContent = 'ドメインを設定すると使えるようになります'
+      node.style.color = '#999'
+      // 配信URLはコピー・開くボタンを無効化（URLが無いため）
+      for (const btn of card.querySelectorAll<HTMLElement>('button, a')) {
+        btn.style.opacity = '0.4'
+        btn.style.pointerEvents = 'none'
+      }
     }
   })
+
+  // リンクの href も書き換え（採取時の sample*.example.test を排除）
+  for (const a of root.querySelectorAll<HTMLAnchorElement>('a[href*="example.test"]')) {
+    a.href = previewUrl
+    a.addEventListener('click', (e) => {
+      e.preventDefault()
+      window.open(previewUrl, '_blank', 'noopener')
+    })
+  }
+}
+
+/** URLカード内のコピー/別タブボタンを配線 */
+function wireCardButtons(card: HTMLElement, url: string): void {
+  const buttons = [...card.querySelectorAll('button')]
+  const copyBtn = buttons[0]
+  const links = [...card.querySelectorAll<HTMLAnchorElement>('a[target="_blank"]')]
+  const openLink = links[links.length - 1]
+  copyBtn?.addEventListener('click', (event) => {
+    event.stopPropagation()
+    void navigator.clipboard.writeText(url).then(() => toast('URLをコピーしました'))
+  })
+  if (openLink !== undefined) {
+    openLink.href = url
+    openLink.addEventListener('click', (event) => {
+      event.preventDefault()
+      event.stopPropagation()
+      window.open(url, '_blank', 'noopener')
+    })
+  }
 }
 
 /** 保存HTMLからヘッダー画像コメントを抽出し、imgタグ + 本文に分離 */

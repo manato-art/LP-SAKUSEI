@@ -13,7 +13,7 @@
 import substrate from '../fragments/folders__UID__ab_tests__UID__redirect_pages__detail.html?raw'
 import { api, type RedirectPage } from '../api.ts'
 import { isStale } from '../main.ts'
-import { toast } from '../ui.ts'
+import { toast, confirmCard } from '../ui.ts'
 import { applyBeyondTopBar, wireBeyondBack } from './beyond-topbar.ts'
 import { wireBeyondNavAnchors } from './beyond-nav.ts'
 import { stripShellFromFragment } from './report-substrate.ts'
@@ -214,14 +214,16 @@ function wireDelete(root: HTMLElement, abTestUid: string, template: HTMLElement 
       toast('中間ページを選択してください', 'error')
       return
     }
-    if (!confirm('この中間ページを削除しますか？')) return
-    void api.deleteRedirectPage(uid).then(
-      () => {
-        toast('中間ページを削除しました')
-        void renderList(root, abTestUid, template)
-      },
-      (err: unknown) => toast((err as Error).message, 'error'),
-    )
+    void confirmCard('この中間ページを削除しますか？', '削除する').then((ok) => {
+      if (!ok) return
+      void api.deleteRedirectPage(uid).then(
+        () => {
+          toast('中間ページを削除しました')
+          void renderList(root, abTestUid, template)
+        },
+        (err: unknown) => toast((err as Error).message, 'error'),
+      )
+    })
   })
 }
 

@@ -161,7 +161,7 @@ function resolvePanel(root: HTMLElement): HTMLElement | null {
   // 土台が無い環境（差し込み先が素のコンテナ）向けのフォールバック。
   // `_bodyWrapper_` のCSSは `_dropdown_` 配下にしか効かないので、同じ入れ物ごと作る。
   const host = document.createElement('div')
-  host.className = `${CLS.dropdown} ${CLS.darkTheme}`
+  host.className = `${CLS.dropdown} _lightTheme_x4j8w_88`
   host.setAttribute('style', 'position:fixed;top:120px;right:90px;z-index:9600')
   host.innerHTML = HISTORY_PANEL_MARKUP
   root.append(host)

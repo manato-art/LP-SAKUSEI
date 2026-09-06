@@ -18,7 +18,7 @@
 import rawMenu from '../fragments/ab_tests__UID__articles__version-dots-menu.portals.html?raw'
 import type { Version } from '../api.ts'
 import { api } from '../api.ts'
-import { toast } from '../ui.ts'
+import { toast, confirmCard } from '../ui.ts'
 import { bindBackdropClose, findByExactText, openPortal } from './portal.ts'
 import { LP_BASE_CSS } from '../lp-base-css.ts'
 import { withAutoplayVideos } from '../lp-video.ts'
@@ -197,7 +197,9 @@ function injectDeleteItem(portal: { root: HTMLElement; close: () => void }, deps
   deleteItem.addEventListener('click', (event) => {
     event.stopPropagation()
     portal.close()
-    if (globalThis.confirm('このVersionを削除しますか？（元に戻せません）')) void deleteVersion(deps)
+    void confirmCard('このVersionを削除しますか？\n（元に戻せません）', '削除する').then((ok) => {
+      if (ok) void deleteVersion(deps)
+    })
   })
   list.append(deleteItem)
 }

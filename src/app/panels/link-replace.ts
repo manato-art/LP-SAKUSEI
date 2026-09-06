@@ -249,7 +249,7 @@ function resolvePanel(root: HTMLElement): HTMLElement | null {
   if (fromSubstrate !== null) return fromSubstrate
 
   const host = document.createElement('div')
-  host.className = `${CLS.dropdown} ${CLS.darkTheme}`
+  host.className = `${CLS.dropdown} _lightTheme_x4j8w_88`
   host.setAttribute('style', 'position:fixed;top:120px;right:90px;z-index:9600')
   host.innerHTML = LINK_REPLACE_MARKUP
   root.append(host)
