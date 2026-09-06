@@ -85,9 +85,15 @@ export function mountMinimap(editorRoot: HTMLElement, scrollContainer: HTMLEleme
       wrapper.style.bottom = `${Math.max(0, qlBottom)}px`
       wrapper.style.height = 'auto'
     }
-    // 初回 + リサイズ時に再算出
+    // 初回 + リサイズ時 + DOM変更時に再算出
+    // URLバー/ヘッダー画像がminimap後に追加されるため、複数タイミングで再計算
     requestAnimationFrame(alignToCanvas)
+    setTimeout(alignToCanvas, 300)
+    setTimeout(alignToCanvas, 800)
     addEventListener('resize', alignToCanvas)
+    // canvasArea内の子要素変更を監視（URLバー/ヘッダー画像追加時に再計算）
+    const mo = new MutationObserver(() => requestAnimationFrame(alignToCanvas))
+    mo.observe(canvasArea, { childList: true, subtree: false })
   } else {
     document.body.append(wrapper)
   }
