@@ -16,6 +16,7 @@ import { openParamUrlModal } from '../panels/param-url-modal.ts'
 import { basicInfoApi, type MediaOption } from './basic-info-api.ts'
 import { wireAbTestTabs, setupHorizTabs, setupBreadcrumb } from './tab-nav.ts'
 import { recordHistory } from './folders.ts'
+import { renderBasicInfoRedesign } from './basic-info-redesign.ts'
 import {
   AD_STATUS_LABELS,
   CONVERSION_CONDITION_LABELS,
@@ -68,6 +69,16 @@ interface PageContext {
 }
 
 export async function renderBasicInfo(
+  container: HTMLElement,
+  target: { abTestUid: string; folderUid: string },
+  generation?: number,
+): Promise<void> {
+  // 指示133: 基本情報ページは新デザイン（2カラム＋設定内容の確認パネル）に置き換え。
+  return renderBasicInfoRedesign(container, target, generation)
+}
+
+/** 旧・採取DOM再現版（指示133で新デザインに置換。参照用に残置） */
+export async function renderBasicInfoLegacy(
   container: HTMLElement,
   target: { abTestUid: string; folderUid: string },
   generation?: number,
