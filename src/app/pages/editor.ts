@@ -1905,6 +1905,13 @@ function wireSideToolbar(ctx: EditorContext): void {
   for (let index = 0; index < icons.length; index += 1) {
     const icon = icons[index]
     if (icon === undefined) continue
+    // 指示134: プレビューは縦レールから外す（ヘッダーのプレビューボタンに一本化）。
+    // index は SIDE_TOOLS / RAIL_ICON_SVGS と対応しているので、0番だけ隠して他はそのまま。
+    if (index === PREVIEW_TOOL_INDEX) {
+      // 採取CSSが display:flex !important を当てるので important 付きで隠す
+      icon.style.setProperty('display', 'none', 'important')
+      continue
+    }
     icon.style.cursor = 'pointer'
     icon.classList.add('rail-item')
 
@@ -1944,16 +1951,7 @@ function wireSideToolbar(ctx: EditorContext): void {
     }
 
     // ── 各アイコンのクリックハンドラ（直接関数呼び出し方式） ──
-    if (index === PREVIEW_TOOL_INDEX) {
-      icon.addEventListener('click', async () => {
-        await saveHtml(ctx)
-        const url =
-          `${location.origin}${location.pathname}` +
-          `#/ab_tests/${ctx.abTestUid}/articles/${ctx.currentUid}/previews`
-        window.open(url, '_blank', 'noopener')
-      })
-      continue
-    }
+    // 指示134: プレビュー(index 0)はループ先頭で隠して continue 済み。ここには来ない。
     // 履歴パネル（開閉はpanels.toggleに一本化）
     if (index === 1) {
       let historyRegistered = false
