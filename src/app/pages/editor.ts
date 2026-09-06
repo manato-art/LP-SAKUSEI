@@ -548,17 +548,20 @@ function injectCardSeamStyles(): void {
       min-width: 260px !important;
       flex-shrink: 0 !important;
     }
-    /* sideToolbarWrapper: モック準拠で薄グレー + 左に区切り線 + フル高さ + 上揃え横中央 */
+    /* sideToolbarWrapper: 上揃え横中央 — 採取CSSの margin-top:-20px / justify-content:center を打ち消す */
     [class*="_sideToolbarWrapper_"] {
-      background: #fafbfc;
-      border-left: 1px solid #e5e5ea;
+      background: #fafbfc !important;
+      border-left: 1px solid #e5e5ea !important;
       align-self: stretch !important;
-      height: auto !important;
+      height: 100% !important;
+      margin-top: 0 !important;
+      margin-bottom: 0 !important;
+      padding: 8px 0 0 !important;
       display: flex !important;
       flex-direction: column !important;
       align-items: center !important;
       justify-content: flex-start !important;
-      padding-top: 8px !important;
+      box-sizing: border-box !important;
     }
     /* editorWrapper: 高さをフルに伸ばす + 幅を親に合わせる（基板のmax-width:1100pxを解除） */
     [class*="_editorWrapper_"] {
@@ -637,6 +640,13 @@ function injectSideToolbarStyles(): void {
       align-items: center !important;
       justify-content: flex-start !important;
       padding-top: 0 !important;
+      width: 100% !important;
+    }
+    /* 採取CSSの _sideToolbarIcon_ height:50px / justify-content:center を完全に打ち消す */
+    [class*="_sideToolbarWrapper_"] [class*="_sideToolbarTop_"] [class*="_sideToolbarIcon_"] {
+      height: auto !important;
+      justify-content: center !important;
+      position: static !important;
     }
     /* アイコン + テキストラベルを縦に並べる */
     [class*="_sideToolbarIcon_"] {
