@@ -392,4 +392,34 @@ const OVERRIDES = /* css */ `
   background: #e0e0e0;
   color: #333;
 }
+
+/* ---- 指示118: 変更・復元履歴パネル — ダーク背景用の白文字を黒に ---- */
+[data-clone-panel-host="history"] ._articleHistoryList_qvqhx_22 {
+  color: #333 !important;
+}
+[data-clone-panel-host="history"] ._articleHistoryList_qvqhx_22 .sample_token_7efbabf9 {
+  color: #333 !important;
+}
+[data-clone-panel-host="history"] ._articleHistoryList_qvqhx_22 .sample_token_466796a9 {
+  color: #888 !important;
+}
+/* アクティブ行はオレンジを維持 */
+[data-clone-panel-host="history"] ._articleHistoryList_qvqhx_22._active_qvqhx_31 .sample_token_7efbabf9 {
+  color: rgb(255, 164, 0) !important;
+}
+[data-clone-panel-host="history"] ._articleHistoryList_qvqhx_22._active_qvqhx_31 .sample_token_466796a9 {
+  color: rgba(255, 164, 0, 0.6) !important;
+}
+/* パネルヘッダ・戻るボタン */
+[data-clone-panel-host="history"] ._articleHistoryHeader_qvqhx_1 {
+  color: #333 !important;
+}
+[data-clone-panel-host="history"] ._btnCancel_qvqhx_12 {
+  background-color: #e8e8e8 !important;
+  color: #333 !important;
+}
+/* ラジオボタンの枠を見えるように */
+[data-clone-panel-host="history"] ._radioControl_10frc_1 input[type="radio"] {
+  accent-color: rgb(255, 164, 0);
+}
 `

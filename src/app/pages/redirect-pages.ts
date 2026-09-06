@@ -72,13 +72,17 @@ export async function renderRedirectPages(
   wireBeyondBack(root, folderUid)
   applyLightTheme(root)
   // 指示116: 中間ページの input/select はテーマクラスが無い Emotion 直指定なので個別に白基調化
+  // _field_1tjuv_135 が !important なので setProperty で上書きする
   for (const el of root.querySelectorAll<HTMLElement>(
     'input:not([type="radio"]):not([type="checkbox"]):not([type="hidden"]), select',
   )) {
-    el.style.background = '#f5f5f5'
-    el.style.color = '#333'
-    if (el.style.border === '' || el.style.border === 'none') el.style.border = '1px solid #d0d0d0'
+    el.style.setProperty('background', '#f5f5f5', 'important')
+    el.style.setProperty('background-color', '#f5f5f5', 'important')
+    el.style.setProperty('color', '#333', 'important')
+    el.style.setProperty('border', '1px solid #d0d0d0', 'important')
   }
+  // 指示119: CSS Module のダーク背景を白基調に上書き
+  applyRedirectPagesWhiteTheme(root)
 
   // 一覧項目の雛形を控える（採取物の1件目をクリーンにクローン）
   const template = root.querySelector<HTMLElement>(HOOK.item)?.cloneNode(true) as HTMLElement | undefined
@@ -243,4 +247,70 @@ function fallbackItem(): HTMLElement {
   item.className = '_redirectPage_1tjuv_1'
   item.innerHTML = '<div class="_title_1tjuv_23"></div>'
   return item
+}
+
+/**
+ * 指示119: 中間ページの CSS Module ダーク背景を白基調にインライン上書きする。
+ * Emotion css-* はなく CSS Modules の固定クラスなので applyLightTheme では変換できない。
+ */
+function applyRedirectPagesWhiteTheme(root: HTMLElement): void {
+  // 左パネル（一覧サイドバー）
+  const left = root.querySelector<HTMLElement>('[class*="_left_1tjuv"]')
+  if (left !== null) {
+    left.style.backgroundColor = '#f5f6f8'
+    left.style.borderRadius = '10px 0 0 10px'
+  }
+  // 左パネル内の各項目
+  for (const item of root.querySelectorAll<HTMLElement>('[class*="_redirectPage_1tjuv_1"]')) {
+    item.style.color = '#333'
+  }
+  // アクティブ項目
+  for (const active of root.querySelectorAll<HTMLElement>('[class*="_active_1tjuv"]')) {
+    active.style.backgroundColor = '#fff'
+  }
+  // 右パネル（設定フォーム）
+  const right = root.querySelector<HTMLElement>('[class*="_right_1tjuv"]')
+  if (right !== null) {
+    right.style.backgroundColor = '#fff'
+    right.style.color = '#333'
+    right.style.borderRadius = '0 10px 10px 0'
+    right.style.border = '1px solid #e5e5ea'
+    right.style.borderLeft = 'none'
+  }
+  // 追加ボタン
+  const addBtn = root.querySelector<HTMLElement>('[class*="_newRedirectPage_1tjuv"]')
+  if (addBtn !== null) {
+    addBtn.style.backgroundColor = '#fff3e0'
+    addBtn.style.color = '#e68a00'
+  }
+  // ラベル・見出しテキスト
+  for (const label of root.querySelectorAll<HTMLElement>(
+    '[class*="_right_1tjuv"] label, [class*="_right_1tjuv"] p, [class*="_right_1tjuv"] h2, [class*="_right_1tjuv"] h3, [class*="_right_1tjuv"] span, [class*="_right_1tjuv"] div',
+  )) {
+    if (label.style.color === '') label.style.color = '#333'
+  }
+  // 保存ボタン
+  const saveBtn = root.querySelector<HTMLElement>('[class*="_save_1tjuv"]')
+  if (saveBtn !== null) {
+    saveBtn.style.backgroundColor = '#f0960a'
+    saveBtn.style.color = '#fff'
+  }
+  // 削除ボタン（暗赤 rgb(103,52,53) → 明赤背景に）
+  const deleteBtn = root.querySelector<HTMLElement>('[class*="_destroy_1tjuv"]')
+  if (deleteBtn !== null) {
+    deleteBtn.style.backgroundColor = '#fce4e4'
+    deleteBtn.style.color = '#d32f2f'
+    deleteBtn.style.border = '1px solid #f5c6c6'
+  }
+  // _field_1tjuv_135 が !important なので setProperty で念押し上書き
+  for (const field of root.querySelectorAll<HTMLElement>('[class*="_field_1tjuv"]')) {
+    field.style.setProperty('background-color', '#f5f5f5', 'important')
+    field.style.setProperty('color', '#333', 'important')
+    field.style.setProperty('border', '1px solid #d0d0d0', 'important')
+    field.style.setProperty('border-radius', '6px', 'important')
+  }
+  // セクションタイトル（h2/h3）
+  for (const heading of root.querySelectorAll<HTMLElement>('[class*="_right_1tjuv"] h2, [class*="_right_1tjuv"] h3, [class*="_sectionTitle_1tjuv"]')) {
+    heading.style.setProperty('color', '#333', 'important')
+  }
 }

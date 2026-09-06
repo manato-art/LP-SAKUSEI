@@ -117,6 +117,9 @@ export async function renderBasicInfo(
   wireAsp(ctx)
   wireSubmit(ctx)
   neutralizeRemainingLinks(root)
+
+  // 指示120: 左右の余白を活用 — フォーム幅を広げてカード風にリニューアル
+  improveBasicInfoLayout(root)
 }
 
 // ── 値の流し込み ─────────────────────────────────────────
@@ -519,5 +522,42 @@ function neutralizeRemainingLinks(root: HTMLElement): void {
   for (const anchor of root.querySelectorAll<HTMLAnchorElement>('a')) {
     if (anchor.getAttribute('href')?.startsWith('#') === true) continue
     anchor.addEventListener('click', (event) => event.preventDefault())
+  }
+}
+
+/**
+ * 指示120: 基本情報ページのレイアウト改善。
+ * 採取CSSの `width:600px; margin:auto` で左右に大きな余白が出ていたのを、
+ * フォームを広げて余白を有効活用する。
+ */
+function improveBasicInfoLayout(root: HTMLElement): void {
+  // フォームコンテナ: 固定600px → 余白を活かして広げる
+  const formBox = root.querySelector<HTMLElement>('.css-1nmwx27')
+  if (formBox !== null) {
+    formBox.style.width = '100%'
+    formBox.style.maxWidth = '900px'
+    formBox.style.padding = '24px 32px'
+    formBox.style.borderRadius = '12px'
+    formBox.style.boxShadow = '0 1px 4px rgba(0,0,0,.06)'
+    formBox.style.border = '1px solid #e5e5ea'
+  }
+
+  // 外枠パディング（上下余白を適度に保つ）
+  const outer = root.querySelector<HTMLElement>('.css-1mf4ect')
+  if (outer !== null) {
+    outer.style.padding = '24px 32px'
+    outer.style.background = '#f8f9fa'
+    outer.style.minHeight = 'calc(100vh - 160px)'
+  }
+
+  // MUI FormControl 間の余白を整える
+  for (const control of root.querySelectorAll<HTMLElement>('.MuiFormControl-root')) {
+    control.style.marginBottom = '8px'
+  }
+
+  // ラベル色を濃くして視認性アップ
+  for (const label of root.querySelectorAll<HTMLElement>('.MuiFormLabel-root')) {
+    label.style.color = 'rgba(0,0,0,.7)'
+    label.style.fontWeight = '500'
   }
 }

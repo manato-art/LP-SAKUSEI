@@ -83,6 +83,9 @@ function wireSidebar(nav: HTMLElement): void {
   if (rail !== null) {
     rail.style.height = '100vh'
     rail.style.overflowY = 'auto'
+    rail.style.position = 'sticky'
+    rail.style.top = '0'
+    rail.style.flexShrink = '0'
   }
 
   // 各項目のラベル（アイコンでない方の子）に目印を付けて、折りたたみ時は隠す。

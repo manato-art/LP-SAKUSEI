@@ -2032,6 +2032,10 @@ function wireSideToolbar(ctx: EditorContext): void {
   // 指示93: 比較モードはヘッダーの「比較する」ボタンに移動。
   // 右レールの旧 mountCompareButton は削除。
 
+  // 指示117/122: 縦レールのツールアイコンをプロパティパネル上部に水平移動し、
+  // 縦レール本体を非表示にする。プロパティパネル幅も拡張する。
+  relocateToolsToPanel(ctx.root)
+
   // 本文の自動保存。実物のエディタは自動保存が走る
   // （docs/findings-live-observation.md「エディタは『開くだけで自動保存』が走る」・DOMに _saveAnimation_）。
   // これが無いと、打った内容がサーバーに残らない。
@@ -2370,4 +2374,101 @@ function updateSaveTimestamp(): void {
   const now = new Date()
   el.dataset['savedAt'] = String(now.getTime())
   el.textContent = formatSaveTime(now)
+}
+
+/**
+ * 指示117/122: 縦レール（_sideToolbarWrapper_）のツールアイコンを
+ * プロパティパネル上部に水平ツールバーとして移動し、縦レールを非表示にする。
+ * イベントリスナはDOMノードに付いたまま移動するので再配線不要。
+ */
+function relocateToolsToPanel(root: HTMLElement): void {
+  const sideWrapper = root.querySelector<HTMLElement>('[class*="_sideToolbarWrapper_"]')
+  const propsPanel = root.querySelector<HTMLElement>('.sb-props-panel')
+  if (sideWrapper === null || propsPanel === null) return
+
+  // ── 水平ツールバーを作成 ──
+  const toolbar = document.createElement('div')
+  toolbar.className = 'sb-horiz-toolbar'
+
+  // アイコンをDOMごと移動（イベントリスナ保持）
+  const sideTop = sideWrapper.querySelector<HTMLElement>('[class*="_sideToolbarTop_"]')
+  if (sideTop !== null) {
+    const icons = [...sideTop.querySelectorAll<HTMLElement>('[class*="sideToolbarIcon"]')]
+    for (const icon of icons) {
+      // 縦レール用スタイルをリセットして水平に
+      icon.style.cssText = ''
+      icon.classList.add('sb-horiz-tool-item')
+      toolbar.append(icon)
+    }
+  }
+
+  // プロパティパネルのヘッダーの後に挿入
+  const header = propsPanel.querySelector<HTMLElement>('.sb-props-header')
+  if (header !== null) {
+    header.after(toolbar)
+  } else {
+    propsPanel.prepend(toolbar)
+  }
+
+  // ── 縦レールを非表示 ──
+  sideWrapper.style.setProperty('display', 'none', 'important')
+
+  // ── プロパティパネルを広げる（縦レール分を吸収） ──
+  propsPanel.style.width = '310px'
+
+  // ── 水平ツールバーCSS ──
+  injectHorizToolbarStyles()
+}
+
+function injectHorizToolbarStyles(): void {
+  if (document.getElementById('sb-horiz-toolbar-css') !== null) return
+  const style = document.createElement('style')
+  style.id = 'sb-horiz-toolbar-css'
+  style.textContent = `
+    .sb-horiz-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 2px;
+      padding: 6px 8px;
+      border-bottom: 1px solid #e5e5ea;
+      background: #fafbfc;
+      flex-shrink: 0;
+    }
+    .sb-horiz-tool-item {
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: center !important;
+      gap: 1px !important;
+      padding: 4px 4px 2px !important;
+      cursor: pointer !important;
+      border-radius: 4px !important;
+      background: transparent !important;
+      transition: background .12s !important;
+      height: auto !important;
+      width: auto !important;
+      min-width: 30px !important;
+      justify-content: center !important;
+      position: static !important;
+      margin: 0 !important;
+    }
+    .sb-horiz-tool-item:hover {
+      background: #eef0f3 !important;
+    }
+    .sb-horiz-tool-item [data-rail-svg] svg {
+      width: 18px !important;
+      height: 18px !important;
+    }
+    .sb-horiz-tool-item .sb-side-label {
+      font-size: 8px !important;
+      max-width: 38px !important;
+    }
+    /* 縦レール用のCSS injection を無効化（非表示のため） */
+    [class*="_sideToolbarWrapper_"][style*="display: none"] {
+      width: 0 !important;
+      min-width: 0 !important;
+      overflow: hidden !important;
+    }
+  `
+  document.head.append(style)
 }
