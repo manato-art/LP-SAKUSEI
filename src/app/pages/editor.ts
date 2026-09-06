@@ -913,7 +913,7 @@ function buildVersionCardEl(version: Version, isCurrent: boolean): HTMLElement {
   ratioTitle.textContent = '配信割合'
   const ratioDesc = document.createElement('div')
   ratioDesc.className = 'sb-vc-ratio-desc'
-  ratioDesc.textContent = 'この設定で配信される割合を調整できます。'
+  ratioDesc.textContent = '配信される割合を調整できます。'
   ratioHeadText.append(ratioTitle, ratioDesc)
   ratioHeader.append(ratioIcon, ratioHeadText)
 
@@ -947,12 +947,7 @@ function buildVersionCardEl(version: Version, isCurrent: boolean): HTMLElement {
   upBtn.className = 'sb-vc-ratio-btn sb-vc-ratio-btn--plus'
   upBtn.textContent = '+'
 
-  ratioControl.append(downBtn, ratioDisplay, pct, upBtn)
-
-  // Row 2-3: プリセットのドロップダウン + 保存ボタン
-  const ratioFooter = document.createElement('div')
-  ratioFooter.className = 'sb-vc-ratio-footer'
-
+  // プリセットのドロップダウン
   const ratioSelect = document.createElement('select')
   ratioSelect.className = 'sb-vc-ratio-select'
   const ratioPresets = [6, 10, 20, 50, 100]
@@ -966,18 +961,17 @@ function buildVersionCardEl(version: Version, isCurrent: boolean): HTMLElement {
     ratioSelect.value = String(version.distribution_ratio)
   }
 
-  const spacer = document.createElement('div')
-  spacer.style.flex = '1'
-
+  // 保存ボタン
   const saveBtn = document.createElement('button')
   saveBtn.setAttribute('data-save-btn', 'true')
   saveBtn.type = 'button'
   saveBtn.className = 'sb-vc-save-btn'
   saveBtn.textContent = '保存済み'
 
-  ratioFooter.append(ratioSelect, spacer, saveBtn)
+  // −1%+ / プルダウン / 保存 を1行にまとめる
+  ratioControl.append(downBtn, ratioDisplay, pct, upBtn, ratioSelect, saveBtn)
 
-  ratioRow.append(ratioHeader, ratioControl, ratioFooter, ratioInput)
+  ratioRow.append(ratioHeader, ratioControl, ratioInput)
 
   // ── サムネイル ──
   const thumb = document.createElement('div')
@@ -1095,15 +1089,15 @@ function injectVersionCardCss(): void {
     .sb-vc-ratio-headtext { min-width:0; }
     .sb-vc-ratio-title { font-size:14px;font-weight:700;color:#1a1a1a;line-height:1.3; }
     .sb-vc-ratio-desc { font-size:11px;color:#9e9e9e;line-height:1.4;margin-top:2px; }
-    /* Row2: −/数値/%/+ */
+    /* Row2: − 数値 % + プルダウン 保存（1行） */
     .sb-vc-ratio-control {
-      display:flex;align-items:center;justify-content:center;gap:10px;
-      background:#f5f6f8;border-radius:24px;padding:8px 10px;
+      display:flex;align-items:center;gap:6px;
+      background:#f5f6f8;border-radius:24px;padding:6px 10px;
     }
     .sb-vc-ratio-input { display:none; }
     .sb-vc-ratio-btn {
-      width:28px;height:28px;border-radius:50%;border:1px solid #e5e5ea;
-      background:#fff;color:#1a1a1a;font-size:16px;font-weight:600;line-height:1;
+      width:26px;height:26px;border-radius:50%;border:1px solid #e5e5ea;
+      background:#fff;color:#1a1a1a;font-size:15px;font-weight:600;line-height:1;
       cursor:pointer;display:flex;align-items:center;justify-content:center;
       padding:0;flex-shrink:0;font-family:inherit;transition:background .12s;
     }
@@ -1111,16 +1105,14 @@ function injectVersionCardCss(): void {
     .sb-vc-ratio-btn--plus { border-color:#0091ff;background:#0091ff;color:#fff; }
     .sb-vc-ratio-btn--plus:hover { opacity:.88; }
     .sb-vc-ratio-display {
-      font-size:24px;font-weight:700;color:#1a1a1a;min-width:1.4em;
+      font-size:18px;font-weight:700;color:#1a1a1a;min-width:1.2em;
       text-align:center;font-variant-numeric:tabular-nums;
     }
-    .sb-vc-ratio-pct { font-size:14px;color:#666; }
-    /* Row3: ドロップダウン + 保存ボタン */
-    .sb-vc-ratio-footer { display:flex;align-items:center;gap:8px; }
+    .sb-vc-ratio-pct { font-size:13px;color:#666; }
     .sb-vc-ratio-select {
-      border:1px solid #e5e5ea;border-radius:6px;padding:4px 8px;
+      border:1px solid #e5e5ea;border-radius:6px;padding:3px 6px;
       font-size:12px;color:#1a1a1a;background:#fff;font-family:inherit;
-      cursor:pointer;outline:none;
+      cursor:pointer;outline:none;margin-left:auto;
     }
     .sb-vc-ratio-select:focus { border-color:#0091ff; }
     /* ── 保存ボタン ── */
