@@ -1027,11 +1027,12 @@ function injectVersionCardCss(): void {
       background:#ff8c00;padding:1px 5px;border-radius:3px;
       letter-spacing:.3px;line-height:1.3;margin-left:2px;
     }
-    /* ── ⋮ メニュー ── */
+    /* ── ⋮ メニュー（ホバー時のみ表示・重なり防止） ── */
     .sb-vc-dots-area {
       position:absolute !important;top:10px !important;right:10px !important;
-      padding:0 !important;
+      padding:0 !important;opacity:0;transition:opacity .12s;
     }
+    ._currentVersion_vc:hover .sb-vc-dots-area { opacity:1; }
     .sb-vc-dots-area button.css-3tls8 {
       position:static !important;
       width:22px !important;height:22px !important;
@@ -1042,17 +1043,18 @@ function injectVersionCardCss(): void {
     .sb-vc-dots-area button.css-3tls8:hover {
       background:#f0f0f2 !important;color:#666 !important;
     }
-    /* ── Version追加ボタン ── */
+    /* ── 「さらに読み込む」ボタン ── */
     [data-test="Article-BtnCreateNewArticle"] {
-      background:#0091ff !important;color:#fff !important;
-      font-weight:600 !important;font-size:12px !important;
-      border-radius:0 !important;border:none !important;
-      padding:10px !important;display:flex !important;
+      background:#fff !important;color:#666 !important;
+      font-weight:500 !important;font-size:13px !important;
+      border-radius:12px !important;border:2px solid #e5e5ea !important;
+      padding:14px !important;display:flex !important;
       align-items:center !important;justify-content:center !important;
-      gap:4px !important;cursor:pointer !important;
+      gap:6px !important;cursor:pointer !important;
+      transition:border-color .15s,background .12s !important;
     }
     [data-test="Article-BtnCreateNewArticle"]:hover {
-      background:#007ae6 !important;
+      background:#fafafa !important;border-color:#ccc !important;
     }
     /* ── Versionパネル全体 ── */
     [class*="_abTestArticlesWrapper_"] { background:#fff !important; }
@@ -1545,13 +1547,22 @@ function findUpdateButton(card: HTMLElement): HTMLElement | null {
   return null
 }
 
-/** 「Version追加」ボタンを1回だけ配線する（カード再描画で消えない要素なので使い回す） */
+/** 「さらに読み込む」ボタンを1回だけ配線する（カード再描画で消えない要素なので使い回す） */
 function wireAddVersion(ctx: EditorContext): void {
   const addBtn = ctx.root.querySelector<HTMLElement>(HOOK.addVersion)
   if (addBtn === null) return
-  // 指示100: ボタンテキストを「バージョンを追加」に変更
-  const spanLabel = addBtn.querySelector('span')
-  if (spanLabel !== null) spanLabel.textContent = 'バージョンを追加'
+  // ボタン内部を「+ さらに読み込む」＋ NEWバッジに差し替え
+  addBtn.innerHTML = ''
+  const plus = document.createElement('span')
+  plus.textContent = '+'
+  plus.style.cssText = 'font-size:16px;font-weight:700;color:#999'
+  const label = document.createElement('span')
+  label.textContent = 'さらに読み込む'
+  label.style.cssText = 'font-size:13px;color:#666'
+  const badge = document.createElement('span')
+  badge.textContent = 'NEW'
+  badge.style.cssText = 'font-size:9px;font-weight:700;color:#fff;background:#ff4444;border-radius:3px;padding:1px 5px;margin-left:4px'
+  addBtn.append(plus, label, badge)
   addBtn.addEventListener('click', async () => {
     try {
       await saveHtml(ctx)
