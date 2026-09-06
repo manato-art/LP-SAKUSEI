@@ -531,23 +531,24 @@ function neutralizeRemainingLinks(root: HTMLElement): void {
  * フォームを広げて余白を有効活用する。
  */
 function improveBasicInfoLayout(root: HTMLElement): void {
-  // フォームコンテナ: 固定600px → 余白を活かして広げる
+  // 指示127: フォームコンテナ 固定600px → max-width:900px に拡張、カード風
+  // setProperty + important で採取CSSの width:600px を確実に上書き
   const formBox = root.querySelector<HTMLElement>('.css-1nmwx27')
   if (formBox !== null) {
-    formBox.style.width = '100%'
-    formBox.style.maxWidth = '900px'
-    formBox.style.padding = '24px 32px'
-    formBox.style.borderRadius = '12px'
-    formBox.style.boxShadow = '0 1px 4px rgba(0,0,0,.06)'
-    formBox.style.border = '1px solid #e5e5ea'
+    formBox.style.setProperty('width', '100%', 'important')
+    formBox.style.setProperty('max-width', '900px', 'important')
+    formBox.style.setProperty('padding', '24px 32px', 'important')
+    formBox.style.setProperty('border-radius', '12px', 'important')
+    formBox.style.setProperty('box-shadow', '0 1px 4px rgba(0,0,0,.06)', 'important')
+    formBox.style.setProperty('border', '1px solid #e5e5ea', 'important')
   }
 
   // 外枠パディング（上下余白を適度に保つ）
   const outer = root.querySelector<HTMLElement>('.css-1mf4ect')
   if (outer !== null) {
-    outer.style.padding = '24px 32px'
-    outer.style.background = '#f8f9fa'
-    outer.style.minHeight = 'calc(100vh - 160px)'
+    outer.style.setProperty('padding', '24px 32px', 'important')
+    outer.style.setProperty('background', '#f8f9fa', 'important')
+    outer.style.setProperty('min-height', 'calc(100vh - 160px)', 'important')
   }
 
   // MUI FormControl 間の余白を整える

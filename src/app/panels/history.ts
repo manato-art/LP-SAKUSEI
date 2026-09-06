@@ -14,6 +14,7 @@
  * 依存の向きは link-replace.ts → history.ts の一方向だけ（循環させない）。
  */
 import { toast } from '../ui.ts'
+import { ensureWhiteBase } from '../white-base.ts'
 
 const API_BASE = '/api/v1'
 
@@ -130,6 +131,8 @@ export function restoreArticleHistory(
  * 開閉は呼び出し側の PanelGroup.toggle() に委ねる。
  */
 export function mountHistory(root: HTMLElement, articleUid: string): HTMLElement | null {
+  // 指示126: エディタページでも白基調CSSを確実にロードする（履歴パネルの文字色修正に必須）
+  ensureWhiteBase()
   const panel = resolvePanel(root)
   if (panel === null) {
     toast('変更・復元履歴パネルの土台が見つかりませんでした', 'error')

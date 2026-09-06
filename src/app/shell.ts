@@ -86,6 +86,9 @@ function wireSidebar(nav: HTMLElement): void {
     rail.style.position = 'sticky'
     rail.style.top = '0'
     rail.style.flexShrink = '0'
+    // flexbox で下部のマイページ/設定を底に押す（position:absolute は sticky を壊す）
+    rail.style.display = 'flex'
+    rail.style.flexDirection = 'column'
   }
 
   // 各項目のラベル（アイコンでない方の子）に目印を付けて、折りたたみ時は隠す。
@@ -336,9 +339,9 @@ function appendSettingsLink(nav: HTMLElement): void {
   const rail = nav.firstElementChild as HTMLElement | null
   if (rail === null) return
 
-  // 下部コンテナ（マイページ + 設定を縦に並べる）
+  // 下部コンテナ（マイページ + 設定を縦に並べる）— flexbox の margin-top:auto で底に押す
   const bottomArea = document.createElement('div')
-  bottomArea.style.cssText = 'position:absolute;bottom:8px;left:0;right:0'
+  bottomArea.style.cssText = 'margin-top:auto;padding-bottom:8px'
 
   // ── マイページ ──
   const myPageItem = createSidebarBottomItem(
@@ -377,8 +380,7 @@ function appendSettingsLink(nav: HTMLElement): void {
 
   bottomArea.append(myPageItem, settingsItem)
 
-  // レールにposition:relativeを付ける（absoluteの基準にする）
-  rail.style.position = 'relative'
+  // 指示128: position:sticky を壊さないよう position:relative は付けない
   rail.append(bottomArea)
 }
 
@@ -445,12 +447,12 @@ function injectRailStyles(): void {
     `.sb-accordion-item.sb-accordion-item-active{color:#333;font-weight:500}`,
     `.sb-accordion-item::before{content:'';display:inline-block;width:5px;height:5px;`,
     `border-radius:50%;background:currentColor;margin-right:8px;flex-shrink:0}`,
-  // 指示125: サイドバーに常時表示のスクロールバー
+  // 指示125/129: サイドバーに常時表示の可視スクロールバー
   `.${RAIL_CLASS}::-webkit-scrollbar{width:6px}`,
-  `.${RAIL_CLASS}::-webkit-scrollbar-track{background:transparent}`,
-  `.${RAIL_CLASS}::-webkit-scrollbar-thumb{background:rgba(0,0,0,.18);border-radius:3px}`,
-  `.${RAIL_CLASS}::-webkit-scrollbar-thumb:hover{background:rgba(0,0,0,.3)}`,
-  `.${RAIL_CLASS}{scrollbar-width:thin;scrollbar-color:rgba(0,0,0,.18) transparent}`,
+  `.${RAIL_CLASS}::-webkit-scrollbar-track{background:rgba(0,0,0,.06)}`,
+  `.${RAIL_CLASS}::-webkit-scrollbar-thumb{background:rgba(0,0,0,.22);border-radius:3px;min-height:40px}`,
+  `.${RAIL_CLASS}::-webkit-scrollbar-thumb:hover{background:rgba(0,0,0,.35)}`,
+  `.${RAIL_CLASS}{scrollbar-width:thin;scrollbar-color:rgba(0,0,0,.22) rgba(0,0,0,.06)}`,
   // 指示66: 採取CSSの body ラッパーは padding-left:60px（元のサイドバー幅）を持つが、
   // シェルが同じサイドバーを既に描いているため空白帯になる。全画面で一括除去。
   `.css-4qo2ft,.css-155ijxb,.css-1n8b1pi{padding-left:0 !important}`,
