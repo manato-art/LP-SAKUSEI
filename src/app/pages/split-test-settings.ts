@@ -258,7 +258,19 @@ async function wireSplitTestToggles(
 
   switches.forEach((sw, index) => {
     const rule = rules[index]
-    if (rule === undefined) return
+    if (rule === undefined) {
+      // 複製した版のトグルなど rules に対応が無いスイッチ。
+      // 少なくともクリックで見た目が切り替わるようにする（選択できる状態にする・保存は今後API）。
+      const input = sw.querySelector<HTMLInputElement>('input')
+      let on = sw.querySelector('.Mui-checked') !== null || (input?.checked ?? false)
+      setVisual(sw, on)
+      sw.addEventListener('click', (event) => {
+        event.preventDefault()
+        on = !on
+        setVisual(sw, on)
+      })
+      return
+    }
     setVisual(sw, rule.enabled)
     sw.addEventListener('click', (event) => {
       // ネイティブの checkbox 二重トグルを止め、rules を唯一の真実にする
@@ -303,18 +315,39 @@ async function wireTabVersionRows(root: HTMLElement, abTestUid: string): Promise
   const nameCell = findVersionNameCell(root)
   if (nameCell === null) return
 
-  // 版名セルの祖先を辿り、「版行（版名セルを含む直系子）」を持つコンテナを探す
-  let container: HTMLElement | null = nameCell.parentElement
+  // ── 版行(templateRow)の特定 ──
+  // 重要: 「名前+割合」だけを複製するとトグル列(スイッチ)が1版分しか残らず、
+  // モバイルOS別/キャリア別で最新版しか設定できなくなる（デバイス別は動くのに）。
+  // デバイス別と同じく **コントロール(スイッチ)を含むフル行** を複製する。
+  //  1) スイッチを持つタブ: 版名セルの最も近い「スイッチを内包する祖先」＝フル行。
+  //  2) スイッチが無いタブ(パラメーター/時間/日付): 名前+割合の行を雛形にする。
   let templateRow: HTMLElement | null = null
-  while (container !== null) {
-    const rowChild = [...container.children].find(
-      (c) => c instanceof HTMLElement && c.contains(nameCell) && findVersionNameCell(c) !== null,
-    )
-    if (rowChild instanceof HTMLElement) {
-      templateRow = rowChild
+  let container: HTMLElement | null = null
+  // 版行の制御要素: スイッチ(デバイス/OS/キャリア) / パラメータ入力 / 追加ボタン(時間・日付)。
+  const hasRowControl = (el: HTMLElement): boolean =>
+    el.querySelector('.MuiSwitch-root') !== null ||
+    el.querySelector('input[placeholder*="utm"], input[placeholder*="xxx"]') !== null ||
+    el.querySelector('svg[data-testid="AddBoxIcon"]') !== null ||
+    [...el.querySelectorAll('button')].some((b) => (b.textContent ?? '').includes('時間設定を追加'))
+  for (let anc = nameCell.parentElement; anc !== null; anc = anc.parentElement) {
+    if (hasRowControl(anc)) {
+      templateRow = anc
+      container = anc.parentElement
       break
     }
-    container = container.parentElement
+  }
+  if (templateRow === null) {
+    container = nameCell.parentElement
+    while (container !== null) {
+      const rowChild = [...container.children].find(
+        (c) => c instanceof HTMLElement && c.contains(nameCell) && findVersionNameCell(c) !== null,
+      )
+      if (rowChild instanceof HTMLElement) {
+        templateRow = rowChild
+        break
+      }
+      container = container.parentElement
+    }
   }
   if (container === null || templateRow === null) return
 
