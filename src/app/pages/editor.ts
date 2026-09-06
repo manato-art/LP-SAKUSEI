@@ -436,7 +436,13 @@ function injectQuillScrollFix(): void {
   style.id = 'sb-quill-scroll-fix'
   style.textContent = [
     '.ql-editor { height: auto !important; overflow-y: visible !important; }',
-  ].join('')
+    /* スクロールバーを常時表示（macOS のオーバーレイ自動非表示を上書き） */
+    '.quillEditorContentWrapper .ql-container { overflow-y: scroll !important; }',
+    '.quillEditorContentWrapper .ql-container::-webkit-scrollbar { width: 8px; }',
+    '.quillEditorContentWrapper .ql-container::-webkit-scrollbar-track { background: #f5f6f8; }',
+    '.quillEditorContentWrapper .ql-container::-webkit-scrollbar-thumb { background: #c0c0c0; border-radius: 4px; }',
+    '.quillEditorContentWrapper .ql-container::-webkit-scrollbar-thumb:hover { background: #999; }',
+  ].join('\n')
   document.head.append(style)
 }
 
