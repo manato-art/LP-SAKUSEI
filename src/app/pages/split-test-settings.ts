@@ -234,6 +234,9 @@ async function wireSplitTestToggles(
   // ── 指示㊽: Version行を全版ぶん描く（デバイス別と同じパターン）──
   await wireTabVersionRows(root, abTestUid)
 
+  // 時間別/日付別の「追加」ボタンを機能させる（スイッチが無いタブでも先に配線する）
+  wireAddButtons(root)
+
   const switches = [...root.querySelectorAll<HTMLElement>('.MuiSwitch-root')]
   if (switches.length === 0) return
 
@@ -271,26 +274,49 @@ async function wireSplitTestToggles(
 }
 
 /**
+ * 版名セル（Ver.xxxx）を探す。Emotionクラスはタブごとに違う（時間別は css-7p2ugy 等）ので、
+ * まず既知クラス `.css-10qqjzd` を試し、無ければ「Ver.」で始まる <p> を探す（クラス非依存）。
+ */
+function findVersionNameCell(scope: HTMLElement): HTMLElement | null {
+  const byClass = scope.querySelector<HTMLElement>(VERSION_NAME_CELL)
+  if (byClass !== null) return byClass
+  for (const p of scope.querySelectorAll<HTMLElement>('p')) {
+    if (/^Ver\./.test((p.textContent ?? '').trim())) return p
+  }
+  return null
+}
+
+/** 版名セルに対応する配信割合セルを返す（既知クラス→直後の<p>兄弟の順で探す） */
+function findRatioCell(row: HTMLElement, nameCell: HTMLElement): HTMLElement | null {
+  const byClass = row.querySelector<HTMLElement>(VERSION_RATIO_CELL)
+  if (byClass !== null) return byClass
+  const sib = nameCell.nextElementSibling
+  return sib instanceof HTMLElement && sib.tagName === 'P' ? sib : null
+}
+
+/**
  * 指示㊽: デバイス別以外のタブにもVersion行を描く。
  * 採取物にはVer.3873の1行だけが入っているので、それを雛形に全Versionぶん複製する。
- * デバイス別の `wireDeviceTargets` と同じアプローチ（.css-10qqjzd で雛形行を探す）。
+ * タブごとにEmotionクラスが違うため、版名は `findVersionNameCell`（Ver.テキスト）で探す。
  */
 async function wireTabVersionRows(root: HTMLElement, abTestUid: string): Promise<void> {
-  const nameCell = root.querySelector<HTMLElement>(VERSION_NAME_CELL)
+  const nameCell = findVersionNameCell(root)
   if (nameCell === null) return
 
-  // 版名セルの祖先を辿り、Version行を内包するコンテナを探す
+  // 版名セルの祖先を辿り、「版行（版名セルを含む直系子）」を持つコンテナを探す
   let container: HTMLElement | null = nameCell.parentElement
+  let templateRow: HTMLElement | null = null
   while (container !== null) {
-    // Version行の兄弟が居るコンテナ（VERSION_NAME_CELLを持つ直系子孫）
-    if (container.querySelector(`:scope > * ${VERSION_NAME_CELL}`) !== null) break
+    const rowChild = [...container.children].find(
+      (c) => c instanceof HTMLElement && c.contains(nameCell) && findVersionNameCell(c) !== null,
+    )
+    if (rowChild instanceof HTMLElement) {
+      templateRow = rowChild
+      break
+    }
     container = container.parentElement
   }
-  if (container === null) return
-
-  // 版名セルを内包する直接の行要素を探す
-  const templateRow = [...container.children].find((c) => c.contains(nameCell))
-  if (!(templateRow instanceof HTMLElement)) return
+  if (container === null || templateRow === null) return
 
   const { articles } = await api.articles(abTestUid)
   const articleUid = articles[0]?.uid
@@ -305,8 +331,8 @@ async function wireTabVersionRows(root: HTMLElement, abTestUid: string): Promise
   for (let i = 0; i < alive.length; i++) {
     const version = alive[i]!
     const row = pristine.cloneNode(true) as HTMLElement
-    const nc = row.querySelector<HTMLElement>(VERSION_NAME_CELL)
-    const rc = row.querySelector<HTMLElement>(VERSION_RATIO_CELL)
+    const nc = findVersionNameCell(row)
+    const rc = nc !== null ? findRatioCell(row, nc) : null
     if (nc !== null) {
       nc.textContent = version.name
       nc.style.maxWidth = '120px'
@@ -329,6 +355,91 @@ async function wireTabVersionRows(root: HTMLElement, abTestUid: string): Promise
     if (nameWrapper !== null) nameWrapper.style.paddingBottom = '0'
     container.append(row)
   }
+}
+
+/**
+ * 時間別「時間設定を追加する」/ 日付別「＋(AddBoxIcon)」ボタンを機能させる。
+ * 採取物ではクリックしても何も起きなかった（配線されていなかった）ため、
+ * クリックで「配信期間の行（開始〜終了＋配信する/しない＋削除）」をその場に足す。
+ * ※バックエンド未接続のため保存はしない（見た目・操作のみ。あとでAPI）。
+ */
+function wireAddButtons(root: HTMLElement): void {
+  for (const btn of root.querySelectorAll<HTMLElement>('button')) {
+    if (!(btn.textContent ?? '').includes('時間設定を追加')) continue
+    if (btn.dataset['clonePeriodWired'] === '1') continue
+    btn.dataset['clonePeriodWired'] = '1'
+    btn.style.cursor = 'pointer'
+    btn.addEventListener('click', (event) => {
+      event.preventDefault()
+      appendPeriodEditor(btn, 'time')
+    })
+  }
+  for (const icon of root.querySelectorAll<SVGElement>('svg[data-testid="AddBoxIcon"]')) {
+    const clickable =
+      icon.closest<HTMLElement>('button, [role="button"], a') ?? (icon.parentElement as HTMLElement | null)
+    if (clickable === null || clickable.dataset['clonePeriodWired'] === '1') continue
+    clickable.dataset['clonePeriodWired'] = '1'
+    clickable.style.cursor = 'pointer'
+    clickable.addEventListener('click', (event) => {
+      event.preventDefault()
+      appendPeriodEditor(clickable, 'date')
+    })
+  }
+}
+
+/** 追加ボタンの近くに「配信期間の行」を1つ挿入する（time=時間別 / date=日付別）。 */
+function appendPeriodEditor(anchor: HTMLElement, kind: 'time' | 'date'): void {
+  // 挿入位置: ボタンを含む版行（MuiBox）の直後。無ければボタンの親の直後。
+  const row = anchor.closest<HTMLElement>('.css-1q0mywx, [class*="_row_"]') ?? anchor.parentElement
+  const host = row?.parentElement ?? anchor.parentElement
+  if (host === null || host === undefined) return
+
+  const editor = document.createElement('div')
+  editor.setAttribute('data-clone-period-row', kind)
+  editor.style.cssText =
+    'display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:8px 0 0;padding:10px 14px;' +
+    'background:#fff;border:1px solid #e5e5ea;border-radius:8px;font-size:13px;color:#333'
+
+  const inputType = kind === 'time' ? 'time' : 'date'
+  const mk = (): HTMLInputElement => {
+    const i = document.createElement('input')
+    i.type = inputType
+    i.style.cssText = 'padding:6px 8px;border:1px solid #d6dae1;border-radius:6px;font-size:13px'
+    return i
+  }
+  const from = mk()
+  const to = mk()
+  const tilde = document.createElement('span')
+  tilde.textContent = '〜'
+
+  const mode = document.createElement('select')
+  mode.style.cssText = 'padding:6px 8px;border:1px solid #d6dae1;border-radius:6px;font-size:13px;cursor:pointer'
+  for (const [v, label] of [['on', '配信する'], ['off', '配信しない']]) {
+    const opt = document.createElement('option')
+    opt.value = v!
+    opt.textContent = label!
+    mode.append(opt)
+  }
+
+  const del = document.createElement('button')
+  del.type = 'button'
+  del.textContent = '削除'
+  del.style.cssText =
+    'margin-left:auto;padding:6px 12px;border:1px solid #f0b4b4;border-radius:6px;background:#fff;' +
+    'color:#d64545;font-size:12px;cursor:pointer'
+  del.addEventListener('click', () => editor.remove())
+
+  const label = document.createElement('span')
+  label.textContent = kind === 'time' ? '時間帯' : '期間'
+  label.style.cssText = 'font-weight:600;color:#48526b'
+
+  editor.append(label, from, tilde, to, mode, del)
+
+  if (row !== null && row !== undefined) row.after(editor)
+  else host.append(editor)
+
+  from.focus()
+  toast(kind === 'time' ? '時間帯を追加しました（保存は今後対応）' : '配信期間を追加しました（保存は今後対応）')
 }
 
 async function save(abTestUid: string, tab: SplitTestTab, rules: SplitTestRule[]): Promise<void> {
