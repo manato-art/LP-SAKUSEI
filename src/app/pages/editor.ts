@@ -824,16 +824,7 @@ function buildVersionCardEl(version: Version, isCurrent: boolean): HTMLElement {
   badge.className = `sb-vc-badge ${isCurrent ? 'sb-vc-badge--editing' : 'sb-vc-badge--saved'}`
   badge.textContent = isCurrent ? '編集中' : '保存済み'
 
-  // ⋮ドットメニューもname行内に配置（absoluteだとバッジと重なるため）
-  const dotsArea = document.createElement('div')
-  dotsArea.className = '_articleButtons_1xibh_160 sb-vc-dots-area'
-  const dotsBtn = document.createElement('button')
-  dotsBtn.type = 'button'
-  dotsBtn.className = 'css-3tls8'
-  dotsBtn.innerHTML = '<svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>'
-  dotsArea.append(dotsBtn)
-
-  nameRow.append(nameInput, badge, dotsArea)
+  nameRow.append(nameInput, badge)
 
   // ── Row 2: 配信割合 + 保存状態 ──
   const ratioRow = document.createElement('div')
@@ -911,6 +902,18 @@ function buildVersionCardEl(version: Version, isCurrent: boolean): HTMLElement {
   newBadge.className = 'sb-vc-new-badge'
   newBadge.textContent = 'NEW'
   meta.append(newBadge)
+
+  // ── ⋮ ドットメニュー（meta行の右端） ──
+  const metaSpacer = document.createElement('div')
+  metaSpacer.style.flex = '1'
+  const dotsArea = document.createElement('div')
+  dotsArea.className = '_articleButtons_1xibh_160 sb-vc-dots-area'
+  const dotsBtn = document.createElement('button')
+  dotsBtn.type = 'button'
+  dotsBtn.className = 'css-3tls8'
+  dotsBtn.innerHTML = '<svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>'
+  dotsArea.append(dotsBtn)
+  meta.append(metaSpacer, dotsArea)
 
   // ── コンテンツラッパー（選択モードのチェックボックス挿入先） ──
   const content = document.createElement('div')
