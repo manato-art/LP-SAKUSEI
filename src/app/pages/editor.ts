@@ -1163,8 +1163,8 @@ function mountUrlBarInEditor(ctx: EditorContext): HTMLElement | null {
   // 既存チェック
   if (contentWrapper.querySelector('[data-url-bar]') !== null) return null
 
-  const testUrl = `https://sb-draft-preview.squadbeyond.com/articles/${ctx.currentUid}/draft`
-  const prodUrl = `https://squadbeyond.com/articles/${ctx.currentUid}`
+  const testUrl = `${location.origin}/#/preview/${ctx.currentUid}`
+  const prodUrl = ''
 
   const bar = mountUrlBar({ testUrl, prodUrl })
 
@@ -1330,8 +1330,8 @@ function loadVersion(ctx: EditorContext, uid: string): void {
     const urlBarEl = ctx.root.querySelector<HTMLElement>('[data-url-bar]')
     if (urlBarEl !== null) {
       updateUrlBar(urlBarEl, {
-        testUrl: `https://sb-draft-preview.squadbeyond.com/articles/${uid}/draft`,
-        prodUrl: `https://squadbeyond.com/articles/${uid}`,
+        testUrl: `${location.origin}/#/preview/${uid}`,
+        prodUrl: '',
       })
     }
     // 比較パネルが開いていればプレビューも更新

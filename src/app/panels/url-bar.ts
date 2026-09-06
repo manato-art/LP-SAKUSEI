@@ -76,9 +76,9 @@ export function mountUrlBar(config: UrlBarConfig): HTMLElement {
   })
 
   bar.append(
-    createUrlGroup('検証用', 'test', config.testUrl),
+    createUrlGroup('プレビュー', 'test', config.testUrl),
     createSep(),
-    createUrlGroup('本番用', 'prod', config.prodUrl),
+    createUrlGroup('配信', 'prod', config.prodUrl),
   )
 
   return bar
@@ -104,10 +104,18 @@ export function updateUrlBar(
   if (config.prodUrl !== undefined) {
     const group = bar.querySelector<HTMLElement>('[data-url-type="prod"]')
     if (group !== null) {
+      const isEmpty = config.prodUrl === ''
+      const displayText = isEmpty ? NO_DOMAIN_TEXT : config.prodUrl
       const field = group.querySelector<HTMLElement>('.sb-url-field')
       if (field !== null) {
-        field.textContent = config.prodUrl
-        field.title = config.prodUrl
+        field.textContent = displayText
+        field.title = displayText
+        field.style.color = isEmpty ? '#999' : ''
+      }
+      const btn = group.querySelector<HTMLElement>('.sb-url-copy-btn')
+      if (btn !== null) {
+        btn.style.opacity = isEmpty ? '0.4' : ''
+        btn.style.pointerEvents = isEmpty ? 'none' : ''
       }
       group.dataset['currentUrl'] = config.prodUrl
     }
@@ -116,10 +124,14 @@ export function updateUrlBar(
 
 /* ── internal ── */
 
+const NO_DOMAIN_TEXT = 'ドメインを設定すると使えるようになります'
+
 function createUrlGroup(label: string, type: 'test' | 'prod', url: string): HTMLElement {
   const grp = document.createElement('div')
   grp.className = 'sb-url-group'
   grp.setAttribute('data-url-type', type)
+  const isEmpty = url === ''
+  const displayText = isEmpty ? NO_DOMAIN_TEXT : url
   // 現在のURLをデータ属性に保持（updateUrlBar で更新される）
   grp.dataset['currentUrl'] = url
 
@@ -129,17 +141,26 @@ function createUrlGroup(label: string, type: 'test' | 'prod', url: string): HTML
 
   const field = document.createElement('div')
   field.className = 'sb-url-field'
-  field.textContent = url
-  field.title = url
+  field.textContent = displayText
+  field.title = displayText
+  if (isEmpty) {
+    field.style.color = '#999'
+    field.style.fontStyle = 'normal'
+  }
 
   const btn = document.createElement('button')
   btn.type = 'button'
   btn.className = 'sb-url-copy-btn'
   btn.title = 'コピー'
   btn.innerHTML = COPY_ICON
+  if (isEmpty) {
+    btn.style.opacity = '0.4'
+    btn.style.pointerEvents = 'none'
+  }
   btn.addEventListener('click', () => {
     // stale closure 防止: data-current-url から最新URLを読み取る
     const currentUrl = grp.dataset['currentUrl'] ?? url
+    if (currentUrl === '') return
     void navigator.clipboard.writeText(currentUrl).then(
       () => toast(`${label}URLをコピーしました`),
       () => toast('コピーに失敗しました', 'error'),
