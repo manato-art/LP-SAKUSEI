@@ -479,17 +479,10 @@ function mountSidebarToolbarPanel(ctx: EditorContext): void {
   }
   versionPanel.append(cardsWrapper)
 
-  // 「Version追加」ボタンをカードスクロール領域から取り出して最下部に固定
+  // 青い「バージョンを追加」ボタンは不要（「Versionを追加」カードに統合済み）→ 非表示
   const addBtn = cardsWrapper.querySelector<HTMLElement>(HOOK.addVersion)
   if (addBtn !== null) {
-    // 採取CSSの position:absolute を解除して flex 子要素として流す
-    addBtn.style.position = 'static'
-    addBtn.style.width = 'auto'
-    addBtn.style.zIndex = 'auto'
-    addBtn.style.flexShrink = '0'
-    addBtn.style.borderTop = '1px solid #e0e0e0'
-    // パネル最下部に移動 → funnelBar と同じ高さに並ぶ
-    versionPanel.append(addBtn)
+    addBtn.style.display = 'none'
   }
 }
 
