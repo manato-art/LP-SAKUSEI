@@ -1842,15 +1842,16 @@ function wireSideToolbar(ctx: EditorContext): void {
 
     // 指示92: 基板アイコンをモック準拠のSVGに完全差し替え
     // 基板の子要素（button, img, svg, dropdown trigger 等）を全て隠し、
-    // モック準拠SVGだけを表示する
+    // モック準拠SVGだけを表示する。
+    // _dropdown_ も含めて全て隠す（パネル用の _dropdown_ は resolvePanel() が
+    // style.cssText で上書き＋root へ移動するので display:none は自動解除される）。
     const mockupSvg = RAIL_ICON_SVGS[index]
     if (mockupSvg !== undefined) {
       for (const child of icon.children) {
         if (
           child instanceof HTMLElement &&
           !child.hasAttribute('data-rail-svg') &&
-          !child.classList.contains('sb-side-label') &&
-          !child.className.includes('_dropdown_')
+          !child.classList.contains('sb-side-label')
         ) {
           child.style.display = 'none'
         }
