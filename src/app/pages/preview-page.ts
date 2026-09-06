@@ -161,33 +161,44 @@ function mountPreviewWarningBanner(root: HTMLElement): void {
   const banner = document.createElement('div')
   banner.setAttribute('data-preview-warning', 'true')
   banner.style.cssText = [
-    'background:#fff3cd',
-    'border:1px solid #ffc107',
-    'border-radius:4px',
-    'padding:10px 16px',
-    'margin:12px 16px',
+    'position:sticky',
+    'top:0',
+    'z-index:99999',
+    'background:#D32F2F',
+    'padding:14px 20px',
+    'margin:0',
     'display:flex',
     'align-items:center',
-    'gap:8px',
-    'font-size:13px',
-    'font-weight:600',
-    'color:#856404',
+    'gap:10px',
+    'font-size:15px',
+    'font-weight:700',
+    'color:#fff',
     'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif',
+    'box-shadow:0 2px 8px rgba(0,0,0,.25)',
   ].join(';')
 
   // 警告アイコン（SVG）
   const icon = document.createElement('span')
-  icon.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`
+  icon.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`
   icon.style.cssText = 'flex-shrink:0;display:flex;align-items:center'
 
   const text = document.createElement('span')
   text.textContent = 'このLPは検証用です。入稿しないでください。'
 
   const note = document.createElement('span')
-  note.textContent = '※計測はオフになっています'
-  note.style.cssText = 'font-weight:400;font-size:11px;color:#a07a00;margin-left:auto;white-space:nowrap'
+  note.textContent = '※計測されません'
+  note.style.cssText = 'font-weight:500;font-size:13px;color:rgba(255,255,255,.85);margin-left:8px'
 
-  banner.append(icon, text, note)
+  // 閉じるボタン
+  const closeBtn = document.createElement('button')
+  closeBtn.setAttribute('aria-label', '閉じる')
+  closeBtn.style.cssText = 'margin-left:auto;background:none;border:none;color:rgba(255,255,255,.7);cursor:pointer;padding:4px;display:flex;align-items:center;flex-shrink:0'
+  closeBtn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`
+  closeBtn.addEventListener('mouseenter', () => { closeBtn.style.color = '#fff' })
+  closeBtn.addEventListener('mouseleave', () => { closeBtn.style.color = 'rgba(255,255,255,.7)' })
+  closeBtn.addEventListener('click', () => banner.remove())
+
+  banner.append(icon, text, note, closeBtn)
 
   // プレビュー iframe の直前に挿入
   const frame = root.querySelector('#previewIframe')
