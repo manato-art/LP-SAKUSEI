@@ -794,12 +794,17 @@ function mountHeaderExtras(
   const previewBtn = document.createElement('button')
   previewBtn.className = 'sb-header-btn-preview btn-preview'
   previewBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>プレビュー`
-  previewBtn.addEventListener('click', async () => {
-    await saveHtml(ctx)
-    const url =
-      `${location.origin}${location.pathname}` +
-      `#/ab_tests/${ctx.abTestUid}/articles/${ctx.currentUid}/previews`
-    window.open(url, '_blank', 'noopener')
+  previewBtn.addEventListener('click', () => {
+    // 指示142: 新規タブは必ず「クリックの同期処理内」で開く。
+    // await を挟むとユーザー操作扱いが切れてポップアップがブロックされ無反応になる。
+    // 先に空タブを開いておき、保存完了後にSSRプレビュー(/preview/:uid)へ遷移させる。
+    const win = window.open('about:blank', '_blank')
+    const url = `${location.origin}/preview/${ctx.currentUid}`
+    const go = (): void => {
+      if (win !== null && !win.closed) win.location.href = url
+      else window.open(url, '_blank') // フォールバック（ハンドルが取れなかった場合）
+    }
+    void saveHtml(ctx).then(go).catch(go)
   })
 
   // ── 指示93: 比較するボタン（公開するボタンを置換） ──
@@ -811,6 +816,14 @@ function mountHeaderExtras(
     toggleComparePanel(ctx.root, {
       getCurrentHtml: () => buildFullHtml(ctx),
       getVersionUid: () => ctx.currentUid,
+      // 指示138: このページの全 Version を渡す（現在 Version は編集中の最新HTMLを使う）
+      getVersions: () =>
+        ctx.versions.map((v) => ({
+          uid: v.uid,
+          name: v.name,
+          ratio: v.distribution_ratio,
+          html: v.uid === ctx.currentUid ? buildFullHtml(ctx) : v.html,
+        })),
     })
   })
 

@@ -344,15 +344,27 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
     if (r === null || r.length === 0) return
     const currentFmt = getFormats()
     const newText = textArea.value
+    // 指示140: 編集前の textarea のカーソル位置を控える（後で復元する）
+    const caret = textArea.selectionStart ?? newText.length
     isEditingText = true
     try {
       quill.deleteText(r.index, r.length)
       quill.insertText(r.index, newText, currentFmt)
-      quill.setSelection(r.index, newText.length)
+      // 指示140:
+      //  1) 以前は quill.setSelection で挿入テキスト全体を「選択状態」にしていたが、これは
+      //     エディタ本体（キャンバス）へフォーカスを奪い、テキスト全体が選択された状態になる。
+      //     すると次のバックスペースが textarea ではなくキャンバスの「全選択」に効いて、
+      //     テキストごと消える（＝2文字目のバックスペースで全消去になる不具合）。setSelection は外す。
+      //  2) deleteText/insertText 自体もエディタ本体へフォーカスを戻すため、直後に textarea へ
+      //     フォーカスとカーソル位置を戻し、1文字ずつ連続で消せるようにする。
       lastKnownRange = { index: r.index, length: newText.length }
     } finally {
       isEditingText = false
     }
+    // Quill操作で奪われたフォーカス/カーソルを textarea へ戻す（正本は textarea 側）
+    textArea.focus()
+    const pos = Math.min(caret, textArea.value.length)
+    textArea.setSelectionRange(pos, pos)
   })
   textGroup.append(textArea)
 

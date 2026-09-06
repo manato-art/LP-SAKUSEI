@@ -374,10 +374,21 @@ function hidePageListAndDetail(body: HTMLElement): void {
     // グループ名を消す
     const groupName = listArea.querySelector<HTMLElement>(FOLDERS_HOOK.groupName)
     if (groupName !== null) groupName.textContent = ''
+    // 指示141: 何も選択していない時に残る採取由来のモックを消す。
+    //   - 列ラベル行（配信ステータス/配信金額/PV/Click…）= `.efy50tl8`
+    //   - 合計KPI行（¥0/1,031/141… の採取フェイク値＋並び替え）= `.en4zj406`
+    // どちらも実データではないので、未選択時は帯ごと隠す（「まだ何も表示しない」）。
+    for (const mock of listArea.querySelectorAll<HTMLElement>('.efy50tl8, .en4zj406')) {
+      mock.style.display = 'none'
+    }
   }
   // 右詳細パネルを非表示にする
   const panel = body.querySelector<HTMLElement>(FOLDERS_HOOK.detailPanel)
   if (panel !== null) panel.style.display = 'none'
+  // 指示141: 詳細パネルの「見出し」（"サンプル施策466" 等）はパネル本体(.efy50tl16)の
+  // 外側にあるため上の display:none では消えない。見出し行 `.efy50tl4` も隠す。
+  const panelHeader = body.querySelector<HTMLElement>('.efy50tl4')
+  if (panelHeader !== null) panelHeader.style.display = 'none'
 }
 
 // ── 中央: beyondページ一覧（採取した実KPI一覧をモックの現実に束ねる）──────

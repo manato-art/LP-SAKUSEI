@@ -324,11 +324,23 @@ function injectStyles(): void {
 
 /* ──────────────────── 状態 ──────────────────── */
 
+/** 「他のVersion」タブ用の1バージョン分の情報 */
+export interface CompareVersionInfo {
+  uid: string
+  name: string
+  /** 配信割合（%） */
+  ratio: number
+  /** プレビュー用の完成HTML */
+  html: string
+}
+
 export interface ComparePanelDeps {
   /** 現在 Version の HTML 本文を返す */
   getCurrentHtml: () => string
   /** 現在 Version の UID */
   getVersionUid: () => string
+  /** 指示138: このページに入っている全 Version（サムネ＋配信割合＋プレビュー用に使う） */
+  getVersions: () => readonly CompareVersionInfo[]
 }
 
 let panelEl: HTMLElement | null = null
@@ -609,6 +621,13 @@ function renderTabContent(
 ): void {
   container.innerHTML = ''
 
+  // 指示138: 「他のVersion」タブ（index 2）は、このページの全 Version を
+  // 左にサムネ＋配信割合で常時表示し、選ぶとスマホ画面でプレビューできるようにする。
+  if (tabIndex === 2) {
+    renderOtherVersions(container, deps)
+    return
+  }
+
   if (tabIndex !== 0) {
     const tabDef = TABS[tabIndex]
     const placeholder = document.createElement('div')
@@ -702,6 +721,156 @@ function renderTabContent(
     phoneArea.innerHTML = ''
     phoneArea.append(buildPhoneMockup(deps.getCurrentHtml(), dev, phoneArea))
   })
+}
+
+/* ──────────────────── 他のVersion タブ（指示138） ──────────────────── */
+
+/**
+ * 指示138: このページに入っている全 Version を左にサムネ＋配信割合で常時表示し、
+ * 選ぶと右のスマホ画面でその Version をプレビューできるようにする。
+ */
+function renderOtherVersions(container: HTMLElement, deps: ComparePanelDeps): void {
+  injectOtherVersionsStyles()
+
+  const versions = deps.getVersions()
+  if (versions.length === 0) {
+    const placeholder = document.createElement('div')
+    placeholder.className = 'sb-cmp-placeholder'
+    placeholder.innerHTML = '<div>このページには Version がありません</div>'
+    container.append(placeholder)
+    return
+  }
+
+  const currentUid = deps.getVersionUid()
+  // 初期選択は「現在 Version」。無ければ先頭。
+  let selectedUid =
+    versions.some((v) => v.uid === currentUid) ? currentUid : (versions[0] as CompareVersionInfo).uid
+  let device = DEVICES[DEFAULT_DEVICE_INDEX] ?? (DEVICES[0] as DeviceDef)
+
+  const layout = document.createElement('div')
+  layout.className = 'sb-cmp-ov-layout'
+
+  // ── 左: Version 一覧（サムネ＋配信割合・常時表示） ──
+  const listCol = document.createElement('div')
+  listCol.className = 'sb-cmp-ov-list'
+
+  // ── 右: 選択 Version のプレビュー ──
+  const previewCol = document.createElement('div')
+  previewCol.className = 'sb-cmp-ov-preview'
+
+  const deviceRow = document.createElement('div')
+  deviceRow.className = 'sb-cmp-device'
+  const deviceSelect = document.createElement('select')
+  deviceSelect.className = 'sb-cmp-device-select'
+  for (let di = 0; di < DEVICES.length; di += 1) {
+    const d = DEVICES[di]
+    if (d === undefined) continue
+    const opt = document.createElement('option')
+    opt.value = `${d.width}x${d.height}`
+    opt.textContent = d.label
+    if (di === DEFAULT_DEVICE_INDEX) opt.selected = true
+    deviceSelect.append(opt)
+  }
+  deviceRow.append(deviceSelect)
+
+  const phoneArea = document.createElement('div')
+  phoneArea.className = 'sb-cmp-phone-area'
+
+  const rebuildPhone = (): void => {
+    const v = versions.find((x) => x.uid === selectedUid)
+    if (v === undefined) return
+    phoneArea.innerHTML = ''
+    phoneArea.append(buildPhoneMockup(v.html, device, phoneArea))
+  }
+
+  deviceSelect.addEventListener('change', () => {
+    const [w, h] = deviceSelect.value.split('x').map(Number)
+    device = DEVICES.find((d) => d.width === w && d.height === h) ?? (DEVICES[0] as DeviceDef)
+    rebuildPhone()
+  })
+
+  previewCol.append(deviceRow, phoneArea)
+
+  // Version カードを並べる
+  const cards = new Map<string, HTMLElement>()
+  versions.forEach((v, idx) => {
+    const card = document.createElement('button')
+    card.type = 'button'
+    card.className = 'sb-cmp-ov-card'
+    if (v.uid === selectedUid) card.classList.add('active')
+
+    // サムネ（LP先頭を縮小表示した iframe）
+    const thumb = document.createElement('div')
+    thumb.className = 'sb-cmp-ov-thumb'
+    const tf = document.createElement('iframe')
+    tf.className = 'sb-cmp-ov-thumb-frame'
+    tf.setAttribute('scrolling', 'no')
+    tf.setAttribute('tabindex', '-1')
+    tf.setAttribute('aria-hidden', 'true')
+    tf.srcdoc = wrapHtmlForPreview(v.html)
+    thumb.append(tf)
+
+    // ラベル（Version名＋配信割合）
+    const meta = document.createElement('div')
+    meta.className = 'sb-cmp-ov-meta'
+    const name = document.createElement('div')
+    name.className = 'sb-cmp-ov-name'
+    name.textContent = v.name !== '' ? v.name : `Version ${idx + 1}`
+    const ratio = document.createElement('div')
+    ratio.className = 'sb-cmp-ov-ratio'
+    ratio.textContent = `配信割合 ${v.ratio}%`
+    meta.append(name, ratio)
+
+    card.append(thumb, meta)
+    card.addEventListener('click', () => {
+      if (selectedUid === v.uid) return
+      selectedUid = v.uid
+      for (const [, c] of cards) c.classList.remove('active')
+      card.classList.add('active')
+      rebuildPhone()
+    })
+    cards.set(v.uid, card)
+    listCol.append(card)
+  })
+
+  layout.append(listCol, previewCol)
+  container.append(layout)
+
+  // 初期プレビュー
+  rebuildPhone()
+}
+
+function injectOtherVersionsStyles(): void {
+  if (document.getElementById('sb-cmp-ov-css') !== null) return
+  const style = document.createElement('style')
+  style.id = 'sb-cmp-ov-css'
+  style.textContent = `
+    .sb-cmp-ov-layout { display:flex; height:100%; min-height:0; }
+    .sb-cmp-ov-list {
+      width:150px; flex:none; overflow-y:auto; border-right:1px solid #e6e8ec;
+      padding:10px; display:flex; flex-direction:column; gap:10px; background:#fafbfc;
+    }
+    .sb-cmp-ov-card {
+      display:flex; flex-direction:column; gap:6px; padding:6px; cursor:pointer;
+      border:2px solid transparent; border-radius:8px; background:#fff; text-align:left;
+      box-shadow:0 1px 2px rgba(0,0,0,.06); font-family:inherit;
+    }
+    .sb-cmp-ov-card:hover { border-color:#bcd8ff; }
+    .sb-cmp-ov-card.active { border-color:#0091ff; background:#f2f8ff; }
+    .sb-cmp-ov-thumb {
+      position:relative; width:100%; height:150px; overflow:hidden;
+      border:1px solid #e6e8ec; border-radius:5px; background:#fff;
+    }
+    .sb-cmp-ov-thumb-frame {
+      position:absolute; top:0; left:0; width:375px; height:812px; border:0;
+      transform:scale(0.336); transform-origin:top left; pointer-events:none;
+    }
+    .sb-cmp-ov-meta { display:flex; flex-direction:column; gap:2px; }
+    .sb-cmp-ov-name { font-size:12px; font-weight:700; color:#1a2233; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .sb-cmp-ov-ratio { font-size:11px; color:#0091ff; font-weight:600; }
+    .sb-cmp-ov-preview { flex:1; min-width:0; display:flex; flex-direction:column; }
+  `
+  document.head.append(style)
 }
 
 /* ──────── ResizeObserver クリーンアップ ──────── */
