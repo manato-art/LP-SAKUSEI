@@ -531,11 +531,14 @@ function injectCardSeamStyles(): void {
     [class*="_articleHeaderPhoto_"] {
       border-radius: 0 !important;
     }
-    /* ヘッダー画像が入った時の青い点線枠を消す */
+    /* ヘッダー画像が入った時の青い点線枠(内側のsample_token)を消す */
     [class*="_articleHeaderPhoto_"]:has(img[data-clone-header]) {
       border: none !important;
       padding: 0 !important;
       outline: none !important;
+    }
+    [class*="_articleHeaderPhoto_"]:has(img[data-clone-header]) [class*="sample_token"] {
+      display: none !important;
     }
     /* Versionパネルの角丸を外す + 右に区切り線 + 幅260px（モック準拠） */
     [class*="_abTestArticlesWrapper_"] {
@@ -1649,7 +1652,10 @@ function restoreHeaderImage(root: HTMLElement, src: string): void {
     headerBox.prepend(img)
   }
   img.src = src
-  // 案内文を隠す
+  // 青い点線枠の内側要素(sample_token)と案内文を全て隠す
+  for (const el of headerBox.querySelectorAll<HTMLElement>('[class*="sample_token"]')) {
+    el.style.display = 'none'
+  }
   const spans = headerBox.querySelectorAll<HTMLElement>('span')
   for (const s of spans) {
     if (s.textContent?.trim() === 'ヘッダー画像を追加する') s.style.display = 'none'

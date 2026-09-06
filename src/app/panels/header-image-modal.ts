@@ -144,8 +144,10 @@ function setHeaderImage(headerBox: HTMLElement, dataUrl: string): void {
   headerBox.style.padding = '0'
   headerBox.style.margin = '0'
   headerBox.style.outline = 'none'
-  // 「ヘッダー画像を追加する」の案内文は隠す（画像が入ったので不要）。
-  // クラスは匿名化され得るので**文言で**引く（`[class*=…]` は当たらない）。
+  // 青い点線枠の内側要素(sample_token)と案内文を全て隠す
+  for (const el of headerBox.querySelectorAll<HTMLElement>('[class*="sample_token"]')) {
+    el.style.display = 'none'
+  }
   const prompt = findPrompt(headerBox)
   if (prompt !== null) prompt.style.display = 'none'
   // ミニマップの位置を再計算させる（headerBoxの高さ変更を通知）
