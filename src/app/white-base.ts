@@ -28,34 +28,13 @@ export function stripDarkThemeClasses(root: HTMLElement): void {
 
 /**
  * applyLightTheme() でクラス名入替後に呼ぶ。
- * Emotion/MUI の css-* クラスに焼きついたダーク背景を
- * インラインスタイルで白基調に上書きする。
+ * Emotion/MUI の css-* クラスに焼きついたダーク背景を CSS override で白基調にする。
+ * (旧実装は DOM 全走査 + getComputedStyle で重かった → CSS のみに切替)
  */
-export function overrideDarkBackgrounds(root: HTMLElement): void {
-  for (const el of root.querySelectorAll<HTMLElement>('*')) {
-    const style = globalThis.getComputedStyle(el)
-    const bg = style.backgroundColor
-    const match = /rgb\((\d+),\s*(\d+),\s*(\d+)/.exec(bg)
-    if (match === null) continue
-    const r = Number(match[1])
-    const g = Number(match[2])
-    const b = Number(match[3])
-    // 暗い背景（RGB平均 < 80）のみ対象。ただしボタン・リンク・SVG・小さい要素は除く
-    if ((r + g + b) / 3 >= 80) continue
-    const tag = el.tagName
-    if (tag === 'BUTTON' || tag === 'A' || tag === 'SVG' || tag === 'path') continue
-    const rect = el.getBoundingClientRect()
-    if (rect.width < 20 || rect.height < 20) continue
-    el.style.backgroundColor = '#fff'
-    el.style.color = '#333'
-    // テーブルの枠線も白基調に
-    if (style.borderBottomColor !== '' && style.borderBottomColor !== 'rgb(255, 255, 255)') {
-      const bMatch = /rgb\((\d+),\s*(\d+),\s*(\d+)/.exec(style.borderBottomColor)
-      if (bMatch !== null && (Number(bMatch[1]) + Number(bMatch[2]) + Number(bMatch[3])) / 3 < 120) {
-        el.style.borderBottomColor = '#e0e0e0'
-      }
-    }
-  }
+export function overrideDarkBackgrounds(_root: HTMLElement): void {
+  // CSS override は ensureWhiteBase() の OVERRIDES に統合済み。
+  // ここでは ensureWhiteBase() を呼ぶだけ（冪等・二重注入なし）。
+  ensureWhiteBase()
 }
 
 const OVERRIDES = /* css */ `
@@ -124,6 +103,122 @@ const OVERRIDES = /* css */ `
 }
 .ReactModal__Content._modal_11n4w_1 ._settings_5e523_1 {
   color: #333 !important;
+}
+
+/* ---- ページ共通: Emotion/MUI ダーク背景 (レポート/ヒートマップ/切り替え/中間ページ) ---- */
+/* applyLightTheme() が data-clone-theme="light" を付けた後に効く */
+
+/* MuiPaper コンテナ (黒背景) */
+[data-clone-theme="light"] .css-hqu13o,
+[data-clone-theme="light"] .css-86xkah {
+  background-color: #fff !important;
+  color: #333 !important;
+}
+
+/* MuiTableCell ヘッダ (黒背景) */
+[data-clone-theme="light"] .css-viecwa,
+[data-clone-theme="light"] .css-ojov2j,
+[data-clone-theme="light"] .css-19s6q8y {
+  background-color: #f5f5f5 !important;
+  color: #333 !important;
+  border-bottom-color: #e0e0e0 !important;
+}
+[data-clone-theme="light"] .css-19s6q8y:first-of-type,
+[data-clone-theme="light"] .css-19s6q8y:last-of-type {
+  background-color: #f5f5f5 !important;
+}
+
+/* MuiTableCell ボディ (黒 sticky 列) */
+[data-clone-theme="light"] .css-69p2cm {
+  color: #333 !important;
+  border-bottom-color: #e0e0e0 !important;
+}
+[data-clone-theme="light"] .css-69p2cm:first-of-type,
+[data-clone-theme="light"] .css-69p2cm:last-of-type {
+  background-color: #fff !important;
+}
+
+/* 切り替えページ: タブバー (黒背景) */
+[data-clone-theme="light"] .css-13u3ynm,
+[data-clone-theme="light"] .css-1ygvyop {
+  background-color: #f5f5f5 !important;
+  color: #333 !important;
+}
+
+/* コンテンツパネル (暗灰 rgb(69,70,71)) */
+[data-clone-theme="light"] .css-137m1kt,
+[data-clone-theme="light"] .css-160345m,
+[data-clone-theme="light"] .css-1q0mywx,
+[data-clone-theme="light"] .css-1qivsvc,
+[data-clone-theme="light"] .css-5d8qdd,
+[data-clone-theme="light"] .css-gofv8i,
+[data-clone-theme="light"] .css-jrygb4 {
+  background-color: #fff !important;
+  color: #333 !important;
+}
+
+/* 設定パネル (暗灰 rgb(55,56,56)) */
+[data-clone-theme="light"] .css-14jh6n,
+[data-clone-theme="light"] .css-gsltfn {
+  background-color: #f5f5f5 !important;
+  color: #333 !important;
+}
+
+/* MUI構造クラス (安全網: 未知のcss-*クラスもカバー) */
+[data-clone-theme="light"] .MuiPaper-root {
+  background-color: #fff !important;
+  color: #333 !important;
+}
+[data-clone-theme="light"] .MuiTableCell-head {
+  background-color: #f5f5f5 !important;
+  color: #333 !important;
+  border-bottom-color: #e0e0e0 !important;
+}
+[data-clone-theme="light"] .MuiTableCell-body {
+  color: #333 !important;
+  border-bottom-color: #e0e0e0 !important;
+}
+[data-clone-theme="light"] .MuiTableContainer-root {
+  background-color: #fff !important;
+}
+[data-clone-theme="light"] .MuiTab-root {
+  color: #666 !important;
+}
+[data-clone-theme="light"] .MuiTab-root.Mui-selected {
+  color: #0091ff !important;
+}
+[data-clone-theme="light"] .MuiOutlinedInput-root {
+  background-color: #f5f5f5 !important;
+}
+[data-clone-theme="light"] .MuiOutlinedInput-root input,
+[data-clone-theme="light"] .MuiOutlinedInput-root select {
+  color: #333 !important;
+}
+[data-clone-theme="light"] .MuiOutlinedInput-notchedOutline {
+  border-color: #d0d0d0 !important;
+}
+[data-clone-theme="light"] .MuiInputLabel-root {
+  color: #666 !important;
+}
+[data-clone-theme="light"] .MuiTypography-root {
+  color: #333 !important;
+}
+[data-clone-theme="light"] .MuiLink-root {
+  color: #0091ff !important;
+}
+[data-clone-theme="light"] .MuiAlert-root {
+  color: #333 !important;
+}
+[data-clone-theme="light"] .MuiButton-outlined {
+  color: #555 !important;
+  border-color: #ccc !important;
+}
+[data-clone-theme="light"] .MuiButton-contained {
+  background-color: #0091ff !important;
+  color: #fff !important;
+}
+[data-clone-theme="light"] .MuiSelect-icon {
+  color: #666 !important;
 }
 
 /* ---- Widget ライブラリ (MUI Dialog) ---- */
