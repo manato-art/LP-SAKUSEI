@@ -351,11 +351,32 @@ function applySplitTestWhiteTheme(root: HTMLElement): void {
     banner.style.setProperty('border', '1px solid #e5e5ea', 'important')
     banner.style.setProperty('border-radius', '10px', 'important')
   }
+  // 指示130: デバイスアイコンSVG の fill="#fff"（白）→ 黒に変更
+  for (const banner of root.querySelectorAll<HTMLElement>('.css-gofv8i')) {
+    for (const g of banner.querySelectorAll<SVGElement>('g[fill="#fff"], g[fill="#FFF"], g[fill="white"]')) {
+      g.setAttribute('fill', '#333')
+    }
+    // path 直指定の fill="#fff" も対応
+    for (const p of banner.querySelectorAll<SVGElement>('path[fill="#fff"], path[fill="#FFF"], path[fill="white"]')) {
+      p.setAttribute('fill', '#333')
+    }
+  }
   // アクティブタブ（暗灰 → 白+オレンジ下線）
   for (const tab of root.querySelectorAll<HTMLElement>('.css-160345m')) {
     tab.style.setProperty('background-color', '#fff', 'important')
     tab.style.setProperty('color', '#333', 'important')
     tab.style.setProperty('border-bottom', '2px solid #f0960a', 'important')
+    // 指示131: アクティブタブ内SVGアイコンの fill="#fff" → 黒に変更
+    for (const g of tab.querySelectorAll<SVGElement>('g[fill="#fff"], g[fill="#FFF"], g[fill="white"]')) {
+      g.setAttribute('fill', '#333')
+    }
+    for (const p of tab.querySelectorAll<SVGElement>('path[fill="#fff"], path[fill="#FFF"], path[fill="white"]')) {
+      p.setAttribute('fill', '#333')
+    }
+  }
+  // 指示131: 非アクティブタブのテキスト色を視認しやすく
+  for (const tab of root.querySelectorAll<HTMLElement>('.css-14jx66')) {
+    tab.style.setProperty('color', '#666', 'important')
   }
   // バナー内の白文字 → 黒文字
   for (const text of root.querySelectorAll<HTMLElement>('.css-9ofnmi')) {
@@ -370,5 +391,21 @@ function applySplitTestWhiteTheme(root: HTMLElement): void {
         child.style.setProperty('color', '#333', 'important')
       }
     }
+  }
+  // 指示132: ツールチップ矢印（_arrow_x4j8w_25）を非表示にする
+  for (const arrow of root.querySelectorAll<HTMLElement>('[class*="_arrow_x4j8w_25"]')) {
+    arrow.style.setProperty('display', 'none', 'important')
+  }
+  // 指示132: ツールチップ本体の漏れ表示を防止
+  for (const body of root.querySelectorAll<HTMLElement>('[class*="_bodyWrapper_x4j8w_8"]')) {
+    body.style.setProperty('display', 'none', 'important')
+  }
+  // 「Version出し分け」見出しの白文字 → 黒
+  for (const heading of root.querySelectorAll<HTMLElement>('.css-5u8lc9')) {
+    heading.style.setProperty('color', '#333', 'important')
+  }
+  // タブ内テキスト（.css-ip5sxk）の色を確実に黒に
+  for (const label of root.querySelectorAll<HTMLElement>('.css-ip5sxk')) {
+    label.style.setProperty('color', '#333', 'important')
   }
 }
