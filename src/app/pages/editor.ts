@@ -13,8 +13,8 @@ import substrate from '../fragments/ab_tests__UID__articles__editor-target.html?
 import { api, type Version } from '../api.ts'
 import { isStale } from '../main.ts'
 import { T, el, toast } from '../ui.ts'
-import { mountVersionSettings } from '../panels/version-settings.ts'
-import { mountTagSettings } from '../panels/tag-settings.ts'
+import { mountVersionSettings, openVersionSettings } from '../panels/version-settings.ts'
+import { mountTagSettings, openTagSettings } from '../panels/tag-settings.ts'
 import { mountLinkReplace } from '../panels/link-replace.ts'
 import { mountHistory, recordArticleHistory } from '../panels/history.ts'
 import { mountEditorToolbar } from '../panels/editor-toolbar.ts'
@@ -77,8 +77,6 @@ const PREVIEW_TOOL_INDEX = 0
 /** 右レールの並び: 6=元に戻す / 7=やり直す */
 const UNDO_TOOL_INDEX = 6
 const REDO_TOOL_INDEX = 7
-
-const WIRED_TOOLS: readonly number[] = [0, 1, 2, 3, 4, 5]
 
 /** 右レール9ツールの表示名（指示77: ユーザーが指定した名称） */
 const SIDE_TOOLS: readonly string[] = [
@@ -1093,6 +1091,14 @@ function injectVersionCardCss(): void {
     }
     /* ── Versionパネル全体 ── */
     [class*="_abTestArticlesWrapper_"] { background:#fff !important; }
+    /* ── ボタン削除後の空白を消す: 採取CSSの height:calc(100%-60px) → 100% ── */
+    .sample_token_65304e81 {
+      height:100% !important;
+    }
+    [class*="_abTestArticlesLists_"] {
+      height:100% !important;
+      overflow:visible !important;
+    }
   `
   document.head.append(s)
 }
@@ -1747,10 +1753,6 @@ function wireSideToolbar(ctx: EditorContext): void {
   // （採取したどの状態も1枚だけ開いた姿で採れている）。
   // 以前はマウント時点で全部開いており、画面上で重なっていた。
   const panels = createPanelGroup()
-  const openers: Readonly<Record<number, () => HTMLElement | null>> = {
-    1: () => mountHistory(ctx.root, ctx.articleUid),
-    3: () => mountLinkReplace(ctx.root, ctx.articleUid, () => ctx.currentUid),
-  }
   // リンクパネルの「計測ツールの変更」は、実物と同じ beyondページの編集画面（基本情報タブ）へ。
   mountEditorToolbar(ctx.root, ctx.quill, {
     trackingSettingsHref: `#/folders/${ctx.folderUid}/ab_tests/${ctx.abTestUid}/edit`,
@@ -1833,10 +1835,8 @@ function wireSideToolbar(ctx: EditorContext): void {
       icon.append(label)
     }
 
+    // ── 各アイコンのクリックハンドラ（直接関数呼び出し方式） ──
     if (index === PREVIEW_TOOL_INDEX) {
-      // プレビューは右レールの1番目。aria-label で引くと別の要素に当たっていて、
-      // レールのアイコンを押しても何も起きなかった。位置で引く。
-      // 実物と同じく**新しいタブ**で `/ab_tests/:uid/articles/:stepUid/previews` を開く。
       icon.addEventListener('click', async () => {
         await saveHtml(ctx)
         const url =
@@ -1846,20 +1846,54 @@ function wireSideToolbar(ctx: EditorContext): void {
       })
       continue
     }
-
-      const open = openers[index]
-    if (open !== undefined) {
-      // 押すたびに開閉。開くときは他のパネルを閉じる（実物は同時に1枚だけ）。
+    // 履歴パネル
+    if (index === 1) {
       icon.addEventListener('click', () => {
-        const panel = open()
+        const panel = mountHistory(ctx.root, ctx.articleUid)
         if (panel === null) return
-        panels.register(SIDE_TOOLS[index] ?? String(index), panel)
-        panels.toggle(SIDE_TOOLS[index] ?? String(index))
+        panels.register('履歴', panel)
+        // mountHistoryが内部でtoggleしているので、panelsのopenNameだけ同期
+        const isOpen = panel.classList.contains('_open_x4j8w_84')
+        if (isOpen) panels.toggle('履歴')       // openName→'履歴'
+        else if (panels !== undefined) panels.closeAll()
       })
       continue
     }
-    // 元に戻す / やり直す は Quill の履歴で実際に動かす（data-test がアイコンの
-    // 内側にあり外側クリックを拾えないことがあるため、レールアイコンに直接配線する）。
+    // ライブラリ（Widget管理はmountWidgetLibraryで配線済み → 中継クリック）
+    if (index === 2) {
+      icon.addEventListener('click', () => {
+        const target = icon.querySelector<HTMLElement>('button, [role=”button”], [data-test], [class*=”_trigger_”]')
+        if (target !== null) target.click()
+      })
+      continue
+    }
+    // リンク置換パネル
+    if (index === 3) {
+      icon.addEventListener('click', () => {
+        const panel = mountLinkReplace(ctx.root, ctx.articleUid, () => ctx.currentUid)
+        if (panel === null) return
+        panels.register('リンク置換', panel)
+        const isOpen = panel.classList.contains('_open_x4j8w_84')
+        if (isOpen) panels.toggle('リンク置換')
+        else panels.closeAll()
+      })
+      continue
+    }
+    // LP設定（モーダル直接呼び出し）
+    if (index === 4) {
+      icon.addEventListener('click', () => {
+        void openVersionSettings(ctx.articleUid)
+      })
+      continue
+    }
+    // タグ設定（モーダル直接呼び出し）
+    if (index === 5) {
+      icon.addEventListener('click', () => {
+        void openTagSettings(ctx.articleUid)
+      })
+      continue
+    }
+    // 元に戻す / やり直す
     if (index === UNDO_TOOL_INDEX) {
       icon.addEventListener('click', () => ctx.quill.history.undo())
       continue
@@ -1868,19 +1902,9 @@ function wireSideToolbar(ctx: EditorContext): void {
       icon.addEventListener('click', () => ctx.quill.history.redo())
       continue
     }
-    // 外部サーバー画像アップロードは、実物のモーダルが採取できていないため
-    // 見た目は真似ず、標準のファイル選択でカーソル位置へ画像を挿入する（§11 の“正直な代替”）。
+    // 外部サーバー画像
     if (index === EXTERNAL_IMAGE_TOOL_INDEX) {
       mountExternalImage(icon, ctx.quill)
-      continue
-    }
-    if (WIRED_TOOLS.includes(index)) {
-      // 指示99: 基板の子要素はdisplay:noneで隠しているが、mount関数がそこに
-      // click handlerを配線済み。親アイコンのクリックを隠れた子に中継する。
-      icon.addEventListener('click', () => {
-        const target = icon.querySelector<HTMLElement>('button, [role="button"], [class*="_trigger_"]')
-        if (target !== null) target.click()
-      })
       continue
     }
     // それでも残るツールがあれば正直にトースト

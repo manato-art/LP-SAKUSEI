@@ -101,7 +101,7 @@ function extractHeaderImage(html: string): { headerHtml: string; body: string } 
   if (m !== null) {
     const src = m[1] ?? ''
     return {
-      headerHtml: `<img src="${src}" style="display:block;width:100%;object-fit:cover" alt="ヘッダー画像">`,
+      headerHtml: `<img src="${src}" style="display:block;width:100%;object-fit:cover;position:sticky;top:0;z-index:10;max-height:200px" alt="ヘッダー画像">`,
       body: html.slice(m[0].length),
     }
   }

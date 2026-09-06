@@ -19,6 +19,30 @@ import {
 } from './toolbar/text-format.ts'
 import { pickAndInsertMedia } from './media-insert.ts'
 
+/** rgb(r,g,b) やカラーネームを #hex に正規化する（input[type=color]用） */
+function normalizeColor(c: string): string {
+  // すでに #hex ならそのまま
+  if (/^#[0-9a-f]{6}$/i.test(c)) return c
+  if (/^#[0-9a-f]{3}$/i.test(c)) {
+    return `#${c[1]}${c[1]}${c[2]}${c[2]}${c[3]}${c[3]}`
+  }
+  // rgb(r,g,b)
+  const m = c.match(/rgb\(\s*(\d+),\s*(\d+),\s*(\d+)\s*\)/)
+  if (m !== null) {
+    const r = parseInt(m[1] ?? '0', 10)
+    const g = parseInt(m[2] ?? '0', 10)
+    const b = parseInt(m[3] ?? '0', 10)
+    return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`
+  }
+  // フォールバック（カラーネームなど）
+  const ctx = document.createElement('canvas').getContext('2d')
+  if (ctx !== null) {
+    ctx.fillStyle = c
+    return ctx.fillStyle // ブラウザが #hex に変換する
+  }
+  return c
+}
+
 /* ── CSS ── */
 
 function injectStyles(): void {
@@ -312,7 +336,17 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
   const textGroup = group('テキスト')
   const textArea = document.createElement('textarea')
   textArea.className = 'sb-pr-textarea'
-  textArea.readOnly = true
+  // 指示107: 直接編集可能にする
+  textArea.addEventListener('input', () => {
+    const r = getRange()
+    if (r === null || r.length === 0) return
+    // 選択範囲のフォーマットを保持したまま、テキスト内容を差し替える
+    const currentFmt = getFormats()
+    quill.deleteText(r.index, r.length)
+    quill.insertText(r.index, textArea.value, currentFmt)
+    // 新しいテキスト範囲を再選択
+    quill.setSelection(r.index, textArea.value.length)
+  })
   textGroup.append(textArea)
 
   // ── フォント ──
@@ -711,15 +745,19 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
     setToggle(boldToggle, fmt['bold'] === true)
     setToggle(italicToggle, fmt['italic'] === true)
 
-    // 文字色
+    // 文字色（swatch + hex + picker全て同期）
     const tc = typeof fmt['color'] === 'string' ? fmt['color'] : '#000000'
-    tcSwatch.style.background = tc
-    tcHex.value = tc.toUpperCase()
+    const tcNorm = normalizeColor(tc)
+    tcSwatch.style.background = tcNorm
+    tcHex.value = tcNorm.toUpperCase()
+    tcPicker.value = tcNorm
 
-    // 背景色
+    // 背景色（swatch + hex + picker全て同期）
     const bg = typeof fmt['background'] === 'string' ? fmt['background'] : '#FFFFFF'
-    bgSwatch.style.background = bg
-    bgHex.value = bg.toUpperCase()
+    const bgNorm = normalizeColor(bg)
+    bgSwatch.style.background = bgNorm
+    bgHex.value = bgNorm.toUpperCase()
+    bgPicker.value = bgNorm
 
     // 配置
     const align = fmt['align']

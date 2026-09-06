@@ -157,6 +157,11 @@ export function mountVersionSettings(
   })
 }
 
+/** アイコンクリックから直接呼べるエントリポイント */
+export async function openVersionSettings(articleUid: string): Promise<void> {
+  return openPanel(articleUid)
+}
+
 async function openPanel(articleUid: string): Promise<void> {
   if (activeModal !== null) return
   let sheet: MasterStyleSheet

@@ -795,7 +795,7 @@ function wrapHtmlForPreview(bodyHtml: string): string {
   let body = bodyHtml
   const m = bodyHtml.match(/^<!--header-image:(.+?)-->/)
   if (m !== null) {
-    headerHtml = `<img src="${m[1] ?? ''}" style="display:block;width:100%;object-fit:cover" alt="ヘッダー画像">`
+    headerHtml = `<img src="${m[1] ?? ''}" style="display:block;width:100%;object-fit:cover;position:sticky;top:0;z-index:10;max-height:120px" alt="ヘッダー画像">`
     body = bodyHtml.slice(m[0].length)
   }
   return `<!doctype html>

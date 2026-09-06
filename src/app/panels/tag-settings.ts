@@ -171,7 +171,7 @@ export function mountTagSettings(root: HTMLElement, articleUid: string): void {
 /** 二重に開かないための現在のモーダル */
 let openPortal: HTMLElement | null = null
 
-async function openTagSettings(articleUid: string): Promise<void> {
+export async function openTagSettings(articleUid: string): Promise<void> {
   if (openPortal !== null) return
 
   let setting: HtmlSettingResponse
