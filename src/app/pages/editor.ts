@@ -1325,7 +1325,7 @@ function renderVersionList(ctx: EditorContext): void {
     plus.textContent = '+'
     plus.style.cssText = 'font-size:16px;font-weight:700;color:#999'
     const label = document.createElement('span')
-    label.textContent = 'さらに読み込む'
+    label.textContent = 'Versionを追加'
     label.style.cssText = 'font-size:13px;color:#666'
     const badge = document.createElement('span')
     badge.textContent = 'NEW'
