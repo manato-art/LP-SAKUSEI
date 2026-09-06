@@ -6,6 +6,7 @@
  * CSSは書き足さない（採取済みの `capture/clean/<slug>/<state>/cssom.css` を読み込むだけ）。
  */
 import { T, el } from '../ui.ts'
+import { overrideDarkBackgrounds } from '../white-base.ts'
 import { extractCapturedAbTestUid, stripShellFromFragment, toHashHref } from './report-substrate.ts'
 import { buildThemeSwap, extractThemeTokens, swapClassName, type ThemeSwap } from './report-theme.ts'
 
@@ -114,13 +115,17 @@ function readThemeSwap(): ThemeSwap {
  */
 export function applyLightTheme(root: HTMLElement): void {
   const swap = readThemeSwap()
-  if (swap.toLight.size === 0) return
-  for (const node of root.querySelectorAll('[class]')) {
-    const current = node.getAttribute('class') ?? ''
-    const next = swapClassName(current, swap.toLight)
-    if (next !== current) node.setAttribute('class', next)
+  // CSS Modules の _darkTheme_ → _lightTheme_ クラス入替
+  if (swap.toLight.size > 0) {
+    for (const node of root.querySelectorAll('[class]')) {
+      const current = node.getAttribute('class') ?? ''
+      const next = swapClassName(current, swap.toLight)
+      if (next !== current) node.setAttribute('class', next)
+    }
   }
   root.dataset['cloneTheme'] = 'light'
+  // Emotion/MUI の css-* クラスに焼きついたダーク背景をインライン上書き
+  overrideDarkBackgrounds(root)
 }
 
 /**

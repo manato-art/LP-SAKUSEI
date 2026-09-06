@@ -26,6 +26,38 @@ export function stripDarkThemeClasses(root: HTMLElement): void {
   }
 }
 
+/**
+ * applyLightTheme() でクラス名入替後に呼ぶ。
+ * Emotion/MUI の css-* クラスに焼きついたダーク背景を
+ * インラインスタイルで白基調に上書きする。
+ */
+export function overrideDarkBackgrounds(root: HTMLElement): void {
+  for (const el of root.querySelectorAll<HTMLElement>('*')) {
+    const style = globalThis.getComputedStyle(el)
+    const bg = style.backgroundColor
+    const match = /rgb\((\d+),\s*(\d+),\s*(\d+)/.exec(bg)
+    if (match === null) continue
+    const r = Number(match[1])
+    const g = Number(match[2])
+    const b = Number(match[3])
+    // 暗い背景（RGB平均 < 80）のみ対象。ただしボタン・リンク・SVG・小さい要素は除く
+    if ((r + g + b) / 3 >= 80) continue
+    const tag = el.tagName
+    if (tag === 'BUTTON' || tag === 'A' || tag === 'SVG' || tag === 'path') continue
+    const rect = el.getBoundingClientRect()
+    if (rect.width < 20 || rect.height < 20) continue
+    el.style.backgroundColor = '#fff'
+    el.style.color = '#333'
+    // テーブルの枠線も白基調に
+    if (style.borderBottomColor !== '' && style.borderBottomColor !== 'rgb(255, 255, 255)') {
+      const bMatch = /rgb\((\d+),\s*(\d+),\s*(\d+)/.exec(style.borderBottomColor)
+      if (bMatch !== null && (Number(bMatch[1]) + Number(bMatch[2]) + Number(bMatch[3])) / 3 < 120) {
+        el.style.borderBottomColor = '#e0e0e0'
+      }
+    }
+  }
+}
+
 const OVERRIDES = /* css */ `
 /* ================================================
  * 指示116: 白基調オーバーライド
