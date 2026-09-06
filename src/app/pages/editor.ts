@@ -825,7 +825,16 @@ function buildVersionCardEl(version: Version, isCurrent: boolean): HTMLElement {
   badge.className = `sb-vc-badge ${isCurrent ? 'sb-vc-badge--editing' : 'sb-vc-badge--saved'}`
   badge.textContent = isCurrent ? '編集中' : '保存済み'
 
-  nameRow.append(nameInput, badge)
+  // ⋮ドットメニューもname行内に配置（absoluteだとバッジと重なるため）
+  const dotsArea = document.createElement('div')
+  dotsArea.className = '_articleButtons_1xibh_160 sb-vc-dots-area'
+  const dotsBtn = document.createElement('button')
+  dotsBtn.type = 'button'
+  dotsBtn.className = 'css-3tls8'
+  dotsBtn.innerHTML = '<svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>'
+  dotsArea.append(dotsBtn)
+
+  nameRow.append(nameInput, badge, dotsArea)
 
   // ── Row 2: 配信割合 + 保存状態 ──
   const ratioRow = document.createElement('div')
@@ -904,21 +913,12 @@ function buildVersionCardEl(version: Version, isCurrent: boolean): HTMLElement {
   newBadge.textContent = 'NEW'
   meta.append(newBadge)
 
-  // ── ⋮ ドットメニュートリガー ──
-  const buttonsArea = document.createElement('div')
-  buttonsArea.className = '_articleButtons_1xibh_160 sb-vc-dots-area'
-  const dotsBtn = document.createElement('button')
-  dotsBtn.type = 'button'
-  dotsBtn.className = 'css-3tls8'
-  dotsBtn.innerHTML = '<svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>'
-  buttonsArea.append(dotsBtn)
-
   // ── コンテンツラッパー（選択モードのチェックボックス挿入先） ──
   const content = document.createElement('div')
   content.className = '_abTestArticleContent_vc'
   content.append(nameRow, ratioRow, thumb, meta)
 
-  inner.append(content, buttonsArea)
+  inner.append(content)
   card.append(inner)
   return card
 }
@@ -1020,10 +1020,11 @@ function injectVersionCardCss(): void {
       background:#ff8c00;padding:1px 5px;border-radius:3px;
       letter-spacing:.3px;line-height:1.3;margin-left:2px;
     }
-    /* ── ⋮ メニュー（ホバー時のみ表示・重なり防止） ── */
+    /* ── ⋮ メニュー（name行内・ホバー時のみ表示） ── */
     .sb-vc-dots-area {
-      position:absolute !important;top:10px !important;right:10px !important;
-      padding:0 !important;opacity:0;transition:opacity .12s;
+      position:static !important;
+      padding:0 !important;flex-shrink:0;
+      opacity:0;transition:opacity .12s;
     }
     ._currentVersion_vc:hover .sb-vc-dots-area { opacity:1; }
     .sb-vc-dots-area button.css-3tls8 {
