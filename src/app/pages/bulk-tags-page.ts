@@ -135,22 +135,34 @@ function buildForm(
   const scope = h('div', 'bt-section')
   scope.append(h('div', 'bt-section-title', '設定範囲'))
 
-  // チーム
-  const teamToggle = toggle(tag.team_wide)
+  // フォルダグループ（親フォルダ）／フォルダ（先に作る。チームtoggleから参照するため）
+  const groupFolders = folders.filter((f) => f.parent_id === null)
+  const groupSel = multiSelect(groupFolders, tag.folder_group_ids)
+  const folderSel = multiSelect(folders, tag.folder_ids)
+
+  // チーム: ONにすると全フォルダ対象＋フォルダグループ/フォルダ設定をリセット（実SB挙動）
+  const teamToggle = toggle(tag.team_wide, (checked) => {
+    if (checked) {
+      groupSel.clear()
+      folderSel.clear()
+    }
+    groupSel.setEnabled(!checked)
+    folderSel.setEnabled(!checked)
+  })
   const teamRow = scopeRow(
     'チーム',
     'ONにすると全てのフォルダにタグを設置します。またフォルダグループとフォルダ設定はリセットされます。',
     teamToggle.el,
   )
   scope.append(teamRow)
-
-  // フォルダグループ（親フォルダ）／フォルダ
-  const groupFolders = folders.filter((f) => f.parent_id === null)
-  const groupSel = multiSelect(groupFolders, tag.folder_group_ids)
   scope.append(scopeRow('フォルダグループ', '選択したフォルダグループに属する全てのフォルダにタグを設置します。', groupSel.el))
-  const folderSel = multiSelect(folders, tag.folder_ids)
   scope.append(scopeRow('フォルダ', '選択したフォルダにタグを設置します。', folderSel.el))
   form.append(scope)
+  // 初期状態がチームONなら、フォルダ選択は無効化しておく
+  if (tag.team_wide) {
+    groupSel.setEnabled(false)
+    folderSel.setEnabled(false)
+  }
 
   // 計測ツール・ASP / CV条件 / noindex
   const opts = h('div', 'bt-section bt-opts')
@@ -181,11 +193,13 @@ function buildForm(
   const saveBtn = h('button', 'bt-save', '保存') as HTMLButtonElement
   saveBtn.type = 'button'
   saveBtn.addEventListener('click', () => {
+    const teamWide = teamToggle.get()
     void handlers.onSave({
       name: name.value,
-      team_wide: teamToggle.get(),
-      folder_group_ids: groupSel.get(),
-      folder_ids: folderSel.get(),
+      team_wide: teamWide,
+      // チームONのときはフォルダグループ/フォルダはリセット（実SB挙動）
+      folder_group_ids: teamWide ? [] : groupSel.get(),
+      folder_ids: teamWide ? [] : folderSel.get(),
       asp_account_id: aspSel.value === '' ? null : Number(aspSel.value),
       cv_condition: cvSel.value === '' ? null : cvSel.value,
       noindex: noindexToggle.get(),
@@ -260,18 +274,28 @@ function selectInput(options: readonly [string, string][], selected: string): HT
   return s
 }
 
-function toggle(on: boolean): { el: HTMLElement; get: () => boolean } {
+function toggle(on: boolean, onChange?: (checked: boolean) => void): { el: HTMLElement; get: () => boolean } {
   const wrap = h('label', 'bt-toggle')
   const input = document.createElement('input')
   input.type = 'checkbox'
   input.checked = on
   const track = h('span', 'bt-toggle-track')
   wrap.append(input, track)
+  if (onChange !== undefined) input.addEventListener('change', () => onChange(input.checked))
   return { el: wrap, get: () => input.checked }
 }
 
+interface MultiSelect {
+  el: HTMLElement
+  get: () => number[]
+  /** 全チェックを外す（チーム=ON時のリセット用） */
+  clear: () => void
+  /** 有効/無効の切替（チーム=ON時は選べなくする） */
+  setEnabled: (enabled: boolean) => void
+}
+
 /** 複数選択（フォルダ/グループ）。チェックボックスの簡易リスト。 */
-function multiSelect(items: readonly Folder[], selectedIds: number[]): { el: HTMLElement; get: () => number[] } {
+function multiSelect(items: readonly Folder[], selectedIds: number[]): MultiSelect {
   const wrap = h('div', 'bt-multi')
   const set = new Set(selectedIds)
   const inputs: { id: number; input: HTMLInputElement }[] = []
@@ -287,7 +311,15 @@ function multiSelect(items: readonly Folder[], selectedIds: number[]): { el: HTM
     wrap.append(lb)
     inputs.push({ id: f.id, input: cb })
   }
-  return { el: wrap, get: () => inputs.filter((x) => x.input.checked).map((x) => x.id) }
+  return {
+    el: wrap,
+    get: () => inputs.filter((x) => x.input.checked).map((x) => x.id),
+    clear: () => inputs.forEach((x) => (x.input.checked = false)),
+    setEnabled: (enabled) => {
+      wrap.style.opacity = enabled ? '1' : '.5'
+      inputs.forEach((x) => (x.input.disabled = !enabled))
+    },
+  }
 }
 
 function injectStyles(): void {
