@@ -150,8 +150,8 @@ export function createAbTest(
     uid: makeUid('version', nextSeq(state.versions)),
     article_id: articleId,
     name: generateVersionName(nextSeq(state.versions)),
-    // 実機の新規作成直後の配信割合は 1（100ではない）
-    distribution_ratio: 1,
+    // 最初のVersionは100%で配信（追加・複製は0%）
+    distribution_ratio: 100,
     status: '準備中',
     is_control: true,
     archived: false,
@@ -510,7 +510,8 @@ export function addArticle(
     uid: makeUid('version', nextSeq(state.versions)),
     article_id: articleId,
     name: generateVersionName(nextSeq(state.versions)),
-    distribution_ratio: 1,
+    // 記事の最初のVersionは100%で配信（追加・複製は0%）
+    distribution_ratio: 100,
     status: '準備中',
     is_control: true,
     archived: false,

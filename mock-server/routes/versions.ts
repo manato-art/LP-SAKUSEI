@@ -189,6 +189,8 @@ versionsRouter.put('/versions/:uid', (req, res) => {
 /**
  * 配信割合の更新（§9-1[2]）。
  * 0-100 の範囲外は 422。合計が100%でない場合はエラーにせず warning を返す（保存は通す）。
+ * **1〜2バージョン時は自動調整**: アクティブなVersionが2つなら、片方を変えると
+ * もう片方が `100 - 新値` に自動で追従し、合計100%を保つ。
  */
 versionsRouter.patch('/versions/:uid/distribution', (req, res) => {
   const ratio = validateRatio(optionalNumber(req.body, 'distribution_ratio'))
@@ -197,10 +199,27 @@ versionsRouter.patch('/versions/:uid/distribution', (req, res) => {
     return
   }
   let updated: Version | null = null
+  const adjustedSiblings: Version[] = []
   setState((state) => {
     const out = updateVersion(state, req.params.uid, { distribution_ratio: ratio.value })
     updated = out.version
-    return out.state
+    let nextState = out.state
+    // 2バージョン時: もう片方を自動調整して合計100%にする
+    if (updated !== null) {
+      const active = nextState.versions.filter(
+        (v) => v.article_id === updated!.article_id && !v.archived,
+      )
+      if (active.length === 2) {
+        const other = active.find((v) => v.uid !== updated!.uid)
+        if (other !== undefined) {
+          const otherRatio = Math.max(0, Math.min(100, 100 - ratio.value))
+          const out2 = updateVersion(nextState, other.uid, { distribution_ratio: otherRatio })
+          nextState = out2.state
+          if (out2.version !== null) adjustedSiblings.push(out2.version)
+        }
+      }
+    }
+    return nextState
   })
   if (updated === null) {
     res.status(404).json(errorEnvelope('not_found', 'Versionが見つかりません。'))
@@ -212,6 +231,10 @@ versionsRouter.patch('/versions/:uid/distribution', (req, res) => {
     version: serializeVersion(updated),
     distribution_total: total.total,
     distribution_warning: total.warning,
+    adjusted_siblings: adjustedSiblings.map((v) => ({
+      uid: v.uid,
+      distribution_ratio: v.distribution_ratio,
+    })),
   })
 })
 

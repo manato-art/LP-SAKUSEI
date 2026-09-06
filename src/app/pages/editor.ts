@@ -1621,6 +1621,22 @@ function wireVersionCard(ctx: EditorContext, card: HTMLElement, version: Version
         updated = { ...updated, distribution_ratio: res.version.distribution_ratio }
         if (ratio !== null) ratio.value = String(res.version.distribution_ratio)
         syncRatioDisplay()
+        // 2バージョン時の自動調整: サーバーが調整した他カードのUIを更新
+        if (res.adjusted_siblings) {
+          for (const sib of res.adjusted_siblings) {
+            ctx.versions = ctx.versions.map((v) =>
+              v.uid === sib.uid ? { ...v, distribution_ratio: sib.distribution_ratio } : v,
+            )
+            const sibCard = ctx.root.querySelector<HTMLElement>(`[data-article-uid="${sib.uid}"]`)
+            if (sibCard === null) continue
+            const sibRatio = sibCard.querySelector<HTMLInputElement>(HOOK.ratio)
+            const sibDisplay = sibCard.querySelector<HTMLElement>('.sb-vc-ratio-display')
+            const sibSelect = sibCard.querySelector<HTMLSelectElement>('.sb-vc-ratio-select')
+            if (sibRatio !== null) sibRatio.value = String(sib.distribution_ratio)
+            if (sibDisplay !== null) sibDisplay.textContent = String(sib.distribution_ratio)
+            if (sibSelect !== null) sibSelect.value = String(sib.distribution_ratio)
+          }
+        }
       }
       model = updated
       ctx.versions = ctx.versions.map((v) => (v.uid === updated.uid ? updated : v))

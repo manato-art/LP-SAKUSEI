@@ -172,11 +172,12 @@ export const api = {
   saveVersion: (uid: string, patch: { html?: string; css?: string; name?: string }) =>
     request<{ version: Version }>('PUT', `/versions/${uid}`, patch),
   setRatio: (uid: string, ratio: number) =>
-    request<{ version: Version; distribution_total: number; distribution_warning: string | null }>(
-      'PATCH',
-      `/versions/${uid}/distribution`,
-      { distribution_ratio: ratio },
-    ),
+    request<{
+      version: Version
+      distribution_total: number
+      distribution_warning: string | null
+      adjusted_siblings?: ReadonlyArray<{ uid: string; distribution_ratio: number }>
+    }>('PATCH', `/versions/${uid}/distribution`, { distribution_ratio: ratio }),
   publish: (uid: string) => request<{ version: Version }>('POST', `/versions/${uid}/publish`),
   duplicateVersion: (uid: string) =>
     request<{ version: Version }>('POST', `/versions/${uid}/duplicate`),
