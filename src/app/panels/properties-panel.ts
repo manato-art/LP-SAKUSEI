@@ -69,7 +69,7 @@ function injectStyles(): void {
       flex:1; overflow-y:auto;
     }
     .sb-props-empty {
-      padding:32px 16px; text-align:center; color:#999;
+      padding:16px 16px; text-align:center; color:#999;
       font-size:12px; line-height:1.8;
     }
     .sb-pg { display:flex; flex-direction:column; gap:5px; }

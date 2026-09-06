@@ -539,12 +539,17 @@ function injectCardSeamStyles(): void {
       min-width: 260px !important;
       flex-shrink: 0 !important;
     }
-    /* sideToolbarWrapper: モック準拠で薄グレー + 左に区切り線 + フル高さ */
+    /* sideToolbarWrapper: モック準拠で薄グレー + 左に区切り線 + フル高さ + 上揃え横中央 */
     [class*="_sideToolbarWrapper_"] {
       background: #fafbfc;
       border-left: 1px solid #e5e5ea;
       align-self: stretch !important;
       height: auto !important;
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: center !important;
+      justify-content: flex-start !important;
+      padding-top: 8px !important;
     }
     /* editorWrapper: 高さをフルに伸ばす + 幅を親に合わせる（基板のmax-width:1100pxを解除） */
     [class*="_editorWrapper_"] {
