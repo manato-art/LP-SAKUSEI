@@ -136,12 +136,11 @@ function buildPage(
   const gTrack2 = grid2(secTrack.body)
   const fPrice = field('コンバージョン単価', false)
   fPrice.append(numInput('bi-price', String(abTest.conversion_unit_price)))
-  const fMethod = field('成果測定方法', false, 'あとで対応（現在は表示のみ）')
+  const fMethod = field('成果測定方法', false)
   fMethod.append(selectInput('bi-method', [
     { value: 'none', label: '無効／バリデーションなし' },
     { value: 'strict', label: '厳格モード' },
   ], 'none', true))
-  appendHint(fMethod)
   gTrack2.append(fPrice, fMethod)
 
   // ── 左: その他の項目 ──
