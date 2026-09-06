@@ -961,15 +961,8 @@ function buildVersionCardEl(version: Version, isCurrent: boolean): HTMLElement {
     ratioSelect.value = String(version.distribution_ratio)
   }
 
-  // 保存ボタン
-  const saveBtn = document.createElement('button')
-  saveBtn.setAttribute('data-save-btn', 'true')
-  saveBtn.type = 'button'
-  saveBtn.className = 'sb-vc-save-btn'
-  saveBtn.textContent = '保存済み'
-
-  // −1%+ / プルダウン / 保存 を1行にまとめる
-  ratioControl.append(downBtn, ratioDisplay, pct, upBtn, ratioSelect, saveBtn)
+  // −1%+ / プルダウン を1行にまとめる（保存状態は下部タイムスタンプで表示）
+  ratioControl.append(downBtn, ratioDisplay, pct, upBtn, ratioSelect)
 
   ratioRow.append(ratioHeader, ratioControl, ratioInput)
 
@@ -1003,7 +996,14 @@ function buildVersionCardEl(version: Version, isCurrent: boolean): HTMLElement {
   meta.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;flex-shrink:0"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'
   const timeText = document.createElement('span')
   const updatedAt = (version as unknown as Record<string, unknown>)['updated_at']
-  timeText.textContent = typeof updatedAt === 'string' ? relativeTime(updatedAt) + 'に保存' : '保存済み'
+  // updated_at は UNIXタイムスタンプ（秒）= number。string の場合はISO。
+  if (typeof updatedAt === 'number' && updatedAt > 0) {
+    timeText.textContent = relativeTime(new Date(updatedAt * 1000).toISOString()) + 'に保存'
+  } else if (typeof updatedAt === 'string') {
+    timeText.textContent = relativeTime(updatedAt) + 'に保存'
+  } else {
+    timeText.textContent = '保存済み'
+  }
   meta.append(timeText)
   const newBadge = document.createElement('span')
   newBadge.className = 'sb-vc-new-badge'
@@ -1091,7 +1091,7 @@ function injectVersionCardCss(): void {
     .sb-vc-ratio-desc { font-size:11px;color:#9e9e9e;line-height:1.4;margin-top:2px; }
     /* Row2: − 数値 % + プルダウン 保存（1行） */
     .sb-vc-ratio-control {
-      display:flex;align-items:center;gap:6px;
+      display:flex;align-items:center;gap:6px;flex-wrap:nowrap;
       background:#f5f6f8;border-radius:24px;padding:6px 10px;
     }
     .sb-vc-ratio-input { display:none; }
@@ -1105,8 +1105,8 @@ function injectVersionCardCss(): void {
     .sb-vc-ratio-btn--plus { border-color:#0091ff;background:#0091ff;color:#fff; }
     .sb-vc-ratio-btn--plus:hover { opacity:.88; }
     .sb-vc-ratio-display {
-      font-size:18px;font-weight:700;color:#1a1a1a;min-width:1.2em;
-      text-align:center;font-variant-numeric:tabular-nums;
+      font-size:18px;font-weight:700;color:#1a1a1a;min-width:1.6em;
+      text-align:center;font-variant-numeric:tabular-nums;white-space:nowrap;
     }
     .sb-vc-ratio-pct { font-size:13px;color:#666; }
     .sb-vc-ratio-select {
@@ -1115,14 +1115,7 @@ function injectVersionCardCss(): void {
       cursor:pointer;outline:none;margin-left:auto;
     }
     .sb-vc-ratio-select:focus { border-color:#0091ff; }
-    /* ── 保存ボタン ── */
-    .sb-vc-save-btn {
-      font-size:11px;padding:4px 10px;border:1px solid #ff8c00;
-      border-radius:12px;font-weight:500;background:#fff;color:#ff8c00;
-      cursor:pointer;white-space:nowrap;font-family:inherit;
-      transition:background .12s;
-    }
-    .sb-vc-save-btn:hover { background:rgba(255,140,0,.06); }
+    /* 保存状態は下部タイムスタンプで表示 */
     /* ── サムネイル ── */
     .sb-vc-thumb {
       width:100%;height:80px;background:#f5f6f8;border-radius:6px;
@@ -2099,14 +2092,14 @@ function wireSideToolbar(ctx: EditorContext): void {
   }
 
   function markSaved(): void {
+    // ヘッダーの保存時刻を常に更新（ボタンの有無に依存しない）
+    updateSaveTimestamp()
     const btn = findCurrentUpdateButton()
     if (btn === null) return
     btn.textContent = '保存済み'
     btn.style.transition = 'background-color 0.3s'
     btn.style.backgroundColor = ''
     btn.style.color = ''
-    // 指示97: ヘッダーの保存時刻を更新
-    updateSaveTimestamp()
   }
 
   const autosave = createAutosave({
