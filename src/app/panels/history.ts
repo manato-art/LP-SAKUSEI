@@ -126,8 +126,9 @@ export function restoreArticleHistory(
  * ──────────────────────────────────────────────────────────── */
 
 /**
- * 履歴パネルを開く / 閉じる（右レールのアイコンから呼ばれる想定）。
+ * 履歴パネルの土台を用意する（開閉はしない）。
  * 採取DOMの中に土台があればそれを使い、無いときだけ採取済みmarkupを差し込む。
+ * 開閉は呼び出し側の PanelGroup.toggle() に委ねる。
  */
 export function mountHistory(root: HTMLElement, articleUid: string): HTMLElement | null {
   const panel = resolvePanel(root)
@@ -142,12 +143,13 @@ export function mountHistory(root: HTMLElement, articleUid: string): HTMLElement
     wire(root, panel)
   }
 
-  const willOpen = !panel.classList.contains(CLS.open)
-  panel.classList.toggle(CLS.open, willOpen)
-  if (!willOpen) return panel
   if (panel.getAttribute('style') === null) panel.setAttribute('style', OPEN_STYLE)
-  void refresh(root, panel)
   return panel
+}
+
+/** パネルが開いた後に履歴データを読み込む（editor.ts の toggle 後に呼ぶ） */
+export function refreshHistory(root: HTMLElement, panel: HTMLElement): void {
+  void refresh(root, panel)
 }
 
 function resolvePanel(root: HTMLElement): HTMLElement | null {

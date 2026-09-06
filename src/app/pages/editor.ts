@@ -15,8 +15,8 @@ import { isStale } from '../main.ts'
 import { T, el, toast } from '../ui.ts'
 import { mountVersionSettings, openVersionSettings } from '../panels/version-settings.ts'
 import { mountTagSettings, openTagSettings } from '../panels/tag-settings.ts'
-import { mountLinkReplace } from '../panels/link-replace.ts'
-import { mountHistory, recordArticleHistory } from '../panels/history.ts'
+import { mountLinkReplace, reloadLinkReplace } from '../panels/link-replace.ts'
+import { mountHistory, refreshHistory, recordArticleHistory } from '../panels/history.ts'
 import { mountEditorToolbar } from '../panels/editor-toolbar.ts'
 import { mountUrlBar, updateUrlBar } from '../panels/url-bar.ts'
 import { mountPropertiesPanel } from '../panels/properties-panel.ts'
@@ -1846,16 +1846,20 @@ function wireSideToolbar(ctx: EditorContext): void {
       })
       continue
     }
-    // 履歴パネル
+    // 履歴パネル（開閉はpanels.toggleに一本化）
     if (index === 1) {
+      let historyRegistered = false
       icon.addEventListener('click', () => {
         const panel = mountHistory(ctx.root, ctx.articleUid)
         if (panel === null) return
-        panels.register('履歴', panel)
-        // mountHistoryが内部でtoggleしているので、panelsのopenNameだけ同期
-        const isOpen = panel.classList.contains('_open_x4j8w_84')
-        if (isOpen) panels.toggle('履歴')       // openName→'履歴'
-        else if (panels !== undefined) panels.closeAll()
+        if (!historyRegistered) {
+          panels.register('履歴', panel)
+          historyRegistered = true
+        }
+        panels.toggle('履歴')
+        if (panel.classList.contains('_open_x4j8w_84')) {
+          refreshHistory(ctx.root, panel)
+        }
       })
       continue
     }
@@ -1867,15 +1871,20 @@ function wireSideToolbar(ctx: EditorContext): void {
       })
       continue
     }
-    // リンク置換パネル
+    // リンク置換パネル（開閉はpanels.toggleに一本化）
     if (index === 3) {
+      let linkRegistered = false
       icon.addEventListener('click', () => {
         const panel = mountLinkReplace(ctx.root, ctx.articleUid, () => ctx.currentUid)
         if (panel === null) return
-        panels.register('リンク置換', panel)
-        const isOpen = panel.classList.contains('_open_x4j8w_84')
-        if (isOpen) panels.toggle('リンク置換')
-        else panels.closeAll()
+        if (!linkRegistered) {
+          panels.register('リンク置換', panel)
+          linkRegistered = true
+        }
+        panels.toggle('リンク置換')
+        if (panel.classList.contains('_open_x4j8w_84')) {
+          reloadLinkReplace(ctx.root, panel)
+        }
       })
       continue
     }

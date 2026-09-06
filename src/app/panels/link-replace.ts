@@ -233,12 +233,13 @@ export function mountLinkReplace(
     wire(root, panel)
   }
 
-  const willOpen = !panel.classList.contains(CLS.open)
-  panel.classList.toggle(CLS.open, willOpen)
-  if (!willOpen) return panel
   if (panel.getAttribute('style') === null) panel.setAttribute('style', OPEN_STYLE)
-  void reload(root, panel)
   return panel
+}
+
+/** パネルが開いた後にリンクデータを読み込む（editor.ts の toggle 後に呼ぶ） */
+export function reloadLinkReplace(root: HTMLElement, panel: HTMLElement): void {
+  void reload(root, panel)
 }
 
 function resolvePanel(root: HTMLElement): HTMLElement | null {
