@@ -246,10 +246,20 @@ function resolvePanel(root: HTMLElement): HTMLElement | null {
   const fromSubstrate =
     root.querySelector<HTMLElement>(`.${CLS.content}`)?.closest<HTMLElement>(`.${CLS.bodyWrapper}`) ??
     null
-  if (fromSubstrate !== null) return fromSubstrate
+  if (fromSubstrate !== null) {
+    // sideToolbarWrapper 内だと overflow:hidden でクリップされるため root 直下に移動
+    const dropdownHost = fromSubstrate.closest<HTMLElement>(`.${CLS.dropdown}`)
+    if (dropdownHost !== null && !dropdownHost.hasAttribute('data-clone-panel-host')) {
+      dropdownHost.setAttribute('data-clone-panel-host', 'link-replace')
+      dropdownHost.style.cssText = 'position:fixed;top:120px;right:90px;z-index:9600'
+      root.append(dropdownHost)
+    }
+    return fromSubstrate
+  }
 
   const host = document.createElement('div')
   host.className = `${CLS.dropdown} _lightTheme_x4j8w_88`
+  host.setAttribute('data-clone-panel-host', 'link-replace')
   host.setAttribute('style', 'position:fixed;top:120px;right:90px;z-index:9600')
   host.innerHTML = LINK_REPLACE_MARKUP
   root.append(host)

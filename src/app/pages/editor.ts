@@ -1820,6 +1820,7 @@ function wireSideToolbar(ctx: EditorContext): void {
     sideWrapper.style.setProperty('align-items', 'center', 'important')
     sideWrapper.style.setProperty('justify-content', 'flex-start', 'important')
     sideWrapper.style.setProperty('box-sizing', 'border-box', 'important')
+    sideWrapper.style.setProperty('overflow', 'visible', 'important')
   }
   const sideTop = ctx.root.querySelector<HTMLElement>('[class*="_sideToolbarTop_"]')
   if (sideTop !== null) {
@@ -1845,7 +1846,12 @@ function wireSideToolbar(ctx: EditorContext): void {
     const mockupSvg = RAIL_ICON_SVGS[index]
     if (mockupSvg !== undefined) {
       for (const child of icon.children) {
-        if (child instanceof HTMLElement && !child.hasAttribute('data-rail-svg') && !child.classList.contains('sb-side-label')) {
+        if (
+          child instanceof HTMLElement &&
+          !child.hasAttribute('data-rail-svg') &&
+          !child.classList.contains('sb-side-label') &&
+          !child.className.includes('_dropdown_')
+        ) {
           child.style.display = 'none'
         }
       }
