@@ -741,8 +741,6 @@ function mountHeaderExtras(
   // CSS注入
   injectHeaderExtrasCss()
 
-  const newBadge = `<span class="sb-header-new-badge new-badge">NEW</span>`
-
   // ── スペーサー（左のパンくず+フィルタと右のボタン群を分ける） ──
   const spacer = document.createElement('div')
   spacer.style.flex = '1'
@@ -760,7 +758,6 @@ function mountHeaderExtras(
   timeSpan.dataset['savedAt'] = String(initialTime.getTime())
   saveStatus.innerHTML = `<span style="color:#00b341">✓</span><span>保存済み</span>`
   saveStatus.append(timeSpan)
-  saveStatus.insertAdjacentHTML('beforeend', newBadge)
   // 1分ごとに相対時刻を更新
   setInterval(() => {
     const ts = Number(timeSpan.dataset['savedAt'] ?? '0')
@@ -841,12 +838,6 @@ function injectHeaderExtrasCss(): void {
       transition:background .12s;
     }
     .sb-header-btn-icon:hover { background:#f0f0f2; }
-    .sb-header-new-badge {
-      display:inline-block; font-size:8px; font-weight:700; color:#fff;
-      background:#ff8c00; padding:1px 4px; border-radius:2px;
-      letter-spacing:.3px; vertical-align:middle; margin-left:3px;
-      line-height:1.3;
-    }
     .sb-header-right-icons {
       display:flex; align-items:center; gap:2px; flex-shrink:0;
     }
@@ -1005,10 +996,6 @@ function buildVersionCardEl(version: Version, isCurrent: boolean): HTMLElement {
     timeText.textContent = '保存済み'
   }
   meta.append(timeText)
-  const newBadge = document.createElement('span')
-  newBadge.className = 'sb-vc-new-badge'
-  newBadge.textContent = 'NEW'
-  meta.append(newBadge)
 
   // ── ⋮ ドットメニュー（meta行の右端） ──
   const metaSpacer = document.createElement('div')
@@ -1130,11 +1117,6 @@ function injectVersionCardCss(): void {
     .sb-vc-meta {
       display:flex;align-items:center;gap:4px;
       font-size:10px;color:#b0b0b0;
-    }
-    .sb-vc-new-badge {
-      display:inline-block;font-size:8px;font-weight:700;color:#fff;
-      background:#ff8c00;padding:1px 5px;border-radius:3px;
-      letter-spacing:.3px;line-height:1.3;margin-left:2px;
     }
     /* ── ⋮ メニュー（name行内・ホバー時のみ表示） ── */
     .sb-vc-dots-area {
@@ -1437,10 +1419,7 @@ function renderVersionList(ctx: EditorContext): void {
     const label = document.createElement('span')
     label.textContent = 'Versionを追加'
     label.style.cssText = 'font-size:13px;color:#666'
-    const badge = document.createElement('span')
-    badge.textContent = 'NEW'
-    badge.style.cssText = 'font-size:9px;font-weight:700;color:#fff;background:#ff4444;border-radius:3px;padding:1px 5px;margin-left:2px'
-    loadMore.append(plus, label, badge)
+    loadMore.append(plus, label)
     loadMore.addEventListener('click', async () => {
       try {
         await saveHtml(ctx)

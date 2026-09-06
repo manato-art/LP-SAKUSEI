@@ -706,8 +706,7 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
     body.style.display = 'none'
     imageBody.style.display = 'flex'
     emptyMsg.style.display = 'none'
-    const newBadge = '<span style="display:inline-block;font-size:8px;font-weight:700;color:#fff;background:#ff8c00;padding:1px 4px;border-radius:2px;letter-spacing:.3px;vertical-align:middle;margin-left:4px;line-height:1.3">NEW</span>'
-    title.innerHTML = `選択中：画像 ${newBadge}`
+    title.textContent = '選択中：画像'
     refreshImageBody(imageBody, img)
   }
 
@@ -723,12 +722,11 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
     const r = getRange()
     const hasSelection = r !== null && r.length > 0
 
-    const newBadge = '<span style="display:inline-block;font-size:8px;font-weight:700;color:#fff;background:#ff8c00;padding:1px 4px;border-radius:2px;letter-spacing:.3px;vertical-align:middle;margin-left:4px;line-height:1.3">NEW</span>'
     if (hasSelection) {
       body.style.display = 'flex'
       imageBody.style.display = 'none'
       emptyMsg.style.display = 'none'
-      title.innerHTML = `選択中：テキスト ${newBadge}`
+      title.textContent = '選択中：テキスト'
     } else {
       body.style.display = 'none'
       imageBody.style.display = 'none'

@@ -197,9 +197,6 @@ const MOCKUP_CSS = `
   .prop-toggle::after { content:''; position:absolute; top:2px; left:2px; width:14px; height:14px; border-radius:50%; background:#fff; transition:left .2s; box-shadow:0 1px 2px rgba(0,0,0,.2); }
   .prop-toggle.on::after { left:18px; }
 
-  /* ── NEW badge ── */
-  .new-badge { display:inline-block; font-size:8px; font-weight:700; color:#fff; background:var(--editing); padding:1px 4px; border-radius:2px; letter-spacing:.3px; vertical-align:middle; margin-left:3px; line-height:1.3; }
-
   /* ══════════════════════════════════════════
    * 基板 DOM → モック class マッピング
    * 基板要素のスタイルを上書きして
