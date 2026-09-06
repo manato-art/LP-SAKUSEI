@@ -25,7 +25,7 @@
  * 「計測機能付きリンク」の意味と置換ロジックは src/shared/link-html.ts（実 Quill Link blot 準拠）。
  */
 import { toast } from '../ui.ts'
-import { findLpBody } from './history.ts'
+import { cleanupDropdownHost, findLpBody } from './history.ts'
 import {
   buildLinkReplaceRequest,
   EMPTY_LINKS_MESSAGE,
@@ -253,6 +253,7 @@ function resolvePanel(root: HTMLElement): HTMLElement | null {
       dropdownHost.setAttribute('data-clone-panel-host', 'link-replace')
       dropdownHost.style.cssText = 'position:fixed;top:120px;right:90px;z-index:9600'
       root.append(dropdownHost)
+      cleanupDropdownHost(dropdownHost)
     }
     return fromSubstrate
   }

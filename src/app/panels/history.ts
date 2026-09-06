@@ -52,7 +52,6 @@ const HISTORY_PANEL_MARKUP =
   `<div class="${CLS.header}">バージョン復元` +
   `<div class="${CLS.btn} ${CLS.btnXSmall} ${CLS.btnCancel}">戻る</div></div>` +
   `<div class="${CLS.listHost}"></div>` +
-  `<div class="_arrow_x4j8w_25 _leftLowerHalf_x4j8w_62" style="top: 9px; left: auto; right: 0px;"></div>` +
   `</div></div>`
 
 /** `現行版` は実機の表記そのまま（マイクロコピーは verbatim 保持） */
@@ -164,6 +163,7 @@ function resolvePanel(root: HTMLElement): HTMLElement | null {
       host.setAttribute('data-clone-panel-host', 'history')
       host.style.cssText = 'position:fixed;top:120px;right:90px;z-index:9600'
       root.append(host)
+      cleanupDropdownHost(host)
     }
     return fromSubstrate
   }
@@ -177,6 +177,40 @@ function resolvePanel(root: HTMLElement): HTMLElement | null {
   host.innerHTML = HISTORY_PANEL_MARKUP
   root.append(host)
   return host.querySelector<HTMLElement>(`.${CLS.bodyWrapper}`)
+}
+
+/**
+ * 基板の _dropdown_ を再利用する際に不要な要素を掃除する。
+ * - ホスト直下の _bodyWrapper_ 以外の子要素（_trigger_ 等）を非表示
+ * - 吹き出しの矢印ポインタ（_leftLowerHalf_ / _right_ 付き）を非表示
+ * - _darkTheme_ → _lightTheme_ に差し替え（白基調）
+ *
+ * パネル内部にある UI 部品としての _trigger_ / _arrow_（ツールチップ等）は
+ * 巻き込まないよう、ホスト直下の子だけ / 位置クラス付きの arrow だけを対象にする。
+ */
+export function cleanupDropdownHost(host: HTMLElement): void {
+  // ホスト直下: _bodyWrapper_ 以外を全て非表示（_trigger_ や元アイコン等）
+  for (const child of host.children) {
+    if (child instanceof HTMLElement && !child.className.includes('_bodyWrapper_')) {
+      child.style.display = 'none'
+    }
+  }
+  // 吹き出しポインタ矢印（位置クラス付き）を非表示
+  // ツールチップ内の素の _arrow_ は巻き込まない
+  for (const el of host.querySelectorAll<HTMLElement>(
+    '[class*="_arrow_"][class*="_leftLowerHalf_"], [class*="_arrow_"][class*="_right_"]',
+  )) {
+    el.style.display = 'none'
+  }
+  // ダークテーマ → ライトテーマ（白基調）
+  const DARK = '_darkTheme_x4j8w_116'
+  const LIGHT = '_lightTheme_x4j8w_88'
+  if (host.classList.contains(DARK)) {
+    host.classList.replace(DARK, LIGHT)
+  }
+  for (const el of host.querySelectorAll<HTMLElement>(`.${DARK}`)) {
+    el.classList.replace(DARK, LIGHT)
+  }
 }
 
 function wire(root: HTMLElement, panel: HTMLElement): void {
