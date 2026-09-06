@@ -131,17 +131,19 @@ function setHeaderImage(headerBox: HTMLElement, dataUrl: string): void {
   if (img === null) {
     img = document.createElement('img')
     img.dataset['cloneHeader'] = 'true'
-    img.style.cssText = 'display:block;width:100%;height:auto;border-radius:10px 10px 0 0'
+    // 高さ制限でキャンバスを圧迫しない + 枠なし
+    img.style.cssText = 'display:block;width:100%;max-height:200px;object-fit:cover;border-radius:0'
     headerBox.prepend(img)
   }
   img.src = dataUrl
-  // ヘッダー画像を追加したら、スクロールしても上部に固定する（指示追加）。
-  // scroll ancestor は container（overflow:auto, height:100vh）なので sticky が効く。
-  // 上部ナビ（80px 前後）の下に張り付くようにする。
-  headerBox.style.position = 'sticky'
-  headerBox.style.top = '0'
-  headerBox.style.zIndex = '5'
+  // stickyにしない（ミニマップと重なる・キャンバスが見づらい）
+  headerBox.style.position = 'relative'
   headerBox.style.background = '#fff'
+  // headerBox自体の青い点線枠・パディングを消す
+  headerBox.style.border = 'none'
+  headerBox.style.padding = '0'
+  headerBox.style.margin = '0'
+  headerBox.style.outline = 'none'
   // 「ヘッダー画像を追加する」の案内文は隠す（画像が入ったので不要）。
   // クラスは匿名化され得るので**文言で**引く（`[class*=…]` は当たらない）。
   const prompt = findPrompt(headerBox)
@@ -173,10 +175,12 @@ function removeHeaderImage(headerBox: HTMLElement): void {
   headerBox.querySelector('[data-clone-header-remove="true"]')?.remove()
   const prompt = findPrompt(headerBox)
   if (prompt !== null) prompt.style.display = ''
-  // sticky を解除（画像が無い状態では固定不要）
+  // 枠線・パディングを元に戻す
   headerBox.style.position = 'relative'
-  headerBox.style.top = ''
-  headerBox.style.zIndex = ''
+  headerBox.style.border = ''
+  headerBox.style.padding = ''
+  headerBox.style.margin = ''
+  headerBox.style.outline = ''
   toast('ヘッダー画像を削除しました')
 }
 
