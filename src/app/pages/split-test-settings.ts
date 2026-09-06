@@ -29,6 +29,7 @@ import { api } from '../api.ts'
 import { isStale } from '../main.ts'
 import { applyBeyondTopBar, wireBeyondBack } from './beyond-topbar.ts'
 import { wireBeyondNavAnchors, type SplitTestTab } from './beyond-nav.ts'
+import { applyLightTheme } from './report-dom.ts'
 import { stripShellFromFragment } from './report-substrate.ts'
 import { wireAbTestTabs, setupHorizTabs, setupBreadcrumb } from './tab-nav.ts'
 import { toast } from '../ui.ts'
@@ -95,6 +96,7 @@ export async function renderSplitTestSettings(
   }
   setupBreadcrumb(root, folder?.name ?? '', ab_test.title, folder?.uid)
   wireBeyondBack(root, folderUid)
+  applyLightTheme(root)
   // 出し分けトグル（オン/オフ）を実際に効かせてモックへ保存する。
   // デバイス別は **Version単位**（FAQ: 出し分けロジック＝配信割合 × デバイス別ON/OFF の掛け算）。
   if (tab === 'devices') {

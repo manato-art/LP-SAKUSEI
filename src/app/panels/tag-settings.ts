@@ -16,6 +16,7 @@
  *     `display:flex` での中央寄せをこちらで補っている（唯一の寸法の推測箇所）。
  */
 import { toast } from '../ui.ts'
+import { ensureWhiteBase } from '../white-base.ts'
 
 const BASE = '/api/v1'
 
@@ -82,7 +83,7 @@ function scriptFieldMarkup(field: (typeof SCRIPT_FIELDS)[number]): string {
 /** 採取した実マークアップ（コードエディタ部だけ上の簡易実装に差し替え） */
 const MARKUP = `<div class="ReactModalPortal">
 <div class="ReactModal__Overlay ReactModal__Overlay--after-open _overlay_11n4w_118" style="display:flex;align-items:center;justify-content:center">
-<div class="ReactModal__Content ReactModal__Content--after-open _modal_11n4w_1 _darkTheme_11n4w_23" tabindex="-1" role="dialog" aria-modal="true" style="max-width: 1000px;">
+<div class="ReactModal__Content ReactModal__Content--after-open _modal_11n4w_1" tabindex="-1" role="dialog" aria-modal="true" style="max-width: 1000px;">
 <div class="_modalWrapper_11n4w_20" data-test="HtmlSettingModal-ModalWrapper">
 <div class="_modalHeader_11n4w_20">
 <div class="_left_11n4w_55"><div data-test="HtmlSettingModal-BtnCloseModal" class="_btnCnacel_1bcs1_140 sample_token_44b6d400"></div></div>
@@ -182,6 +183,7 @@ export async function openTagSettings(articleUid: string): Promise<void> {
     return
   }
 
+  ensureWhiteBase()
   const portal = document.createElement('div')
   portal.innerHTML = MARKUP
   const node = portal.firstElementChild

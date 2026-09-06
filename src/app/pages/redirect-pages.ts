@@ -16,6 +16,7 @@ import { isStale } from '../main.ts'
 import { toast, confirmCard } from '../ui.ts'
 import { applyBeyondTopBar, wireBeyondBack } from './beyond-topbar.ts'
 import { wireBeyondNavAnchors } from './beyond-nav.ts'
+import { applyLightTheme } from './report-dom.ts'
 import { stripShellFromFragment } from './report-substrate.ts'
 import { wireAbTestTabs, setupHorizTabs, setupBreadcrumb } from './tab-nav.ts'
 
@@ -69,6 +70,15 @@ export async function renderRedirectPages(
   }
   setupBreadcrumb(root, folder?.name ?? '', ab_test.title, folder?.uid)
   wireBeyondBack(root, folderUid)
+  applyLightTheme(root)
+  // 指示116: 中間ページの input/select はテーマクラスが無い Emotion 直指定なので個別に白基調化
+  for (const el of root.querySelectorAll<HTMLElement>(
+    'input:not([type="radio"]):not([type="checkbox"]):not([type="hidden"]), select',
+  )) {
+    el.style.background = '#f5f5f5'
+    el.style.color = '#333'
+    if (el.style.border === '' || el.style.border === 'none') el.style.border = '1px solid #d0d0d0'
+  }
 
   // 一覧項目の雛形を控える（採取物の1件目をクリーンにクローン）
   const template = root.querySelector<HTMLElement>(HOOK.item)?.cloneNode(true) as HTMLElement | undefined

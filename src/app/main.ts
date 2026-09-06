@@ -30,6 +30,7 @@ import { matchToolPage } from './pages/tool-subnav.ts'
 import { renderToolPage } from './pages/tool-pages.ts'
 import { isSplitTestTab } from './pages/beyond-nav.ts'
 import { T, button, el, emptyState } from './ui.ts'
+import { api } from './api.ts'
 
 /**
  * 描画の世代。ルートの描画はAPI待ちを含むため、
@@ -120,6 +121,22 @@ async function route(): Promise<void> {
         previewMatch[2] as string,
         generation,
       )
+      return
+    }
+    /**
+     * プレビュー画面（短縮URL）。エディタの「プレビュー」ボタンや比較モードのURLで
+     * `/preview/:versionUid` 形式のURLが生成される。version uid → ab_test を逆引きして
+     * 既存の renderPreview に委譲する。
+     */
+    const shortPreviewMatch = /^\/preview\/([^/]+)$/.exec(path ?? '')
+    if (shortPreviewMatch !== null) {
+      const versionUid = shortPreviewMatch[1] as string
+      const resolved = await resolveAbTestFromVersion(versionUid)
+      if (resolved !== null) {
+        await renderPreview(content, resolved, versionUid, generation)
+      } else {
+        renderNotBuilt(content, path ?? '')
+      }
       return
     }
     // 中間ページ（redirect_pages）。エディタ上部右の3番目のアイコンから。
@@ -228,6 +245,22 @@ async function route(): Promise<void> {
       emptyState(`読み込みに失敗しました: ${(error as Error).message}`),
     )
   }
+}
+
+/**
+ * version uid → abTest uid を逆引きする。
+ * モック環境なのでデータ量は少ない。見つからなければ null。
+ */
+async function resolveAbTestFromVersion(versionUid: string): Promise<string | null> {
+  const { ab_tests } = await api.abTests()
+  for (const at of ab_tests) {
+    const { articles } = await api.articles(at.uid)
+    for (const art of articles) {
+      const { versions } = await api.versions(art.uid)
+      if (versions.some((v) => v.uid === versionUid)) return at.uid
+    }
+  }
+  return null
 }
 
 /** まだ作っていない画面は、正直にそう表示する（できているように見せない） */

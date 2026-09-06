@@ -1997,7 +1997,12 @@ function wireSideToolbar(ctx: EditorContext): void {
     if (index === 3) {
       let linkRegistered = false
       icon.addEventListener('click', () => {
-        const panel = mountLinkReplace(ctx.root, ctx.articleUid, () => ctx.currentUid)
+        const panel = mountLinkReplace(
+          ctx.root,
+          ctx.articleUid,
+          () => ctx.currentUid,
+          () => panels.toggle('リンク置換'),
+        )
         if (panel === null) return
         if (!linkRegistered) {
           panels.register('リンク置換', panel)

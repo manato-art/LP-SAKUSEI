@@ -14,6 +14,7 @@
 import type Quill from 'quill'
 import rawLibrary from '../fragments/ab_tests__UID__articles__widget-library.portals.html?raw'
 import { toast } from '../ui.ts'
+import { ensureWhiteBase } from '../white-base.ts'
 import { bindBackdropClose, findByExactText, openPortal } from './portal.ts'
 import { highlight } from './syntax-highlight.ts'
 
@@ -70,6 +71,7 @@ export function mountWidgetLibrary(root: HTMLElement, quill: Quill): void {
 
 function open(quill: Quill): void {
   if (isOpen) return
+  ensureWhiteBase()
   const portal = openPortal(rawLibrary, HOOK.dialog, () => {
     isOpen = false
   })

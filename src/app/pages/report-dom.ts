@@ -108,6 +108,22 @@ function readThemeSwap(): ThemeSwap {
 }
 
 /**
+ * 指示116: マウント直後にライトテーマを即適用する（白基調化）。
+ * wireThemeToggle と同じクラス名入替を、トグルクリックを待たずに行う。
+ * wireThemeToggle **より先に** 呼ぶこと（トグルの初期状態を正しく設定するため）。
+ */
+export function applyLightTheme(root: HTMLElement): void {
+  const swap = readThemeSwap()
+  if (swap.toLight.size === 0) return
+  for (const node of root.querySelectorAll('[class]')) {
+    const current = node.getAttribute('class') ?? ''
+    const next = swapClassName(current, swap.toLight)
+    if (next !== current) node.setAttribute('class', next)
+  }
+  root.dataset['cloneTheme'] = 'light'
+}
+
+/**
  * 右上のランプ（`_toggleTheme_`）でダーク⇄ライトを切り替える。
  * 採取CSSに両方のクラスがあるので、クラス名を入れ替えるだけで実物と同じ見た目になる。
  * 対応表が作れなかった場合は何もしない（それらしい見た目を自作しない）。
@@ -120,7 +136,8 @@ export function wireThemeToggle(root: HTMLElement): void {
     console.warn('[report] 採取CSSからテーマの対応表を作れませんでした。切替は無効です')
     return
   }
-  let isDark = true
+  // 指示116: applyLightTheme() で先にライトが適用されている場合がある
+  let isDark = root.dataset['cloneTheme'] !== 'light'
   toggle.addEventListener('click', () => {
     const map = isDark ? swap.toLight : swap.toDark
     // class は SVG 要素だと SVGAnimatedString になるので、必ず属性で読み書きする

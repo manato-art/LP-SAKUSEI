@@ -17,6 +17,7 @@ import modalHtml from '../fragments/ab_tests__UID__articles__article-settings-mo
 import bgImageHtml from '../fragments/ab_tests__UID__articles__article-settings-bg-image.portals.html?raw'
 import bgColorHtml from '../fragments/ab_tests__UID__articles__article-settings-bg-color.portals.html?raw'
 import { toast } from '../ui.ts'
+import { ensureWhiteBase, stripDarkThemeClasses } from '../white-base.ts'
 
 /**
  * 背景ラジオで「画像」「色」を選んだときに実物が差し込む入力欄は、React の条件描画なので
@@ -173,9 +174,12 @@ async function openPanel(articleUid: string): Promise<void> {
   }
 
   // ReactModal と同じく body 直下のポータルに出す（採取DOMの構造に合わせる）
+  ensureWhiteBase()
   const portal = document.createElement('div')
   portal.className = 'ReactModalPortal'
   portal.innerHTML = modalHtml
+  // 指示116: 採取物のダークテーマクラスを除去し白基調にする
+  stripDarkThemeClasses(portal)
   // 採取物には ReactModal の遷移用に overlay が2枚含まれることがある。
   // 2枚とも生かすと同じモーダルが重なるので、先頭以外は取り除く。
   const overlays = portal.querySelectorAll(HOOK.overlay)

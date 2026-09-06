@@ -25,6 +25,7 @@
  * 「計測機能付きリンク」の意味と置換ロジックは src/shared/link-html.ts（実 Quill Link blot 準拠）。
  */
 import { toast } from '../ui.ts'
+import { ensureWhiteBase, stripDarkThemeClasses } from '../white-base.ts'
 import { cleanupDropdownHost, findLpBody } from './history.ts'
 import {
   buildLinkReplaceRequest,
@@ -167,7 +168,7 @@ const OPEN_STYLE =
   'top: 184px; margin-top: -204.5px; left: auto; right: 30px; border-right: 8px solid transparent;'
 
 /** 採取した実マークアップ（土台に同じものがある想定。無い環境向けのフォールバック） */
-const LINK_REPLACE_MARKUP = `<div class="_bodyWrapper_x4j8w_8 _open_x4j8w_84" style="top: 184px; margin-top: -204.5px; left: auto; right: 30px; border-right: 8px solid transparent;"><div class="_body_x4j8w_8"><div class="sample_token_ce149280"><div class="sample_token_2431ba36"><div class="_headerTitle_id5w4_24">リンク置換</div><div class="_tabWrapper_id5w4_28"><div class="_tab_id5w4_28 _active_id5w4_48">Version内リンク</div><div class="_tab_id5w4_28 ">離脱防止ポップアップリンク</div></div></div><div class="_replaceLinkContent_id5w4_76"><div class="_contentHeader_id5w4_87"><div class="_sortTabWrapper_id5w4_93"><div class="_sortTab_id5w4_93 _active_id5w4_48">全て</div><div class="_sortTab_id5w4_93 ">計測あり</div><div class="_sortTab_id5w4_93 ">計測なし</div></div><div class="_selectTypeBtnWrapper_id5w4_112"><div class="_btn_id5w4_117">全て選択</div><div class="_btn_id5w4_117">選択解除</div></div></div><div class="sample_token_04cc4929"><select class="_formControl_1n7ll_17"><option value="free">新しいリンク</option><option value="redirectPage">中間ページリンク</option></select></div><div class="_targetLinkLists_id5w4_134"><div class="_noLinksDescription_id5w4_411">置き換え対象のリンクがありません</div></div><div class="_popupPreviewWrapper_id5w4_188"><iframe title="sample_token_4085a19a" class="_previewIframe_id5w4_223"></iframe></div><div class="_formWrapper_id5w4_228"><div class="_linkInputWrapper_id5w4_237"><div class="_replaceLinkInput_id5w4_246"><input type="text" class="_formControl_1n7ll_17" placeholder="新規のリンクを入力"></div><div class="_btnReplace_id5w4_297 _disable_1bcs1_22 ">置換</div></div><div class="sample_token_93c0b7f0"><div class="_trackingCheckBox_id5w4_257"><label class="_checkBoxControl_1dpzf_1"><input type="checkbox" id="trackingCheckBox" checked=""><div class="_checkbox_1dpzf_16 _medium_1dpzf_44 _darkTheme_1dpzf_37"></div></label><div class="_dropdown_x4j8w_1 _lightTheme_x4j8w_88"><div class="_trigger_x4j8w_5"><div class="_container_1uihv_1"><div class="_item_1uihv_6"><label class="_checkboxLabel_id5w4_268 " for="trackingCheckBox">計測機能付きリンクに変更</label></div><div class="_item_1uihv_6 _iconCenter_1uihv_9"><svg xmlns="http://www.w3.org/2000/svg" height="16" width="16" viewBox="0 0 24 24" class="_light_v5c05_1"><path d="M12 2C6.48583 2 2 6.48583 2 12C2 17.5142 6.48583 22 12 22C17.5142 22 22 17.5142 22 12C22 6.48583 17.5142 2 12 2ZM14.215 17.2367C13.6642 17.4533 11.755 18.365 10.655 17.3958C10.3267 17.1075 10.1633 16.7417 10.1633 16.2975C10.1633 15.4658 10.4367 14.7408 10.9292 13C11.0158 12.6708 11.1217 12.2442 11.1217 11.9058C11.1217 11.3217 10.9 11.1667 10.2992 11.1667C10.0058 11.1667 9.68083 11.2708 9.38667 11.3808L9.54917 10.715C10.205 10.4483 11.0283 10.1233 11.7333 10.1233C12.7908 10.1233 13.5692 10.6508 13.5692 11.6542C13.5692 11.9433 13.5192 12.45 13.4142 12.8L12.8058 14.9517C12.68 15.3867 12.4525 16.3458 12.805 16.63C13.1517 16.9108 13.9725 16.7617 14.3775 16.5708L14.215 17.2367ZM13.21 8.66667C12.52 8.66667 11.96 8.10667 11.96 7.41667C11.96 6.72667 12.52 6.16667 13.21 6.16667C13.9 6.16667 14.46 6.72667 14.46 7.41667C14.46 8.10667 13.9 8.66667 13.21 8.66667Z"></path></svg></div></div></div><div class="_bodyWrapper_x4j8w_8"><div class="_body_x4j8w_8"><div class="_description_1uihv_17" style="width: 360px;"><div class="sample_token_25a092c0"><div>ページ内CTRやCVRの計測をするために、Click・CVを計測するURLリンクを挿入する際は必ず「計測機能付きリンク」をチェックした状態で追加してください。同ページ内の遷移や運営者情報など、Click・CVとして計測しないURLリンクは「計測機能付きリンク」のチェックを外してから追加してください。</div></div></div><div class="_arrow_x4j8w_25"></div></div></div></div></div><div class="_targetCheckBox_id5w4_9"><label class="_checkBoxControl_1dpzf_1"><input type="checkbox" id="targetCheckBox"><div class="_checkbox_1dpzf_16 _medium_1dpzf_44 _darkTheme_1dpzf_37"></div></label><div class="_dropdown_x4j8w_1 _lightTheme_x4j8w_88"><div class="_trigger_x4j8w_5"><div class="_container_1uihv_1"><div class="_item_1uihv_6"><label class="_checkboxLabel_id5w4_268" for="targetCheckBox">リンクを別タブで開く</label></div><div class="_item_1uihv_6 _iconCenter_1uihv_9"><svg xmlns="http://www.w3.org/2000/svg" height="16" width="16" viewBox="0 0 24 24" class="_light_v5c05_1"><path d="M12 2C6.48583 2 2 6.48583 2 12C2 17.5142 6.48583 22 12 22C17.5142 22 22 17.5142 22 12C22 6.48583 17.5142 2 12 2ZM14.215 17.2367C13.6642 17.4533 11.755 18.365 10.655 17.3958C10.3267 17.1075 10.1633 16.7417 10.1633 16.2975C10.1633 15.4658 10.4367 14.7408 10.9292 13C11.0158 12.6708 11.1217 12.2442 11.1217 11.9058C11.1217 11.3217 10.9 11.1667 10.2992 11.1667C10.0058 11.1667 9.68083 11.2708 9.38667 11.3808L9.54917 10.715C10.205 10.4483 11.0283 10.1233 11.7333 10.1233C12.7908 10.1233 13.5692 10.6508 13.5692 11.6542C13.5692 11.9433 13.5192 12.45 13.4142 12.8L12.8058 14.9517C12.68 15.3867 12.4525 16.3458 12.805 16.63C13.1517 16.9108 13.9725 16.7617 14.3775 16.5708L14.215 17.2367ZM13.21 8.66667C12.52 8.66667 11.96 8.10667 11.96 7.41667C11.96 6.72667 12.52 6.16667 13.21 6.16667C13.9 6.16667 14.46 6.72667 14.46 7.41667C14.46 8.10667 13.9 8.66667 13.21 8.66667Z"></path></svg></div></div></div><div class="_bodyWrapper_x4j8w_8"><div class="_body_x4j8w_8"><div class="_description_1uihv_17" style="width: 360px;"><div class="sample_token_25a092c0"><div>別タブで開く必要がない場合、別タブで開かないことを推奨します。同じタブで開いた方がCV計測精度を高くできます。</div></div></div><div class="_arrow_x4j8w_25"></div></div></div></div></div></div></div></div></div><div class="_arrow_x4j8w_25 _leftLowerHalf_x4j8w_62" style="top: 9.75px; left: auto; right: 0px;"></div></div></div>`
+const LINK_REPLACE_MARKUP = `<div class="_bodyWrapper_x4j8w_8 _open_x4j8w_84" style="top: 184px; margin-top: -204.5px; left: auto; right: 30px; border-right: 8px solid transparent;"><div class="_body_x4j8w_8"><div class="sample_token_ce149280"><div class="sample_token_2431ba36"><div class="_headerTitle_id5w4_24">リンク置換</div><div class="_tabWrapper_id5w4_28"><div class="_tab_id5w4_28 _active_id5w4_48">Version内リンク</div><div class="_tab_id5w4_28 ">離脱防止ポップアップリンク</div></div></div><div class="_replaceLinkContent_id5w4_76"><div class="_contentHeader_id5w4_87"><div class="_sortTabWrapper_id5w4_93"><div class="_sortTab_id5w4_93 _active_id5w4_48">全て</div><div class="_sortTab_id5w4_93 ">計測あり</div><div class="_sortTab_id5w4_93 ">計測なし</div></div><div class="_selectTypeBtnWrapper_id5w4_112"><div class="_btn_id5w4_117">全て選択</div><div class="_btn_id5w4_117">選択解除</div></div></div><div class="sample_token_04cc4929"><select class="_formControl_1n7ll_17"><option value="free">新しいリンク</option><option value="redirectPage">中間ページリンク</option></select></div><div class="_targetLinkLists_id5w4_134"><div class="_noLinksDescription_id5w4_411">置き換え対象のリンクがありません</div></div><div class="_popupPreviewWrapper_id5w4_188"><iframe title="sample_token_4085a19a" class="_previewIframe_id5w4_223"></iframe></div><div class="_formWrapper_id5w4_228"><div class="_linkInputWrapper_id5w4_237"><div class="_replaceLinkInput_id5w4_246"><input type="text" class="_formControl_1n7ll_17" placeholder="新規のリンクを入力"></div><div class="_btnReplace_id5w4_297 _disable_1bcs1_22 ">置換</div></div><div class="sample_token_93c0b7f0"><div class="_trackingCheckBox_id5w4_257"><label class="_checkBoxControl_1dpzf_1"><input type="checkbox" id="trackingCheckBox" checked=""><div class="_checkbox_1dpzf_16 _medium_1dpzf_44"></div></label><div class="_dropdown_x4j8w_1 _lightTheme_x4j8w_88"><div class="_trigger_x4j8w_5"><div class="_container_1uihv_1"><div class="_item_1uihv_6"><label class="_checkboxLabel_id5w4_268 " for="trackingCheckBox">計測機能付きリンクに変更</label></div><div class="_item_1uihv_6 _iconCenter_1uihv_9"><svg xmlns="http://www.w3.org/2000/svg" height="16" width="16" viewBox="0 0 24 24" class="_light_v5c05_1"><path d="M12 2C6.48583 2 2 6.48583 2 12C2 17.5142 6.48583 22 12 22C17.5142 22 22 17.5142 22 12C22 6.48583 17.5142 2 12 2ZM14.215 17.2367C13.6642 17.4533 11.755 18.365 10.655 17.3958C10.3267 17.1075 10.1633 16.7417 10.1633 16.2975C10.1633 15.4658 10.4367 14.7408 10.9292 13C11.0158 12.6708 11.1217 12.2442 11.1217 11.9058C11.1217 11.3217 10.9 11.1667 10.2992 11.1667C10.0058 11.1667 9.68083 11.2708 9.38667 11.3808L9.54917 10.715C10.205 10.4483 11.0283 10.1233 11.7333 10.1233C12.7908 10.1233 13.5692 10.6508 13.5692 11.6542C13.5692 11.9433 13.5192 12.45 13.4142 12.8L12.8058 14.9517C12.68 15.3867 12.4525 16.3458 12.805 16.63C13.1517 16.9108 13.9725 16.7617 14.3775 16.5708L14.215 17.2367ZM13.21 8.66667C12.52 8.66667 11.96 8.10667 11.96 7.41667C11.96 6.72667 12.52 6.16667 13.21 6.16667C13.9 6.16667 14.46 6.72667 14.46 7.41667C14.46 8.10667 13.9 8.66667 13.21 8.66667Z"></path></svg></div></div></div><div class="_bodyWrapper_x4j8w_8"><div class="_body_x4j8w_8"><div class="_description_1uihv_17" style="width: 360px;"><div class="sample_token_25a092c0"><div>ページ内CTRやCVRの計測をするために、Click・CVを計測するURLリンクを挿入する際は必ず「計測機能付きリンク」をチェックした状態で追加してください。同ページ内の遷移や運営者情報など、Click・CVとして計測しないURLリンクは「計測機能付きリンク」のチェックを外してから追加してください。</div></div></div><div class="_arrow_x4j8w_25"></div></div></div></div></div><div class="_targetCheckBox_id5w4_9"><label class="_checkBoxControl_1dpzf_1"><input type="checkbox" id="targetCheckBox"><div class="_checkbox_1dpzf_16 _medium_1dpzf_44"></div></label><div class="_dropdown_x4j8w_1 _lightTheme_x4j8w_88"><div class="_trigger_x4j8w_5"><div class="_container_1uihv_1"><div class="_item_1uihv_6"><label class="_checkboxLabel_id5w4_268" for="targetCheckBox">リンクを別タブで開く</label></div><div class="_item_1uihv_6 _iconCenter_1uihv_9"><svg xmlns="http://www.w3.org/2000/svg" height="16" width="16" viewBox="0 0 24 24" class="_light_v5c05_1"><path d="M12 2C6.48583 2 2 6.48583 2 12C2 17.5142 6.48583 22 12 22C17.5142 22 22 17.5142 22 12C22 6.48583 17.5142 2 12 2ZM14.215 17.2367C13.6642 17.4533 11.755 18.365 10.655 17.3958C10.3267 17.1075 10.1633 16.7417 10.1633 16.2975C10.1633 15.4658 10.4367 14.7408 10.9292 13C11.0158 12.6708 11.1217 12.2442 11.1217 11.9058C11.1217 11.3217 10.9 11.1667 10.2992 11.1667C10.0058 11.1667 9.68083 11.2708 9.38667 11.3808L9.54917 10.715C10.205 10.4483 11.0283 10.1233 11.7333 10.1233C12.7908 10.1233 13.5692 10.6508 13.5692 11.6542C13.5692 11.9433 13.5192 12.45 13.4142 12.8L12.8058 14.9517C12.68 15.3867 12.4525 16.3458 12.805 16.63C13.1517 16.9108 13.9725 16.7617 14.3775 16.5708L14.215 17.2367ZM13.21 8.66667C12.52 8.66667 11.96 8.10667 11.96 7.41667C11.96 6.72667 12.52 6.16667 13.21 6.16667C13.9 6.16667 14.46 6.72667 14.46 7.41667C14.46 8.10667 13.9 8.66667 13.21 8.66667Z"></path></svg></div></div></div><div class="_bodyWrapper_x4j8w_8"><div class="_body_x4j8w_8"><div class="_description_1uihv_17" style="width: 360px;"><div class="sample_token_25a092c0"><div>別タブで開く必要がない場合、別タブで開かないことを推奨します。同じタブで開いた方がCV計測精度を高くできます。</div></div></div><div class="_arrow_x4j8w_25"></div></div></div></div></div></div></div></div></div><div class="_arrow_x4j8w_25 _leftLowerHalf_x4j8w_62" style="top: 9.75px; left: auto; right: 0px;"></div></div></div>`
 
 const SELECT_ALL_LABEL = '全て選択'
 const SORT_MODES: readonly LinkSortMode[] = ['all', 'tracking', 'untracked']
@@ -218,12 +219,19 @@ export function mountLinkReplace(
   root: HTMLElement,
   articleUid: string,
   currentVersionUid?: () => string,
+  onClose?: () => void,
 ): HTMLElement | null {
+  ensureWhiteBase()
   const panel = resolvePanel(root)
   if (panel === null) {
     toast('リンク置換パネルの土台が見つかりませんでした', 'error')
     return null
   }
+  // 指示116: パネルホスト（とパネル自身）のダークテーマクラスを除去して白基調にする
+  const host = panel.closest<HTMLElement>('[data-clone-panel-host="link-replace"]')
+  if (host !== null) stripDarkThemeClasses(host)
+  stripDarkThemeClasses(panel)
+
   panel.setAttribute('data-clone-article-uid', articleUid)
   if (currentVersionUid !== undefined) PANEL_VERSION_SOURCE.set(panel, currentVersionUid)
 
@@ -231,6 +239,8 @@ export function mountLinkReplace(
     panel.setAttribute('data-clone-panel', 'link-replace')
     PANEL_STATE.set(panel, INITIAL_STATE)
     wire(root, panel)
+    // 指示116: 戻るボタンを追加
+    wireBackButton(panel, onClose)
   }
 
   if (panel.getAttribute('style') === null) panel.setAttribute('style', OPEN_STYLE)
@@ -328,6 +338,36 @@ function wire(root: HTMLElement, panel: HTMLElement): void {
   panel.querySelector<HTMLElement>(`.${CLS.btnReplace}`)?.addEventListener('click', () => {
     void applyReplacement(root, panel)
   })
+}
+
+/**
+ * 指示116: リンク設定パネルに戻るボタンを追加する。
+ * ヘッダータイトル（「リンク置換」）の左に配置し、クリックでパネルを閉じる。
+ */
+function wireBackButton(panel: HTMLElement, onClose?: () => void): void {
+  const header = panel.querySelector<HTMLElement>('._headerTitle_id5w4_24')
+  if (header === null) return
+  // ヘッダーの親ラッパーを flex にして戻るボタンを左に配置
+  const wrapper = header.parentElement
+  if (wrapper !== null) {
+    wrapper.style.display = 'flex'
+    wrapper.style.alignItems = 'center'
+    wrapper.style.gap = '8px'
+  }
+  const btn = document.createElement('button')
+  btn.type = 'button'
+  btn.className = 'sb-clone-back-btn'
+  btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>`
+  btn.addEventListener('click', () => {
+    if (onClose !== undefined) {
+      // パネルマネージャー経由で閉じる（内部状態を同期させる）
+      onClose()
+    } else {
+      // fallback: パネルマネージャーが無い場合は直接クラスを操作
+      panel.classList.remove(CLS.open)
+    }
+  })
+  header.insertAdjacentElement('beforebegin', btn)
 }
 
 /**

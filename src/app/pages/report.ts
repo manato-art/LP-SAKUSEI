@@ -13,6 +13,7 @@ import { api, type ReportResponse } from '../api.ts'
 import { isStale } from '../main.ts'
 import { toast } from '../ui.ts'
 import {
+  applyLightTheme,
   cloneNote,
   mountCapturedPage,
   replaceBakedPageName,
@@ -95,6 +96,7 @@ export async function renderReport(
   wireBackLink(root, folder?.uid ?? null)
   setTopBarNames(root, ab_test.title, folderName)
   setupBreadcrumb(root, folderName, ab_test.title, folder?.uid)
+  applyLightTheme(root)
   wireThemeToggle(root)
 
   const alert = root.querySelector<HTMLElement>('.MuiAlert-message')

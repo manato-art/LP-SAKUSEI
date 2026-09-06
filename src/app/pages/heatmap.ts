@@ -11,6 +11,7 @@ import { api, type ReportVersionRow } from '../api.ts'
 import { isStale } from '../main.ts'
 import { toast } from '../ui.ts'
 import {
+  applyLightTheme,
   cloneNote,
   mountCapturedPage,
   setTopBarNames,
@@ -48,6 +49,7 @@ export async function renderHeatmap(
   wireBackLink(root, folder?.uid ?? null)
   setTopBarNames(root, ab_test.title, folder?.name ?? '')
   setupBreadcrumb(root, folder?.name ?? '', ab_test.title, folder?.uid)
+  applyLightTheme(root)
   wireThemeToggle(root)
 
   renderVersionList(root, report.rows)
