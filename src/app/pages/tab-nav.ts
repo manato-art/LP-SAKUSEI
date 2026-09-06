@@ -73,8 +73,10 @@ function injectTabBarCss(): void {
     }
     /* 指示86: 採取CSSに負けないよう !important で統一 */
     .sb-tab-bar a {
-      display: inline-block !important;
-      padding: 8px 16px !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      align-self: stretch !important;
+      padding: 0 16px !important;
       font-size: 13px !important;
       font-weight: 500 !important;
       color: rgba(255,255,255,.7) !important;
