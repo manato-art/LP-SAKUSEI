@@ -377,22 +377,32 @@ function applySplitTestWhiteTheme(root: HTMLElement): void {
       p.setAttribute('fill', '#333')
     }
   }
-  // アクティブタブ（暗灰 → 白+オレンジ下線）
+  // アクティブタブ＝選択中を明確にする（薄オレンジ背景＋左オレンジ帯＋オレンジ太字）。
+  // 角丸下線はカーブして選択が分かりにくいので使わない（要望「選択しているものはわかるように」）。
   for (const tab of root.querySelectorAll<HTMLElement>('.css-160345m')) {
-    tab.style.setProperty('background-color', '#fff', 'important')
-    tab.style.setProperty('color', '#333', 'important')
-    tab.style.setProperty('border-bottom', '2px solid #f0960a', 'important')
-    // 指示131: アクティブタブ内SVGアイコンの fill="#fff" → 黒に変更
-    for (const g of tab.querySelectorAll<SVGElement>('g[fill="#fff"], g[fill="#FFF"], g[fill="white"]')) {
-      g.setAttribute('fill', '#333')
+    tab.style.setProperty('background-color', '#fff7ed', 'important')
+    tab.style.setProperty('color', '#e07b00', 'important')
+    tab.style.setProperty('font-weight', '700', 'important')
+    tab.style.setProperty('border-bottom', 'none', 'important')
+    tab.style.setProperty('border-left', '4px solid #f0960a', 'important')
+    tab.style.setProperty('border-radius', '0', 'important')
+    // アクティブタブ内SVGアイコンの色をオレンジに（選択中を色でも示す）
+    for (const g of tab.querySelectorAll<SVGElement>('g[fill="#fff"], g[fill="#FFF"], g[fill="white"], g[fill="#333"]')) {
+      g.setAttribute('fill', '#e07b00')
     }
-    for (const p of tab.querySelectorAll<SVGElement>('path[fill="#fff"], path[fill="#FFF"], path[fill="white"]')) {
-      p.setAttribute('fill', '#333')
+    for (const p of tab.querySelectorAll<SVGElement>('path[fill="#fff"], path[fill="#FFF"], path[fill="white"], path[fill="#333"]')) {
+      p.setAttribute('fill', '#e07b00')
+    }
+    // アクティブタブ内のテキストspan（.css-ip5sxk）もオレンジ太字に
+    for (const span of tab.querySelectorAll<HTMLElement>('.css-ip5sxk')) {
+      span.style.setProperty('color', '#e07b00', 'important')
+      span.style.setProperty('font-weight', '700', 'important')
     }
   }
-  // 指示131: 非アクティブタブのテキスト色を視認しやすく
+  // 指示131: 非アクティブタブのテキスト色を視認しやすく（選択中との差を明確に）
   for (const tab of root.querySelectorAll<HTMLElement>('.css-14jx66')) {
     tab.style.setProperty('color', '#666', 'important')
+    tab.style.setProperty('font-weight', '400', 'important')
   }
   // バナー内の白文字 → 黒文字
   for (const text of root.querySelectorAll<HTMLElement>('.css-9ofnmi')) {
@@ -420,8 +430,10 @@ function applySplitTestWhiteTheme(root: HTMLElement): void {
   for (const heading of root.querySelectorAll<HTMLElement>('.css-5u8lc9')) {
     heading.style.setProperty('color', '#333', 'important')
   }
-  // タブ内テキスト（.css-ip5sxk）の色を確実に黒に
+  // タブ内テキスト（.css-ip5sxk）の色を確実に黒に。
+  // ただしアクティブタブ（.css-160345m）内はオレンジ選択色を保つため除外する。
   for (const label of root.querySelectorAll<HTMLElement>('.css-ip5sxk')) {
+    if (label.closest('.css-160345m') !== null) continue
     label.style.setProperty('color', '#333', 'important')
   }
 }
