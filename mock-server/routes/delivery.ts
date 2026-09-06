@@ -195,6 +195,7 @@ deliveryRouter.get('/lp/:uid', (req, res) => {
     `<meta name="viewport" content="width=device-width, initial-scale=1">` +
     robotsMeta +
     `<title>${escapeHtml(abTest.page_title || abTest.title)}</title>` +
+    `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Noto+Serif+JP:wght@400;700&family=M+PLUS+Rounded+1c:wght@400;700&family=Kosugi+Maru&family=Sawarabi+Gothic&display=swap">` +
     `<style>body{margin:0 auto;max-width:${DELIVERY_WIDTH}px;font-family:"Hiragino Sans",sans-serif;background:#fff}` +
     `${LP_BASE_CSS}${version.css}${styleCss}</style>` +
     headTags +

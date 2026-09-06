@@ -34,6 +34,7 @@ import {
   fontSizeLabel,
   headerLabel,
   insertExpandedOnlyItems,
+  loadGoogleFonts,
   wireFreeFontSize,
 } from './toolbar/text-format.ts'
 
@@ -49,6 +50,7 @@ export {
   fontFamilyLabel,
   fontSizeLabel,
   headerLabel,
+  loadGoogleFonts,
   parseFreeFontSize,
 } from './toolbar/text-format.ts'
 export type { Hsv } from './toolbar/color-picker.ts'
@@ -81,6 +83,7 @@ export function mountEditorToolbar(root: HTMLElement, quill: Quill, options: Edi
   wrapper.dataset['sbToolbar'] = 'mounted'
 
   allowPxSizeAndFreeFont(quill)
+  loadGoogleFonts()
   insertExpandedOnlyItems(wrapper)
 
   const state: ToolbarState = { lastRange: null, keepOpen: false }

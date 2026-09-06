@@ -37,6 +37,7 @@ import { wireMediaDrop } from '../panels/media-insert.ts'
 import { wireImageResize } from '../panels/image-resize.ts'
 import { mountMinimap } from '../panels/minimap.ts'
 import { toggleComparePanel, isComparePanelOpen, refreshComparePreview } from '../panels/compare-mode.ts'
+import { deliveryUrl } from './basic-info-form.ts'
 import { wireAbTestTabs, setupHorizTabs, setupBreadcrumb } from './tab-nav.ts'
 import { wireBeyondNavAnchors } from './beyond-nav.ts'
 import { masterStyleEditorDecls } from '../master-style.ts'
@@ -890,13 +891,35 @@ function buildVersionCardEl(version: Version, isCurrent: boolean): HTMLElement {
 
   nameRow.append(nameInput, badge)
 
-  // ── Row 2: 配信割合 + 保存状態 ──
+  // ── Row 2: 配信割合（SB実物準拠: アイコン+説明 / −数値%+ / プリセットセレクト+保存） ──
   const ratioRow = document.createElement('div')
   ratioRow.className = 'sb-vc-ratio-row'
 
-  const ratioLabel = document.createElement('span')
-  ratioLabel.className = 'sb-vc-ratio-label'
-  ratioLabel.textContent = '配信割合'
+  // Row 2-1: アイコン + タイトル + 説明
+  const ratioHeader = document.createElement('div')
+  ratioHeader.className = 'sb-vc-ratio-header'
+
+  const ratioIcon = document.createElement('span')
+  ratioIcon.className = 'sb-vc-ratio-icon'
+  ratioIcon.innerHTML =
+    '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#fff" stroke-width="2" ' +
+    'stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="19" r="1.5" fill="#fff" stroke="none"/>' +
+    '<path d="M8.5 15.5a5 5 0 0 1 7 0"/><path d="M5.5 12.5a9 9 0 0 1 13 0"/></svg>'
+
+  const ratioHeadText = document.createElement('div')
+  ratioHeadText.className = 'sb-vc-ratio-headtext'
+  const ratioTitle = document.createElement('div')
+  ratioTitle.className = 'sb-vc-ratio-title'
+  ratioTitle.textContent = '配信割合'
+  const ratioDesc = document.createElement('div')
+  ratioDesc.className = 'sb-vc-ratio-desc'
+  ratioDesc.textContent = 'この設定で配信される割合を調整できます。'
+  ratioHeadText.append(ratioTitle, ratioDesc)
+  ratioHeader.append(ratioIcon, ratioHeadText)
+
+  // Row 2-2: −/数値/%/+ コントロール（ratioInput は非表示のまま値の正とし、表示は ratioDisplay が担う）
+  const ratioControl = document.createElement('div')
+  ratioControl.className = 'sb-vc-ratio-control'
 
   const ratioInput = document.createElement('input')
   ratioInput.setAttribute('data-test', 'ArticleList-DeriveryRateForm')
@@ -904,23 +927,44 @@ function buildVersionCardEl(version: Version, isCurrent: boolean): HTMLElement {
   ratioInput.value = String(version.distribution_ratio)
   ratioInput.className = 'sb-vc-ratio-input'
 
+  const downBtn = document.createElement('button')
+  downBtn.setAttribute('data-test', 'ArticleList-DeriveryDownRateForm')
+  downBtn.type = 'button'
+  downBtn.className = 'sb-vc-ratio-btn sb-vc-ratio-btn--minus'
+  downBtn.textContent = '−'
+
+  const ratioDisplay = document.createElement('span')
+  ratioDisplay.className = 'sb-vc-ratio-display'
+  ratioDisplay.textContent = String(version.distribution_ratio)
+
   const pct = document.createElement('span')
   pct.className = 'sb-vc-ratio-pct'
   pct.textContent = '%'
 
-  const stepperWrap = document.createElement('div')
-  stepperWrap.className = 'sb-vc-stepper'
   const upBtn = document.createElement('button')
   upBtn.setAttribute('data-test', 'ArticleList-DeriveryUpRateForm')
   upBtn.type = 'button'
-  upBtn.className = 'sb-vc-stepper-btn sb-vc-stepper-up'
-  upBtn.textContent = '▲'
-  const downBtn = document.createElement('button')
-  downBtn.setAttribute('data-test', 'ArticleList-DeriveryDownRateForm')
-  downBtn.type = 'button'
-  downBtn.className = 'sb-vc-stepper-btn sb-vc-stepper-down'
-  downBtn.textContent = '▼'
-  stepperWrap.append(upBtn, downBtn)
+  upBtn.className = 'sb-vc-ratio-btn sb-vc-ratio-btn--plus'
+  upBtn.textContent = '+'
+
+  ratioControl.append(downBtn, ratioDisplay, pct, upBtn)
+
+  // Row 2-3: プリセットのドロップダウン + 保存ボタン
+  const ratioFooter = document.createElement('div')
+  ratioFooter.className = 'sb-vc-ratio-footer'
+
+  const ratioSelect = document.createElement('select')
+  ratioSelect.className = 'sb-vc-ratio-select'
+  const ratioPresets = [6, 10, 20, 50, 100]
+  for (const preset of ratioPresets) {
+    const option = document.createElement('option')
+    option.value = String(preset)
+    option.textContent = `${preset}%`
+    ratioSelect.append(option)
+  }
+  if (ratioPresets.includes(version.distribution_ratio)) {
+    ratioSelect.value = String(version.distribution_ratio)
+  }
 
   const spacer = document.createElement('div')
   spacer.style.flex = '1'
@@ -931,7 +975,9 @@ function buildVersionCardEl(version: Version, isCurrent: boolean): HTMLElement {
   saveBtn.className = 'sb-vc-save-btn'
   saveBtn.textContent = '保存済み'
 
-  ratioRow.append(ratioLabel, ratioInput, pct, stepperWrap, spacer, saveBtn)
+  ratioFooter.append(ratioSelect, spacer, saveBtn)
+
+  ratioRow.append(ratioHeader, ratioControl, ratioFooter, ratioInput)
 
   // ── サムネイル ──
   const thumb = document.createElement('div')
@@ -1036,31 +1082,47 @@ function injectVersionCardCss(): void {
     }
     .sb-vc-badge--editing { background:rgba(255,140,0,.15);color:#ff8c00; }
     .sb-vc-badge--saved   { background:rgba(0,145,255,.1);color:#0091ff; }
-    /* ── 配信割合行 ── */
+    /* ── 配信割合（SB実物準拠: アイコン+説明 / −数値%+ / セレクト+保存） ── */
     .sb-vc-ratio-row {
-      display:flex;align-items:center;gap:6px;margin-bottom:10px;
+      display:flex;flex-direction:column;gap:10px;margin-bottom:10px;
     }
-    .sb-vc-ratio-label { font-size:12px;color:#666;white-space:nowrap; }
-    .sb-vc-ratio-input {
-      width:50px;height:28px;border:1px solid #e5e5ea;border-radius:4px;
-      font-size:13px;text-align:center;font-variant-numeric:tabular-nums;
-      outline:none;font-family:inherit;-moz-appearance:textfield;padding:0 4px;
-      box-sizing:border-box;
+    /* Row1: アイコン + タイトル + 説明 */
+    .sb-vc-ratio-header { display:flex;align-items:flex-start;gap:8px; }
+    .sb-vc-ratio-icon {
+      width:24px;height:24px;border-radius:50%;background:#0091ff;
+      display:flex;align-items:center;justify-content:center;flex-shrink:0;
     }
-    .sb-vc-ratio-input:focus { border-color:#0091ff; }
-    .sb-vc-ratio-input::-webkit-inner-spin-button,
-    .sb-vc-ratio-input::-webkit-outer-spin-button { -webkit-appearance:none;margin:0; }
-    .sb-vc-ratio-pct { font-size:12px;color:#666; }
-    /* ── ステッパー ── */
-    .sb-vc-stepper { display:flex;flex-direction:column;gap:0; }
-    .sb-vc-stepper-btn {
-      width:18px;height:14px;border:1px solid #e5e5ea;background:#fff;
-      font-size:7px;cursor:pointer;display:flex;align-items:center;
-      justify-content:center;color:#666;padding:0;line-height:1;
+    .sb-vc-ratio-headtext { min-width:0; }
+    .sb-vc-ratio-title { font-size:14px;font-weight:700;color:#1a1a1a;line-height:1.3; }
+    .sb-vc-ratio-desc { font-size:11px;color:#9e9e9e;line-height:1.4;margin-top:2px; }
+    /* Row2: −/数値/%/+ */
+    .sb-vc-ratio-control {
+      display:flex;align-items:center;justify-content:center;gap:10px;
+      background:#f5f6f8;border-radius:24px;padding:8px 10px;
     }
-    .sb-vc-stepper-up { border-radius:3px 3px 0 0; }
-    .sb-vc-stepper-down { border-radius:0 0 3px 3px;border-top:none; }
-    .sb-vc-stepper-btn:hover { background:#f0f0f2; }
+    .sb-vc-ratio-input { display:none; }
+    .sb-vc-ratio-btn {
+      width:28px;height:28px;border-radius:50%;border:1px solid #e5e5ea;
+      background:#fff;color:#1a1a1a;font-size:16px;font-weight:600;line-height:1;
+      cursor:pointer;display:flex;align-items:center;justify-content:center;
+      padding:0;flex-shrink:0;font-family:inherit;transition:background .12s;
+    }
+    .sb-vc-ratio-btn:hover { background:#f0f0f2; }
+    .sb-vc-ratio-btn--plus { border-color:#0091ff;background:#0091ff;color:#fff; }
+    .sb-vc-ratio-btn--plus:hover { opacity:.88; }
+    .sb-vc-ratio-display {
+      font-size:24px;font-weight:700;color:#1a1a1a;min-width:1.4em;
+      text-align:center;font-variant-numeric:tabular-nums;
+    }
+    .sb-vc-ratio-pct { font-size:14px;color:#666; }
+    /* Row3: ドロップダウン + 保存ボタン */
+    .sb-vc-ratio-footer { display:flex;align-items:center;gap:8px; }
+    .sb-vc-ratio-select {
+      border:1px solid #e5e5ea;border-radius:6px;padding:4px 8px;
+      font-size:12px;color:#1a1a1a;background:#fff;font-family:inherit;
+      cursor:pointer;outline:none;
+    }
+    .sb-vc-ratio-select:focus { border-color:#0091ff; }
     /* ── 保存ボタン ── */
     .sb-vc-save-btn {
       font-size:11px;padding:4px 10px;border:1px solid #ff8c00;
@@ -1164,7 +1226,7 @@ function mountUrlBarInEditor(ctx: EditorContext): HTMLElement | null {
   if (contentWrapper.querySelector('[data-url-bar]') !== null) return null
 
   const testUrl = `${location.origin}/#/preview/${ctx.currentUid}`
-  const prodUrl = ''
+  const prodUrl = deliveryUrl(location.origin, ctx.abTestUid)
 
   const bar = mountUrlBar({ testUrl, prodUrl })
 
@@ -1331,7 +1393,7 @@ function loadVersion(ctx: EditorContext, uid: string): void {
     if (urlBarEl !== null) {
       updateUrlBar(urlBarEl, {
         testUrl: `${location.origin}/#/preview/${uid}`,
-        prodUrl: '',
+        // 配信URLはABテスト単位なのでVersion切替では変わらない
       })
     }
     // 比較パネルが開いていればプレビューも更新
@@ -1543,6 +1605,14 @@ function wireVersionCard(ctx: EditorContext, card: HTMLElement, version: Version
   // 名前編集は切替後に行う（実物と同じ「まず選択」動線）。
   if (name !== null && !isCurrent) name.style.pointerEvents = 'none'
 
+  // 表示用の大きい数値(span)は ratioInput(非表示・値の正)の値をミラーする。
+  const ratioDisplay = card.querySelector<HTMLElement>('.sb-vc-ratio-display')
+  const ratioSelect = card.querySelector<HTMLSelectElement>('.sb-vc-ratio-select')
+  const syncRatioDisplay = (): void => {
+    if (ratio === null || ratioDisplay === null) return
+    ratioDisplay.textContent = ratio.value
+  }
+
   const save = async (): Promise<void> => {
     const nextName = name !== null && name.value !== model.name ? name.value : null
     const nextRatio =
@@ -1558,6 +1628,7 @@ function wireVersionCard(ctx: EditorContext, card: HTMLElement, version: Version
         const res = await api.setRatio(model.uid, nextRatio)
         updated = { ...updated, distribution_ratio: res.version.distribution_ratio }
         if (ratio !== null) ratio.value = String(res.version.distribution_ratio)
+        syncRatioDisplay()
       }
       model = updated
       ctx.versions = ctx.versions.map((v) => (v.uid === updated.uid ? updated : v))
@@ -1573,13 +1644,24 @@ function wireVersionCard(ctx: EditorContext, card: HTMLElement, version: Version
     event.stopPropagation()
     if (ratio === null) return
     ratio.value = String(Math.min(100, Number(ratio.value) + 1))
+    syncRatioDisplay()
     void save()
   })
   card.querySelector(HOOK.ratioDown)?.addEventListener('click', (event) => {
     event.stopPropagation()
     if (ratio === null) return
     ratio.value = String(Math.max(0, Number(ratio.value) - 1))
+    syncRatioDisplay()
     void save()
+  })
+  // プリセットのドロップダウン: 選択値を ratioInput に反映し、change を発火して save() に流す。
+  // click は card 側の「クリックでVersion切替」に拾われるとドロップダウン操作が壊れるため止める。
+  ratioSelect?.addEventListener('click', (event) => event.stopPropagation())
+  ratioSelect?.addEventListener('change', () => {
+    if (ratio === null || ratioSelect === null) return
+    ratio.value = ratioSelect.value
+    syncRatioDisplay()
+    ratio.dispatchEvent(new Event('change'))
   })
   // 保存ボタンの配線
   const saveBtn = findUpdateButton(card)

@@ -56,6 +56,7 @@ export async function renderPreview(
   setupBreadcrumb(root, folder?.name ?? '', ab_test.title, folder?.uid)
 
   wireUrlCards(root, abTestUid, version)
+  mountPreviewWarningBanner(root)
   fillPreviewIframe(root, version, styleCss, exit_popups.filter((p) => p.enabled))
 }
 
@@ -147,6 +148,56 @@ function wireCardButtons(card: HTMLElement, url: string): void {
   }
 }
 
+/**
+ * 指示114: 検証用プレビューの警告バナーを挿入。
+ * URLカードの直後・プレビュー iframe の直前に、目立つオレンジ帯で
+ * 「このLPは検証用です。入稿しないでください。」を表示する。
+ */
+function mountPreviewWarningBanner(root: HTMLElement): void {
+  // 既に挿入済みなら何もしない
+  if (root.querySelector('[data-preview-warning]') !== null) return
+
+  const banner = document.createElement('div')
+  banner.setAttribute('data-preview-warning', 'true')
+  banner.style.cssText = [
+    'background:#fff3cd',
+    'border:1px solid #ffc107',
+    'border-radius:4px',
+    'padding:10px 16px',
+    'margin:12px 16px',
+    'display:flex',
+    'align-items:center',
+    'gap:8px',
+    'font-size:13px',
+    'font-weight:600',
+    'color:#856404',
+    'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif',
+  ].join(';')
+
+  // 警告アイコン（SVG）
+  const icon = document.createElement('span')
+  icon.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`
+  icon.style.cssText = 'flex-shrink:0;display:flex;align-items:center'
+
+  const text = document.createElement('span')
+  text.textContent = 'このLPは検証用です。入稿しないでください。'
+
+  const note = document.createElement('span')
+  note.textContent = '※計測はオフになっています'
+  note.style.cssText = 'font-weight:400;font-size:11px;color:#a07a00;margin-left:auto;white-space:nowrap'
+
+  banner.append(icon, text, note)
+
+  // プレビュー iframe の直前に挿入
+  const frame = root.querySelector('#previewIframe')
+  if (frame !== null) {
+    frame.parentElement?.insertBefore(banner, frame)
+  } else {
+    // iframe が見つからない場合はコンテンツ領域の先頭へ
+    root.append(banner)
+  }
+}
+
 /** 保存HTMLからヘッダー画像コメントを抽出し、imgタグ + 本文に分離 */
 function extractHeaderImage(html: string): { headerHtml: string; body: string } {
   const m = html.match(/^<!--header-image:(.+?)-->/)
@@ -181,6 +232,7 @@ function fillPreviewIframe(
   doc.open()
   doc.write(
     `<!doctype html><html lang="ja"><head><meta charset="utf-8">` +
+      `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Noto+Serif+JP:wght@400;700&family=M+PLUS+Rounded+1c:wght@400;700&family=Kosugi+Maru&family=Sawarabi+Gothic&display=swap">` +
       `<style>body{margin:0;font-family:"Hiragino Sans",sans-serif}${LP_BASE_CSS}${version.css}${styleCss}</style>` +
       `</head><body>${headerHtml}${withAutoplayVideos(body)}${popupSnippets}</body></html>`,
   )
