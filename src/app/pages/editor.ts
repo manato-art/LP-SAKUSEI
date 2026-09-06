@@ -1043,18 +1043,29 @@ function injectVersionCardCss(): void {
     .sb-vc-dots-area button.css-3tls8:hover {
       background:#f0f0f2 !important;color:#666 !important;
     }
-    /* ── 「さらに読み込む」ボタン ── */
+    /* ── Version追加ボタン（最下部固定・青） ── */
     [data-test="Article-BtnCreateNewArticle"] {
-      background:#fff !important;color:#666 !important;
-      font-weight:500 !important;font-size:13px !important;
-      border-radius:12px !important;border:2px solid #e5e5ea !important;
-      padding:14px !important;display:flex !important;
+      background:#0091ff !important;color:#fff !important;
+      font-weight:600 !important;font-size:12px !important;
+      border-radius:0 !important;border:none !important;
+      padding:10px !important;display:flex !important;
       align-items:center !important;justify-content:center !important;
-      gap:6px !important;cursor:pointer !important;
-      transition:border-color .15s,background .12s !important;
+      gap:4px !important;cursor:pointer !important;
     }
     [data-test="Article-BtnCreateNewArticle"]:hover {
-      background:#fafafa !important;border-color:#ccc !important;
+      background:#007ae6 !important;
+    }
+    /* ── 「さらに読み込む」カード（カード一覧末尾） ── */
+    .sb-vc-load-more {
+      border:2px dashed #d0d0d5 !important;border-radius:12px !important;
+      background:#fff !important;padding:14px !important;
+      display:flex !important;align-items:center !important;justify-content:center !important;
+      gap:6px !important;cursor:pointer !important;
+      margin:8px 8px 12px !important;
+      transition:border-color .15s,background .12s !important;
+    }
+    .sb-vc-load-more:hover {
+      background:#fafafa !important;border-color:#b0b0b5 !important;
     }
     /* ── Versionパネル全体 ── */
     [class*="_abTestArticlesWrapper_"] { background:#fff !important; }
@@ -1280,6 +1291,8 @@ function renderVersionList(ctx: EditorContext): void {
   if (list === null) return
   const addButton = list.querySelector<HTMLElement>(HOOK.addVersion)
   for (const card of list.querySelectorAll<HTMLElement>(HOOK.versionRow)) card.remove()
+  // 前回の「さらに読み込む」を除去（再描画のたびに作り直す）
+  list.querySelector('.sb-vc-load-more')?.remove()
 
   const archivedMode = ctx.listMode === 'archived'
   const shown = ctx.versions.filter((v) => (archivedMode ? v.archived === true : v.archived !== true))
@@ -1303,6 +1316,33 @@ function renderVersionList(ctx: EditorContext): void {
     else wireVersionCard(ctx, card, version)
     if (addButton !== null) list.insertBefore(card, addButton)
     else list.append(card)
+  }
+  // 通常モードのみ: カード一覧末尾に「さらに読み込む」を挿入
+  if (!archivedMode) {
+    const loadMore = document.createElement('div')
+    loadMore.className = 'sb-vc-load-more'
+    const plus = document.createElement('span')
+    plus.textContent = '+'
+    plus.style.cssText = 'font-size:16px;font-weight:700;color:#999'
+    const label = document.createElement('span')
+    label.textContent = 'さらに読み込む'
+    label.style.cssText = 'font-size:13px;color:#666'
+    const badge = document.createElement('span')
+    badge.textContent = 'NEW'
+    badge.style.cssText = 'font-size:9px;font-weight:700;color:#fff;background:#ff4444;border-radius:3px;padding:1px 5px;margin-left:2px'
+    loadMore.append(plus, label, badge)
+    loadMore.addEventListener('click', async () => {
+      try {
+        await saveHtml(ctx)
+        const { version } = await api.addVersion(ctx.articleUid)
+        ctx.versions = [...ctx.versions, version]
+        toast(`${version.name} を追加しました`)
+        loadVersion(ctx, version.uid)
+      } catch (error) {
+        toast((error as Error).message, 'error')
+      }
+    })
+    list.append(loadMore)
   }
   applySelectionMode(ctx, list)
 }
@@ -1547,22 +1587,13 @@ function findUpdateButton(card: HTMLElement): HTMLElement | null {
   return null
 }
 
-/** 「さらに読み込む」ボタンを1回だけ配線する（カード再描画で消えない要素なので使い回す） */
+/** 「Version追加」ボタンを1回だけ配線する（カード再描画で消えない要素なので使い回す） */
 function wireAddVersion(ctx: EditorContext): void {
   const addBtn = ctx.root.querySelector<HTMLElement>(HOOK.addVersion)
   if (addBtn === null) return
-  // ボタン内部を「+ さらに読み込む」＋ NEWバッジに差し替え
-  addBtn.innerHTML = ''
-  const plus = document.createElement('span')
-  plus.textContent = '+'
-  plus.style.cssText = 'font-size:16px;font-weight:700;color:#999'
-  const label = document.createElement('span')
-  label.textContent = 'さらに読み込む'
-  label.style.cssText = 'font-size:13px;color:#666'
-  const badge = document.createElement('span')
-  badge.textContent = 'NEW'
-  badge.style.cssText = 'font-size:9px;font-weight:700;color:#fff;background:#ff4444;border-radius:3px;padding:1px 5px;margin-left:4px'
-  addBtn.append(plus, label, badge)
+  // 指示100: ボタンテキストを「バージョンを追加」に変更
+  const spanLabel = addBtn.querySelector('span')
+  if (spanLabel !== null) spanLabel.textContent = 'バージョンを追加'
   addBtn.addEventListener('click', async () => {
     try {
       await saveHtml(ctx)
