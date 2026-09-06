@@ -531,6 +531,12 @@ function injectCardSeamStyles(): void {
     [class*="_articleHeaderPhoto_"] {
       border-radius: 0 !important;
     }
+    /* ヘッダー画像が入った時の青い点線枠を消す */
+    [class*="_articleHeaderPhoto_"]:has(img[data-clone-header]) {
+      border: none !important;
+      padding: 0 !important;
+      outline: none !important;
+    }
     /* Versionパネルの角丸を外す + 右に区切り線 + 幅260px（モック準拠） */
     [class*="_abTestArticlesWrapper_"] {
       border-radius: 0 !important;
@@ -734,7 +740,7 @@ function mountHeaderExtras(
   compareBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="3" x2="12" y2="21"/></svg>比較する`
   compareBtn.addEventListener('click', () => {
     toggleComparePanel(ctx.root, {
-      getCurrentHtml: () => ctx.quill.root.innerHTML,
+      getCurrentHtml: () => buildFullHtml(ctx),
       getVersionUid: () => ctx.currentUid,
     })
   })
@@ -1251,7 +1257,13 @@ function loadVersion(ctx: EditorContext, uid: string): void {
   // 重い DOM 更新をマクロタスクに回してオーバーレイを先に描画させる
   setTimeout(() => {
     ctx.currentUid = uid
-    ctx.quill.root.innerHTML = v.html
+    // ヘッダー画像とQuill本文を分離
+    const { headerSrc, body } = splitHeaderFromHtml(v.html)
+    ctx.quill.root.innerHTML = body
+    // ヘッダー画像を復元
+    if (headerSrc !== null) {
+      restoreHeaderImage(ctx.root, headerSrc)
+    }
     renderVersionList(ctx)
     overlay?.remove()
     // URLバーを新しい Version UID で更新
@@ -1591,15 +1603,90 @@ function isEffectivelyEmptyHtml(html: string): boolean {
   return !hasMedia && text === ''
 }
 
+/** ヘッダー画像のsrcを取得（無ければnull） */
+function getHeaderImageSrc(root: HTMLElement): string | null {
+  const img = root.querySelector<HTMLImageElement>('img[data-clone-header="true"]')
+  return img?.src ?? null
+}
+
+/** 保存用HTML = ヘッダー画像タグ + Quill本文 */
+function buildFullHtml(ctx: EditorContext): string {
+  const headerSrc = getHeaderImageSrc(ctx.root)
+  const body = ctx.quill.root.innerHTML
+  if (headerSrc !== null) {
+    return `<!--header-image:${headerSrc}-->${body}`
+  }
+  return body
+}
+
+/** 保存HTMLからヘッダー画像srcを抽出し、本文を分離して返す */
+function splitHeaderFromHtml(html: string): { headerSrc: string | null; body: string } {
+  const m = html.match(/^<!--header-image:(.+?)-->/)
+  if (m !== null) {
+    return { headerSrc: m[1] ?? null, body: html.slice(m[0].length) }
+  }
+  return { headerSrc: null, body: html }
+}
+
+/** ヘッダー画像をDOMに復元する */
+function restoreHeaderImage(root: HTMLElement, src: string): void {
+  const headerBox = root.querySelector<HTMLElement>('[class*="_articleHeaderPhoto_"]')
+  if (headerBox === null) return
+  headerBox.style.position = 'relative'
+  headerBox.style.border = 'none'
+  headerBox.style.padding = '0'
+  headerBox.style.margin = '0'
+  headerBox.style.outline = 'none'
+  headerBox.style.background = '#fff'
+  let img = headerBox.querySelector<HTMLImageElement>('img[data-clone-header="true"]')
+  if (img === null) {
+    img = document.createElement('img')
+    img.dataset['cloneHeader'] = 'true'
+    img.style.cssText = 'display:block;width:100%;max-height:200px;object-fit:cover;border-radius:0'
+    headerBox.prepend(img)
+  }
+  img.src = src
+  // 案内文を隠す
+  const spans = headerBox.querySelectorAll<HTMLElement>('span')
+  for (const s of spans) {
+    if (s.textContent?.trim() === 'ヘッダー画像を追加する') s.style.display = 'none'
+  }
+  // 削除ボタンがなければ追加
+  if (headerBox.querySelector('[data-clone-header-remove]') === null) {
+    const remove = document.createElement('button')
+    remove.dataset['cloneHeaderRemove'] = 'true'
+    remove.type = 'button'
+    remove.textContent = '削除'
+    remove.title = 'ヘッダー画像を削除'
+    remove.style.cssText =
+      'position:absolute;top:15px;right:15px;z-index:2;padding:8px 16px;border:none;border-radius:6px;' +
+      'background:#fff;color:#0091FF;font-size:14px;line-height:1;cursor:pointer;' +
+      'box-shadow:0 1px 4px rgba(0,0,0,.2)'
+    remove.addEventListener('click', (event) => {
+      event.stopPropagation()
+      // 画像を消す
+      headerBox.querySelector('img[data-clone-header="true"]')?.remove()
+      remove.remove()
+      const prompt = [...headerBox.querySelectorAll<HTMLElement>('span')].find(
+        (s) => s.textContent?.trim() === 'ヘッダー画像を追加する',
+      ) ?? null
+      if (prompt !== null) prompt.style.display = ''
+      headerBox.style.border = ''
+      headerBox.style.padding = ''
+      headerBox.style.margin = ''
+      headerBox.style.outline = ''
+    })
+    headerBox.append(remove)
+  }
+}
+
 async function saveHtml(ctx: EditorContext): Promise<void> {
   if (ctx.currentUid === '') return
-  const html = ctx.quill.root.innerHTML
+  const html = buildFullHtml(ctx)
   const v = ctx.versions.find((x) => x.uid === ctx.currentUid)
   // 🚨データ損失防止: いま中身のあるVersionを「空」で上書きしない。
-  // エディタの再描画/Quillのリコンサイルで本文が一瞬空になった瞬間に自動保存が走ると、
-  // 入れた画像ごとサーバーの内容を消してしまう事故が起きる（実際に「めぐり」で発生）。
-  // 空にしたい場合はVersion自体をアーカイブ/削除で行う（自動保存で全消しはさせない）。
-  if (v !== undefined && isEffectivelyEmptyHtml(html) && !isEffectivelyEmptyHtml(v.html)) {
+  const bodyOnly = splitHeaderFromHtml(html).body
+  if (v !== undefined && isEffectivelyEmptyHtml(bodyOnly) && !isEffectivelyEmptyHtml(splitHeaderFromHtml(v.html).body)) {
     console.warn(
       '[editor] 空の本文で既存Versionを上書きしようとしたため保存を中止しました:',
       ctx.currentUid,

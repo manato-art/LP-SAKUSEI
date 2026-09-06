@@ -148,6 +148,8 @@ function setHeaderImage(headerBox: HTMLElement, dataUrl: string): void {
   // クラスは匿名化され得るので**文言で**引く（`[class*=…]` は当たらない）。
   const prompt = findPrompt(headerBox)
   if (prompt !== null) prompt.style.display = 'none'
+  // ミニマップの位置を再計算させる（headerBoxの高さ変更を通知）
+  requestAnimationFrame(() => dispatchEvent(new Event('resize')))
 
   // 削除リンク。実物は画像右上に白い角丸の中に青文字「削除」が出る（ユーザー提示の実画面）。
   if (headerBox.querySelector('[data-clone-header-remove="true"]') === null) {
@@ -182,6 +184,8 @@ function removeHeaderImage(headerBox: HTMLElement): void {
   headerBox.style.margin = ''
   headerBox.style.outline = ''
   toast('ヘッダー画像を削除しました')
+  // ミニマップの位置を再計算させる
+  requestAnimationFrame(() => dispatchEvent(new Event('resize')))
 }
 
 /** 「ヘッダー画像を追加する」の案内 span を文言で探す（クラスは匿名化され得るため） */
