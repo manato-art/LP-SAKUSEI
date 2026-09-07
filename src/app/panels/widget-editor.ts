@@ -503,10 +503,17 @@ function openMediaControl(media: HTMLElement, contentDiv: HTMLElement): void {
     ? Math.max(10, Math.min(100, Math.round(parseFloat(styleW))))
     : Math.max(10, Math.min(100, measured))
 
+  // 指示154: 画像を LP と同じく中央寄せにする（display:block + margin:auto）。
+  const centerMedia = (): void => {
+    media.style.setProperty('display', 'block', 'important')
+    media.style.setProperty('margin-left', 'auto', 'important')
+    media.style.setProperty('margin-right', 'auto', 'important')
+  }
+
   const row = document.createElement('div')
   row.style.cssText = 'display:flex;align-items:center;gap:8px'
   const lbl = document.createElement('span')
-  lbl.textContent = '幅'
+  lbl.textContent = 'サイズ' // 指示154: 「幅」ではなく「サイズ」
   lbl.style.color = '#555'
   const slider = document.createElement('input')
   slider.type = 'range'
@@ -524,6 +531,7 @@ function openMediaControl(media: HTMLElement, contentDiv: HTMLElement): void {
     media.style.setProperty('height', 'auto', 'important')
     media.removeAttribute('width')
     media.removeAttribute('height')
+    centerMedia() // 指示154: サイズ変更時に中央寄せ
     num.textContent = `${v}%`
     sync()
   })
@@ -575,6 +583,8 @@ function buildVisualEditor(target: WidgetEditTarget): { pane: HTMLElement; conte
 
   /** contentDiv への参照（ツールバーからの書式操作に使用） */
   let contentRef: HTMLElement | null = null
+  // 指示154: ツールバーの「画像サイズ」で対象にする、直近クリックした画像/動画。
+  let lastMedia: HTMLElement | null = null
 
   /** ツールバーアイコンボタンを生成 */
   const mkBtn = (
@@ -821,6 +831,25 @@ function buildVisualEditor(target: WidgetEditTarget): { pane: HTMLElement; conte
         document.execCommand('insertImage', false, dataUrl)
       })
     }),
+    // 指示154: 画像サイズ変更を上のツールバーからも開ける。直近クリックした画像、無ければ唯一の画像を対象にする。
+    mkBtn(
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:16px;height:16px"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+      '画像サイズ',
+      () => {
+        if (contentRef === null) return
+        let target: HTMLElement | null =
+          lastMedia !== null && contentRef.contains(lastMedia) ? lastMedia : null
+        if (target === null) {
+          const imgs = contentRef.querySelectorAll<HTMLElement>('img, video')
+          if (imgs.length === 1) target = imgs[0] ?? null
+        }
+        if (target === null) {
+          toast('サイズを変える画像をクリックして選んでください', 'error')
+          return
+        }
+        openMediaControl(target, contentRef)
+      },
+    ),
     mkBtn(svgToolMarker(), 'マーカー', () => exec('hiliteColor', '#fff176')),
     mkBtn(svgToolLink(), 'リンク', (btn) => openLinkInput(btn)),
     mkBtn(svgToolClearFormat(), '書式クリア', () => exec('removeFormat')),
@@ -842,8 +871,9 @@ function buildVisualEditor(target: WidgetEditTarget): { pane: HTMLElement; conte
   // WYSIWYG: 編集プレビューを **配信LPと同じ幅(620px)** で表示する。
   // 以前は左ペインの可変幅で表示していたため、編集時の見た目とLPの見た目（画像幅など）がズレていた。
   // 620px = 配信SSRの body max-width（mock-server/routes/delivery.ts の DELIVERY_WIDTH）。
+  // line-height:1.5 は配信LPの section.sb-widget-block と揃える（指示155・WYSIWYG）。
   contentDiv.style.cssText =
-    `outline:none;min-height:100px;width:${WIDGET_PREVIEW_WIDTH}px;max-width:none;margin:0 auto;box-sizing:border-box`
+    `outline:none;min-height:100px;width:${WIDGET_PREVIEW_WIDTH}px;max-width:none;margin:0 auto;box-sizing:border-box;line-height:1.5`
   contentDiv.innerHTML = target.html
   editorBody.append(contentDiv)
 
@@ -866,6 +896,7 @@ function buildVisualEditor(target: WidgetEditTarget): { pane: HTMLElement; conte
       return
     }
     e.preventDefault()
+    lastMedia = media // 指示154: ツールバーの「画像サイズ」用に覚えておく
     openMediaControl(media, contentDiv)
   })
 
@@ -886,8 +917,18 @@ function buildVisualEditor(target: WidgetEditTarget): { pane: HTMLElement; conte
         e.preventDefault()
         e.stopImmediatePropagation()
       } else if (interactive.tagName === 'A') {
-        // 動作確認モード: リンクの実遷移だけは止め、ウィジェットのハンドラは通す
+        // 動作確認モード（指示156）: ウィジェットには `window.location.href = this.href` で
+        // ページ遷移するタイプ（リンク型アンケート等）があり、そのまま通すと編集画面から離脱して
+        // 画面が壊れる。ハンドラ（この後 bubble で走る）が読む href を一時的に無害な no-op へ差し替え、
+        // 直後に元へ戻す（保存はコードパネル基準なので実HTMLには影響しない）。is-active 等の見た目は動く。
         e.preventDefault()
+        const a = interactive
+        const orig = a.getAttribute('href')
+        a.setAttribute('href', 'javascript:void(0)')
+        setTimeout(() => {
+          if (orig === null) a.removeAttribute('href')
+          else a.setAttribute('href', orig)
+        }, 0)
       }
     },
     true,

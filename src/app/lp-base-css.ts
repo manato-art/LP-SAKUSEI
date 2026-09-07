@@ -22,4 +22,8 @@ export const LP_BASE_CSS = [
   // 画像・動画は枠内に収める
   'img{max-width:100%;height:auto}',
   'video{max-width:100%;height:auto;display:block}',
+  // 指示155: Widget内テキストの行間の既定を詰める。配信LPの本文(body)は行間1.8だが、
+  // Widgetの見出し等(<br>で改行)がそれを継ぐと改行幅が大きすぎるため、Widgetブロック内は1.5を既定にする。
+  // Widget自身が line-height を明示している要素は、その要素の直接指定が継承値より優先されるので影響しない。
+  'section.sb-widget-block{line-height:1.5}',
 ].join('')

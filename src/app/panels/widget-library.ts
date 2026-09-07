@@ -37,8 +37,11 @@ const HOOK = {
 const CATEGORY_ASSET = (index: number): string =>
   `/clean/widget-library/cat${index}/grid.html.gz`
 
-/** 採取していないカテゴリー（お気に入り＝ユーザー個別のため空で扱う）。 */
-const UNCAPTURED_CATEGORIES = new Set<number>([1])
+/** 「お気に入り」カテゴリーのインデックス（採取物の2番目のボタン）。指示157で localStorage 連動に。 */
+const FAVORITE_CAT = 1
+
+/** 採取していないカテゴリー（現状なし。お気に入りは指示157で localStorage 連動にした）。 */
+const UNCAPTURED_CATEGORIES = new Set<number>([])
 
 /** 「作成したWidget」カテゴリーのセンチネル値（localStorage の自作Widgetを出す）。 */
 const CREATED_CAT = -2
@@ -86,6 +89,52 @@ function deleteCreatedWidget(id: string): void {
     localStorage.setItem(CREATED_WIDGETS_KEY, JSON.stringify(list))
   } catch {
     /* no-op */
+  }
+}
+
+/* ── お気に入り（指示157）──────────────────────────────────
+ * カード左下の★でWidgetをお気に入り登録し、「お気に入り」カテゴリーで再利用できる。
+ * 同一Widgetは「すべて」でもカテゴリー別でも同じ名前なので、名前をキーにして状態を共有する。 */
+const FAVORITE_WIDGETS_KEY = 'lp-sakusei:favorite-widgets'
+const FAVORITE_EMPTY_MSG = 'お気に入りに登録したWidgetはありません。各カード左下の★で登録できます。'
+
+interface FavoriteWidget {
+  key: string
+  name: string
+  html: string
+  ts: number
+}
+
+function loadFavorites(): FavoriteWidget[] {
+  try {
+    const raw = localStorage.getItem(FAVORITE_WIDGETS_KEY)
+    if (raw === null || raw === '') return []
+    const parsed: unknown = JSON.parse(raw)
+    return Array.isArray(parsed) ? (parsed as FavoriteWidget[]) : []
+  } catch {
+    return []
+  }
+}
+
+function isFavorite(key: string): boolean {
+  return loadFavorites().some((f) => f.key === key)
+}
+
+/** お気に入りを切り替える。登録したら true、解除したら false を返す。 */
+function toggleFavorite(key: string, name: string, html: string): boolean {
+  try {
+    const list = loadFavorites()
+    const idx = list.findIndex((f) => f.key === key)
+    if (idx >= 0) {
+      list.splice(idx, 1)
+      localStorage.setItem(FAVORITE_WIDGETS_KEY, JSON.stringify(list))
+      return false
+    }
+    list.unshift({ key, name, html, ts: Date.now() })
+    localStorage.setItem(FAVORITE_WIDGETS_KEY, JSON.stringify(list.slice(0, 200)))
+    return true
+  } catch {
+    return isFavorite(key)
   }
 }
 
@@ -330,9 +379,14 @@ async function loadCategory(
 ): Promise<void> {
   const grid = root.querySelector<HTMLElement>(HOOK.grid)
   if (grid === null) return
+  if (index === FAVORITE_CAT) {
+    // 指示157: お気に入りカテゴリーは localStorage のお気に入りWidgetを表示する。
+    renderFavoriteWidgets(root, quill, close)
+    return
+  }
   if (UNCAPTURED_CATEGORIES.has(index)) {
     grid.innerHTML = ''
-    grid.append(gridMessage('このカテゴリー（お気に入り）は各ユーザー個別のため、クローンでは空です。'))
+    grid.append(gridMessage('このカテゴリーは各ユーザー個別のため、クローンでは空です。'))
     return
   }
   grid.innerHTML = ''
@@ -455,6 +509,73 @@ function renderCreatedWidgets(root: HTMLElement, quill: Quill, close: () => void
   }
 }
 
+/** 「お気に入り」カテゴリー: localStorage のお気に入りWidgetをカードで描画する（指示157）。 */
+function renderFavoriteWidgets(root: HTMLElement, quill: Quill, close: () => void): void {
+  const grid = root.querySelector<HTMLElement>(HOOK.grid)
+  if (grid === null) return
+  const list = loadFavorites()
+  grid.innerHTML = ''
+  if (list.length === 0) {
+    grid.append(gridMessage(FAVORITE_EMPTY_MSG))
+    return
+  }
+  for (const w of list) {
+    const card = document.createElement('div')
+    card.className = 'MuiCard-root'
+    card.style.cssText =
+      'box-sizing:border-box;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden;' +
+      'display:flex;flex-direction:column;background:#fff'
+
+    const frame = document.createElement('iframe')
+    frame.setAttribute(
+      'srcdoc',
+      `<!doctype html><meta charset="utf-8"><body style="margin:0;font-family:Hiragino Sans,sans-serif">${w.html}</body>`,
+    )
+    frame.style.cssText = 'width:100%;height:140px;border:none;pointer-events:none;background:#fff'
+    frame.setAttribute('sandbox', 'allow-same-origin')
+
+    const titleEl = document.createElement('div')
+    titleEl.textContent = w.name
+    titleEl.style.cssText =
+      'padding:8px 12px;font:600 13px "Hiragino Sans",sans-serif;color:#333;border-top:1px solid #eee;' +
+      'white-space:nowrap;overflow:hidden;text-overflow:ellipsis'
+
+    const actions = document.createElement('div')
+    actions.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 12px;border-top:1px solid #eee'
+
+    const unfav = document.createElement('button')
+    unfav.type = 'button'
+    unfav.textContent = '★ 解除'
+    unfav.style.cssText =
+      'border:1px solid #ffa400;background:#fff;color:#c47f00;border-radius:6px;padding:6px 10px;' +
+      'cursor:pointer;font:12px "Hiragino Sans",sans-serif'
+    unfav.addEventListener('click', (e) => {
+      e.stopPropagation()
+      toggleFavorite(w.key, w.name, w.html)
+      renderFavoriteWidgets(root, quill, close)
+    })
+
+    const add = document.createElement('button')
+    add.type = 'button'
+    add.textContent = '追加'
+    add.style.cssText =
+      'margin-left:auto;border:none;background:#0091ff;color:#fff;border-radius:6px;padding:6px 14px;' +
+      'cursor:pointer;font:12px "Hiragino Sans",sans-serif'
+    add.addEventListener('click', (e) => {
+      e.stopPropagation()
+      close()
+      requestAnimationFrame(() => {
+        insertWidget(quill, w.html, w.name)
+        toast(`「${w.name}」を追加しました`)
+      })
+    })
+
+    actions.append(unfav, add)
+    card.append(frame, titleEl, actions)
+    grid.append(card)
+  }
+}
+
 /* ================================================================
  *  検索
  * ================================================================ */
@@ -498,7 +619,27 @@ function wireCards(root: HTMLElement, quill: Quill, close: () => void): void {
         toast(`「${title}」を追加しました`)
       })
     })
+    // 指示157: カード左下の★（採取物のブックマークSVG）をお気に入りトグルに配線する。
+    wireFavoriteToggle(card, title)
   }
+}
+
+/** カードのブックマークSVGをお気に入りトグルにする。登録状態で色/不透明度を切り替える。 */
+function wireFavoriteToggle(card: HTMLElement, title: string): void {
+  const svg = card.querySelector<SVGElement>('.MuiCardActions-root > svg')
+  if (svg === null) return
+  const paint = (): void => {
+    const on = isFavorite(title)
+    svg.style.opacity = on ? '1' : '0.3'
+    svg.setAttribute('aria-label', on ? 'お気に入り解除' : 'お気に入りに登録')
+  }
+  svg.style.cursor = 'pointer'
+  paint()
+  svg.addEventListener('click', (event) => {
+    event.stopPropagation()
+    toggleFavorite(title, title, widgetBodyHtml(card) ?? '')
+    paint()
+  })
 }
 
 function widgetBodyHtml(card: HTMLElement): string | null {
