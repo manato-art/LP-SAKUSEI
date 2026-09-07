@@ -260,6 +260,13 @@ const OVERRIDES = /* css */ `
 .MuiDialog-root .MuiButton-fullWidth {
   color: #f0960a !important;
 }
+/* 選択中カテゴリー（オレンジ背景）は文字を白にして埋もれないようにする。
+   上のオレンジ一括指定(!important)を、より詳細度の高いこの規則で上書きする。 */
+.MuiDialog-root .MuiButton-fullWidth.MuiButton-contained,
+.MuiDialog-root .MuiButton-fullWidth.MuiButton-containedPrimary,
+.MuiDialog-root .MuiButton-fullWidth.css-148uesp {
+  color: #fff !important;
+}
 .MuiDialog-root .MuiOutlinedInput-root {
   background: #f5f5f5 !important;
 }
