@@ -240,6 +240,8 @@ function injectStyles(): void {
       background:#0091ff; color:#fff; cursor:pointer; font-family:inherit; white-space:nowrap; flex-shrink:0;
     }
     .sb-pr-anim-replay:hover { background:#007ee0; }
+    .sb-pr-anim-loop { display:flex; align-items:center; gap:7px; margin-top:8px; font-size:12px; color:#444; cursor:pointer; user-select:none; }
+    .sb-pr-anim-loop input { width:15px; height:15px; cursor:pointer; accent-color:#0091ff; }
   `
   document.head.append(s)
 }
@@ -740,15 +742,18 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
       el.classList.add('sb-anim-run')
     }
   }
+  let animLoop = false
   const applyAnim = (id: string): void => {
     if (id === '') {
       applyInline('anim', false)
       applyInline('animspeed', false)
+      applyInline('animloop', false)
       setActiveAnim('')
       return
     }
     applyInline('anim', id)
     applyInline('animspeed', animSpeed)
+    applyInline('animloop', animLoop ? '1' : false)
     setActiveAnim(id)
     replayAnims()
   }
@@ -794,6 +799,24 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
   animCtl.append(animSpeedSel, animReplayBtn)
   animGroup.append(animCtl)
 
+  // ループ設定（くり返し再生）
+  const animLoopRow = document.createElement('label')
+  animLoopRow.className = 'sb-pr-anim-loop'
+  const animLoopChk = document.createElement('input')
+  animLoopChk.type = 'checkbox'
+  const animLoopTxt = document.createElement('span')
+  animLoopTxt.textContent = 'ループ再生（くり返す）'
+  animLoopRow.append(animLoopChk, animLoopTxt)
+  animLoopChk.addEventListener('change', () => {
+    animLoop = animLoopChk.checked
+    const f = getFormats()
+    if (typeof f['anim'] === 'string' && f['anim'] !== '') {
+      applyInline('animloop', animLoop ? '1' : false)
+      replayAnims()
+    }
+  })
+  animGroup.append(animLoopRow)
+
   // 選択中テキストの現在のアニメ設定をUIへ反映する（refresh から呼ぶ）
   const syncAnimUI = (): void => {
     const f = getFormats()
@@ -804,6 +827,8 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
       animSpeed = sp
       animSpeedSel.value = sp
     }
+    animLoop = f['animloop'] === '1'
+    animLoopChk.checked = animLoop
   }
 
   body.append(
@@ -1261,15 +1286,20 @@ function buildImageBody(
     if (id === '') {
       img.removeAttribute('data-anim')
       img.removeAttribute('data-anim-speed')
+      img.removeAttribute('data-anim-loop')
       img.classList.remove('sb-anim-run')
       setActiveImg('')
       return
     }
     img.setAttribute('data-anim', id)
     img.setAttribute('data-anim-speed', speedSelImg.value || 'normal')
+    if (loopChkImg.checked) img.setAttribute('data-anim-loop', '1')
+    else img.removeAttribute('data-anim-loop')
     setActiveImg(id)
     replayImgAnim()
   }
+  const loopChkImg = document.createElement('input')
+  loopChkImg.type = 'checkbox'
   const mkImgAnimBtn = (label: string, id: string): HTMLElement => {
     const b = document.createElement('button')
     b.type = 'button'
@@ -1308,6 +1338,21 @@ function buildImageBody(
   replayBtnImg.addEventListener('click', replayImgAnim)
   animCtl.append(speedSelImg, replayBtnImg)
   animGroup.append(animCtl)
+
+  // ループ設定（くり返し再生）
+  const loopRowImg = document.createElement('label')
+  loopRowImg.className = 'sb-pr-anim-loop'
+  const loopTxtImg = document.createElement('span')
+  loopTxtImg.textContent = 'ループ再生（くり返す）'
+  loopRowImg.append(loopChkImg, loopTxtImg)
+  loopChkImg.addEventListener('change', () => {
+    const img = getImg()
+    if (img === null || img.getAttribute('data-anim') === null) return
+    if (loopChkImg.checked) img.setAttribute('data-anim-loop', '1')
+    else img.removeAttribute('data-anim-loop')
+    replayImgAnim()
+  })
+  animGroup.append(loopRowImg)
 
   container.append(previewGroup, srcRow, altRow, sizeGroup, animGroup, linkGroup, trackGroup, actGroup)
 
@@ -1349,6 +1394,8 @@ function refreshImageBody(container: HTMLElement, img: HTMLImageElement): void {
   }
   const animSpeedSel = container.querySelector<HTMLSelectElement>('.sb-pr-anim-ctl select')
   if (animSpeedSel !== null) animSpeedSel.value = img.getAttribute('data-anim-speed') ?? 'normal'
+  const animLoopChk = container.querySelector<HTMLInputElement>('.sb-pr-anim-loop input[type="checkbox"]')
+  if (animLoopChk !== null) animLoopChk.checked = img.getAttribute('data-anim-loop') === '1'
 
   // 計測URL
   const trackList = container.querySelector<HTMLElement>('[data-tracking-list]')

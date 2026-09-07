@@ -64,12 +64,16 @@ export function buildAnimCss(): string {
     (p) => `.sb-anim-run[data-anim="${p.id}"]{animation:sbA_${p.id} var(--sb-anim-dur,700ms) both cubic-bezier(.22,.61,.36,1)}`,
   ).join('')
   const frames = ANIM_PRESETS.map((p) => `@keyframes sbA_${p.id}{${p.keyframes}}`).join('')
+  // ループ設定: data-anim-loop="1" の要素は無限に往復再生（alternate）して滑らかに繰り返す。
+  // triggers と同じ詳細度なので、後に置いて iteration-count / direction だけ上書きする。
+  const loop = `.sb-anim-run[data-anim-loop="1"]{animation-iteration-count:infinite;animation-direction:alternate}`
   return (
     `span[data-anim]{display:inline-block}` +
     `[data-anim]{--sb-anim-dur:700ms}` +
     speedVars +
     `.sb-anim-ready [data-anim]:not(.sb-anim-run){opacity:0}` +
     triggers +
+    loop +
     frames
   )
 }

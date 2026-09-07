@@ -86,6 +86,7 @@ export function registerMediaBlots(): void {
     'data-tracking-urls',
     'data-anim',
     'data-anim-speed',
+    'data-anim-loop',
   ] as const
 
   class SbImageBlot extends BaseImage {
@@ -160,8 +161,12 @@ export function registerMediaBlots(): void {
   const animSpeedAttr = new Parchment.Attributor('animspeed', 'data-anim-speed', {
     scope: Parchment.Scope.INLINE,
   })
+  const animLoopAttr = new Parchment.Attributor('animloop', 'data-anim-loop', {
+    scope: Parchment.Scope.INLINE,
+  })
   ;(Quill.register as (a: unknown, silent?: boolean) => void)(animAttr, true)
   ;(Quill.register as (a: unknown, silent?: boolean) => void)(animSpeedAttr, true)
+  ;(Quill.register as (a: unknown, silent?: boolean) => void)(animLoopAttr, true)
 
   blotsRegistered = true
 }
