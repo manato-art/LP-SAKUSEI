@@ -18,6 +18,7 @@ import type { AbTest, Article, ExitPopup, FollowPopup, State, Version } from '..
 import { LP_BASE_CSS } from '../../src/app/lp-base-css.ts'
 import { masterStyleIframeCss } from '../../src/app/master-style.ts'
 import { withAutoplayVideos } from '../../src/app/lp-video.ts'
+import { buildAnimCss, buildAnimRuntimeScript } from '../../src/app/anim/anim-presets.ts'
 
 export const deliveryRouter: Router = Router()
 
@@ -361,10 +362,11 @@ deliveryRouter.get('/lp/:uid', (req, res) => {
     `<title>${escapeHtml(abTest.page_title || abTest.title)}</title>` +
     `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Noto+Serif+JP:wght@400;700&family=M+PLUS+Rounded+1c:wght@400;700&family=Kosugi+Maru&family=Sawarabi+Gothic&display=swap">` +
     `<style>body{margin:0 auto;max-width:${DELIVERY_WIDTH}px;font-family:"Hiragino Sans",sans-serif;background:#fff}` +
-    `${LP_BASE_CSS}${version.css}${styleCss}</style>` +
+    `${LP_BASE_CSS}${version.css}${styleCss}${buildAnimCss()}</style>` +
     headTags +
     `</head><body>${withAutoplayVideos(versionHtml)}${bodyTags}${popupHtml}${followHtml}` +
     IMAGE_LINK_SCRIPT +
+    buildAnimRuntimeScript() +
     `</body></html>`
 
   // 配信内容はStateの更新に応じて即時反映すべきなのでキャッシュしない
@@ -430,6 +432,7 @@ deliveryRouter.get('/preview/:versionUid', (req, res) => {
     `.preview-close{margin-left:auto;background:none;border:none;color:rgba(255,255,255,.7);` +
     `cursor:pointer;padding:4px;display:flex;align-items:center;flex-shrink:0}` +
     `.preview-close:hover{color:#fff}` +
+    buildAnimCss() +
     `</style>` +
     `</head><body>` +
     `<div class="preview-banner" id="preview-banner">` +
@@ -442,6 +445,7 @@ deliveryRouter.get('/preview/:versionUid', (req, res) => {
     `</div>` +
     headerHtml +
     withAutoplayVideos(bodyHtml) +
+    buildAnimRuntimeScript() +
     `</body></html>`
 
   res.set('Cache-Control', 'no-cache')

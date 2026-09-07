@@ -79,8 +79,14 @@ export function registerMediaBlots(): void {
     create(value: unknown): HTMLElement
   }
 
-  /** 保持する data 属性のリスト */
-  const LINK_ATTRS = ['data-link-url', 'data-link-target', 'data-tracking-urls'] as const
+  /** 保持する data 属性のリスト（リンク/計測＋アニメーション） */
+  const LINK_ATTRS = [
+    'data-link-url',
+    'data-link-target',
+    'data-tracking-urls',
+    'data-anim',
+    'data-anim-speed',
+  ] as const
 
   class SbImageBlot extends BaseImage {
     static blotName = 'image'
@@ -143,5 +149,19 @@ export function registerMediaBlots(): void {
   ;(Quill.register as (blot: unknown, silent?: boolean) => void)(SbVideoBlot, true)
   ;(Quill.register as (blot: unknown, silent?: boolean) => void)(SbWidgetBlot, true)
   ;(Quill.register as (blot: unknown, silent?: boolean) => void)(SbImageBlot, true)
+
+  // アニメーション: テキスト選択に data-anim / data-anim-speed を付けるインライン属性を登録する。
+  // formatText(i, l, 'anim', '<id>') で選択範囲を <span data-anim="<id>"> に包む。
+  const Parchment = Quill.import('parchment') as {
+    Attributor: new (name: string, key: string, opts: { scope: unknown }) => unknown
+    Scope: { INLINE: unknown }
+  }
+  const animAttr = new Parchment.Attributor('anim', 'data-anim', { scope: Parchment.Scope.INLINE })
+  const animSpeedAttr = new Parchment.Attributor('animspeed', 'data-anim-speed', {
+    scope: Parchment.Scope.INLINE,
+  })
+  ;(Quill.register as (a: unknown, silent?: boolean) => void)(animAttr, true)
+  ;(Quill.register as (a: unknown, silent?: boolean) => void)(animSpeedAttr, true)
+
   blotsRegistered = true
 }

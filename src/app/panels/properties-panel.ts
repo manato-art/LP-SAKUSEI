@@ -18,6 +18,7 @@ import {
   allowPxSizeAndFreeFont,
 } from './toolbar/text-format.ts'
 import { pickAndInsertMedia } from './media-insert.ts'
+import { ANIM_PRESETS, ANIM_SPEEDS, buildAnimCss } from '../anim/anim-presets.ts'
 
 /** rgb(r,g,b) やカラーネームを #hex に正規化する（input[type=color]用） */
 function normalizeColor(c: string): string {
@@ -224,6 +225,21 @@ function injectStyles(): void {
     .sb-pr-stepper-btn:first-child { border-radius:2px 2px 0 0; }
     .sb-pr-stepper-btn:last-child { border-radius:0 0 2px 2px; border-top:none; }
     .sb-pr-stepper-btn:hover { background:#f0f0f2; }
+    /* アニメーション欄 */
+    .sb-pr-anim-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+    .sb-pr-anim-btn {
+      padding:8px 4px; font-size:11px; border:1px solid #e5e5ea; border-radius:6px;
+      background:#fff; color:#444; cursor:pointer; font-family:inherit; line-height:1.2;
+      overflow:hidden; text-overflow:ellipsis; white-space:nowrap; transition:all .12s;
+    }
+    .sb-pr-anim-btn:hover { border-color:#8ab4ff; background:#f5f8ff; }
+    .sb-pr-anim-btn.active { border-color:#0091ff; background:#eaf4ff; color:#0072d6; font-weight:700; }
+    .sb-pr-anim-ctl { display:flex; gap:6px; align-items:center; margin-top:8px; }
+    .sb-pr-anim-replay {
+      padding:7px 10px; font-size:11px; border:1px solid #0091ff; border-radius:6px;
+      background:#0091ff; color:#fff; cursor:pointer; font-family:inherit; white-space:nowrap; flex-shrink:0;
+    }
+    .sb-pr-anim-replay:hover { background:#007ee0; }
   `
   document.head.append(s)
 }
@@ -255,8 +271,18 @@ const ALIGN_LABELS: readonly { value: string | false; svg: string; title: string
 
 /* ── Public ── */
 
+/** アニメーション用CSS（@keyframes・土台・再生トリガ）をエディタ文書へ1回だけ注入する。 */
+function injectAnimCssOnce(): void {
+  if (document.getElementById('sb-anim-css') !== null) return
+  const style = document.createElement('style')
+  style.id = 'sb-anim-css'
+  style.textContent = buildAnimCss()
+  document.head.append(style)
+}
+
 export function mountPropertiesPanel(quill: Quill): HTMLElement {
   injectStyles()
+  injectAnimCssOnce()
   allowPxSizeAndFreeFont(quill)
 
   const panel = document.createElement('div')
@@ -697,12 +723,96 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
   actGroup.append(dupBtn, delBtn)
 
   // ── 組み立て ──
+  // ── アニメーション（CapCut風の入場エフェクト・指示） ──
+  const animGroup = group('アニメーション')
+  let animSpeed = 'normal'
+  const animGrid = document.createElement('div')
+  animGrid.className = 'sb-pr-anim-grid'
+  const animButtons = new Map<string, HTMLElement>()
+  const setActiveAnim = (id: string): void => {
+    for (const [key, b] of animButtons) b.classList.toggle('active', key === id)
+  }
+  // 選択テキストに付いた data-anim の span / img を1回再生し直す（プレビュー）
+  const replayAnims = (): void => {
+    for (const el of quill.root.querySelectorAll<HTMLElement>('[data-anim]')) {
+      el.classList.remove('sb-anim-run')
+      void el.offsetWidth // リフローで再生をリセット
+      el.classList.add('sb-anim-run')
+    }
+  }
+  const applyAnim = (id: string): void => {
+    if (id === '') {
+      applyInline('anim', false)
+      applyInline('animspeed', false)
+      setActiveAnim('')
+      return
+    }
+    applyInline('anim', id)
+    applyInline('animspeed', animSpeed)
+    setActiveAnim(id)
+    replayAnims()
+  }
+  const mkAnimBtn = (label: string, id: string): HTMLElement => {
+    const b = document.createElement('button')
+    b.type = 'button'
+    b.className = 'sb-pr-anim-btn'
+    b.textContent = label
+    b.title = label
+    b.addEventListener('click', () => applyAnim(id))
+    animButtons.set(id, b)
+    return b
+  }
+  animGrid.append(mkAnimBtn('なし', ''))
+  for (const p of ANIM_PRESETS) animGrid.append(mkAnimBtn(p.label, p.id))
+  animGroup.append(animGrid)
+
+  const animCtl = document.createElement('div')
+  animCtl.className = 'sb-pr-anim-ctl'
+  const animSpeedSel = document.createElement('select')
+  animSpeedSel.className = 'sb-pr-select'
+  animSpeedSel.style.flex = '1'
+  for (const s of ANIM_SPEEDS) {
+    const o = document.createElement('option')
+    o.value = s.id
+    o.textContent = `速度: ${s.label}`
+    if (s.id === 'normal') o.selected = true
+    animSpeedSel.append(o)
+  }
+  animSpeedSel.addEventListener('change', () => {
+    animSpeed = animSpeedSel.value
+    const f = getFormats()
+    if (typeof f['anim'] === 'string' && f['anim'] !== '') {
+      applyInline('animspeed', animSpeed)
+      replayAnims()
+    }
+  })
+  const animReplayBtn = document.createElement('button')
+  animReplayBtn.type = 'button'
+  animReplayBtn.className = 'sb-pr-anim-replay'
+  animReplayBtn.textContent = '▶ プレビュー'
+  animReplayBtn.addEventListener('click', () => replayAnims())
+  animCtl.append(animSpeedSel, animReplayBtn)
+  animGroup.append(animCtl)
+
+  // 選択中テキストの現在のアニメ設定をUIへ反映する（refresh から呼ぶ）
+  const syncAnimUI = (): void => {
+    const f = getFormats()
+    const cur = typeof f['anim'] === 'string' ? (f['anim'] as string) : ''
+    setActiveAnim(cur)
+    const sp = typeof f['animspeed'] === 'string' ? (f['animspeed'] as string) : 'normal'
+    if (ANIM_SPEEDS.some((s) => s.id === sp)) {
+      animSpeed = sp
+      animSpeedSel.value = sp
+    }
+  }
+
   body.append(
     textGroup,
     fontRow, sizeRow, boldRow, italicRow,
     textColorRow, bgColorRow,
     lsRow, lhRow,
     alignGroup,
+    animGroup,
     posGroup,
     fmtGroup,
     insGroup,
@@ -739,6 +849,7 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
       imageBody.style.display = 'none'
       emptyMsg.style.display = 'none'
       title.textContent = '選択中：テキスト'
+      syncAnimUI()
     } else {
       body.style.display = 'none'
       imageBody.style.display = 'none'
@@ -1028,7 +1139,7 @@ function buildImageBody(
 
   const linkTargetRow = row('ターゲット')
   const linkTargetSelect = document.createElement('select')
-  linkTargetSelect.className = 'sb-pr-select'
+  linkTargetSelect.className = 'sb-pr-select sb-link-target-select'
   for (const opt of [
     { value: '_blank', label: '新しいタブ (_blank)' },
     { value: '_self', label: '同じタブ (_self)' },
@@ -1126,7 +1237,79 @@ function buildImageBody(
   actGroup.append(replaceBtn, removeBtn)
 
   // ── 組み立て ──
-  container.append(previewGroup, srcRow, altRow, sizeGroup, linkGroup, trackGroup, actGroup)
+  // ── アニメーション（画像用・CapCut風の入場エフェクト） ──
+  const animGroup = group('アニメーション')
+  const animGrid = document.createElement('div')
+  animGrid.className = 'sb-pr-anim-grid'
+  animGrid.setAttribute('data-img-anim-grid', 'true')
+  const replayImgAnim = (): void => {
+    const img = getImg()
+    if (img === null || img.getAttribute('data-anim') === null) return
+    img.classList.remove('sb-anim-run')
+    void img.offsetWidth
+    img.classList.add('sb-anim-run')
+  }
+  const speedSelImg = document.createElement('select')
+  const setActiveImg = (id: string): void => {
+    for (const b of animGrid.querySelectorAll<HTMLElement>('.sb-pr-anim-btn')) {
+      b.classList.toggle('active', b.getAttribute('data-anim-id') === id)
+    }
+  }
+  const applyImgAnim = (id: string): void => {
+    const img = getImg()
+    if (img === null) return
+    if (id === '') {
+      img.removeAttribute('data-anim')
+      img.removeAttribute('data-anim-speed')
+      img.classList.remove('sb-anim-run')
+      setActiveImg('')
+      return
+    }
+    img.setAttribute('data-anim', id)
+    img.setAttribute('data-anim-speed', speedSelImg.value || 'normal')
+    setActiveImg(id)
+    replayImgAnim()
+  }
+  const mkImgAnimBtn = (label: string, id: string): HTMLElement => {
+    const b = document.createElement('button')
+    b.type = 'button'
+    b.className = 'sb-pr-anim-btn'
+    b.setAttribute('data-anim-id', id)
+    b.textContent = label
+    b.title = label
+    b.addEventListener('click', () => applyImgAnim(id))
+    return b
+  }
+  animGrid.append(mkImgAnimBtn('なし', ''))
+  for (const p of ANIM_PRESETS) animGrid.append(mkImgAnimBtn(p.label, p.id))
+  animGroup.append(animGrid)
+  const animCtl = document.createElement('div')
+  animCtl.className = 'sb-pr-anim-ctl'
+  speedSelImg.className = 'sb-pr-select'
+  speedSelImg.style.flex = '1'
+  for (const s of ANIM_SPEEDS) {
+    const o = document.createElement('option')
+    o.value = s.id
+    o.textContent = `速度: ${s.label}`
+    if (s.id === 'normal') o.selected = true
+    speedSelImg.append(o)
+  }
+  speedSelImg.addEventListener('change', () => {
+    const img = getImg()
+    if (img !== null && img.getAttribute('data-anim') !== null) {
+      img.setAttribute('data-anim-speed', speedSelImg.value)
+      replayImgAnim()
+    }
+  })
+  const replayBtnImg = document.createElement('button')
+  replayBtnImg.type = 'button'
+  replayBtnImg.className = 'sb-pr-anim-replay'
+  replayBtnImg.textContent = '▶ プレビュー'
+  replayBtnImg.addEventListener('click', replayImgAnim)
+  animCtl.append(speedSelImg, replayBtnImg)
+  animGroup.append(animCtl)
+
+  container.append(previewGroup, srcRow, altRow, sizeGroup, animGroup, linkGroup, trackGroup, actGroup)
 
   // データ属性で内部要素への参照を保持（refreshImageBody で使う）
   container.dataset['ready'] = 'true'
@@ -1156,8 +1339,16 @@ function refreshImageBody(container: HTMLElement, img: HTMLImageElement): void {
   const linkInput = container.querySelector<HTMLInputElement>('input[placeholder="https://"]')
   if (linkInput !== null) linkInput.value = img.getAttribute('data-link-url') ?? ''
 
-  const targetSelect = container.querySelector<HTMLSelectElement>('select')
+  const targetSelect = container.querySelector<HTMLSelectElement>('.sb-link-target-select')
   if (targetSelect !== null) targetSelect.value = img.getAttribute('data-link-target') ?? '_blank'
+
+  // アニメーション同期（現在の画像の data-anim / data-anim-speed をUIへ反映）
+  const curAnim = img.getAttribute('data-anim') ?? ''
+  for (const b of container.querySelectorAll<HTMLElement>('[data-img-anim-grid] .sb-pr-anim-btn')) {
+    b.classList.toggle('active', b.getAttribute('data-anim-id') === curAnim)
+  }
+  const animSpeedSel = container.querySelector<HTMLSelectElement>('.sb-pr-anim-ctl select')
+  if (animSpeedSel !== null) animSpeedSel.value = img.getAttribute('data-anim-speed') ?? 'normal'
 
   // 計測URL
   const trackList = container.querySelector<HTMLElement>('[data-tracking-list]')
