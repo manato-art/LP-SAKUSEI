@@ -100,7 +100,25 @@ function open(quill: Quill): void {
  *  本番 UI との差分を DOM 側で補正する
  * ================================================================ */
 
+/**
+ * カード一覧（`.css-ojejk4`）を3列グリッドにする（要望: 3つ横並び）。
+ * 実物は flex-wrap でカード幅固定＝2列。カテゴリー切替で innerHTML が差し替わるため、
+ * インラインではなく1回だけ <style> ルールで当てる（差し替え後のカードにも効く）。
+ */
+function injectWidgetGridCss(): void {
+  if (document.getElementById('sb-widget-grid-3col') !== null) return
+  const style = document.createElement('style')
+  style.id = 'sb-widget-grid-3col'
+  style.textContent =
+    '.css-ojejk4{display:grid !important;grid-template-columns:repeat(3,1fr) !important;gap:16px !important;align-content:start}' +
+    '.css-ojejk4>.MuiCard-root{width:auto !important;max-width:none !important;margin:0 !important}'
+  document.head.append(style)
+}
+
 function patchPortalLayout(root: HTMLElement, quill: Quill, close: () => void): void {
+  /* ---- 0. カード一覧を3列表示にする（要望: 3つ横並び。実物は2列） ---- */
+  injectWidgetGridCss()
+
   /* ---- 1. タイトル「Widgetライブラリ」→「Widget」 ---- */
   const titleEl = root.querySelector<HTMLElement>('.css-kzzyvh')
   if (titleEl !== null) titleEl.textContent = 'Widget'
