@@ -296,15 +296,8 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
   header.className = 'sb-props-header'
   const title = document.createElement('h3')
   title.innerHTML = 'プロパティ'
-  const closeBtn = document.createElement('button')
-  closeBtn.type = 'button'
-  closeBtn.className = 'sb-props-close'
-  closeBtn.innerHTML = SVG.close
-  closeBtn.title = '閉じる'
-  closeBtn.addEventListener('click', () => {
-    panel.style.display = 'none'
-  })
-  header.append(title, closeBtn)
+  // 指示153: ヘッダーのバツ印（閉じる）は表示しない。
+  header.append(title)
 
   // ── タブ（スタイル統一） ──
   const tabs = document.createElement('div')

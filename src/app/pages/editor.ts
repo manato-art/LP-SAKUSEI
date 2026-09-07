@@ -937,10 +937,8 @@ function buildVersionCardEl(version: Version, isCurrent: boolean): HTMLElement {
   const ratioTitle = document.createElement('div')
   ratioTitle.className = 'sb-vc-ratio-title'
   ratioTitle.textContent = '配信割合'
-  const ratioDesc = document.createElement('div')
-  ratioDesc.className = 'sb-vc-ratio-desc'
-  ratioDesc.textContent = '配信される割合を調整できます。'
-  ratioHeadText.append(ratioTitle, ratioDesc)
+  // 指示152: 「配信される割合を調整できます。」の説明文は表示しない。
+  ratioHeadText.append(ratioTitle)
   ratioHeader.append(ratioIcon, ratioHeadText)
 
   // Row 2-2: −/数値/%/+ コントロール（ratioInput は非表示のまま値の正とし、表示は ratioDisplay が担う）
@@ -976,7 +974,7 @@ function buildVersionCardEl(version: Version, isCurrent: boolean): HTMLElement {
   // プリセットのドロップダウン
   const ratioSelect = document.createElement('select')
   ratioSelect.className = 'sb-vc-ratio-select'
-  const ratioPresets = [6, 10, 20, 50, 100]
+  const ratioPresets = [10, 50, 100] // 指示150
   for (const preset of ratioPresets) {
     const option = document.createElement('option')
     option.value = String(preset)
@@ -1678,6 +1676,45 @@ function wireVersionCard(ctx: EditorContext, card: HTMLElement, version: Version
     syncRatioDisplay()
     ratio.dispatchEvent(new Event('change'))
   })
+  // 指示151: 数値をダブルクリックすると、その場で直接入力できる（0〜100にクランプ、Enter/離脱で確定）。
+  if (ratioDisplay !== null && ratio !== null) {
+    ratioDisplay.style.cursor = 'text'
+    ratioDisplay.title = 'ダブルクリックで直接入力'
+    ratioDisplay.addEventListener('dblclick', (event) => {
+      event.stopPropagation()
+      ratioDisplay.contentEditable = 'true'
+      const sel = window.getSelection()
+      const range = document.createRange()
+      range.selectNodeContents(ratioDisplay)
+      sel?.removeAllRanges()
+      sel?.addRange(range)
+      ratioDisplay.focus()
+    })
+    ratioDisplay.addEventListener('click', (event) => {
+      if (ratioDisplay.isContentEditable) event.stopPropagation()
+    })
+    const commitRatioEdit = (): void => {
+      if (!ratioDisplay.isContentEditable) return
+      ratioDisplay.contentEditable = 'false'
+      const n = Math.max(0, Math.min(100, parseInt(ratioDisplay.textContent ?? '', 10) || 0))
+      ratio.value = String(n)
+      syncRatioDisplay()
+      void save()
+    }
+    ratioDisplay.addEventListener('blur', commitRatioEdit)
+    ratioDisplay.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault()
+        commitRatioEdit() // blur に頼らずその場で確定（環境差で blur が発火しないことがある）
+        ratioDisplay.blur()
+      } else if (event.key === 'Escape') {
+        event.preventDefault()
+        ratioDisplay.contentEditable = 'false'
+        syncRatioDisplay()
+        ratioDisplay.blur()
+      }
+    })
+  }
   // 保存ボタンの配線
   const saveBtn = findUpdateButton(card)
   if (saveBtn !== null) {
