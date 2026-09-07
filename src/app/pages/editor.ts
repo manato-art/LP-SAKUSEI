@@ -225,6 +225,30 @@ export async function renderEditor(
     }
   }
 
+  // ── 指示159: 左レールと本文の間に残る「謎の空白」をクラス名に依存せず実測で詰める ──
+  // 上の除去はデモ採取物のクラス（css-1n8b1pi 等）に固定しているため、本番の実採取で
+  // クラス名が違うと取りこぼし、レール分(約60px)の左パディング/マージンが残って空白になる。
+  // ここではクラスに依存せず「レール直後・背が高い・サイドバー幅の左余白を持つ」コンテナ
+  // だけを狙って詰める（誤爆防止のため範囲を厳しく限定：ローカルでは該当0＝実質no-op）。
+  const closeRailGap = (): void => {
+    const railEl = document.querySelector<HTMLElement>('.sb-rail')
+    const railW = railEl !== null ? railEl.getBoundingClientRect().width : 60
+    for (const el of root.querySelectorAll<HTMLElement>('*')) {
+      const r = el.getBoundingClientRect()
+      if (r.height < 200) continue // 背の高いコンテナのみ
+      if (r.left > railW + 100) continue // レール直後（左端近く）だけ
+      const cs = getComputedStyle(el)
+      const pl = parseFloat(cs.paddingLeft)
+      const ml = parseFloat(cs.marginLeft)
+      if (pl >= 40 && pl <= 100) el.style.setProperty('padding-left', '0', 'important')
+      if (ml >= 40 && ml <= 100) el.style.setProperty('margin-left', '0', 'important')
+    }
+  }
+  // レイアウト確定後・フォント読込後にも効くよう複数回叩く（gap>4のときだけ作用＝冪等）
+  closeRailGap()
+  requestAnimationFrame(closeRailGap)
+  setTimeout(closeRailGap, 200)
+
   // ── 指示57: 上部ナビ周辺の縦空白を詰める ──
   // 採取CSSの _navArticleWrapper_ は height:60px + padding-top:20px = 80px、
   // _editorWrapper_ は height:calc(100%-120px) + padding:20px で余白が大きい。
