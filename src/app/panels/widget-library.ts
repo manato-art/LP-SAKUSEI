@@ -109,9 +109,11 @@ function injectWidgetGridCss(): void {
   if (document.getElementById('sb-widget-grid-3col') !== null) return
   const style = document.createElement('style')
   style.id = 'sb-widget-grid-3col'
+  // カードは採取CSSで height:0（元は flex + align-items:stretch で中身の高さまで伸びていた）。
+  // grid化ではその引き伸ばしが効かず行が潰れるので、height:auto / align-self:start で中身なりの高さにする。
   style.textContent =
     '.css-ojejk4{display:grid !important;grid-template-columns:repeat(3,1fr) !important;gap:16px !important;align-content:start}' +
-    '.css-ojejk4>.MuiCard-root{width:auto !important;max-width:none !important;margin:0 !important}'
+    '.css-ojejk4>.MuiCard-root{width:auto !important;max-width:none !important;margin:0 !important;height:auto !important;align-self:start !important}'
   document.head.append(style)
 }
 
