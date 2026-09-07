@@ -138,11 +138,19 @@ export function mountLinkDropdown(
 function applyLink(quill: Quill, range: QuillRange, link: LinkAttributes): void {
   quill.formatText(range.index, range.length, 'link', link.url, 'user')
   quill.setSelection(range.index, range.length, 'silent')
-  if (link.opensInNewTab) return
+  // 生成された <a> を辿り、計測ON/OFF と target を DOM に反映する。
+  // 計測設定「レポート計測する」を選ぶと data-report-track を付け、配信URL(/lp/)の計測スクリプトが
+  // そのクリックをレポート（state.metrics の click）へ加算する。プレビュー(/preview/)は計測しない。
+  // 保存は quill.root.innerHTML なので、DOMに付けた属性はそのまま version.html に残る。
   for (const line of quill.getLines(range.index, range.length)) {
     const node = line.domNode as HTMLElement
-    for (const anchor of node.querySelectorAll<HTMLAnchorElement>('a[target="_blank"]')) {
-      if (anchor.getAttribute('href') === link.url) anchor.removeAttribute('target')
+    for (const anchor of node.querySelectorAll<HTMLAnchorElement>('a')) {
+      if (anchor.getAttribute('href') !== link.url) continue
+      if (link.isReportMeasured) anchor.setAttribute('data-report-track', '1')
+      else anchor.removeAttribute('data-report-track')
+      if (!link.opensInNewTab && anchor.getAttribute('target') === '_blank') {
+        anchor.removeAttribute('target')
+      }
     }
   }
 }

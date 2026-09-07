@@ -10,10 +10,12 @@
  * cross-boundary import は `panel-link-replace.ts` が `src/shared/link-html.ts` を読む既存の前例に倣う）。
  */
 import { Router } from 'express'
-import { getState } from '../store/store.ts'
+import { getState, setState } from '../store/store.ts'
 import { getMasterStyleSheet } from '../store/master-style-sheet.ts'
 import { getHtmlSetting } from '../store/html-tags.ts'
 import { bulkTagsForFolder } from '../store/bulk-tags.ts'
+import { bumpMetric } from '../store/actions.ts'
+import { toDateKey } from '../store/metrics.ts'
 import type { AbTest, Article, ExitPopup, FollowPopup, State, Version } from '../store/types.ts'
 import { LP_BASE_CSS } from '../../src/app/lp-base-css.ts'
 import { masterStyleIframeCss } from '../../src/app/master-style.ts'
@@ -64,6 +66,32 @@ const IMAGE_LINK_SCRIPT = `<script>(function(){
     });
   });
 })()</script>`
+
+/**
+ * このクローン自身のレポート計測スクリプト（配信URL `/lp/:uid` 専用）。
+ * - ページ表示ごとに PV を1つ記録する（`POST /lp/:uid/__track` へ event:'pv'）。
+ * - 「このシステムで計測する」を有効にしたリンク（`[data-report-track]`）のクリックを
+ *   click として記録する（event:'click'）。それ以外のリンクは計測しない。
+ * 記録先は `state.metrics`（ab_test スコープ＋version スコープ）で、レポートの
+ * PV / クリック / CTR 等がここから集計される。
+ *
+ * ★プレビュー（`/preview/:versionUid`）にはこのスクリプトを入れない＝計測しない。
+ * keepalive でリンク遷移時のクリックも取りこぼさない。
+ */
+function buildTrackingScript(uid: string, versionUid: string): string {
+  const endpoint = `/lp/${encodeURIComponent(uid)}/__track`
+  return `<script>(function(){
+  var U=${JSON.stringify(endpoint)},V=${JSON.stringify(versionUid)};
+  function send(ev){try{
+    fetch(U,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({event:ev,version:V}),keepalive:true});
+  }catch(e){}}
+  send('pv');
+  document.addEventListener('click',function(e){
+    var t=e.target;
+    if(t&&t.closest&&t.closest('[data-report-track]'))send('click');
+  },true);
+})()</script>`
+}
 
 type DeviceKind = 'sp' | 'tablet' | 'pc'
 type MobileOS = 'android' | 'ios'
@@ -392,12 +420,40 @@ deliveryRouter.get('/lp/:uid', (req, res) => {
     headTags +
     `</head><body>${withAutoplayVideos(versionHtml)}${bodyTags}${popupHtml}${followHtml}` +
     IMAGE_LINK_SCRIPT +
+    buildTrackingScript(abTest.uid, version.uid) +
     buildAnimRuntimeScript() +
     `</body></html>`
 
   // 配信内容はStateの更新に応じて即時反映すべきなのでキャッシュしない
   res.set('Cache-Control', 'no-cache')
   res.type('html').send(html)
+})
+
+/**
+ * 配信計測エンドポイント（配信URL `/lp/:uid` からのビーコン受け口）。
+ * PV（表示）とクリック（計測ON リンクのみ）を `state.metrics` に加算する。
+ * ab_test スコープ（レポート全体）と version スコープ（Version別）の両方を更新。
+ * 実データを持ち込まないクローン方針に沿い、記録するのは PV/クリック数の集計のみ。
+ */
+deliveryRouter.post('/lp/:uid/__track', (req, res) => {
+  const abTest = findAbTest(getState(), req.params.uid)
+  if (abTest === undefined) {
+    res.status(404).json({ ok: false })
+    return
+  }
+  const body = (req.body ?? {}) as { event?: unknown; version?: unknown }
+  const event: 'pv' | 'click' = body.event === 'click' ? 'click' : 'pv'
+  const versionUid = typeof body.version === 'string' ? body.version : ''
+  const date = toDateKey(new Date())
+  const delta = event === 'click' ? { click: 1 } : { pv: 1 }
+  setState((s) => {
+    let next: State = { ...s, metrics: bumpMetric(s, abTest.uid, 'ab_test', date, delta) }
+    if (versionUid !== '') {
+      next = { ...next, metrics: bumpMetric(next, versionUid, 'version', date, delta) }
+    }
+    return next
+  })
+  res.json({ ok: true })
 })
 
 /**

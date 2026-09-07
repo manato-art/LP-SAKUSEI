@@ -255,6 +255,7 @@ function openLinkPopover(anchor: HTMLElement, img: HTMLImageElement, quill: Quil
 
   const currentUrl = img.getAttribute('data-link-url') ?? ''
   const currentTarget = img.getAttribute('data-link-target') ?? '_blank'
+  const currentTrack = img.getAttribute('data-report-track') === '1'
 
   const popover = document.createElement('div')
   popover.className = 'sb-img-link-popover'
@@ -278,6 +279,17 @@ function openLinkPopover(anchor: HTMLElement, img: HTMLImageElement, quill: Quil
   checkLabel.setAttribute('for', 'sb-link-new-tab')
   targetWrap.append(checkbox, checkLabel)
 
+  // このシステムで計測する: ONにするとクリックをレポート（PV/クリック）に加算する。
+  // img に data-report-track="1" を付け、配信URL(/lp/)の計測スクリプトが拾う。プレビューは計測しない。
+  const trackWrap = el('div', { style: 'display:flex;align-items:center;gap:8px;margin-top:8px;margin-bottom:4px' })
+  const trackCheckbox = document.createElement('input')
+  trackCheckbox.type = 'checkbox'
+  trackCheckbox.id = 'sb-link-track'
+  trackCheckbox.checked = currentTrack
+  const trackLabel = el('label', { text: 'このシステムで計測する', style: 'margin:0;cursor:pointer' })
+  trackLabel.setAttribute('for', 'sb-link-track')
+  trackWrap.append(trackCheckbox, trackLabel)
+
   const footer = el('div', { class: 'sb-img-link-footer' })
 
   // 解除ボタン（リンクが設定されている場合のみ）
@@ -290,6 +302,7 @@ function openLinkPopover(anchor: HTMLElement, img: HTMLImageElement, quill: Quil
     removeBtn.addEventListener('click', () => {
       img.removeAttribute('data-link-url')
       img.removeAttribute('data-link-target')
+      img.removeAttribute('data-report-track')
       quill.update()
       onChange()
       closeAllPopovers()
@@ -312,9 +325,12 @@ function openLinkPopover(anchor: HTMLElement, img: HTMLImageElement, quill: Quil
     if (url === '') {
       img.removeAttribute('data-link-url')
       img.removeAttribute('data-link-target')
+      img.removeAttribute('data-report-track')
     } else {
       img.setAttribute('data-link-url', url)
       img.setAttribute('data-link-target', checkbox.checked ? '_blank' : '_self')
+      if (trackCheckbox.checked) img.setAttribute('data-report-track', '1')
+      else img.removeAttribute('data-report-track')
     }
     quill.update()
     onChange()
@@ -323,7 +339,7 @@ function openLinkPopover(anchor: HTMLElement, img: HTMLImageElement, quill: Quil
   })
   footer.append(saveBtn)
 
-  popover.append(title, urlLabel, urlInput, targetWrap, footer)
+  popover.append(title, urlLabel, urlInput, targetWrap, trackWrap, footer)
   document.body.append(popover)
   positionPopover(popover, anchor)
   urlInput.focus()
