@@ -2007,6 +2007,33 @@ function wireSideToolbar(ctx: EditorContext): void {
     sideTop.style.setProperty('width', '100%', 'important')
   }
 
+  // 指示163: 右ツールバー（履歴/Widget/…）を「キャンバス（スクロール領域）の横」に置き、
+  // 高さもキャンバスに揃える。既定ではレール列がエディタ全高を占め、アイコンが上端に寄って
+  // キャンバス上部の余白（ヘッダ画像ボタン/書式バー）とズレていた。キャンバスの上端・高さを
+  // 実測してレール列に反映する。ヘッダ画像の有無やウィンドウ幅で変わるので ResizeObserver で追従。
+  const findCanvas = (): HTMLElement | null =>
+    ctx.root.querySelector<HTMLElement>('.quillEditorContentWrapper .ql-container') ??
+    ctx.root.querySelector<HTMLElement>('.ql-container')
+  const alignRailToCanvas = (): void => {
+    if (sideWrapper === null) return
+    const canvas = findCanvas()
+    const cell = sideWrapper.parentElement
+    if (canvas === null || cell === null) return
+    const c = canvas.getBoundingClientRect()
+    if (c.height < 40) return // レイアウト未確定
+    const offset = Math.max(0, Math.round(c.top - cell.getBoundingClientRect().top))
+    sideWrapper.style.setProperty('align-self', 'flex-start', 'important')
+    sideWrapper.style.setProperty('margin-top', `${offset}px`, 'important')
+    sideWrapper.style.setProperty('height', `${Math.round(c.height)}px`, 'important')
+    sideWrapper.style.setProperty('padding-top', '0', 'important')
+  }
+  requestAnimationFrame(alignRailToCanvas)
+  setTimeout(alignRailToCanvas, 250)
+  const canvasForObs = findCanvas()
+  if (canvasForObs !== null && typeof ResizeObserver !== 'undefined') {
+    new ResizeObserver(() => alignRailToCanvas()).observe(canvasForObs)
+  }
+
   const icons = [...ctx.root.querySelectorAll<HTMLElement>('[class*="sideToolbarIcon"]')]
   for (let index = 0; index < icons.length; index += 1) {
     const icon = icons[index]
