@@ -40,6 +40,25 @@ const FONT = '"Hiragino Sans","Hiragino Kaku Gothic ProN",sans-serif'
 const MONO = '"SF Mono",Menlo,"Fira Code",monospace'
 
 /**
+ * フォント選択ドロップダウンのラベル（英語のフォント名を日本語にしたもの）。
+ * 各項目はこのラベルを「そのフォント」で表示し、名前とプレビューを兼ねる（ユーザー要望）。
+ */
+const FONT_LABELS_JA: Record<string, string> = {
+  'Noto Sans JP': 'ゴシック体',
+  'Noto Serif JP': '明朝体',
+  'Shippori Mincho': 'しっぽり明朝',
+  'M PLUS Rounded 1c': '丸ゴシック',
+  'Zen Maru Gothic': '禅 丸ゴシック',
+  'Kosugi Maru': '小杉丸ゴシック',
+  'Dela Gothic One': '極太ゴシック',
+  'RocknRoll One': 'ロックンロール',
+  'Reggae One': 'レゲエ',
+  'Yuji Syuku': '毛筆',
+  'Hachi Maru Pop': 'はちまるポップ',
+  'Yomogi': 'よもぎ（手書き）',
+}
+
+/**
  * 編集プレビューの幅。配信LP（SSR）の body max-width と揃える＝WYSIWYG。
  * mock-server/routes/delivery.ts の DELIVERY_WIDTH と同値に保つこと。
  */
@@ -702,42 +721,76 @@ function buildVisualEditor(target: WidgetEditTarget): { pane: HTMLElement; conte
   }
 
   /**
-   * フォント選択のプルダウン（指示149）。prompt をやめ、スタイルパネルと同じ
-   * TOOLBAR_FONT_FAMILIES を並べる。選択でその場の選択範囲にフォントを適用する。
+   * フォント選択のプルダウン（指示149/158/最新）。
+   * ネイティブ <select> は macOS でオプションごとの font-family を描画しないため、
+   * カスタムのドロップダウンにして各項目を「そのフォントの日本語名（＝プレビュー）」として
+   * そのフォントで表示する。クリックで選択範囲にフォントを適用する。
    */
-  const mkFontSelect = (): HTMLSelectElement => {
-    const sel = document.createElement('select')
-    sel.title = 'フォント'
-    sel.style.cssText =
+  const applyFont = (font: string): void => {
+    restoreSelection()
+    // 指示158: styleWithCSS=true で font-family をインラインstyleとして当てる。
+    // 既定の execCommand('fontName') は <font face> を出すが、Widget/親のCSSに font-family が
+    // あると打ち消されて「変化ない」ため、インラインstyle（詳細度最強）にして確実に効かせる。
+    document.execCommand('styleWithCSS', false, 'true')
+    document.execCommand('fontName', false, cssFontFamilyValue(font))
+    syncContentToCode()
+  }
+
+  const closeFontMenu = (): void => {
+    document.querySelector('[data-widget-font-menu]')?.remove()
+  }
+
+  const mkFontSelect = (): HTMLElement => {
+    const wrap = document.createElement('div')
+    wrap.style.cssText = 'position:relative;display:inline-flex'
+    const trigger = document.createElement('button')
+    trigger.type = 'button'
+    trigger.title = 'フォント'
+    trigger.innerHTML =
+      `<span style="font:12px/1 ${FONT};white-space:nowrap">フォント</span>` +
+      `<svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-left:4px"><path d="M2 3l2 2 2-2"/></svg>`
+    trigger.style.cssText =
       `height:28px;border:1px solid #ddd;border-radius:2px;background:#fff;color:#555;` +
-      `font:12px/1 ${FONT};padding:0 4px;cursor:pointer;max-width:130px`
-    const ph = document.createElement('option')
-    ph.value = ''
-    ph.textContent = 'フォント'
-    ph.disabled = true
-    ph.selected = true
-    sel.append(ph)
-    for (const f of TOOLBAR_FONT_FAMILIES) {
-      const o = document.createElement('option')
-      o.value = f
-      o.textContent = f
-      o.style.fontFamily = cssFontFamilyValue(f)
-      sel.append(o)
-    }
-    sel.addEventListener('mousedown', saveSelection)
-    sel.addEventListener('change', () => {
-      const v = sel.value
-      if (v === '') return
-      restoreSelection()
-      // 指示158: styleWithCSS=true で font-family をインラインstyleとして当てる。
-      // 既定の execCommand('fontName') は <font face> を出すが、Widget/親のCSSに font-family が
-      // あると打ち消されて「変化ない」ため、インラインstyle（詳細度最強）にして確実に効かせる。
-      document.execCommand('styleWithCSS', false, 'true')
-      document.execCommand('fontName', false, cssFontFamilyValue(v))
-      syncContentToCode()
-      sel.selectedIndex = 0 // プレースホルダに戻す（毎回選び直せる）
+      `padding:0 8px;cursor:pointer;display:inline-flex;align-items:center`
+    trigger.addEventListener('mousedown', (e) => { e.preventDefault(); saveSelection() })
+    trigger.addEventListener('click', () => {
+      if (document.querySelector('[data-widget-font-menu]') !== null) { closeFontMenu(); return }
+      const menu = document.createElement('div')
+      menu.setAttribute('data-widget-font-menu', 'true')
+      menu.style.cssText =
+        `position:fixed;z-index:9600;background:#fff;border:1px solid #ddd;border-radius:8px;` +
+        `box-shadow:0 6px 22px rgba(0,0,0,.18);padding:4px;max-height:60vh;overflow:auto;min-width:180px`
+      for (const font of TOOLBAR_FONT_FAMILIES) {
+        const item = document.createElement('div')
+        // ラベルはフォント名を日本語にしたもの（＝そのフォントで表示するプレビュー）。
+        item.textContent = FONT_LABELS_JA[font] ?? font
+        item.style.cssText =
+          `padding:8px 12px;border-radius:6px;cursor:pointer;white-space:nowrap;color:#222;` +
+          `font-family:${cssFontFamilyValue(font)};font-size:17px;line-height:1.3`
+        item.addEventListener('mouseenter', () => { item.style.background = '#f0f4ff' })
+        item.addEventListener('mouseleave', () => { item.style.background = 'transparent' })
+        item.addEventListener('mousedown', (e) => e.preventDefault()) // 選択を保持
+        item.addEventListener('click', () => { applyFont(font); closeFontMenu() })
+        menu.append(item)
+      }
+      document.body.append(menu)
+      const r = trigger.getBoundingClientRect()
+      menu.style.left = `${Math.max(8, Math.min(r.left, window.innerWidth - menu.offsetWidth - 8))}px`
+      const below = r.bottom + 4
+      menu.style.top =
+        below + menu.offsetHeight > window.innerHeight - 8
+          ? `${Math.max(8, r.top - menu.offsetHeight - 4)}px`
+          : `${below}px`
+      const onOutside = (ev: MouseEvent): void => {
+        if (!menu.contains(ev.target as Node) && ev.target !== trigger) {
+          closeFontMenu()
+          document.removeEventListener('mousedown', onOutside, true)
+        }
+      }
+      setTimeout(() => document.addEventListener('mousedown', onOutside, true), 0)
     })
-    return sel
+    wrap.append(trigger)
+    return wrap
   }
 
   /** リンク入力の小さなインラインポップ（指示149: prompt をやめる）。 */
