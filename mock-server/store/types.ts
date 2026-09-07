@@ -247,6 +247,11 @@ export interface ExitPopup {
   javascript: string
   head_tag: string
   body_tag: string
+
+  /** 指示176: 'exit'=離脱防止（既定）/ 'instant'=表示直後（LP表示直後にオーバーレイ）。未設定は 'exit'。 */
+  popup_kind?: 'exit' | 'instant'
+  /** 指示172: 'link'=遷移先URLへ移動（既定）/ 'close'=LPに戻る（閉じて元の位置へ）。未設定は 'link'。 */
+  link_action?: 'link' | 'close'
 }
 
 /** 追尾型ポップアップ（指示85: スクロール追従バナー） */

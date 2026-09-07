@@ -380,6 +380,12 @@ export interface ExitPopup {
   javascript: string
   head_tag: string
   body_tag: string
+  /** 指示176: ポップの種別。'exit'=離脱防止（既定・離脱意図で発動）/
+   *  'instant'=表示直後（LPを開いた直後にオーバーレイ表示）。未設定は 'exit' 扱い。 */
+  popup_kind?: 'exit' | 'instant'
+  /** 指示172: ポップを触ったときの動作。'link'=遷移先URLへ移動（既定）/
+   *  'close'=LPに戻る（ポップを閉じて元の位置へ・×と同じ）。未設定は 'link' 扱い。 */
+  link_action?: 'link' | 'close'
 }
 
 /** 追尾型ポップアップ（指示85） */

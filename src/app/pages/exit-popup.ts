@@ -168,7 +168,12 @@ function injectPopupCss(): void {
 // ─── メインのrender関数 ─────────────────────────────
 
 /** 現在のサブタブ */
-type SubTab = 'exit' | 'follow'
+type SubTab = 'exit' | 'follow' | 'instant'
+
+/** 指示176: ポップの種別を判定（未設定は 'exit' 扱い）。 */
+function popupKindOf(p: ExitPopup): 'exit' | 'instant' {
+  return p.popup_kind === 'instant' ? 'instant' : 'exit'
+}
 
 /** 現在の表示状態 */
 interface PopupPageState {
@@ -249,13 +254,21 @@ function renderPanel(state: PopupPageState): void {
   head.append(el('span', { class: 'ep-panel-title', text: 'ポップアップ' }))
   inner.append(head)
 
-  // ── サブタブ: 離脱防止 / 追従型 ──
+  // ── サブタブ: 離脱防止 / 追従型 / 表示直後（指示176） ──
   const subtabs = el('div', { class: 'ep-subtabs' })
-  const isExit = state.activeSubTab === 'exit'
-  const tabExit = el('button', { class: `ep-subtab${isExit ? ' active' : ''}`, text: '離脱防止' })
-  const tabFollow = el('button', { class: `ep-subtab${!isExit ? ' active' : ''}`, text: '追従型' })
-  subtabs.append(tabExit, tabFollow)
+  const mkTab = (id: SubTab, label: string): HTMLElement =>
+    el('button', { class: `ep-subtab${state.activeSubTab === id ? ' active' : ''}`, text: label })
+  const tabExit = mkTab('exit', '離脱防止')
+  const tabFollow = mkTab('follow', '追従型')
+  const tabInstant = mkTab('instant', '表示直後')
+  subtabs.append(tabExit, tabFollow, tabInstant)
   inner.append(subtabs)
+
+  tabInstant.addEventListener('click', () => {
+    if (state.activeSubTab === 'instant') return
+    state.activeSubTab = 'instant'
+    renderPanel(state)
+  })
 
   tabExit.addEventListener('click', () => {
     if (state.activeSubTab === 'exit') return
@@ -279,10 +292,12 @@ function renderPanel(state: PopupPageState): void {
   delivery.append(deliveryLabel, toggle)
   inner.append(delivery)
 
-  if (state.activeSubTab === 'exit') {
-    renderExitList(inner, state)
-  } else {
+  if (state.activeSubTab === 'follow') {
     renderFollowList(inner, state)
+  } else if (state.activeSubTab === 'instant') {
+    renderInstantList(inner, state)
+  } else {
+    renderExitList(inner, state)
   }
 
   panel.append(inner)
@@ -302,11 +317,33 @@ function renderExitList(container: HTMLElement, state: PopupPageState): void {
   listHead.append(listTitle, addBtn)
   container.append(listHead)
 
-  if (state.popups.length === 0) {
+  const exitPopups = state.popups.filter((p) => popupKindOf(p) === 'exit')
+  if (exitPopups.length === 0) {
     container.append(el('div', { class: 'ep-empty', text: 'ポップアップがまだ設定されていません。上にある「+追加」ボタンから選択してみましょう。' }))
   } else {
     const grid = el('div', { class: 'ep-card-grid' })
-    for (const popup of state.popups) {
+    for (const popup of exitPopups) {
+      grid.append(renderPopupCard(state, popup))
+    }
+    container.append(grid)
+  }
+}
+
+/** 表示直後タブの一覧（指示176）。離脱防止ポップと同じ編集画面を使い、配信時にLP表示直後へ出す。 */
+function renderInstantList(container: HTMLElement, state: PopupPageState): void {
+  const listHead = el('div', { class: 'ep-list-head' })
+  const listTitle = el('h3', { text: '表示直後一覧' })
+  const addBtn = el('button', { class: 'ep-add-btn', html: `<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg> 追加` })
+  addBtn.addEventListener('click', () => openPresetModal(state))
+  listHead.append(listTitle, addBtn)
+  container.append(listHead)
+
+  const instantPopups = state.popups.filter((p) => popupKindOf(p) === 'instant')
+  if (instantPopups.length === 0) {
+    container.append(el('div', { class: 'ep-empty', text: 'ポップアップがまだ設定されていません。上にある「+追加」ボタンから選択してみましょう。' }))
+  } else {
+    const grid = el('div', { class: 'ep-card-grid' })
+    for (const popup of instantPopups) {
       grid.append(renderPopupCard(state, popup))
     }
     container.append(grid)
@@ -504,7 +541,7 @@ function openPresetModal(state: PopupPageState): void {
   const closeBtn = el('button', { class: 'ep-modal-close', text: '閉じる' })
   closeBtn.addEventListener('click', () => overlay.remove())
   head.append(closeBtn)
-  head.append(el('h2', { text: 'ポップアップ追加（離脱防止）' }))
+  head.append(el('h2', { text: `ポップアップ追加（${state.activeSubTab === 'instant' ? '表示直後' : '離脱防止'}）` }))
   modal.append(head)
 
   // 検索バー
@@ -611,6 +648,7 @@ function renderPresetItem(
       scroll_position: preset.defaults.scroll_position ?? 50,
       countdown_trigger: preset.defaults.countdown_trigger ?? false,
       countdown_seconds: preset.defaults.countdown_seconds ?? 0,
+      popup_kind: state.activeSubTab === 'instant' ? 'instant' : 'exit',
     }).then(
       ({ exit_popup }) => {
         state.popups = [...state.popups, exit_popup]
@@ -645,6 +683,7 @@ function createBlankPopup(state: PopupPageState): void {
       `<a href="#" style="display:inline-block;background:#E5532A;color:#ffffff;padding:12px 28px;` +
       `border-radius:6px;text-decoration:none;font-weight:700">ボタン</a>` +
       `</div>`,
+    popup_kind: state.activeSubTab === 'instant' ? 'instant' : 'exit',
   }).then(
     ({ exit_popup }) => {
       state.popups = [...state.popups, exit_popup]
@@ -873,34 +912,59 @@ function renderBasicTab(body: HTMLElement, draft: ExitPopup): void {
  */
 function makePopupLinkField(draft: ExitPopup): HTMLElement {
   const field = el('div', { class: 'ep-field' })
-  field.append(el('label', { text: 'リンク（ポップアップを触ったときの遷移先）' }))
+  field.append(el('label', { text: 'ポップアップを触ったときの動作' }))
 
+  // 指示172: 動作の選択 — 遷移先URLへ移動 / LPに戻る（閉じて元の位置へ・×と同じ）
+  const actionRow = el('div', { style: 'display:flex;gap:18px;margin:2px 0 10px' })
+  const rLink = document.createElement('input')
+  rLink.type = 'radio'; rLink.name = `ep-action-${draft.uid}`; rLink.value = 'link'
+  const rClose = document.createElement('input')
+  rClose.type = 'radio'; rClose.name = `ep-action-${draft.uid}`; rClose.value = 'close'
+  if (draft.link_action === 'close') rClose.checked = true
+  else rLink.checked = true
+  const lLink = el('label', { style: 'display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px' })
+  lLink.append(rLink, el('span', { text: '遷移先URLへ移動' }))
+  const lClose = el('label', { style: 'display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px' })
+  lClose.append(rClose, el('span', { text: 'LPに戻る（閉じて元の位置へ）' }))
+  actionRow.append(lLink, lClose)
+  field.append(actionRow)
+
+  // 遷移先URL入力群（動作=LPに戻る のときは隠す）
+  const urlWrap = el('div', {})
   const rawUrl = draft.link_url
   const input = document.createElement('input')
   input.type = 'text'
   input.placeholder = 'https://example.com'
   // 入力欄には計測フラグ(sb_tracking)を外したきれいなURLを見せる。計測ON/OFFはチェックボックスで表す。
   input.value = rawUrl === '' ? '' : withTrackingParam(rawUrl, false)
-  field.append(input)
+  urlWrap.append(input)
 
   const opts = el('div', { style: 'display:flex;flex-direction:column;gap:6px;margin-top:8px' })
-
   const [newTabWrap, newTabCb] = makeCheckboxRow('新しいタブで開く', draft.link_target !== '_self')
   const [trackWrap, trackCb] = makeCheckboxRow(
     'このシステムで計測する（クリックをレポートに計上）',
     rawUrl !== '' && isTrackingLink(rawUrl, null),
   )
   opts.append(newTabWrap, trackWrap)
-  field.append(opts)
+  urlWrap.append(opts)
+  field.append(urlWrap)
 
   const sync = (): void => {
     const url = input.value.trim()
     draft.link_url = url === '' ? '' : withTrackingParam(url, trackCb.checked)
     draft.link_target = newTabCb.checked ? '_blank' : '_self'
   }
+  const applyAction = (): void => {
+    const isClose = rClose.checked
+    draft.link_action = isClose ? 'close' : 'link'
+    urlWrap.hidden = isClose // LPに戻る のときは遷移先URL群を隠す（link_url は保持して切替時に復元可）
+  }
   input.addEventListener('input', sync)
   newTabCb.addEventListener('change', sync)
   trackCb.addEventListener('change', sync)
+  rLink.addEventListener('change', applyAction)
+  rClose.addEventListener('change', applyAction)
+  applyAction()
 
   return field
 }

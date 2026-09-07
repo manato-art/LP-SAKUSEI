@@ -239,6 +239,9 @@ abTestsRouter.post('/ab_tests/:uid/exit_popups', (req, res) => {
     javascript: optionalString(req.body, 'javascript') || '',
     head_tag: optionalString(req.body, 'head_tag') || '',
     body_tag: optionalString(req.body, 'body_tag') || '',
+    // 指示176/172: 種別と触ったときの動作
+    popup_kind: (body.popup_kind === 'instant' ? 'instant' : 'exit') as 'exit' | 'instant',
+    link_action: (body.link_action === 'close' ? 'close' : 'link') as 'link' | 'close',
   }
   setState((s) => ({ ...s, exitPopups: [...s.exitPopups, created], nextId: s.nextId + 1 }))
   res.status(201).json({ exit_popup: created })
@@ -286,15 +289,26 @@ abTestsRouter.put('/ab_tests/:uid/exit_popups/:popup_uid', (req, res) => {
     ...(typeof body.javascript === 'string' ? { javascript: body.javascript } : {}),
     ...(typeof body.head_tag === 'string' ? { head_tag: body.head_tag } : {}),
     ...(typeof body.body_tag === 'string' ? { body_tag: body.body_tag } : {}),
+    ...(body.popup_kind === 'exit' || body.popup_kind === 'instant'
+      ? { popup_kind: body.popup_kind as 'exit' | 'instant' }
+      : {}),
+    ...(body.link_action === 'link' || body.link_action === 'close'
+      ? { link_action: body.link_action as 'link' | 'close' }
+      : {}),
   }
   // 配信割合の自動バランス（Versionと同じ挙動）:
   // この beyondページの離脱防止ポップが「ちょうど2個」のとき、片方の割合を変えると
   // もう片方が `100 - 新値` に追従して合計100%を保つ。返り値に adjusted_siblings を含める。
+  // 指示176: 種別（exit/instant）ごとに独立してバランスする（別タブのポップと混ざらない）
+  const kindOf = (p: { popup_kind?: 'exit' | 'instant' }): 'exit' | 'instant' => p.popup_kind ?? 'exit'
+  const existingKind = kindOf(existing)
   const adjustedSiblings: { uid: string; ratio: number }[] = []
-  const siblingPopups = state.exitPopups.filter((p) => p.ab_test_id === abTest.id)
+  const siblingPopups = state.exitPopups.filter(
+    (p) => p.ab_test_id === abTest.id && kindOf(p) === existingKind,
+  )
   if (typeof body.ratio === 'number' && siblingPopups.length === 2) {
     const otherIdx = state.exitPopups.findIndex(
-      (p) => p.ab_test_id === abTest.id && p.uid !== req.params.popup_uid,
+      (p) => p.ab_test_id === abTest.id && kindOf(p) === existingKind && p.uid !== req.params.popup_uid,
     )
     if (otherIdx !== -1) {
       const other = state.exitPopups[otherIdx]!

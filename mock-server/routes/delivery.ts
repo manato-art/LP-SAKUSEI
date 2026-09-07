@@ -502,6 +502,22 @@ deliveryRouter.get('/preview/:versionUid', (req, res) => {
     ? `${escapeHtml(abTest.title)} - ${escapeHtml(version.name)} プレビュー`
     : `${escapeHtml(version.name)} プレビュー`
 
+  // 指示174: プレビューでも離脱防止/表示直後/追尾ポップを発動させる（配信と同じ）。
+  // （従来はプレビューにスニペットを入れておらず、プレビューURLでは一切出なかった）
+  const previewDevice = buildVisitorContext(req).device
+  const previewPopupHtml = abTest === undefined
+    ? ''
+    : (getState().exitPopups ?? [])
+        .filter((p) => p.ab_test_id === abTest.id && p.enabled)
+        .map((p) => buildPopupSnippet(p, previewDevice))
+        .join('')
+  const previewFollowHtml = abTest === undefined
+    ? ''
+    : (getState().followPopups ?? [])
+        .filter((p) => p.ab_test_id === abTest.id && p.enabled)
+        .map((p) => buildFollowPopupSnippet(p, previewDevice))
+        .join('')
+
   const html =
     `<!doctype html><html lang="ja"><head><meta charset="utf-8">` +
     `<meta name="viewport" content="width=device-width, initial-scale=1">` +
@@ -534,6 +550,8 @@ deliveryRouter.get('/preview/:versionUid', (req, res) => {
     `</div>` +
     headerHtml +
     withAutoplayVideos(bodyHtml) +
+    previewPopupHtml +
+    previewFollowHtml +
     buildAnimRuntimeScript() +
     `</body></html>`
 
@@ -607,6 +625,10 @@ function buildPopupSnippet(popup: ExitPopup, device: 'sp' | 'tablet' | 'pc'): st
     .ep-close { position:absolute; top:8px; right:8px; width:28px; height:28px; border-radius:50%; background:#fff; border:1px solid #ddd; cursor:pointer; font-size:14px; display:flex; align-items:center; justify-content:center; box-shadow:0 1px 4px rgba(0,0,0,.15); z-index:2; }
   `
 
+  // 種別（指示176）とクリック動作（指示172）
+  const popupKind = popup.popup_kind === 'instant' ? 'instant' : 'exit'
+  const linkAction = popup.link_action === 'close' ? 'close' : 'link'
+
   // 統合IIFE: 内部アニメJS(popup.javascript) + トリガーJS を1つのスコープにまとめ、
   // overlay / epId をスコープ変数として共有。'ep-show' カスタムイベントで内部アニメを起動。
   const scriptBody = `(function(){
@@ -617,6 +639,12 @@ function buildPopupSnippet(popup: ExitPopup, device: 'sp' | 'tablet' | 'pc'): st
     var delay=${popup.delay_seconds * 1000};
     var scrollTrigger=${popup.scroll_trigger};
     var scrollPos=${popup.scroll_position};
+    var kind=${JSON.stringify(popupKind)};
+    var exitTrig=${popup.exit_trigger !== false};
+    var backTrig=${popup.back_button_trigger === true};
+    var cdTrig=${popup.countdown_trigger === true};
+    var cdSec=${popup.countdown_seconds || 0};
+    var linkAction=${JSON.stringify(linkAction)};
 
     function showPopup(){
       if(shown)return;
@@ -626,36 +654,61 @@ function buildPopupSnippet(popup: ExitPopup, device: 'sp' | 'tablet' | 'pc'): st
       overlay.classList.add('visible');
       try{overlay.dispatchEvent(new CustomEvent('ep-show'))}catch(e){}
     }
+    function closePopup(){ overlay.classList.remove('visible'); }
 
     // ── 内部アニメーションJS（プリセットが設定）──
     ${popup.javascript}
 
-    // ── 離脱防止トリガー ──
-    setTimeout(function(){
-      document.addEventListener('mouseout',function(e){
-        if(e.clientY<=0||e.clientX<=0||e.clientX>=window.innerWidth||e.clientY>=window.innerHeight)showPopup();
-      });
-      document.addEventListener('visibilitychange',function(){if(document.hidden)showPopup()});
-    },delay);
-
-    if(scrollTrigger){
-      window.addEventListener('scroll',function(){
-        var pct=(window.scrollY/(document.body.scrollHeight-window.innerHeight))*100;
-        if(pct>=scrollPos)showPopup();
-      });
+    if(kind==='instant'){
+      // ── 指示176: 表示直後 — LPを開いた直後（delay後・既定0）にオーバーレイ表示 ──
+      setTimeout(showPopup, delay);
+    } else {
+      // ── 指示175: 離脱防止 — 開いた直後には出さず「離脱意図」でのみ出す ──
+      // （旧: mouseout全辺 + visibilitychange が読み込み直後に誤発火していた。両方やめる）
+      var armed=false;
+      setTimeout(function(){ armed=true; }, delay); // 読み込み直後の誤発火を防ぐ猶予
+      // PC: カーソルが画面「上端」の外へ出た（＝タブ/URLバー方向へ抜けた）とき。exit_trigger時。
+      if(exitTrig){
+        document.addEventListener('mouseout',function(e){
+          if(!armed)return;
+          if(e.clientY<=0 && !e.relatedTarget)showPopup();
+        });
+      }
+      // 戻る操作（ブラウザ戻る/スマホの戻るジェスチャ）で発動。exit_trigger または back_button_trigger時。
+      if(exitTrig||backTrig){
+        var trapped=false;
+        try{history.pushState({epTrap:1},'')}catch(e){}
+        window.addEventListener('popstate',function(){
+          if(trapped)return;            // 2回目の戻るは通す（離脱を許可）
+          trapped=true;
+          showPopup();
+          try{history.pushState({epTrap:1},'')}catch(e){} // 戻るを1回だけ捕まえてポップ表示
+        });
+      }
+      // カウントダウンで表示
+      if(cdTrig&&cdSec>0)setTimeout(showPopup, cdSec*1000);
+      // スクロールで表示
+      if(scrollTrigger){
+        window.addEventListener('scroll',function(){
+          var pct=(window.scrollY/(document.body.scrollHeight-window.innerHeight))*100;
+          if(pct>=scrollPos)showPopup();
+        });
+      }
     }
 
-    // ── リンク設定（クリック時の遷移先＋計測）──
+    // ── クリック時の動作（指示172）──
     var epLink=${JSON.stringify(epLink)};
     var epTarget=${JSON.stringify(epTarget)};
     var epPins=${JSON.stringify(epPins)};
     var content=overlay.querySelector('.ep-content');
-    if(epLink&&content)content.style.cursor='pointer';
+    if(linkAction!=='close'&&epLink&&content)content.style.cursor='pointer';
 
     overlay.addEventListener('click',function(e){
       var t=e.target;
       // 背景 or ×ボタン → 閉じる
-      if(t===overlay||(t.classList&&t.classList.contains('ep-close'))){overlay.classList.remove('visible');return;}
+      if(t===overlay||(t.classList&&t.classList.contains('ep-close'))){closePopup();return;}
+      // 指示172: 動作=LPに戻る → 中身タップでも閉じて、元のLPの見ていた位置へ戻る（×と同じ）
+      if(linkAction==='close'){closePopup();return;}
       if(!epLink)return;
       // 中身が本物のリンク/ボタン（href が # や javascript: 以外）ならそれを生かす
       var inner=t.closest&&t.closest('a[href]');
