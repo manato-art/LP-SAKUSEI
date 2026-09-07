@@ -57,6 +57,10 @@ function injectSelectionCss(): void {
   const style = document.createElement('style')
   style.setAttribute('data-widget-selection', 'true')
   style.textContent = `
+    /* 指示155-2: 編集キャンバス(.ql-editor)は行間1.8のため、Widget内の見出し等(<br>改行)が
+       広がりすぎる。配信LP・編集プレビューと同じく1.5を既定にして揃える（Widget自身が
+       line-heightを明示した要素は直接指定が継承より優先されるので影響しない）。 */
+    .ql-editor section.sb-widget-block { line-height:1.5; }
     section.sb-widget-block { cursor:pointer; transition:outline .15s, box-shadow .15s; position:relative; }
     section.sb-widget-block:hover { outline:2px solid ${COLOR.selectBorder}; outline-offset:-2px; }
     section.sb-widget-block:hover::after {
