@@ -50,8 +50,12 @@ function injectStyles(): void {
   const s = document.createElement('style')
   s.id = 'sb-props-panel-css'
   s.textContent = `
+    /* 指示171: スタイル(プロパティ)パネルを赤ライン（＝旧アイコンレール左端）まで左へ拡張。
+       キャンバス(quillEditorContentWrapper)は flex:1 なので、この幅を広げるとキャンバスが縮み、
+       間に挟まるアイコンレール(68px)とキャンバス右端のスクロールバーが同じ分だけ左へ移動する。
+       260(元) + 68(アイコンレール幅) = 328px。 */
     .sb-props-panel {
-      width:260px; background:#fff; border-left:1px solid #e5e5ea;
+      width:328px; background:#fff; border-left:1px solid #e5e5ea;
       display:flex; flex-direction:column; flex-shrink:0;
       overflow-y:auto; overflow-x:hidden;
       height:calc(100vh - 92px);
