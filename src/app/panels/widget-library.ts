@@ -478,24 +478,11 @@ function insertWidget(quill: Quill, bodyHtml: string | null, title: string): voi
     return
   }
   const doc = new DOMParser().parseFromString(bodyHtml, 'text/html')
-  for (const style of doc.querySelectorAll('style')) {
-    // ウィジェットCSSに紛れた実SBの赤枠警告(.ql-editor img{border:2px solid red})を除去する
-    const css = stripLeakedEditorImgBorder(style.textContent ?? '')
-    if (css.trim() !== '') {
-      const existing = [...document.head.querySelectorAll('style[data-widget-css]')]
-      const alreadyHas = existing.some((s) => s.textContent === css)
-      if (!alreadyHas) {
-        const moved = document.createElement('style')
-        moved.setAttribute('data-widget-css', 'true')
-        moved.textContent = css
-        document.head.append(moved)
-      }
-    }
-    style.remove()
-  }
-  for (const script of doc.querySelectorAll('script')) script.remove()
-
-  const cleaned = doc.body.innerHTML
+  // ウィジェットの <style>（見た目）と <script>（動作）はそのまま保持する。
+  // 実SBのウィジェットは自己完結したJS（アンケートの設問送り・カルーセル・カウントダウン等）を
+  // 内蔵しており、それを配信LP/プレビューでそのまま実行することで実SBと同じ動きを再現する。
+  // 赤枠警告(.ql-editor img{border:2px solid red})だけは除去（他画像への漏れ防止）。
+  const cleaned = stripLeakedEditorImgBorder(doc.head.innerHTML + doc.body.innerHTML)
   const range = quill.getSelection(true)
   const index = range?.index ?? quill.getLength()
   quill.insertEmbed(index, 'sbwidget', cleaned, 'user')
