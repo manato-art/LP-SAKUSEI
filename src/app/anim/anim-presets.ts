@@ -87,12 +87,17 @@ export function buildAnimRuntimeScript(): string {
   return `<script>(function(){
     var els=document.querySelectorAll('[data-anim]');
     if(!els.length)return;
+    // 保存HTMLに sb-anim-run が焼き込まれている場合があるため、まず全部リセットする。
+    // これをしないと読み込み時点で全アニメが一斉再生され、画面外で再生し終えてしまい
+    // スクロール表示トリガが効かない（＝アニメが動かないように見える）。指示164。
+    els.forEach(function(el){el.classList.remove('sb-anim-run')});
     document.body.classList.add('sb-anim-ready');
     var run=function(el){el.classList.add('sb-anim-run')};
     if(!('IntersectionObserver' in window)){els.forEach(run);return;}
+    // 画面に少しでも入ったら再生（大きい要素でも確実に発火するよう rootMargin で前倒し）。
     var io=new IntersectionObserver(function(ents){
       ents.forEach(function(e){if(e.isIntersecting){run(e.target);io.unobserve(e.target);}});
-    },{threshold:0.15});
+    },{threshold:0.01,rootMargin:'0px 0px -10% 0px'});
     els.forEach(function(el){io.observe(el)});
   })()</script>`
 }

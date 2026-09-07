@@ -1830,11 +1830,27 @@ function getHeaderImageSrc(root: HTMLElement): string | null {
 /** 保存用HTML = ヘッダー画像タグ + Quill本文 */
 function buildFullHtml(ctx: EditorContext): string {
   const headerSrc = getHeaderImageSrc(ctx.root)
-  const body = ctx.quill.root.innerHTML
+  const body = serializeQuillBody(ctx.quill.root)
   if (headerSrc !== null) {
     return `<!--header-image:${headerSrc}-->${body}`
   }
   return body
+}
+
+/**
+ * Quill本文を保存用に直列化する。`sb-anim-run` は編集/プレビュー時のランタイム専用クラス
+ * （properties-panel の replayAnims が付ける）。保存HTMLに残ると、配信LPで全アニメが
+ * 「読み込み時に一斉再生」されてスクロール表示トリガが効かず、画面外で再生し終わって
+ * 「アニメが動かない＝壊れている」ように見える（指示164）。保存前に必ず除去する。
+ */
+function serializeQuillBody(rootEl: HTMLElement): string {
+  if (rootEl.querySelector('.sb-anim-run') === null) return rootEl.innerHTML
+  const clone = rootEl.cloneNode(true) as HTMLElement
+  for (const el of clone.querySelectorAll('.sb-anim-run')) {
+    el.classList.remove('sb-anim-run')
+    if (el.getAttribute('class') === '') el.removeAttribute('class')
+  }
+  return clone.innerHTML
 }
 
 /** 保存HTMLからヘッダー画像srcを抽出し、本文を分離して返す */
