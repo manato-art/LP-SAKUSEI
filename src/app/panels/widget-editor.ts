@@ -236,6 +236,7 @@ function wireDividerResize(divider: HTMLElement, leftPane: HTMLElement, containe
 
 /** Widget 編集パネルを閉じる */
 function closeWidgetPanel(panel: HTMLElement): void {
+  closeMediaControl()
   // 背景オーバーレイも一緒に消す
   document.querySelector('[data-widget-backdrop]')?.remove()
   panel.remove()
@@ -362,6 +363,123 @@ function pickImageDataUrl(): Promise<string | null> {
     document.body.append(input)
     input.click()
   })
+}
+
+/* 画像/動画クリック時の操作パネル（差し替え＋サイズ変更）。同時に1つだけ表示する。 */
+let mediaControlEl: HTMLElement | null = null
+let mediaControlOutside: ((e: MouseEvent) => void) | null = null
+
+function closeMediaControl(): void {
+  if (mediaControlEl !== null) {
+    mediaControlEl.remove()
+    mediaControlEl = null
+  }
+  if (mediaControlOutside !== null) {
+    document.removeEventListener('mousedown', mediaControlOutside, true)
+    mediaControlOutside = null
+  }
+}
+
+/** クリックされた画像/動画の近くに、差し替え・サイズ変更(幅%)のコントロールを表示する。 */
+function openMediaControl(media: HTMLElement, contentDiv: HTMLElement): void {
+  closeMediaControl()
+  const isImg = media.tagName === 'IMG'
+  const sync = (): void => {
+    contentDiv.dispatchEvent(new Event('input', { bubbles: true }))
+  }
+
+  const box = document.createElement('div')
+  box.style.cssText =
+    `position:fixed;z-index:9500;background:#fff;border:1px solid #ddd;border-radius:8px;` +
+    `box-shadow:0 4px 18px rgba(0,0,0,.18);padding:10px 12px;display:flex;flex-direction:column;` +
+    `gap:8px;font:12px/1.4 ${FONT};min-width:236px`
+  box.addEventListener('click', (e) => e.stopPropagation())
+
+  if (isImg) {
+    const rep = document.createElement('button')
+    rep.type = 'button'
+    rep.textContent = 'PCから画像を差し替え'
+    rep.style.cssText =
+      `border:none;background:${COLOR.brand};color:#fff;border-radius:6px;padding:8px 10px;` +
+      `cursor:pointer;font:12px/1 ${FONT}`
+    rep.addEventListener('click', () => {
+      void pickImageDataUrl().then((dataUrl) => {
+        if (dataUrl === null) return
+        media.setAttribute('src', dataUrl)
+        media.removeAttribute('srcset')
+        sync()
+      })
+    })
+    box.append(rep)
+  }
+
+  // サイズ（幅%）。親要素に対する現在幅から初期値を出す。
+  const parentW = media.parentElement?.getBoundingClientRect().width || media.getBoundingClientRect().width || 1
+  const rectW = media.getBoundingClientRect().width
+  const styleW = media.style.width
+  // 計測できない（幅0＝レイアウト前など）ときは 100% を既定にする（10%に潰れるのを防ぐ）
+  const measured = rectW > 4 && parentW > 8 ? Math.round((rectW / parentW) * 100) : 100
+  const curPct = styleW.endsWith('%') && !Number.isNaN(parseFloat(styleW))
+    ? Math.max(10, Math.min(100, Math.round(parseFloat(styleW))))
+    : Math.max(10, Math.min(100, measured))
+
+  const row = document.createElement('div')
+  row.style.cssText = 'display:flex;align-items:center;gap:8px'
+  const lbl = document.createElement('span')
+  lbl.textContent = '幅'
+  lbl.style.color = '#555'
+  const slider = document.createElement('input')
+  slider.type = 'range'
+  slider.min = '10'
+  slider.max = '100'
+  slider.step = '1'
+  slider.value = String(curPct)
+  slider.style.flex = '1'
+  const num = document.createElement('span')
+  num.textContent = `${curPct}%`
+  num.style.cssText = 'min-width:40px;text-align:right;color:#333;font-variant-numeric:tabular-nums'
+  slider.addEventListener('input', () => {
+    const v = slider.value
+    media.style.setProperty('width', `${v}%`, 'important')
+    media.style.setProperty('height', 'auto', 'important')
+    media.removeAttribute('width')
+    media.removeAttribute('height')
+    num.textContent = `${v}%`
+    sync()
+  })
+  row.append(lbl, slider, num)
+  box.append(row)
+
+  const closeBtn = document.createElement('button')
+  closeBtn.type = 'button'
+  closeBtn.textContent = '閉じる'
+  closeBtn.style.cssText =
+    `border:1px solid #ddd;background:#fff;color:#555;border-radius:6px;padding:6px 10px;` +
+    `cursor:pointer;font:12px/1 ${FONT}`
+  closeBtn.addEventListener('click', closeMediaControl)
+  box.append(closeBtn)
+
+  document.body.append(box)
+  mediaControlEl = box
+
+  // 位置決め（メディアの下→はみ出すなら上、画面内に収める）
+  const r = media.getBoundingClientRect()
+  const bw = box.offsetWidth
+  const bh = box.offsetHeight
+  let left = r.left
+  let top = r.bottom + 6
+  if (left + bw > window.innerWidth - 8) left = window.innerWidth - bw - 8
+  if (top + bh > window.innerHeight - 8) top = Math.max(8, r.top - bh - 6)
+  box.style.left = `${Math.max(8, left)}px`
+  box.style.top = `${top}px`
+
+  // 外側クリックで閉じる（キャプチャ段階。box内は contains で除外）
+  mediaControlOutside = (e: MouseEvent): void => {
+    if (mediaControlEl !== null && !mediaControlEl.contains(e.target as Node) && e.target !== media) {
+      closeMediaControl()
+    }
+  }
+  document.addEventListener('mousedown', mediaControlOutside, true)
 }
 
 function buildVisualEditor(target: WidgetEditTarget): { pane: HTMLElement; contentDiv: HTMLElement } {
@@ -519,26 +637,24 @@ function buildVisualEditor(target: WidgetEditTarget): { pane: HTMLElement; conte
   contentDiv.innerHTML = target.html
   editorBody.append(contentDiv)
 
-  // 画像はクリックでPCから差し替え（グレーの「画像」枠も data URI の <img> なので同様に効く）
+  // 画像/動画はクリックで操作パネル（差し替え＋サイズ変更）を出す。
+  // グレーの「画像」枠も data URI の <img> なので同様に効く。
   const markImages = (): void => {
-    for (const img of contentDiv.querySelectorAll<HTMLElement>('img')) {
-      img.style.cursor = 'pointer'
-      if (img.title === '') img.title = 'クリックで画像を差し替え'
+    for (const el of contentDiv.querySelectorAll<HTMLElement>('img, video')) {
+      el.style.cursor = 'pointer'
+      if (el.title === '') el.title = 'クリックで差し替え・サイズ変更'
     }
   }
   markImages()
   contentDiv.addEventListener('input', markImages)
   contentDiv.addEventListener('click', (e) => {
-    const img = (e.target as HTMLElement).closest('img')
-    if (img === null || !contentDiv.contains(img)) return
+    const media = (e.target as HTMLElement).closest<HTMLElement>('img, video')
+    if (media === null || !contentDiv.contains(media)) {
+      closeMediaControl()
+      return
+    }
     e.preventDefault()
-    void pickImageDataUrl().then((dataUrl) => {
-      if (dataUrl === null) return
-      img.setAttribute('src', dataUrl)
-      img.removeAttribute('srcset')
-      // コードパネルへ反映（プログラム変更は input が飛ばないので明示発火）
-      contentDiv.dispatchEvent(new Event('input', { bubbles: true }))
-    })
+    openMediaControl(media, contentDiv)
   })
 
   // ツールバーから参照できるようにする
