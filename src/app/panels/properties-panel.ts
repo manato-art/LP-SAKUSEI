@@ -165,8 +165,13 @@ function injectStyles(): void {
     .sb-align-btn + .sb-align-btn { border-left:none; }
     .sb-align-btn:hover { background:#f0f0f2; }
     .sb-align-btn.active {
-      background:rgba(0,145,255,.08); color:#0091ff; border-color:#0091ff;
+      background:rgba(0,145,255,.08); color:#0091ff;
+      /* 指示169: 隣接ボタンで border-left:none にしているため、選択時は左境界も復活させて
+         四辺を完全に囲む。隣の右境界と重ならないよう margin-left:-1px で重ねる（二重線防止）。 */
+      border:1px solid #0091ff;
+      margin-left:-1px; position:relative; z-index:1;
     }
+    .sb-align-btn.active:first-child { margin-left:0; }
     .sb-fmt-btns { display:flex; gap:2px; flex-wrap:wrap; }
     .sb-fmt-btn {
       width:30px; height:28px; border:1px solid #e5e5ea; border-radius:4px;
@@ -436,25 +441,8 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
   sizeUnit.textContent = 'px'
   sizeRow.append(sizeInput, sizeStepWrap, sizeUnit)
 
-  // ── 太字 ──
-  const boldRow = row('太字')
-  const boldToggle = toggle(false)
-  boldToggle.addEventListener('click', () => {
-    toggleInline('bold')
-  })
-  const boldSpacer = document.createElement('div')
-  boldSpacer.style.flex = '1'
-  boldRow.append(boldSpacer, boldToggle)
-
-  // ── 斜体 ──
-  const italicRow = row('斜体')
-  const italicToggle = toggle(false)
-  italicToggle.addEventListener('click', () => {
-    toggleInline('italic')
-  })
-  const italicSpacer = document.createElement('div')
-  italicSpacer.style.flex = '1'
-  italicRow.append(italicSpacer, italicToggle)
+  // 指示170: 太字/斜体はトグルスイッチをやめ、下の「書式」行に B / I ボタンとして統合する
+  // （押すと色が変わる四角ボタン）。実際の生成は書式セクションで行う。
 
   // ── 文字色 ──
   const textColorRow = row('文字色')
@@ -620,6 +608,12 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
   const fmtBtns = document.createElement('div')
   fmtBtns.className = 'sb-fmt-btns'
 
+  // 指示170: 太字=B / 斜体=I を四角ボタン化（押すと色が変わる）。B I U S リンク の並び。
+  const boldBtn = fmtBtn('<span style="font-weight:800;font-size:14px">B</span>', '太字')
+  boldBtn.addEventListener('click', () => toggleInline('bold'))
+  const italicBtn = fmtBtn('<span style="font-style:italic;font-weight:600;font-size:14px;font-family:Georgia,serif">I</span>', '斜体')
+  italicBtn.addEventListener('click', () => toggleInline('italic'))
+
   const ulBtn = fmtBtn(SVG.underline, '下線')
   ulBtn.addEventListener('click', () => toggleInline('underline'))
 
@@ -650,7 +644,7 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
     refresh()
   })
 
-  fmtBtns.append(ulBtn, stBtn, linkBtn, clearBtn)
+  fmtBtns.append(boldBtn, italicBtn, ulBtn, stBtn, linkBtn, clearBtn)
   fmtGroup.append(fmtBtns)
 
   // ── 挿入 ──
@@ -818,13 +812,13 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
 
   body.append(
     textGroup,
-    fontRow, sizeRow, boldRow, italicRow,
+    fontRow, sizeRow,
+    fmtGroup, // 指示170: 書式(B I U S リンク)を太字/斜体があった位置（サイズの直下）へ移動
     textColorRow, bgColorRow,
     lsRow, lhRow,
     alignGroup,
     animGroup,
     posGroup,
-    fmtGroup,
     insGroup,
     actGroup,
   )
@@ -881,9 +875,9 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
     // サイズ
     sizeInput.value = fontSizeLabel(fmt['size']).replace('px', '')
 
-    // 太字/斜体
-    setToggle(boldToggle, fmt['bold'] === true)
-    setToggle(italicToggle, fmt['italic'] === true)
+    // 太字/斜体（書式行の B / I ボタンの選択状態）
+    boldBtn.classList.toggle('active', fmt['bold'] === true)
+    italicBtn.classList.toggle('active', fmt['italic'] === true)
 
     // 文字色（swatch + hex + picker全て同期）
     const tc = typeof fmt['color'] === 'string' ? fmt['color'] : '#000000'
@@ -990,17 +984,6 @@ function row(labelText: string): HTMLElement {
   l.textContent = labelText
   r.append(l)
   return r
-}
-
-function toggle(on: boolean): HTMLButtonElement {
-  const btn = document.createElement('button')
-  btn.type = 'button'
-  btn.className = `sb-pr-toggle${on ? ' on' : ''}`
-  return btn
-}
-
-function setToggle(btn: HTMLElement, on: boolean): void {
-  btn.classList.toggle('on', on)
 }
 
 function colorPicker(initial: string): {
