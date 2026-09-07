@@ -101,19 +101,23 @@ function open(quill: Quill): void {
  * ================================================================ */
 
 /**
- * カード一覧（`.css-ojejk4`）を3列グリッドにする（要望: 3つ横並び）。
- * 実物は flex-wrap でカード幅固定＝2列。カテゴリー切替で innerHTML が差し替わるため、
- * インラインではなく1回だけ <style> ルールで当てる（差し替え後のカードにも効く）。
+ * カード一覧（`.css-ojejk4`）を3列にする（要望: 3つ横並び）。
+ * カテゴリー切替で innerHTML が差し替わるため、インラインではなく1回だけ <style> で当てる。
+ *
+ * 方式は **flex（採取のまま）+ 各カード幅を1/3**。
+ * grid 化は不可: 採取CSSが `grid-template-rows: 2px …` を持ち、grid では行サイズ計算が
+ * カード高さ(297px)を拾えず行が2pxに潰れてカードが重なった（実測で確認）。
+ * 一方 flex は `align-items:stretch` が採取カードの `height:0` を中身の高さまで伸ばすので、
+ * 幅だけ 1/3 に絞れば高さも正しく3列で並ぶ（元の2列が成立していたのと同じ仕組み）。
+ * gap 32px(=16px×2) を3カードで割るため 1枚 = calc(33.333% - 11px)。
  */
 function injectWidgetGridCss(): void {
   if (document.getElementById('sb-widget-grid-3col') !== null) return
   const style = document.createElement('style')
   style.id = 'sb-widget-grid-3col'
-  // カードは採取CSSで height:0（元は flex + align-items:stretch で中身の高さまで伸びていた）。
-  // grid化ではその引き伸ばしが効かず行が潰れるので、height:auto / align-self:start で中身なりの高さにする。
   style.textContent =
-    '.css-ojejk4{display:grid !important;grid-template-columns:repeat(3,1fr) !important;gap:16px !important;align-content:start}' +
-    '.css-ojejk4>.MuiCard-root{width:auto !important;max-width:none !important;margin:0 !important;height:auto !important;align-self:start !important}'
+    '.css-ojejk4{display:flex !important;flex-wrap:wrap !important;gap:16px !important;align-content:flex-start !important}' +
+    '.css-ojejk4>.MuiCard-root{box-sizing:border-box !important;flex:0 0 calc(33.333% - 11px) !important;max-width:calc(33.333% - 11px) !important;min-width:0 !important;margin:0 !important}'
   document.head.append(style)
 }
 
