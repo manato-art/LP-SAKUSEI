@@ -82,7 +82,11 @@ function wireSidebar(nav: HTMLElement): void {
   // 指示63: 高さを全画面に（採取CSSの225pxだとアイテムが切れる）
   if (rail !== null) {
     rail.style.height = '100vh'
-    rail.style.overflowY = 'scroll'
+    // 指示159/168: overflow-y:scroll は中身が溢れていなくてもスクロールバー溝(約12px)を
+    // 常時予約する。スクロールバー常時表示の環境ではその溝がレール右端に灰色の帯として残り、
+    // 「レールと本文の間の謎の空白」に見えていた（macOSのオーバーレイ環境では0なので再現しにくい）。
+    // auto なら中身が溢れる時だけバー(::-webkit-scrollbar 6px)が出て、通常は溝ゼロ＝隙間なし。
+    rail.style.overflowY = 'auto'
     rail.style.position = 'sticky'
     rail.style.top = '0'
     rail.style.flexShrink = '0'
