@@ -182,16 +182,20 @@ function openWidgetEditor(quill: Quill, target: WidgetEditTarget): void {
   // 仕切りをドラッグして左右ペインのサイズを調整できるようにする（要望）
   wireDividerResize(divider, leftPane, darkContainer)
 
-  // ビジュアルエディタ → コードパネルの同期（入力イベントで反映）
-  const htmlArea = panel.querySelector<HTMLTextAreaElement>('[data-code-html]')
+  // ビジュアルエディタ → コードパネルの同期（入力イベントで反映）。
+  // ※ textarea はまだ panel に append される前なので、panel からではなく
+  //   （既に textarea を内包している）darkContainer から取得する。
+  //   以前は panel.querySelector が null を返し、ビジュアル編集がコードへ同期されず
+  //   「更新する」（コードtextareaから保存）で編集内容が失われていた。
+  const htmlArea = darkContainer.querySelector<HTMLTextAreaElement>('[data-code-html]')
   const syncFn = (): void => {
     if (htmlArea !== null && contentDiv !== null) {
       htmlArea.value = contentDiv.innerHTML
     }
   }
-  // buildVisualEditor 内で定義した syncContentToCode を後から差し替え
-  // （クロージャ経由でアクセスするため、遅延バインドが必要）
   contentDiv.addEventListener('input', syncFn)
+  // 初期値も1回そろえておく（採取HTMLとtextareaのズレ防止）
+  syncFn()
 
   /* ── 組み立て ── */
   panel.append(header, titleBar, darkContainer)
@@ -336,6 +340,30 @@ function buildTitleBar(target: WidgetEditTarget): HTMLElement {
  *  左ペイン: ビジュアルエディタ
  * ================================================================ */
 
+/** PCから画像ファイルを選ばせ、data URL として返す（キャンセル時は null）。 */
+function pickImageDataUrl(): Promise<string | null> {
+  return new Promise((resolve) => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = 'image/*'
+    input.style.display = 'none'
+    input.addEventListener('change', () => {
+      const file = input.files?.[0]
+      input.remove()
+      if (file === undefined) {
+        resolve(null)
+        return
+      }
+      const reader = new FileReader()
+      reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : null)
+      reader.onerror = () => resolve(null)
+      reader.readAsDataURL(file)
+    })
+    document.body.append(input)
+    input.click()
+  })
+}
+
 function buildVisualEditor(target: WidgetEditTarget): { pane: HTMLElement; contentDiv: HTMLElement } {
   const pane = document.createElement('div')
   pane.style.cssText = `flex:1;display:flex;flex-direction:column;min-width:0`
@@ -460,9 +488,12 @@ function buildVisualEditor(target: WidgetEditTarget): { pane: HTMLElement; conte
       const c = prompt('背景色 (例: #ffff00)', '#ffffff')
       if (c !== null && c.trim() !== '') exec('hiliteColor', c.trim())
     }),
-    mkBtn(svgToolImage(), '画像', () => {
-      const url = prompt('画像URL', 'https://')
-      if (url !== null && url.trim() !== '' && url.trim() !== 'https://') exec('insertImage', url.trim())
+    mkBtn(svgToolImage(), '画像（PCから追加）', () => {
+      void pickImageDataUrl().then((dataUrl) => {
+        if (dataUrl === null) return
+        contentRef?.focus()
+        document.execCommand('insertImage', false, dataUrl)
+      })
     }),
     mkBtn(svgToolMarker(), 'マーカー', () => exec('hiliteColor', '#fff176')),
     mkBtn(svgToolLink(), 'リンク', () => {
@@ -487,6 +518,28 @@ function buildVisualEditor(target: WidgetEditTarget): { pane: HTMLElement; conte
   contentDiv.style.cssText = 'outline:none;min-height:100px'
   contentDiv.innerHTML = target.html
   editorBody.append(contentDiv)
+
+  // 画像はクリックでPCから差し替え（グレーの「画像」枠も data URI の <img> なので同様に効く）
+  const markImages = (): void => {
+    for (const img of contentDiv.querySelectorAll<HTMLElement>('img')) {
+      img.style.cursor = 'pointer'
+      if (img.title === '') img.title = 'クリックで画像を差し替え'
+    }
+  }
+  markImages()
+  contentDiv.addEventListener('input', markImages)
+  contentDiv.addEventListener('click', (e) => {
+    const img = (e.target as HTMLElement).closest('img')
+    if (img === null || !contentDiv.contains(img)) return
+    e.preventDefault()
+    void pickImageDataUrl().then((dataUrl) => {
+      if (dataUrl === null) return
+      img.setAttribute('src', dataUrl)
+      img.removeAttribute('srcset')
+      // コードパネルへ反映（プログラム変更は input が飛ばないので明示発火）
+      contentDiv.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+  })
 
   // ツールバーから参照できるようにする
   contentRef = contentDiv
