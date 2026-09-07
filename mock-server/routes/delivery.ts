@@ -251,6 +251,31 @@ function appendAffilicodeParams(html: string, articleUid: string): string {
   })
 }
 
+/**
+ * ウィジェットが必要とする外部JSライブラリを、本文HTMLの内容から判定して <head> に読み込む。
+ * 実SBのカルーセル等のウィジェットは Swiper / SmoothScroll / jQuery / GLightbox 前提で書かれており、
+ * これらを読み込まないと内蔵JS（new Swiper 等）が ReferenceError で動かない。
+ * 同期 <script> を head に置くことで、body内のウィジェットJSより前に定義される。
+ */
+function externalWidgetLibs(html: string): string {
+  const tags: string[] = []
+  if (/jQuery\s*\(|(?:^|[^\w.$])\$\(/.test(html)) {
+    tags.push('<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>')
+  }
+  if (/new Swiper|class="[^"]*\bswiper|\bswiper-(?:container|wrapper|slide)/i.test(html)) {
+    tags.push('<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css">')
+    tags.push('<script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>')
+  }
+  if (/new SmoothScroll|SmoothScroll\s*\(/.test(html)) {
+    tags.push('<script src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.polyfills.min.js"></script>')
+  }
+  if (/GLightbox|glightbox/i.test(html)) {
+    tags.push('<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/glightbox/dist/css/glightbox.min.css">')
+    tags.push('<script src="https://cdn.jsdelivr.net/npm/glightbox/dist/js/glightbox.min.js"></script>')
+  }
+  return tags.join('')
+}
+
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, '&amp;')
@@ -363,6 +388,7 @@ deliveryRouter.get('/lp/:uid', (req, res) => {
     `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Noto+Serif+JP:wght@400;700&family=M+PLUS+Rounded+1c:wght@400;700&family=Kosugi+Maru&family=Sawarabi+Gothic&display=swap">` +
     `<style>body{margin:0 auto;max-width:${DELIVERY_WIDTH}px;font-family:"Hiragino Sans",sans-serif;background:#fff}` +
     `${LP_BASE_CSS}${version.css}${styleCss}${buildAnimCss()}</style>` +
+    externalWidgetLibs(versionHtml) +
     headTags +
     `</head><body>${withAutoplayVideos(versionHtml)}${bodyTags}${popupHtml}${followHtml}` +
     IMAGE_LINK_SCRIPT +
@@ -434,6 +460,7 @@ deliveryRouter.get('/preview/:versionUid', (req, res) => {
     `.preview-close:hover{color:#fff}` +
     buildAnimCss() +
     `</style>` +
+    externalWidgetLibs(bodyHtml) +
     `</head><body>` +
     `<div class="preview-banner" id="preview-banner">` +
     `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>` +
