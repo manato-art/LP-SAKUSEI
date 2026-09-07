@@ -38,6 +38,12 @@ const COLOR = {
 const FONT = '"Hiragino Sans","Hiragino Kaku Gothic ProN",sans-serif'
 const MONO = '"SF Mono",Menlo,"Fira Code",monospace'
 
+/**
+ * 編集プレビューの幅。配信LP（SSR）の body max-width と揃える＝WYSIWYG。
+ * mock-server/routes/delivery.ts の DELIVERY_WIDTH と同値に保つこと。
+ */
+const WIDGET_PREVIEW_WIDTH = 620
+
 /* ================================================================
  *  Widget 選択 CSS（一度だけ注入）
  * ================================================================ */
@@ -141,7 +147,7 @@ function openWidgetEditor(quill: Quill, target: WidgetEditTarget): void {
   panel.style.cssText =
     `position:fixed;top:50%;left:calc(60px + 50%);z-index:200;` +
     `transform:translate(-50%,-50%);` +
-    `width:min(88vw, 1100px);height:min(78vh, 680px);` +
+    `width:min(94vw, 1280px);height:min(82vh, 720px);` +
     `display:flex;flex-direction:column;background:#fff;` +
     `overflow:hidden;font-family:${FONT};border-radius:12px;` +
     `box-shadow:0 8px 40px rgba(0,0,0,.18),0 0 0 1px rgba(0,0,0,.06)`
@@ -484,7 +490,8 @@ function openMediaControl(media: HTMLElement, contentDiv: HTMLElement): void {
 
 function buildVisualEditor(target: WidgetEditTarget): { pane: HTMLElement; contentDiv: HTMLElement } {
   const pane = document.createElement('div')
-  pane.style.cssText = `flex:1;display:flex;flex-direction:column;min-width:0`
+  // 既定幅は 620px プレビュー＋左右padding(20px) が収まる 660px（仕切りドラッグで変更可）。
+  pane.style.cssText = `flex:0 0 660px;display:flex;flex-direction:column;min-width:0`
 
   // ── ツールバー（本番実測: 1行 flex-wrap, height:64px, 20項目, 1px×16pxセパレータ） ──
   const toolbar = document.createElement('div')
@@ -651,9 +658,10 @@ function buildVisualEditor(target: WidgetEditTarget): { pane: HTMLElement; conte
   )
 
   // エディタ本文（本番実測: padding:20px, contenteditable で書式操作を可能に）
+  // overflow:auto にして、下の固定幅プレビューが狭いペインでは横スクロールできるようにする。
   const editorBody = document.createElement('div')
   editorBody.style.cssText =
-    `flex:1;background:#fff;overflow-y:auto;padding:20px;min-height:0`
+    `flex:1;background:#fff;overflow:auto;padding:20px;min-height:0`
   // CSS を style タグとして注入してからHTMLをレンダリング
   if (target.css.trim() !== '') {
     const styleTag = document.createElement('style')
@@ -662,7 +670,11 @@ function buildVisualEditor(target: WidgetEditTarget): { pane: HTMLElement; conte
   }
   const contentDiv = document.createElement('div')
   contentDiv.setAttribute('contenteditable', 'true')
-  contentDiv.style.cssText = 'outline:none;min-height:100px'
+  // WYSIWYG: 編集プレビューを **配信LPと同じ幅(620px)** で表示する。
+  // 以前は左ペインの可変幅で表示していたため、編集時の見た目とLPの見た目（画像幅など）がズレていた。
+  // 620px = 配信SSRの body max-width（mock-server/routes/delivery.ts の DELIVERY_WIDTH）。
+  contentDiv.style.cssText =
+    `outline:none;min-height:100px;width:${WIDGET_PREVIEW_WIDTH}px;max-width:none;margin:0 auto;box-sizing:border-box`
   contentDiv.innerHTML = target.html
   editorBody.append(contentDiv)
 
