@@ -141,6 +141,28 @@ overlay.addEventListener('ep-show',function(){
   if(cta)cta.style.animation='epPulse 2s ease-in-out infinite';
 });`
 
+/** 画像切替JS（.ep-switch-img を一定間隔でクロスフェード） */
+const IMAGE_SWITCH_JS = `
+overlay.addEventListener('ep-show',function(){
+  var imgs=overlay.querySelectorAll('.ep-switch-img');
+  if(imgs.length<2)return;
+  var i=0;
+  imgs.forEach(function(im,idx){im.style.transition='opacity .5s';im.style.opacity=idx===0?'1':'0';});
+  setInterval(function(){
+    imgs[i].style.opacity='0';
+    i=(i+1)%imgs.length;
+    imgs[i].style.opacity='1';
+  },1600);
+});`
+
+/** 閉じるボタンJS（.ep-close クリックでポップアップを閉じる＝Widgetクローズ相当） */
+const CLOSE_BTN_JS = `
+overlay.addEventListener('ep-show',function(){
+  overlay.querySelectorAll('.ep-close').forEach(function(b){
+    b.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();overlay.remove();});
+  });
+});`
+
 export const PRESETS: readonly PopupPreset[] = [
   // ─── 1. カウントダウン付きバナー ───
   {
@@ -519,5 +541,325 @@ export const PRESETS: readonly PopupPreset[] = [
 </div>`,
     defaultJavascript: CONFETTI_JS + COUNTDOWN_JS + CTA_PULSE_JS,
     defaults: { animation: 'bounceIn', countdown_trigger: true, countdown_seconds: 300 },
+  },
+
+  // ─── 13. リンクを新規タブで開く ───
+  {
+    id: 'link-new-tab',
+    name: 'リンクを新規タブで開く',
+    description: 'ボタンのリンクを別タブ（新規タブ）で開く',
+    thumbnailSvg: thumbSvg(`
+      <rect x="30" y="35" width="140" height="70" rx="6" fill="${C.white}" stroke="${C.border}"/>
+      <text x="100" y="60" text-anchor="middle" font-size="8" fill="${C.text}" font-family="sans-serif" font-weight="bold">続きはこちら</text>
+      <rect x="60" y="72" width="80" height="20" rx="10" fill="${C.blue}"/>
+      <text x="100" y="85" text-anchor="middle" font-size="7" fill="${C.white}" font-family="sans-serif">別タブで開く ↗</text>
+    `),
+    defaultHtml: `<div style="background:#fff;border-radius:10px;padding:24px;box-shadow:0 4px 24px rgba(0,0,0,.15);max-width:340px;margin:auto;text-align:center">
+  <p style="font-weight:bold;font-size:16px;color:#333;margin:0 0 6px">続きはこちら</p>
+  <p style="color:#888;font-size:12px;margin:0 0 16px">詳しい情報は別ページでご確認ください</p>
+  <a class="ep-cta" href="https://example.com" target="_blank" rel="noopener" style="display:inline-block;background:#0091FF;color:#fff;padding:12px 28px;border-radius:24px;text-decoration:none;font-weight:bold">別タブで開く ↗</a>
+</div>`,
+    defaultJavascript: CTA_PULSE_JS,
+    defaults: { animation: 'zoomIn', scroll_trigger: true, scroll_position: 95 },
+  },
+
+  // ─── 14. 外部呼出し用（画像とリンクはHTMLタブで設定） ───
+  {
+    id: 'external-call',
+    name: '外部呼出し用（画像とリンクはHTMLタブで設定）',
+    description: '外部リンクから呼び出す用。画像・リンクはHTMLタブで設定',
+    thumbnailSvg: thumbSvg(`
+      <rect x="35" y="35" width="130" height="70" rx="6" fill="none" stroke="${C.sub}" stroke-width="2" stroke-dasharray="6,4"/>
+      <text x="100" y="66" text-anchor="middle" font-size="8" fill="${C.sub}" font-family="sans-serif">画像とリンクは</text>
+      <text x="100" y="80" text-anchor="middle" font-size="8" fill="${C.sub}" font-family="sans-serif">HTMLタブで設定</text>
+    `),
+    defaultHtml: `<div style="background:#fff;border-radius:10px;padding:20px;box-shadow:0 4px 24px rgba(0,0,0,.15);max-width:340px;margin:auto;text-align:center">
+  <div style="border:2px dashed #ccc;border-radius:8px;padding:32px 12px;color:#999;font-size:13px">画像とリンクをHTMLタブで設定してください</div>
+</div>`,
+    defaultJavascript: '',
+    defaults: {},
+  },
+
+  // ─── 15. キャンペーン誘導（画像はHTMLで指定必須） ───
+  {
+    id: 'campaign',
+    name: 'キャンペーン誘導 ※画像はHTMLで指定必須',
+    description: 'キャンペーンLPへ誘導。画像はHTMLタブで指定',
+    thumbnailSvg: thumbSvg(`
+      <rect x="30" y="28" width="140" height="84" rx="6" fill="${C.white}" stroke="${C.border}"/>
+      <rect x="40" y="38" width="120" height="40" rx="4" fill="#EEE"/>
+      <text x="100" y="61" text-anchor="middle" font-size="7" fill="${C.sub}" font-family="sans-serif">キャンペーン画像</text>
+      <rect x="55" y="84" width="90" height="18" rx="9" fill="${C.accent}"/>
+      <text x="100" y="96" text-anchor="middle" font-size="7" fill="${C.white}" font-family="sans-serif">詳しく見る</text>
+    `),
+    defaultHtml: `<div style="background:#fff;border-radius:10px;padding:16px;box-shadow:0 4px 24px rgba(0,0,0,.15);max-width:360px;margin:auto;text-align:center">
+  <div style="border:2px dashed #ccc;border-radius:8px;padding:40px 12px;color:#999;font-size:12px;margin-bottom:14px">キャンペーン画像をHTMLタブで指定してください</div>
+  <a class="ep-cta" href="#" style="display:inline-block;background:#FF6B35;color:#fff;padding:12px 32px;border-radius:24px;text-decoration:none;font-weight:bold">詳しく見る</a>
+</div>`,
+    defaultJavascript: CTA_PULSE_JS,
+    defaults: { scroll_trigger: true, scroll_position: 10 },
+  },
+
+  // ─── 16. リンク2個設置（画像版） ───
+  {
+    id: 'two-links-image',
+    name: 'リンク2個設置（画像版）',
+    description: '画像の下に2つのリンクボタンを配置',
+    thumbnailSvg: thumbSvg(`
+      <rect x="30" y="26" width="140" height="88" rx="6" fill="${C.white}" stroke="${C.border}"/>
+      <rect x="40" y="36" width="120" height="34" rx="4" fill="#EEE"/>
+      <text x="100" y="56" text-anchor="middle" font-size="7" fill="${C.sub}" font-family="sans-serif">画像</text>
+      <rect x="40" y="76" width="55" height="18" rx="9" fill="${C.blue}"/>
+      <text x="67" y="88" text-anchor="middle" font-size="6" fill="${C.white}" font-family="sans-serif">リンクA</text>
+      <rect x="105" y="76" width="55" height="18" rx="9" fill="${C.green}"/>
+      <text x="132" y="88" text-anchor="middle" font-size="6" fill="${C.white}" font-family="sans-serif">リンクB</text>
+    `),
+    defaultHtml: `<div style="background:#fff;border-radius:10px;padding:16px;box-shadow:0 4px 24px rgba(0,0,0,.15);max-width:360px;margin:auto;text-align:center">
+  <div style="border:2px dashed #ccc;border-radius:8px;padding:36px 12px;color:#999;font-size:12px;margin-bottom:14px">画像をHTMLタブで設定してください</div>
+  <div style="display:flex;gap:10px">
+    <a href="#" style="flex:1;background:#0091FF;color:#fff;padding:12px 0;border-radius:24px;text-decoration:none;font-weight:bold">リンクA</a>
+    <a href="#" style="flex:1;background:#2FA84F;color:#fff;padding:12px 0;border-radius:24px;text-decoration:none;font-weight:bold">リンクB</a>
+  </div>
+</div>`,
+    defaultJavascript: '',
+    defaults: { animation: 'elastic', scroll_trigger: true, scroll_position: 10 },
+  },
+
+  // ─── 17. 画像とリンクボタン2個設置 ───
+  {
+    id: 'image-two-buttons',
+    name: '画像とリンクボタン2個設置',
+    description: '画像の上にリンクボタンを2つ重ねて配置',
+    thumbnailSvg: thumbSvg(`
+      <rect x="35" y="30" width="130" height="80" rx="6" fill="#EEE" stroke="${C.border}"/>
+      <text x="100" y="52" text-anchor="middle" font-size="7" fill="${C.sub}" font-family="sans-serif">背景画像</text>
+      <rect x="55" y="64" width="90" height="16" rx="8" fill="${C.accent}"/>
+      <text x="100" y="75" text-anchor="middle" font-size="6" fill="${C.white}" font-family="sans-serif">ボタン1</text>
+      <rect x="55" y="86" width="90" height="16" rx="8" fill="${C.blue}"/>
+      <text x="100" y="97" text-anchor="middle" font-size="6" fill="${C.white}" font-family="sans-serif">ボタン2</text>
+    `),
+    defaultHtml: `<div style="position:relative;background:#EEE;border-radius:10px;padding:0;box-shadow:0 4px 24px rgba(0,0,0,.15);max-width:340px;margin:auto;overflow:hidden">
+  <div style="border:2px dashed #bbb;min-height:180px;display:flex;align-items:center;justify-content:center;color:#999;font-size:12px">背景画像をHTMLタブで設定</div>
+  <div style="position:absolute;left:0;right:0;bottom:16px;display:flex;flex-direction:column;gap:8px;padding:0 24px">
+    <a href="#" style="background:#FF6B35;color:#fff;padding:12px 0;border-radius:24px;text-decoration:none;font-weight:bold;text-align:center">ボタン1</a>
+    <a href="#" style="background:#0091FF;color:#fff;padding:12px 0;border-radius:24px;text-decoration:none;font-weight:bold;text-align:center">ボタン2</a>
+  </div>
+</div>`,
+    defaultJavascript: '',
+    defaults: { animation: 'elastic', scroll_trigger: true, scroll_position: 10 },
+  },
+
+  // ─── 18. ポップアップクリックでチャット表示 ───
+  {
+    id: 'chat-popup',
+    name: 'ポップアップクリックでチャット表示',
+    description: 'チャット風ポップアップ。クリックで問い合わせへ誘導',
+    thumbnailSvg: thumbSvg(`
+      <rect x="40" y="30" width="120" height="80" rx="10" fill="${C.white}" stroke="${C.border}"/>
+      <rect x="40" y="30" width="120" height="24" rx="10" fill="${C.blue}"/>
+      <text x="100" y="46" text-anchor="middle" font-size="7" fill="${C.white}" font-family="sans-serif">サポート</text>
+      <rect x="50" y="62" width="70" height="14" rx="7" fill="#EEE"/>
+      <rect x="80" y="82" width="70" height="14" rx="7" fill="${C.blue}"/>
+    `),
+    defaultHtml: `<div style="background:#fff;border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,.2);max-width:320px;margin:auto;overflow:hidden">
+  <div style="background:#0091FF;color:#fff;padding:14px 18px;font-weight:bold">サポートチャット</div>
+  <div style="padding:16px">
+    <div style="background:#f1f3f5;color:#333;padding:10px 14px;border-radius:12px;font-size:13px;display:inline-block;margin-bottom:12px">ご質問はありますか？</div>
+    <a class="ep-cta" href="#" style="display:block;background:#0091FF;color:#fff;padding:12px 0;border-radius:24px;text-decoration:none;font-weight:bold;text-align:center">チャットで相談する</a>
+  </div>
+</div>`,
+    defaultJavascript: CTA_PULSE_JS,
+    defaults: { animation: 'slideUp' },
+  },
+
+  // ─── 19. 複数アイテム紹介とリンク ───
+  {
+    id: 'multi-item-links',
+    name: '複数アイテム紹介とリンク',
+    description: '複数の商品・アイテムを縦に並べてそれぞれリンク',
+    thumbnailSvg: thumbSvg(`
+      <rect x="30" y="24" width="140" height="92" rx="6" fill="${C.white}" stroke="${C.border}"/>
+      <rect x="40" y="34" width="26" height="26" rx="3" fill="#EEE"/>
+      <rect x="72" y="38" width="60" height="7" rx="2" fill="#DDD"/>
+      <rect x="138" y="40" width="24" height="14" rx="7" fill="${C.accent}"/>
+      <rect x="40" y="66" width="26" height="26" rx="3" fill="#EEE"/>
+      <rect x="72" y="70" width="60" height="7" rx="2" fill="#DDD"/>
+      <rect x="138" y="72" width="24" height="14" rx="7" fill="${C.accent}"/>
+    `),
+    defaultHtml: `<div style="background:#fff;border-radius:10px;padding:16px;box-shadow:0 4px 24px rgba(0,0,0,.15);max-width:360px;margin:auto">
+  <p style="font-weight:bold;font-size:15px;color:#333;margin:0 0 12px;text-align:center">おすすめアイテム</p>
+  <div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid #eee">
+    <div style="width:48px;height:48px;background:#EEE;border-radius:6px;flex:none"></div>
+    <div style="flex:1;font-size:13px;color:#333">アイテムA</div>
+    <a href="#" style="background:#FF6B35;color:#fff;padding:6px 14px;border-radius:16px;text-decoration:none;font-size:12px;font-weight:bold">見る</a>
+  </div>
+  <div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid #eee">
+    <div style="width:48px;height:48px;background:#EEE;border-radius:6px;flex:none"></div>
+    <div style="flex:1;font-size:13px;color:#333">アイテムB</div>
+    <a href="#" style="background:#FF6B35;color:#fff;padding:6px 14px;border-radius:16px;text-decoration:none;font-size:12px;font-weight:bold">見る</a>
+  </div>
+  <div style="display:flex;align-items:center;gap:12px;padding:8px 0">
+    <div style="width:48px;height:48px;background:#EEE;border-radius:6px;flex:none"></div>
+    <div style="flex:1;font-size:13px;color:#333">アイテムC</div>
+    <a href="#" style="background:#FF6B35;color:#fff;padding:6px 14px;border-radius:16px;text-decoration:none;font-size:12px;font-weight:bold">見る</a>
+  </div>
+</div>`,
+    defaultJavascript: '',
+    defaults: { animation: 'slideUp', scroll_trigger: true, scroll_position: 11 },
+  },
+
+  // ─── 20. 日本地図リンク ───
+  {
+    id: 'japan-map-link',
+    name: '日本地図リンク',
+    description: '地域（エリア）ごとにリンクを分ける地図型',
+    thumbnailSvg: thumbSvg(`
+      <rect x="30" y="26" width="140" height="90" rx="6" fill="${C.white}" stroke="${C.border}"/>
+      <path d="M70 45 L95 40 L120 50 L130 70 L110 90 L80 88 L62 70 Z" fill="#DCEBFB" stroke="${C.blue}" stroke-width="1"/>
+      <circle cx="90" cy="60" r="3" fill="${C.accent}"/>
+      <circle cx="110" cy="72" r="3" fill="${C.accent}"/>
+      <text x="100" y="108" text-anchor="middle" font-size="6" fill="${C.sub}" font-family="sans-serif">地域を選択</text>
+    `),
+    defaultHtml: `<div style="background:#fff;border-radius:10px;padding:18px;box-shadow:0 4px 24px rgba(0,0,0,.15);max-width:360px;margin:auto;text-align:center">
+  <p style="font-weight:bold;font-size:15px;color:#333;margin:0 0 12px">お住まいの地域を選択</p>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+    <a href="#" style="background:#EAF4FF;color:#0091FF;padding:10px 0;border-radius:6px;text-decoration:none;font-size:12px;font-weight:bold">北海道・東北</a>
+    <a href="#" style="background:#EAF4FF;color:#0091FF;padding:10px 0;border-radius:6px;text-decoration:none;font-size:12px;font-weight:bold">関東</a>
+    <a href="#" style="background:#EAF4FF;color:#0091FF;padding:10px 0;border-radius:6px;text-decoration:none;font-size:12px;font-weight:bold">中部</a>
+    <a href="#" style="background:#EAF4FF;color:#0091FF;padding:10px 0;border-radius:6px;text-decoration:none;font-size:12px;font-weight:bold">近畿</a>
+    <a href="#" style="background:#EAF4FF;color:#0091FF;padding:10px 0;border-radius:6px;text-decoration:none;font-size:12px;font-weight:bold">中国・四国</a>
+    <a href="#" style="background:#EAF4FF;color:#0091FF;padding:10px 0;border-radius:6px;text-decoration:none;font-size:12px;font-weight:bold">九州・沖縄</a>
+  </div>
+</div>`,
+    defaultJavascript: '',
+    defaults: { scroll_trigger: true, scroll_position: 90 },
+  },
+
+  // ─── 21. 画像が切り替わるバナー ───
+  {
+    id: 'image-switch-banner',
+    name: '画像が切り替わるバナー',
+    description: '複数画像を一定間隔で切り替えるバナー',
+    thumbnailSvg: thumbSvg(`
+      <rect x="35" y="40" width="130" height="60" rx="6" fill="#EEE" stroke="${C.border}"/>
+      <text x="100" y="74" text-anchor="middle" font-size="8" fill="${C.sub}" font-family="sans-serif">画像1 / 画像2 ...</text>
+      <circle cx="90" cy="108" r="2.5" fill="${C.accent}"/>
+      <circle cx="100" cy="108" r="2.5" fill="${C.border}"/>
+      <circle cx="110" cy="108" r="2.5" fill="${C.border}"/>
+    `),
+    defaultHtml: `<div style="background:#fff;border-radius:10px;padding:12px;box-shadow:0 4px 24px rgba(0,0,0,.15);max-width:360px;margin:auto">
+  <a href="#" style="display:block;position:relative;height:180px;border-radius:8px;overflow:hidden;text-decoration:none">
+    <div class="ep-switch-img" style="position:absolute;inset:0;background:#FFE0D0;display:flex;align-items:center;justify-content:center;color:#FF6B35;font-weight:bold;font-size:15px">画像1（HTMLで設定）</div>
+    <div class="ep-switch-img" style="position:absolute;inset:0;background:#D6ECFF;display:flex;align-items:center;justify-content:center;color:#0091FF;font-weight:bold;font-size:15px">画像2（HTMLで設定）</div>
+  </a>
+</div>`,
+    defaultJavascript: IMAGE_SWITCH_JS,
+    defaults: {},
+  },
+
+  // ─── 22. 画像の上部にカウントダウン（開いてからの時間指定） ───
+  {
+    id: 'image-top-countdown',
+    name: '画像の上部にカウントダウン（開いてからの時間指定）',
+    description: '画像の上にカウントダウン。開いてからの残り時間',
+    thumbnailSvg: thumbSvg(`
+      <rect x="30" y="26" width="140" height="90" rx="6" fill="${C.white}" stroke="${C.border}"/>
+      <rect x="55" y="34" width="20" height="18" rx="3" fill="${C.accent}"/>
+      <text x="65" y="47" text-anchor="middle" font-size="9" fill="${C.white}" font-family="sans-serif" font-weight="bold">02</text>
+      <text x="78" y="47" font-size="9" fill="${C.text}">:</text>
+      <rect x="84" y="34" width="20" height="18" rx="3" fill="${C.accent}"/>
+      <text x="94" y="47" text-anchor="middle" font-size="9" fill="${C.white}" font-family="sans-serif" font-weight="bold">30</text>
+      <text x="107" y="47" font-size="9" fill="${C.text}">:</text>
+      <rect x="113" y="34" width="20" height="18" rx="3" fill="${C.accent}"/>
+      <text x="123" y="47" text-anchor="middle" font-size="9" fill="${C.white}" font-family="sans-serif" font-weight="bold">00</text>
+      <rect x="45" y="60" width="110" height="46" rx="4" fill="#EEE"/>
+      <text x="100" y="86" text-anchor="middle" font-size="7" fill="${C.sub}" font-family="sans-serif">画像</text>
+    `),
+    defaultHtml: `<div style="background:#fff;border-radius:10px;padding:16px;box-shadow:0 4px 24px rgba(0,0,0,.15);max-width:360px;margin:auto;text-align:center">
+  <div style="display:flex;justify-content:center;gap:4px;font-size:22px;font-weight:bold;margin-bottom:12px">
+    <span class="cd-num" style="background:#FF6B35;color:#fff;padding:6px 10px;border-radius:4px">00</span>
+    <span style="line-height:38px">:</span>
+    <span class="cd-num" style="background:#FF6B35;color:#fff;padding:6px 10px;border-radius:4px">02</span>
+    <span style="line-height:38px">:</span>
+    <span class="cd-num" style="background:#FF6B35;color:#fff;padding:6px 10px;border-radius:4px">30</span>
+  </div>
+  <a href="#" style="display:block;text-decoration:none">
+    <div style="border:2px dashed #ccc;border-radius:8px;padding:40px 12px;color:#999;font-size:12px">画像をHTMLタブで設定してください</div>
+  </a>
+</div>`,
+    defaultJavascript: COUNTDOWN_JS,
+    defaults: { animation: 'spiral', countdown_trigger: true, countdown_seconds: 150 },
+  },
+
+  // ─── 23. 背景画像の上に別々のリンクボタン2つ（キャンセルはWidgetクローズ） ───
+  {
+    id: 'bg-image-two-buttons',
+    name: '背景画像の上に別々のリンクボタン2つ',
+    description: '背景画像＋2つのリンクボタン。キャンセルで閉じる',
+    thumbnailSvg: thumbSvg(`
+      <rect x="35" y="28" width="130" height="84" rx="8" fill="#E7E0F5" stroke="${C.border}"/>
+      <text x="100" y="50" text-anchor="middle" font-size="7" fill="${C.sub}" font-family="sans-serif">背景画像</text>
+      <rect x="55" y="60" width="90" height="16" rx="8" fill="${C.green}"/>
+      <text x="100" y="71" text-anchor="middle" font-size="6" fill="${C.white}" font-family="sans-serif">はい</text>
+      <rect x="55" y="82" width="90" height="16" rx="8" fill="#BBB"/>
+      <text x="100" y="93" text-anchor="middle" font-size="6" fill="${C.white}" font-family="sans-serif">キャンセル</text>
+    `),
+    defaultHtml: `<div style="position:relative;border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,.2);max-width:340px;margin:auto;overflow:hidden">
+  <div style="border:2px dashed #bbb;background:#E7E0F5;min-height:200px;display:flex;align-items:center;justify-content:center;color:#999;font-size:12px">背景画像をHTMLタブで設定</div>
+  <div style="position:absolute;left:0;right:0;bottom:18px;display:flex;flex-direction:column;gap:8px;padding:0 24px">
+    <a href="#" style="background:#2FA84F;color:#fff;padding:12px 0;border-radius:24px;text-decoration:none;font-weight:bold;text-align:center">はい、希望する</a>
+    <button class="ep-close" style="background:rgba(255,255,255,.85);color:#666;padding:10px 0;border-radius:24px;border:none;font-weight:bold;cursor:pointer">キャンセル</button>
+  </div>
+</div>`,
+    defaultJavascript: CLOSE_BTN_JS,
+    defaults: {},
+  },
+
+  // ─── 24. ボタンをクリックして設定したテキストをコピー（背景画像設定可） ───
+  {
+    id: 'text-copy-bgimage',
+    name: 'ボタンをクリックして設定したテキストをコピー（背景画像設定可）',
+    description: 'ボタンでテキストをコピー。背景画像も設定可',
+    thumbnailSvg: thumbSvg(`
+      <rect x="35" y="28" width="130" height="84" rx="8" fill="#FFF6E5" stroke="${C.border}"/>
+      <rect x="55" y="46" width="90" height="20" rx="3" fill="#FFF" stroke="${C.accent}" stroke-dasharray="4,2"/>
+      <text x="100" y="60" text-anchor="middle" font-size="9" fill="${C.accent}" font-family="monospace" font-weight="bold">CODE10</text>
+      <rect x="60" y="76" width="80" height="18" rx="9" fill="${C.blue}"/>
+      <text x="100" y="88" text-anchor="middle" font-size="7" fill="${C.white}" font-family="sans-serif">コピーする</text>
+    `),
+    defaultHtml: `<div style="position:relative;border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,.2);max-width:340px;margin:auto;overflow:hidden;background:#FFF6E5">
+  <div style="padding:24px 20px;text-align:center">
+    <p style="font-weight:bold;font-size:15px;color:#333;margin:0 0 12px">クーポンコードをコピー</p>
+    <div style="background:#fff;border:2px dashed #FF6B35;padding:12px;border-radius:6px;margin-bottom:14px">
+      <span class="ep-coupon-code" style="font-family:monospace;font-size:20px;font-weight:bold;color:#FF6B35;letter-spacing:2px">CODE10</span>
+    </div>
+    <button class="ep-copy-btn" style="background:#0091FF;color:#fff;border:none;padding:12px 28px;border-radius:24px;cursor:pointer;font-weight:bold">コピーする</button>
+  </div>
+</div>`,
+    defaultJavascript: COUPON_COPY_JS,
+    defaults: {},
+  },
+
+  // ─── 25. サムネイル風ポップアップ ───
+  {
+    id: 'thumbnail-popup',
+    name: 'サムネイル風ポップアップ',
+    description: '動画サムネイル風。再生アイコン付きで誘導',
+    thumbnailSvg: thumbSvg(`
+      <rect x="35" y="34" width="130" height="72" rx="6" fill="#222" stroke="${C.border}"/>
+      <circle cx="100" cy="70" r="16" fill="rgba(255,255,255,.9)"/>
+      <path d="M95 62 L95 78 L109 70 Z" fill="${C.accent}"/>
+    `),
+    defaultHtml: `<div style="background:#000;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.3);max-width:340px;margin:auto;overflow:hidden">
+  <a class="ep-cta" href="#" style="display:block;position:relative;height:190px;text-decoration:none">
+    <div style="position:absolute;inset:0;background:linear-gradient(135deg,#333,#111);display:flex;align-items:center;justify-content:center;color:#777;font-size:12px">サムネイル画像をHTMLで設定</div>
+    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,.92);display:flex;align-items:center;justify-content:center">
+      <div style="width:0;height:0;border-left:18px solid #FF6B35;border-top:11px solid transparent;border-bottom:11px solid transparent;margin-left:4px"></div>
+    </div>
+    <div style="position:absolute;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);color:#fff;padding:10px 14px;font-size:13px;font-weight:bold">続きを見る ▶</div>
+  </a>
+</div>`,
+    defaultJavascript: CTA_PULSE_JS,
+    defaults: { animation: 'zoomIn' },
   },
 ]
