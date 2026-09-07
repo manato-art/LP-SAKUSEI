@@ -498,7 +498,8 @@ function buildPopupSnippet(popup: ExitPopup, device: 'sp' | 'tablet' | 'pc'): st
     @keyframes epPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.06)} }
     .ep-overlay { position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:99999; display:none; align-items:center; justify-content:center; }
     .ep-overlay.visible { display:flex; }
-    .ep-content { max-width:500px; width:90%; max-height:80vh; overflow:auto; position:relative; }
+    .ep-content { max-width:500px; width:90%; max-height:80vh; overflow:auto; position:relative; scrollbar-width:none; -ms-overflow-style:none; }
+    .ep-content::-webkit-scrollbar { width:0; height:0; display:none; }
     .ep-content.fade { animation:epFadeIn .3s ease }
     .ep-content.slideUp { animation:epSlideUp .4s ease }
     .ep-content.slideDown { animation:epSlideDown .4s ease }
