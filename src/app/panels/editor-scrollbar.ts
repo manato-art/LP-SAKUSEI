@@ -46,27 +46,28 @@ export function mountEditorScrollbar(
     `width:${BAR_WIDTH}px`,
     'height:100%',
     'z-index:6',
-    'background:transparent',
+    // 指示: スクロールバーを「見える」ように、薄いトラック（溝）を常時表示する
+    'background:rgba(0,0,0,.05)',
     'cursor:pointer',
     'user-select:none',
   ].join(';')
 
-  // ── つまみ ──
+  // ── つまみ ── 触れて分かる太さ・濃さにする（従来の6px灰色は細くて見えづらかった）
   const thumb = document.createElement('div')
   thumb.style.cssText = [
     'position:absolute',
     'left:50%',
     'transform:translateX(-50%)',
-    'width:6px',
+    'width:10px',
     'top:0',
     `min-height:${MIN_THUMB_H}px`,
-    'background:#c0c0c0',
-    'border-radius:6px',
+    'background:#b0b0b3',
+    'border-radius:5px',
     'transition:background .15s',
   ].join(';')
   track.append(thumb)
-  thumb.addEventListener('mouseenter', () => { thumb.style.background = '#999' })
-  thumb.addEventListener('mouseleave', () => { if (!isDragging) thumb.style.background = '#c0c0c0' })
+  thumb.addEventListener('mouseenter', () => { thumb.style.background = '#8a8a8e' })
+  thumb.addEventListener('mouseleave', () => { if (!isDragging) thumb.style.background = '#b0b0b3' })
 
   canvasArea.append(track)
 
@@ -111,7 +112,7 @@ export function mountEditorScrollbar(
     isDragging = true
     dragStartY = e.clientY
     dragStartScrollTop = scrollContainer.scrollTop
-    thumb.style.background = '#999'
+    thumb.style.background = '#8a8a8e'
     document.body.style.userSelect = 'none'
   })
 
@@ -131,7 +132,7 @@ export function mountEditorScrollbar(
   document.addEventListener('mouseup', () => {
     if (!isDragging) return
     isDragging = false
-    thumb.style.background = '#c0c0c0'
+    thumb.style.background = '#b0b0b3'
     document.body.style.userSelect = ''
   })
 
