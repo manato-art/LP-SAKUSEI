@@ -25,7 +25,13 @@ function injectPopupCss(): void {
   const s = document.createElement('style')
   s.id = 'sb-exit-popup-css'
   s.textContent = `
-    .ep-root { display:flex; flex-direction:column; flex:1; min-width:0; font-family:${T.font}; color:${T.text}; background:#f9f9fb; }
+    .ep-root { display:flex; flex-direction:column; flex:1; min-width:0; min-height:0; height:100%; font-family:${T.font}; color:${T.text}; background:#f9f9fb; }
+    /* 一覧・編集のスクロール領域。採取CSSが全消ししたスクロールバーをここでは明示的に復活させる。 */
+    .ep-scroll { flex:1; min-height:0; overflow-y:auto; overflow-x:hidden; scrollbar-width:auto; }
+    .ep-scroll::-webkit-scrollbar { display:block !important; width:12px; }
+    .ep-scroll::-webkit-scrollbar-track { background:#f1f1f2; }
+    .ep-scroll::-webkit-scrollbar-thumb { background:#c1c1c4; border-radius:6px; border:3px solid #f1f1f2; }
+    .ep-scroll::-webkit-scrollbar-thumb:hover { background:#a8a8ac; }
     .ep-section-title { font-size:14px; font-weight:600; margin-bottom:16px; }
     /* ── 管理パネル（モーダル風オーバーレイ） ── */
     .ep-panel { position:fixed; inset:0; z-index:8000; background:rgba(0,0,0,.15); display:flex; align-items:center; justify-content:center; font-family:${T.font}; }
@@ -182,7 +188,10 @@ export async function renderExitPopup(
   generation?: number,
 ): Promise<void> {
   container.innerHTML = ''
-  container.style.cssText = 'flex:1;min-width:0'
+  // 指示: ページを画面高に収め、内容はスクロールバー付きで内部スクロールさせる。
+  // （採取CSSが body の縦スクロールバーを全消ししているため、ページ全体スクロールだと
+  //   スクロールバーが出ず「スクロールバーが無い」状態になっていた。）
+  container.style.cssText = 'flex:1;min-width:0;height:100vh;overflow:hidden;display:flex;flex-direction:column'
 
   const [{ ab_test }, { folders }, { exit_popups }, { follow_popups }] = await Promise.all([
     api.abTest(abTestUid),
@@ -200,9 +209,13 @@ export async function renderExitPopup(
   const root = el('div', { class: 'ep-root' })
   container.append(root)
 
-  // タブバー・パンくず（共通部品）
+  // タブバー・パンくず（共通部品）— これらは上部固定（スクロールしない）
   setupHorizTabs(root, 'popup', { abTestUid, folderUid })
   setupBreadcrumb(root, folder?.name ?? '', ab_test.title, folder?.uid)
+
+  // 一覧・編集はこのスクロール領域の中に描画する（可視スクロールバー付き）。
+  const scroll = el('div', { class: 'ep-scroll' })
+  root.append(scroll)
 
   const state: PopupPageState = {
     abTestUid,
@@ -212,7 +225,7 @@ export async function renderExitPopup(
     deliveryEnabled: exit_popups.some((p) => p.enabled),
     editingPopup: null,
     activeSubTab: 'exit',
-    root,
+    root: scroll,
   }
 
   renderPanel(state)
@@ -938,12 +951,16 @@ function makePopupTrackingField(draft: ExitPopup): HTMLElement {
 
 /** ラベル付きチェックボックス行（[wrap, checkbox] を返す）。 */
 function makeCheckboxRow(label: string, checked: boolean): [HTMLElement, HTMLInputElement] {
-  const wrap = el('label', { style: 'display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:#444' })
+  const wrap = el('label', {
+    style: 'display:flex;align-items:center;justify-content:flex-start;gap:8px;cursor:pointer;font-size:13px;color:#444;margin-bottom:0',
+  })
   const cb = document.createElement('input')
   cb.type = 'checkbox'
   cb.checked = checked
-  cb.style.cursor = 'pointer'
-  wrap.append(cb, document.createTextNode(label))
+  // .ep-field input の width:100%/padding を打ち消す（チェックボックスは実サイズで左寄せ）
+  cb.style.cssText = 'width:16px;height:16px;flex:0 0 auto;margin:0;padding:0;cursor:pointer'
+  const txt = el('span', { text: label, style: 'flex:0 1 auto;line-height:1.4' })
+  wrap.append(cb, txt)
   return [wrap, cb]
 }
 
