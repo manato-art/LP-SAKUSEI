@@ -257,7 +257,7 @@ abTestsRouter.put('/ab_tests/:uid/exit_popups/:popup_uid', (req, res) => {
   const updated = {
     ...existing,
     ...(typeof body.name === 'string' ? { name: body.name } : {}),
-    ...(typeof body.ratio === 'number' ? { ratio: body.ratio } : {}),
+    ...(typeof body.ratio === 'number' ? { ratio: Math.max(0, Math.min(100, Math.round(body.ratio))) } : {}),
     ...(typeof body.enabled === 'boolean' ? { enabled: body.enabled } : {}),
     ...(typeof body.visit_count === 'string' ? { visit_count: body.visit_count } : {}),
     ...(typeof body.phone_number === 'string' ? { phone_number: body.phone_number } : {}),
@@ -281,11 +281,35 @@ abTestsRouter.put('/ab_tests/:uid/exit_popups/:popup_uid', (req, res) => {
     ...(typeof body.head_tag === 'string' ? { head_tag: body.head_tag } : {}),
     ...(typeof body.body_tag === 'string' ? { body_tag: body.body_tag } : {}),
   }
+  // 配信割合の自動バランス（Versionと同じ挙動）:
+  // この beyondページの離脱防止ポップが「ちょうど2個」のとき、片方の割合を変えると
+  // もう片方が `100 - 新値` に追従して合計100%を保つ。返り値に adjusted_siblings を含める。
+  const adjustedSiblings: { uid: string; ratio: number }[] = []
+  const siblingPopups = state.exitPopups.filter((p) => p.ab_test_id === abTest.id)
+  if (typeof body.ratio === 'number' && siblingPopups.length === 2) {
+    const otherIdx = state.exitPopups.findIndex(
+      (p) => p.ab_test_id === abTest.id && p.uid !== req.params.popup_uid,
+    )
+    if (otherIdx !== -1) {
+      const other = state.exitPopups[otherIdx]!
+      const otherRatio = Math.max(0, Math.min(100, 100 - updated.ratio))
+      const adjustedOther = { ...other, ratio: otherRatio }
+      adjustedSiblings.push({ uid: adjustedOther.uid, ratio: otherRatio })
+      setState((s) => ({
+        ...s,
+        exitPopups: s.exitPopups.map((p, i) =>
+          i === idx ? updated : i === otherIdx ? adjustedOther : p,
+        ),
+      }))
+      res.json({ exit_popup: updated, adjusted_siblings: adjustedSiblings })
+      return
+    }
+  }
   setState((s) => ({
     ...s,
     exitPopups: s.exitPopups.map((p, i) => (i === idx ? updated : p)),
   }))
-  res.json({ exit_popup: updated })
+  res.json({ exit_popup: updated, adjusted_siblings: adjustedSiblings })
 })
 
 abTestsRouter.delete('/ab_tests/:uid/exit_popups/:popup_uid', (req, res) => {

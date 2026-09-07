@@ -54,7 +54,14 @@ function injectPopupCss(): void {
     .ep-card-body { padding:10px 12px; }
     .ep-card-name { font-size:12px; font-weight:500; margin:0 0 8px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .ep-card-footer { display:flex; align-items:center; justify-content:space-between; }
-    .ep-card-ratio { font-size:11px; color:${T.sub}; display:flex; align-items:center; gap:4px; }
+    .ep-card-ratio { font-size:11px; color:${T.sub}; display:flex; align-items:center; gap:3px; }
+    .ep-ratio-label { margin-right:2px; }
+    .ep-ratio-btn { width:18px; height:18px; border:1px solid #d6dae1; border-radius:50%; background:#fff; color:${T.primary}; font-size:13px; line-height:1; cursor:pointer; padding:0; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .ep-ratio-btn:hover { background:${T.primary}; color:#fff; border-color:${T.primary}; }
+    .ep-ratio-value { width:28px; text-align:center; font-size:13px; font-weight:700; color:${T.text}; font-variant-numeric:tabular-nums; border:1px solid transparent; border-radius:4px; background:transparent; padding:1px 0; font-family:${T.font}; }
+    .ep-ratio-value:hover { border-color:#e0e0e0; }
+    .ep-ratio-value:focus { border-color:${T.primary}; outline:none; background:#fff; }
+    .ep-ratio-pct { color:${T.sub}; }
     .ep-card-menu { position:absolute; top:6px; right:6px; background:rgba(255,255,255,.9); border:none; cursor:pointer; font-size:18px; color:${T.sub}; padding:2px 6px; border-radius:4px; line-height:1; }
     .ep-card-menu:hover { background:#f0f0f0; }
 
@@ -314,6 +321,7 @@ function renderFollowList(container: HTMLElement, state: PopupPageState): void {
 
 function renderPopupCard(state: PopupPageState, popup: ExitPopup): HTMLElement {
   const card = el('div', { class: 'ep-card' })
+  card.setAttribute('data-popup-uid', popup.uid)
 
   // ⋯ メニューボタン（サムネイル右上に配置）
   const menuBtn = el('button', { class: 'ep-card-menu', text: '⋯' })
@@ -339,9 +347,61 @@ function renderPopupCard(state: PopupPageState, popup: ExitPopup): HTMLElement {
 
   const footer = el('div', { class: 'ep-card-footer' })
 
-  // 割合
+  // 配信割合（Versionと同じ −値%＋ ステッパー。2個のときは片方調整で合計100に追従）
   const ratioWrap = el('div', { class: 'ep-card-ratio' })
-  ratioWrap.append(el('span', { text: `割合 : ${popup.ratio}` }))
+  ratioWrap.addEventListener('click', (e) => e.stopPropagation()) // カードのクリック（編集）を止める
+  const ratioLabel = el('span', { class: 'ep-ratio-label', text: '割合' })
+  const minus = el('button', { class: 'ep-ratio-btn', text: '−' })
+  const valueInput = document.createElement('input')
+  valueInput.className = 'ep-ratio-value'
+  valueInput.type = 'text'
+  valueInput.inputMode = 'numeric'
+  valueInput.value = String(popup.ratio)
+  const pct = el('span', { class: 'ep-ratio-pct', text: '%' })
+  const plus = el('button', { class: 'ep-ratio-btn', text: '＋' })
+  ratioWrap.append(ratioLabel, minus, valueInput, pct, plus)
+
+  const setValue = (v: number): void => {
+    valueInput.value = String(v)
+  }
+  const saveRatio = (raw: number): void => {
+    const clamped = Math.max(0, Math.min(100, Math.round(raw)))
+    setValue(clamped) // 楽観的に即反映
+    void api.updateExitPopup(state.abTestUid, popup.uid, { ratio: clamped }).then(
+      (res) => {
+        popup.ratio = res.exit_popup.ratio
+        setValue(popup.ratio)
+        // 2個のとき相方が 100-新値 に追従（サーバー計算）。相方カードの表示も更新。
+        for (const sib of res.adjusted_siblings ?? []) {
+          const sibObj = state.popups.find((p) => p.uid === sib.uid)
+          if (sibObj !== undefined) sibObj.ratio = sib.ratio
+          const sibVal = state.root.querySelector<HTMLInputElement>(
+            `[data-popup-uid="${sib.uid}"] .ep-ratio-value`,
+          )
+          if (sibVal !== null) sibVal.value = String(sib.ratio)
+        }
+      },
+      (err: unknown) => {
+        toast((err as Error).message, 'error')
+        setValue(popup.ratio) // 失敗したら元に戻す
+      },
+    )
+  }
+  const currentVal = (): number => {
+    const n = parseInt(valueInput.value, 10)
+    return Number.isNaN(n) ? 0 : n
+  }
+  minus.addEventListener('click', (e) => {
+    e.stopPropagation()
+    saveRatio(currentVal() - 1)
+  })
+  plus.addEventListener('click', (e) => {
+    e.stopPropagation()
+    saveRatio(currentVal() + 1)
+  })
+  // 直接入力（Version同様、値をタイプして一気に決められる）
+  valueInput.addEventListener('click', (e) => e.stopPropagation())
+  valueInput.addEventListener('change', () => saveRatio(currentVal()))
   footer.append(ratioWrap)
 
   // 配信トグル

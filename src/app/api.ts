@@ -236,9 +236,12 @@ export const api = {
   /** 離脱ポップアップ作成 */
   createExitPopup: (abTestUid: string, body: Partial<ExitPopup> & { name: string }) =>
     request<{ exit_popup: ExitPopup }>('POST', `/ab_tests/${abTestUid}/exit_popups`, body),
-  /** 離脱ポップアップ更新 */
+  /** 離脱ポップアップ更新（割合変更時は2個なら adjusted_siblings で相方の追従結果が返る） */
   updateExitPopup: (abTestUid: string, popupUid: string, patch: Partial<ExitPopup>) =>
-    request<{ exit_popup: ExitPopup }>('PUT', `/ab_tests/${abTestUid}/exit_popups/${popupUid}`, patch),
+    request<{
+      exit_popup: ExitPopup
+      adjusted_siblings?: ReadonlyArray<{ uid: string; ratio: number }>
+    }>('PUT', `/ab_tests/${abTestUid}/exit_popups/${popupUid}`, patch),
   /** 離脱ポップアップ削除 */
   deleteExitPopup: (abTestUid: string, popupUid: string) =>
     request<void>('DELETE', `/ab_tests/${abTestUid}/exit_popups/${popupUid}`),
