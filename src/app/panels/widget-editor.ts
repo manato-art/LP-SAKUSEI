@@ -545,6 +545,41 @@ function buildVisualEditor(target: WidgetEditTarget): { pane: HTMLElement; conte
     document.execCommand(cmd, false, val)
   }
 
+  /**
+   * カラーパッド（ネイティブ color input）で文字色/背景色を選ばせる。
+   * prompt でカラーコードを打たせる代わりに、色をパッドから選べるようにする。
+   * OS のピッカーを開くとフォーカスが外れて選択が消えるため、開く前に選択レンジを保存し、
+   * 適用時に選択を復元してから execCommand する。
+   */
+  const pickColor = (cmd: string, fallback: string): void => {
+    const sel = window.getSelection()
+    const savedRange =
+      sel !== null && sel.rangeCount > 0 && contentRef !== null && contentRef.contains(sel.anchorNode)
+        ? sel.getRangeAt(0).cloneRange()
+        : null
+    const input = document.createElement('input')
+    input.type = 'color'
+    input.value = /^#[0-9a-f]{6}$/i.test(fallback) ? fallback : '#000000'
+    input.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0'
+    document.body.append(input)
+    let applied = false
+    const apply = (): void => {
+      if (applied) return
+      applied = true
+      contentRef?.focus()
+      if (savedRange !== null && sel !== null) {
+        sel.removeAllRanges()
+        sel.addRange(savedRange)
+      }
+      document.execCommand(cmd, false, input.value)
+      syncContentToCode()
+      input.remove()
+    }
+    // change=確定時に1回だけ適用（input は連続発火するため使わない）
+    input.addEventListener('change', apply)
+    input.click()
+  }
+
   // 整列サイクル
   const ALIGNS = ['left', 'center', 'right', 'justifyFull'] as const
   let alignIdx = 0
@@ -598,14 +633,8 @@ function buildVisualEditor(target: WidgetEditTarget): { pane: HTMLElement; conte
       exec(`justify${a.charAt(0).toUpperCase()}${a.slice(1)}`)
     }),
     mkBtn(svgToolItalic(), '斜体', () => exec('italic')),
-    mkBtn(svgToolTextColor(), '文字色', () => {
-      const c = prompt('文字色 (例: #ff0000)', '#000000')
-      if (c !== null && c.trim() !== '') exec('foreColor', c.trim())
-    }),
-    mkBtn(svgToolBgColor(), '背景色', () => {
-      const c = prompt('背景色 (例: #ffff00)', '#ffffff')
-      if (c !== null && c.trim() !== '') exec('hiliteColor', c.trim())
-    }),
+    mkBtn(svgToolTextColor(), '文字色', () => pickColor('foreColor', '#000000')),
+    mkBtn(svgToolBgColor(), '背景色', () => pickColor('hiliteColor', '#ffff00')),
     mkBtn(svgToolImage(), '画像（PCから追加）', () => {
       void pickImageDataUrl().then((dataUrl) => {
         if (dataUrl === null) return
