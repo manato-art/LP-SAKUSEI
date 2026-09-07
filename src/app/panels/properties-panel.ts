@@ -11,12 +11,11 @@
  */
 import type Quill from 'quill'
 import {
-  TOOLBAR_FONT_FAMILIES,
   cssFontFamilyValue,
-  fontFamilyLabel,
   fontSizeLabel,
   allowPxSizeAndFreeFont,
 } from './toolbar/text-format.ts'
+import { makeFontDropdown } from './toolbar/font-dropdown.ts'
 import { pickAndInsertMedia } from './media-insert.ts'
 import { ANIM_PRESETS, ANIM_SPEEDS, buildAnimCss } from '../anim/anim-presets.ts'
 
@@ -389,20 +388,13 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
   })
   textGroup.append(textArea)
 
-  // ── フォント ──
+  // ── フォント（日本語名を各フォントで表示するカスタムドロップダウン） ──
   const fontRow = row('フォント')
-  const fontSelect = document.createElement('select')
-  fontSelect.className = 'sb-pr-select'
-  for (const f of TOOLBAR_FONT_FAMILIES) {
-    const o = document.createElement('option')
-    o.value = f
-    o.textContent = f
-    fontSelect.append(o)
-  }
-  fontSelect.addEventListener('change', () => {
-    applyInline('font', cssFontFamilyValue(fontSelect.value))
+  const fontDropdown = makeFontDropdown({
+    triggerClassName: 'sb-pr-select',
+    onSelect: (font) => applyInline('font', cssFontFamilyValue(font)),
   })
-  fontRow.append(fontSelect)
+  fontRow.append(fontDropdown.el)
 
   // ── サイズ ──
   const sizeRow = row('サイズ')
@@ -883,8 +875,8 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
       textArea.value = quill.getText(r.index, r.length)
     }
 
-    // フォント
-    fontSelect.value = fontFamilyLabel(fmt['font'])
+    // フォント（選択中テキストの現在フォントをトリガー表示に反映）
+    fontDropdown.setValue(typeof fmt['font'] === 'string' ? fmt['font'] : '')
 
     // サイズ
     sizeInput.value = fontSizeLabel(fmt['size']).replace('px', '')

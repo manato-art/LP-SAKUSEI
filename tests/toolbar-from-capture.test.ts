@@ -5,6 +5,7 @@ import {
   TOOLBAR_FONT_FAMILIES,
   FREE_FONT_SIZE_UNITS,
 } from '../src/app/panels/editor-toolbar.ts'
+import { FONT_LABELS_JA, fontLabelJa } from '../src/app/panels/toolbar/text-format.ts'
 import { TOOLBAR_SWATCHES } from '../src/app/panels/toolbar/color-picker.ts'
 
 /**
@@ -60,10 +61,16 @@ describe('ツールバーの選択肢は採取物と一致する（実物をパ�
     )
   })
 
-  it('フォントの選択肢が採取物に実在する', () => {
-    const html = read(ALIGN_OPEN)
+  // フォントだけは採取物と一致させない。指示158で、実物の6件（serif 等・選んでも見た目が
+  // 変わらない）を、視認できる差の大きい日本語Webフォントに意図的に差し替えた。したがって
+  // 「採取物に実在するか」ではなく「全フォントに日本語ラベルがあるか（英語名を出さない）」を守る。
+  it('フォントは全件に日本語ラベルがある（UIに英語のフォント名を出さない）', () => {
+    expect(TOOLBAR_FONT_FAMILIES.length).toBeGreaterThan(0)
     for (const family of TOOLBAR_FONT_FAMILIES) {
-      expect(html).toContain(family)
+      const label = fontLabelJa(family)
+      expect(FONT_LABELS_JA[family]).toBeDefined() // ラベル未定義（＝英語名フォールバック）を検出
+      expect(label).toBe(FONT_LABELS_JA[family])
+      expect(label).not.toBe(family) // ラベルは英語名そのものであってはならない
     }
   })
 })

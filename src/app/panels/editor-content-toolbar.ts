@@ -8,12 +8,11 @@
 import type Quill from 'quill'
 import {
   TOOLBAR_FONT_SIZES,
-  TOOLBAR_FONT_FAMILIES,
   cssFontFamilyValue,
-  fontFamilyLabel,
   fontSizeLabel,
   allowPxSizeAndFreeFont,
 } from './toolbar/text-format.ts'
+import { makeFontDropdown } from './toolbar/font-dropdown.ts'
 import { pickAndInsertMedia } from './media-insert.ts'
 
 // ── SVG アイコン（16px）──
@@ -152,19 +151,12 @@ export function mountContentToolbar(quill: Quill): HTMLElement {
   redoBtn.addEventListener('click', () => quill.history.redo())
   bar.append(undoBtn, redoBtn, sep())
 
-  // ── 2. Font family ──
-  const fontSelect = document.createElement('select')
-  fontSelect.className = 'sb-ct-select'
-  for (const f of TOOLBAR_FONT_FAMILIES) {
-    const o = document.createElement('option')
-    o.value = f
-    o.textContent = f
-    fontSelect.append(o)
-  }
-  fontSelect.addEventListener('change', () => {
-    applyInline('font', cssFontFamilyValue(fontSelect.value))
+  // ── 2. Font family（日本語名を各フォントで表示するカスタムドロップダウン） ──
+  const fontDropdown = makeFontDropdown({
+    triggerClassName: 'sb-ct-select',
+    onSelect: (font) => applyInline('font', cssFontFamilyValue(font)),
   })
-  bar.append(fontSelect, sep())
+  bar.append(fontDropdown.el, sep())
 
   // ── 3. Font size (− N +) ──
   const sizeWrap = document.createElement('span')
@@ -413,7 +405,7 @@ export function mountContentToolbar(quill: Quill): HTMLElement {
   bar.append(clearBtn)
 
   // ── 状態の同期 ──
-  const tracked = { boldBtn, ulBtn, stBtn, italicBtn, linkBtn, fontSelect, sizeVal, textColorBar, bgColorBar }
+  const tracked = { boldBtn, ulBtn, stBtn, italicBtn, linkBtn, fontDropdown, sizeVal, textColorBar, bgColorBar }
   function refresh(): void {
     const fmt = getFormats()
     tracked.boldBtn.classList.toggle('active', fmt['bold'] === true)
@@ -421,7 +413,7 @@ export function mountContentToolbar(quill: Quill): HTMLElement {
     tracked.stBtn.classList.toggle('active', fmt['strike'] === true)
     tracked.italicBtn.classList.toggle('active', fmt['italic'] === true)
     tracked.linkBtn.classList.toggle('active', fmt['link'] !== undefined && fmt['link'] !== false)
-    tracked.fontSelect.value = fontFamilyLabel(fmt['font'])
+    tracked.fontDropdown.setValue(typeof fmt['font'] === 'string' ? fmt['font'] : '')
     tracked.sizeVal.textContent = fontSizeLabel(fmt['size']).replace('px', '')
     const tc = typeof fmt['color'] === 'string' ? fmt['color'] : '#000000'
     tracked.textColorBar.style.background = tc

@@ -43,6 +43,35 @@ export const TOOLBAR_FONT_FAMILIES: readonly string[] = [
   'Yomogi',             // 手書き（ペン字）
 ]
 
+/**
+ * フォント選択ドロップダウンのラベル（英語のフォント名を日本語にしたもの）。
+ * 各サーフェス（プロパティ/スタイル・ツールバー・Widget編集）で共通利用する。
+ * 各項目はこのラベルを「そのフォント」で表示し、名前とプレビューを兼ねる（ユーザー要望）。
+ */
+export const FONT_LABELS_JA: Record<string, string> = {
+  'Noto Sans JP': 'ゴシック体',
+  'Noto Serif JP': '明朝体',
+  'Shippori Mincho': 'しっぽり明朝',
+  'M PLUS Rounded 1c': '丸ゴシック',
+  'Zen Maru Gothic': '禅 丸ゴシック',
+  'Kosugi Maru': '小杉丸ゴシック',
+  'Dela Gothic One': '極太ゴシック',
+  'RocknRoll One': 'ロックンロール',
+  'Reggae One': 'レゲエ',
+  'Yuji Syuku': '毛筆',
+  'Hachi Maru Pop': 'はちまるポップ',
+  'Yomogi': 'よもぎ（手書き）',
+}
+
+/**
+ * フォント名（引用符付きの CSS 値でも可）を日本語ラベルへ変換する。
+ * 未知のフォント名はそのまま返す（採取物由来の想定外フォント対策）。
+ */
+export function fontLabelJa(name: string): string {
+  const key = name.replace(/^["']|["']$/g, '')
+  return FONT_LABELS_JA[key] ?? key
+}
+
 /** Google Fonts の <link> + フォントドロップダウンのスクロール CSS を注入（重複防止付き） */
 export function loadGoogleFonts(): void {
   if (document.getElementById('sb-google-fonts') !== null) return
@@ -89,11 +118,15 @@ export function loadGoogleFonts(): void {
   document.head.append(style)
 }
 
-/** フォント <div> を1つ生成（HTML文字列）。空白入り名前は引用符で囲む */
+/**
+ * フォント <div> を1つ生成（HTML文字列）。空白入り名前は引用符で囲む。
+ * 表示は日本語ラベル＋そのフォント（プレビュー兼用）。実フォント名は data-font に持たせ、
+ * クリック時はそちらを読む（表示テキストからフォント名を復元しない＝日本語化で壊れない）。
+ */
 function fontOptionHtml(name: string, index: number): string {
   const cssVal = /\s/.test(name) ? `&quot;${name}&quot;` : name
-  const dataAttr = index === 0 ? ' data-test="EditorToolbar-BtnFontFamilySerif"' : ''
-  return `<div${dataAttr} style="font-family: ${cssVal};">${name}</div>`
+  const testAttr = index === 0 ? ' data-test="EditorToolbar-BtnFontFamilySerif"' : ''
+  return `<div${testAttr} data-font="${name}" style="font-family: ${cssVal};">${fontLabelJa(name)}</div>`
 }
 
 /** フォント選択肢の HTML を TOOLBAR_FONT_FAMILIES から生成 */
@@ -142,9 +175,10 @@ export function fontSizeLabel(value: unknown): string {
   return typeof value === 'string' && value !== '' ? value : '17px'
 }
 
-/** フォントドロップダウンのトリガー表示（実物の既定は「serif」） */
+/** フォントドロップダウンのトリガー表示。実フォント名を日本語ラベルに変換して表示する。 */
 export function fontFamilyLabel(value: unknown): string {
-  return typeof value === 'string' && value !== '' ? value : 'serif'
+  if (typeof value === 'string' && value !== '' && value !== 'serif') return fontLabelJa(value)
+  return '明朝体' // 実物の既定は serif（＝明朝体）
 }
 
 /** 空白を含むフォント名は CSS 上で引用符が要る（実物の option も `&quot;` 付きだった） */

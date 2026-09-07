@@ -8,13 +8,12 @@ import type Quill from 'quill'
 import { T } from '../ui.ts'
 import {
   TOOLBAR_FONT_SIZES,
-  TOOLBAR_FONT_FAMILIES,
   cssFontFamilyValue,
-  fontFamilyLabel,
   fontSizeLabel,
   headerLabel,
   allowPxSizeAndFreeFont,
 } from './toolbar/text-format.ts'
+import { makeFontDropdown } from './toolbar/font-dropdown.ts'
 import { pickAndInsertMedia } from './media-insert.ts'
 
 // ── 定数 ──
@@ -114,6 +113,11 @@ function injectStyles(): void {
     .sb-side-tb-field:last-child { margin-bottom: 0; }
     .sb-side-tb-field-label {
       font-size: 11px; color: #888; white-space: nowrap; min-width: 72px;
+    }
+    /* フォント用カスタムドロップダウンのトリガー（makeSelect と同じ見た目に合わせる） */
+    .sb-side-tb-select {
+      flex: 1; padding: 4px 6px; border: 1px solid #ddd; border-radius: 4px;
+      font-size: 12px; background: #fff; cursor: pointer; outline: none; min-width: 0;
     }
 
     /* ── カラー表示 ── */
@@ -309,11 +313,11 @@ export function mountSidebarToolbar(quill: Quill, _editorRoot: HTMLElement): HTM
   const fontLabel = document.createElement('div')
   fontLabel.classList.add('sb-side-tb-field-label')
   fontLabel.textContent = 'フォント'
-  const fontSelect = makeSelect(TOOLBAR_FONT_FAMILIES, 'serif')
-  fontSelect.addEventListener('change', () => {
-    applyInline('font', cssFontFamilyValue(fontSelect.value))
+  const fontDropdown = makeFontDropdown({
+    triggerClassName: 'sb-side-tb-select',
+    onSelect: (font) => applyInline('font', cssFontFamilyValue(font)),
   })
-  fontField.append(fontLabel, fontSelect)
+  fontField.append(fontLabel, fontDropdown.el)
 
   // サイズ
   const sizeField = document.createElement('div')
@@ -405,7 +409,7 @@ export function mountSidebarToolbar(quill: Quill, _editorRoot: HTMLElement): HTM
 
     // ドロップダウンの同期
     headerSelect.value = headerLabel(fmt['header'])
-    fontSelect.value = fontFamilyLabel(fmt['font'])
+    fontDropdown.setValue(typeof fmt['font'] === 'string' ? fmt['font'] : '')
     sizeSelect.value = fontSizeLabel(fmt['size'])
 
     // カラー

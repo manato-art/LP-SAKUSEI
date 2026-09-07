@@ -12,7 +12,7 @@
 import type Quill from 'quill'
 import { toast } from '../ui.ts'
 import { highlightHtml, highlightCss } from './syntax-highlight.ts'
-import { TOOLBAR_FONT_FAMILIES, cssFontFamilyValue, loadGoogleFonts } from './toolbar/text-format.ts'
+import { TOOLBAR_FONT_FAMILIES, cssFontFamilyValue, fontLabelJa, loadGoogleFonts } from './toolbar/text-format.ts'
 
 /* ================================================================
  *  定数
@@ -39,24 +39,6 @@ const COLOR = {
 const FONT = '"Hiragino Sans","Hiragino Kaku Gothic ProN",sans-serif'
 const MONO = '"SF Mono",Menlo,"Fira Code",monospace'
 
-/**
- * フォント選択ドロップダウンのラベル（英語のフォント名を日本語にしたもの）。
- * 各項目はこのラベルを「そのフォント」で表示し、名前とプレビューを兼ねる（ユーザー要望）。
- */
-const FONT_LABELS_JA: Record<string, string> = {
-  'Noto Sans JP': 'ゴシック体',
-  'Noto Serif JP': '明朝体',
-  'Shippori Mincho': 'しっぽり明朝',
-  'M PLUS Rounded 1c': '丸ゴシック',
-  'Zen Maru Gothic': '禅 丸ゴシック',
-  'Kosugi Maru': '小杉丸ゴシック',
-  'Dela Gothic One': '極太ゴシック',
-  'RocknRoll One': 'ロックンロール',
-  'Reggae One': 'レゲエ',
-  'Yuji Syuku': '毛筆',
-  'Hachi Maru Pop': 'はちまるポップ',
-  'Yomogi': 'よもぎ（手書き）',
-}
 
 /**
  * 編集プレビューの幅。配信LP（SSR）の body max-width と揃える＝WYSIWYG。
@@ -763,7 +745,7 @@ function buildVisualEditor(target: WidgetEditTarget): { pane: HTMLElement; conte
       for (const font of TOOLBAR_FONT_FAMILIES) {
         const item = document.createElement('div')
         // ラベルはフォント名を日本語にしたもの（＝そのフォントで表示するプレビュー）。
-        item.textContent = FONT_LABELS_JA[font] ?? font
+        item.textContent = fontLabelJa(font)
         item.style.cssText =
           `padding:8px 12px;border-radius:6px;cursor:pointer;white-space:nowrap;color:#222;` +
           `font-family:${cssFontFamilyValue(font)};font-size:17px;line-height:1.3`

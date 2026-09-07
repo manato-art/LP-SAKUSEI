@@ -199,7 +199,9 @@ export function mountEditorToolbar(root: HTMLElement, quill: Quill, options: Edi
   const fontOptions = dropdowns.fontFamily?.body.querySelector(HOOK.fontOptions)
   for (const option of fontOptions?.querySelectorAll<HTMLElement>(':scope > div') ?? []) {
     option.addEventListener('click', () => {
-      applyInline('font', cssFontFamilyValue((option.textContent ?? '').trim()))
+      // 実フォント名は data-font（表示テキストは日本語ラベルなのでそこから復元しない）
+      const font = option.dataset['font'] ?? (option.textContent ?? '').trim()
+      applyInline('font', cssFontFamilyValue(font))
       dropdowns.fontFamily?.close()
     })
   }

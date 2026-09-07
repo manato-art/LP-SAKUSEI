@@ -51,14 +51,22 @@ describe('選択肢の形（採取物との照合は toolbar-from-capture.test.t
     expect(FREE_FONT_SIZE_UNITS).toEqual(['px', '%', 'em', 'rem'])
   })
 
-  test('フォントは実物と同じ6件・順番も同じ', () => {
+  // 指示158: 実物の6件（serif 等・見た目が変わらない）を、視認できる差の大きい
+  // 日本語Webフォント12件に差し替えた。フォント選択で確実に見た目が変わるようにするため。
+  test('フォントは日本語Webフォント12件・順番も固定', () => {
     expect(TOOLBAR_FONT_FAMILIES).toEqual([
-      'serif',
-      'sans-serif',
-      'cursive',
-      'fantasy',
-      'monospace',
-      'ヒラギノ角ゴ Pro W3',
+      'Noto Sans JP',
+      'Noto Serif JP',
+      'Shippori Mincho',
+      'M PLUS Rounded 1c',
+      'Zen Maru Gothic',
+      'Kosugi Maru',
+      'Dela Gothic One',
+      'RocknRoll One',
+      'Reggae One',
+      'Yuji Syuku',
+      'Hachi Maru Pop',
+      'Yomogi',
     ])
   })
 
@@ -171,8 +179,14 @@ describe('ドロップダウンのトリガー表示', () => {
     expect(fontSizeLabel('29px')).toBe('29px')
   })
 
-  test('フォントは未設定なら serif（実物の既定表示）', () => {
-    expect(fontFamilyLabel(undefined)).toBe('serif')
+  // 指示（フォント日本語化）: トリガー表示は英語のフォント名でなく日本語ラベルにする。
+  test('フォントのトリガー表示は日本語ラベル（未設定は既定の明朝体）', () => {
+    expect(fontFamilyLabel(undefined)).toBe('明朝体')
+    expect(fontFamilyLabel('Noto Sans JP')).toBe('ゴシック体')
+    expect(fontFamilyLabel('Yuji Syuku')).toBe('毛筆')
+    // 引用符付きの CSS 値でも変換できる
+    expect(fontFamilyLabel('"Noto Serif JP"')).toBe('明朝体')
+    // 未知のフォント名（採取物由来など）はそのまま返す
     expect(fontFamilyLabel('monospace')).toBe('monospace')
   })
 })
