@@ -179,6 +179,9 @@ function openWidgetEditor(quill: Quill, target: WidgetEditTarget): void {
 
   darkContainer.append(leftPane, divider, rightPane)
 
+  // 仕切りをドラッグして左右ペインのサイズを調整できるようにする（要望）
+  wireDividerResize(divider, leftPane, darkContainer)
+
   // ビジュアルエディタ → コードパネルの同期（入力イベントで反映）
   const htmlArea = panel.querySelector<HTMLTextAreaElement>('[data-code-html]')
   const syncFn = (): void => {
@@ -192,6 +195,39 @@ function openWidgetEditor(quill: Quill, target: WidgetEditTarget): void {
 
   /* ── 組み立て ── */
   panel.append(header, titleBar, darkContainer)
+}
+
+/**
+ * 仕切り（col-resize）のドラッグで左ペイン(ビジュアル)と右ペイン(コード)の幅を変える。
+ * 左ペインに固定幅(px)を与え、右ペインは flex:1 のまま残り幅を埋める。左右とも最小幅を確保。
+ */
+function wireDividerResize(divider: HTMLElement, leftPane: HTMLElement, container: HTMLElement): void {
+  const MIN = 220
+  let startX = 0
+  let startLeftW = 0
+  const onMove = (e: MouseEvent): void => {
+    e.preventDefault()
+    const total = container.clientWidth
+    const dividerW = divider.offsetWidth
+    const max = total - dividerW - MIN
+    let next = startLeftW + (e.clientX - startX)
+    if (next < MIN) next = MIN
+    if (next > max) next = max
+    leftPane.style.flex = `0 0 ${next}px`
+  }
+  const onUp = (): void => {
+    document.removeEventListener('mousemove', onMove)
+    document.removeEventListener('mouseup', onUp)
+    document.body.style.userSelect = ''
+  }
+  divider.addEventListener('mousedown', (e) => {
+    e.preventDefault()
+    startX = e.clientX
+    startLeftW = leftPane.getBoundingClientRect().width
+    document.body.style.userSelect = 'none'
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  })
 }
 
 /** Widget 編集パネルを閉じる */
