@@ -268,17 +268,6 @@ const MOCKUP_CSS = `
     padding: 24px !important;
     box-shadow: 0 1px 4px rgba(0,0,0,.04) !important;
   }
-  /* 指示166: ヘッダー画像枠の幅を本文(.ql-editor=640px)に合わせて中央寄せ。
-     既定はコンテンツ列いっぱいに広がり、本文より横に長くはみ出していた。 */
-  [class*="_articleHeaderPhoto_"] {
-    /* 本文(.ql-editor)は .ql-container の padding:20px の内側に入るため、
-       ヘッダーも左右20pxぶん差し引いて本文と同じ実効幅・位置にする（狭い画面でも一致）。 */
-    width: calc(100% - 40px) !important;
-    max-width: 640px !important;
-    box-sizing: border-box !important;
-    margin-left: auto !important;
-    margin-right: auto !important;
-  }
 
   /* アイコンレール */
   [class*="_sideToolbarWrapper_"] {
