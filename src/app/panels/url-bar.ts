@@ -18,14 +18,14 @@ function injectStyles(): void {
   s.id = 'sb-url-bar-css'
   s.textContent = `
     .sb-url-bar {
-      display:flex; align-items:center; gap:8px; padding:0 12px;
+      display:flex; align-items:center; gap:6px; padding:0 8px;
       background:#fff; border-bottom:1px solid #e5e5ea; flex-shrink:0;
       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
       font-size:13px; user-select:none; min-height:40px; height:40px;
       overflow:hidden; max-width:100%; box-sizing:border-box;
     }
     .sb-url-group {
-      display:flex; align-items:center; gap:6px; flex:1; min-width:0;
+      display:flex; align-items:center; gap:5px; flex:1; min-width:0;
     }
     .sb-url-label {
       font-size:10px; font-weight:600; white-space:nowrap; flex-shrink:0;
@@ -33,6 +33,8 @@ function injectStyles(): void {
     }
     .sb-url-label-test { color:#ff8c00; }
     .sb-url-label-prod { color:#00b341; }
+    /* 指示167: URL枠を可能な限り広くしてURLを枠内にピッタリ収める。
+       余白/ギャップを詰めてフィールドの実効幅を最大化する。 */
     .sb-url-field {
       flex:1; height:28px; border:1px solid #e5e5ea; border-radius:4px;
       padding:0 8px; font-size:11px; color:#1a1a1a;

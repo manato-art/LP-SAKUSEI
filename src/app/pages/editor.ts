@@ -575,6 +575,11 @@ function injectCardSeamStyles(): void {
     /* ヘッダ画像の角丸も上部を外す */
     [class*="_articleHeaderPhoto_"] {
       border-radius: 0 !important;
+      /* 指示166: 幅をキャンバス（LP本文=.ql-editor の 640px）に合わせて中央寄せ。
+         既定はコンテンツ列いっぱいに広がり、本文より横に長くはみ出していた。 */
+      max-width: 640px !important;
+      margin-left: auto !important;
+      margin-right: auto !important;
     }
     /* ヘッダー画像が入った時の青い点線枠(内側のsample_token)を消す */
     [class*="_articleHeaderPhoto_"]:has(img[data-clone-header]) {
