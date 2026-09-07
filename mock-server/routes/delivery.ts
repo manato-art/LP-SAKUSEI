@@ -102,8 +102,26 @@ function detectCarrier(raw: unknown): Carrier | null {
   return raw === 'docomo' || raw === 'au' || raw === 'softbank' ? raw : null
 }
 
-function pad2(n: number): string {
-  return n < 10 ? `0${n}` : String(n)
+/**
+ * 現在の日本時間(JST)を HH:MM / YYYY-MM-DD で返す。
+ * 時間別・日付別の出し分けは実SB（日本向けサービス）と同じく **日本時間**で判定する。
+ * 本番サーバー(Railway)のTZはUTCなので、`new Date().getHours()` をそのまま使うと
+ * 日本の日中でも時間帯条件が外れる（例: JST12:00=UTC03:00 が 06:00-22:00 の範囲外扱い）
+ * バグになる。Intl でタイムゾーンを Asia/Tokyo に固定して判定する。
+ */
+function jstNow(): { hhmm: string; today: string } {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(new Date())
+  const get = (t: string): string => parts.find((p) => p.type === t)?.value ?? ''
+  const hour = get('hour') === '24' ? '00' : get('hour') // 一部環境で 24:xx を返すため丸める
+  return { hhmm: `${hour}:${get('minute')}`, today: `${get('year')}-${get('month')}-${get('day')}` }
 }
 
 function buildVisitorContext(req: import('express').Request): VisitorContext {
@@ -112,14 +130,14 @@ function buildVisitorContext(req: import('express').Request): VisitorContext {
   for (const [k, v] of Object.entries(req.query)) {
     query[k] = Array.isArray(v) ? String(v[0] ?? '') : String(v ?? '')
   }
-  const now = new Date()
+  const { hhmm, today } = jstNow()
   return {
     device: detectDevice(ua),
     mobileOS: detectMobileOS(ua),
     carrier: detectCarrier(req.query['__carrier']),
     query,
-    nowHHMM: `${pad2(now.getHours())}:${pad2(now.getMinutes())}`,
-    today: `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`,
+    nowHHMM: hhmm,
+    today,
   }
 }
 
