@@ -85,7 +85,6 @@ export function registerMediaBlots(): void {
     'data-link-url',
     'data-link-target',
     'data-tracking-urls',
-    'data-report-track',
     'data-anim',
     'data-anim-speed',
     'data-anim-loop',

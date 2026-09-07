@@ -16,6 +16,7 @@
  */
 import type Quill from 'quill'
 import { T, el, toast } from '../ui.ts'
+import { withTrackingParam, isTrackingLink } from '../../shared/link-html.ts'
 
 // ── CSS 注入（1回だけ） ─────────────────────────────────
 
@@ -253,9 +254,11 @@ function positionPopover(popover: HTMLElement, anchor: HTMLElement): void {
 function openLinkPopover(anchor: HTMLElement, img: HTMLImageElement, quill: Quill, onChange: () => void): void {
   closeAllPopovers()
 
-  const currentUrl = img.getAttribute('data-link-url') ?? ''
+  const currentUrlRaw = img.getAttribute('data-link-url') ?? ''
+  const currentTrack = currentUrlRaw !== '' && isTrackingLink(currentUrlRaw, null)
+  // 入力欄には計測フラグ(sb_tracking)を外したきれいなURLを見せる。計測ON/OFFはチェックボックスで表す。
+  const currentUrl = currentUrlRaw === '' ? '' : withTrackingParam(currentUrlRaw, false)
   const currentTarget = img.getAttribute('data-link-target') ?? '_blank'
-  const currentTrack = img.getAttribute('data-report-track') === '1'
 
   const popover = document.createElement('div')
   popover.className = 'sb-img-link-popover'
@@ -279,8 +282,9 @@ function openLinkPopover(anchor: HTMLElement, img: HTMLImageElement, quill: Quil
   checkLabel.setAttribute('for', 'sb-link-new-tab')
   targetWrap.append(checkbox, checkLabel)
 
-  // このシステムで計測する: ONにするとクリックをレポート（PV/クリック）に加算する。
-  // img に data-report-track="1" を付け、配信URL(/lp/)の計測スクリプトが拾う。プレビューは計測しない。
+  // このシステムで計測する: ONにするとクリックをレポート（クリック数）に加算する。
+  // 実物と同じ計測機能付きリンク＝遷移先URLに sb_tracking=true を付け、配信URL(/lp/)の計測スクリプトが
+  // その目印のクリックだけを拾う。プレビューは計測しない。
   const trackWrap = el('div', { style: 'display:flex;align-items:center;gap:8px;margin-top:8px;margin-bottom:4px' })
   const trackCheckbox = document.createElement('input')
   trackCheckbox.type = 'checkbox'
@@ -302,7 +306,6 @@ function openLinkPopover(anchor: HTMLElement, img: HTMLImageElement, quill: Quil
     removeBtn.addEventListener('click', () => {
       img.removeAttribute('data-link-url')
       img.removeAttribute('data-link-target')
-      img.removeAttribute('data-report-track')
       quill.update()
       onChange()
       closeAllPopovers()
@@ -325,12 +328,10 @@ function openLinkPopover(anchor: HTMLElement, img: HTMLImageElement, quill: Quil
     if (url === '') {
       img.removeAttribute('data-link-url')
       img.removeAttribute('data-link-target')
-      img.removeAttribute('data-report-track')
     } else {
-      img.setAttribute('data-link-url', url)
+      // 「このシステムで計測する」ON → 遷移先URLに sb_tracking=true を付ける（計測機能付きリンク）。
+      img.setAttribute('data-link-url', withTrackingParam(url, trackCheckbox.checked))
       img.setAttribute('data-link-target', checkbox.checked ? '_blank' : '_self')
-      if (trackCheckbox.checked) img.setAttribute('data-report-track', '1')
-      else img.removeAttribute('data-report-track')
     }
     quill.update()
     onChange()

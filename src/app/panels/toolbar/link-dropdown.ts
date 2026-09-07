@@ -22,6 +22,7 @@ import type Quill from 'quill'
 import panelHtml from '../../fragments/link-dropdown.html?raw'
 import { toast } from '../../ui.ts'
 import { DEFAULT_LINK_FORM, parseLinkForm, type LinkAttributes, type LinkFormValues } from './link-form.ts'
+import { withTrackingParam } from '../../../shared/link-html.ts'
 import type { QuillRange } from './placement.ts'
 
 /** 採取したパネル内の目印（Emotionのターゲットクラス＝コンポーネント単位で安定する方） */
@@ -136,21 +137,18 @@ export function mountLinkDropdown(
  * どのAPIへ送るのかも採取できていない。**それらしい属性名を作らない**ため、ここでは書かない。
  */
 function applyLink(quill: Quill, range: QuillRange, link: LinkAttributes): void {
-  quill.formatText(range.index, range.length, 'link', link.url, 'user')
+  // 計測設定「レポート計測する」を選ぶと href に実物と同じ計測フラグ `sb_tracking=true` を付ける
+  // （＝計測機能付きリンク・src/shared/link-html.ts）。配信URL(/lp/)の計測スクリプトがこの目印の
+  // クリックだけをレポート（state.metrics の click）へ加算する。プレビュー(/preview/)は計測しない。
+  const href = withTrackingParam(link.url, link.isReportMeasured)
+  quill.formatText(range.index, range.length, 'link', href, 'user')
   quill.setSelection(range.index, range.length, 'silent')
-  // 生成された <a> を辿り、計測ON/OFF と target を DOM に反映する。
-  // 計測設定「レポート計測する」を選ぶと data-report-track を付け、配信URL(/lp/)の計測スクリプトが
-  // そのクリックをレポート（state.metrics の click）へ加算する。プレビュー(/preview/)は計測しない。
-  // 保存は quill.root.innerHTML なので、DOMに付けた属性はそのまま version.html に残る。
+  // 「現在のウィンドウ」を選んだときは Quill が付けた target="_blank" を外す（保存は root.innerHTML）。
+  if (link.opensInNewTab) return
   for (const line of quill.getLines(range.index, range.length)) {
     const node = line.domNode as HTMLElement
-    for (const anchor of node.querySelectorAll<HTMLAnchorElement>('a')) {
-      if (anchor.getAttribute('href') !== link.url) continue
-      if (link.isReportMeasured) anchor.setAttribute('data-report-track', '1')
-      else anchor.removeAttribute('data-report-track')
-      if (!link.opensInNewTab && anchor.getAttribute('target') === '_blank') {
-        anchor.removeAttribute('target')
-      }
+    for (const anchor of node.querySelectorAll<HTMLAnchorElement>('a[target="_blank"]')) {
+      if (anchor.getAttribute('href') === href) anchor.removeAttribute('target')
     }
   }
 }

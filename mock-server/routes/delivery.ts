@@ -70,8 +70,11 @@ const IMAGE_LINK_SCRIPT = `<script>(function(){
 /**
  * このクローン自身のレポート計測スクリプト（配信URL `/lp/:uid` 専用）。
  * - ページ表示ごとに PV を1つ記録する（`POST /lp/:uid/__track` へ event:'pv'）。
- * - 「このシステムで計測する」を有効にしたリンク（`[data-report-track]`）のクリックを
- *   click として記録する（event:'click'）。それ以外のリンクは計測しない。
+ * - 「計測機能付きリンク（＝このシステムで計測する）」のクリックだけを click として記録する。
+ *   その目印は実物と同じ **`sb_tracking=true`**（tel: だけは `data-sb-tracking="true"` 属性）。
+ *   これは実 Quill Link blot 由来の正規シグナルで（src/shared/link-html.ts）、リンク置換ツールの
+ *   「計測機能付きリンクに変更」・テキストリンクの「レポート計測する」・画像リンクの
+ *   「このシステムで計測する」が全て同じこの目印を出す。目印の無いリンクは計測しない。
  * 記録先は `state.metrics`（ab_test スコープ＋version スコープ）で、レポートの
  * PV / クリック / CTR 等がここから集計される。
  *
@@ -87,8 +90,11 @@ function buildTrackingScript(uid: string, versionUid: string): string {
   }catch(e){}}
   send('pv');
   document.addEventListener('click',function(e){
-    var t=e.target;
-    if(t&&t.closest&&t.closest('[data-report-track]'))send('click');
+    var a=e.target&&e.target.closest&&e.target.closest('a');
+    if(!a)return;
+    var href=a.getAttribute('href')||'';
+    var tracked=/^tel:/i.test(href)?(a.getAttribute('data-sb-'+'tracking')==='true'):/[?&]sb_tracking=true(?:[&#]|$)/.test(href);
+    if(tracked)send('click');
   },true);
 })()</script>`
 }
