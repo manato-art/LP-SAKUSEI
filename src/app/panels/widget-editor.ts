@@ -12,6 +12,7 @@
 import type Quill from 'quill'
 import { toast } from '../ui.ts'
 import { highlightHtml, highlightCss } from './syntax-highlight.ts'
+import { TOOLBAR_FONT_FAMILIES, cssFontFamilyValue } from './toolbar/text-format.ts'
 
 /* ================================================================
  *  定数
@@ -94,11 +95,15 @@ export function wireWidgetClick(root: HTMLElement, quill: Quill): void {
 
   injectSelectionCss()
 
-  // 既存の Widget ブロックに名前ラベルを付与
-  labelAllWidgets(editor)
+  // 既存の Widget ブロックに名前ラベルを付与＋Widget CSSのスコープ補正（指示148）
+  const refresh = (): void => {
+    labelAllWidgets(editor)
+    refreshWidgetCanvasCss(editor)
+  }
+  refresh()
 
-  // MutationObserver で後から追加される Widget にもラベルを付与
-  const observer = new MutationObserver(() => labelAllWidgets(editor))
+  // MutationObserver で後から追加される Widget にも適用
+  const observer = new MutationObserver(refresh)
   observer.observe(editor, { childList: true, subtree: true })
 
   editor.addEventListener('click', (event) => {
@@ -128,6 +133,70 @@ function labelAllWidgets(editor: HTMLElement): void {
     if (block.dataset['widgetName'] !== undefined) continue
     block.dataset['widgetName'] = guessWidgetName(block.innerHTML)
   }
+}
+
+/**
+ * 指示148: 編集キャンバス(.ql-editor)ではウィジェットが配信LPと違ってずれる問題の根本修正。
+ *
+ * 原因: Quill のエディタCSS `.ql-editor :is(h1..h6,p,ol,ul,pre,blockquote){margin:0}`（詳細度0,1,1）が
+ * ウィジェット内のクラス規則（例: `.title{margin:0 auto}` 詳細度0,1,0）を打ち消し、`margin:auto` の
+ * 中央寄せが効かなくなる。配信LPには `.ql-editor` が無いのでこの問題は起きず、正しく中央に出る。
+ *
+ * 対策: 各ウィジェットの `<style>` を `.ql-editor .sb-widget-block` で前置きした写しを head に注入し、
+ * 詳細度をQuillリセットのさらにELに上げて、ウィジェット作者のCSSを勝たせる（キャンバス限定）。
+ * 元の `<style>` はそのまま残す（保存・配信は不変）。
+ */
+function refreshWidgetCanvasCss(editor: HTMLElement): void {
+  const SCOPE = '.ql-editor .sb-widget-block'
+  let css = ''
+  for (const style of editor.querySelectorAll<HTMLStyleElement>('section.sb-widget-block style')) {
+    css += scopeCssText(style.textContent ?? '', SCOPE)
+  }
+  let head = document.getElementById('sb-widget-canvas-scope') as HTMLStyleElement | null
+  if (head === null) {
+    head = document.createElement('style')
+    head.id = 'sb-widget-canvas-scope'
+    document.head.append(head)
+  }
+  if (head.textContent !== css) head.textContent = css
+}
+
+/** CSSテキストの各セレクタを scope で前置きして返す（CSSOMでパースし値は保持）。 */
+function scopeCssText(cssText: string, scope: string): string {
+  if (cssText.trim() === '') return ''
+  const tmp = document.createElement('style')
+  tmp.textContent = cssText
+  document.head.append(tmp)
+  let out: string
+  try {
+    out = serializeScopedRules(tmp.sheet?.cssRules ?? null, scope)
+  } catch {
+    out = ''
+  }
+  tmp.remove()
+  return out
+}
+
+function serializeScopedRules(rules: CSSRuleList | null, scope: string): string {
+  if (rules === null) return ''
+  let out = ''
+  for (const r of Array.from(rules)) {
+    if (r instanceof CSSStyleRule) {
+      const sels = r.selectorText
+        .split(',')
+        .map((s) => `${scope} ${s.trim()}`)
+        .join(',')
+      out += `${sels}{${r.style.cssText}}`
+    } else if (typeof CSSMediaRule !== 'undefined' && r instanceof CSSMediaRule) {
+      out += `@media ${r.media.mediaText}{${serializeScopedRules(r.cssRules, scope)}}`
+    } else if (typeof CSSSupportsRule !== 'undefined' && r instanceof CSSSupportsRule) {
+      out += `@supports ${(r as CSSSupportsRule).conditionText}{${serializeScopedRules(r.cssRules, scope)}}`
+    } else {
+      // @keyframes / @font-face など：スコープ不要、そのまま
+      out += r.cssText
+    }
+  }
+  return out
 }
 
 /* ================================================================
@@ -205,6 +274,11 @@ function openWidgetEditor(quill: Quill, target: WidgetEditTarget): void {
 
   /* ── 組み立て ── */
   panel.append(header, titleBar, darkContainer)
+
+  // 指示146: パネルがDOMに載ってからウィジェットの <script> を実行する。
+  // （多くのウィジェットの init は document.querySelector で自分の要素を探すため、
+  //   contentDiv がドキュメントに接続済みである必要がある。）
+  runWidgetScripts(contentDiv)
 }
 
 /**
@@ -506,7 +580,7 @@ function buildVisualEditor(target: WidgetEditTarget): { pane: HTMLElement; conte
   const mkBtn = (
     innerHtml: string,
     title: string,
-    action?: () => void,
+    action?: (btn: HTMLButtonElement) => void,
     wide?: boolean,
   ): HTMLButtonElement => {
     const btn = document.createElement('button')
@@ -521,7 +595,7 @@ function buildVisualEditor(target: WidgetEditTarget): { pane: HTMLElement; conte
     btn.addEventListener('mouseleave', () => { btn.style.background = 'none' })
     btn.addEventListener('mousedown', (e) => { e.preventDefault() }) // 選択を維持
     if (action !== undefined) {
-      btn.addEventListener('click', () => { action(); syncContentToCode() })
+      btn.addEventListener('click', () => { action(btn); syncContentToCode() })
     }
     return btn
   }
@@ -587,6 +661,107 @@ function buildVisualEditor(target: WidgetEditTarget): { pane: HTMLElement; conte
     input.click()
   }
 
+  /* 選択範囲を保持して、フォーカスが外れるツール（フォント選択・リンク入力）でも
+   * 適用先の選択を失わないようにする。pickColor と同じ考え方。 */
+  let savedRange: Range | null = null
+  const saveSelection = (): void => {
+    const sel = window.getSelection()
+    if (sel !== null && sel.rangeCount > 0 && contentRef !== null && contentRef.contains(sel.anchorNode)) {
+      savedRange = sel.getRangeAt(0).cloneRange()
+    }
+  }
+  const restoreSelection = (): void => {
+    contentRef?.focus()
+    const sel = window.getSelection()
+    if (savedRange !== null && sel !== null) {
+      sel.removeAllRanges()
+      sel.addRange(savedRange)
+    }
+  }
+
+  /**
+   * フォント選択のプルダウン（指示149）。prompt をやめ、スタイルパネルと同じ
+   * TOOLBAR_FONT_FAMILIES を並べる。選択でその場の選択範囲にフォントを適用する。
+   */
+  const mkFontSelect = (): HTMLSelectElement => {
+    const sel = document.createElement('select')
+    sel.title = 'フォント'
+    sel.style.cssText =
+      `height:28px;border:1px solid #ddd;border-radius:2px;background:#fff;color:#555;` +
+      `font:12px/1 ${FONT};padding:0 4px;cursor:pointer;max-width:130px`
+    const ph = document.createElement('option')
+    ph.value = ''
+    ph.textContent = 'フォント'
+    ph.disabled = true
+    ph.selected = true
+    sel.append(ph)
+    for (const f of TOOLBAR_FONT_FAMILIES) {
+      const o = document.createElement('option')
+      o.value = f
+      o.textContent = f
+      o.style.fontFamily = cssFontFamilyValue(f)
+      sel.append(o)
+    }
+    sel.addEventListener('mousedown', saveSelection)
+    sel.addEventListener('change', () => {
+      const v = sel.value
+      if (v === '') return
+      restoreSelection()
+      document.execCommand('fontName', false, cssFontFamilyValue(v))
+      syncContentToCode()
+      sel.selectedIndex = 0 // プレースホルダに戻す（毎回選び直せる）
+    })
+    return sel
+  }
+
+  /** リンク入力の小さなインラインポップ（指示149: prompt をやめる）。 */
+  const closeLinkInput = (): void => {
+    document.querySelector('[data-widget-link-input]')?.remove()
+  }
+  const openLinkInput = (anchorBtn: HTMLElement): void => {
+    saveSelection()
+    closeLinkInput()
+    const box = document.createElement('div')
+    box.setAttribute('data-widget-link-input', 'true')
+    box.style.cssText =
+      `position:fixed;z-index:9600;background:#fff;border:1px solid #ddd;border-radius:8px;` +
+      `box-shadow:0 4px 18px rgba(0,0,0,.18);padding:10px;display:flex;gap:6px;align-items:center;font:12px ${FONT}`
+    box.addEventListener('mousedown', (e) => e.stopPropagation())
+    const input = document.createElement('input')
+    input.type = 'url'
+    input.placeholder = 'https://'
+    input.style.cssText =
+      `width:220px;padding:6px 8px;border:1px solid #cbd5e1;border-radius:6px;outline:none;font:12px ${FONT}`
+    const ok = document.createElement('button')
+    ok.type = 'button'
+    ok.textContent = '適用'
+    ok.style.cssText =
+      `border:none;background:${COLOR.brand};color:#fff;border-radius:6px;padding:6px 12px;cursor:pointer;font:12px ${FONT}`
+    const apply = (): void => {
+      const url = input.value.trim()
+      closeLinkInput()
+      if (url === '' || url === 'https://') return
+      restoreSelection()
+      document.execCommand('createLink', false, url)
+      syncContentToCode()
+    }
+    ok.addEventListener('click', apply)
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); apply() }
+      if (e.key === 'Escape') closeLinkInput()
+    })
+    box.append(input, ok)
+    document.body.append(box)
+    const r = anchorBtn.getBoundingClientRect()
+    box.style.left = `${Math.max(8, Math.min(r.left, window.innerWidth - 320))}px`
+    box.style.top = `${r.bottom + 6}px`
+    input.focus()
+    const onOutside = (e: MouseEvent): void => {
+      if (!box.contains(e.target as Node)) { closeLinkInput(); document.removeEventListener('mousedown', onOutside, true) }
+    }
+    setTimeout(() => document.addEventListener('mousedown', onOutside, true), 0)
+  }
+
   // 整列サイクル
   const ALIGNS = ['left', 'center', 'right', 'justifyFull'] as const
   let alignIdx = 0
@@ -599,10 +774,7 @@ function buildVisualEditor(target: WidgetEditTarget): { pane: HTMLElement; conte
     mkBtn(svgToolUndo(), '元に戻す', () => exec('undo')),
     mkBtn(svgToolRedo(), 'やり直す', () => exec('redo')),
     mkSep(),
-    mkBtn(`<span style="font:12px/1 ${FONT};white-space:nowrap">sans-serif</span>${svgDropdownArrow()}`, 'フォント', () => {
-      const name = prompt('フォント名', 'sans-serif')
-      if (name !== null && name.trim() !== '') exec('fontName', name.trim())
-    }, true),
+    mkFontSelect(),
     mkSep(),
     mkBtn(svgToolSizeMinus(), 'サイズ−', () => {
       const cur = parseInt(sizeNum.textContent ?? '19', 10)
@@ -650,10 +822,7 @@ function buildVisualEditor(target: WidgetEditTarget): { pane: HTMLElement; conte
       })
     }),
     mkBtn(svgToolMarker(), 'マーカー', () => exec('hiliteColor', '#fff176')),
-    mkBtn(svgToolLink(), 'リンク', () => {
-      const url = prompt('リンクURL', 'https://')
-      if (url !== null && url.trim() !== '' && url.trim() !== 'https://') exec('createLink', url.trim())
-    }),
+    mkBtn(svgToolLink(), 'リンク', (btn) => openLinkInput(btn)),
     mkBtn(svgToolClearFormat(), '書式クリア', () => exec('removeFormat')),
   )
 
@@ -689,6 +858,8 @@ function buildVisualEditor(target: WidgetEditTarget): { pane: HTMLElement; conte
   markImages()
   contentDiv.addEventListener('input', markImages)
   contentDiv.addEventListener('click', (e) => {
+    // 修飾キー押下時はウィジェットの動作確認モード（指示146）。メディア操作パネルは出さない。
+    if (e.ctrlKey || e.metaKey) return
     const media = (e.target as HTMLElement).closest<HTMLElement>('img, video')
     if (media === null || !contentDiv.contains(media)) {
       closeMediaControl()
@@ -698,11 +869,146 @@ function buildVisualEditor(target: WidgetEditTarget): { pane: HTMLElement; conte
     openMediaControl(media, contentDiv)
   })
 
+  // ── 指示146: ボタン等の動作確認 ──
+  // 通常クリック＝編集（ウィジェットのJS動作は止める）。Ctrl(Win)/⌘(Mac)+クリック＝実際の動作を発火。
+  // ウィジェットの <script> は innerHTML では実行されないので、パネルがDOMに載った後
+  // （openWidgetEditor 末尾）で runWidgetScripts を呼んで実行する（init が document を参照するため）。
+  contentDiv.addEventListener(
+    'click',
+    (e) => {
+      const interactive = (e.target as HTMLElement).closest(
+        'button, a, [role="button"], input[type="button"], input[type="submit"]',
+      )
+      if (interactive === null) return
+      const mod = e.ctrlKey || e.metaKey
+      if (!mod) {
+        // 編集モード: ウィジェットのクリック動作（次へ遷移など）を止める
+        e.preventDefault()
+        e.stopImmediatePropagation()
+      } else if (interactive.tagName === 'A') {
+        // 動作確認モード: リンクの実遷移だけは止め、ウィジェットのハンドラは通す
+        e.preventDefault()
+      }
+    },
+    true,
+  )
+
   // ツールバーから参照できるようにする
   contentRef = contentDiv
 
-  pane.append(toolbar, editorBody)
+  // ── 余白調整バー（指示144: 上下の余白を調整できるように） ──
+  // Widget 最外要素の padding-top / padding-bottom を px で調整する。
+  // 変更はインラインstyleとして最外要素に付き、input イベント経由でコードパネル→保存に反映される。
+  const spacingBar = buildSpacingBar(contentDiv)
+
+  pane.append(toolbar, spacingBar, editorBody)
   return { pane, contentDiv }
+}
+
+/**
+ * Widget の上下余白（最外要素の padding-top / padding-bottom）を調整する小さなバー。
+ * 「下の余白が多すぎる」を編集画面から直接詰められるようにする（指示144）。
+ */
+function buildSpacingBar(contentDiv: HTMLElement): HTMLElement {
+  const bar = document.createElement('div')
+  bar.style.cssText =
+    `display:flex;align-items:center;gap:8px;background:#fafafa;border-bottom:1px solid #eee;` +
+    `flex-shrink:0;padding:6px 12px;font:12px/1 ${FONT};color:#666`
+
+  const label = document.createElement('span')
+  label.textContent = '余白'
+  label.style.cssText = 'flex-shrink:0;color:#888'
+
+  const root = (): HTMLElement | null => contentDiv.firstElementChild as HTMLElement | null
+
+  const readPad = (side: 'Top' | 'Bottom'): number => {
+    const r = root()
+    if (r === null) return 0
+    const v = parseInt(getComputedStyle(r)[`padding${side}` as 'paddingTop'], 10)
+    return Number.isNaN(v) ? 0 : v
+  }
+
+  const mkField = (labelText: string, side: 'Top' | 'Bottom'): HTMLElement => {
+    const wrap = document.createElement('label')
+    wrap.style.cssText = 'display:flex;align-items:center;gap:4px'
+    const t = document.createElement('span')
+    t.textContent = labelText
+    const input = document.createElement('input')
+    input.type = 'number'
+    input.min = '0'
+    input.value = String(readPad(side))
+    input.style.cssText =
+      `width:56px;padding:4px 6px;border:1px solid #ddd;border-radius:4px;font:12px/1 ${FONT};` +
+      `color:#333;box-sizing:border-box;font-variant-numeric:tabular-nums`
+    const unit = document.createElement('span')
+    unit.textContent = 'px'
+    unit.style.color = '#aaa'
+    const apply = (): void => {
+      const r = root()
+      if (r === null) return
+      const n = Math.max(0, parseInt(input.value, 10) || 0)
+      r.style.setProperty(`padding-${side.toLowerCase()}`, `${n}px`)
+      // プログラム変更は input イベントが飛ばないので、手動で発火してコード→保存へ反映する。
+      contentDiv.dispatchEvent(new Event('input', { bubbles: true }))
+    }
+    input.addEventListener('input', apply)
+    input.addEventListener('change', apply)
+    wrap.append(t, input, unit)
+    return wrap
+  }
+
+  // 指示146の注意書き: ボタン等の動作確認方法をユーザーに明示する。
+  const note = document.createElement('span')
+  note.textContent = 'ボタンの動作確認は Ctrl（Windows）/ ⌘（Mac）＋クリック'
+  note.style.cssText = 'margin-left:auto;color:#999;font-size:11px;white-space:nowrap'
+
+  bar.append(label, mkField('上', 'Top'), mkField('下', 'Bottom'), note)
+  return bar
+}
+
+/**
+ * Widget の <script> をプレビュー内で実行する（指示146: 動作確認のため）。
+ * innerHTML で挿入された <script> は実行されないので、実行可能な <script> を作り直して差し込む。
+ * 多くのSBウィジェットは `DOMContentLoaded` で init するが、編集画面では既に発火済みのため、
+ * 実行中だけ addEventListener('DOMContentLoaded'|'load') を「即時実行」に差し替えて init を走らせる。
+ * 実行はユーザー自身のウィジェット内容（配信でも同じスクリプトが動く）なので信頼して実行する。
+ */
+function runWidgetScripts(contentDiv: HTMLElement): void {
+  const scripts = [...contentDiv.querySelectorAll('script')]
+  if (scripts.length === 0) return
+
+  const docAdd = document.addEventListener.bind(document)
+  const winAdd = window.addEventListener.bind(window)
+  const fireNow = (fn: EventListenerOrEventListenerObject, type: string): void => {
+    try {
+      const ev = new Event(type)
+      if (typeof fn === 'function') fn(ev)
+      else fn.handleEvent(ev)
+    } catch {
+      /* 個別ウィジェットの初期化失敗は握って他へ波及させない */
+    }
+  }
+  const patch = (orig: typeof document.addEventListener) =>
+    ((type: string, fn: EventListenerOrEventListenerObject, opts?: unknown) => {
+      if ((type === 'DOMContentLoaded' || type === 'load') && fn !== null) {
+        fireNow(fn, type)
+        return
+      }
+      ;(orig as (t: string, f: EventListenerOrEventListenerObject, o?: unknown) => void)(type, fn, opts)
+    }) as typeof document.addEventListener
+  document.addEventListener = patch(docAdd)
+  window.addEventListener = patch(winAdd)
+  try {
+    for (const old of scripts) {
+      const s = document.createElement('script')
+      for (const attr of old.attributes) s.setAttribute(attr.name, attr.value)
+      s.textContent = old.textContent
+      old.replaceWith(s) // 差し替えで同期実行される
+    }
+  } finally {
+    document.addEventListener = docAdd
+    window.addEventListener = winAdd
+  }
 }
 
 /* ================================================================
@@ -973,11 +1279,6 @@ function svgViewCode(): string {
 /* ================================================================
  *  SVG アイコン — ツールバー（本番のSVGアイコンを再現）
  * ================================================================ */
-
-/** ドロップダウン矢印（フォント選択などの▼） */
-function svgDropdownArrow(): string {
-  return `<svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-left:2px"><path d="M2 3l2 2 2-2"/></svg>`
-}
 
 /** 元に戻す */
 function svgToolUndo(): string {

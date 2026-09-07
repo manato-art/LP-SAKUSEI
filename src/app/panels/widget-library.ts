@@ -40,15 +40,54 @@ const CATEGORY_ASSET = (index: number): string =>
 /** 採取していないカテゴリー（お気に入り＝ユーザー個別のため空で扱う）。 */
 const UNCAPTURED_CATEGORIES = new Set<number>([1])
 
-/** 仮想カテゴリーのセンチネル値。gz 資産が無い = 空メッセージを出す。 */
-const VIRTUAL_CAT = -1
+/** 「作成したWidget」カテゴリーのセンチネル値（localStorage の自作Widgetを出す）。 */
+const CREATED_CAT = -2
 
-/** 本番で追加された仮想カテゴリー（採取時には無かったもの）。 */
-const VIRTUAL_CATEGORY_LABELS: readonly { label: string; emptyMsg: string }[] = [
-  { label: '最近利用', emptyMsg: '最近利用したウィジェットはありません。' },
-  { label: 'チームで追加・作成', emptyMsg: 'チームで追加・作成されたウィジェットはありません。' },
-  { label: '最近追加', emptyMsg: '最近追加されたウィジェットはありません。' },
-]
+/** 「作成したWidget」の空メッセージ。 */
+const CREATED_EMPTY_MSG = '作成したWidgetはまだありません。「＋ Widgetを作成」から作成できます。'
+
+/** 自作Widget（「＋ Widgetを作成」で作ったもの）を保存する localStorage キー。 */
+const CREATED_WIDGETS_KEY = 'lp-sakusei:created-widgets'
+
+interface CreatedWidget {
+  id: string
+  name: string
+  html: string
+  ts: number
+}
+
+/** localStorage から自作Widget一覧を読む（壊れていれば空）。 */
+function loadCreatedWidgets(): CreatedWidget[] {
+  try {
+    const raw = localStorage.getItem(CREATED_WIDGETS_KEY)
+    if (raw === null || raw === '') return []
+    const parsed: unknown = JSON.parse(raw)
+    return Array.isArray(parsed) ? (parsed as CreatedWidget[]) : []
+  } catch {
+    return []
+  }
+}
+
+/** 自作Widgetを1件保存する（先頭に追加・最大100件）。 */
+function saveCreatedWidget(name: string, html: string): void {
+  try {
+    const list = loadCreatedWidgets()
+    list.unshift({ id: `cw_${Date.now().toString(36)}`, name, html, ts: Date.now() })
+    localStorage.setItem(CREATED_WIDGETS_KEY, JSON.stringify(list.slice(0, 100)))
+  } catch {
+    /* localStorage 不可でも作成自体は続行 */
+  }
+}
+
+/** 自作Widgetを1件削除する。 */
+function deleteCreatedWidget(id: string): void {
+  try {
+    const list = loadCreatedWidgets().filter((w) => w.id !== id)
+    localStorage.setItem(CREATED_WIDGETS_KEY, JSON.stringify(list))
+  } catch {
+    /* no-op */
+  }
+}
 
 /** 取得済みカテゴリーのカードHTMLをセッション内でキャッシュ（再取得しない）。 */
 const gridCache = new Map<number, string>()
@@ -85,7 +124,15 @@ function open(quill: Quill): void {
   const backdrop = portal.root.querySelector<HTMLElement>(HOOK.backdrop)
   if (backdrop !== null) bindBackdropClose(backdrop, portal.close)
 
-  findByExactText(portal.root, HOOK.button, HOOK.close)?.addEventListener('click', () => portal.close())
+  const closeButton = findByExactText(portal.root, HOOK.button, HOOK.close)
+  if (closeButton !== null) {
+    closeButton.addEventListener('click', () => portal.close())
+    // 指示147: 閉じるボタンを白基調に（背景に同化させない）。採取物の暗色ピルを上書きする。
+    closeButton.style.cssText =
+      'background:#fff;color:#333;border:1px solid #d5d5d5;border-radius:6px;' +
+      'padding:6px 16px;font:600 13px/1.4 "Hiragino Sans",sans-serif;cursor:pointer;' +
+      'box-shadow:0 1px 3px rgba(0,0,0,.12)'
+  }
 
   /* ── 本番 UI との差分を DOM 補正 ── */
   patchPortalLayout(portal.root, quill, portal.close)
@@ -151,35 +198,13 @@ function patchPortalLayout(root: HTMLElement, quill: Quill, close: () => void): 
     cat.dataset['catIndex'] = String(i)
   }
 
-  /* ---- 4. 仮想カテゴリー挿入 (お気に入り(index=1)の後ろに) ---- */
+  /* ---- 4. 「作成したWidget」カテゴリーを お気に入り(index=1) の後ろに挿入 ----
+   * 指示147: 「最近利用 / チームで追加・作成 / 最近追加」は削除し「作成したWidget」を追加。 */
   const categoryContainer = root.querySelector<HTMLElement>('.css-1qli419')
   if (categoryContainer !== null && categories.length >= 2) {
-    const insertAfter = categories[1]! // お気に入り
-    for (const vc of VIRTUAL_CATEGORY_LABELS) {
-      const btn = createCategoryButton(vc.label)
-      btn.dataset['catIndex'] = String(VIRTUAL_CAT)
-      btn.dataset['emptyMsg'] = vc.emptyMsg
-      insertAfter.parentNode?.insertBefore(btn, insertAfter.nextSibling)
-      // insertAfter を更新して順序を保つ
-    }
-    // 逆順に挿入されるので正しい順序にするためもう一度取り出す
-    // → 実は insertBefore の参照先が変わらないので、全部 insertAfter.nextSibling に入る
-    // → 結果的に逆順。修正: 1つずつ anchor を更新する
-  }
-  // 正しい順序で挿入し直す
-  if (categoryContainer !== null && categories.length >= 2) {
-    // 一旦仮想ボタンを全部除去して再挿入
-    for (const el of categoryContainer.querySelectorAll<HTMLElement>('[data-cat-index="-1"]')) {
-      el.remove()
-    }
-    let anchor = categories[1]! // お気に入り
-    for (const vc of VIRTUAL_CATEGORY_LABELS) {
-      const btn = createCategoryButton(vc.label)
-      btn.dataset['catIndex'] = String(VIRTUAL_CAT)
-      btn.dataset['emptyMsg'] = vc.emptyMsg
-      anchor.after(btn)
-      anchor = btn
-    }
+    const createdBtn = createCategoryButton('作成したWidget')
+    createdBtn.dataset['catIndex'] = String(CREATED_CAT)
+    categories[1]!.after(createdBtn) // お気に入りの直後
 
     /* ---- 5. 「カテゴリーから探す」セクションヘッダー挿入 ---- */
     const sectionHeader = document.createElement('h6')
@@ -187,7 +212,7 @@ function patchPortalLayout(root: HTMLElement, quill: Quill, close: () => void): 
     sectionHeader.style.cssText =
       'font:600 13px/1.4 "Hiragino Sans",sans-serif;color:#333;' +
       'margin:16px 0 4px;padding:0 8px'
-    anchor.after(sectionHeader)
+    createdBtn.after(sectionHeader)
   }
 
   /* ---- 6. 「+ Widgetを作成」ボタン挿入 ---- */
@@ -265,13 +290,9 @@ function wireCategories(root: HTMLElement, quill: Quill, close: () => void): voi
     cat.addEventListener('click', () => {
       activateCategory(categories, cat)
       const catIndex = Number(cat.dataset['catIndex'] ?? '0')
-      if (catIndex === VIRTUAL_CAT) {
-        // 仮想カテゴリー: 空メッセージ
-        const grid = root.querySelector<HTMLElement>(HOOK.grid)
-        if (grid !== null) {
-          grid.innerHTML = ''
-          grid.append(gridMessage(cat.dataset['emptyMsg'] ?? 'ウィジェットはありません。'))
-        }
+      if (catIndex === CREATED_CAT) {
+        // 作成したWidget: localStorage の自作Widgetをカードで表示
+        renderCreatedWidgets(root, quill, close)
       } else {
         void loadCategory(root, quill, close, catIndex)
       }
@@ -361,6 +382,77 @@ function gridMessage(text: string): HTMLElement {
   box.style.cssText =
     'grid-column:1/-1;padding:40px 16px;text-align:center;color:#bbb;font:14px "Hiragino Sans",sans-serif'
   return box
+}
+
+/* ================================================================
+ *  作成したWidget（localStorage）の一覧描画
+ * ================================================================ */
+
+/** 「作成したWidget」カテゴリー: localStorage の自作Widgetをカードで描画する。 */
+function renderCreatedWidgets(root: HTMLElement, quill: Quill, close: () => void): void {
+  const grid = root.querySelector<HTMLElement>(HOOK.grid)
+  if (grid === null) return
+  const list = loadCreatedWidgets()
+  grid.innerHTML = ''
+  if (list.length === 0) {
+    grid.append(gridMessage(CREATED_EMPTY_MSG))
+    return
+  }
+  for (const w of list) {
+    const card = document.createElement('div')
+    card.className = 'MuiCard-root' // グリッドの3列CSS(.css-ojejk4>.MuiCard-root)を再利用
+    card.style.cssText =
+      'box-sizing:border-box;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden;' +
+      'display:flex;flex-direction:column;background:#fff'
+
+    const frame = document.createElement('iframe')
+    frame.setAttribute(
+      'srcdoc',
+      `<!doctype html><meta charset="utf-8"><body style="margin:0;font-family:Hiragino Sans,sans-serif">${w.html}</body>`,
+    )
+    frame.style.cssText = 'width:100%;height:140px;border:none;pointer-events:none;background:#fff'
+    frame.setAttribute('sandbox', 'allow-same-origin')
+
+    const titleEl = document.createElement('div')
+    titleEl.textContent = w.name
+    titleEl.style.cssText =
+      'padding:8px 12px;font:600 13px "Hiragino Sans",sans-serif;color:#333;border-top:1px solid #eee;' +
+      'white-space:nowrap;overflow:hidden;text-overflow:ellipsis'
+
+    const actions = document.createElement('div')
+    actions.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 12px;border-top:1px solid #eee'
+
+    const del = document.createElement('button')
+    del.type = 'button'
+    del.textContent = '削除'
+    del.style.cssText =
+      'border:1px solid #E5573F;background:#fff;color:#E5573F;border-radius:6px;padding:6px 10px;' +
+      'cursor:pointer;font:12px "Hiragino Sans",sans-serif'
+    del.addEventListener('click', (e) => {
+      e.stopPropagation()
+      deleteCreatedWidget(w.id)
+      renderCreatedWidgets(root, quill, close)
+    })
+
+    const add = document.createElement('button')
+    add.type = 'button'
+    add.textContent = '追加'
+    add.style.cssText =
+      'margin-left:auto;border:none;background:#0091ff;color:#fff;border-radius:6px;padding:6px 14px;' +
+      'cursor:pointer;font:12px "Hiragino Sans",sans-serif'
+    add.addEventListener('click', (e) => {
+      e.stopPropagation()
+      close()
+      requestAnimationFrame(() => {
+        insertWidget(quill, w.html, w.name)
+        toast(`「${w.name}」を追加しました`)
+      })
+    })
+
+    actions.append(del, add)
+    card.append(frame, titleEl, actions)
+    grid.append(card)
+  }
 }
 
 /* ================================================================
@@ -648,6 +740,9 @@ function openWidgetCreator(
       toast('HTMLまたはエディタの内容を入力してください', 'error')
       return
     }
+
+    // 作成したWidgetは localStorage に保存し、「作成したWidget」カテゴリーから再利用できるようにする（指示147）。
+    saveCreatedWidget(widgetName, finalHtml)
 
     creator.remove()
     libraryClose()

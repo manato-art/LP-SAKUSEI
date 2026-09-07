@@ -83,7 +83,7 @@ const REDO_TOOL_INDEX = 7
 const SIDE_TOOLS: readonly string[] = [
   'プレビュー',
   '履歴',
-  'ライブラリ',
+  'Widget',
   'リンク置換',
   'LP設定',
   'タグ設定',
