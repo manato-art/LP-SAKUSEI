@@ -22,7 +22,11 @@ function injectStyles(): void {
       background:#fff; border-bottom:1px solid #e5e5ea; flex-shrink:0;
       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
       font-size:13px; user-select:none; min-height:40px; height:40px;
-      overflow:hidden; max-width:100%; box-sizing:border-box;
+      overflow:hidden; box-sizing:border-box;
+      /* 指示172: 右のアイコンレール(68px)はキャンバス本文の高さから始まるため、
+         URLバー/ヘッダーの高さ帯ではレール列の上が空白になる。その68pxぶん右へ広げて
+         プロパティパネル手前まで詰める（レールとは高さが重ならない）。68px=レール幅。 */
+      width:calc(100% + 68px); max-width:none; margin-right:-68px;
     }
     .sb-url-group {
       display:flex; align-items:center; gap:5px; flex:1; min-width:0;

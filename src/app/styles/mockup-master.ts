@@ -269,6 +269,13 @@ const MOCKUP_CSS = `
     box-shadow: 0 1px 4px rgba(0,0,0,.04) !important;
   }
 
+  /* 指示172: ヘッダー画像エリアを右のアイコンレール(68px)上の空白まで右へ広げる。
+     レールは本文(ql-container)の高さから始まるので、ヘッダーの高さ帯ではレール列の上が
+     空いている。URLバーと同じくその68pxぶん右へ伸ばし、プロパティパネル手前まで詰める。 */
+  [class*="_articleHeaderPhoto_"] {
+    margin-right: -68px !important;
+  }
+
   /* アイコンレール（指示: もっと大きく見やすく） */
   [class*="_sideToolbarWrapper_"] {
     width: 68px !important;
