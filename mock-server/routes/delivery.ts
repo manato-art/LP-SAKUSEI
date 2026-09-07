@@ -572,6 +572,12 @@ function buildPopupSnippet(popup: ExitPopup, device: 'sp' | 'tablet' | 'pc'): st
   const popupId = `exit-popup-${popup.uid}`
   const animClass = popup.animation !== 'none' ? popup.animation : ''
 
+  // リンク設定（キャンバス画像と同じ規約）: 遷移先 link_url / 新タブ link_target / 計測URL tracking_urls。
+  // 旧データはこれらを持たない場合があるので既定値で守る。
+  const epLink = popup.link_url ?? ''
+  const epTarget = popup.link_target === '_self' ? '_self' : '_blank'
+  const epPins = Array.isArray(popup.tracking_urls) ? popup.tracking_urls : []
+
   // アニメーションCSS（エントランス9種 + 内部アニメ用キーフレーム）
   const animCss = `
     @keyframes epFadeIn { from{opacity:0} to{opacity:1} }
@@ -639,8 +645,30 @@ function buildPopupSnippet(popup: ExitPopup, device: 'sp' | 'tablet' | 'pc'): st
       });
     }
 
+    // ── リンク設定（クリック時の遷移先＋計測）──
+    var epLink=${JSON.stringify(epLink)};
+    var epTarget=${JSON.stringify(epTarget)};
+    var epPins=${JSON.stringify(epPins)};
+    var content=overlay.querySelector('.ep-content');
+    if(epLink&&content)content.style.cursor='pointer';
+
     overlay.addEventListener('click',function(e){
-      if(e.target===overlay||e.target.classList.contains('ep-close'))overlay.classList.remove('visible');
+      var t=e.target;
+      // 背景 or ×ボタン → 閉じる
+      if(t===overlay||(t.classList&&t.classList.contains('ep-close'))){overlay.classList.remove('visible');return;}
+      if(!epLink)return;
+      // 中身が本物のリンク/ボタン（href が # や javascript: 以外）ならそれを生かす
+      var inner=t.closest&&t.closest('a[href]');
+      if(inner){var h=inner.getAttribute('href')||'';if(h&&h!=='#'&&!/^javascript:/i.test(h))return;}
+      if(t.closest&&t.closest('button'))return;
+      // ポップアップ本体クリック → 遷移先へ
+      e.preventDefault();
+      // 計測URL（ピクセル）発火
+      epPins.forEach(function(u){try{navigator.sendBeacon(u)}catch(err){new Image().src=u}});
+      // レポート計測(sb_tracking)も拾えるよう、実 <a> クリックで遷移する（画像リンクと同じ経路）
+      var a=document.createElement('a');a.href=epLink;a.target=epTarget;
+      if(epTarget==='_blank')a.rel='noopener noreferrer';
+      document.body.appendChild(a);a.click();a.remove();
     });
   })()`
 

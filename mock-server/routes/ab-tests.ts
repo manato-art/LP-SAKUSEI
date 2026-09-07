@@ -218,7 +218,10 @@ abTestsRouter.post('/ab_tests/:uid/exit_popups', (req, res) => {
     visit_count: optionalString(req.body, 'visit_count') || 'all',
     phone_number: optionalString(req.body, 'phone_number') || '',
     link_url: optionalString(req.body, 'link_url') || '',
-    callback_url: optionalString(req.body, 'callback_url') || '',
+    link_target: optionalString(req.body, 'link_target') || '_blank',
+    tracking_urls: Array.isArray(body.tracking_urls)
+      ? body.tracking_urls.filter((u): u is string => typeof u === 'string' && u !== '')
+      : [],
     animation: optionalString(req.body, 'animation') || 'fade',
     delay_seconds: optionalNumber(req.body, 'delay_seconds') ?? 0,
     scroll_trigger: body.scroll_trigger === true,
@@ -262,7 +265,10 @@ abTestsRouter.put('/ab_tests/:uid/exit_popups/:popup_uid', (req, res) => {
     ...(typeof body.visit_count === 'string' ? { visit_count: body.visit_count } : {}),
     ...(typeof body.phone_number === 'string' ? { phone_number: body.phone_number } : {}),
     ...(typeof body.link_url === 'string' ? { link_url: body.link_url } : {}),
-    ...(typeof body.callback_url === 'string' ? { callback_url: body.callback_url } : {}),
+    ...(typeof body.link_target === 'string' ? { link_target: body.link_target } : {}),
+    ...(Array.isArray(body.tracking_urls)
+      ? { tracking_urls: body.tracking_urls.filter((u): u is string => typeof u === 'string' && u !== '') }
+      : {}),
     ...(typeof body.animation === 'string' ? { animation: body.animation } : {}),
     ...(typeof body.delay_seconds === 'number' ? { delay_seconds: body.delay_seconds } : {}),
     ...(typeof body.scroll_trigger === 'boolean' ? { scroll_trigger: body.scroll_trigger } : {}),

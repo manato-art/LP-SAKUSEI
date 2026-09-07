@@ -12,6 +12,7 @@
 import { api, type ExitPopup, type FollowPopup } from '../api.ts'
 import { isStale } from '../main.ts'
 import { T, el, toast, confirmCard } from '../ui.ts'
+import { withTrackingParam, isTrackingLink } from '../../shared/link-html.ts'
 import { setupHorizTabs, setupBreadcrumb } from './tab-nav.ts'
 import { PRESETS, type PopupPreset } from './exit-popup-presets.ts'
 import { highlight } from '../panels/syntax-highlight.ts'
@@ -844,10 +845,106 @@ function renderBasicTab(body: HTMLElement, draft: ExitPopup): void {
 
   // 電話番号
   body.append(makeTextField('電話番号', draft.phone_number, (v) => { draft.phone_number = v }, '電話番号を入力'))
-  // リンク
-  body.append(makeTextField('リンク', draft.link_url, (v) => { draft.link_url = v }, 'https://example.com'))
-  // 呼び出しリンク
-  body.append(makeTextField('呼び出しリンク', draft.callback_url, (v) => { draft.callback_url = v }, 'https://example.com'))
+  // リンク（クリック時の遷移先）＋計測 — キャンバス画像のリンク設定と同じ作り
+  body.append(makePopupLinkField(draft))
+  // 計測URL（クリックでビーコン発火・複数可）— 画像の「計測URL」と同じ
+  body.append(makePopupTrackingField(draft))
+}
+
+/**
+ * ポップアップの「リンク」設定（キャンバス画像の image-link.ts と同じ規約）:
+ *   - 遷移先URL
+ *   - 新しいタブで開く（link_target）
+ *   - このシステムで計測する（遷移先に sb_tracking=true を付与 → 配信の計測が拾う）
+ * ポップアップを触ると、この遷移先へ移動する（delivery.ts の buildPopupSnippet が配線）。
+ */
+function makePopupLinkField(draft: ExitPopup): HTMLElement {
+  const field = el('div', { class: 'ep-field' })
+  field.append(el('label', { text: 'リンク（ポップアップを触ったときの遷移先）' }))
+
+  const rawUrl = draft.link_url
+  const input = document.createElement('input')
+  input.type = 'text'
+  input.placeholder = 'https://example.com'
+  // 入力欄には計測フラグ(sb_tracking)を外したきれいなURLを見せる。計測ON/OFFはチェックボックスで表す。
+  input.value = rawUrl === '' ? '' : withTrackingParam(rawUrl, false)
+  field.append(input)
+
+  const opts = el('div', { style: 'display:flex;flex-direction:column;gap:6px;margin-top:8px' })
+
+  const [newTabWrap, newTabCb] = makeCheckboxRow('新しいタブで開く', draft.link_target !== '_self')
+  const [trackWrap, trackCb] = makeCheckboxRow(
+    'このシステムで計測する（クリックをレポートに計上）',
+    rawUrl !== '' && isTrackingLink(rawUrl, null),
+  )
+  opts.append(newTabWrap, trackWrap)
+  field.append(opts)
+
+  const sync = (): void => {
+    const url = input.value.trim()
+    draft.link_url = url === '' ? '' : withTrackingParam(url, trackCb.checked)
+    draft.link_target = newTabCb.checked ? '_blank' : '_self'
+  }
+  input.addEventListener('input', sync)
+  newTabCb.addEventListener('change', sync)
+  trackCb.addEventListener('change', sync)
+
+  return field
+}
+
+/** 計測用URL（複数）。クリック時にビーコンを飛ばす。画像の data-tracking-urls と同じ。 */
+function makePopupTrackingField(draft: ExitPopup): HTMLElement {
+  const field = el('div', { class: 'ep-field' })
+  field.append(el('label', { text: '計測URL（クリック時にリクエストを送信・複数可）' }))
+
+  // draft の配列を直接破壊しない（popup とシャローコピーで共有しているため）。編集用に複製する。
+  const urls: string[] = [...(draft.tracking_urls ?? [])]
+  const commit = (): void => { draft.tracking_urls = urls.filter((u) => u.trim() !== '') }
+
+  const list = el('div', { style: 'display:flex;flex-direction:column;gap:6px' })
+  const rebuild = (): void => {
+    list.innerHTML = ''
+    if (urls.length === 0) urls.push('')
+    urls.forEach((u, i) => {
+      const row = el('div', { style: 'display:flex;align-items:center;gap:6px' })
+      const inp = document.createElement('input')
+      inp.type = 'text'
+      inp.placeholder = 'https://tracking.example.com/pixel'
+      inp.value = u
+      inp.style.flex = '1'
+      inp.addEventListener('input', () => { urls[i] = inp.value; commit() })
+      const rm = el('button', {
+        text: '✕',
+        style: `flex-shrink:0;width:28px;height:28px;border:none;background:none;color:#E5573F;cursor:pointer;border-radius:4px;font-size:14px`,
+      })
+      rm.type = 'button'
+      rm.addEventListener('click', () => { urls.splice(i, 1); commit(); rebuild() })
+      row.append(inp, rm)
+      list.append(row)
+    })
+  }
+  rebuild()
+
+  const addBtn = el('button', {
+    text: '＋ URLを追加',
+    style: `align-self:flex-start;margin-top:6px;padding:4px 0;border:none;background:none;color:${T.primary};cursor:pointer;font-size:12px;font-family:${T.font}`,
+  })
+  addBtn.type = 'button'
+  addBtn.addEventListener('click', () => { urls.push(''); rebuild() })
+
+  field.append(list, addBtn)
+  return field
+}
+
+/** ラベル付きチェックボックス行（[wrap, checkbox] を返す）。 */
+function makeCheckboxRow(label: string, checked: boolean): [HTMLElement, HTMLInputElement] {
+  const wrap = el('label', { style: 'display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:#444' })
+  const cb = document.createElement('input')
+  cb.type = 'checkbox'
+  cb.checked = checked
+  cb.style.cursor = 'pointer'
+  wrap.append(cb, document.createTextNode(label))
+  return [wrap, cb]
 }
 
 // ── デザインタブ（HTMLを要素カードに分解して文言・色を編集） ──

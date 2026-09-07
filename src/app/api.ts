@@ -357,8 +357,12 @@ export interface ExitPopup {
   preset_id: string | null
   visit_count: string
   phone_number: string
+  /** クリック時の遷移先URL（計測ON時は sb_tracking=true 付き・画像リンクと同じ規約） */
   link_url: string
-  callback_url: string
+  /** 遷移先を新しいタブで開くか（'_blank' / '_self'） */
+  link_target: string
+  /** 計測用URL（クリックでビーコン発火・複数可・画像の data-tracking-urls と同じ） */
+  tracking_urls: string[]
   animation: string
   delay_seconds: number
   scroll_trigger: boolean

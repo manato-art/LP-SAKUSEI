@@ -216,8 +216,12 @@ export interface ExitPopup {
   // 基本タブ
   visit_count: string
   phone_number: string
+  /** クリック時の遷移先URL（計測ON時は sb_tracking=true 付き） */
   link_url: string
-  callback_url: string
+  /** 遷移先を新しいタブで開くか（'_blank' / '_self'） */
+  link_target: string
+  /** 計測用URL（クリックでビーコン発火・複数可） */
+  tracking_urls: string[]
 
   // 表示タブ
   animation: string
