@@ -12,7 +12,7 @@
 import type Quill from 'quill'
 import { toast } from '../ui.ts'
 import { highlightHtml, highlightCss } from './syntax-highlight.ts'
-import { TOOLBAR_FONT_FAMILIES, cssFontFamilyValue } from './toolbar/text-format.ts'
+import { TOOLBAR_FONT_FAMILIES, cssFontFamilyValue, loadGoogleFonts } from './toolbar/text-format.ts'
 
 /* ================================================================
  *  定数
@@ -68,6 +68,12 @@ function injectSelectionCss(): void {
     }
     section.sb-widget-block[data-widget-selected="true"] {
       outline:2px solid ${COLOR.selectBorder}; outline-offset:-2px;
+    }
+    /* 指示161: ツールバーで付けた素のリンク(<a href>・クラス無し)を、編集プレビューで
+       ひと目でリンクと分かる見た目にする（青＋下線）。Widget独自の装飾リンク(.link__button等)は
+       クラスを持つので影響しない。 */
+    [data-widget-editor] [contenteditable="true"] a:not([class]) {
+      color:#0d6efd; text-decoration:underline; cursor:pointer;
     }
   `
   document.head.append(style)
@@ -204,6 +210,8 @@ function serializeScopedRules(rules: CSSRuleList | null, scope: string): string 
  * ================================================================ */
 
 function openWidgetEditor(quill: Quill, target: WidgetEditTarget): void {
+  // 指示158: フォント選択で確実に見た目が変わるよう、日本語Webフォントを読み込んでおく。
+  loadGoogleFonts()
   // 既存の Widget エディタがあれば閉じる
   const existingEditor = document.querySelector('[data-widget-editor]')
   if (existingEditor !== null) {
@@ -717,6 +725,10 @@ function buildVisualEditor(target: WidgetEditTarget): { pane: HTMLElement; conte
       const v = sel.value
       if (v === '') return
       restoreSelection()
+      // 指示158: styleWithCSS=true で font-family をインラインstyleとして当てる。
+      // 既定の execCommand('fontName') は <font face> を出すが、Widget/親のCSSに font-family が
+      // あると打ち消されて「変化ない」ため、インラインstyle（詳細度最強）にして確実に効かせる。
+      document.execCommand('styleWithCSS', false, 'true')
       document.execCommand('fontName', false, cssFontFamilyValue(v))
       syncContentToCode()
       sel.selectedIndex = 0 // プレースホルダに戻す（毎回選び直せる）
@@ -850,7 +862,7 @@ function buildVisualEditor(target: WidgetEditTarget): { pane: HTMLElement; conte
         openMediaControl(target, contentRef)
       },
     ),
-    mkBtn(svgToolMarker(), 'マーカー', () => exec('hiliteColor', '#fff176')),
+    mkBtn(svgToolMarker(), 'マーカー（蛍光ペン）', () => exec('hiliteColor', '#fff176')),
     mkBtn(svgToolLink(), 'リンク', (btn) => openLinkInput(btn)),
     mkBtn(svgToolClearFormat(), '書式クリア', () => exec('removeFormat')),
   )

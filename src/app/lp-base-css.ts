@@ -26,4 +26,7 @@ export const LP_BASE_CSS = [
   // Widgetの見出し等(<br>で改行)がそれを継ぐと改行幅が大きすぎるため、Widgetブロック内は1.5を既定にする。
   // Widget自身が line-height を明示している要素は、その要素の直接指定が継承値より優先されるので影響しない。
   'section.sb-widget-block{line-height:1.5}',
+  // 指示161: Widget内でツールバーから付けた素のリンク(<a href>・クラス無し)を、配信でも
+  // リンクと分かる見た目にする（青＋下線）。Widget独自の装飾リンク(class付き)は対象外。
+  'section.sb-widget-block a:not([class]){color:#0d6efd;text-decoration:underline}',
 ].join('')

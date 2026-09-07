@@ -419,7 +419,7 @@ deliveryRouter.get('/lp/:uid', (req, res) => {
     `<meta name="viewport" content="width=device-width, initial-scale=1">` +
     robotsMeta +
     `<title>${escapeHtml(abTest.page_title || abTest.title)}</title>` +
-    `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Noto+Serif+JP:wght@400;700&family=M+PLUS+Rounded+1c:wght@400;700&family=Kosugi+Maru&family=Sawarabi+Gothic&display=swap">` +
+    `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Noto+Serif+JP:wght@400;700&family=Shippori+Mincho:wght@400;700&family=M+PLUS+Rounded+1c:wght@400;700&family=Zen+Maru+Gothic:wght@400;700&family=Kosugi+Maru&family=Dela+Gothic+One&family=RocknRoll+One&family=Reggae+One&family=Yuji+Syuku&family=Hachi+Maru+Pop&family=Yomogi&display=swap">` +
     `<style>body{margin:0 auto;max-width:${DELIVERY_WIDTH}px;font-family:"Hiragino Sans",sans-serif;background:#fff}` +
     `${LP_BASE_CSS}${version.css}${styleCss}${buildAnimCss()}</style>` +
     externalWidgetLibs(versionHtml) +
@@ -507,7 +507,7 @@ deliveryRouter.get('/preview/:versionUid', (req, res) => {
     `<meta name="viewport" content="width=device-width, initial-scale=1">` +
     `<meta name="robots" content="noindex,nofollow">` +
     `<title>${title}</title>` +
-    `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Noto+Serif+JP:wght@400;700&family=M+PLUS+Rounded+1c:wght@400;700&family=Kosugi+Maru&family=Sawarabi+Gothic&display=swap">` +
+    `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Noto+Serif+JP:wght@400;700&family=Shippori+Mincho:wght@400;700&family=M+PLUS+Rounded+1c:wght@400;700&family=Zen+Maru+Gothic:wght@400;700&family=Kosugi+Maru&family=Dela+Gothic+One&family=RocknRoll+One&family=Reggae+One&family=Yuji+Syuku&family=Hachi+Maru+Pop&family=Yomogi&display=swap">` +
     `<style>body{margin:0 auto;max-width:${DELIVERY_WIDTH}px;font-family:"Hiragino Sans",sans-serif;background:#fff}` +
     `${LP_BASE_CSS}${version.css}${styleCss}` +
     `.preview-banner{position:sticky;top:0;z-index:99999;background:#D32F2F;` +
@@ -587,7 +587,7 @@ function buildPopupSnippet(popup: ExitPopup, device: 'sp' | 'tablet' | 'pc'): st
     @keyframes epPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.06)} }
     .ep-overlay { position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:99999; display:none; align-items:center; justify-content:center; }
     .ep-overlay.visible { display:flex; }
-    .ep-content { max-width:500px; width:90%; max-height:80vh; overflow:auto; position:relative; scrollbar-width:none; -ms-overflow-style:none; }
+    .ep-content { max-width:min(500px,92vw); width:fit-content; max-height:80vh; overflow:auto; position:relative; scrollbar-width:none; -ms-overflow-style:none; }
     .ep-content::-webkit-scrollbar { width:0; height:0; display:none; }
     .ep-content.fade { animation:epFadeIn .3s ease }
     .ep-content.slideUp { animation:epSlideUp .4s ease }
@@ -598,7 +598,7 @@ function buildPopupSnippet(popup: ExitPopup, device: 'sp' | 'tablet' | 'pc'): st
     .ep-content.bounceIn { animation:epBounceIn .6s ease }
     .ep-content.elastic { animation:epElastic .8s ease }
     .ep-content.flipIn { animation:epFlipIn .6s ease }
-    .ep-close { position:absolute; top:-12px; right:-12px; width:28px; height:28px; border-radius:50%; background:#fff; border:1px solid #ddd; cursor:pointer; font-size:14px; display:flex; align-items:center; justify-content:center; box-shadow:0 1px 4px rgba(0,0,0,.15); z-index:1; }
+    .ep-close { position:absolute; top:8px; right:8px; width:28px; height:28px; border-radius:50%; background:#fff; border:1px solid #ddd; cursor:pointer; font-size:14px; display:flex; align-items:center; justify-content:center; box-shadow:0 1px 4px rgba(0,0,0,.15); z-index:2; }
   `
 
   // 統合IIFE: 内部アニメJS(popup.javascript) + トリガーJS を1つのスコープにまとめ、
@@ -614,6 +614,8 @@ function buildPopupSnippet(popup: ExitPopup, device: 'sp' | 'tablet' | 'pc'): st
 
     function showPopup(){
       if(shown)return;
+      // 指示160: 離脱防止ポップは同時に1つだけ表示する（複数有効時に重なって×が2個出るのを防ぐ）。
+      if(document.querySelector('.ep-overlay.visible'))return;
       shown=true;
       overlay.classList.add('visible');
       try{overlay.dispatchEvent(new CustomEvent('ep-show'))}catch(e){}

@@ -26,17 +26,21 @@ export const FREE_FONT_SIZE_UNITS: readonly string[] = ['px', '%', 'em', 'rem']
  * CSSジェネリック → 和文システム → 和文Webフォント → 欧文 の順。
  * Google Fonts は loadGoogleFonts() でロードする。
  */
+// 指示158: 見た目がはっきり変わる日本語フォントだけを並べる（英語・ジェネリックは載せない）。
+// すべて Google Fonts (日本語) で loadGoogleFonts() が読み込む＝どの環境でも確実に変化する。
 export const TOOLBAR_FONT_FAMILIES: readonly string[] = [
-  // CSS ジェネリック
-  'serif', 'sans-serif', 'cursive', 'fantasy', 'monospace',
-  // 和文システムフォント
-  'ヒラギノ角ゴ Pro W3', 'ヒラギノ明朝 Pro W3',
-  '游ゴシック体', '游明朝体', 'メイリオ',
-  // 和文 Google Fonts
-  'Noto Sans JP', 'Noto Serif JP', 'M PLUS Rounded 1c',
-  'Kosugi Maru', 'Sawarabi Gothic',
-  // 欧文
-  'Arial', 'Georgia', 'Times New Roman', 'Verdana', 'Impact',
+  'Noto Sans JP',       // ゴシック（標準）
+  'Noto Serif JP',      // 明朝
+  'Shippori Mincho',    // 明朝（力強い）
+  'M PLUS Rounded 1c',  // 丸ゴシック
+  'Zen Maru Gothic',    // 丸ゴシック（やわらかい）
+  'Kosugi Maru',        // 丸ゴシック（細め）
+  'Dela Gothic One',    // 極太（インパクト）
+  'RocknRoll One',      // 太ポップ
+  'Reggae One',         // 装飾・極太
+  'Yuji Syuku',         // 毛筆（筆文字）
+  'Hachi Maru Pop',     // 手書き（丸ポップ）
+  'Yomogi',             // 手書き（ペン字）
 ]
 
 /** Google Fonts の <link> + フォントドロップダウンのスクロール CSS を注入（重複防止付き） */
@@ -51,9 +55,16 @@ export function loadGoogleFonts(): void {
     'https://fonts.googleapis.com/css2?' +
     'family=Noto+Sans+JP:wght@400;700' +
     '&family=Noto+Serif+JP:wght@400;700' +
+    '&family=Shippori+Mincho:wght@400;700' +
     '&family=M+PLUS+Rounded+1c:wght@400;700' +
+    '&family=Zen+Maru+Gothic:wght@400;700' +
     '&family=Kosugi+Maru' +
-    '&family=Sawarabi+Gothic' +
+    '&family=Dela+Gothic+One' +
+    '&family=RocknRoll+One' +
+    '&family=Reggae+One' +
+    '&family=Yuji+Syuku' +
+    '&family=Hachi+Maru+Pop' +
+    '&family=Yomogi' +
     '&display=swap'
   document.head.append(link)
 
