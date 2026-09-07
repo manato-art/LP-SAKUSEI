@@ -269,32 +269,32 @@ const MOCKUP_CSS = `
     box-shadow: 0 1px 4px rgba(0,0,0,.04) !important;
   }
 
-  /* アイコンレール */
+  /* アイコンレール（指示: もっと大きく見やすく） */
   [class*="_sideToolbarWrapper_"] {
-    width: 50px !important;
+    width: 68px !important;
     background: var(--sidebar-bg) !important;
     border-left: 1px solid var(--border) !important;
     display: flex !important;
     flex-direction: column !important;
     align-items: center !important;
-    padding: 6px 0 !important;
-    gap: 1px !important;
+    padding: 8px 0 !important;
+    gap: 2px !important;
     flex-shrink: 0 !important;
     align-self: stretch !important;
     height: auto !important;
     overflow-y: auto !important;
   }
-  /* 基板の各アイコン: サイズ・余白を統一 */
+  /* 基板の各アイコン: サイズ・余白を統一（指示: 大きく） */
   [class*="_sideToolbarIcon_"] {
-    width: 40px !important;
+    width: 58px !important;
     height: auto !important;
     display: flex !important;
     flex-direction: column !important;
     align-items: center !important;
-    gap: 2px !important;
-    padding: 5px 0 !important;
+    gap: 3px !important;
+    padding: 8px 0 !important;
     cursor: pointer !important;
-    border-radius: 5px !important;
+    border-radius: 6px !important;
     background: none !important;
     background-color: transparent !important;
     box-shadow: none !important;
@@ -313,17 +313,22 @@ const MOCKUP_CSS = `
   [class*="_sideToolbarIcon_"]::after {
     display: none !important;
   }
-  /* モック差し替えSVGのサイズ統一 */
+  /* モック差し替えSVGのサイズ統一（指示: 大きく） */
   [class*="_sideToolbarIcon_"] [data-rail-svg] svg {
-    width: 18px !important;
-    height: 18px !important;
+    width: 24px !important;
+    height: 24px !important;
     color: var(--sidebar-icon) !important;
   }
-  /* テキストラベル */
+  /* 差し替え前の元アイコン画像も同じ大きさに揃える */
+  [class*="_sideToolbarIcon_"] img[class*="_icon_"] {
+    width: 24px !important;
+    height: 24px !important;
+  }
+  /* テキストラベル（指示: 大きく） */
   [class*="_sideToolbarIcon_"] .sb-side-label {
-    font-size: 8px !important;
+    font-size: 10px !important;
     color: var(--text-muted) !important;
-    line-height: 1.1 !important;
+    line-height: 1.15 !important;
     text-align: center !important;
     white-space: nowrap !important;
   }
