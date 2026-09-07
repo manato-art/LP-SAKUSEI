@@ -7,6 +7,7 @@
  * 挿入・ドロップ等の配線は `media-insert.ts`（Quill は型のみ）に置き、テストから安全に読める。
  */
 import Quill from 'quill'
+import { stripLeakedEditorImgBorder } from './widget-css-sanitize.ts'
 
 type BlotConstructor = new (...args: unknown[]) => object
 
@@ -57,7 +58,7 @@ export function registerMediaBlots(): void {
       const node = super.create(html) as HTMLElement
       node.setAttribute('data-widget-block', 'true')
       node.setAttribute('contenteditable', 'false')
-      node.innerHTML = html
+      node.innerHTML = stripLeakedEditorImgBorder(html)
       node.style.cssText = 'margin:8px 0'
       return node
     }

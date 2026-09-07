@@ -17,6 +17,7 @@ import { toast } from '../ui.ts'
 import { ensureWhiteBase } from '../white-base.ts'
 import { bindBackdropClose, findByExactText, openPortal } from './portal.ts'
 import { highlight } from './syntax-highlight.ts'
+import { stripLeakedEditorImgBorder } from './widget-css-sanitize.ts'
 
 const HOOK = {
   trigger: '[aria-label="Widget管理"]',
@@ -478,7 +479,8 @@ function insertWidget(quill: Quill, bodyHtml: string | null, title: string): voi
   }
   const doc = new DOMParser().parseFromString(bodyHtml, 'text/html')
   for (const style of doc.querySelectorAll('style')) {
-    const css = style.textContent ?? ''
+    // ウィジェットCSSに紛れた実SBの赤枠警告(.ql-editor img{border:2px solid red})を除去する
+    const css = stripLeakedEditorImgBorder(style.textContent ?? '')
     if (css.trim() !== '') {
       const existing = [...document.head.querySelectorAll('style[data-widget-css]')]
       const alreadyHas = existing.some((s) => s.textContent === css)
