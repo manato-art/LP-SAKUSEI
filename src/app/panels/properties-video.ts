@@ -11,6 +11,7 @@
  */
 import type Quill from 'quill'
 import { toast } from '../ui.ts'
+import { readFileAsDataUrl } from './webp-convert.ts'
 import { group, row } from './properties-panel.ts'
 import { duplicateVideo, hasFlag, toggleFlag, willBlockAutoplay, type VideoFlag } from './video-controls.ts'
 
@@ -83,31 +84,44 @@ export function buildVideoBody(deps: VideoBodyDeps): VideoBody {
     'margin-left:auto;border-radius:5px;border:1px solid #d5d5db;background:#fff;color:#555;' +
     'font:inherit;font-size:11px;padding:4px 10px;cursor:pointer'
   fitBtn.textContent = '幅いっぱい'
-  fitBtn.title = '横幅を親要素いっぱいに戻します'
+  fitBtn.title = '横幅を親要素いっぱい（100%）にします'
   sizeRow.append(wInput, wUnit, fitBtn)
   sizeGroup.append(sizeRow)
 
-  const applyWidth = (px: number | null): void => {
+  /** 幅を px で決める */
+  const applyWidth = (px: number): void => {
     const video = deps.getVideo()
     if (video === null) return
-    if (px === null) {
-      video.style.width = ''
-      video.removeAttribute('width')
-    } else {
-      const w = Math.max(30, Math.round(px))
-      video.style.width = `${w}px`
-      video.style.height = 'auto'
-      video.setAttribute('width', String(w))
-      video.removeAttribute('height')
-      wInput.value = String(w)
-    }
+    const w = Math.max(30, Math.round(px))
+    video.style.width = `${w}px`
+    video.style.height = 'auto'
+    video.setAttribute('width', String(w))
+    video.removeAttribute('height')
+    wInput.value = String(w)
     deps.quill.update()
+  }
+  /**
+   * 「幅いっぱい」＝横幅を親要素いっぱい（100%）にする。
+   * 幅指定を消すだけだと動画そのものの大きさに戻るだけで、
+   * 押しても何も起きないように見える（実際にそう報告された）。
+   */
+  const applyFullWidth = (): void => {
+    const video = deps.getVideo()
+    if (video === null) return
+    video.style.width = '100%'
+    video.style.height = 'auto'
+    video.removeAttribute('width')
+    video.removeAttribute('height')
+    deps.quill.update()
+    // 100% が何pxになったかを入力欄に映す
+    wInput.value = String(Math.round(video.getBoundingClientRect().width))
+    toast('横幅を親要素いっぱいにしました')
   }
   wInput.addEventListener('change', () => {
     const n = Number(wInput.value)
-    applyWidth(Number.isFinite(n) && n > 0 ? n : null)
+    if (Number.isFinite(n) && n > 0) applyWidth(n)
   })
-  fitBtn.addEventListener('click', () => applyWidth(null))
+  fitBtn.addEventListener('click', applyFullWidth)
 
   // ── 再生設定 ──
   const playGroup = group('再生設定')
@@ -147,7 +161,42 @@ export function buildVideoBody(deps: VideoBodyDeps): VideoBody {
     container.sync?.(copy)
     toast('動画を複製しました')
   })
-  actionGroup.append(dupBtn)
+  const swapBtn = document.createElement('button')
+  swapBtn.type = 'button'
+  swapBtn.style.cssText = dupBtn.style.cssText + ';margin-top:6px'
+  swapBtn.textContent = '動画を差し替える'
+  swapBtn.title = '大きさや再生設定はそのままに、中身の動画だけを入れ替えます'
+  swapBtn.addEventListener('click', () => {
+    const video = deps.getVideo()
+    if (video === null) return
+    const picker = document.createElement('input')
+    picker.type = 'file'
+    picker.accept = 'video/*'
+    picker.addEventListener('change', () => {
+      const file = picker.files?.[0]
+      if (file === undefined) return
+      if (!file.type.startsWith('video/')) {
+        toast('動画ファイルを選んでください', 'error')
+        return
+      }
+      void readFileAsDataUrl(file).then((url) => {
+        if (url === '') {
+          toast('動画を読み込めませんでした', 'error')
+          return
+        }
+        // 差し替えるのは中身だけ。大きさと再生設定は今のまま残す。
+        video.setAttribute('src', url)
+        video.src = url
+        video.load()
+        deps.quill.update()
+        container.sync?.(video)
+        toast('動画を差し替えました')
+      })
+    })
+    picker.click()
+  })
+
+  actionGroup.append(dupBtn, swapBtn)
 
   container.append(srcRow, sizeGroup, playGroup, actionGroup)
 

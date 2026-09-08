@@ -142,6 +142,24 @@ describe('右パネルの動画プロパティ', () => {
     expect(panel).toContain('deps.quill.update()')
   })
 
+  it('「幅いっぱい」は幅を消すのではなく100%にする（消すだけだと何も起きないように見える）', () => {
+    expect(panel).toContain("video.style.width = '100%'")
+    expect(panel).not.toContain("video.style.width = ''")
+  })
+
+  it('差し替えは中身だけ入れ替え、大きさと再生設定は残す', () => {
+    const swap = panel.slice(panel.indexOf('動画を差し替える'))
+    expect(swap).toContain("picker.accept = 'video/*'")
+    expect(swap).toContain('video.load()')
+    // 幅や再生設定を触っていないこと
+    expect(swap).not.toContain('removeAttribute(\'width\')')
+    expect(swap).not.toContain('toggleFlag(')
+  })
+
+  it('動画以外のファイルを選んだら断る', () => {
+    expect(panel).toContain("!file.type.startsWith('video/')")
+  })
+
   it('音ありの自動再生になったら注意を出す（黙って効かないままにしない）', () => {
     expect(panel).toContain('willBlockAutoplay(video)')
   })
