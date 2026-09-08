@@ -78,6 +78,45 @@ export function buildExternalTrackingTag(origin: string, uid: string): string {
                           :/[?&]sb_tracking=true(?:[&#]|$)/.test(h);
     if(t)send('click');
   },true);
+
+  /* ヒートマップ用の収集（到達率・離脱率・滞在時間・クリック位置）。
+     ページを20バンドに割り、離脱時に1回だけまとめて送る。 */
+  var BANDS=20;
+  var reach=new Array(BANDS).fill(0), dwell=new Array(BANDS).fill(0), clicks=[];
+  var lastT=Date.now(), maxBand=0, sent=false;
+  function docH(){ return Math.max(1, document.documentElement.scrollHeight - window.innerHeight); }
+  function curBand(){
+    return Math.max(0, Math.min(BANDS-1, Math.floor((window.scrollY/docH())*BANDS)));
+  }
+  function tick(){
+    var now=Date.now(), b=curBand(), full=docH()+window.innerHeight;
+    var from=Math.max(0,Math.floor((window.scrollY/full)*BANDS));
+    var to=Math.min(BANDS-1,Math.floor(((window.scrollY+window.innerHeight)/full)*BANDS));
+    for(var i=from;i<=to;i++) dwell[i]+=(now-lastT);
+    lastT=now; if(b>maxBand)maxBand=b;
+  }
+  window.addEventListener('scroll',tick,{passive:true});
+  setInterval(tick,1000);
+  document.addEventListener('click',function(e){
+    var h=document.documentElement.scrollHeight||1, w=window.innerWidth||1;
+    clicks.push({x:Math.round((e.clientX/w)*1000)/1000, y:Math.round((e.pageY/h)*1000)/1000});
+    if(clicks.length>300)clicks.shift();
+  },true);
+  function flush(){
+    if(sent)return; sent=true; tick();
+    for(var i=0;i<=maxBand;i++) reach[i]=1;
+    try{
+      var body=JSON.stringify({event:'heatmap',bands:BANDS,reach:reach,dwell:dwell,
+        exit_band:curBand(),clicks:clicks});
+      // sendBeacon は application/json だとクロスオリジンでプリフライトが要り送れない。
+      // text/plain なら単純リクエストとして通る（サーバー側で JSON として解釈する）。
+      if(navigator.sendBeacon) navigator.sendBeacon(U,new Blob([body],{type:'text/plain'}));
+      else fetch(U,{method:'POST',mode:'cors',headers:{'Content-Type':'application/json'},
+        body:body,keepalive:true});
+    }catch(e){}
+  }
+  window.addEventListener('pagehide',flush);
+  document.addEventListener('visibilitychange',function(){ if(document.hidden)flush(); });
 })()</script>`
 }
 

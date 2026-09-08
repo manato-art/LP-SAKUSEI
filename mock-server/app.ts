@@ -71,6 +71,9 @@ export function createApp(): Express {
   })
   app.use(express.json({ limit: '256mb' })) // LP本文に画像(base64)が含まれると数十MBになりうる
   app.use(express.urlencoded({ extended: true }))
+  // 計測ビーコンは sendBeacon で送られる。クロスオリジンだと application/json は
+  // プリフライトが要って送れないため text/plain で来る。中身はJSONなのでここで受ける。
+  app.use(express.text({ type: 'text/plain', limit: '1mb' }))
   app.use(resetMiddleware)
   app.use(mockStateMiddleware)
 

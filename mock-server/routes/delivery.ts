@@ -529,7 +529,20 @@ deliveryRouter.post('/lp/:uid/__track', (req, res) => {
     res.status(404).json({ ok: false })
     return
   }
-  const body = (req.body ?? {}) as { event?: unknown; version?: unknown; amount?: unknown }
+  // sendBeacon はクロスオリジンだと text/plain でしか送れないため、文字列で来る場合がある。
+  // 中身はJSONなのでここで解釈する（壊れていたら空扱いにして落とさない）。
+  const raw = req.body as unknown
+  const parsed: unknown =
+    typeof raw === 'string'
+      ? ((): unknown => {
+          try {
+            return JSON.parse(raw)
+          } catch {
+            return {}
+          }
+        })()
+      : (raw ?? {})
+  const body = (parsed ?? {}) as { event?: unknown; version?: unknown; amount?: unknown }
   const versionUid = typeof body.version === 'string' ? body.version : ''
   const date = toDateKey(new Date())
 
