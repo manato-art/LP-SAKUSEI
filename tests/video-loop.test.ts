@@ -121,20 +121,38 @@ describe('保存・復元でループ設定が戻らない', () => {
   })
 })
 
-describe('切り替えバー', () => {
-  const src = readFileSync('src/app/panels/video-controls.ts', 'utf8')
+describe('右パネルの動画プロパティ', () => {
+  const panel = readFileSync('src/app/panels/properties-video.ts', 'utf8')
+  const props = readFileSync('src/app/panels/properties-panel.ts', 'utf8')
+  const resize = readFileSync('src/app/panels/image-resize.ts', 'utf8')
 
-  it('動画のクリックで出す', () => {
-    expect(src).toContain("target.tagName === 'VIDEO'")
+  it('動画をクリックすると右パネルが動画モードになる', () => {
+    expect(props).toContain("target.tagName === 'VIDEO'")
+    expect(props).toContain('showVideoMode(target as HTMLVideoElement)')
+  })
+
+  it('再生設定・サイズ・複製を出す', () => {
+    for (const label of ['ループ再生', '自動再生', 'ミュート', 'サイズ']) {
+      expect(panel, `${label} が無い`).toContain(label)
+    }
+    expect(panel).toContain('duplicateVideo(video)')
   })
 
   it('変更後に Quill へ知らせる（保存はDOMから直列化される）', () => {
-    expect(src).toContain('quill.update()')
+    expect(panel).toContain('deps.quill.update()')
   })
 
-  it('絵文字ではなくSVGアイコンを使う', () => {
-    const emoji = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u
-    expect(emoji.test(src)).toBe(false)
-    expect(src).toContain('<svg')
+  it('音ありの自動再生になったら注意を出す（黙って効かないままにしない）', () => {
+    expect(panel).toContain('willBlockAutoplay(video)')
+  })
+
+  it('動画も画像と同じリサイズ枠が出る', () => {
+    expect(resize).toContain("target.tagName === 'VIDEO'")
+    expect(resize).toContain('HTMLImageElement | HTMLVideoElement')
+  })
+
+  it('動画では preventDefault しない（再生操作を邪魔しない）', () => {
+    const videoBranch = resize.slice(resize.indexOf("target.tagName === 'VIDEO'"))
+    expect(videoBranch.slice(0, 260)).not.toContain('e.preventDefault()')
   })
 })

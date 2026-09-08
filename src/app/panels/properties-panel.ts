@@ -10,6 +10,7 @@
  *   文字間隔 / 行間 / 配置 / 位置・サイズ / 書式 / 挿入 / アクション
  */
 import type Quill from 'quill'
+import { buildVideoBody } from './properties-video.ts'
 import {
   cssFontFamilyValue,
   fontSizeLabel,
@@ -323,12 +324,22 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
   // 未選択時の表示
   const emptyMsg = document.createElement('div')
   emptyMsg.className = 'sb-props-empty'
-  emptyMsg.textContent = 'テキストや画像を選択すると\nここにプロパティが表示されます'
+  emptyMsg.textContent = 'テキスト・画像・動画を選択すると\nここにプロパティが表示されます'
   emptyMsg.style.whiteSpace = 'pre-line'
 
   // ── 画像プロパティ（指示101: 画像クリックで右パネルに詳細表示） ──
   let selectedImage: HTMLImageElement | null = null
   const imageBody = buildImageBody(quill, () => selectedImage, (img) => { selectedImage = img })
+
+  // ── 動画プロパティ（動画クリックで再生設定・サイズ・複製をここで操作する） ──
+  let selectedVideo: HTMLVideoElement | null = null
+  const videoBody = buildVideoBody({
+    quill,
+    getVideo: () => selectedVideo,
+    setVideo: (v) => {
+      selectedVideo = v
+    },
+  })
 
   // ── helpers ──
   // 指示94: Quill の getSelection() がフォーカス喪失で null を返すケースに対応。
@@ -827,27 +838,45 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
     actGroup,
   )
 
-  panel.append(header, tabs, body, imageBody, emptyMsg)
+  panel.append(header, tabs, body, imageBody, videoBody, emptyMsg)
 
   // ── 状態の同期 ──
   /** 画像選択モードを表示 */
   function showImageMode(img: HTMLImageElement): void {
     selectedImage = img
+    selectedVideo = null
     body.style.display = 'none'
     imageBody.style.display = 'flex'
+    videoBody.style.display = 'none'
     emptyMsg.style.display = 'none'
     title.textContent = '選択中：画像'
     refreshImageBody(imageBody, img)
   }
 
+  /** 動画選択モードを表示 */
+  function showVideoMode(video: HTMLVideoElement): void {
+    selectedVideo = video
+    selectedImage = null
+    body.style.display = 'none'
+    imageBody.style.display = 'none'
+    videoBody.style.display = 'flex'
+    emptyMsg.style.display = 'none'
+    title.textContent = '選択中：動画'
+    videoBody.sync?.(video)
+  }
+
   function refresh(): void {
     // テキスト編集中は再帰的なrefreshを抑止する（deleteText→text-change→refresh の連鎖防止）
     if (isEditingText) return
-    // 画像選択中は画像モードを維持する
+    // 画像・動画を選んでいる間はそのモードを維持する
     if (selectedImage !== null && document.contains(selectedImage)) {
       return
     }
+    if (selectedVideo !== null && document.contains(selectedVideo)) {
+      return
+    }
     selectedImage = null
+    selectedVideo = null
 
     const r = getRange()
     const hasSelection = r !== null && r.length > 0
@@ -949,10 +978,13 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
     const target = e.target as HTMLElement
     if (target.tagName === 'IMG') {
       showImageMode(target as HTMLImageElement)
+    } else if (target.tagName === 'VIDEO') {
+      showVideoMode(target as HTMLVideoElement)
     } else {
-      // 画像以外をクリックしたら画像選択を解除
-      if (selectedImage !== null) {
+      // 画像・動画以外をクリックしたら選択を解除
+      if (selectedImage !== null || selectedVideo !== null) {
         selectedImage = null
+        selectedVideo = null
         refresh()
       }
     }
@@ -970,7 +1002,7 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
 
 /* ── builders ── */
 
-function group(titleText: string): HTMLElement {
+export function group(titleText: string): HTMLElement {
   const g = document.createElement('div')
   g.className = 'sb-pg'
   const t = document.createElement('div')
@@ -980,7 +1012,7 @@ function group(titleText: string): HTMLElement {
   return g
 }
 
-function row(labelText: string): HTMLElement {
+export function row(labelText: string): HTMLElement {
   const r = document.createElement('div')
   r.className = 'sb-pr'
   const l = document.createElement('span')

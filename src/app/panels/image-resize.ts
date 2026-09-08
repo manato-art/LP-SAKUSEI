@@ -17,9 +17,12 @@
 import type Quill from 'quill'
 import { attachImageActionBar } from './image-link.ts'
 
+/** リサイズできる要素。画像も動画も「幅を変えて高さは比率維持」で同じ扱いにする。 */
+export type ResizeTarget = HTMLImageElement | HTMLVideoElement
+
 /** リサイズ中の状態 */
 interface ResizeState {
-  img: HTMLImageElement
+  img: ResizeTarget
   startX: number
   startWidth: number
   /** 右側ハンドル = +1, 左側ハンドル = −1 */
@@ -93,7 +96,7 @@ export function wireImageResize(quill: Quill): void {
   const root = quill.root
 
   let wrap: HTMLDivElement | null = null
-  let activeImg: HTMLImageElement | null = null
+  let activeImg: ResizeTarget | null = null
   let resizeState: ResizeState | null = null
 
   injectResizeCss()
@@ -134,7 +137,7 @@ export function wireImageResize(quill: Quill): void {
 
   // ── overlay 表示 ──────────────────────────────────
 
-  function showOverlay(img: HTMLImageElement): void {
+  function showOverlay(img: ResizeTarget): void {
     removeOverlay()
     activeImg = img
     // Quill core CSS で .ql-container は position:relative を持つが、
@@ -171,8 +174,10 @@ export function wireImageResize(quill: Quill): void {
     badge.setAttribute('data-resize-badge', 'true')
     wrap.append(badge)
 
-    // リンク設定・計測URLのアクションバー
-    attachImageActionBar(wrap, img, quill)
+    // リンク設定・計測URLのアクションバーは画像だけ。
+    // 動画の設定（ループ/自動再生/ミュート/複製）は右パネルに置いている
+    // （動画の上に浮かせると本文に被って読めなくなるため）。
+    if (img instanceof HTMLImageElement) attachImageActionBar(wrap, img, quill)
 
     container.append(wrap)
     reposition()
@@ -187,6 +192,9 @@ export function wireImageResize(quill: Quill): void {
     if (target.tagName === 'IMG') {
       e.preventDefault()
       showOverlay(target as HTMLImageElement)
+    } else if (target.tagName === 'VIDEO') {
+      // 動画は preventDefault しない。再生/一時停止などの操作を邪魔しないため。
+      showOverlay(target as HTMLVideoElement)
     } else if (wrap !== null) {
       removeOverlay()
     }
