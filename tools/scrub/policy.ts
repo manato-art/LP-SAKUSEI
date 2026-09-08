@@ -119,6 +119,25 @@ export const STRIP_PATTERNS: readonly { name: string; pattern: RegExp }[] = [
 ]
 
 /**
+ * 「消さずに置き換える」もの（§5-5）。
+ *
+ * STRIP_PATTERNS は空文字に潰すので、**構造を残したいもの**には使えない。
+ * 実採取で見つかった例: ヒートマップ画面の本番CDNバンドル
+ *   `https://cdn-.../assets/heatmap-<64桁hex>.js`
+ * これは `<script src>` の実タグではなく、**JS文字列の中**と**エスケープされたHTML**
+ * （`&lt;script src=&quot;…&quot;&gt;`）に埋まっているため STRIP_PATTERNS に当たらず、
+ * gate の「本番トークン(32文字以上)」で毎回止まっていた。
+ * ファイル名のハッシュだけを固定値に潰す（どのバンドルを読んでいたかの構造は残す）。
+ */
+export const REWRITE_PATTERNS: readonly { name: string; pattern: RegExp; to: string }[] = [
+  {
+    name: '本番バンドルのハッシュ',
+    pattern: /(\/assets\/[A-Za-z0-9_-]+-)[a-f0-9]{32,}(\.(?:js|css|mjs))/gi,
+    to: '$1SCRUBBED$2',
+  },
+]
+
+/**
  * タグ単位の条件付き除去（企画書 §4-4・§13-G）。
  *
  * **重要**: 「タグを丸ごと拾う正規表現」＋「中身にSaaS識別子が含まれるかの判定」を分ける。

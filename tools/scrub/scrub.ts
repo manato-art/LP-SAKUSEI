@@ -15,6 +15,7 @@ import {
   LOCAL_APP_ORIGIN,
   NEUTRAL_DOMAIN,
   STRIP_PATTERNS,
+  REWRITE_PATTERNS,
 } from './policy.ts'
 import { applyDictionary, type ScrubMap } from './dictionary.ts'
 import { fakeEmail, fakeHost, fakePhone, fakeToken } from './replacers.ts'
@@ -88,6 +89,13 @@ export function scrubText(input: string, map: ScrubMap, hosts: HostRewrite): Scr
   for (const { name, pattern } of STRIP_PATTERNS) {
     if (pattern.test(text)) stripped.push(name)
     text = text.replace(pattern, '')
+    pattern.lastIndex = 0
+  }
+
+  // 消さずに置き換えるもの（構造は残したいが値は潰す）
+  for (const { name, pattern, to } of REWRITE_PATTERNS) {
+    if (pattern.test(text)) stripped.push(`${name}(置換)`)
+    text = text.replace(pattern, to)
     pattern.lastIndex = 0
   }
 
