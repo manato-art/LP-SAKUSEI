@@ -324,6 +324,18 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
       const heat = document.createElement('div')
       heat.className = 'hm-heat'
       heat.style.background = `linear-gradient(to bottom, ${stops.join(',')})`
+      // 指示: 「パーセンテージによってグラデーションの幅を変えたい」。
+      // 右端を各バンドの値でなぞる多角形で切り抜く。帯ごとに矩形を置くのではなく
+      // 1枚を切り抜くので、縦方向のなめらかさは保ったまま横幅だけが変わる。
+      const points = ['0% 0%']
+      values.forEach((v, i) => {
+        if (v === null) return
+        const w = (Math.min(1, Math.max(0, v.strength)) * 100).toFixed(2)
+        const y = (((i + 0.5) / bands) * 100).toFixed(2)
+        points.push(`${w}% ${y}%`)
+      })
+      points.push('0% 100%')
+      heat.style.clipPath = `polygon(${points.join(',')})`
       overlay.append(heat)
     }
 
