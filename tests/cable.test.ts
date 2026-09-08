@@ -15,6 +15,7 @@ const CONVERSIONS_CHANNEL = JSON.stringify({ channel: 'ConversionsChannel' })
 let server: Server
 let cable: { close: () => void }
 let baseUrl: string
+let origin: string
 let wsUrl: string
 const openSockets: WebSocket[] = []
 
@@ -24,7 +25,8 @@ beforeAll(async () => {
   await new Promise<void>((resolve) => server.listen(0, resolve))
   const address = server.address()
   if (address === null || typeof address === 'string') throw new Error('ポート取得に失敗しました')
-  baseUrl = `http://127.0.0.1:${address.port}/api/v1`
+  origin = `http://127.0.0.1:${address.port}`
+  baseUrl = `${origin}/api/v1`
   wsUrl = `ws://127.0.0.1:${address.port}/cable`
 })
 
@@ -122,8 +124,8 @@ describe('ActionCable の封筒（§10-7）', () => {
   }, 8000)
 })
 
-describe('CV速報の発火条件（§1-4・§10-9）', () => {
-  it('公開中Versionがあると合成CVが流れ、ストアにも積まれる', async () => {
+describe('CV速報の発火条件（実測CVのみ・合成CVは廃止）', () => {
+  it('公開中Versionがあっても合成CVは流れない', async () => {
     const created = await postJson<{ version: { uid: string } }>(`${baseUrl}/ab_tests`, {
       title: 'サンプル施策001',
       media_id: 1,
@@ -133,21 +135,51 @@ describe('CV速報の発火条件（§1-4・§10-9）', () => {
     const client = await connect()
     await waitForFrame(client, (f) => f.type === 'welcome', 2000)
     client.socket.send(JSON.stringify({ command: 'subscribe', identifier: CONVERSIONS_CHANNEL }))
+    await waitForFrame(client, (f) => f.type === 'confirm_subscription', 2000)
 
-    const frame = await waitForFrame(client, (f) => f.message?.conversion !== undefined, 12000)
+    // 旧実装は最初の合成CVを3〜8秒後に流していた。上限より長く待って1件も来ないことを見る。
+    await new Promise((resolve) => setTimeout(resolve, 9000))
+    expect(client.frames.some((f) => f.message?.conversion !== undefined)).toBe(false)
+    client.socket.close()
+
+    // ストアにも積まれていない（偽のCVでCV/CVR/CPAが動かないこと）
+    const list = await fetch(`${baseUrl}/conversions`)
+    const body = (await list.json()) as { conversions: unknown[] }
+    expect(body.conversions.length).toBe(0)
+  }, 20000)
+
+  it('計測タグのCV（__track event:cv）はCV速報に流れ、ストアにも積まれる', async () => {
+    const created = await postJson<{ ab_test: { uid: string }; version: { uid: string } }>(
+      `${baseUrl}/ab_tests`,
+      { title: 'サンプル施策002', media_id: 1 },
+    )
+    const abTestUid = created.json.ab_test.uid
+
+    const client = await connect()
+    await waitForFrame(client, (f) => f.type === 'welcome', 2000)
+    client.socket.send(JSON.stringify({ command: 'subscribe', identifier: CONVERSIONS_CHANNEL }))
+    await waitForFrame(client, (f) => f.type === 'confirm_subscription', 2000)
+
+    // CV計測タグ（サンクスページ）と同じ経路で1件送る
+    await fetch(`${origin}/lp/${abTestUid}/__track`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event: 'cv', amount: 12345 }),
+    })
+
+    const frame = await waitForFrame(client, (f) => f.message?.conversion !== undefined, 5000)
     const conversion = frame.message?.conversion ?? {}
     expect(frame.identifier).toBe(CONVERSIONS_CHANNEL)
-    // §10-7 のpayload形状
+    // §10-7 のpayload形状は維持する
     expect(Object.keys(conversion).sort()).toEqual(
       ['ab_test_title', 'ab_test_uid', 'amount', 'media', 'occurred_at', 'uid', 'version_name'].sort(),
     )
-    expect(conversion['ab_test_title']).toBe('サンプル施策001')
-    expect(typeof conversion['amount']).toBe('number')
+    expect(conversion['ab_test_title']).toBe('サンプル施策002')
+    expect(conversion['amount']).toBe(12345)
     client.socket.close()
 
-    // GET /conversions にも反映されている（初期GET + WS pushの二段・§10-7）
     const list = await fetch(`${baseUrl}/conversions`)
     const body = (await list.json()) as { conversions: unknown[] }
-    expect(body.conversions.length).toBeGreaterThan(0)
-  }, 20000)
+    expect(body.conversions.length).toBe(1)
+  }, 15000)
 })

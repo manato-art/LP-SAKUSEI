@@ -301,11 +301,19 @@ export interface DailyMetric {
   entity_uid: string
   scope: ReportScope
   date: string
+  /** LP側の実測（計測タグ） */
   pv: number
   click: number
   cv: number
+  /** 媒体側の取り込み値（Meta広告APIなど）。未取得は0。 */
   ad_cost: number
   sales: number
+  /** 媒体の表示回数 */
+  imp?: number
+  /** 媒体が計測したクリック */
+  media_click?: number
+  /** 媒体が計測したCV */
+  media_cv?: number
 }
 
 export type ReportScope = 'ab_test' | 'version' | 'lp' | 'creative'

@@ -1,58 +1,50 @@
 /**
  * ActionCable(`/cable`)モック（企画書 §10-7）。Rails ActionCable の封筒を忠実に模倣する。
- * 本番WSには一切接続しない（§3-2）。CVは合成で3-8秒おきにpushし、ストアにも積む（§10-9）。
+ * 本番WSには一切接続しない（§3-2）。
+ *
+ * CVは**実測のみ**を流す。以前は3-8秒おきに架空のCVを合成してストアにも積んでいたが、
+ * 数字を実務で使う前提になったため廃止した（偽のCV/CVR/CPAが混ざるのを防ぐ）。
+ * 発火経路は計測タグ由来の1本だけ: `POST /lp/:uid/__track` の event:'cv'。
  */
 import { WebSocketServer, type WebSocket } from 'ws'
 import type { Server } from 'node:http'
-import { CABLE_PING_MS, CV_PUSH_MAX_MS, CV_PUSH_MIN_MS, PREFIX } from '../config.ts'
-import { recordConversion } from '../store/actions.ts'
-import { getState, setState } from '../store/store.ts'
-import { createRng } from '../store/rng.ts'
-import { AVERAGE_UNIT_PRICE } from '../store/metrics.ts'
+import { CABLE_PING_MS, PREFIX } from '../config.ts'
 
 const CONVERSIONS_CHANNEL = JSON.stringify({ channel: 'ConversionsChannel' })
+
+/** 現在接続中のクライアント（CV速報のpush先）。サーバー起動中だけ非null。 */
+let activeClients: Set<CableClient> | null = null
+
+/** CV速報チャンネルへ流す1件の形（採取した実ペイロードの封筒に合わせる） */
+export interface ConversionPush {
+  uid: string
+  ab_test_uid: string
+  ab_test_title: string
+  version_name: string
+  media: { name: string; icon_name: string } | null
+  amount: number
+  occurred_at: string
+}
+
+/**
+ * 実測CVをCV速報チャンネルへpushする。合成CVを廃止したため、これが唯一の発火経路。
+ * WSが動いていなければ黙って何もしない（計測自体はHTTP側で完了している）。
+ */
+export function broadcastConversion(conversion: ConversionPush): void {
+  if (activeClients === null) return
+  const payload = { identifier: CONVERSIONS_CHANNEL, message: { conversion } }
+  for (const client of activeClients) {
+    if (client.subscriptions.has(CONVERSIONS_CHANNEL)) send(client.socket, payload)
+  }
+}
 
 interface CableClient {
   socket: WebSocket
   subscriptions: Set<string>
 }
 
-/** CV金額のばらつき（合成） */
-const AMOUNT_RANGE: readonly [number, number] = [
-  Math.round(AVERAGE_UNIT_PRICE * 0.5),
-  Math.round(AVERAGE_UNIT_PRICE * 1.5),
-]
-
 function send(socket: WebSocket, payload: unknown): void {
   if (socket.readyState === socket.OPEN) socket.send(JSON.stringify(payload))
-}
-
-/**
- * push対象の公開中Versionを1つ選ぶ。
- * 公開中Versionが無い＝まだ配信していない新規アカウントなので、CVは発生しない（§1-4）。
- */
-function pickPublishedTarget(tick: number): {
-  abTestUid: string
-  abTestTitle: string
-  versionUid: string
-  versionName: string
-  mediaId: number | null
-} | null {
-  const state = getState()
-  const published = state.versions.filter((v) => v.status === '公開中')
-  if (published.length === 0) return null
-  const rng = createRng(tick)
-  const version = rng.pick(published)
-  const article = state.articles.find((a) => a.id === version.article_id)
-  const abTest = state.abTests.find((t) => t.id === article?.ab_test_id)
-  if (abTest === undefined) return null
-  return {
-    abTestUid: abTest.uid,
-    abTestTitle: abTest.title,
-    versionUid: version.uid,
-    versionName: version.name,
-    mediaId: abTest.media_id,
-  }
 }
 
 export interface CableHandle {
@@ -64,7 +56,6 @@ export interface CableHandle {
 export function attachCable(server: Server): CableHandle {
   const wss = new WebSocketServer({ server, path: PREFIX.cable })
   const clients = new Set<CableClient>()
-  let tick = 0
 
   wss.on('connection', (socket) => {
     const client: CableClient = { socket, subscriptions: new Set() }
@@ -101,57 +92,17 @@ export function attachCable(server: Server): CableHandle {
     }
   }, CABLE_PING_MS)
 
-  // CV速報push（3-8秒ランダム・§10-7）
-  const scheduleCv = (): NodeJS.Timeout => {
-    const rng = createRng(tick + 1)
-    const wait = CV_PUSH_MIN_MS + Math.floor(rng.next() * (CV_PUSH_MAX_MS - CV_PUSH_MIN_MS))
-    return setTimeout(() => {
-      tick += 1
-      const target = pickPublishedTarget(tick)
-      if (target !== null) {
-        const rng2 = createRng(tick * 7919)
-        const amount = rng2.int(AMOUNT_RANGE[0], AMOUNT_RANGE[1])
-        let conversion = null
-        setState((state) => {
-          const out = recordConversion(state, {
-            ab_test_uid: target.abTestUid,
-            version_uid: target.versionUid,
-            media_id: target.mediaId,
-            amount,
-          })
-          conversion = out.conversion
-          return out.state
-        })
-        const media = getState().media.find((m) => m.id === target.mediaId)
-        const payload = {
-          identifier: CONVERSIONS_CHANNEL,
-          message: {
-            conversion: {
-              uid: (conversion as { uid?: string } | null)?.uid ?? '',
-              ab_test_uid: target.abTestUid,
-              ab_test_title: target.abTestTitle,
-              version_name: target.versionName,
-              media:
-                media === undefined ? null : { name: media.name, icon_name: media.icon_name },
-              amount,
-              occurred_at: new Date().toISOString(),
-            },
-          },
-        }
-        for (const client of clients) {
-          if (client.subscriptions.has(CONVERSIONS_CHANNEL)) send(client.socket, payload)
-        }
-      }
-      cvTimer = scheduleCv()
-    }, wait)
-  }
-  let cvTimer = scheduleCv()
+  // CV速報push: 合成CV（3-8秒おきの架空CV）は廃止した。
+  // 数字を実務で使う前提になったため、CVは計測タグ由来の実測だけを流す
+  // （`POST /lp/:uid/__track` の event:'cv' → recordConversion → broadcastConversion）。
+  // 流入が無ければCV速報は静かなままになるが、それが正しい状態。
+  activeClients = clients
 
   const close = (): void => {
     clearInterval(pingTimer)
-    clearTimeout(cvTimer)
     for (const client of clients) client.socket.terminate()
     clients.clear()
+    activeClients = null
     wss.close()
   }
 
@@ -159,7 +110,7 @@ export function attachCable(server: Server): CableHandle {
   server.on('close', close)
   wss.on('close', () => {
     clearInterval(pingTimer)
-    clearTimeout(cvTimer)
+    activeClients = null
   })
 
   return { wss, close }

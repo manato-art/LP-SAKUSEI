@@ -101,12 +101,26 @@ export interface ReportKpi {
   click: number
   cv: number
   ad_cost: number
+  /** 媒体の表示回数（Meta広告等から取り込み） */
+  imp: number
+  /** 媒体が計測したクリック */
+  media_click: number
+  /** 媒体が計測したCV */
+  media_cv: number
   sales: number
   gross_profit: number
   roas: number | null
   roi: number | null
   cvr: number | null
   cpa: number | null
+  /** click / pv */
+  ctr: number | null
+  /** cv / pv */
+  ctvr: number | null
+  /** media_click / imp */
+  media_ctr: number | null
+  /** ad_cost / media_cv */
+  mcpa: number | null
 }
 
 export interface ReportVersionRow extends ReportKpi {

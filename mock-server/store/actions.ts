@@ -688,7 +688,16 @@ export function bumpMetric(
   entityUid: string,
   scope: 'ab_test' | 'version',
   date: string,
-  delta: Partial<{ pv: number; click: number; cv: number; ad_cost: number; sales: number }>,
+  delta: Partial<{
+    pv: number
+    click: number
+    cv: number
+    ad_cost: number
+    sales: number
+    imp: number
+    media_click: number
+    media_cv: number
+  }>,
 ): State['metrics'] {
   const index = state.metrics.findIndex(
     (m) => m.entity_uid === entityUid && m.scope === scope && m.date === date,
@@ -705,6 +714,9 @@ export function bumpMetric(
         cv: delta.cv ?? 0,
         ad_cost: delta.ad_cost ?? 0,
         sales: delta.sales ?? 0,
+        imp: delta.imp ?? 0,
+        media_click: delta.media_click ?? 0,
+        media_cv: delta.media_cv ?? 0,
       },
     ]
   }
@@ -717,6 +729,9 @@ export function bumpMetric(
           cv: m.cv + (delta.cv ?? 0),
           ad_cost: m.ad_cost + (delta.ad_cost ?? 0),
           sales: m.sales + (delta.sales ?? 0),
+          imp: (m.imp ?? 0) + (delta.imp ?? 0),
+          media_click: (m.media_click ?? 0) + (delta.media_click ?? 0),
+          media_cv: (m.media_cv ?? 0) + (delta.media_cv ?? 0),
         }
       : m,
   )

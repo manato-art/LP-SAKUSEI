@@ -15,7 +15,21 @@ import type { ReportKpi } from '../api.ts'
 export type CellFormat = 'integer' | 'yen' | 'percent'
 
 /** metrics.ts（DerivedKpi）が実際に定義しているキーだけを許す */
-export type KpiKey = 'ad_cost' | 'pv' | 'click' | 'cv' | 'cvr' | 'cpa'
+export type KpiKey =
+  | 'ad_cost'
+  | 'pv'
+  | 'click'
+  | 'cv'
+  | 'cvr'
+  | 'cpa'
+  | 'imp'
+  | 'media_click'
+  | 'media_cv'
+  | 'ctr'
+  | 'ctvr'
+  | 'media_ctr'
+  | 'mcpa'
+  | 'roas'
 
 export interface ReportColumn {
   /** 採取ヘッダの表記（改名しない） */
@@ -69,6 +83,22 @@ function readMetric(kpi: ReportKpi, key: KpiKey): number | null {
       return kpi.cvr
     case 'cpa':
       return kpi.cpa
+    case 'imp':
+      return kpi.imp
+    case 'media_click':
+      return kpi.media_click
+    case 'media_cv':
+      return kpi.media_cv
+    case 'ctr':
+      return kpi.ctr
+    case 'ctvr':
+      return kpi.ctvr
+    case 'media_ctr':
+      return kpi.media_ctr
+    case 'mcpa':
+      return kpi.mcpa
+    case 'roas':
+      return kpi.roas
   }
 }
 

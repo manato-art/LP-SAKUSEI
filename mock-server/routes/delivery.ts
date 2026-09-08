@@ -15,7 +15,8 @@ import { getState, setState } from '../store/store.ts'
 import { getMasterStyleSheet } from '../store/master-style-sheet.ts'
 import { getHtmlSetting } from '../store/html-tags.ts'
 import { bulkTagsForFolder } from '../store/bulk-tags.ts'
-import { bumpMetric } from '../store/actions.ts'
+import { bumpMetric, recordConversion } from '../store/actions.ts'
+import { broadcastConversion, type ConversionPush } from '../ws/cable.ts'
 import { toDateKey } from '../store/metrics.ts'
 import type { AbTest, Article, ExitPopup, FollowPopup, State, Version } from '../store/types.ts'
 import { LP_BASE_CSS } from '../../src/app/lp-base-css.ts'
@@ -469,10 +470,43 @@ deliveryRouter.post('/lp/:uid/__track', (req, res) => {
     res.status(404).json({ ok: false })
     return
   }
-  const body = (req.body ?? {}) as { event?: unknown; version?: unknown }
-  const event: 'pv' | 'click' = body.event === 'click' ? 'click' : 'pv'
+  const body = (req.body ?? {}) as { event?: unknown; version?: unknown; amount?: unknown }
   const versionUid = typeof body.version === 'string' ? body.version : ''
   const date = toDateKey(new Date())
+
+  // ── CV（実測）: CV計測タグ（サンクスページ）からの通知 ──
+  // 合成CVを廃止したので、CVが増える経路はここだけ。売上(amount)は任意で、
+  // 送られてこなければ0（金額を発明しない）。
+  if (body.event === 'cv') {
+    const amount =
+      typeof body.amount === 'number' && Number.isFinite(body.amount) ? Math.max(0, body.amount) : 0
+    let pushed: ConversionPush | null = null
+    setState((s) => {
+      const out = recordConversion(s, {
+        ab_test_uid: abTest.uid,
+        version_uid: versionUid,
+        media_id: abTest.media_id,
+        amount,
+      })
+      const media = out.state.media.find((m) => m.id === abTest.media_id)
+      const version = out.state.versions.find((v) => v.uid === versionUid)
+      pushed = {
+        uid: out.conversion.uid,
+        ab_test_uid: abTest.uid,
+        ab_test_title: abTest.title,
+        version_name: version?.name ?? '',
+        media: media === undefined ? null : { name: media.name, icon_name: media.icon_name },
+        amount,
+        occurred_at: new Date(out.conversion.occurred_at * 1000).toISOString(),
+      }
+      return out.state
+    })
+    if (pushed !== null) broadcastConversion(pushed)
+    res.json({ ok: true })
+    return
+  }
+
+  const event: 'pv' | 'click' = body.event === 'click' ? 'click' : 'pv'
   const delta = event === 'click' ? { click: 1 } : { pv: 1 }
   setState((s) => {
     let next: State = { ...s, metrics: bumpMetric(s, abTest.uid, 'ab_test', date, delta) }

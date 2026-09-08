@@ -1291,20 +1291,29 @@ function applyTabStyle(tab: HTMLElement, isActive: boolean): void {
 let listRange: DateRange = defaultRange()
 
 /**
- * 一覧のKPI列（1行あたり `.e14sgd470` が13個）のうち、**恒等式で裏づけのある指標だけ**を
- * 実データで埋める。列の並びは採取した実ヘッダのとおり:
- *   0:配信ステータス 1:配信金額 2:PV 3:Click 4:CTR 5:CV 6:CVR 7:CTVR
- *   8:CPA 9:MCPA 10:媒体Click 11:媒体CTR 12:ROAS
- * CTR/CTVR/MCPA/媒体Click/媒体CTR/ROAS は計算式が未確認（report-columns.ts と同じ判断）
- * なので**触らず採取値のまま**にする（数字を発明しない）。
+ * 一覧のKPI列（1行あたり `.e14sgd470` が13個）を実データで埋める。
+ * 列の並びは採取した実ヘッダのとおり（0番目の配信ステータスだけ指標ではないので触らない）。
+ *
+ * 一次値の出所:
+ *   pv / click / cv          … LPに貼った計測タグ（実測）
+ *   ad_cost / imp /
+ *   media_click / media_cv   … 媒体（Meta広告）からの取り込み。未取得なら0
+ * 派生は metrics.ts の恒等式（ctr = click/pv, ctvr = cv/pv, media_ctr = media_click/imp,
+ * mcpa = ad_cost/media_cv, roas = sales/ad_cost）。ゼロ除算は「-」。
  */
 const LIST_METRIC_CELLS: readonly { index: number; column: ReportColumn }[] = [
   { index: 1, column: { label: '配信金額', unit: '円', metric: 'ad_cost', format: 'yen' } },
   { index: 2, column: { label: 'PV', unit: '', metric: 'pv', format: 'integer' } },
   { index: 3, column: { label: 'Click', unit: '', metric: 'click', format: 'integer' } },
+  { index: 4, column: { label: 'CTR', unit: '%', metric: 'ctr', format: 'percent' } },
   { index: 5, column: { label: 'CV', unit: '', metric: 'cv', format: 'integer' } },
   { index: 6, column: { label: 'CVR', unit: '%', metric: 'cvr', format: 'percent' } },
+  { index: 7, column: { label: 'CTVR', unit: '%', metric: 'ctvr', format: 'percent' } },
   { index: 8, column: { label: 'CPA', unit: '円', metric: 'cpa', format: 'yen' } },
+  { index: 9, column: { label: 'MCPA', unit: '円', metric: 'mcpa', format: 'yen' } },
+  { index: 10, column: { label: '媒体Click', unit: '', metric: 'media_click', format: 'integer' } },
+  { index: 11, column: { label: '媒体CTR', unit: '%', metric: 'media_ctr', format: 'percent' } },
+  { index: 12, column: { label: 'ROAS', unit: '%', metric: 'roas', format: 'percent' } },
 ]
 
 /** 一覧の各行のKPI列を、選択中の集計期間の実データで埋める。 */

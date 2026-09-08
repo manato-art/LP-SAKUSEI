@@ -81,6 +81,22 @@ export function buildExternalTrackingTag(origin: string, uid: string): string {
 })()</script>`
 }
 
+/**
+ * CV計測タグ。**サンクスページ（申込完了ページ）**に貼ると、表示ごとにCVを1件計上する。
+ * 売上を送りたいときは `amount` に数値（円）を入れる（省略時は0＝金額を発明しない）。
+ */
+export function buildCvTag(origin: string, uid: string): string {
+  const endpoint = `${origin}/lp/${encodeURIComponent(uid)}/__track`
+  return `<script>(function(){
+  var U=${JSON.stringify(endpoint)};
+  // 売上を計上する場合は amount に金額(円)を入れる: {event:'cv',amount:12800}
+  try{
+    fetch(U,{method:'POST',mode:'cors',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({event:'cv'}),keepalive:true});
+  }catch(e){}
+})()</script>`
+}
+
 /** 配信URLから origin と ab_test uid を取り出す（取れなければ null）。 */
 function parseDeliveryUrl(deliveryUrl: string): { origin: string; uid: string } | null {
   try {
@@ -134,7 +150,7 @@ export function openTrackingTagModal(deliveryUrl: string): void {
 
   const label = document.createElement('div')
   label.className = 'sb-tt-label'
-  label.textContent = `送信先: ${parsed.origin}/lp/${parsed.uid}/__track`
+  label.textContent = `① LP本体に貼る（PV・クリック）／送信先: ${parsed.origin}/lp/${parsed.uid}/__track`
 
   const code = document.createElement('textarea')
   code.className = 'sb-tt-code'
@@ -142,10 +158,35 @@ export function openTrackingTagModal(deliveryUrl: string): void {
   code.value = tag
   code.addEventListener('focus', () => code.select())
 
+  // ② CV計測タグ（サンクスページ用）
+  const cvTag = buildCvTag(parsed.origin, parsed.uid)
+  const cvLabel = document.createElement('div')
+  cvLabel.className = 'sb-tt-label'
+  cvLabel.style.marginTop = '14px'
+  cvLabel.textContent = '② サンクスページ（申込完了ページ）に貼る（CV）'
+  const cvCode = document.createElement('textarea')
+  cvCode.className = 'sb-tt-code'
+  cvCode.style.height = '120px'
+  cvCode.readOnly = true
+  cvCode.value = cvTag
+  cvCode.addEventListener('focus', () => cvCode.select())
+  const cvCopy = document.createElement('button')
+  cvCopy.type = 'button'
+  cvCopy.className = 'sb-tt-btn'
+  cvCopy.style.marginTop = '8px'
+  cvCopy.textContent = 'CVタグをコピー'
+  cvCopy.addEventListener('click', () => {
+    void navigator.clipboard?.writeText(cvTag).then(
+      () => toast('CV計測タグをコピーしました'),
+      () => toast('コピーできませんでした', 'error'),
+    )
+  })
+
   const notes = document.createElement('ul')
   notes.className = 'sb-tt-notes'
   for (const t of [
-    '取れるのはPVと「計測機能付きリンク」のクリックのみ（相手LPのリンクが計測機能付きである必要があります）',
+    'クリックは「計測機能付きリンク」のみ（相手LPのリンクが計測機能付きである必要があります）',
+    'CVはサンクスページの表示ごとに1件。売上を入れたい場合はCVタグの amount に金額を足してください',
     'タグを貼った時点からの計測です。過去には遡れません',
     'SquadBeyond側のレポート数値とは独立したカウンタなので、完全一致はしません',
   ]) {
@@ -181,7 +222,7 @@ export function openTrackingTagModal(deliveryUrl: string): void {
     )
   })
 
-  card.append(title, lead, steps, label, code, notes, actions)
+  card.append(title, lead, steps, label, code, cvLabel, cvCode, cvCopy, notes, actions)
   overlay.append(card)
   document.body.append(overlay)
 }
