@@ -304,15 +304,14 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
   const drawOverlay = (): void => {
     overlay.innerHTML = ''
     const mode = lineSelect.value as LineMode
-    if (stat === null || stat.pv === 0) {
-      return
-    }
+    if (stat === null || stat.pv === 0) return
     if (mode === 'none') return
     const bands = stat.bands
     const values = Array.from({ length: bands }, (_, i) => bandValue(stat, mode, i))
 
-    // 熱は1枚のグラデーションで敷く。帯ごとに矩形を置くと境目に段差が出て、
-    // 実物のなめらかな見え方にならない。各バンドの中心を色停止点にする。
+    // ── 熱: LP全面にかかる1枚の縦グラデーション ──
+    // 帯ごとに矩形を置くと境目に段差が出る。各バンドの中心を色停止点にして
+    // 1枚で敷くことで、実物と同じなめらかな暖色グラデーションになる。
     const stops = values
       .map((v, i) =>
         v === null
@@ -324,37 +323,31 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
       const heat = document.createElement('div')
       heat.className = 'hm-heat'
       heat.style.background = `linear-gradient(to bottom, ${stops.join(',')})`
-      // 指示: 「パーセンテージによってグラデーションの幅を変えたい」。
-      // 右端を各バンドの値でなぞる多角形で切り抜く。帯ごとに矩形を置くのではなく
-      // 1枚を切り抜くので、縦方向のなめらかさは保ったまま横幅だけが変わる。
-      const points = ['0% 0%']
-      values.forEach((v, i) => {
-        if (v === null) return
-        const w = (Math.min(1, Math.max(0, v.strength)) * 100).toFixed(2)
-        const y = (((i + 0.5) / bands) * 100).toFixed(2)
-        points.push(`${w}% ${y}%`)
-      })
-      points.push('0% 100%')
-      heat.style.clipPath = `polygon(${points.join(',')})`
       overlay.append(heat)
     }
 
-    // 目盛りの白ピル。幅は値に比例させ、どこまで見られたかが形でも分かるようにする。
+    // ── 目盛り: 「N人 P%到達」の白いバー ──
+    // 幅を割合に比例させる（指示「パーセンテージによって幅を変えたい」）。
+    // 文字が入りきる下限を確保したうえで、残り幅を割合で配分する。
+    const MIN_W = 30
+    const MAX_W = 88
     for (let i = 0; i < bands; i++) {
       const v = values[i]
       if (v === null || v === undefined) continue
+      // 到達モードの先頭バンドは必ず100%＝上の黒帯と同じ内容なので出さない
+      if (i === 0 && mode === 'arrival') continue
+      const t = Math.min(1, Math.max(0, v.strength))
       const pill = document.createElement('div')
       pill.className = 'hm-pill'
       pill.style.top = `${((i + 0.5) / bands) * 100}%`
-      pill.style.width = `${(28 + Math.min(1, Math.max(0, v.strength)) * 44).toFixed(1)}%`
+      pill.style.width = `${(MIN_W + t * (MAX_W - MIN_W)).toFixed(1)}%`
       const label = document.createElement('span')
       label.textContent = v.label
       pill.append(label)
       overlay.append(pill)
     }
 
-    // 最上部は「全体で何人見たか」。右のバッジは最下部までの到達率
-    // （＝どこまで通ったかの要約）。
+    // ── 最上部: 全体で何人見たか＋最下部までの到達率 ──
     if (mode === 'arrival' || mode === 'exit') {
       const top = document.createElement('div')
       top.className = 'hm-top'
@@ -369,6 +362,7 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
       top.append(total, badge)
       overlay.append(top)
     }
+
     // クリック数モードのときは実際の座標も打つ（帯だけだと横位置が分からない）
     if (mode === 'elementClick') {
       for (const c of stat.clicks.slice(-400)) {
