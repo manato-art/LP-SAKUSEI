@@ -118,6 +118,11 @@ export interface AbTest {
   meta_level?: MetaLevel
   /** meta_level に対応するID。account のときは `act_` を除いた数字部分。 */
   meta_object_id?: string
+  /**
+   * 外部LPの所在（`https://host/path`）。計測タグが最初のPVで知らせてくる。
+   * ヒートマップの背景に実LPを敷くためだけに使う。クエリ・ハッシュは含めない。
+   */
+  external_url?: string
   created_at: number
   updated_at: number
   creator_member_id: number

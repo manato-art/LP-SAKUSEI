@@ -74,6 +74,8 @@ export function serializeAbTest(state: State, abTest: AbTest): Record<string, un
     // Meta広告連携の紐付け（トークンは含めない＝環境変数のみで扱う）
     meta_level: abTest.meta_level ?? null,
     meta_object_id: abTest.meta_object_id ?? null,
+    // 計測タグが知らせてきた外部LPの所在。どのLPを測っているかを画面で確認できるようにする。
+    external_url: abTest.external_url ?? null,
   }
 }
 

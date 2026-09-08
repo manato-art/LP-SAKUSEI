@@ -33,12 +33,15 @@ export async function renderHeatmap(
   container.innerHTML = ''
 
   const range: DateRange = defaultRange()
-  const [{ ab_test }, report, { heatmaps }, { folders }, stats] = await Promise.all([
+  const [{ ab_test }, report, { heatmaps }, { folders }, stats, externalPage] = await Promise.all([
     api.abTest(abTestUid),
     api.report(abTestUid, toRangeQuery(range)),
     api.heatmaps(abTestUid),
     api.folders(),
     api.heatmapStats(abTestUid, toRangeQuery(range)),
+    // 外部LPの実HTML。自前配信のLPや、まだ1度も計測タグが動いていないLPでは
+    // 404 になるのが正常なので、失敗しても画面全体は止めない（背景がサンプルに戻るだけ）。
+    api.externalPage(abTestUid).catch(() => null),
   ])
   const folder = folders.find((f) => f.id === ab_test.folder_id) ?? null
 
@@ -79,6 +82,7 @@ export async function renderHeatmap(
     renderHeatmapColumns(columnHost, specs, {
       stats: stats.versions,
       totals: { pv: report.totals.pv, ctr: report.totals.ctr, cv: report.totals.cv },
+      externalHtml: externalPage?.html ?? null,
       range: { startDate: range.startDate, endDate: range.endDate },
       fullPage: root.querySelector('[class*="_selectHeightType_"] [class*="_active_"]') !== null,
     })

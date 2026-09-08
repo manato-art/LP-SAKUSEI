@@ -38,7 +38,10 @@ export function buildTrackingScriptBody(endpoint: string, versionUid?: string): 
       fetch(U,{method:'POST',mode:'cors',headers:{'Content-Type':'text/plain'},body:s,keepalive:true});
     }catch(e){}
   }
-  post({event:'pv'});
+  /* ヒートマップの背景に実LPを敷くため、どのページで測っているかを1度だけ知らせる。
+     クエリとハッシュは落とす（広告パラメータや個人情報が紛れ得るので保存しない）。
+     背景に使うのは見た目だけなので origin+pathname で足りる。 */
+  post({event:'pv',u:location.origin+location.pathname});
 
   document.addEventListener('click',function(e){
     var a=e.target&&e.target.closest&&e.target.closest('a');

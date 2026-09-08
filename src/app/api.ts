@@ -329,6 +329,12 @@ export const api = {
   /** ヒートマップの実測集計（計測タグ由来）。ラインの4モードぶんをVersionごとに返す。 */
   heatmapStats: (abTestUid: string, query: string) =>
     request<HeatmapStatsResponse>('GET', `/ab_tests/${abTestUid}/heatmaps/stats?${query}`),
+  /**
+   * ヒートマップ背景用の実LP。外部LP（自前のVersion HTMLを持たない）のときだけ使う。
+   * まだ1度も計測タグが動いていない場合は404が返る（＝背景はサンプルのまま）。
+   */
+  externalPage: (abTestUid: string) =>
+    request<{ html: string; final_url: string }>('GET', `/ab_tests/${abTestUid}/external_page`),
 
   media: () => request<{ ab_tests: unknown[] }>('GET', '/ab_tests?per_page=1'),
   reset: () => fetch('/__mock/reset', { method: 'POST' }).then((r) => r.json()),

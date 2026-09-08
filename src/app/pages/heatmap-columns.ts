@@ -136,6 +136,12 @@ export interface ColumnDeps {
    * Version単位の数字を出すと常に0になる。version無しの集計を使う列ではこちらを出す。
    */
   totals: { pv: number; ctr: number | null; cv: number }
+  /**
+   * 外部LPの実HTML（サーバーが取得・無害化したもの）。
+   * 外部LPの列はこのシステム側にVersion HTMLが無く、背景がサンプルLPになってしまうため、
+   * これがあるときは実LPを背景に敷く。取得できていなければ null。
+   */
+  externalHtml: string | null
   range: { startDate: string; endDate: string }
   /** 全ページ表示（true）か スクロール表示（false） */
   fullPage: boolean
@@ -216,24 +222,52 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
   body.className = 'hm-col-body'
   const canvas = document.createElement('div')
   canvas.className = 'hm-canvas'
-  const lp = document.createElement('div')
+  // 背景。外部LPは実LPを iframe で敷く（自前配信は従来どおりVersionのHTML）。
+  // iframe にしているのは、他所のLPのCSSがこの画面に漏れ出さないようにするためと、
+  // sandbox でスクリプトを**実行させない**ため（サーバー側の除去と合わせて二重の防御）。
+  const useExternal = isShared && deps.externalHtml !== null
+  const lp: HTMLElement = useExternal
+    ? document.createElement('iframe')
+    : document.createElement('div')
   lp.className = 'hm-lp'
   lp.style.width = '375px'
-  lp.innerHTML = spec.html
+  if (useExternal) {
+    const frame = lp as HTMLIFrameElement
+    // allow-scripts は与えない＝中のJSは動かない。allow-same-origin は高さ測定のため。
+    // （危険なのは allow-scripts と allow-same-origin の**同時**指定で、これは該当しない）
+    frame.setAttribute('sandbox', 'allow-same-origin')
+    frame.setAttribute('referrerpolicy', 'no-referrer')
+    frame.setAttribute('scrolling', 'no')
+    frame.style.border = '0'
+    frame.style.height = '2000px'
+    frame.srcdoc = deps.externalHtml as string
+  } else {
+    lp.innerHTML = spec.html
+  }
   const overlay = document.createElement('div')
   overlay.className = 'hm-overlay'
   canvas.append(lp, overlay)
   body.append(canvas)
 
   // 列幅にLPを収める（実物も縮小表示）
+  /** 背景の実高さ。iframe は中の文書を測る（sandbox に allow-scripts が無いので安全に読める）。 */
+  const lpHeight = (): number => {
+    if (!useExternal) return lp.scrollHeight
+    const doc = (lp as HTMLIFrameElement).contentDocument
+    return doc?.documentElement.scrollHeight ?? 2000
+  }
+
   const applyScale = (): void => {
     const w = body.clientWidth || 320
     const lpW = parseFloat(lp.style.width) || 375
     const scale = Math.min(1, w / lpW)
     lp.style.transform = `scale(${scale})`
+    if (useExternal) lp.style.height = `${lpHeight()}px`
     canvas.style.width = `${lpW * scale}px`
-    canvas.style.height = `${lp.scrollHeight * scale}px`
+    canvas.style.height = `${lpHeight() * scale}px`
   }
+  // iframe は中身の読み込みが終わってからでないと高さが出ない
+  if (useExternal) lp.addEventListener('load', applyScale)
 
   const drawOverlay = (): void => {
     overlay.innerHTML = ''

@@ -84,68 +84,30 @@ const IMAGE_LINK_SCRIPT = `<script>(function(){
  * ★プレビュー（`/preview/:versionUid`）にはこのスクリプトを入れない＝計測しない。
  * keepalive でリンク遷移時のクリックも取りこぼさない。
  */
-function buildTrackingScript(uid: string, versionUid: string): string {
-  const endpoint = `/lp/${encodeURIComponent(uid)}/__track`
-  return `<script>(function(){
-  var U=${JSON.stringify(endpoint)},V=${JSON.stringify(versionUid)};
-  function send(ev){try{
-    fetch(U,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({event:ev,version:V}),keepalive:true});
-  }catch(e){}}
-  send('pv');
-  document.addEventListener('click',function(e){
-    var a=e.target&&e.target.closest&&e.target.closest('a');
-    if(!a)return;
-    var href=a.getAttribute('href')||'';
-    var tracked=/^tel:/i.test(href)?(a.getAttribute('data-sb-'+'tracking')==='true'):/[?&]sb_tracking=true(?:[&#]|$)/.test(href);
-    if(tracked)send('click');
-  },true);
+/**
+ * 計測タグが知らせてきたページURLを、保存してよい形に絞る。
+ * - http / https 以外は捨てる
+ * - クエリ・ハッシュは落とす（広告パラメータや個人情報を保存しない）
+ * - 自分自身のホスト（＝自前配信）は「外部LP」ではないので捨てる
+ */
+function externalUrlFrom(value: unknown, selfHost: string): string | null {
+  if (typeof value !== 'string' || value === '') return null
+  let url: URL
+  try {
+    url = new URL(value)
+  } catch {
+    return null
+  }
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') return null
+  if (url.host === selfHost) return null
+  return `${url.origin}${url.pathname}`
+}
 
-  /* ── ヒートマップ用の収集 ──
-     実物のヒートマップは「到達率 / 離脱率 / 滞在時間 / クリック数」の4モードを持つ。
-     どれもページ内の**位置**が要るので、回数だけでなく縦位置を集める。
-     ページ全体を BANDS 等分し、
-       reach[i]  : そのバンドまで到達したか（1回の訪問につき最大到達まで1）
-       dwell[i]  : そのバンドが画面内にあった時間(ms)
-       exitBand  : 最後に見ていたバンド（＝離脱位置）
-       clicks    : クリックの相対座標（x は幅比、y はページ高さ比）
-     離脱時にまとめて1回だけ送る（スクロールのたびに送らない）。 */
-  var BANDS=20;
-  var reach=new Array(BANDS).fill(0), dwell=new Array(BANDS).fill(0), clicks=[];
-  var lastT=Date.now(), maxBand=0, sent=false;
-  function docH(){ return Math.max(1, document.documentElement.scrollHeight - window.innerHeight); }
-  function curBand(){
-    var p=window.scrollY/docH();
-    return Math.max(0, Math.min(BANDS-1, Math.floor(p*BANDS)));
-  }
-  function tick(){
-    var now=Date.now(), b=curBand();
-    // 画面内に入っているバンドすべてに滞在時間を配る（1バンドだけだと長いLPで偏る）
-    var top=window.scrollY/ (docH()+window.innerHeight), bot=(window.scrollY+window.innerHeight)/(docH()+window.innerHeight);
-    var from=Math.max(0,Math.floor(top*BANDS)), to=Math.min(BANDS-1,Math.floor(bot*BANDS));
-    for(var i=from;i<=to;i++) dwell[i]+=(now-lastT);
-    lastT=now;
-    if(b>maxBand)maxBand=b;
-  }
-  window.addEventListener('scroll',tick,{passive:true});
-  setInterval(tick,1000);
-  document.addEventListener('click',function(e){
-    var h=document.documentElement.scrollHeight||1, w=window.innerWidth||1;
-    clicks.push({x:Math.round((e.clientX/w)*1000)/1000, y:Math.round(((e.pageY)/h)*1000)/1000});
-    if(clicks.length>300)clicks.shift();
-  },true);
-  function flush(){
-    if(sent)return; sent=true; tick();
-    for(var i=0;i<=maxBand;i++) reach[i]=1;
-    try{
-      var body=JSON.stringify({event:'heatmap',version:V,bands:BANDS,
-        reach:reach,dwell:dwell,exit_band:curBand(),clicks:clicks});
-      if(navigator.sendBeacon) navigator.sendBeacon(U,new Blob([body],{type:'application/json'}));
-      else fetch(U,{method:'POST',headers:{'Content-Type':'application/json'},body:body,keepalive:true});
-    }catch(e){}
-  }
-  window.addEventListener('pagehide',flush);
-  document.addEventListener('visibilitychange',function(){ if(document.hidden)flush(); });
-})()</script>`
+function buildTrackingScript(uid: string, versionUid: string): string {
+  // 中身は外部タグ（`/t/:uid.js`）と**同じ実装**を使う。以前はここに独自のコピーがあり、
+  // 片方だけ直して「直したのに直らない」を招いていた（実際に踏んだ）。単一の出所にする。
+  const endpoint = `/lp/${encodeURIComponent(uid)}/__track`
+  return `<script>${buildTrackingScriptBody(endpoint, versionUid)}</script>`
 }
 
 type DeviceKind = 'sp' | 'tablet' | 'pc'
@@ -587,7 +549,13 @@ deliveryRouter.post('/lp/:uid/__track', (req, res) => {
           }
         })()
       : (raw ?? {})
-  const body = (parsed ?? {}) as { event?: unknown; version?: unknown; amount?: unknown }
+  const body = (parsed ?? {}) as {
+    event?: unknown
+    version?: unknown
+    amount?: unknown
+    /** 計測タグが知らせる、測っているページのURL（origin+pathname） */
+    u?: unknown
+  }
   const versionUid = typeof body.version === 'string' ? body.version : ''
   const date = toDateKey(new Date())
 
@@ -697,10 +665,23 @@ deliveryRouter.post('/lp/:uid/__track', (req, res) => {
 
   const event: 'pv' | 'click' = body.event === 'click' ? 'click' : 'pv'
   const delta = event === 'click' ? { click: 1 } : { pv: 1 }
+
+  // 外部LPの所在。ヒートマップの背景に実LPを敷くために覚えておく。
+  // 自前配信（このサーバー自身のホスト）は Version のHTMLを背景に使うので対象外。
+  const reportedUrl = externalUrlFrom(body.u, req.get('host') ?? '')
+
   setState((s) => {
     let next: State = { ...s, metrics: bumpMetric(s, abTest.uid, 'ab_test', date, delta) }
     if (versionUid !== '') {
       next = { ...next, metrics: bumpMetric(next, versionUid, 'version', date, delta) }
+    }
+    if (reportedUrl !== null && reportedUrl !== abTest.external_url) {
+      next = {
+        ...next,
+        abTests: next.abTests.map((t) =>
+          t.uid === abTest.uid ? { ...t, external_url: reportedUrl } : t,
+        ),
+      }
     }
     return next
   })

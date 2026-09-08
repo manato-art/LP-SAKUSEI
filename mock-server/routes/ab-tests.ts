@@ -23,6 +23,7 @@ import { dateRangeParams, filterItems, pageParams, paginate, searchItems, sortIt
 import { optionalNumber, optionalString, requireString } from '../lib/validate.ts'
 import { serializeAbTest, serializeArticle } from '../lib/serialize.ts'
 import { fetchMetaInsights } from '../meta-insights.ts'
+import { ExternalPageError, fetchExternalPage } from '../external-page.ts'
 import type { AbTest, State } from '../store/types.ts'
 
 export const abTestsRouter: Router = Router()
@@ -684,6 +685,54 @@ abTestsRouter.get('/ab_tests/:uid/heatmaps/stats', (req, res) => {
   })
 
   res.json({ period: { start_date: startDate, end_date: endDate }, versions })
+})
+
+/**
+ * ヒートマップの背景に敷く「実LP」のHTML。
+ *
+ * 外部LP（別アカウントで配信中のLP）は自前のVersion HTMLを持たないため、
+ * このシステム側の背景がサンプルLPになってしまい、色の位置が実物と合わない。
+ * そこでサーバーが実LPを取得して返す（ブラウザからは x-frame-options で読めない）。
+ *
+ * URLは計測タグが最初のPVで知らせてきたもの（`ab_test.external_url`）だけを使う。
+ * 任意のURLを外から指定させない＝この口をSSRFの入口にしない。
+ */
+const externalPageCache = new Map<string, { html: string; finalUrl: string; at: number }>()
+const EXTERNAL_PAGE_TTL_MS = 10 * 60 * 1000
+
+abTestsRouter.get('/ab_tests/:uid/external_page', (req, res) => {
+  const state = getState()
+  const abTest = findAbTest(state, req.params.uid)
+  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
+
+  const url = abTest.external_url
+  if (url === undefined || url === '') {
+    return notFound(
+      res,
+      '外部LPの場所がまだ分かりません。計測タグを貼ったLPが1回以上表示されると分かります。',
+    )
+  }
+
+  const hit = externalPageCache.get(url)
+  if (hit !== undefined && Date.now() - hit.at < EXTERNAL_PAGE_TTL_MS) {
+    res.json({ html: hit.html, final_url: hit.finalUrl, cached: true })
+    return
+  }
+
+  void fetchExternalPage(url)
+    .then(({ html, finalUrl }) => {
+      externalPageCache.set(url, { html, finalUrl, at: Date.now() })
+      res.json({ html, final_url: finalUrl, cached: false })
+    })
+    .catch((error: unknown) => {
+      const isKnown = error instanceof ExternalPageError
+      res.status(502).json(
+        errorEnvelope(
+          isKnown ? error.code : 'fetch_failed',
+          isKnown ? error.message : '実LPを取得できませんでした。',
+        ),
+      )
+    })
 })
 
 // ── Meta広告連携（媒体実績の取り込み）─────────────────────────
