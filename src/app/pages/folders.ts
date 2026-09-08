@@ -924,20 +924,30 @@ function wireRealDetailPanel(body: HTMLElement, context: PageContext): void {
       tagButton.textContent = '外部LP計測タグを発行'
       tagButton.style.cursor = 'pointer'
       tagButton.style.marginTop = '8px'
-      tagButton.addEventListener('click', () => openTrackingTagModal(baseUrl))
+      // 配線時ではなくクリック時に「今パネルが見ているLP」を引く（先頭LP固定にしない）
+      tagButton.addEventListener('click', () => {
+        const current = currentPanelAbTest(panel, context)
+        openTrackingTagModal(
+          current === null ? baseUrl : `${location.origin}/lp/${current.uid}`,
+        )
+      })
       paramButton.insertAdjacentElement('afterend', tagButton)
 
       // Meta広告連携（媒体実績の取り込み）。配信金額/IMP/媒体Click/媒体CV はここから入る。
-      const abTest = context.abTests[0]
-      if (abTest !== undefined) {
-        const metaButton = paramButton.cloneNode(false) as HTMLElement
-        metaButton.setAttribute('data-meta-link-btn', 'true')
-        metaButton.textContent = 'Meta広告を連携'
-        metaButton.style.cursor = 'pointer'
-        metaButton.style.marginTop = '8px'
-        metaButton.addEventListener('click', () => openMetaLinkModal(abTest.uid, abTest.title))
-        tagButton.insertAdjacentElement('afterend', metaButton)
-      }
+      const metaButton = paramButton.cloneNode(false) as HTMLElement
+      metaButton.setAttribute('data-meta-link-btn', 'true')
+      metaButton.textContent = 'Meta広告を連携'
+      metaButton.style.cursor = 'pointer'
+      metaButton.style.marginTop = '8px'
+      metaButton.addEventListener('click', () => {
+        const current = currentPanelAbTest(panel, context)
+        if (current === null) {
+          toast('beyondページを選んでから押してください', 'error')
+          return
+        }
+        openMetaLinkModal(current.uid, current.title)
+      })
+      tagButton.insertAdjacentElement('afterend', metaButton)
     }
   }
 
@@ -1229,9 +1239,27 @@ function buildPatchBody(key: string, value: string): Record<string, unknown> {
 }
 
 /** URL発行/コピーの元になる配信URL。モックのbeyondページがあればそれを、無ければパネル表示値を使う。 */
-function paramUrlBase(panel: HTMLElement, context: PageContext): string {
+/**
+ * 詳細パネルが今表示している beyondページ。パネルはホバー/クリックで対象が変わるので、
+ * 配線時ではなく**クリック時**にここを見る（先頭LP固定だと別のLPに紐付いてしまう）。
+ * `updateDetailPanelForAbTest` が data 属性に現在の対象を書いている。
+ */
+function currentPanelAbTest(
+  panel: HTMLElement,
+  context: PageContext,
+): { uid: string; title: string } | null {
+  const uid = panel.dataset['abTestUid'] ?? ''
+  if (uid !== '') {
+    const found = context.abTests.find((t) => t.uid === uid)
+    return { uid, title: found?.title ?? panel.dataset['abTestTitle'] ?? '' }
+  }
   const first = context.abTests[0]
-  if (first !== undefined) return `${location.origin}/lp/${first.uid}`
+  return first === undefined ? null : { uid: first.uid, title: first.title }
+}
+
+function paramUrlBase(panel: HTMLElement, context: PageContext): string {
+  const current = currentPanelAbTest(panel, context)
+  if (current !== null) return `${location.origin}/lp/${current.uid}`
   const shown = Array.from(panel.querySelectorAll<HTMLElement>('a, div')).find((node) =>
     /^\/(?:ab|lp)\//.test((node.textContent ?? '').trim()),
   )
@@ -1780,6 +1808,9 @@ function conversionConditionName(c: string | undefined): string {
 function updateDetailPanelForAbTest(body: HTMLElement, abTest: AbTest, context: PageContext): void {
   const panel = body.querySelector<HTMLElement>(FOLDERS_HOOK.detailPanel)
   if (panel === null) return
+  // 計測タグ発行 / Meta連携がクリック時に「今どのLPを見ているか」を引けるようにする
+  panel.dataset['abTestUid'] = abTest.uid
+  panel.dataset['abTestTitle'] = abTest.title
 
   // ── ヘッダーのページ名（パネル外の見出し） ──
   const headerTitle = body.querySelector<HTMLElement>('.efy50tl4 .efy50tl3')
