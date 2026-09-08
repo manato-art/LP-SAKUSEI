@@ -536,10 +536,25 @@ function serveTrackingScript(res: Response, body: string): void {
   res.send(body)
 }
 
+/**
+ * ビーコンの送信先オリジン。
+ *
+ * Railway のようなプロキシ配下では `req.protocol` が http を返すことがあり、そのままだと
+ * https のLPから http へ送ることになってブラウザに混在コンテンツとして全部ブロックされる
+ * （実際にこれで1件も届かなかった）。転送ヘッダを優先し、無ければ localhost 以外は https を使う。
+ */
+function beaconOrigin(req: { protocol: string; get: (name: string) => string | undefined }): string {
+  const host = req.get('host') ?? ''
+  const forwarded = req.get('x-forwarded-proto')?.split(',')[0]?.trim()
+  const isLocal = /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(host)
+  const proto = forwarded !== undefined && forwarded !== '' ? forwarded : isLocal ? req.protocol : 'https'
+  return `${proto}://${host}`
+}
+
 /** LP本体用: `/t/<uid>.js` */
 deliveryRouter.get('/t/:uid', (req, res) => {
   const raw = req.params.uid
-  const origin = `${req.protocol}://${req.get('host') ?? ''}`
+  const origin = beaconOrigin(req)
   const isCv = raw.endsWith('.cv.js')
   const uid = raw.replace(/\.cv\.js$/, '').replace(/\.js$/, '')
   const endpoint = `${origin}/lp/${encodeURIComponent(uid)}/__track`
