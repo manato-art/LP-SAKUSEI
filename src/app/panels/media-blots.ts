@@ -47,9 +47,15 @@ export function registerMediaBlots(): void {
       const loop = flagOn('loop')
       const autoplay = flagOn('autoplay')
       const muted = flagOn('muted')
-      if (loop) node.setAttribute('loop', 'loop')
-      if (autoplay) node.setAttribute('autoplay', 'autoplay')
-      if (muted) node.setAttribute('muted', 'muted')
+      // 切った設定は印を残す。印が無いと配信ページが既定で付け直してしまう。
+      for (const [name, on] of [
+        ['loop', loop],
+        ['autoplay', autoplay],
+        ['muted', muted],
+      ] as const) {
+        if (on) node.setAttribute(name, name)
+        else node.setAttribute(`data-sb-${name}`, 'off')
+      }
       if (node instanceof HTMLVideoElement) {
         // 属性だけだと効かない環境があるので、プロパティも揃える
         node.loop = loop

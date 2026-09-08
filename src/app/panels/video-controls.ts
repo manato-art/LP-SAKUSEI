@@ -40,8 +40,18 @@ export function hasFlag(video: LoopTarget, flag: VideoFlag): boolean {
  */
 export function toggleFlag(video: LoopTarget, flag: VideoFlag): boolean {
   const next = !hasFlag(video, flag)
-  if (next) video.setAttribute(flag, flag)
-  else video.removeAttribute(flag)
+  if (next) {
+    video.setAttribute(flag, flag)
+    video.removeAttribute(`data-sb-${flag}`)
+  } else {
+    video.removeAttribute(flag)
+    /**
+     * 「切った」ことを印として残す。
+     * 配信ページは既定で再生設定を付け直すので（指示⑬の「常に再生」）、
+     * 印が無いと切った設定がLP上で復活してしまう（`src/app/lp-video.ts`）。
+     */
+    video.setAttribute(`data-sb-${flag}`, 'off')
+  }
   // eslint-disable-next-line no-param-reassign -- 対象要素の再生設定を変えるのがこの関数の責務
   video[flag] = next
   return next

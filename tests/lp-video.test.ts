@@ -23,3 +23,43 @@ describe('withAutoplayVideos', () => {
     expect((out.match(/autoplay/g) ?? []).length).toBe(2)
   })
 })
+
+/**
+ * エディタの右パネルで切った設定が、配信LPで復活しないこと。
+ * 既定は「常に再生」（指示⑬）だが、切ったものには `data-sb-<名前>="off"` が入る。
+ */
+describe('エディタで切った再生設定を尊重する', () => {
+  it('ループを切った動画には loop を付けない', () => {
+    const out = withAutoplayVideos('<video src="x" data-sb-loop="off"></video>')
+    expect(/(^|\s)loop(\s|=|>)/.test(out)).toBe(false)
+    // 他の項目は既定どおり付く
+    expect(out).toContain('autoplay')
+    expect(out).toContain('muted')
+  })
+
+  it('印があれば、既に付いている loop も外す', () => {
+    const out = withAutoplayVideos('<video src="x" loop data-sb-loop="off"></video>')
+    expect(/(^|\s)loop(\s|=|>)/.test(out)).toBe(false)
+  })
+
+  it('自動再生・ミュートも同じように切れる', () => {
+    const out = withAutoplayVideos(
+      '<video src="x" data-sb-autoplay="off" data-sb-muted="off"></video>',
+    )
+    expect(/(^|\s)autoplay(\s|=|>)/.test(out)).toBe(false)
+    expect(/(^|\s)muted(\s|=|>)/.test(out)).toBe(false)
+    expect(out).toContain('loop')
+  })
+
+  it('印が無い動画（トグルを作る前の保存分）は今までどおり常に再生', () => {
+    const out = withAutoplayVideos('<video src="x"></video>')
+    for (const attr of ['autoplay', 'muted', 'loop', 'playsinline']) {
+      expect(out, attr).toContain(attr)
+    }
+  })
+
+  it('data-anim-loop があっても loop 属性は正しく付く（名前の部分一致で誤判定しない）', () => {
+    const out = withAutoplayVideos('<video src="x" data-anim-loop="3"></video>')
+    expect(/(^|\s)loop(\s|=|>)/.test(out)).toBe(true)
+  })
+})

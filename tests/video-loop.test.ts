@@ -110,14 +110,28 @@ describe('保存・復元でループ設定が戻らない', () => {
     }
   })
 
-  it('create は切った設定を付け直さない（off のときは付けない）', () => {
-    expect(blot).toContain("if (loop) node.setAttribute('loop', 'loop')")
-    expect(blot).toContain("if (autoplay) node.setAttribute('autoplay', 'autoplay')")
-    expect(blot).toContain("if (muted) node.setAttribute('muted', 'muted')")
+  it('create は切った設定を付け直さず、切った印を残す', () => {
+    expect(blot).toContain('if (on) node.setAttribute(name, name)')
+    expect(blot).toContain("else node.setAttribute(`data-sb-${name}`, 'off')")
   })
 
   it('古い保存データ（src文字列だけ）は指示⑬の既定で復元する', () => {
     expect(blot).toContain("typeof value === 'string' ? true")
+  })
+})
+
+describe('切った設定が配信LPで復活しない', () => {
+  it('OFFにすると印が残る（配信ページは既定で付け直すため）', () => {
+    const v = fakeVideo(['loop'])
+    toggleFlag(v, 'loop')
+    expect(v.hasAttribute('data-sb-loop')).toBe(true)
+  })
+
+  it('ONに戻すと印は消える', () => {
+    const v = fakeVideo([])
+    toggleFlag(v, 'loop')
+    expect(v.hasAttribute('data-sb-loop')).toBe(false)
+    expect(v.hasAttribute('loop')).toBe(true)
   })
 })
 
