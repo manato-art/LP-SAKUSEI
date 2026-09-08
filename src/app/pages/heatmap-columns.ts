@@ -122,14 +122,12 @@ function bandColor(_metric: HeatmapMetric, strength: number): string {
   // よくある熱スケール（赤→黄→緑→青）を色相で作る。
   // metric は行の色分けにだけ使い、面の色は値そのものを表す。
   const t = Math.min(1, Math.max(0, strength))
-  const hue = (1 - t) * 230
-  // 低い側（青）を濃く塗るとLP全体が沈んで何も読めなくなる。
-  // 青側ほど明るく・淡く・彩度を落として「ほぼ素通し」にし、
-  // 赤側だけがはっきり浮くようにする（見たい情報は「よく見られた場所」なので）。
-  const light = 52 + (1 - t) * 26
-  const sat = 60 + t * 25
-  const alpha = 0.10 + t * 0.20
-  return `hsla(${hue}, ${sat}%, ${light}%, ${alpha})`
+  // 赤(高)→黄→緑→水→青(低)。鮮やかに出す。
+  // ※ここに渡す strength は**そのLPの最小〜最大で正規化済み**の値。
+  //   生の割合をそのまま渡すと、値が26〜100%にしか散らばらないLPで
+  //   色相が狭い範囲に固まり、全部同じような青緑になってしまう。
+  const hue = (1 - t) * 240
+  return `hsla(${hue}, 92%, 50%, 0.42)`
 }
 
 /** モードごとの「そのバンドの値」と表示文字列 */
@@ -362,12 +360,23 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
     // 面は行（5%刻み21段）より**細かく**出す。行は読むための目盛りで、
     // 面は「そのあたりが実際どれだけ見られたか」を連続的に表すものなので、
     // 集計しているバンド数ぶんの色停止点をそのまま使う。
-    const stops = Array.from({ length: bands }, (_, i) => {
-      const v = bandValue(stat, mode, i)
-      return v === null
-        ? null
-        : `${bandColor(spec.metric, v.strength)} ${(((i + 0.5) / bands) * 100).toFixed(2)}%`
-    }).filter((x): x is string => x !== null)
+    // そのLPに実際に出ている最小〜最大へ色相を目一杯割り当てる。
+    // こうしないと「26%〜74%しか無いLP」で色がほとんど変化せず、
+    // 一面が同じ色に見えてどこが読まれたのか分からない。
+    const raw = Array.from({ length: bands }, (_, i) => bandValue(stat, mode, i))
+    const present = raw.filter((v): v is NonNullable<typeof v> => v !== null).map((v) => v.strength)
+    const lo = present.length > 0 ? Math.min(...present) : 0
+    const hi = present.length > 0 ? Math.max(...present) : 1
+    const span = hi - lo
+    const norm = (x: number): number => (span < 1e-6 ? 1 : (x - lo) / span)
+
+    const stops = raw
+      .map((v, i) =>
+        v === null
+          ? null
+          : `${bandColor(spec.metric, norm(v.strength))} ${(((i + 0.5) / bands) * 100).toFixed(2)}%`,
+      )
+      .filter((x): x is string => x !== null)
     if (stops.length > 0) {
       const heat = document.createElement('div')
       heat.className = 'hm-heat'
