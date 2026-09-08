@@ -3,6 +3,7 @@
  * データはすべてローカルのモックAPIから供給される（§3-2・localhost固定）。
  */
 import { markActiveNav, mountShell } from './shell.ts'
+import { renderReportExclusions } from './pages/report-exclusions.ts'
 import { renderFolders } from './pages/folders.ts'
 import { renderEditor } from './pages/editor.ts'
 import { renderBasicInfo } from './pages/basic-info.ts'
@@ -22,7 +23,6 @@ import {
   renderDashboard,
   renderConversions,
   renderDomains,
-  renderReportExclusions,
   renderRankings,
   renderSeminarPage,
 } from './pages/sidebar-data.ts'

@@ -35,14 +35,6 @@ async function postJson<T>(path: string, body: unknown): Promise<T | null> {
   }
 }
 
-async function deleteJson(path: string): Promise<boolean> {
-  try {
-    const res = await fetch(`${API}${path}`, { method: 'DELETE' })
-    return res.ok || res.status === 204
-  } catch {
-    return false
-  }
-}
 
 /** 画面の共通シェル：白カード＋タイトル＋「クローン自作」注記＋本文コンテナを返す */
 function pageShell(container: HTMLElement, title: string, note: string): HTMLElement {
@@ -432,79 +424,6 @@ export async function renderDomains(container: HTMLElement): Promise<void> {
 }
 
 /* ────────────── レポート除外 ────────────── */
-interface ExclusionRow {
-  uid?: string
-  target?: string
-  reason?: string
-}
-export async function renderReportExclusions(container: HTMLElement): Promise<void> {
-  const content = pageShell(
-    container,
-    'レポート除外',
-    '※クローンが自作した画面です。社内アクセスやクローラーをレポート集計から除外します。',
-  )
-
-  // 追加フォーム
-  const addBar = el('div', { style: 'display:flex;gap:8px;margin-bottom:16px;align-items:center' })
-  const targetInput = textInput('除外するIPアドレスやキーワード')
-  const addBtn = smallBtn('追加')
-  addBtn.addEventListener('click', () => {
-    const target = targetInput.value.trim()
-    if (target === '') {
-      toast('除外対象を入力してください', 'error')
-      return
-    }
-    void postJson('/report-exclusions', { target }).then((result) => {
-      if (result !== null) {
-        toast('除外条件を追加しました')
-        targetInput.value = ''
-        void renderReportExclusions(container)
-      } else {
-        toast('追加に失敗しました', 'error')
-      }
-    })
-  })
-  addBar.append(targetInput, addBtn)
-  content.append(addBar)
-
-  const data = await getJson<{ report_exclusions: ExclusionRow[] }>('/report-exclusions')
-  const rows = data?.report_exclusions ?? []
-
-  if (rows.length === 0) {
-    content.append(emptyState('除外条件はまだ登録されていません。'))
-    return
-  }
-
-  const grid = `grid-template-columns:1fr 80px`
-  const head = el('div', {
-    style: `display:grid;${grid};gap:12px;padding:10px 8px;border-bottom:2px solid #EEE;font-size:12px;color:${T.sub}`,
-  })
-  head.append(el('div', { text: '除外対象' }), el('div', { text: '' }))
-  content.append(head)
-
-  for (const row of rows) {
-    const tr = el('div', {
-      style: `display:grid;${grid};gap:12px;padding:12px 8px;border-bottom:1px solid #F2F2F2;font-size:13px;color:${T.text};align-items:center`,
-    })
-    tr.append(el('div', { text: row.target ?? '-', style: 'word-break:break-all' }))
-    const delBtn = smallBtn('削除', '#FFF5F5', '#E53E3E')
-    delBtn.style.cssText += ';border:1px solid #FEB2B2;padding:4px 10px;font-size:12px'
-    delBtn.addEventListener('click', () => {
-      if (row.uid === undefined) return
-      void deleteJson(`/report-exclusions/${row.uid}`).then((ok) => {
-        if (ok) {
-          toast('除外条件を削除しました')
-          void renderReportExclusions(container)
-        } else {
-          toast('削除に失敗しました', 'error')
-        }
-      })
-    })
-    tr.append(delBtn)
-    content.append(tr)
-  }
-}
-
 /* ────────────── ランキング ────────────── */
 interface RankRow {
   title?: string

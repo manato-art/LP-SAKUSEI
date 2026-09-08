@@ -6,6 +6,9 @@ import { applyEmptyState } from '../lib/mock-state.ts'
 import { errorEnvelope } from '../lib/envelope.ts'
 import { makeUid } from '../store/ids.ts'
 import { optionalBoolean, optionalString, requireString } from '../lib/validate.ts'
+import { dateRangeParams, str } from '../lib/query.ts'
+import { isIpLike, matchesExclusion } from '../store/exclusions.ts'
+import type { ExclusionKind, ReportExclusion } from '../store/types.ts'
 
 export const settingsRouter: Router = Router()
 
@@ -42,21 +45,78 @@ settingsRouter.put('/settings/internal_notifications/:scope', (req, res) => {
 })
 
 settingsRouter.get('/report-exclusions', (req, res) => {
-  res.json({ report_exclusions: applyEmptyState(req, getState().reportExclusions) })
+  const state = getState()
+  const rows = applyEmptyState(req, state.reportExclusions)
+  // 「除外アクセス数」は記録から数える。記録が無ければ null（実物も「―」）。
+  const withCount = rows.map((r) => ({
+    ...r,
+    excluded_count:
+      state.requestLogs.length === 0
+        ? null
+        : state.requestLogs.filter((log) => matchesExclusion(log, r)).length,
+  }))
+  res.json({ report_exclusions: withCount })
+})
+
+/** 配信リクエストの集計（リファラ / ソースIP / パラメータ の多い順） */
+settingsRouter.get('/report-exclusions/requests', (req, res) => {
+  const state = getState()
+  const { startDate, endDate } = dateRangeParams(req.query)
+  const limitRaw = Number(str(req.query, 'limit') ?? '5')
+  const limit = Number.isFinite(limitRaw) ? Math.min(50, Math.max(1, Math.floor(limitRaw))) : 5
+  const q = (str(req.query, 'ip') ?? '').trim()
+
+  const logs = state.requestLogs.filter(
+    (log) =>
+      log.date >= startDate && log.date <= endDate && (q === '' || log.ip.includes(q)),
+  )
+  const rank = (values: readonly string[]): { value: string; count: number }[] => {
+    const counts = new Map<string, number>()
+    for (const v of values) {
+      if (v === '') continue
+      counts.set(v, (counts.get(v) ?? 0) + 1)
+    }
+    return [...counts.entries()]
+      .map(([value, count]) => ({ value, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, limit)
+  }
+  res.json({
+    period: { start_date: startDate, end_date: endDate },
+    total: logs.length,
+    referers: rank(logs.map((l) => l.referer)),
+    ips: rank(logs.map((l) => l.ip)),
+    params: rank(logs.flatMap((l) => l.params)),
+  })
 })
 
 settingsRouter.post('/report-exclusions', (req, res) => {
-  const target = requireString(req.body, 'target')
-  if (!target.ok) {
-    res.status(422).json(errorEnvelope('validation_failed', target.message))
+  const value = requireString(req.body, 'value')
+  if (!value.ok) {
+    res.status(422).json(errorEnvelope('validation_failed', value.message))
+    return
+  }
+  const body = req.body as Record<string, unknown>
+  const kind: ExclusionKind = body['kind'] === 'team' ? 'team' : 'ip'
+  // IPアドレスは形を確かめる。間違った値を黙って登録すると、
+  // 「除外したのに数字が減らない」原因が分からなくなる。
+  if (kind === 'ip' && !isIpLike(value.value)) {
+    res
+      .status(422)
+      .json(errorEnvelope('validation_failed', 'IPアドレスの形式が正しくありません。'))
     return
   }
   const state = getState()
-  const created = {
+  const created: ReportExclusion = {
     id: state.nextId,
     uid: makeUid('reportExclusion', state.reportExclusions.length + 1),
     team_id: currentTeamId(state),
-    target: target.value,
+    kind,
+    // 採取物で見えた選択肢はこれだけ（実物のプルダウンはポータルで未採取）
+    match_type: 'exact',
+    join: 'or',
+    value: value.value,
+    is_whitelist: body['is_whitelist'] === true,
     reason: optionalString(req.body, 'reason'),
   }
   setState((s) => ({ ...s, reportExclusions: [...s.reportExclusions, created], nextId: s.nextId + 1 }))

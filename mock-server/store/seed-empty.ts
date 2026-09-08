@@ -90,6 +90,7 @@ export function createEmptyState(): State {
     heatmapStats: [],
     mediaAssets: [],
     reportExclusions: [],
+    requestLogs: [],
     htmlParts: [],
     metrics: [],
 

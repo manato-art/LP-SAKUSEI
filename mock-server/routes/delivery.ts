@@ -10,12 +10,14 @@
  * cross-boundary import は `panel-link-replace.ts` が `src/shared/link-html.ts` を読む既存の前例に倣う）。
  */
 import { Router } from 'express'
-import type { Response } from 'express'
+import type { Request as ExpressRequest, Response } from 'express'
 import { getState, setState } from '../store/store.ts'
 import { getMasterStyleSheet } from '../store/master-style-sheet.ts'
 import { getHtmlSetting } from '../store/html-tags.ts'
 import { bulkTagsForFolder } from '../store/bulk-tags.ts'
 import { bumpMetric, recordConversion } from '../store/actions.ts'
+import { shouldExclude } from '../store/exclusions.ts'
+import type { RequestLogEntry } from '../store/types.ts'
 import { broadcastConversion, type ConversionPush } from '../ws/cable.ts'
 import { toDateKey } from '../store/metrics.ts'
 import type { AbTest, Article, ExitPopup, FollowPopup, State, Version } from '../store/types.ts'
@@ -84,6 +86,51 @@ const IMAGE_LINK_SCRIPT = `<script>(function(){
  * ★プレビュー（`/preview/:versionUid`）にはこのスクリプトを入れない＝計測しない。
  * keepalive でリンク遷移時のクリックも取りこぼさない。
  */
+/** 送信元IP。Railway等のプロキシ経由では X-Forwarded-For の先頭が実体。 */
+function clientIp(req: ExpressRequest): string {
+  const forwarded = req.get('x-forwarded-for')
+  if (forwarded !== undefined && forwarded !== '') {
+    const first = forwarded.split(',')[0]?.trim()
+    if (first !== undefined && first !== '') return first
+  }
+  return req.ip ?? ''
+}
+
+/**
+ * リファラは**オリジンまで**に丸める。
+ * 実物の一覧も `https://instagram.com/` のようにサイト単位で並んでいる。
+ * パス以降は個人が特定され得るので残さない。
+ */
+function refererOrigin(raw: string | undefined): string {
+  if (raw === undefined || raw === '') return ''
+  try {
+    const u = new URL(raw)
+    return `${u.origin}/`
+  } catch {
+    // `android-app://…` のような非HTTPのリファラはそのまま（実物にも出ている）
+    return raw.split('?')[0] ?? ''
+  }
+}
+
+/** 計測タグが知らせたURL（無ければリファラ）のクエリを `k=v` の配列にする */
+function queryPairsOf(reported: unknown, req: ExpressRequest): string[] {
+  const candidates = [
+    typeof reported === 'string' ? reported : '',
+    req.get('referer') ?? '',
+  ]
+  for (const candidate of candidates) {
+    if (candidate === '') continue
+    try {
+      const u = new URL(candidate)
+      const pairs = [...u.searchParams.entries()].map(([k, v]) => `${k}=${v}`)
+      if (pairs.length > 0) return pairs
+    } catch {
+      /* URLでなければ次の候補へ */
+    }
+  }
+  return []
+}
+
 /**
  * 計測タグが知らせてきたページURLを、保存してよい形に絞る。
  * - http / https 以外は捨てる
@@ -670,6 +717,32 @@ deliveryRouter.post('/lp/:uid/__track', (req, res) => {
 
   const event: 'pv' | 'click' = body.event === 'click' ? 'click' : 'pv'
   const delta = event === 'click' ? { click: 1 } : { pv: 1 }
+
+  /**
+   * レポート除外の材料になる、このアクセスの素性を記録する（PVのときだけ）。
+   * 除外条件に当たるアクセスは**レポートに数えない**（実物の説明どおり、
+   * ページ表示はできるが数値には反映しない）。
+   */
+  const visitor: RequestLogEntry = {
+    team_id: abTest.team_id,
+    date,
+    ip: clientIp(req),
+    referer: refererOrigin(req.get('referer')),
+    params: queryPairsOf(body.u, req),
+    excluded: false,
+  }
+  const rules = getState().reportExclusions
+  const isExcluded = shouldExclude(visitor, rules)
+  setState((s) => ({
+    ...s,
+    // 記録は増え続けるので直近ぶんだけ残す
+    requestLogs: [...s.requestLogs, { ...visitor, excluded: isExcluded }].slice(-5000),
+  }))
+  if (isExcluded) {
+    // 数値には反映しない。ページ側は普通に見えているので ok を返す。
+    res.json({ ok: true, excluded: true })
+    return
+  }
 
   // 外部LPの所在。ヒートマップの背景に実LPを敷くために覚えておく。
   // 自前配信（このサーバー自身のホスト）は Version のHTMLを背景に使うので対象外。

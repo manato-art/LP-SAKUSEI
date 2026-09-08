@@ -360,11 +360,24 @@ export const api = {
   /** チームメンバー一覧 */
   teamMembers: () => request<{ members: Member[] }>('GET', '/teams/members'),
   /** レポート除外追加 */
-  addReportExclusion: (target: string, reason?: string) =>
+  /** レポート除外の一覧（除外アクセス数つき） */
+  reportExclusions: () =>
+    request<{ report_exclusions: ReportExclusionEntry[] }>('GET', '/report-exclusions'),
+  addReportExclusion: (input: {
+    kind: ExclusionKind
+    value: string
+    isWhitelist: boolean
+    reason?: string
+  }) =>
     request<{ report_exclusion: ReportExclusionEntry }>('POST', '/report-exclusions', {
-      target,
-      ...(reason !== undefined ? { reason } : {}),
+      kind: input.kind,
+      value: input.value,
+      is_whitelist: input.isWhitelist,
+      ...(input.reason !== undefined ? { reason: input.reason } : {}),
     }),
+  /** リクエスト数の集計（レポート除外画面の下段） */
+  exclusionRequests: (query: string) =>
+    request<ExclusionRequestStats>('GET', `/report-exclusions/requests?${query}`),
   /** レポート除外削除 */
   deleteReportExclusion: (uid: string) => request<void>('DELETE', `/report-exclusions/${uid}`),
   /** ドメイン追加 */
@@ -554,11 +567,32 @@ export interface DomainEntry {
 }
 
 /** レポート除外 */
+/**
+ * レポート除外の1条件（実物の「アクセス拒否」タブ）。
+ * 選択肢は採取物で実際に見えたものだけ（実物のプルダウンはポータルで未採取）。
+ */
+export type ExclusionKind = 'ip' | 'team'
+
 export interface ReportExclusionEntry {
   id: number
   uid: string
-  target: string
+  kind: ExclusionKind
+  match_type: 'exact'
+  value: string
+  join: 'or'
+  is_whitelist: boolean
+  /** 除外アクセス数。記録が無ければ null（実物も「―」） */
+  excluded_count: number | null
   reason: string
+}
+
+/** リクエスト数の集計（リファラ / ソースIP / パラメータ） */
+export interface ExclusionRequestStats {
+  period: { start_date: string; end_date: string }
+  total: number
+  referers: readonly { value: string; count: number }[]
+  ips: readonly { value: string; count: number }[]
+  params: readonly { value: string; count: number }[]
 }
 
 /** SB AI 会話 */

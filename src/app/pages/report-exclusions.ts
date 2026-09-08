@@ -1,0 +1,438 @@
+/**
+ * レポート除外（実物の同名画面を再現）。
+ *
+ * 実物の構成（採取: `sidebar-ref/report-exclusions`）:
+ *   タブ … アクセス拒否 / 配信除外オーディエンス設定
+ *   本文 … 説明 → ホワイトリスト → 除外条件フォーム → 設定済み除外条件
+ *          → リクエスト数（IP検索・期間・表示項目数・リファラ/ソースIP/パラメータ）
+ *
+ * プルダウンの選択肢は**採取物で実際に見えたものだけ**にしている。
+ * 実物のプルダウンはMUIのポータルで開くので、開いていない状態の採取には
+ * 他の選択肢が入っていない。見えていないものを勝手に足さない。
+ */
+import { api, type ExclusionKind, type ReportExclusionEntry } from '../api.ts'
+import { toast } from '../ui.ts'
+import { toDateKey, type DateRange } from './report-period.ts'
+
+const CSS_ID = 'sb-exclusions-css'
+
+/** 実物の期間ボタン */
+const PERIODS = [
+  { key: 'today', label: '今日', days: 0 },
+  { key: 'week', label: '今週', days: 6 },
+  { key: 'month', label: '今月', days: 29 },
+  { key: 'quarter', label: '3ヶ月', days: 89 },
+  { key: 'half', label: '半年', days: 179 },
+  { key: 'year', label: '1年', days: 364 },
+] as const
+
+/** 採取物で見えた選択肢だけを並べる */
+const KINDS: readonly { value: ExclusionKind; label: string }[] = [
+  { value: 'ip', label: 'IPアドレス' },
+  { value: 'team', label: 'チーム' },
+]
+
+function injectCss(): void {
+  if (document.getElementById(CSS_ID) !== null) return
+  const s = document.createElement('style')
+  s.id = CSS_ID
+  s.textContent = `
+    .rx { padding:20px 24px; font-size:13px; color:#1f2937;
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,
+        "Hiragino Sans","Hiragino Kaku Gothic ProN",sans-serif; }
+    .rx h1 { font-size:20px; font-weight:700; margin:0 0 14px; }
+    .rx-tabs { display:flex; gap:4px; border-bottom:1px solid #e6e9f0; margin-bottom:16px; }
+    .rx-tab { border:0; background:transparent; font:inherit; font-size:13px; color:#6b7280;
+      padding:9px 16px; cursor:pointer; border-bottom:2px solid transparent; }
+    .rx-tab.on { color:#2563eb; font-weight:700; border-bottom-color:#2563eb; }
+    .rx-card { background:#fff; border:1px solid #e6e9f0; border-radius:10px;
+      padding:16px 18px; margin-bottom:16px; }
+    .rx-lead { font-size:12px; color:#4b5563; line-height:1.9; margin:0 0 10px; }
+    .rx-note { font-size:12px; color:#6b7280; line-height:1.9; background:#f7f9fc;
+      border:1px solid #eef1f6; border-radius:8px; padding:10px 12px; margin:0 0 12px; }
+    .rx-h2 { font-size:14px; font-weight:700; margin:0 0 10px; }
+    .rx-form { display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; }
+    .rx-field { display:flex; flex-direction:column; gap:4px; }
+    .rx-field label { font-size:11px; color:#6b7280; }
+    .rx-field select, .rx-field input {
+      border:1px solid #d5d5db; border-radius:6px; padding:7px 9px; font:inherit;
+      font-size:12px; background:#fff; color:#1f2937; min-width:150px;
+    }
+    .rx-btn { border:1px solid #2563eb; background:#2563eb; color:#fff; border-radius:6px;
+      padding:8px 16px; font:inherit; font-size:12px; font-weight:600; cursor:pointer; }
+    .rx-btn:hover { background:#1d4ed8; }
+    .rx-btn.ghost { background:#fff; color:#2563eb; }
+    .rx-btn.ghost:hover { background:#f3f7ff; }
+    .rx-check { display:flex; align-items:center; gap:6px; font-size:12px; color:#374151;
+      margin:0 0 12px; cursor:pointer; }
+    .rx-table { width:100%; border-collapse:collapse; font-size:12px; }
+    .rx-table th, .rx-table td { border-bottom:1px solid #eef1f6; padding:9px 10px;
+      text-align:left; white-space:nowrap; }
+    .rx-table th { background:#f8fafc; color:#475467; font-weight:600; font-size:11px; }
+    .rx-table td.num { text-align:right; font-variant-numeric:tabular-nums; }
+    .rx-empty { color:#6b7280; font-size:12px; padding:18px; text-align:center; }
+    .rx-periods { display:flex; gap:4px; flex-wrap:wrap; }
+    .rx-period { border:1px solid #d5d5db; background:#fff; color:#555; border-radius:6px;
+      padding:5px 12px; font:inherit; font-size:11px; cursor:pointer; }
+    .rx-period.on { background:#2563eb; border-color:#2563eb; color:#fff; font-weight:700; }
+    .rx-ranks { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; margin-top:14px; }
+    @media (max-width:1000px) { .rx-ranks { grid-template-columns:minmax(0,1fr); } }
+    .rx-rank h3 { font-size:12px; font-weight:700; margin:0 0 6px; color:#374151; }
+    .rx-rank-row { display:flex; gap:8px; align-items:center; padding:6px 0;
+      border-bottom:1px solid #f2f4f7; font-size:12px; }
+    .rx-rank-row span:first-child { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .rx-rank-row b { font-variant-numeric:tabular-nums; }
+    .rx-del { border:1px solid #feb2b2; background:#fff5f5; color:#e53e3e; border-radius:5px;
+      padding:4px 10px; font:inherit; font-size:11px; cursor:pointer; }
+  `
+  document.head.append(s)
+}
+
+function rangeOf(days: number): DateRange {
+  const end = new Date()
+  const start = new Date(end)
+  start.setDate(start.getDate() - days)
+  return { startDate: toDateKey(start), endDate: toDateKey(end) }
+}
+
+function field(label: string, control: HTMLElement): HTMLElement {
+  const wrap = document.createElement('div')
+  wrap.className = 'rx-field'
+  const l = document.createElement('label')
+  l.textContent = label
+  wrap.append(l, control)
+  return wrap
+}
+
+function select(options: readonly { value: string; label: string }[]): HTMLSelectElement {
+  const s = document.createElement('select')
+  for (const o of options) {
+    const opt = document.createElement('option')
+    opt.value = o.value
+    opt.textContent = o.label
+    s.append(opt)
+  }
+  return s
+}
+
+/** 「アクセス拒否」タブの中身 */
+function buildDenyTab(reload: () => void): HTMLElement {
+  const wrap = document.createElement('div')
+
+  // ── 説明（実物の文言） ──
+  const card = document.createElement('section')
+  card.className = 'rx-card'
+  const lead = document.createElement('p')
+  lead.className = 'rx-lead'
+  lead.textContent =
+    '指定条件に合致するアクセスをレポート集計から除外します。' +
+    'サイト閲覧は可能ですが、数値には反映されません。' +
+    '（例：社内・関連企業・特定ボットからのアクセスを計測対象外にしたい場合などにご利用ください。）'
+  const note = document.createElement('p')
+  note.className = 'rx-note'
+  note.textContent =
+    'ホワイトリストを有効にすると、指定した条件に一致するアクセスは' +
+    '「アクセス拒否の対象から除外」されます。' +
+    'ここで登録された条件はアクセス拒否ルールよりも優先され、' +
+    'レポートには反映されませんが、ページはブロックされずに表示されます'
+
+  const checkLabel = document.createElement('label')
+  checkLabel.className = 'rx-check'
+  const whitelist = document.createElement('input')
+  whitelist.type = 'checkbox'
+  const checkText = document.createElement('span')
+  checkText.textContent = 'ホワイトリストの対象にする'
+  checkLabel.append(whitelist, checkText)
+
+  // ── 除外条件フォーム ──
+  const h2 = document.createElement('div')
+  h2.className = 'rx-h2'
+  h2.textContent = '除外条件'
+  const form = document.createElement('div')
+  form.className = 'rx-form'
+  const kind = select(KINDS)
+  const match = select([{ value: 'exact', label: '完全一致' }])
+  const value = document.createElement('input')
+  value.placeholder = '値'
+  const join = select([{ value: 'or', label: 'OR' }])
+  const submit = document.createElement('button')
+  submit.type = 'button'
+  submit.className = 'rx-btn'
+  submit.textContent = '条件を反映'
+  form.append(
+    field('除外条件', kind),
+    field('マッチタイプ', match),
+    field('値', value),
+    field('結合条件', join),
+    submit,
+  )
+
+  submit.addEventListener('click', () => {
+    const v = value.value.trim()
+    if (v === '') {
+      toast('値を入力してください', 'error')
+      return
+    }
+    void api
+      .addReportExclusion({
+        kind: kind.value as ExclusionKind,
+        value: v,
+        isWhitelist: whitelist.checked,
+      })
+      .then(
+        () => {
+          toast('除外条件を反映しました')
+          value.value = ''
+          reload()
+        },
+        (error: Error) => toast(error.message, 'error'),
+      )
+  })
+
+  card.append(lead, note, checkLabel, h2, form)
+  wrap.append(card)
+  return wrap
+}
+
+/** 「設定済み除外条件」表 */
+function buildRulesTable(rows: readonly ReportExclusionEntry[], reload: () => void): HTMLElement {
+  const card = document.createElement('section')
+  card.className = 'rx-card'
+  const title = document.createElement('div')
+  title.className = 'rx-h2'
+  title.textContent = '設定済み除外条件'
+  card.append(title)
+
+  if (rows.length === 0) {
+    const empty = document.createElement('div')
+    empty.className = 'rx-empty'
+    empty.textContent = '除外条件はまだ登録されていません。'
+    card.append(empty)
+    return card
+  }
+
+  const table = document.createElement('table')
+  table.className = 'rx-table'
+  const thead = document.createElement('thead')
+  const hr = document.createElement('tr')
+  for (const [label, num] of [
+    ['除外対象', false],
+    ['マッチタイプ', false],
+    ['値', false],
+    ['結合条件', false],
+    ['除外アクセス数', true],
+    ['', false],
+  ] as const) {
+    const th = document.createElement('th')
+    if (num) th.className = 'num'
+    th.textContent = label
+    hr.append(th)
+  }
+  thead.append(hr)
+
+  const tbody = document.createElement('tbody')
+  for (const row of rows) {
+    const tr = document.createElement('tr')
+    const kindLabel = KINDS.find((k) => k.value === row.kind)?.label ?? row.kind
+    for (const [text, num] of [
+      [row.is_whitelist ? `${kindLabel}（ホワイトリスト）` : kindLabel, false],
+      ['完全一致', false],
+      [row.value, false],
+      ['OR', false],
+      // 実物も記録が無いときは「―」だった
+      [row.excluded_count === null ? '―' : row.excluded_count.toLocaleString('ja-JP'), true],
+    ] as const) {
+      const td = document.createElement('td')
+      if (num) td.className = 'num'
+      td.textContent = text
+      tr.append(td)
+    }
+    const last = document.createElement('td')
+    const del = document.createElement('button')
+    del.type = 'button'
+    del.className = 'rx-del'
+    del.textContent = '削除'
+    del.addEventListener('click', () => {
+      void api.deleteReportExclusion(row.uid).then(
+        () => {
+          toast('除外条件を削除しました')
+          reload()
+        },
+        (error: Error) => toast(error.message, 'error'),
+      )
+    })
+    last.append(del)
+    tr.append(last)
+    tbody.append(tr)
+  }
+  table.append(thead, tbody)
+  card.append(table)
+  return card
+}
+
+/** 「リクエスト数」セクション（リファラ / ソースIP / パラメータ） */
+function buildRequests(): HTMLElement {
+  const card = document.createElement('section')
+  card.className = 'rx-card'
+  const title = document.createElement('div')
+  title.className = 'rx-h2'
+  title.textContent = 'リクエスト数'
+
+  const bar = document.createElement('div')
+  bar.className = 'rx-form'
+  const ip = document.createElement('input')
+  ip.placeholder = 'IP検索'
+  const periods = document.createElement('div')
+  periods.className = 'rx-periods'
+  const limit = select([5, 10, 20, 50].map((n) => ({ value: String(n), label: `${n}項目` })))
+  bar.append(field('IP検索', ip), field('期間', periods), field('表示項目数', limit))
+
+  const ranks = document.createElement('div')
+  ranks.className = 'rx-ranks'
+  const totalLine = document.createElement('div')
+  totalLine.style.cssText = 'font-size:12px;color:#6b7280;margin-top:10px'
+
+  let current: (typeof PERIODS)[number] = PERIODS[0]
+
+  const load = (): void => {
+    const range = rangeOf(current.days)
+    const query = new URLSearchParams({
+      start_date: range.startDate,
+      end_date: range.endDate,
+      limit: limit.value,
+    })
+    if (ip.value.trim() !== '') query.set('ip', ip.value.trim())
+
+    void api.exclusionRequests(query.toString()).then(
+      (stats) => {
+        totalLine.textContent = `対象リクエスト ${stats.total.toLocaleString('ja-JP')} 件（${range.startDate} 〜 ${range.endDate}）`
+        ranks.replaceChildren(
+          rankBox('リファラ', stats.referers),
+          rankBox('ソースIP', stats.ips),
+          rankBox('パラメータ', stats.params),
+        )
+      },
+      () => {
+        totalLine.textContent = 'リクエストの集計を取得できませんでした。'
+        ranks.replaceChildren()
+      },
+    )
+  }
+
+  for (const p of PERIODS) {
+    const b = document.createElement('button')
+    b.type = 'button'
+    b.className = `rx-period${p.key === current.key ? ' on' : ''}`
+    b.textContent = p.label
+    b.addEventListener('click', () => {
+      current = p
+      for (const other of periods.querySelectorAll('button')) {
+        other.classList.toggle('on', other === b)
+      }
+      load()
+    })
+    periods.append(b)
+  }
+  limit.addEventListener('change', load)
+  ip.addEventListener('change', load)
+
+  card.append(title, bar, totalLine, ranks)
+  load()
+  return card
+}
+
+function rankBox(
+  title: string,
+  rows: readonly { value: string; count: number }[],
+): HTMLElement {
+  const box = document.createElement('div')
+  box.className = 'rx-rank'
+  const h = document.createElement('h3')
+  h.textContent = title
+  box.append(h)
+  if (rows.length === 0) {
+    const empty = document.createElement('div')
+    empty.className = 'rx-empty'
+    empty.style.padding = '10px'
+    empty.textContent = 'まだ記録がありません'
+    box.append(empty)
+    return box
+  }
+  for (const row of rows) {
+    const line = document.createElement('div')
+    line.className = 'rx-rank-row'
+    const v = document.createElement('span')
+    v.textContent = row.value
+    v.title = row.value
+    const c = document.createElement('b')
+    c.textContent = row.count.toLocaleString('ja-JP')
+    line.append(v, c)
+    box.append(line)
+  }
+  return box
+}
+
+export async function renderReportExclusions(container: HTMLElement): Promise<void> {
+  injectCss()
+  container.innerHTML = ''
+  const root = document.createElement('div')
+  root.className = 'rx'
+  container.append(root)
+
+  const h1 = document.createElement('h1')
+  h1.textContent = 'レポート除外'
+
+  const tabs = document.createElement('div')
+  tabs.className = 'rx-tabs'
+  const bodyHost = document.createElement('div')
+
+  const reload = (): void => {
+    void renderReportExclusions(container)
+  }
+
+  const showDeny = async (): Promise<void> => {
+    const denyWrap = document.createElement('div')
+    denyWrap.append(buildDenyTab(reload))
+    bodyHost.replaceChildren(denyWrap)
+    try {
+      const { report_exclusions } = await api.reportExclusions()
+      denyWrap.append(buildRulesTable(report_exclusions, reload), buildRequests())
+    } catch {
+      const err = document.createElement('div')
+      err.className = 'rx-empty'
+      err.textContent = '除外条件を読み込めませんでした。'
+      denyWrap.append(err)
+    }
+  }
+
+  const showAudience = (): void => {
+    const box = document.createElement('div')
+    box.className = 'rx-card rx-empty'
+    box.style.whiteSpace = 'pre-line'
+    // 実物ではタブ名だけが採取できており、中身は開いた状態を採取していない。
+    // 推測で作らず、その旨をはっきり出す。
+    box.textContent =
+      '配信除外オーディエンス設定は未作成です。\n' +
+      'このタブは実物の採取に中身が含まれていないため、作っていません。'
+    bodyHost.replaceChildren(box)
+  }
+
+  const TAB_DEFS = [
+    { label: 'アクセス拒否', show: () => void showDeny() },
+    { label: '配信除外オーディエンス設定', show: showAudience },
+  ]
+  TAB_DEFS.forEach((def, i) => {
+    const b = document.createElement('button')
+    b.type = 'button'
+    b.className = `rx-tab${i === 0 ? ' on' : ''}`
+    b.textContent = def.label
+    b.addEventListener('click', () => {
+      for (const other of tabs.querySelectorAll('button')) other.classList.toggle('on', other === b)
+      def.show()
+    })
+    tabs.append(b)
+  })
+
+  root.append(h1, tabs, bodyHost)
+  await showDeny()
+}
