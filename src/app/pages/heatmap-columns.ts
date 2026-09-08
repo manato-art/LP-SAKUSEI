@@ -75,10 +75,29 @@ function injectStyles(): void {
     .hm-lp { transform-origin:top left; }
     .hm-lp img { max-width:100%; }
     .hm-overlay { position:absolute; inset:0; pointer-events:none; }
-    .hm-band { position:absolute; left:0; right:0; display:flex; align-items:center; justify-content:flex-end; }
-    .hm-band span {
-      font-size:10px; color:#fff; background:rgba(0,0,0,.55); padding:0 4px; border-radius:2px;
-      font-variant-numeric:tabular-nums; margin-right:4px;
+    /* 熱の色は1枚のグラデーションで敷く（帯ごとに矩形を置くと段差が出る） */
+    .hm-heat { position:absolute; inset:0; }
+    /* 到達の目盛り。実物と同じく「N人 P%到達」の白い丸ピルを重ねる */
+    .hm-pill {
+      position:absolute; left:6px; display:flex; align-items:center; justify-content:flex-end;
+      height:15px; margin-top:-7px; background:#fff; border-radius:999px;
+      box-shadow:0 1px 3px rgba(0,0,0,.28); padding:0 8px; box-sizing:border-box;
+    }
+    .hm-pill span {
+      font-size:10px; font-weight:700; color:#1a1a1a; white-space:nowrap;
+      font-variant-numeric:tabular-nums;
+    }
+    /* 最上部の「全体で何人が見たか」。実物は黒帯＋右にオレンジのバッジ */
+    .hm-top {
+      position:absolute; left:0; right:0; top:0; height:20px; background:#111;
+      display:flex; align-items:center; justify-content:center;
+    }
+    .hm-top span {
+      font-size:10px; font-weight:700; color:#fff; font-variant-numeric:tabular-nums;
+    }
+    .hm-top .hm-badge {
+      position:absolute; right:0; top:0; height:20px; min-width:38px; background:#f0960a;
+      color:#fff; display:flex; align-items:center; justify-content:center; border-radius:0 0 0 6px;
     }
     .hm-dot { position:absolute; width:10px; height:10px; margin:-5px 0 0 -5px; border-radius:50%; }
     .hm-empty { padding:28px 14px; color:#8a8a90; font-size:12px; text-align:center; line-height:1.9; }
@@ -86,13 +105,17 @@ function injectStyles(): void {
   document.head.append(s)
 }
 
-/** 0-1 の強さを、その指標の色へ。データ無し(null)は塗らない。 */
+/**
+ * 0-1 の強さを、その指標の色へ。
+ * 実物は「強い＝赤、弱い＝橙」の暖色グラデーションなので、強さで色相もずらす。
+ * LPが透けて見える必要があるので不透明にはしない。
+ */
 function bandColor(metric: HeatmapMetric, strength: number): string {
-  const hue = METRIC_HUE[metric]
-  // 強いほど濃く・不透明に（薄いところを塗りつぶさないよう上限0.62）
-  const alpha = 0.08 + Math.min(1, Math.max(0, strength)) * 0.40
-  const light = 62 - Math.min(1, Math.max(0, strength)) * 22
-  return `hsla(${hue}, 90%, ${light}%, ${alpha})`
+  const t = Math.min(1, Math.max(0, strength))
+  const hue = METRIC_HUE[metric] + (1 - t) * 30
+  const light = 58 - t * 14
+  const alpha = 0.42 + t * 0.34
+  return `hsla(${hue}, 92%, ${light}%, ${alpha})`
 }
 
 /** モードごとの「そのバンドの値」と表示文字列 */
@@ -105,7 +128,11 @@ function bandValue(
   if (mode === 'arrival' || mode === 'exit') {
     const v = (mode === 'arrival' ? stat.arrival : stat.exit)[i]
     if (v === null || v === undefined) return null
-    return { strength: v, label: `${(v * 100).toFixed(1)}%` }
+    // 実物は割合だけでなく**人数**も出す（「25人 47%到達」）。
+    // 何人が実際にそこまで見たのかが分からないと、率だけでは判断できないため。
+    const people = Math.round(v * stat.pv)
+    const word = mode === 'arrival' ? '到達' : '離脱'
+    return { strength: v, label: `${people}人 ${Math.round(v * 100)}%${word}` }
   }
   if (mode === 'attention') {
     const ms = stat.attention[i] ?? 0
@@ -228,7 +255,9 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
   // 背景。外部LPは実LPを iframe で敷く（自前配信は従来どおりVersionのHTML）。
   // iframe にしているのは、他所のLPのCSSがこの画面に漏れ出さないようにするためと、
   // sandbox でスクリプトを**実行させない**ため（サーバー側の除去と合わせて二重の防御）。
-  const useExternal = isShared && deps.externalHtml !== null
+  // 指示: 「LPの画面に関しては元のLPの画面そのまま使う」。
+  // 実LPを取得できているなら、どの列でもそれを背景にする（サンプルLPでは位置が合わない）。
+  const useExternal = deps.externalHtml !== null
   const lp: HTMLElement = useExternal
     ? document.createElement('iframe')
     : document.createElement('div')
@@ -280,18 +309,53 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
     }
     if (mode === 'none') return
     const bands = stat.bands
+    const values = Array.from({ length: bands }, (_, i) => bandValue(stat, mode, i))
+
+    // 熱は1枚のグラデーションで敷く。帯ごとに矩形を置くと境目に段差が出て、
+    // 実物のなめらかな見え方にならない。各バンドの中心を色停止点にする。
+    const stops = values
+      .map((v, i) =>
+        v === null
+          ? null
+          : `${bandColor(spec.metric, v.strength)} ${(((i + 0.5) / bands) * 100).toFixed(2)}%`,
+      )
+      .filter((x): x is string => x !== null)
+    if (stops.length > 0) {
+      const heat = document.createElement('div')
+      heat.className = 'hm-heat'
+      heat.style.background = `linear-gradient(to bottom, ${stops.join(',')})`
+      overlay.append(heat)
+    }
+
+    // 目盛りの白ピル。幅は値に比例させ、どこまで見られたかが形でも分かるようにする。
     for (let i = 0; i < bands; i++) {
-      const v = bandValue(stat, mode, i)
-      if (v === null) continue
-      const band = document.createElement('div')
-      band.className = 'hm-band'
-      band.style.top = `${(i / bands) * 100}%`
-      band.style.height = `${(1 / bands) * 100}%`
-      band.style.background = bandColor(spec.metric, v.strength)
+      const v = values[i]
+      if (v === null || v === undefined) continue
+      const pill = document.createElement('div')
+      pill.className = 'hm-pill'
+      pill.style.top = `${((i + 0.5) / bands) * 100}%`
+      pill.style.width = `${(28 + Math.min(1, Math.max(0, v.strength)) * 44).toFixed(1)}%`
       const label = document.createElement('span')
       label.textContent = v.label
-      band.append(label)
-      overlay.append(band)
+      pill.append(label)
+      overlay.append(pill)
+    }
+
+    // 最上部は「全体で何人見たか」。右のバッジは最下部までの到達率
+    // （＝どこまで通ったかの要約）。
+    if (mode === 'arrival' || mode === 'exit') {
+      const top = document.createElement('div')
+      top.className = 'hm-top'
+      const total = document.createElement('span')
+      total.textContent = `${stat.pv}人 100%${mode === 'arrival' ? '到達' : '離脱'}`
+      const badge = document.createElement('div')
+      badge.className = 'hm-badge'
+      const last = values[bands - 1]
+      const bottom = document.createElement('span')
+      bottom.textContent = `${last === null || last === undefined ? 0 : Math.round(last.strength * 100)}%`
+      badge.append(bottom)
+      top.append(total, badge)
+      overlay.append(top)
     }
     // クリック数モードのときは実際の座標も打つ（帯だけだと横位置が分からない）
     if (mode === 'elementClick') {
