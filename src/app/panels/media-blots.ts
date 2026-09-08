@@ -25,22 +25,36 @@ export function registerMediaBlots(): void {
   class SbVideoBlot extends BlockEmbed {
     static blotName = 'sbvideo'
     static tagName = 'video'
-    static override create(url: string): HTMLElement {
+    /**
+     * 値は `src` 文字列（従来）と `{ src, loop }`（ループ設定つき）の両方を受ける。
+     * 文字列で来た古い保存データはこれまで通りループONで復元する。
+     */
+    static override create(value: string | Record<string, string>): HTMLElement {
+      const url = typeof value === 'string' ? value : (value['src'] ?? '')
       const node = super.create(url)
       node.setAttribute('src', url)
       node.setAttribute('controls', 'controls')
       // 指示⑬: 常に再生（自動再生＋ループ）。音ありの自動再生はブロックされるので muted 必須。
       node.setAttribute('autoplay', 'autoplay')
       node.setAttribute('muted', 'muted')
-      node.setAttribute('loop', 'loop')
       node.setAttribute('playsinline', 'playsinline')
       node.setAttribute('preload', 'metadata')
-      if (node instanceof HTMLVideoElement) node.muted = true // 属性だけだと効かない環境向け
+      // ループは既定ON。編集画面で明示的に切ったものだけ 'off' が入る。
+      // ここで毎回ONに戻すと、切った設定が Quill の再構築で復活してしまう。
+      const loop = typeof value === 'string' ? 'on' : (value['loop'] ?? 'on')
+      if (loop !== 'off') node.setAttribute('loop', 'loop')
+      if (node instanceof HTMLVideoElement) {
+        node.muted = true // 属性だけだと効かない環境向け
+        node.loop = loop !== 'off'
+      }
       node.style.maxWidth = '100%'
       return node
     }
-    static value(node: HTMLElement): string {
-      return node.getAttribute('src') ?? ''
+    static value(node: HTMLElement): Record<string, string> {
+      return {
+        src: node.getAttribute('src') ?? '',
+        loop: node.hasAttribute('loop') ? 'on' : 'off',
+      }
     }
   }
   /**

@@ -36,6 +36,7 @@ import { EXTERNAL_IMAGE_TOOL_INDEX, mountExternalImage } from '../panels/externa
 import { registerMediaBlots } from '../panels/media-blots.ts'
 import { wireMediaDrop } from '../panels/media-insert.ts'
 import { wireImageResize } from '../panels/image-resize.ts'
+import { wireVideoControls } from '../panels/video-controls.ts'
 import { toggleComparePanel, isComparePanelOpen, refreshComparePreview } from '../panels/compare-mode.ts'
 import { deliveryUrl } from './basic-info-form.ts'
 import { wireAbTestTabs, setupHorizTabs, setupBreadcrumb } from './tab-nav.ts'
@@ -305,6 +306,8 @@ export async function renderEditor(
   wireMediaDrop(quill)
   // 指示㊵: 貼り付けた画像のサイズをドラッグで変更できるようにする
   wireImageResize(quill)
+  // 動画をクリックしたらループ再生の切り替えバーを出す
+  wireVideoControls(quill)
 
   // ── 指示㊿②: キャンバスのみスクロール ──
   // スクロールは Quill ホスト（#quillIframe 跡地）の overflow:auto が担当。
