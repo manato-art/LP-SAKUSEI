@@ -185,6 +185,55 @@ describe('レポート除外API', () => {
     expect(list.report_exclusions[0]?.excluded_count).toBeNull()
   })
 
+  it('除外に当たったアクセスは PV も CV もヒートマップも数えない', async () => {
+    // 全アクセスに当たる条件（リファラの部分一致は空文字を許さないので IP の部分一致を使う）
+    await postJson(`${server.api}/report-exclusions`, {
+      conditions: [{ kind: 'ip', match_type: 'partial', value: '.', join: 'or' }],
+    })
+    const created = await postJson<{ ab_test: { uid: string } }>(`${server.api}/ab_tests`, {
+      title: '除外テスト',
+      media_id: 1,
+    })
+    const uid = created.json.ab_test.uid
+    const track = async (payload: Record<string, unknown>): Promise<unknown> => {
+      const res = await fetch(`${server.baseUrl}/lp/${uid}/__track`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      return res.json()
+    }
+    expect(await track({ event: 'pv' })).toMatchObject({ excluded: true })
+    expect(await track({ event: 'cv', amount: 1000 })).toMatchObject({ excluded: true })
+    expect(await track({ event: 'heatmap', bands: 20 })).toMatchObject({ excluded: true })
+
+    const report = await getJson<{ totals: { pv: number; cv: number } }>(
+      `${server.api}/ab_tests/${uid}/reports?start_date=2000-01-01&end_date=2099-12-31`,
+    )
+    expect(report.totals.pv).toBe(0)
+    expect(report.totals.cv).toBe(0)
+  })
+
+  it('除外に当たらないアクセスは今までどおり数える', async () => {
+    await postJson(`${server.api}/report-exclusions`, {
+      conditions: [{ kind: 'ip', match_type: 'exact', value: '203.0.113.5', join: 'or' }],
+    })
+    const created = await postJson<{ ab_test: { uid: string } }>(`${server.api}/ab_tests`, {
+      title: '通常テスト',
+      media_id: 1,
+    })
+    const uid = created.json.ab_test.uid
+    await fetch(`${server.baseUrl}/lp/${uid}/__track`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event: 'pv' }),
+    })
+    const report = await getJson<{ totals: { pv: number } }>(
+      `${server.api}/ab_tests/${uid}/reports?start_date=2000-01-01&end_date=2099-12-31`,
+    )
+    expect(report.totals.pv).toBe(1)
+  })
+
   it('リクエスト集計は記録が無くても形を返す', async () => {
     const stats = await getJson<{ total: number; referers: unknown[] }>(
       `${server.api}/report-exclusions/requests?start_date=2026-01-01&end_date=2026-12-31`,

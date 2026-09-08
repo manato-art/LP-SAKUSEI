@@ -606,6 +606,35 @@ deliveryRouter.post('/lp/:uid/__track', (req, res) => {
   const versionUid = typeof body.version === 'string' ? body.version : ''
   const date = toDateKey(new Date())
 
+  /**
+   * レポート除外の判定は**すべての計測より先**に行う。
+   * 実物の説明は「指定条件に合致するアクセスをレポート集計から除外します。
+   * サイト閲覧は可能ですが、数値には反映されません」なので、
+   * PV・クリックだけでなくCV・ヒートマップも数えない。
+   * ページ自体は普通に表示されているので、応答は ok を返す。
+   */
+  const visitor: RequestLogEntry = {
+    team_id: abTest.team_id,
+    date,
+    ip: clientIp(req),
+    referer: refererOrigin(req.get('referer')),
+    params: queryPairsOf(body.u, req),
+    excluded: false,
+  }
+  const isExcluded = shouldExclude(visitor, getState().reportExclusions)
+  if (body.event === 'pv') {
+    // 記録はPVのときだけ残す（1アクセス1件にする。クリックやCVで重複させない）
+    setState((s) => ({
+      ...s,
+      // 記録は増え続けるので直近ぶんだけ残す
+      requestLogs: [...s.requestLogs, { ...visitor, excluded: isExcluded }].slice(-5000),
+    }))
+  }
+  if (isExcluded) {
+    res.json({ ok: true, excluded: true })
+    return
+  }
+
   // ── CV（実測）: CV計測タグ（サンクスページ）からの通知 ──
   // 合成CVを廃止したので、CVが増える経路はここだけ。売上(amount)は任意で、
   // 送られてこなければ0（金額を発明しない）。
@@ -717,32 +746,6 @@ deliveryRouter.post('/lp/:uid/__track', (req, res) => {
 
   const event: 'pv' | 'click' = body.event === 'click' ? 'click' : 'pv'
   const delta = event === 'click' ? { click: 1 } : { pv: 1 }
-
-  /**
-   * レポート除外の材料になる、このアクセスの素性を記録する（PVのときだけ）。
-   * 除外条件に当たるアクセスは**レポートに数えない**（実物の説明どおり、
-   * ページ表示はできるが数値には反映しない）。
-   */
-  const visitor: RequestLogEntry = {
-    team_id: abTest.team_id,
-    date,
-    ip: clientIp(req),
-    referer: refererOrigin(req.get('referer')),
-    params: queryPairsOf(body.u, req),
-    excluded: false,
-  }
-  const rules = getState().reportExclusions
-  const isExcluded = shouldExclude(visitor, rules)
-  setState((s) => ({
-    ...s,
-    // 記録は増え続けるので直近ぶんだけ残す
-    requestLogs: [...s.requestLogs, { ...visitor, excluded: isExcluded }].slice(-5000),
-  }))
-  if (isExcluded) {
-    // 数値には反映しない。ページ側は普通に見えているので ok を返す。
-    res.json({ ok: true, excluded: true })
-    return
-  }
 
   // 外部LPの所在。ヒートマップの背景に実LPを敷くために覚えておく。
   // 自前配信（このサーバー自身のホスト）は Version のHTMLを背景に使うので対象外。
