@@ -50,28 +50,36 @@ function injectStyles(): void {
   s.id = CSS_ID
   s.textContent = `
     .hm-cols { display:flex; gap:16px; overflow-x:auto; padding:4px 2px 12px; align-items:flex-start; }
+    /* 画面全体が白基調なので、列だけ黒いと浮くうえ文字が読みづらい。
+       白地＋枠線にして、LPの絵が枠の中に収まって見えるようにする。 */
     .hm-col {
-      flex:0 0 320px; background:#1c1c1e; border-radius:10px; overflow:hidden;
-      display:flex; flex-direction:column; max-height:70vh;
+      flex:0 0 320px; background:#fff; border:1px solid #dcdce2; border-radius:10px;
+      overflow:hidden; display:flex; flex-direction:column; max-height:70vh;
+      box-shadow:0 1px 3px rgba(0,0,0,.06);
     }
-    .hm-col-head { padding:12px 14px 10px; display:flex; flex-direction:column; gap:4px; flex-shrink:0; }
-    .hm-col-version { font-size:13px; font-weight:700; color:#f2f2f4; }
-    .hm-col-metric { font-size:12px; color:#c9c9ce; display:flex; gap:8px; align-items:baseline; flex-wrap:wrap; }
-    .hm-col-metric b { font-size:13px; }
+    .hm-col-head {
+      padding:12px 14px 10px; display:flex; flex-direction:column; gap:4px; flex-shrink:0;
+      background:#f7f8fa; border-bottom:1px solid #e5e5ea;
+    }
+    .hm-col-version { font-size:13px; font-weight:700; color:#1a1a1a; }
+    .hm-col-metric { font-size:12px; color:#444; display:flex; gap:8px; align-items:baseline; flex-wrap:wrap; }
+    .hm-col-metric b { font-size:13px; color:#1a1a1a; }
     .hm-col-note { font-size:11px; color:#8a8a90; }
     .hm-col-ctrl { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:6px; }
     .hm-dev { display:flex; gap:4px; }
     .hm-dev button {
-      width:24px; height:22px; border-radius:4px; border:1px solid #3a3a3e; background:#2a2a2e;
-      color:#c9c9ce; cursor:pointer; font-size:11px; line-height:1; padding:0;
+      width:24px; height:22px; border-radius:4px; border:1px solid #d5d5db; background:#fff;
+      color:#555; cursor:pointer; font-size:11px; line-height:1; padding:0;
     }
     .hm-dev button.on { background:#f0960a; border-color:#f0960a; color:#fff; }
-    .hm-range { font-size:11px; color:#c9c9ce; font-variant-numeric:tabular-nums; }
+    .hm-range { font-size:11px; color:#555; font-variant-numeric:tabular-nums; }
     .hm-line-select {
-      margin-left:auto; background:#2a2a2e; color:#e8e8ea; border:1px solid #3a3a3e;
+      margin-left:auto; background:#fff; color:#1a1a1a; border:1px solid #d5d5db;
       border-radius:4px; font-size:11px; padding:3px 6px; font-family:inherit;
     }
-    .hm-col-body { position:relative; overflow:auto; flex:1; background:#0f0f10; }
+    /* LPの外周に枠を出して「画面の中身」だと分かるようにする */
+    .hm-col-body { position:relative; overflow:auto; flex:1; background:#fff; }
+    .hm-canvas { box-shadow:inset 0 0 0 1px #e5e5ea; }
     .hm-canvas { position:relative; }
     .hm-lp { transform-origin:top left; }
     .hm-lp img { max-width:100%; }
@@ -107,7 +115,7 @@ function injectStyles(): void {
       font-variant-numeric:tabular-nums;
     }
     .hm-dot { position:absolute; width:10px; height:10px; margin:-5px 0 0 -5px; border-radius:50%; }
-    .hm-empty { padding:28px 14px; color:#8a8a90; font-size:12px; text-align:center; line-height:1.9; }
+    .hm-empty { padding:28px 14px; color:#6a6a72; font-size:12px; text-align:center; line-height:1.9; }
   `
   document.head.append(s)
 }
