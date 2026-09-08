@@ -289,7 +289,8 @@ export async function renderConversions(container: HTMLElement): Promise<void> {
   const content = pageShell(
     container,
     'CV速報',
-    '※クローンが自作した画面です。モックのコンバージョン発生ログを表示します。30分ごとに更新されます。',
+    // 合成CVを廃止したので「モックのログ・30分ごと更新」は事実でなくなった。実測のみを出す。
+    '※クローンが自作した画面です。CV計測タグから記録された実際のコンバージョンを新しい順に表示します。',
   )
   const data = await getJson<{ conversions: ConversionRow[] }>('/conversions')
   const rows = data?.conversions ?? []
