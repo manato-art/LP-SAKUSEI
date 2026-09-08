@@ -429,4 +429,20 @@ const OVERRIDES = /* css */ `
 [data-clone-panel-host="history"] ._radioControl_10frc_1 input[type="radio"] {
   accent-color: rgb(255, 164, 0);
 }
+
+/* ---- MUI Select の白文字（レポートの絞り込み） ----
+ * 採取元がダークテーマなので Select の文字色が white のまま残っており、
+ * 白基調に変えた薄グレー背景(#f5f5f5)の上で読めなくなっていた
+ * （レポートの「日付」「指定なし」「アーカイブ済みを除く」「全端末」がこれ）。
+ * 実測でコントラスト差が10しかなかったので、文字と矢印を暗い色に戻す。 */
+.MuiSelect-select,
+.MuiSelect-select.MuiInputBase-input,
+.MuiNativeSelect-select {
+  color: #333 !important;
+  -webkit-text-fill-color: #333 !important;
+}
+.MuiSelect-icon,
+.MuiNativeSelect-icon {
+  color: #666 !important;
+}
 `
