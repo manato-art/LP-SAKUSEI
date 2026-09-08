@@ -77,7 +77,9 @@ function injectStyles(): void {
     .hm-lp img { max-width:100%; }
     .hm-overlay { position:sticky; top:0; height:0; z-index:5; }
     /* 熱の色は1枚のグラデーションで敷く（帯ごとに矩形を置くと段差が出る） */
-    .hm-heat { position:absolute; inset:0; }
+    /* 集計はバンド単位なので停止点の間に段差が出る。ぼかして自然につなぐ。
+       ぼかすと上下の端が薄くなるので、外へ広げてから canvas 側で切り取る。 */
+    .hm-heat { position:absolute; inset:-40px 0; filter:blur(16px); }
     /* 到達ライン。実物の arrivalLine に対応する白いバー。
        押すとLPがその深さまでスクロールするので、ボタンとして扱う。 */
     .hm-pill {
@@ -121,9 +123,10 @@ function bandColor(_metric: HeatmapMetric, strength: number): string {
   // metric は行の色分けにだけ使い、面の色は値そのものを表す。
   const t = Math.min(1, Math.max(0, strength))
   const hue = (1 - t) * 240
-  // LPの絵柄が読めなくなるので濃くしすぎない。値が低いところは更に薄く。
-  const alpha = 0.26 + t * 0.26
-  return `hsla(${hue}, 85%, 52%, ${alpha})`
+  // LPの写真や文字がそのまま読めることを最優先にする（実物もパステル調）。
+  // 高低の差は**色相**で出し、濃さでは出さない。濃さで差を付けるとLPが潰れる。
+  const alpha = 0.14 + t * 0.10
+  return `hsla(${hue}, 70%, 58%, ${alpha})`
 }
 
 /** モードごとの「そのバンドの値」と表示文字列 */
@@ -262,6 +265,8 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
   body.className = 'hm-col-body'
   const canvas = document.createElement('div')
   canvas.className = 'hm-canvas'
+  // 上下へ広げた熱の層がLPの外へはみ出さないようにする
+  canvas.style.overflow = 'hidden'
   // 背景。外部LPは実LPを iframe で敷く（自前配信は従来どおりVersionのHTML）。
   // iframe にしているのは、他所のLPのCSSがこの画面に漏れ出さないようにするためと、
   // sandbox でスクリプトを**実行させない**ため（サーバー側の除去と合わせて二重の防御）。
