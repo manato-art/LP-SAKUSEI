@@ -26,34 +26,46 @@ export function registerMediaBlots(): void {
     static blotName = 'sbvideo'
     static tagName = 'video'
     /**
-     * 値は `src` 文字列（従来）と `{ src, loop }`（ループ設定つき）の両方を受ける。
-     * 文字列で来た古い保存データはこれまで通りループONで復元する。
+     * 値は `src` 文字列（従来）と `{ src, loop, autoplay, muted }` の両方を受ける。
+     * 文字列で来た古い保存データは、指示⑬の既定（自動再生＋ループ＋ミュート）で復元する。
      */
     static override create(value: string | Record<string, string>): HTMLElement {
       const url = typeof value === 'string' ? value : (value['src'] ?? '')
       const node = super.create(url)
       node.setAttribute('src', url)
       node.setAttribute('controls', 'controls')
-      // 指示⑬: 常に再生（自動再生＋ループ）。音ありの自動再生はブロックされるので muted 必須。
-      node.setAttribute('autoplay', 'autoplay')
-      node.setAttribute('muted', 'muted')
       node.setAttribute('playsinline', 'playsinline')
       node.setAttribute('preload', 'metadata')
-      // ループは既定ON。編集画面で明示的に切ったものだけ 'off' が入る。
-      // ここで毎回ONに戻すと、切った設定が Quill の再構築で復活してしまう。
-      const loop = typeof value === 'string' ? 'on' : (value['loop'] ?? 'on')
-      if (loop !== 'off') node.setAttribute('loop', 'loop')
+
+      /**
+       * 指示⑬の既定は「常に再生（自動再生＋ループ）」＋ミュート。
+       * ただし編集画面で切った設定はここで付け直してはいけない。
+       * 毎回既定へ戻すと、切った設定が Quill の再構築で復活してしまう。
+       */
+      const flagOn = (name: string): boolean =>
+        typeof value === 'string' ? true : (value[name] ?? 'on') !== 'off'
+      const loop = flagOn('loop')
+      const autoplay = flagOn('autoplay')
+      const muted = flagOn('muted')
+      if (loop) node.setAttribute('loop', 'loop')
+      if (autoplay) node.setAttribute('autoplay', 'autoplay')
+      if (muted) node.setAttribute('muted', 'muted')
       if (node instanceof HTMLVideoElement) {
-        node.muted = true // 属性だけだと効かない環境向け
-        node.loop = loop !== 'off'
+        // 属性だけだと効かない環境があるので、プロパティも揃える
+        node.loop = loop
+        node.autoplay = autoplay
+        node.muted = muted
       }
       node.style.maxWidth = '100%'
       return node
     }
     static value(node: HTMLElement): Record<string, string> {
+      const flag = (name: string): string => (node.hasAttribute(name) ? 'on' : 'off')
       return {
         src: node.getAttribute('src') ?? '',
-        loop: node.hasAttribute('loop') ? 'on' : 'off',
+        loop: flag('loop'),
+        autoplay: flag('autoplay'),
+        muted: flag('muted'),
       }
     }
   }

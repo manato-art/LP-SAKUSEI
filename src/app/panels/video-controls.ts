@@ -9,6 +9,7 @@
  * 変更後に `quill.update()` を呼んで Quill 側にも知らせる（画像リンクと同じ手順）。
  */
 import type Quill from 'quill'
+import { toast } from '../ui.ts'
 
 const CSS_ID = 'sb-video-controls-css'
 
@@ -36,7 +37,24 @@ function injectCss(): void {
   document.head.append(s)
 }
 
-/** ループを表すSVG（共通指示「UIは絵文字をやめSVGアイコンに」） */
+/** アイコンは全てSVG（共通指示「UIは絵文字をやめSVGアイコンに」） */
+const PLAY_ICON =
+  '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+  'stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 4 13 8-13 8V4Z"/></svg>'
+const MUTE_ICON =
+  '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+  'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+  '<path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="m16 9 5 6M21 9l-5 6"/></svg>'
+const SOUND_ICON =
+  '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+  'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+  '<path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="M16 9a4 4 0 0 1 0 6"/><path d="M19 6a8 8 0 0 1 0 12"/></svg>'
+const COPY_ICON =
+  '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+  'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+  '<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>'
+
+/** ループを表すSVG */
 const LOOP_ICON =
   '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
   'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
@@ -53,24 +71,64 @@ export interface LoopTarget {
   setAttribute(name: string, value: string): void
   removeAttribute(name: string): void
   loop: boolean
+  autoplay: boolean
+  muted: boolean
+}
+
+/** 切り替えられる再生設定 */
+export type VideoFlag = 'loop' | 'autoplay' | 'muted'
+
+/** その設定が入っているか */
+export function hasFlag(video: LoopTarget, flag: VideoFlag): boolean {
+  return video.hasAttribute(flag)
+}
+
+/**
+ * 設定のON/OFFを入れ替えて、切り替え後の状態を返す。
+ * 属性と DOM プロパティの両方を触る（属性だけだと再生中の挙動が変わらない環境がある）。
+ */
+export function toggleFlag(video: LoopTarget, flag: VideoFlag): boolean {
+  const next = !hasFlag(video, flag)
+  if (next) video.setAttribute(flag, flag)
+  else video.removeAttribute(flag)
+  // eslint-disable-next-line no-param-reassign -- 対象要素の再生設定を変えるのがこの関数の責務
+  video[flag] = next
+  return next
 }
 
 /** その動画がループ再生になっているか */
 export function isLooping(video: LoopTarget): boolean {
-  return video.hasAttribute('loop')
+  return hasFlag(video, 'loop')
+}
+
+/** ループのON/OFFを入れ替える */
+export function toggleLoop(video: LoopTarget): boolean {
+  return toggleFlag(video, 'loop')
 }
 
 /**
- * ループのON/OFFを入れ替えて、切り替え後の状態を返す。
- * 属性と DOM プロパティの両方を触る（属性だけだと再生中の挙動が変わらない環境がある）。
+ * 音ありの自動再生はブラウザに止められる。
+ * 「自動再生ONのままミュートを切った」ときだけ true を返し、呼び出し側が注意を出す。
  */
-export function toggleLoop(video: LoopTarget): boolean {
-  const next = !isLooping(video)
-  if (next) video.setAttribute('loop', 'loop')
-  else video.removeAttribute('loop')
-  // eslint-disable-next-line no-param-reassign -- 対象要素の再生設定を変えるのがこの関数の責務
-  video.loop = next
-  return next
+export function willBlockAutoplay(video: LoopTarget): boolean {
+  return hasFlag(video, 'autoplay') && !hasFlag(video, 'muted')
+}
+
+/**
+ * 動画をすぐ下に複製する。
+ *
+ * Quill の API ではなく DOM に直接差し込み、呼び出し側で `quill.update()` する。
+ * `<video>` は sbvideo ブロットとして登録済みなので、Quill は差し込まれた要素を
+ * 認識して自分の内容に取り込む（保存HTMLからの復元と同じ経路）。
+ */
+export function duplicateVideo(video: HTMLVideoElement): HTMLVideoElement {
+  const copy = video.cloneNode(true) as HTMLVideoElement
+  // クローンは属性しか引き継がないので、再生まわりのプロパティを揃え直す
+  copy.loop = video.hasAttribute('loop')
+  copy.autoplay = video.hasAttribute('autoplay')
+  copy.muted = video.hasAttribute('muted')
+  video.insertAdjacentElement('afterend', copy)
+  return copy
 }
 
 /**
@@ -107,26 +165,66 @@ export function wireVideoControls(quill: Quill): void {
     bar = document.createElement('div')
     bar.className = 'sb-video-bar'
 
-    const loopBtn = document.createElement('button')
-    loopBtn.type = 'button'
-    loopBtn.className = 'sb-video-btn'
-    const paint = (on: boolean): void => {
-      loopBtn.classList.toggle('on', on)
-      loopBtn.innerHTML = `${LOOP_ICON}<span>ループ再生 ${on ? 'ON' : 'OFF'}</span>`
-      loopBtn.title = on
-        ? '繰り返し再生しています。押すと1回だけの再生に変わります。'
-        : '1回だけ再生します。押すと繰り返し再生に変わります。'
+    /** 再生設定のボタンを1つ作る */
+    const flagBtn = (
+      flag: VideoFlag,
+      label: string,
+      iconOn: string,
+      iconOff: string,
+      tip: (on: boolean) => string,
+    ): HTMLButtonElement => {
+      const btn = document.createElement('button')
+      btn.type = 'button'
+      btn.className = 'sb-video-btn'
+      const paint = (on: boolean): void => {
+        btn.classList.toggle('on', on)
+        btn.innerHTML = `${on ? iconOn : iconOff}<span>${label} ${on ? 'ON' : 'OFF'}</span>`
+        btn.title = tip(on)
+      }
+      paint(hasFlag(video, flag))
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation()
+        e.preventDefault()
+        paint(toggleFlag(video, flag))
+        // 音ありの自動再生はブラウザが止める。黙って効かないままにしない。
+        if (willBlockAutoplay(video)) {
+          toast('音ありの自動再生はブラウザに止められます。ミュートを戻すか自動再生を切ってください', 'error')
+        }
+        // Quill に変更を知らせる（保存はDOMから直列化されるので属性だけで足りる）
+        quill.update()
+      })
+      return btn
     }
-    paint(isLooping(video))
-    loopBtn.addEventListener('click', (e) => {
+
+    const loopBtn = flagBtn('loop', 'ループ再生', LOOP_ICON, LOOP_ICON, (on) =>
+      on
+        ? '繰り返し再生しています。押すと1回だけの再生に変わります。'
+        : '1回だけ再生します。押すと繰り返し再生に変わります。',
+    )
+    const autoBtn = flagBtn('autoplay', '自動再生', PLAY_ICON, PLAY_ICON, (on) =>
+      on
+        ? '表示されたら自動で再生します。押すと手動再生に変わります。'
+        : '見る人が再生ボタンを押すまで再生しません。',
+    )
+    const muteBtn = flagBtn('muted', 'ミュート', MUTE_ICON, SOUND_ICON, (on) =>
+      on ? '音を出しません。押すと音が出るようになります。' : '音が出ます。自動再生と併用するとブラウザに止められます。',
+    )
+
+    const copyBtn = document.createElement('button')
+    copyBtn.type = 'button'
+    copyBtn.className = 'sb-video-btn'
+    copyBtn.innerHTML = `${COPY_ICON}<span>複製</span>`
+    copyBtn.title = 'この動画をすぐ下にもう1つ置きます（設定も引き継ぎます）'
+    copyBtn.addEventListener('click', (e) => {
       e.stopPropagation()
       e.preventDefault()
-      paint(toggleLoop(video))
-      // Quill に変更を知らせる（保存はDOMから直列化されるので属性だけで足りる）
+      duplicateVideo(video)
       quill.update()
+      removeBar()
+      toast('動画を複製しました')
     })
 
-    bar.append(loopBtn)
+    bar.append(loopBtn, autoBtn, muteBtn, copyBtn)
     container.append(bar)
     place()
   }

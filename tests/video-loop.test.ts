@@ -1,12 +1,21 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { isLooping, toggleLoop, type LoopTarget } from '../src/app/panels/video-controls.ts'
+import {
+  hasFlag,
+  isLooping,
+  toggleFlag,
+  toggleLoop,
+  willBlockAutoplay,
+  type LoopTarget,
+} from '../src/app/panels/video-controls.ts'
 
 /** DOMを使わずに `<video>` の属性まわりだけを真似た代役 */
-function fakeVideo(initialLoop: boolean): LoopTarget {
-  const attrs = new Set<string>(initialLoop ? ['loop'] : [])
+function fakeVideo(flags: readonly string[] = ['loop']): LoopTarget {
+  const attrs = new Set<string>(flags)
   return {
-    loop: initialLoop,
+    loop: attrs.has('loop'),
+    autoplay: attrs.has('autoplay'),
+    muted: attrs.has('muted'),
     hasAttribute: (n) => attrs.has(n),
     setAttribute: (n) => attrs.add(n),
     removeAttribute: (n) => attrs.delete(n),
@@ -23,7 +32,7 @@ describe('ループ再生の切り替え', () => {
   let video: LoopTarget
 
   beforeEach(() => {
-    video = fakeVideo(true)
+    video = fakeVideo(['loop'])
   })
 
   it('挿入直後はループON', () => {
@@ -49,20 +58,66 @@ describe('ループ再生の切り替え', () => {
   })
 })
 
+describe('自動再生とミュート', () => {
+  it('自動再生を入れ替えられる', () => {
+    const v = fakeVideo([])
+    expect(toggleFlag(v, 'autoplay')).toBe(true)
+    expect(v.autoplay).toBe(true)
+    expect(toggleFlag(v, 'autoplay')).toBe(false)
+    expect(v.hasAttribute('autoplay')).toBe(false)
+  })
+
+  it('ミュートを入れ替えられる', () => {
+    const v = fakeVideo(['muted'])
+    expect(hasFlag(v, 'muted')).toBe(true)
+    expect(toggleFlag(v, 'muted')).toBe(false)
+    expect(v.muted).toBe(false)
+  })
+
+  it('自動再生ONのままミュートを切ると、ブラウザに止められると分かる', () => {
+    const v = fakeVideo(['autoplay', 'muted'])
+    expect(willBlockAutoplay(v)).toBe(false)
+    toggleFlag(v, 'muted')
+    expect(willBlockAutoplay(v)).toBe(true)
+  })
+
+  it('自動再生が切ってあれば、音ありでも止められない', () => {
+    expect(willBlockAutoplay(fakeVideo([]))).toBe(false)
+  })
+})
+
+describe('複製', () => {
+  const src = readFileSync('src/app/panels/video-controls.ts', 'utf8')
+
+  it('すぐ下に置く（離れた場所に増えない）', () => {
+    expect(src).toContain("insertAdjacentElement('afterend', copy)")
+  })
+
+  it('クローンは属性しか引き継がないので、再生まわりのプロパティを揃え直す', () => {
+    expect(src).toContain("copy.loop = video.hasAttribute('loop')")
+    expect(src).toContain("copy.autoplay = video.hasAttribute('autoplay')")
+    expect(src).toContain("copy.muted = video.hasAttribute('muted')")
+  })
+})
+
 describe('保存・復元でループ設定が戻らない', () => {
   const src = readFileSync('src/app/panels/media-blots.ts', 'utf8')
   const blot = src.slice(src.indexOf("static blotName = 'sbvideo'"), src.indexOf("class SbWidgetBlot"))
 
-  it('value は src とループ状態を返す（src だけだと設定が消える）', () => {
-    expect(blot).toContain("loop: node.hasAttribute('loop') ? 'on' : 'off'")
+  it('value はループ・自動再生・ミュートの3つを返す', () => {
+    for (const name of ['loop', 'autoplay', 'muted']) {
+      expect(blot).toContain(`${name}: flag('${name}')`)
+    }
   })
 
-  it('create は毎回ループを付け直さない（off のときは付けない）', () => {
-    expect(blot).toContain("if (loop !== 'off') node.setAttribute('loop', 'loop')")
+  it('create は切った設定を付け直さない（off のときは付けない）', () => {
+    expect(blot).toContain("if (loop) node.setAttribute('loop', 'loop')")
+    expect(blot).toContain("if (autoplay) node.setAttribute('autoplay', 'autoplay')")
+    expect(blot).toContain("if (muted) node.setAttribute('muted', 'muted')")
   })
 
-  it('古い保存データ（src文字列だけ）はこれまで通りループONで復元する', () => {
-    expect(blot).toContain("typeof value === 'string' ? 'on'")
+  it('古い保存データ（src文字列だけ）は指示⑬の既定で復元する', () => {
+    expect(blot).toContain("typeof value === 'string' ? true")
   })
 })
 
