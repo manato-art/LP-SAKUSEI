@@ -93,7 +93,10 @@ function buildFilters(deps: FilterDeps): HTMLElement {
     deps.onApply(a <= b ? { startDate: a, endDate: b } : { startDate: b, endDate: a })
   })
 
-  card.append(
+  // 項目はこの中だけで折り返させる。ボタンを兄弟に置くことで右端に固定される。
+  const fields = document.createElement('div')
+  fields.className = 'rv2-filter-fields'
+  fields.append(
     field('配信期間', rangeBox),
     // 以下は実物にある絞り込み。当システムは Version 単位でしか持たないので、
     // 選択肢を発明せず「全て」だけを出す（推測で埋めない）。
@@ -103,8 +106,8 @@ function buildFilters(deps: FilterDeps): HTMLElement {
     field('広告主', fixedSelect(['全て'])),
     field('キャンペーン', fixedSelect(['全て'])),
     field('クリエイティブ', fixedSelect(['全て'])),
-    apply,
   )
+  card.append(fields, apply)
   return card
 }
 

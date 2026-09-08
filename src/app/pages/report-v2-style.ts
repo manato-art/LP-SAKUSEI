@@ -33,7 +33,10 @@ export function injectReportStyles(): void {
     }
 
     /* ── フィルター行 ── */
-    .rv2-filters { display:flex; gap:10px; align-items:center; flex-wrap:wrap; padding:12px 14px; }
+    /* 絞り込みボタンは常に同じ行の右端に置く。項目側だけを折り返させることで、
+       項目が増えてもボタンが2行目へ落ちない。 */
+    .rv2-filters { display:flex; gap:10px; align-items:center; padding:12px 14px; }
+    .rv2-filter-fields { display:flex; gap:10px; align-items:center; flex-wrap:wrap; flex:1 1 auto; min-width:0; }
     .rv2-field {
       display:flex; flex-direction:column; gap:2px; min-width:132px;
       border:1px solid var(--rv2-line); border-radius:8px; padding:6px 10px; background:#fff;
@@ -47,7 +50,7 @@ export function injectReportStyles(): void {
     .rv2-daterange input { width:104px; font-variant-numeric:tabular-nums; }
     .rv2-icon { color:var(--rv2-accent); flex-shrink:0; }
     .rv2-apply {
-      margin-left:auto; display:inline-flex; align-items:center; gap:6px;
+      flex:0 0 auto; align-self:stretch; display:inline-flex; align-items:center; gap:6px;
       border:1px solid #c7d7fb; background:#fff; color:var(--rv2-accent);
       border-radius:8px; padding:9px 16px; font:inherit; font-size:12px; font-weight:600;
       cursor:pointer;
