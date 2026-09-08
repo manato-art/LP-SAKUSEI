@@ -36,6 +36,9 @@ import {
 import { openCreateFolder, openCreatePage } from './folders-create.ts'
 import { openParamUrlModal } from '../panels/param-url-modal.ts'
 import { openTrackingTagModal } from '../panels/tracking-tag-modal.ts'
+import { formatPeriodLabel, openPeriodPicker } from '../panels/period-picker.ts'
+import { defaultRange, toRangeQuery, type DateRange } from './report-period.ts'
+import { EMPTY_CELL, formatCell, type ReportColumn } from './report-columns.ts'
 import { openFolderMenu } from '../panels/folder-menu.ts'
 
 /** 採取物から切り出したフォルダ1行ぶんのマークアップ（読み込み時に一度だけ） */
@@ -474,11 +477,17 @@ function wireRealPageRows(area: HTMLElement, context: PageContext, body?: HTMLEl
     const wrapper = spinner.closest<HTMLElement>(`${FOLDERS_HOOK.pageRowList} > div`)
     ;(wrapper ?? spinner).style.display = 'none'
   }
+
+  // KPI列（PV/Click/CV…）を選択中の集計期間の実データで埋める。
+  // 採取物の静的な数字のままだと、実際の計測結果が一覧に出ないため。
+  void applyListMetrics(area)
 }
 
 /** 雛形の実行を複製し、名前・ステータス・媒体をモック値へ差し替えてクリックを配線する。 */
 function buildPageRow(template: HTMLElement, abTest: AbTest): HTMLElement {
   const row = template.cloneNode(true) as HTMLElement
+  // 集計期間の実装（KPI列を実データで埋める）ために、行と beyondページを対応づける目印。
+  row.dataset['abTestUid'] = abTest.uid
   // 指示㉞: 行同士の境界が薄くて分かりづらいので、はっきりした仕切り線を足す。
   row.style.borderBottom = '1px solid #E3E6EA'
   const status = AD_STATUS_LABELS[abTest.ad_status] ?? abTest.ad_status
@@ -1276,11 +1285,65 @@ function applyTabStyle(tab: HTMLElement, isActive: boolean): void {
 
 // ── 採取物に在るが、挙動を採取できていないもの ────────────────
 
-/** 押した後の画面を採取していない操作。それらしい画面を作らず、そう言う（§3-5）。 */
-function wireNotCaptured(node: Element | null | undefined, label: string): void {
-  node?.addEventListener('click', () => {
-    toast(`「${label}」は採取していないため未実装です`, 'error')
-  })
+// ── 集計期間 と 一覧のKPI列 ───────────────────────────
+
+/** 一覧KPIの集計期間。既定は「今日1日」＝レポート画面の既定と同じ数え方に揃える。 */
+let listRange: DateRange = defaultRange()
+
+/**
+ * 一覧のKPI列（1行あたり `.e14sgd470` が13個）のうち、**恒等式で裏づけのある指標だけ**を
+ * 実データで埋める。列の並びは採取した実ヘッダのとおり:
+ *   0:配信ステータス 1:配信金額 2:PV 3:Click 4:CTR 5:CV 6:CVR 7:CTVR
+ *   8:CPA 9:MCPA 10:媒体Click 11:媒体CTR 12:ROAS
+ * CTR/CTVR/MCPA/媒体Click/媒体CTR/ROAS は計算式が未確認（report-columns.ts と同じ判断）
+ * なので**触らず採取値のまま**にする（数字を発明しない）。
+ */
+const LIST_METRIC_CELLS: readonly { index: number; column: ReportColumn }[] = [
+  { index: 1, column: { label: '配信金額', unit: '円', metric: 'ad_cost', format: 'yen' } },
+  { index: 2, column: { label: 'PV', unit: '', metric: 'pv', format: 'integer' } },
+  { index: 3, column: { label: 'Click', unit: '', metric: 'click', format: 'integer' } },
+  { index: 5, column: { label: 'CV', unit: '', metric: 'cv', format: 'integer' } },
+  { index: 6, column: { label: 'CVR', unit: '%', metric: 'cvr', format: 'percent' } },
+  { index: 8, column: { label: 'CPA', unit: '円', metric: 'cpa', format: 'yen' } },
+]
+
+/** 一覧の各行のKPI列を、選択中の集計期間の実データで埋める。 */
+async function applyListMetrics(area: HTMLElement): Promise<void> {
+  const rows = [...area.querySelectorAll<HTMLElement>('[data-ab-test-uid]')]
+  await Promise.all(
+    rows.map(async (row) => {
+      const uid = row.dataset['abTestUid'] ?? ''
+      if (uid === '') return
+      try {
+        const { totals } = await api.report(uid, toRangeQuery(listRange))
+        const cells = row.querySelectorAll<HTMLElement>('.e14sgd470')
+        for (const { index, column } of LIST_METRIC_CELLS) {
+          const cell = cells[index]
+          if (cell === undefined) continue
+          const text = formatCell(totals, column)
+          cell.textContent =
+            text === EMPTY_CELL
+              ? EMPTY_CELL
+              : column.format === 'yen'
+                ? `¥${text}`
+                : column.format === 'percent'
+                  ? `${text}%`
+                  : text
+        }
+      } catch {
+        // 取得できなければ採取値のまま（数字を発明しない）
+      }
+    }),
+  )
+}
+
+/** 「集計期間：YYYY/MM/DD 〜 YYYY/MM/DD」のラベルを現在の期間へ更新する（∨アイコンは残す）。 */
+function setPeriodLabel(periodSelect: HTMLElement): void {
+  const label =
+    [...periodSelect.querySelectorAll<HTMLElement>('*')].find(
+      (el) => el.children.length === 0 && (el.textContent ?? '').includes('集計期間'),
+    ) ?? periodSelect
+  label.textContent = formatPeriodLabel(listRange)
 }
 
 /** フォルダツリーの検索バーを表示/非表示する */
@@ -1385,8 +1448,19 @@ function wireMainControls(body: HTMLElement, context: PageContext): void {
     })
   }
 
-  // 集計期間: トーストを残す（モック側に日次メトリクスの期間フィルタリングUIは採取物に無い）
-  wireNotCaptured(main.querySelector(FOLDERS_HOOK.periodSelect), '集計期間')
+  // 集計期間: 採取物にUIが無いためクローン独自のピッカーを出し、KPI列を実データで更新する。
+  const periodSelect = main.querySelector<HTMLElement>(FOLDERS_HOOK.periodSelect)
+  if (periodSelect !== null) {
+    periodSelect.style.cursor = 'pointer'
+    setPeriodLabel(periodSelect)
+    periodSelect.addEventListener('click', () => {
+      openPeriodPicker(periodSelect, listRange, (range) => {
+        listRange = range
+        setPeriodLabel(periodSelect)
+        void applyListMetrics(main)
+      })
+    })
+  }
 }
 
 // ── ページ検索（フォルダ内検索）──────────────────────
