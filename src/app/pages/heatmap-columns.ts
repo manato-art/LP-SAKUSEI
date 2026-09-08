@@ -416,8 +416,24 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
   if (stat === null || stat.pv === 0) {
     const empty = document.createElement('div')
     empty.className = 'hm-empty'
-    empty.textContent =
-      'このVersionのヒートマップはまだありません。\nLPに計測タグを貼ると、到達率・離脱率・滞在時間・クリックが集まります。'
+    // PVがあるのに空だと「壊れている」と読めてしまう。実際の理由は
+    // 「位置の記録は離脱時に1回だけ送られる」ため、それ以前のPVには位置が無いこと。
+    // 自前配信のLPには計測タグが最初から入っているので「タグを貼れ」とは言わない。
+    const seen = isShared ? deps.totals.pv : spec.pv
+    empty.textContent = isShared
+      ? [
+          'この外部LPのヒートマップはまだありません。',
+          'LPに計測タグを貼ると、ページを離れたときに',
+          '到達率・離脱率・滞在時間・クリックが記録されます。',
+        ].join('\n')
+      : [
+          'このVersionのヒートマップはまだありません。',
+          '位置の記録は表示したときではなく、',
+          'ページを離れたときに1回だけ送られます。',
+          seen > 0
+            ? `これまでの ${seen} PV はその記録より前のぶんです。次の閲覧から貯まります。`
+            : 'まだ誰も見ていません。',
+        ].join('\n')
     empty.style.whiteSpace = 'pre-line'
     body.prepend(empty)
   }
