@@ -302,9 +302,20 @@ describe('画面は実物の構成に合わせる', () => {
   })
 
   it('実物の項目を揃える', () => {
-    for (const label of ['除外条件', 'マッチタイプ', '結合条件', '設定済み除外条件', 'リクエスト数']) {
+    for (const label of ['除外条件', 'マッチタイプ', '設定済み除外条件', 'リクエスト数']) {
       expect(src, label).toContain(label)
     }
+  })
+
+  it('「結合条件」は意味が読める文言にする（指示）', () => {
+    expect(src).toContain('次の条件とのつなぎ方')
+    expect(src).toContain('または（どちらかに当てはまれば除外）')
+    expect(src).toContain('かつ（両方に当てはまれば除外）')
+    expect(src).not.toContain("field('結合条件'")
+  })
+
+  it('つなぎ方は「次の行がある行」にだけ出す（1行だけのとき意味を持たないため）', () => {
+    expect(src).toContain('i === rows.length - 1')
   })
 
   it('リクエスト数は リファラ / ソースIP / パラメータ の3つ', () => {
@@ -350,8 +361,6 @@ describe('画面は実物の構成に合わせる', () => {
     for (const label of ['完全一致', '部分一致', '前方一致', '後方一致']) {
       expect(src, label).toContain(label)
     }
-    expect(src).toContain("label: 'AND'")
-    expect(src).toContain("label: 'OR'")
   })
 
   it('表示項目数は実物どおり5と10だけ', () => {

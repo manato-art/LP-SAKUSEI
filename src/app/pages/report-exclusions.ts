@@ -51,9 +51,13 @@ const MATCHES: readonly { value: ExclusionMatch; label: string }[] = [
   { value: 'prefix', label: '前方一致' },
   { value: 'suffix', label: '後方一致' },
 ]
+/**
+ * 条件が2つ以上あるときの繋ぎ方。実物は「結合条件」で AND / OR だが、
+ * 何を指すか分かりにくいので、意味が読める文言にしている。
+ */
 const JOINS: readonly { value: ExclusionJoin; label: string }[] = [
-  { value: 'and', label: 'AND' },
-  { value: 'or', label: 'OR' },
+  { value: 'or', label: 'または（どちらかに当てはまれば除外）' },
+  { value: 'and', label: 'かつ（両方に当てはまれば除外）' },
 ]
 /** 実物の「表示項目数」は 5項目 / 10項目 の2つだけ */
 const LIMITS = [5, 10] as const
@@ -184,8 +188,21 @@ function buildDenyTab(reload: () => void): HTMLElement {
     match: HTMLSelectElement
     value: HTMLInputElement
     join: HTMLSelectElement
+    joinField: HTMLElement
   }
   const rows: Row[] = []
+
+  /**
+   * 「つなぎ方」は行と行の繋ぎなので、**次の行がある行にだけ**出す。
+   * 1行しかないのに出ていると、何を指すのか分からない（実物はここが分かりにくい）。
+   */
+  const syncJoins = (): void => {
+    rows.forEach((r, i) => {
+      // 最後の行には次が無いので出さない
+      const isLast = i === rows.length - 1
+      r.joinField.style.setProperty('display', isLast ? 'none' : '')
+    })
+  }
 
   const addRow = (): void => {
     const line = document.createElement('div')
@@ -196,12 +213,8 @@ function buildDenyTab(reload: () => void): HTMLElement {
     value.placeholder = '値'
     const join = select(JOINS)
     join.value = 'or'
-    line.append(
-      field('除外条件', kind),
-      field('マッチタイプ', match),
-      field('値', value),
-      field('結合条件', join),
-    )
+    const joinField = field('次の条件とのつなぎ方', join)
+    line.append(field('除外対象', kind), field('マッチタイプ', match), field('値', value), joinField)
     // 2行目以降は取り消せるようにする（増やすだけだと戻せない）
     if (rows.length > 0) {
       const remove = document.createElement('button')
@@ -213,6 +226,7 @@ function buildDenyTab(reload: () => void): HTMLElement {
         if (at >= 0) {
           rows[at]?.el.remove()
           rows.splice(at, 1)
+          syncJoins()
         }
       })
       line.append(remove)
@@ -234,8 +248,9 @@ function buildDenyTab(reload: () => void): HTMLElement {
 
     const wrapLine = document.createElement('div')
     wrapLine.append(line, hint)
-    rows.push({ el: wrapLine, kind, match, value, join })
+    rows.push({ el: wrapLine, kind, match, value, join, joinField })
     rowsHost.append(wrapLine)
+    syncJoins()
   }
   addRow()
 
@@ -304,7 +319,7 @@ function buildRulesTable(rows: readonly ReportExclusionEntry[], reload: () => vo
     ['除外対象', false],
     ['マッチタイプ', false],
     ['値', false],
-    ['結合条件', false],
+    ['つなぎ方', false],
     ['除外アクセス数', true],
     ['', false],
   ] as const) {
@@ -332,7 +347,7 @@ function buildRulesTable(rows: readonly ReportExclusionEntry[], reload: () => vo
         ? '―'
         : row.conditions
             .slice(0, -1)
-            .map((c) => (JOINS.find((j) => j.value === c.join)?.label ?? c.join))
+            .map((c) => (c.join === 'and' ? 'かつ' : 'または'))
             .join(' / ')
     for (const [text, num] of [
       [row.is_whitelist ? `${kindText}（ホワイトリスト）` : kindText, false],
