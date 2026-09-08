@@ -74,30 +74,34 @@ function injectStyles(): void {
     .hm-canvas { position:relative; }
     .hm-lp { transform-origin:top left; }
     .hm-lp img { max-width:100%; }
-    .hm-overlay { position:absolute; inset:0; pointer-events:none; }
+    .hm-overlay { position:sticky; top:0; height:0; z-index:5; }
     /* 熱の色は1枚のグラデーションで敷く（帯ごとに矩形を置くと段差が出る） */
     .hm-heat { position:absolute; inset:0; }
-    /* 到達の目盛り。実物と同じく「N人 P%到達」の白い丸ピルを重ねる */
+    /* 到達ライン。実物の arrivalLine に対応する白いバー。
+       押すとLPがその深さまでスクロールするので、ボタンとして扱う。 */
     .hm-pill {
-      position:absolute; left:6px; display:flex; align-items:center; justify-content:flex-end;
-      height:15px; margin-top:-7px; background:#fff; border-radius:999px;
-      box-shadow:0 1px 3px rgba(0,0,0,.28); padding:0 8px; box-sizing:border-box;
+      position:absolute; left:8px; display:flex; align-items:center; justify-content:flex-end;
+      height:20px; margin-top:-10px; background:#fff; border-radius:999px;
+      box-shadow:0 1px 3px rgba(0,0,0,.25); padding:0 10px; box-sizing:border-box;
+      cursor:pointer; border:0; font-family:inherit; transition:background .12s;
+      pointer-events:auto;
     }
     .hm-pill span {
-      font-size:10px; font-weight:700; color:#1a1a1a; white-space:nowrap;
+      font-size:11px; font-weight:700; color:#1a1a1a; white-space:nowrap;
       font-variant-numeric:tabular-nums;
     }
-    /* 最上部の「全体で何人が見たか」。実物は黒帯＋右にオレンジのバッジ */
-    .hm-top {
-      position:absolute; left:0; right:0; top:0; height:20px; background:#111;
-      display:flex; align-items:center; justify-content:center;
-    }
-    .hm-top span {
-      font-size:10px; font-weight:700; color:#fff; font-variant-numeric:tabular-nums;
-    }
-    .hm-top .hm-badge {
-      position:absolute; right:0; top:0; height:20px; min-width:38px; background:#f0960a;
-      color:#fff; display:flex; align-items:center; justify-content:center; border-radius:0 0 0 6px;
+    .hm-pill:hover { background:#f2f2f4; }
+    /* 選択中の行は黒地にオレンジ字（実物の active） */
+    .hm-pill.on { background:#111; }
+    .hm-pill.on span { color:#f0960a; }
+    /* 1%未満は幅を持たせず文言だけ出す（実物の zero） */
+    .hm-pill.zero { width:auto !important; }
+    /* 右端のバッジ＝選択中の行が示す「LPのどの深さか」（実物の scrollPosition） */
+    .hm-depth {
+      position:absolute; right:0; height:26px; margin-top:-13px; min-width:44px;
+      background:#111; color:#fff; display:flex; align-items:center; justify-content:center;
+      border-radius:13px 0 0 13px; font-size:11px; font-weight:700;
+      font-variant-numeric:tabular-nums;
     }
     .hm-dot { position:absolute; width:10px; height:10px; margin:-5px 0 0 -5px; border-radius:50%; }
     .hm-empty { padding:28px 14px; color:#8a8a90; font-size:12px; text-align:center; line-height:1.9; }
@@ -123,25 +127,27 @@ function bandValue(
   stat: HeatmapVersionStat,
   mode: LineMode,
   i: number,
-): { strength: number; label: string } | null {
+): { strength: number; label: string; isZero: boolean } | null {
   if (mode === 'none') return null
   if (mode === 'arrival' || mode === 'exit') {
     const v = (mode === 'arrival' ? stat.arrival : stat.exit)[i]
     if (v === null || v === undefined) return null
     // 実物は割合だけでなく**人数**も出す（「25人 47%到達」）。
     // 何人が実際にそこまで見たのかが分からないと、率だけでは判断できないため。
-    const people = Math.round(v * stat.pv)
     const word = mode === 'arrival' ? '到達' : '離脱'
-    return { strength: v, label: `${people}人 ${Math.round(v * 100)}%${word}` }
+    // 実物は1%未満を数字でなく「1%未満到達」と出す（0人と書くと誤解を招くため）
+    if (v < 0.01) return { strength: v, label: `1%未満${word}`, isZero: true }
+    const people = Math.round(v * stat.pv)
+    return { strength: v, label: `${people}人 ${Math.round(v * 100)}%${word}`, isZero: false }
   }
   if (mode === 'attention') {
     const ms = stat.attention[i] ?? 0
     const max = Math.max(1, ...stat.attention)
-    return { strength: ms / max, label: `${(ms / 1000).toFixed(1)}s` }
+    return { strength: ms / max, label: `${(ms / 1000).toFixed(1)}秒`, isZero: false }
   }
   const n = stat.elementClick[i] ?? 0
   const max = Math.max(1, ...stat.elementClick)
-  return { strength: n / max, label: String(n) }
+  return { strength: n / max, label: `${n}クリック`, isZero: false }
 }
 
 export interface ColumnSpec {
@@ -278,8 +284,11 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
   }
   const overlay = document.createElement('div')
   overlay.className = 'hm-overlay'
-  canvas.append(lp, overlay)
-  body.append(canvas)
+  canvas.append(lp)
+  // 実物では到達ラインは動かず、押すとLPだけが裏でその位置までスクロールする。
+  // だから overlay は canvas（＝スクロールする中身）の中に入れず、
+  // sticky で列の上端に貼り付けておく（高さ0なので場所は取らない）。
+  body.append(overlay, canvas)
 
   // 列幅にLPを収める（実物も縮小表示）
   /** 背景の実高さ。iframe は中の文書を測る（sandbox に allow-scripts が無いので安全に読める）。 */
@@ -301,67 +310,80 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
   // iframe は中身の読み込みが終わってからでないと高さが出ない
   if (useExternal) lp.addEventListener('load', applyScale)
 
+  /**
+   * 実物の到達ラインは **5%刻みの21行**（0%,5%,…,100%）で、行の位置はLPの高さと無関係に
+   * 上から30px間隔で並ぶ。行を押すとLPだけがその深さまでスクロールし、押した行が
+   * 黒地オレンジ字になって、右のバッジにその深さ（例: 55%）が出る。
+   * 採取した実DOM（arrivalLine / scrollPosition）に合わせている。
+   */
+  const ROW_STEP = 30
+  const ROW_TOP = 10
+  const ROW_COUNT = 21
+  let activeRow = 0
+
+  /** 行i（＝LPの深さ i*5%）に対応する、20バンド集計の添字 */
+  const bandIndexOf = (row: number, bands: number): number =>
+    Math.min(bands - 1, Math.floor((row / (ROW_COUNT - 1)) * bands))
+
+  /** 行を押したときにLPをその深さまで送る */
+  const scrollLpTo = (depth: number): void => {
+    const max = body.scrollHeight - body.clientHeight
+    if (max > 0) body.scrollTo({ top: max * depth, behavior: 'smooth' })
+  }
+
   const drawOverlay = (): void => {
     overlay.innerHTML = ''
+    // 熱の層は canvas 側（LPと一緒にスクロールする）に置くので、別途消す。
+    // 消さずに描き足すと、行を押すたびに層が積み重なって濃くなる。
+    for (const old of canvas.querySelectorAll('.hm-heat')) old.remove()
     const mode = lineSelect.value as LineMode
     if (stat === null || stat.pv === 0) return
     if (mode === 'none') return
     const bands = stat.bands
-    const values = Array.from({ length: bands }, (_, i) => bandValue(stat, mode, i))
 
-    // ── 熱: LP全面にかかる1枚の縦グラデーション ──
-    // 帯ごとに矩形を置くと境目に段差が出る。各バンドの中心を色停止点にして
-    // 1枚で敷くことで、実物と同じなめらかな暖色グラデーションになる。
-    const stops = values
-      .map((v, i) =>
-        v === null
-          ? null
-          : `${bandColor(spec.metric, v.strength)} ${(((i + 0.5) / bands) * 100).toFixed(2)}%`,
-      )
-      .filter((x): x is string => x !== null)
+    // 熱の色。LPが読めなくなるので薄く敷く（実物もLPの絵柄がはっきり見える）。
+    const stops = Array.from({ length: ROW_COUNT }, (_, row) => {
+      const v = bandValue(stat, mode, bandIndexOf(row, bands))
+      return v === null
+        ? null
+        : `${bandColor(spec.metric, v.strength)} ${((row / (ROW_COUNT - 1)) * 100).toFixed(2)}%`
+    }).filter((x): x is string => x !== null)
     if (stops.length > 0) {
       const heat = document.createElement('div')
       heat.className = 'hm-heat'
       heat.style.background = `linear-gradient(to bottom, ${stops.join(',')})`
-      overlay.append(heat)
+      canvas.append(heat)
     }
 
-    // ── 目盛り: 「N人 P%到達」の白いバー ──
-    // 幅を割合に比例させる（指示「パーセンテージによって幅を変えたい」）。
-    // 文字が入りきる下限を確保したうえで、残り幅を割合で配分する。
-    const MIN_W = 30
-    const MAX_W = 88
-    for (let i = 0; i < bands; i++) {
-      const v = values[i]
-      if (v === null || v === undefined) continue
-      // 到達モードの先頭バンドは必ず100%＝上の黒帯と同じ内容なので出さない
-      if (i === 0 && mode === 'arrival') continue
-      const t = Math.min(1, Math.max(0, v.strength))
-      const pill = document.createElement('div')
-      pill.className = 'hm-pill'
-      pill.style.top = `${((i + 0.5) / bands) * 100}%`
-      pill.style.width = `${(MIN_W + t * (MAX_W - MIN_W)).toFixed(1)}%`
+    for (let row = 0; row < ROW_COUNT; row++) {
+      const v = bandValue(stat, mode, bandIndexOf(row, bands))
+      if (v === null) continue
+      const top = ROW_TOP + row * ROW_STEP
+      const pill = document.createElement('button')
+      pill.type = 'button'
+      pill.className = `hm-pill${row === activeRow ? ' on' : ''}${v.isZero ? ' zero' : ''}`
+      pill.style.top = `${top}px`
+      // 幅は割合に比例。実物も最大で列幅の約7割までしか伸びない。
+      if (!v.isZero) {
+        pill.style.width = `${(22 + Math.min(1, Math.max(0, v.strength)) * 49).toFixed(1)}%`
+      }
       const label = document.createElement('span')
       label.textContent = v.label
       pill.append(label)
+      pill.addEventListener('click', () => {
+        activeRow = row
+        scrollLpTo(row / (ROW_COUNT - 1))
+        drawOverlay()
+      })
       overlay.append(pill)
     }
 
-    // ── 最上部: 全体で何人見たか＋最下部までの到達率 ──
-    if (mode === 'arrival' || mode === 'exit') {
-      const top = document.createElement('div')
-      top.className = 'hm-top'
-      const total = document.createElement('span')
-      total.textContent = `${stat.pv}人 100%${mode === 'arrival' ? '到達' : '離脱'}`
-      const badge = document.createElement('div')
-      badge.className = 'hm-badge'
-      const last = values[bands - 1]
-      const bottom = document.createElement('span')
-      bottom.textContent = `${last === null || last === undefined ? 0 : Math.round(last.strength * 100)}%`
-      badge.append(bottom)
-      top.append(total, badge)
-      overlay.append(top)
-    }
+    // 右のバッジ＝選択中の行がLPのどの深さを指しているか
+    const depth = document.createElement('div')
+    depth.className = 'hm-depth'
+    depth.style.top = `${ROW_TOP + activeRow * ROW_STEP}px`
+    depth.textContent = `${Math.round((activeRow / (ROW_COUNT - 1)) * 100)}%`
+    overlay.append(depth)
 
     // クリック数モードのときは実際の座標も打つ（帯だけだと横位置が分からない）
     if (mode === 'elementClick') {
