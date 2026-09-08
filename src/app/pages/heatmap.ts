@@ -21,6 +21,7 @@ import {
 } from './report-dom.ts'
 import { defaultRange, toRangeQuery, type DateRange } from './report-period.ts'
 import { sortVersions, type HeatmapSortKey } from './heatmap-sort.ts'
+import { renderHeatmapColumns, type ColumnSpec, type HeatmapMetric } from './heatmap-columns.ts'
 import { wireAbTestTabs, setupHorizTabs, setupBreadcrumb } from './tab-nav.ts'
 
 export async function renderHeatmap(
@@ -32,11 +33,12 @@ export async function renderHeatmap(
   container.innerHTML = ''
 
   const range: DateRange = defaultRange()
-  const [{ ab_test }, report, { heatmaps }, { folders }] = await Promise.all([
+  const [{ ab_test }, report, { heatmaps }, { folders }, stats] = await Promise.all([
     api.abTest(abTestUid),
     api.report(abTestUid, toRangeQuery(range)),
     api.heatmaps(abTestUid),
     api.folders(),
+    api.heatmapStats(abTestUid, toRangeQuery(range)),
   ])
   const folder = folders.find((f) => f.id === ab_test.folder_id) ?? null
 
@@ -52,16 +54,84 @@ export async function renderHeatmap(
   applyLightTheme(root)
   wireThemeToggle(root)
 
-  renderVersionList(root, report.rows)
+  // 実物は「Version × 指標(離脱/CLICK/CV)」でチェックした数だけ右に列が増える。
+  // 選択状態をここで持ち、変わるたびに列を組み直す。
+  const selection = new Set<string>()
+  const versionHtml = new Map<string, string>()
+  const columnHost = ensureColumnHost(root)
+
+  const rebuild = (): void => {
+    const specs: ColumnSpec[] = []
+    for (const key of selection) {
+      const [versionUid, metric] = key.split('|') as [string, HeatmapMetric]
+      const row = report.rows.find((r) => r.entity_uid === versionUid)
+      if (row === undefined) continue
+      specs.push({
+        versionUid,
+        versionName: row.name,
+        metric,
+        html: versionHtml.get(versionUid) ?? '',
+        pv: row.pv,
+        ctr: row.ctr,
+        cv: row.cv,
+      })
+    }
+    renderHeatmapColumns(columnHost, specs, {
+      stats: stats.versions,
+      range: { startDate: range.startDate, endDate: range.endDate },
+      fullPage: root.querySelector('[class*="_selectHeightType_"] [class*="_active_"]') !== null,
+    })
+  }
+
+  // LP本文はプレビューに要るので、選択されたVersionのぶんだけ取りに行く
+  const ensureHtml = async (versionUid: string): Promise<void> => {
+    if (versionHtml.has(versionUid)) return
+    try {
+      const article = await api.articles(abTestUid)
+      const first = article.articles[0]
+      if (first === undefined) return
+      const { versions } = await api.versions(first.uid)
+      for (const v of versions) versionHtml.set(v.uid, v.html)
+    } catch {
+      /* 取れなければプレビュー無しで帯だけ出す */
+    }
+  }
+
+  renderVersionList(root, report.rows, (versionUid, metric, on) => {
+    const key = `${versionUid}|${metric}`
+    if (on) selection.add(key)
+    else selection.delete(key)
+    void ensureHtml(versionUid).then(rebuild)
+  })
   wireSortSelect(root, report.rows)
-  wireHeightTypeTabs(root)
+  wireHeightTypeTabs(root, rebuild)
   wireSortModal(root)
   showRange(root, range)
   noteHeatmapArea(root, heatmaps.length)
+  rebuild()
+}
+
+/** 列を並べる場所（採取物のヒートマップ一覧の器を使う） */
+function ensureColumnHost(root: HTMLElement): HTMLElement {
+  const list = root.querySelector<HTMLElement>('[class*="_heatmapList_"]')
+  const host = document.createElement('div')
+  host.setAttribute('data-heatmap-columns', 'true')
+  if (list !== null) {
+    list.replaceChildren(host)
+    return host
+  }
+  root.append(host)
+  return host
 }
 
 /** 左のVersion一覧。採取済みの1件をテンプレートに、Version数だけ複製する */
-function renderVersionList(root: HTMLElement, rows: readonly ReportVersionRow[]): void {
+type ToggleColumn = (versionUid: string, metric: HeatmapMetric, on: boolean) => void
+
+function renderVersionList(
+  root: HTMLElement,
+  rows: readonly ReportVersionRow[],
+  onToggle?: ToggleColumn,
+): void {
   const list = root.querySelector<HTMLElement>('[class*="_articleList_"] ul[class*="_body_"]')
   const template = list?.querySelector<HTMLElement>('li[class*="_content_"]') ?? null
   if (list === null || template === null) {
@@ -77,7 +147,7 @@ function renderVersionList(root: HTMLElement, rows: readonly ReportVersionRow[])
     const count = item.querySelector<HTMLElement>('[class*="_count_"] div')
     if (count !== null) count.textContent = `PV: ${row.pv.toLocaleString('ja-JP')}`
     if (activeToken !== null && index > 0) item.classList.remove(activeToken)
-    wireOverlayTabs(item, activeToken)
+    wireOverlayTabs(item, activeToken, row.entity_uid, onToggle)
     return item
   })
   list.replaceChildren(...items)
@@ -88,16 +158,24 @@ function renderVersionList(root: HTMLElement, rows: readonly ReportVersionRow[])
  * 選択状態そのものは実物のUI状態なので配線する。
  * 表示するヒートマップのデータは無いので、右側は変わらない（注記で明示する）。
  */
-function wireOverlayTabs(item: HTMLElement, activeToken: string | null): void {
+function wireOverlayTabs(
+  item: HTMLElement,
+  activeToken: string | null,
+  versionUid: string,
+  onToggle?: ToggleColumn,
+): void {
+  // 実物の並びは 離脱 / CLICK / CV の3つ。チェックした数だけ右に列が増える。
+  const order: HeatmapMetric[] = ['exit', 'click', 'cv']
   const tabs = [...item.querySelectorAll<HTMLElement>('[class*="_tab_"]')]
-  for (const tab of tabs) {
+  tabs.forEach((tab, i) => {
     const box = tab.querySelector<HTMLInputElement>('input[type="checkbox"]')
-    if (box === null) continue
+    if (box === null) return
+    const metric = order[i]
     box.addEventListener('change', () => {
-      if (activeToken === null) return
-      tab.classList.toggle(activeToken, box.checked)
+      if (activeToken !== null) tab.classList.toggle(activeToken, box.checked)
+      if (metric !== undefined) onToggle?.(versionUid, metric, box.checked)
     })
-  }
+  })
 }
 
 /** 並び替え（PV / CLICK / CTR / CV / CVR） */
@@ -124,7 +202,7 @@ function wireSortSelect(root: HTMLElement, rows: readonly ReportVersionRow[]): v
 }
 
 /** 「スクロール表示 / 全ページ表示」の切替（実物のタブ状態） */
-function wireHeightTypeTabs(root: HTMLElement): void {
+function wireHeightTypeTabs(root: HTMLElement, onChange?: () => void): void {
   const group = root.querySelector<HTMLElement>('[class*="_selectHeightType_"]')
   if (group === null) return
   const items = [...group.querySelectorAll<HTMLElement>('[class*="_item_"]')]
@@ -135,6 +213,7 @@ function wireHeightTypeTabs(root: HTMLElement): void {
     item.addEventListener('click', () => {
       for (const other of items) other.classList.remove(activeToken)
       item.classList.add(activeToken)
+      onChange?.()
     })
   }
 }
@@ -164,13 +243,12 @@ function showRange(root: HTMLElement, range: DateRange): void {
 }
 
 function noteHeatmapArea(root: HTMLElement, count: number): void {
+  // 実測が入るようになったので「データがありません」の固定注記は出さない。
+  // 各列が自分でデータ有無を出すため、ここでは採取物由来の注記だけを掃除する。
+  void count
   const host = root.querySelector<HTMLElement>('[class*="_heatmapList_"]')?.parentElement ?? null
   if (host === null) return
-  const message =
-    count === 0
-      ? 'ヒートマップのデータがありません（新規アカウントの空状態）。実物も採取時は空だった。'
-      : `ヒートマップ ${count} 件を受け取ったが、描画（クリック密度・スクロール到達）はこの画面では未実装。`
-  host.append(cloneNote(message))
+  for (const note of host.querySelectorAll('[data-clone-note]')) note.remove()
 }
 
 /** 要素の class から、指定の断片を含むトークンを1つ返す（Emotion/CSS Modules のハッシュ対策） */

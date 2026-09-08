@@ -145,6 +145,32 @@ export interface ReportResponse {
   period: { start_date: string; end_date: string }
 }
 
+/**
+ * ヒートマップの実測集計（計測タグ由来）。バンド＝ページを縦に等分した区画。
+ * 比率は PV が 0 のとき null（0件と「まだ誰も来ていない」を区別する）。
+ */
+export interface HeatmapVersionStat {
+  version_uid: string
+  version_name: string | null
+  bands: number
+  pv: number
+  /** 到達率（そのバンドまで到達した割合） */
+  arrival: (number | null)[]
+  /** 離脱率（そのバンドで離脱した割合） */
+  exit: (number | null)[]
+  /** 滞在時間の平均ミリ秒 */
+  attention: number[]
+  /** そのバンドに落ちたクリック数 */
+  elementClick: number[]
+  /** クリックの相対座標（x=幅比・y=ページ高さ比） */
+  clicks: { x: number; y: number }[]
+}
+
+export interface HeatmapStatsResponse {
+  period: { start_date: string; end_date: string }
+  versions: HeatmapVersionStat[]
+}
+
 export interface HeatmapEntry {
   id: number
   ab_test_uid: string
@@ -300,6 +326,9 @@ export const api = {
   /** ヒートマップ比較（§10-3 `GET /ab_tests/:uid/heatmaps/comparisons`） */
   heatmaps: (abTestUid: string) =>
     request<{ heatmaps: HeatmapEntry[] }>('GET', `/ab_tests/${abTestUid}/heatmaps/comparisons`),
+  /** ヒートマップの実測集計（計測タグ由来）。ラインの4モードぶんをVersionごとに返す。 */
+  heatmapStats: (abTestUid: string, query: string) =>
+    request<HeatmapStatsResponse>('GET', `/ab_tests/${abTestUid}/heatmaps/stats?${query}`),
 
   media: () => request<{ ab_tests: unknown[] }>('GET', '/ab_tests?per_page=1'),
   reset: () => fetch('/__mock/reset', { method: 'POST' }).then((r) => r.json()),
