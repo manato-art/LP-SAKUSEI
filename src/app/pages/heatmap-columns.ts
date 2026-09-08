@@ -102,15 +102,16 @@ function injectStyles(): void {
       font-variant-numeric:tabular-nums;
     }
     .hm-pill:hover { background:#f2f2f4; }
-    /* 選択中の行は黒地にオレンジ字（実物の active） */
-    .hm-pill.on { background:#111; }
-    .hm-pill.on span { color:#f0960a; }
+    /* 選択中の行。実物は黒地だが、画面全体が白基調なので黒は重く読みづらい。
+       アプリ共通の青（#0091ff）に白文字で「選択中」を出す。 */
+    .hm-pill.on { background:#0091ff; box-shadow:0 1px 4px rgba(0,145,255,.35); }
+    .hm-pill.on span { color:#fff; }
     /* 1%未満は幅を持たせず文言だけ出す（実物の zero） */
     .hm-pill.zero { width:auto !important; }
     /* 右端のバッジ＝選択中の行が示す「LPのどの深さか」（実物の scrollPosition） */
     .hm-depth {
       position:absolute; right:0; height:26px; margin-top:-13px; min-width:44px;
-      background:#111; color:#fff; display:flex; align-items:center; justify-content:center;
+      background:#0091ff; color:#fff; display:flex; align-items:center; justify-content:center;
       border-radius:13px 0 0 13px; font-size:11px; font-weight:700;
       font-variant-numeric:tabular-nums;
     }
