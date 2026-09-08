@@ -542,26 +542,35 @@ export interface MediaAsset {
 }
 
 /**
- * レポート除外の1条件（実物の「アクセス拒否」タブ）。
+ * レポート除外の条件（実物の「アクセス拒否」タブ）。
  *
- * 選択肢は採取物で**実際に見えたものだけ**にしている。実物のプルダウンはMUIの
- * ポータルで開くため、開いていない状態の採取には他の選択肢が入っていない。
- *   除外対象   … IPアドレス / チーム
- *   マッチタイプ … 完全一致
- *   結合条件   … OR
+ * 選択肢は実物のプルダウンを開いて確認したもの（2026-09-08）。
+ *   除外対象   … IPアドレス / リファラ / パラメータ / チーム
+ *   マッチタイプ … 完全一致 / 部分一致 / 前方一致 / 後方一致
+ *   結合条件   … AND / OR
  */
-export type ExclusionKind = 'ip' | 'team'
-export type ExclusionMatch = 'exact'
-export type ExclusionJoin = 'or'
+export type ExclusionKind = 'ip' | 'referer' | 'param' | 'team'
+export type ExclusionMatch = 'exact' | 'partial' | 'prefix' | 'suffix'
+export type ExclusionJoin = 'and' | 'or'
 
+/** 1行ぶんの条件 */
+export interface ExclusionCondition {
+  kind: ExclusionKind
+  match_type: ExclusionMatch
+  value: string
+  /** 次の行との繋ぎ方。最後の行では使わない */
+  join: ExclusionJoin
+}
+
+/**
+ * 除外ルール1件。実物は「＋複数条件を組み合わせる」で行を増やせるので、
+ * 1件が複数の条件を持つ。
+ */
 export interface ReportExclusion {
   id: number
   uid: string
   team_id: number
-  kind: ExclusionKind
-  match_type: ExclusionMatch
-  value: string
-  join: ExclusionJoin
+  conditions: readonly ExclusionCondition[]
   /**
    * ホワイトリスト対象。実物の説明どおり「アクセス拒否の対象から除外」する。
    * レポートには反映されないが、ページはブロックされずに表示される。

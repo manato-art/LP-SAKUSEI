@@ -6,11 +6,15 @@
  *   本文 … 説明 → ホワイトリスト → 除外条件フォーム → 設定済み除外条件
  *          → リクエスト数（IP検索・期間・表示項目数・リファラ/ソースIP/パラメータ）
  *
- * プルダウンの選択肢は**採取物で実際に見えたものだけ**にしている。
- * 実物のプルダウンはMUIのポータルで開くので、開いていない状態の採取には
- * 他の選択肢が入っていない。見えていないものを勝手に足さない。
+ * プルダウンの選択肢は、実物を開いて確認したもの（2026-09-08）。
  */
-import { api, type ExclusionKind, type ReportExclusionEntry } from '../api.ts'
+import {
+  api,
+  type ExclusionJoin,
+  type ExclusionKind,
+  type ExclusionMatch,
+  type ReportExclusionEntry,
+} from '../api.ts'
 import { toast } from '../ui.ts'
 import { toDateKey, type DateRange } from './report-period.ts'
 
@@ -26,11 +30,25 @@ const PERIODS = [
   { key: 'year', label: '1年', days: 364 },
 ] as const
 
-/** 採取物で見えた選択肢だけを並べる */
+/** 実物のプルダウンどおりの選択肢 */
 const KINDS: readonly { value: ExclusionKind; label: string }[] = [
   { value: 'ip', label: 'IPアドレス' },
+  { value: 'referer', label: 'リファラ' },
+  { value: 'param', label: 'パラメータ' },
   { value: 'team', label: 'チーム' },
 ]
+const MATCHES: readonly { value: ExclusionMatch; label: string }[] = [
+  { value: 'exact', label: '完全一致' },
+  { value: 'partial', label: '部分一致' },
+  { value: 'prefix', label: '前方一致' },
+  { value: 'suffix', label: '後方一致' },
+]
+const JOINS: readonly { value: ExclusionJoin; label: string }[] = [
+  { value: 'and', label: 'AND' },
+  { value: 'or', label: 'OR' },
+]
+/** 実物の「表示項目数」は 5項目 / 10項目 の2つだけ */
+const LIMITS = [5, 10] as const
 
 function injectCss(): void {
   if (document.getElementById(CSS_ID) !== null) return
@@ -145,51 +163,90 @@ function buildDenyTab(reload: () => void): HTMLElement {
   checkLabel.append(whitelist, checkText)
 
   // ── 除外条件フォーム ──
+  // 実物は「＋複数条件を組み合わせる」で行を増やせる。1件のルールが複数条件を持つ。
   const h2 = document.createElement('div')
   h2.className = 'rx-h2'
   h2.textContent = '除外条件'
-  const form = document.createElement('div')
-  form.className = 'rx-form'
-  const kind = select(KINDS)
-  const match = select([{ value: 'exact', label: '完全一致' }])
-  const value = document.createElement('input')
-  value.placeholder = '値'
-  const join = select([{ value: 'or', label: 'OR' }])
+  const rowsHost = document.createElement('div')
+  rowsHost.style.cssText = 'display:flex;flex-direction:column;gap:10px'
+
+  interface Row {
+    el: HTMLElement
+    kind: HTMLSelectElement
+    match: HTMLSelectElement
+    value: HTMLInputElement
+    join: HTMLSelectElement
+  }
+  const rows: Row[] = []
+
+  const addRow = (): void => {
+    const line = document.createElement('div')
+    line.className = 'rx-form'
+    const kind = select(KINDS)
+    const match = select(MATCHES)
+    const value = document.createElement('input')
+    value.placeholder = '値'
+    const join = select(JOINS)
+    join.value = 'or'
+    line.append(
+      field('除外条件', kind),
+      field('マッチタイプ', match),
+      field('値', value),
+      field('結合条件', join),
+    )
+    // 2行目以降は取り消せるようにする（増やすだけだと戻せない）
+    if (rows.length > 0) {
+      const remove = document.createElement('button')
+      remove.type = 'button'
+      remove.className = 'rx-del'
+      remove.textContent = 'この行を削除'
+      remove.addEventListener('click', () => {
+        const at = rows.findIndex((r) => r.el === line)
+        if (at >= 0) rows.splice(at, 1)
+        line.remove()
+      })
+      line.append(remove)
+    }
+    rows.push({ el: line, kind, match, value, join })
+    rowsHost.append(line)
+  }
+  addRow()
+
+  const actions = document.createElement('div')
+  actions.className = 'rx-form'
+  actions.style.marginTop = '10px'
+  const addBtn = document.createElement('button')
+  addBtn.type = 'button'
+  addBtn.className = 'rx-btn ghost'
+  addBtn.textContent = '＋複数条件を組み合わせる'
+  addBtn.addEventListener('click', addRow)
   const submit = document.createElement('button')
   submit.type = 'button'
   submit.className = 'rx-btn'
   submit.textContent = '条件を反映'
-  form.append(
-    field('除外条件', kind),
-    field('マッチタイプ', match),
-    field('値', value),
-    field('結合条件', join),
-    submit,
-  )
+  actions.append(addBtn, submit)
 
   submit.addEventListener('click', () => {
-    const v = value.value.trim()
-    if (v === '') {
+    const conditions = rows.map((r) => ({
+      kind: r.kind.value as ExclusionKind,
+      matchType: r.match.value as ExclusionMatch,
+      value: r.value.value.trim(),
+      join: r.join.value as ExclusionJoin,
+    }))
+    if (conditions.some((c) => c.value === '')) {
       toast('値を入力してください', 'error')
       return
     }
-    void api
-      .addReportExclusion({
-        kind: kind.value as ExclusionKind,
-        value: v,
-        isWhitelist: whitelist.checked,
-      })
-      .then(
-        () => {
-          toast('除外条件を反映しました')
-          value.value = ''
-          reload()
-        },
-        (error: Error) => toast(error.message, 'error'),
-      )
+    void api.addReportExclusion({ conditions, isWhitelist: whitelist.checked }).then(
+      () => {
+        toast('除外条件を反映しました')
+        reload()
+      },
+      (error: Error) => toast(error.message, 'error'),
+    )
   })
 
-  card.append(lead, note, checkLabel, h2, form)
+  card.append(lead, note, checkLabel, h2, rowsHost, actions)
   wrap.append(card)
   return wrap
 }
@@ -233,12 +290,27 @@ function buildRulesTable(rows: readonly ReportExclusionEntry[], reload: () => vo
   const tbody = document.createElement('tbody')
   for (const row of rows) {
     const tr = document.createElement('tr')
-    const kindLabel = KINDS.find((k) => k.value === row.kind)?.label ?? row.kind
+    // 1件が複数条件を持つので、まとめて1行に並べる
+    const kindText = row.conditions
+      .map((c) => KINDS.find((k) => k.value === c.kind)?.label ?? c.kind)
+      .join(' / ')
+    const matchText = row.conditions
+      .map((c) => MATCHES.find((m) => m.value === c.match_type)?.label ?? c.match_type)
+      .join(' / ')
+    const valueText = row.conditions.map((c) => c.value).join(' / ')
+    // 結合条件は行と行の繋ぎなので、最後の1つは使わない
+    const joinText =
+      row.conditions.length <= 1
+        ? '―'
+        : row.conditions
+            .slice(0, -1)
+            .map((c) => (JOINS.find((j) => j.value === c.join)?.label ?? c.join))
+            .join(' / ')
     for (const [text, num] of [
-      [row.is_whitelist ? `${kindLabel}（ホワイトリスト）` : kindLabel, false],
-      ['完全一致', false],
-      [row.value, false],
-      ['OR', false],
+      [row.is_whitelist ? `${kindText}（ホワイトリスト）` : kindText, false],
+      [matchText, false],
+      [valueText, false],
+      [joinText, false],
       // 実物も記録が無いときは「―」だった
       [row.excluded_count === null ? '―' : row.excluded_count.toLocaleString('ja-JP'), true],
     ] as const) {
@@ -284,7 +356,7 @@ function buildRequests(): HTMLElement {
   ip.placeholder = 'IP検索'
   const periods = document.createElement('div')
   periods.className = 'rx-periods'
-  const limit = select([5, 10, 20, 50].map((n) => ({ value: String(n), label: `${n}項目` })))
+  const limit = select(LIMITS.map((n) => ({ value: String(n), label: `${n}項目` })))
   bar.append(field('IP検索', ip), field('期間', periods), field('表示項目数', limit))
 
   const ranks = document.createElement('div')
@@ -413,7 +485,7 @@ export async function renderReportExclusions(container: HTMLElement): Promise<vo
     // 推測で作らず、その旨をはっきり出す。
     box.textContent =
       '配信除外オーディエンス設定は未作成です。\n' +
-      'このタブは実物の採取に中身が含まれていないため、作っていません。'
+      '実物でもチームによっては出ないタブで、中身を確認できていないため作っていません。'
     bodyHost.replaceChildren(box)
   }
 

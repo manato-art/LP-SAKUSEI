@@ -364,14 +364,22 @@ export const api = {
   reportExclusions: () =>
     request<{ report_exclusions: ReportExclusionEntry[] }>('GET', '/report-exclusions'),
   addReportExclusion: (input: {
-    kind: ExclusionKind
-    value: string
+    conditions: readonly {
+      kind: ExclusionKind
+      matchType: ExclusionMatch
+      value: string
+      join: ExclusionJoin
+    }[]
     isWhitelist: boolean
     reason?: string
   }) =>
     request<{ report_exclusion: ReportExclusionEntry }>('POST', '/report-exclusions', {
-      kind: input.kind,
-      value: input.value,
+      conditions: input.conditions.map((c) => ({
+        kind: c.kind,
+        match_type: c.matchType,
+        value: c.value,
+        join: c.join,
+      })),
       is_whitelist: input.isWhitelist,
       ...(input.reason !== undefined ? { reason: input.reason } : {}),
     }),
@@ -568,18 +576,26 @@ export interface DomainEntry {
 
 /** レポート除外 */
 /**
- * レポート除外の1条件（実物の「アクセス拒否」タブ）。
- * 選択肢は採取物で実際に見えたものだけ（実物のプルダウンはポータルで未採取）。
+ * レポート除外（実物の「アクセス拒否」タブ）。
+ * 選択肢は実物のプルダウンを開いて確認したもの（2026-09-08）。
  */
-export type ExclusionKind = 'ip' | 'team'
+export type ExclusionKind = 'ip' | 'referer' | 'param' | 'team'
+export type ExclusionMatch = 'exact' | 'partial' | 'prefix' | 'suffix'
+export type ExclusionJoin = 'and' | 'or'
+
+export interface ExclusionCondition {
+  kind: ExclusionKind
+  match_type: ExclusionMatch
+  value: string
+  /** 次の行との繋ぎ方。最後の行では使わない */
+  join: ExclusionJoin
+}
 
 export interface ReportExclusionEntry {
   id: number
   uid: string
-  kind: ExclusionKind
-  match_type: 'exact'
-  value: string
-  join: 'or'
+  /** 実物は「＋複数条件を組み合わせる」で行を増やせるので、1件が複数条件を持つ */
+  conditions: readonly ExclusionCondition[]
   is_whitelist: boolean
   /** 除外アクセス数。記録が無ければ null（実物も「―」） */
   excluded_count: number | null

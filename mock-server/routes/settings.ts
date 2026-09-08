@@ -5,10 +5,15 @@ import { getState, setState } from '../store/store.ts'
 import { applyEmptyState } from '../lib/mock-state.ts'
 import { errorEnvelope } from '../lib/envelope.ts'
 import { makeUid } from '../store/ids.ts'
-import { optionalBoolean, optionalString, requireString } from '../lib/validate.ts'
+import { optionalBoolean, optionalString } from '../lib/validate.ts'
 import { dateRangeParams, str } from '../lib/query.ts'
 import { isIpLike, matchesExclusion } from '../store/exclusions.ts'
-import type { ExclusionKind, ReportExclusion } from '../store/types.ts'
+import type {
+  ExclusionCondition,
+  ExclusionKind,
+  ExclusionMatch,
+  ReportExclusion,
+} from '../store/types.ts'
 
 export const settingsRouter: Router = Router()
 
@@ -91,31 +96,52 @@ settingsRouter.get('/report-exclusions/requests', (req, res) => {
 })
 
 settingsRouter.post('/report-exclusions', (req, res) => {
-  const value = requireString(req.body, 'value')
-  if (!value.ok) {
-    res.status(422).json(errorEnvelope('validation_failed', value.message))
-    return
-  }
   const body = req.body as Record<string, unknown>
-  const kind: ExclusionKind = body['kind'] === 'team' ? 'team' : 'ip'
-  // IPアドレスは形を確かめる。間違った値を黙って登録すると、
-  // 「除外したのに数字が減らない」原因が分からなくなる。
-  if (kind === 'ip' && !isIpLike(value.value)) {
-    res
-      .status(422)
-      .json(errorEnvelope('validation_failed', 'IPアドレスの形式が正しくありません。'))
+  const raw = Array.isArray(body['conditions']) ? (body['conditions'] as unknown[]) : []
+  if (raw.length === 0) {
+    res.status(422).json(errorEnvelope('validation_failed', '除外条件を1つ以上指定してください。'))
     return
   }
+
+  const KINDS: readonly ExclusionKind[] = ['ip', 'referer', 'param', 'team']
+  const MATCHES: readonly ExclusionMatch[] = ['exact', 'partial', 'prefix', 'suffix']
+  const conditions: ExclusionCondition[] = []
+  for (const item of raw) {
+    const c = (item ?? {}) as Record<string, unknown>
+    const kind = KINDS.find((k) => k === c['kind'])
+    const match = MATCHES.find((m) => m === c['match_type'])
+    const value = typeof c['value'] === 'string' ? c['value'].trim() : ''
+    if (kind === undefined || match === undefined) {
+      res.status(422).json(errorEnvelope('validation_failed', '除外条件の指定が正しくありません。'))
+      return
+    }
+    if (value === '') {
+      res.status(422).json(errorEnvelope('validation_failed', '値を入力してください。'))
+      return
+    }
+    // IPの完全一致だけは形を確かめる。間違った値を黙って登録すると
+    // 「除外したのに数字が減らない」原因が分からなくなる。
+    // 部分一致などは一部だけを書くのが普通なので検査しない。
+    if (kind === 'ip' && match === 'exact' && !isIpLike(value)) {
+      res
+        .status(422)
+        .json(errorEnvelope('validation_failed', 'IPアドレスの形式が正しくありません。'))
+      return
+    }
+    conditions.push({
+      kind,
+      match_type: match,
+      value,
+      join: c['join'] === 'and' ? 'and' : 'or',
+    })
+  }
+
   const state = getState()
   const created: ReportExclusion = {
     id: state.nextId,
     uid: makeUid('reportExclusion', state.reportExclusions.length + 1),
     team_id: currentTeamId(state),
-    kind,
-    // 採取物で見えた選択肢はこれだけ（実物のプルダウンはポータルで未採取）
-    match_type: 'exact',
-    join: 'or',
-    value: value.value,
+    conditions,
     is_whitelist: body['is_whitelist'] === true,
     reason: optionalString(req.body, 'reason'),
   }

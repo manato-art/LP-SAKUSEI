@@ -1,7 +1,16 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { isIpLike, matchesExclusion, shouldExclude } from '../mock-server/store/exclusions.ts'
-import type { ReportExclusion, RequestLogEntry } from '../mock-server/store/types.ts'
+import {
+  isIpLike,
+  matchesExclusion,
+  matchesText,
+  shouldExclude,
+} from '../mock-server/store/exclusions.ts'
+import type {
+  ExclusionCondition,
+  ReportExclusion,
+  RequestLogEntry,
+} from '../mock-server/store/types.ts'
 import { getJson, postJson, resetStore, startTestServer, type TestServer } from './helpers/server.ts'
 
 /**
@@ -10,14 +19,19 @@ import { getJson, postJson, resetStore, startTestServer, type TestServer } from 
  * 実物の説明どおり「条件に合ったアクセスはレポート集計から外すが、
  * ページ自体は普通に表示する」ことを機械で押さえる。
  */
-const rule = (over: Partial<ReportExclusion> = {}): ReportExclusion => ({
-  id: 1,
-  uid: 'rx1',
-  team_id: 1,
+const cond = (over: Partial<ExclusionCondition> = {}): ExclusionCondition => ({
   kind: 'ip',
   match_type: 'exact',
   value: '203.0.113.5',
   join: 'or',
+  ...over,
+})
+
+const rule = (over: Partial<ReportExclusion> = {}): ReportExclusion => ({
+  id: 1,
+  uid: 'rx1',
+  team_id: 1,
+  conditions: [cond()],
   is_whitelist: false,
   reason: '',
   ...over,
@@ -61,12 +75,26 @@ describe('除外条件の当たり判定', () => {
     expect(matchesExclusion(log({ ip: '203.0.113.50' }), rule())).toBe(false)
   })
   it('チームはチームIDで突き合わせる', () => {
-    expect(matchesExclusion(log(), rule({ kind: 'team', value: '1' }))).toBe(true)
-    expect(matchesExclusion(log(), rule({ kind: 'team', value: '2' }))).toBe(false)
+    expect(matchesExclusion(log(), rule({ conditions: [cond({ kind: 'team', value: '1' })] }))).toBe(true)
+    expect(matchesExclusion(log(), rule({ conditions: [cond({ kind: 'team', value: '2' })] }))).toBe(false)
   })
-  it('結合条件はORなので、1つでも当たれば除外', () => {
-    const rules = [rule({ value: '198.51.100.1' }), rule({ uid: 'rx2' })]
-    expect(shouldExclude(log(), rules)).toBe(true)
+  it('リファラとパラメータも対象にできる', () => {
+    expect(
+      matchesExclusion(log(), rule({ conditions: [cond({ kind: 'referer', value: 'https://example.test/' })] })),
+    ).toBe(true)
+    expect(
+      matchesExclusion(log(), rule({ conditions: [cond({ kind: 'param', value: 'utm_source=x' })] })),
+    ).toBe(true)
+  })
+  it('ORは1つでも当たれば、ANDは全部当たれば除外', () => {
+    const or = rule({
+      conditions: [cond({ value: '198.51.100.1', join: 'or' }), cond()],
+    })
+    expect(matchesExclusion(log(), or)).toBe(true)
+    const and = rule({
+      conditions: [cond({ value: '198.51.100.1', join: 'and' }), cond()],
+    })
+    expect(matchesExclusion(log(), and)).toBe(false)
   })
   it('どれにも当たらなければ除外しない', () => {
     expect(shouldExclude(log({ ip: '198.51.100.9' }), [rule()])).toBe(false)
@@ -76,6 +104,30 @@ describe('除外条件の当たり判定', () => {
   })
   it('条件が無ければ何も除外しない', () => {
     expect(shouldExclude(log(), [])).toBe(false)
+  })
+})
+
+describe('マッチタイプ（実物のプルダウンどおり4種類）', () => {
+  it('完全一致', () => {
+    expect(matchesText('abc', 'abc', 'exact')).toBe(true)
+    expect(matchesText('abcd', 'abc', 'exact')).toBe(false)
+  })
+  it('部分一致', () => {
+    expect(matchesText('xxabcxx', 'abc', 'partial')).toBe(true)
+    expect(matchesText('xx', 'abc', 'partial')).toBe(false)
+  })
+  it('前方一致', () => {
+    expect(matchesText('abcdef', 'abc', 'prefix')).toBe(true)
+    expect(matchesText('zabc', 'abc', 'prefix')).toBe(false)
+  })
+  it('後方一致', () => {
+    expect(matchesText('zzabc', 'abc', 'suffix')).toBe(true)
+    expect(matchesText('abcz', 'abc', 'suffix')).toBe(false)
+  })
+  it('空の値は当たらない（全件除外という事故を防ぐ）', () => {
+    for (const how of ['partial', 'prefix', 'suffix'] as const) {
+      expect(matchesText('abc', '', how), how).toBe(false)
+    }
   })
 })
 
@@ -91,34 +143,46 @@ describe('レポート除外API', () => {
     resetStore()
   })
 
-  it('IPの形が正しくないものは断る（黙って登録すると原因が分からなくなる）', async () => {
+  it('IPの完全一致で形が正しくないものは断る（黙って登録すると原因が分からなくなる）', async () => {
     const res = await postJson(`${server.api}/report-exclusions`, {
-      kind: 'ip',
-      value: 'これはIPではない',
+      conditions: [{ kind: 'ip', match_type: 'exact', value: 'これはIPではない', join: 'or' }],
     })
     expect(res.status).toBe(422)
   })
 
-  it('登録すると一覧に出て、選択肢は採取物どおりの値になる', async () => {
-    const created = await postJson<{ report_exclusion: { uid: string } }>(
-      `${server.api}/report-exclusions`,
-      { kind: 'ip', value: '203.0.113.5' },
-    )
-    expect(created.status).toBe(201)
-    const list = await getJson<{
-      report_exclusions: { kind: string; match_type: string; join: string; excluded_count: number | null }[]
-    }>(`${server.api}/report-exclusions`)
-    const row = list.report_exclusions[0]
-    expect(row?.kind).toBe('ip')
-    expect(row?.match_type).toBe('exact')
-    expect(row?.join).toBe('or')
-    // 記録がまだ無いので「―」相当
-    expect(row?.excluded_count).toBeNull()
+  it('IPの部分一致は形を問わない（一部だけ書くのが普通なので）', async () => {
+    const res = await postJson(`${server.api}/report-exclusions`, {
+      conditions: [{ kind: 'ip', match_type: 'partial', value: '203.0.', join: 'or' }],
+    })
+    expect(res.status).toBe(201)
   })
 
-  it('チームは値の形を問わない（IPの検査を巻き込まない）', async () => {
-    const res = await postJson(`${server.api}/report-exclusions`, { kind: 'team', value: '1012' })
-    expect(res.status).toBe(201)
+  it('値が空の条件は断る（全件除外という事故を防ぐ）', async () => {
+    const res = await postJson(`${server.api}/report-exclusions`, {
+      conditions: [{ kind: 'referer', match_type: 'partial', value: '  ', join: 'or' }],
+    })
+    expect(res.status).toBe(422)
+  })
+
+  it('条件が無いものは断る', async () => {
+    const res = await postJson(`${server.api}/report-exclusions`, { conditions: [] })
+    expect(res.status).toBe(422)
+  })
+
+  it('複数条件をまとめて1件として登録できる', async () => {
+    const created = await postJson(`${server.api}/report-exclusions`, {
+      conditions: [
+        { kind: 'ip', match_type: 'exact', value: '203.0.113.5', join: 'and' },
+        { kind: 'referer', match_type: 'partial', value: 'example', join: 'or' },
+      ],
+    })
+    expect(created.status).toBe(201)
+    const list = await getJson<{
+      report_exclusions: { conditions: unknown[]; excluded_count: number | null }[]
+    }>(`${server.api}/report-exclusions`)
+    expect(list.report_exclusions[0]?.conditions).toHaveLength(2)
+    // 記録がまだ無いので「―」相当
+    expect(list.report_exclusions[0]?.excluded_count).toBeNull()
   })
 
   it('リクエスト集計は記録が無くても形を返す', async () => {
@@ -161,7 +225,27 @@ describe('画面は実物の構成に合わせる', () => {
     }
   })
 
-  it('未採取のタブは作らずに、その旨を出す（推測で埋めない）', () => {
-    expect(src).toContain('採取に中身が含まれていない')
+  it('確認できていないタブは作らずに、その旨を出す（推測で埋めない）', () => {
+    expect(src).toContain('中身を確認できていないため作っていません')
+  })
+
+  it('プルダウンは実物どおりの選択肢', () => {
+    for (const label of ['IPアドレス', 'リファラ', 'パラメータ', 'チーム']) {
+      expect(src, label).toContain(label)
+    }
+    for (const label of ['完全一致', '部分一致', '前方一致', '後方一致']) {
+      expect(src, label).toContain(label)
+    }
+    expect(src).toContain("label: 'AND'")
+    expect(src).toContain("label: 'OR'")
+  })
+
+  it('表示項目数は実物どおり5と10だけ', () => {
+    expect(src).toContain('const LIMITS = [5, 10]')
+  })
+
+  it('複数条件を組み合わせられる（実物のボタン）', () => {
+    expect(src).toContain('＋複数条件を組み合わせる')
+    expect(src).toContain('addBtn.addEventListener(\'click\', addRow)')
   })
 })
