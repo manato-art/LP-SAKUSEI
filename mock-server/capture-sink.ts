@@ -17,7 +17,15 @@ import { errorEnvelope } from './lib/envelope.ts'
 
 export const QUARANTINE_DIR = resolve(homedir(), 'squadbeyond-capture-quarantine')
 
-const SAFE_SEGMENT = /^[A-Za-z0-9_.-]+$/
+/**
+ * パス片として許す文字。
+ * 状態名は採取スニペットが「押したボタンのラベル」から作るため**日本語が入る**
+ * （手順書の例: `Widget管理-3` / `プレビュー-7`）。ASCIIだけに絞ると実際の採取が
+ * 全部422で弾かれるので、かな・カナ・漢字・長音符も許可する。
+ * ディレクトリ区切り(`/` `\`)と `..` は含まれないため、下の normalize + 配下チェックで
+ * パストラバーサルは引き続き不可能。
+ */
+const SAFE_SEGMENT = /^[A-Za-z0-9_.\-ぁ-んァ-ヶー一-龥]+$/
 const ALLOWED_EXTENSIONS = ['.html', '.json', '.css', '.txt', '.har', '.md']
 
 export const captureSinkRouter: Router = Router()
@@ -48,14 +56,34 @@ interface UploadBody {
   content?: unknown
 }
 
-/** パスを隔離ディレクトリ配下へ強制する（外に出る指定は拒否） */
-function resolveTarget(slug: string, state: string, filename: string): string | null {
-  for (const segment of [slug, state, filename]) {
-    if (!SAFE_SEGMENT.test(segment)) return null
+/**
+ * パスを隔離ディレクトリ配下へ強制する（外に出る指定は拒否）。
+ * 弾いたときは**どれが原因か**を返す。理由が分からないと採取が全部422で落ちても
+ * 原因にたどり着けない（実際にそれで詰まった）。
+ */
+function resolveTarget(
+  slug: string,
+  state: string,
+  filename: string,
+): { ok: true; target: string } | { ok: false; reason: string } {
+  for (const [label, segment] of [
+    ['slug', slug],
+    ['state', state],
+    ['filename', filename],
+  ] as const) {
+    if (segment === '') return { ok: false, reason: `${label} が空です。` }
+    if (!SAFE_SEGMENT.test(segment)) {
+      return { ok: false, reason: `${label} に使えない文字が含まれています: ${JSON.stringify(segment)}` }
+    }
   }
-  if (!ALLOWED_EXTENSIONS.some((ext) => filename.endsWith(ext))) return null
+  if (!ALLOWED_EXTENSIONS.some((ext) => filename.endsWith(ext))) {
+    return { ok: false, reason: `filename の拡張子が許可外です: ${JSON.stringify(filename)}` }
+  }
   const target = normalize(join(QUARANTINE_DIR, 'routes', slug, state, filename))
-  return target.startsWith(QUARANTINE_DIR) ? target : null
+  if (!target.startsWith(QUARANTINE_DIR)) {
+    return { ok: false, reason: '保存先が隔離ディレクトリの外を指しています。' }
+  }
+  return { ok: true, target }
 }
 
 captureSinkRouter.post('/__capture/upload', (req, res) => {
@@ -73,11 +101,13 @@ captureSinkRouter.post('/__capture/upload', (req, res) => {
     res.status(422).json(errorEnvelope('validation_failed', 'content は文字列で指定してください。'))
     return
   }
-  const target = resolveTarget(slug, state, filename)
-  if (target === null) {
-    res.status(422).json(errorEnvelope('validation_failed', 'slug/state/filename が不正です。'))
+  const resolved = resolveTarget(slug, state, filename)
+  if (!resolved.ok) {
+    console.warn(`[capture] 拒否: ${resolved.reason}`)
+    res.status(422).json(errorEnvelope('validation_failed', resolved.reason))
     return
   }
+  const target = resolved.target
 
   mkdirSync(dirname(target), { recursive: true })
   writeFileSync(target, content)
