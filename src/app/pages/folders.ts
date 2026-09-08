@@ -36,6 +36,7 @@ import {
 import { openCreateFolder, openCreatePage } from './folders-create.ts'
 import { openParamUrlModal } from '../panels/param-url-modal.ts'
 import { openTrackingTagModal } from '../panels/tracking-tag-modal.ts'
+import { openMetaLinkModal } from '../panels/meta-link-modal.ts'
 import { formatPeriodLabel, openPeriodPicker } from '../panels/period-picker.ts'
 import { defaultRange, toRangeQuery, type DateRange } from './report-period.ts'
 import { EMPTY_CELL, formatCell, type ReportColumn } from './report-columns.ts'
@@ -925,6 +926,18 @@ function wireRealDetailPanel(body: HTMLElement, context: PageContext): void {
       tagButton.style.marginTop = '8px'
       tagButton.addEventListener('click', () => openTrackingTagModal(baseUrl))
       paramButton.insertAdjacentElement('afterend', tagButton)
+
+      // Meta広告連携（媒体実績の取り込み）。配信金額/IMP/媒体Click/媒体CV はここから入る。
+      const abTest = context.abTests[0]
+      if (abTest !== undefined) {
+        const metaButton = paramButton.cloneNode(false) as HTMLElement
+        metaButton.setAttribute('data-meta-link-btn', 'true')
+        metaButton.textContent = 'Meta広告を連携'
+        metaButton.style.cursor = 'pointer'
+        metaButton.style.marginTop = '8px'
+        metaButton.addEventListener('click', () => openMetaLinkModal(abTest.uid, abTest.title))
+        tagButton.insertAdjacentElement('afterend', metaButton)
+      }
     }
   }
 

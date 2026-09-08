@@ -10,6 +10,7 @@ import {
   createAbTest,
   deleteAbTest,
   deleteRedirectPage,
+  setMediaMetrics,
   updateRedirectPage,
 } from '../store/actions.ts'
 import { getState, setState } from '../store/store.ts'
@@ -21,6 +22,7 @@ import { errorEnvelope, pagination } from '../lib/envelope.ts'
 import { dateRangeParams, filterItems, pageParams, paginate, searchItems, sortItems, sortParams, str } from '../lib/query.ts'
 import { optionalNumber, optionalString, requireString } from '../lib/validate.ts'
 import { serializeAbTest, serializeArticle } from '../lib/serialize.ts'
+import { fetchMetaInsights } from '../meta-insights.ts'
 import type { AbTest, State } from '../store/types.ts'
 
 export const abTestsRouter: Router = Router()
@@ -613,4 +615,93 @@ abTestsRouter.get('/ab_tests/:uid/heatmaps/comparisons', (req, res) => {
   if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
   const heatmaps = state.heatmaps.filter((h) => h.ab_test_uid === abTest.uid)
   res.json({ heatmaps: applyEmptyState(req, heatmaps) })
+})
+
+// ── Meta広告連携（媒体実績の取り込み）─────────────────────────
+//
+// トークンは環境変数 META_ACCESS_TOKEN のみ。Stateにも保存せず、レスポンスにも含めない。
+// 紐付け（どの広告アカウント/キャンペーンがこのLPか）だけをStateに持つ。
+
+/** 紐付けの保存。account のときIDは `act_` 有無どちらでも受け付ける。 */
+abTestsRouter.put('/ab_tests/:uid/meta_link', (req, res) => {
+  const state = getState()
+  const abTest = findAbTest(state, req.params.uid)
+  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
+
+  const body = req.body as Record<string, unknown>
+  const level = body.meta_level
+  const isLevel = level === 'account' || level === 'campaign' || level === 'adset' || level === 'ad'
+  const objectId = typeof body.meta_object_id === 'string' ? body.meta_object_id.trim() : ''
+
+  // 空文字で送られたら紐付け解除
+  if (objectId === '') {
+    setState((s) => ({
+      ...s,
+      abTests: s.abTests.map((t) =>
+        t.uid === abTest.uid ? { ...t, meta_level: undefined, meta_object_id: undefined } : t,
+      ),
+    }))
+    res.json({ ok: true, meta_level: null, meta_object_id: null })
+    return
+  }
+  if (!isLevel) {
+    res.status(422).json(errorEnvelope('validation_failed', 'meta_level が不正です。'))
+    return
+  }
+  if (!/^(act_)?\d{5,20}$/.test(objectId)) {
+    res.status(422).json(errorEnvelope('validation_failed', 'IDは数字で入力してください。'))
+    return
+  }
+  setState((s) => ({
+    ...s,
+    abTests: s.abTests.map((t) =>
+      t.uid === abTest.uid ? { ...t, meta_level: level, meta_object_id: objectId } : t,
+    ),
+  }))
+  res.json({ ok: true, meta_level: level, meta_object_id: objectId })
+})
+
+/**
+ * 媒体実績の取り込み。Metaが返すのは日別の絶対値なので setMediaMetrics で**上書き**する
+ * （再実行しても二重計上にならない）。LP側の実測（pv/click/cv）には触らない。
+ */
+abTestsRouter.post('/ab_tests/:uid/meta_sync', (req, res) => {
+  const abTest = findAbTest(getState(), req.params.uid)
+  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
+
+  const level = abTest.meta_level
+  const objectId = abTest.meta_object_id ?? ''
+  if (level === undefined || objectId === '') {
+    res.status(422).json(errorEnvelope('not_linked', 'この beyondページにMeta広告が紐付いていません。'))
+    return
+  }
+  const body = req.body as Record<string, unknown>
+  const since = typeof body.start_date === 'string' ? body.start_date : ''
+  const until = typeof body.end_date === 'string' ? body.end_date : ''
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(since) || !/^\d{4}-\d{2}-\d{2}$/.test(until)) {
+    res.status(422).json(errorEnvelope('validation_failed', '期間は YYYY-MM-DD で指定してください。'))
+    return
+  }
+
+  void fetchMetaInsights({ level, objectId, since, until }).then((result) => {
+    if (!result.ok) {
+      const status = result.reason === 'no_token' ? 503 : 502
+      res.status(status).json(errorEnvelope(result.reason, result.message))
+      return
+    }
+    setState((s) => {
+      let metrics = s.metrics
+      for (const row of result.rows) {
+        metrics = setMediaMetrics(
+          { ...s, metrics },
+          abTest.uid,
+          'ab_test',
+          row.date,
+          { ad_cost: row.ad_cost, imp: row.imp, media_click: row.media_click, media_cv: row.media_cv },
+        )
+      }
+      return { ...s, metrics }
+    })
+    res.json({ ok: true, days: result.rows.length, start_date: since, end_date: until })
+  })
 })

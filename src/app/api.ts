@@ -50,6 +50,9 @@ export interface AbTest {
   created_at?: number
   updated_at?: number
   folder?: { uid: string; name: string } | null
+  /** Meta広告連携の紐付け（未設定は null）。トークンは含まない＝サーバーの環境変数のみ。 */
+  meta_level?: string | null
+  meta_object_id?: string | null
 }
 
 export interface RelationCounts {
@@ -259,6 +262,21 @@ export const api = {
   /** 離脱ポップアップ削除 */
   deleteExitPopup: (abTestUid: string, popupUid: string) =>
     request<void>('DELETE', `/ab_tests/${abTestUid}/exit_popups/${popupUid}`),
+
+  /** Meta広告の紐付け（媒体実績の取り込み元）。トークンは扱わない＝サーバーの環境変数のみ。 */
+  setMetaLink: (abTestUid: string, body: { meta_level: string; meta_object_id: string }) =>
+    request<{ ok: boolean; meta_level: string | null; meta_object_id: string | null }>(
+      'PUT',
+      `/ab_tests/${abTestUid}/meta_link`,
+      body,
+    ),
+  /** 媒体実績（配信金額/IMP/媒体Click/媒体CV）を指定期間ぶん取り込む。 */
+  metaSync: (abTestUid: string, body: { start_date: string; end_date: string }) =>
+    request<{ ok: boolean; days: number; start_date: string; end_date: string }>(
+      'POST',
+      `/ab_tests/${abTestUid}/meta_sync`,
+      body,
+    ),
 
   /** 追尾型ポップアップ一覧 */
   followPopups: (abTestUid: string) =>

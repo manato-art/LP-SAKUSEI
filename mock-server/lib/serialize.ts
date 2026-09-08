@@ -71,6 +71,9 @@ export function serializeAbTest(state: State, abTest: AbTest): Record<string, un
     media: serializeMedia(state, abTest.media_id),
     folder: serializeFolder(state, abTest.folder_id),
     creator: serializeCreator(state, abTest.creator_member_id),
+    // Meta広告連携の紐付け（トークンは含めない＝環境変数のみで扱う）
+    meta_level: abTest.meta_level ?? null,
+    meta_object_id: abTest.meta_object_id ?? null,
   }
 }
 

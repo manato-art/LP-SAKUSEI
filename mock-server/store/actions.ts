@@ -682,6 +682,53 @@ export function recordConversion(
   }
 }
 
+/**
+ * 媒体実績（配信金額/IMP/媒体Click/媒体CV）を**上書き**する。
+ *
+ * Meta広告APIが返すのはその日の**絶対値**なので、加算(bumpMetric)ではなく置き換えでないと
+ * 取り込みを再実行するたびに二重計上になる。LP側の実測(pv/click/cv/sales)には触らない。
+ */
+export function setMediaMetrics(
+  state: State,
+  entityUid: string,
+  scope: 'ab_test' | 'version',
+  date: string,
+  media: { ad_cost: number; imp: number; media_click: number; media_cv: number },
+): State['metrics'] {
+  const index = state.metrics.findIndex(
+    (m) => m.entity_uid === entityUid && m.scope === scope && m.date === date,
+  )
+  if (index === -1) {
+    return [
+      ...state.metrics,
+      {
+        entity_uid: entityUid,
+        scope,
+        date,
+        pv: 0,
+        click: 0,
+        cv: 0,
+        sales: 0,
+        ad_cost: media.ad_cost,
+        imp: media.imp,
+        media_click: media.media_click,
+        media_cv: media.media_cv,
+      },
+    ]
+  }
+  return state.metrics.map((m, i) =>
+    i === index
+      ? {
+          ...m,
+          ad_cost: media.ad_cost,
+          imp: media.imp,
+          media_click: media.media_click,
+          media_cv: media.media_cv,
+        }
+      : m,
+  )
+}
+
 /** 日次メトリクスに加算（無ければ作る）。一次値だけを持ち、派生は metrics.ts の恒等式で算出する。 */
 export function bumpMetric(
   state: State,

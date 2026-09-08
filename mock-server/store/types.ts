@@ -87,6 +87,9 @@ export interface ConversionSetting {
  * beyondページ。2026-08-31 の実APIレスポンス（GET /api/v2/folders/:uuid/ab_tests）に合わせている。
  * created_at / updated_at は **数値（UNIXタイムスタンプ）**。ISO文字列ではない。
  */
+/** Meta広告の紐付け階層。LPごとに粒度を変えられる。 */
+export type MetaLevel = 'account' | 'campaign' | 'adset' | 'ad'
+
 export interface AbTest {
   id: number
   team_id: number
@@ -108,6 +111,13 @@ export interface AbTest {
   age_to: number | null
   /** 配信ページのブラウザタブに表示する名前（未設定ならtitleをフォールバック） */
   page_title: string
+  /**
+   * Meta広告の紐付け（媒体実績＝配信金額/IMP/媒体Click/媒体CV の取り込み元）。
+   * 未設定なら取り込まない。トークンは**ここには保存しない**（環境変数 META_ACCESS_TOKEN のみ）。
+   */
+  meta_level?: MetaLevel
+  /** meta_level に対応するID。account のときは `act_` を除いた数字部分。 */
+  meta_object_id?: string
   created_at: number
   updated_at: number
   creator_member_id: number
