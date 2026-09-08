@@ -122,11 +122,14 @@ function bandColor(_metric: HeatmapMetric, strength: number): string {
   // よくある熱スケール（赤→黄→緑→青）を色相で作る。
   // metric は行の色分けにだけ使い、面の色は値そのものを表す。
   const t = Math.min(1, Math.max(0, strength))
-  const hue = (1 - t) * 240
-  // LPの写真や文字がそのまま読めることを最優先にする（実物もパステル調）。
-  // 高低の差は**色相**で出し、濃さでは出さない。濃さで差を付けるとLPが潰れる。
-  const alpha = 0.14 + t * 0.10
-  return `hsla(${hue}, 70%, 58%, ${alpha})`
+  const hue = (1 - t) * 230
+  // 低い側（青）を濃く塗るとLP全体が沈んで何も読めなくなる。
+  // 青側ほど明るく・淡く・彩度を落として「ほぼ素通し」にし、
+  // 赤側だけがはっきり浮くようにする（見たい情報は「よく見られた場所」なので）。
+  const light = 52 + (1 - t) * 26
+  const sat = 60 + t * 25
+  const alpha = 0.10 + t * 0.20
+  return `hsla(${hue}, ${sat}%, ${light}%, ${alpha})`
 }
 
 /** モードごとの「そのバンドの値」と表示文字列 */
