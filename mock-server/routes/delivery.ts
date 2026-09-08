@@ -10,6 +10,7 @@
  * cross-boundary import は `panel-link-replace.ts` が `src/shared/link-html.ts` を読む既存の前例に倣う）。
  */
 import { Router } from 'express'
+import type { Response } from 'express'
 import { getState, setState } from '../store/store.ts'
 import { getMasterStyleSheet } from '../store/master-style-sheet.ts'
 import { getHtmlSetting } from '../store/html-tags.ts'
@@ -441,7 +442,28 @@ deliveryRouter.get('/lp/:uid', (req, res) => {
  * ab_test スコープ（レポート全体）と version スコープ（Version別）の両方を更新。
  * 実データを持ち込まないクローン方針に沿い、記録するのは PV/クリック数の集計のみ。
  */
+/**
+ * 外部LP（別アカウントのSquadBeyond等）からの計測ビーコンを受け取れるようCORSを許可する。
+ * 自前配信(/lp/)は同一オリジンなので不要だが、他所でホストされたLPのタグ設定に計測タグを
+ * 貼るケース（＝このシステムのレポートに外部LPを並べる）はクロスオリジンになる。
+ * Origin を絞っても防御にはならない（uid さえ知っていれば curl で投げられる元から公開の
+ * エンドポイント）ため、ブラウザ用に * を返す。
+ */
+function setTrackCors(res: Response): void {
+  res.setHeader('Access-Control-Allow-Origin', '*')
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+  res.setHeader('Access-Control-Max-Age', '600')
+}
+
+/** CORSプリフライト（Content-Type: application/json のPOSTはプリフライトされる） */
+deliveryRouter.options('/lp/:uid/__track', (_req, res) => {
+  setTrackCors(res)
+  res.sendStatus(204)
+})
+
 deliveryRouter.post('/lp/:uid/__track', (req, res) => {
+  setTrackCors(res)
   const abTest = findAbTest(getState(), req.params.uid)
   if (abTest === undefined) {
     res.status(404).json({ ok: false })

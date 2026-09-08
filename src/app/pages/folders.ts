@@ -35,6 +35,7 @@ import {
 } from './folders-substrate.ts'
 import { openCreateFolder, openCreatePage } from './folders-create.ts'
 import { openParamUrlModal } from '../panels/param-url-modal.ts'
+import { openTrackingTagModal } from '../panels/tracking-tag-modal.ts'
 import { openFolderMenu } from '../panels/folder-menu.ts'
 
 /** 採取物から切り出したフォルダ1行ぶんのマークアップ（読み込み時に一度だけ） */
@@ -902,6 +903,20 @@ function wireRealDetailPanel(body: HTMLElement, context: PageContext): void {
   if (paramButton !== null) {
     paramButton.style.cursor = 'pointer'
     paramButton.addEventListener('click', () => openParamUrlModal(baseUrl))
+
+    // 外部LP計測タグの発行（クローン独自機能）。別アカウントで配信中のLPに貼ると、その
+    // PV/クリックをこの beyondページのレポートへ計上できる。URL/計測系の並びに置く。
+    // 採取物のボタンを複製して見た目を合わせる（cloneNode(false)=属性だけ引き継ぐ）。
+    const alreadyAdded = paramButton.parentElement?.querySelector('[data-tracking-tag-btn]') ?? null
+    if (alreadyAdded === null) {
+      const tagButton = paramButton.cloneNode(false) as HTMLElement
+      tagButton.setAttribute('data-tracking-tag-btn', 'true')
+      tagButton.textContent = '外部LP計測タグを発行'
+      tagButton.style.cursor = 'pointer'
+      tagButton.style.marginTop = '8px'
+      tagButton.addEventListener('click', () => openTrackingTagModal(baseUrl))
+      paramButton.insertAdjacentElement('afterend', tagButton)
+    }
   }
 
   for (const copy of panel.querySelectorAll<HTMLElement>('[aria-label="コピー"]')) {
