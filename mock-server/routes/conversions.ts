@@ -13,15 +13,26 @@ export const conversionsRouter: Router = Router()
 
 conversionsRouter.get('/conversions', (req, res) => {
   const state = getState()
+  // 実物のCV速報は8列（採取で確認）:
+  //   フォルダ / beyondページ / Versionメモ / メディア / アクセス日時 / CV日時 / CVソース / 成果識別ID
+  // このクローンが持っていない項目は埋めずに null を返す（UIで「-」）。
+  //  - access_at: 訪問〜CVの紐付け（セッション追跡）をしていないので持てない
+  //  - version_memo: Versionにメモ欄が無いのでVersion名で代替する
   const rows = state.conversions.map((c) => {
     const abTest = state.abTests.find((t) => t.uid === c.ab_test_uid)
     const version = state.versions.find((v) => v.uid === c.version_uid)
     const media = state.media.find((m) => m.id === c.media_id)
+    const folder = state.folders.find((f) => f.id === abTest?.folder_id)
     return {
       ...c,
+      folder_name: folder?.name ?? null,
       ab_test_title: abTest?.title ?? null,
       version_name: version?.name ?? null,
+      version_memo: version?.name ?? null,
       media: media === undefined ? null : { name: media.name, icon_name: media.icon_name },
+      access_at: null,
+      // CVが増える経路はCV計測タグだけ（合成CVは廃止済み）
+      cv_source: '計測タグ',
     }
   })
   const filtered = filterItems(rows, req.query, {

@@ -70,8 +70,18 @@ interface Column<Row> {
   align?: 'left' | 'right'
 }
 
-function table<Row>(rows: readonly Row[], columns: readonly Column<Row>[], empty: string): HTMLElement {
-  if (rows.length === 0) return emptyState(empty)
+/**
+ * 一覧テーブル。
+ * `keepHeaderWhenEmpty` は「0件でも見出し行を出す」画面のためのもの。実物のCV速報は
+ * 0件でも8列のヘッダーを出したまま件数だけ「1 ~ 0件を表示中」と出す作りだった（採取で確認）。
+ */
+function table<Row>(
+  rows: readonly Row[],
+  columns: readonly Column<Row>[],
+  empty: string,
+  opts?: { keepHeaderWhenEmpty?: boolean },
+): HTMLElement {
+  if (rows.length === 0 && opts?.keepHeaderWhenEmpty !== true) return emptyState(empty)
   const wrap = el('div', { style: 'overflow-x:auto' })
   const grid = `grid-template-columns:repeat(${columns.length}, minmax(90px,1fr))`
   const head = el('div', {
@@ -278,35 +288,68 @@ function renderDashboardBody(
 
 /* ────────────── CV速報 ────────────── */
 interface ConversionRow {
+  uid?: string
   occurred_at?: string
-  ab_test_title?: string
-  version_name?: string
-  amount?: number
-  status?: string
+  folder_name?: string | null
+  ab_test_title?: string | null
+  version_memo?: string | null
+  access_at?: string | null
+  cv_source?: string | null
   media?: { name: string } | null
 }
+
+/** 発生時刻（UNIX秒）を実物の並びに近い表記へ。文字列で来たらそのまま出す。 */
+function cvTime(value: unknown): string {
+  if (typeof value === 'string' && value !== '') return value
+  if (typeof value !== 'number' || !Number.isFinite(value)) return '-'
+  const d = new Date(value * 1000)
+  const p = (n: number): string => String(n).padStart(2, '0')
+  return `${d.getFullYear()}/${p(d.getMonth() + 1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
+}
+
+/**
+ * CV速報。列構成・「CSVダウンロード」・件数表示は**実物の採取**に合わせている
+ * （実パスは /conversion-reports、8列、0件でもヘッダーを出したまま「1 ~ 0件を表示中」）。
+ * このクローンが持てない項目（アクセス日時）は埋めずに「-」にする。
+ */
 export async function renderConversions(container: HTMLElement): Promise<void> {
   const content = pageShell(
     container,
     'CV速報',
-    // 合成CVを廃止したので「モックのログ・30分ごと更新」は事実でなくなった。実測のみを出す。
-    '※クローンが自作した画面です。CV計測タグから記録された実際のコンバージョンを新しい順に表示します。',
+    '※列構成は実物に合わせています。CV計測タグから記録された実際のコンバージョンを新しい順に表示します。',
   )
+
+  // 実物は表の上に「CSVダウンロード」がある
+  const bar = el('div', { style: 'display:flex;justify-content:flex-end;margin-bottom:12px' })
+  bar.append(smallBtn('CSVダウンロード'))
+  content.append(bar)
+
   const data = await getJson<{ conversions: ConversionRow[] }>('/conversions')
   const rows = data?.conversions ?? []
   content.append(
     table<ConversionRow>(
       rows,
       [
-        { head: '発生日時', cell: (r) => r.occurred_at ?? '-' },
+        { head: 'フォルダ', cell: (r) => r.folder_name ?? '-' },
         { head: 'beyondページ', cell: (r) => r.ab_test_title ?? '-' },
-        { head: 'Version', cell: (r) => r.version_name ?? '-' },
-        { head: '媒体', cell: (r) => r.media?.name ?? '-' },
-        { head: '金額', cell: (r) => (r.amount === undefined ? '-' : yen(r.amount)), align: 'right' },
-        { head: 'ステータス', cell: (r) => r.status ?? '-' },
+        { head: 'Versionメモ', cell: (r) => r.version_memo ?? '-' },
+        { head: 'メディア', cell: (r) => r.media?.name ?? '-' },
+        { head: 'アクセス日時', cell: (r) => r.access_at ?? '-' },
+        { head: 'CV日時', cell: (r) => cvTime(r.occurred_at) },
+        { head: 'CVソース', cell: (r) => r.cv_source ?? '-' },
+        { head: '成果識別ID', cell: (r) => r.uid ?? '-' },
       ],
-      'まだコンバージョンがありません。配信が始まるとここに速報が並びます。',
+      '',
+      { keepHeaderWhenEmpty: true },
     ),
+  )
+
+  // 実物は表の下に件数を出す（0件でも「1 ~ 0件を表示中」）
+  content.append(
+    el('div', {
+      text: `1 ~ ${rows.length}件を表示中`,
+      style: `margin-top:12px;font-size:12px;color:${T.sub}`,
+    }),
   )
 }
 
