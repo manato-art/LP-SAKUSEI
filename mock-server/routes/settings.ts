@@ -103,7 +103,7 @@ settingsRouter.post('/report-exclusions', (req, res) => {
     return
   }
 
-  const KINDS: readonly ExclusionKind[] = ['ip', 'referer', 'param', 'team']
+  const KINDS: readonly ExclusionKind[] = ['email', 'ip', 'referer', 'param', 'team']
   const MATCHES: readonly ExclusionMatch[] = ['exact', 'partial', 'prefix', 'suffix']
   const conditions: ExclusionCondition[] = []
   for (const item of raw) {
@@ -122,6 +122,12 @@ settingsRouter.post('/report-exclusions', (req, res) => {
     // IPの完全一致だけは形を確かめる。間違った値を黙って登録すると
     // 「除外したのに数字が減らない」原因が分からなくなる。
     // 部分一致などは一部だけを書くのが普通なので検査しない。
+    if (kind === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+      res
+        .status(422)
+        .json(errorEnvelope('validation_failed', 'メールアドレスの形式が正しくありません。'))
+      return
+    }
     if (kind === 'ip' && match === 'exact' && !isIpLike(value)) {
       res
         .status(422)

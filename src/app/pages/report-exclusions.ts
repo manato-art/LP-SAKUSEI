@@ -32,11 +32,19 @@ const PERIODS = [
 
 /** 実物のプルダウンどおりの選択肢 */
 const KINDS: readonly { value: ExclusionKind; label: string }[] = [
+  // 実物は「リファラ」「パラメータ」だが、何を指すか分かりにくいので言い換えている
+  { value: 'email', label: 'メールアドレス' },
   { value: 'ip', label: 'IPアドレス' },
-  { value: 'referer', label: 'リファラ' },
-  { value: 'param', label: 'パラメータ' },
+  { value: 'referer', label: 'どこから来たか' },
+  { value: 'param', label: 'URLのパラメーター（utm_source=fb など）' },
   { value: 'team', label: 'チーム' },
 ]
+
+/** メールアドレスは値の突き合わせではなく、除外リンクを開いたブラウザで判定する */
+const EMAIL_HINT =
+  'メールアドレスは、その人のChromeを見分けるための名前として使います。' +
+  '登録すると「除外リンク」が出るので、本人にそのChromeで一度開いてもらってください。' +
+  'ブラウザのログインアカウントはWebサイトからは読めないため、この方法をとっています。'
 const MATCHES: readonly { value: ExclusionMatch; label: string }[] = [
   { value: 'exact', label: '完全一致' },
   { value: 'partial', label: '部分一致' },
@@ -201,14 +209,33 @@ function buildDenyTab(reload: () => void): HTMLElement {
       remove.className = 'rx-del'
       remove.textContent = 'この行を削除'
       remove.addEventListener('click', () => {
-        const at = rows.findIndex((r) => r.el === line)
-        if (at >= 0) rows.splice(at, 1)
-        line.remove()
+        const at = rows.findIndex((r) => r.el.contains(line))
+        if (at >= 0) {
+          rows[at]?.el.remove()
+          rows.splice(at, 1)
+        }
       })
       line.append(remove)
     }
-    rows.push({ el: line, kind, match, value, join })
-    rowsHost.append(line)
+    // メールアドレスは値の突き合わせをしないので、マッチタイプは意味を持たない
+    const hint = document.createElement('div')
+    hint.className = 'rx-note'
+    hint.style.cssText = 'margin:6px 0 0;display:none'
+    hint.textContent = EMAIL_HINT
+    const syncKind = (): void => {
+      const isEmail = kind.value === 'email'
+      match.disabled = isEmail
+      hint.style.display = isEmail ? '' : 'none'
+      value.placeholder = isEmail ? 'you@example.com' : '値'
+      value.type = isEmail ? 'email' : 'text'
+    }
+    kind.addEventListener('change', syncKind)
+    syncKind()
+
+    const wrapLine = document.createElement('div')
+    wrapLine.append(line, hint)
+    rows.push({ el: wrapLine, kind, match, value, join })
+    rowsHost.append(wrapLine)
   }
   addRow()
 
@@ -229,7 +256,8 @@ function buildDenyTab(reload: () => void): HTMLElement {
   submit.addEventListener('click', () => {
     const conditions = rows.map((r) => ({
       kind: r.kind.value as ExclusionKind,
-      matchType: r.match.value as ExclusionMatch,
+      // メールは値の突き合わせをしないので、常に完全一致で送る
+      matchType: (r.kind.value === 'email' ? 'exact' : r.match.value) as ExclusionMatch,
       value: r.value.value.trim(),
       join: r.join.value as ExclusionJoin,
     }))
@@ -320,6 +348,23 @@ function buildRulesTable(rows: readonly ReportExclusionEntry[], reload: () => vo
       tr.append(td)
     }
     const last = document.createElement('td')
+    // メールアドレスの条件には「除外リンク」を出す。本人にこのChromeで開いてもらう。
+    if (row.conditions.some((c) => c.kind === 'email')) {
+      const copy = document.createElement('button')
+      copy.type = 'button'
+      copy.className = 'rx-btn ghost'
+      copy.style.cssText += ';margin-right:6px;padding:4px 10px;font-size:11px'
+      copy.textContent = '除外リンクをコピー'
+      const url = `${location.origin}/exclude/${row.uid}`
+      copy.title = `${url}\n本人のChromeでこのURLを一度開いてもらうと、そのブラウザが除外されます。`
+      copy.addEventListener('click', () => {
+        void navigator.clipboard?.writeText(url).then(
+          () => toast('除外リンクをコピーしました。本人のChromeで開いてもらってください'),
+          () => toast('コピーできませんでした', 'error'),
+        )
+      })
+      last.append(copy)
+    }
     const del = document.createElement('button')
     del.type = 'button'
     del.className = 'rx-del'

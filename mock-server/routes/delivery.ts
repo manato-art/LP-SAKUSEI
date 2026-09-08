@@ -29,6 +29,9 @@ import { buildCvScriptBody, buildTrackingScriptBody } from '../../src/shared/tra
 
 export const deliveryRouter: Router = Router()
 
+/** 除外リンクを開いたブラウザに残す目印のCookie名 */
+const EXCLUDE_COOKIE = 'sb_report_exclude'
+
 /** 既定の配信Version幅（実物のデフォルト） */
 const DELIVERY_WIDTH = 620
 
@@ -86,6 +89,16 @@ const IMAGE_LINK_SCRIPT = `<script>(function(){
  * ★プレビュー（`/preview/:versionUid`）にはこのスクリプトを入れない＝計測しない。
  * keepalive でリンク遷移時のクリックも取りこぼさない。
  */
+/** ブラウザに残した除外の目印（Cookie）を読む */
+function excludeTokenFromCookie(cookie: string | undefined): string {
+  if (cookie === undefined || cookie === '') return ''
+  for (const part of cookie.split(';')) {
+    const [k, v] = part.split('=')
+    if (k?.trim() === EXCLUDE_COOKIE) return decodeURIComponent(v?.trim() ?? '')
+  }
+  return ''
+}
+
 /** 送信元IP。Railway等のプロキシ経由では X-Forwarded-For の先頭が実体。 */
 function clientIp(req: ExpressRequest): string {
   const forwarded = req.get('x-forwarded-for')
@@ -519,11 +532,76 @@ deliveryRouter.get('/lp/:uid', (req, res) => {
  * Origin を絞っても防御にはならない（uid さえ知っていれば curl で投げられる元から公開の
  * エンドポイント）ため、ブラウザ用に * を返す。
  */
-function setTrackCors(res: Response): void {
-  res.setHeader('Access-Control-Allow-Origin', '*')
+/**
+ * 計測ビーコンのCORS。
+ *
+ * 除外リンクの目印（Cookie）を外部LPからも届かせるため、資格情報つきを許可する。
+ * 資格情報つきのときワイルドカードは使えないので、送信元のオリジンをそのまま返す。
+ * 受け取るのは計測の値だけで、この口から読み出せるものは無い。
+ */
+function setTrackCors(res: Response, origin: string | undefined): void {
+  res.setHeader('Access-Control-Allow-Origin', origin !== undefined && origin !== '' ? origin : '*')
+  if (origin !== undefined && origin !== '') {
+    res.setHeader('Access-Control-Allow-Credentials', 'true')
+    res.setHeader('Vary', 'Origin')
+  }
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
   res.setHeader('Access-Control-Max-Age', '600')
+}
+
+/**
+ * 除外リンク。「メールアドレス」で登録した本人にこのURLを開いてもらうと、
+ * そのブラウザに目印（Cookie）が残り、以後そのブラウザからのアクセスは
+ * レポートに数えなくなる。
+ *
+ * なぜこの形か: Webサイトからブラウザのログインアカウント（Chromeに
+ * ログインしているGoogleアカウント）は読めない。読めたら誰でも訪問者の
+ * メールアドレスを取れてしまうので、ブラウザが渡さない。
+ * そこで「本人に一度だけ開いてもらう」ことで、そのブラウザだと判る印を残す。
+ */
+deliveryRouter.get('/exclude/:token', (req, res) => {
+  const token = req.params.token
+  const rule = getState().reportExclusions.find((r) => r.uid === token)
+  const ok = rule !== undefined
+  if (ok) {
+    // 2年。ブラウザのデータを消すと外れるので、その旨も画面に書く。
+    res.cookie(EXCLUDE_COOKIE, token, {
+      maxAge: 2 * 365 * 24 * 60 * 60 * 1000,
+      httpOnly: true,
+      sameSite: 'none',
+      secure: true,
+      path: '/',
+    })
+  }
+  const email = rule?.conditions.find((c) => c.kind === 'email')?.value ?? ''
+  res
+    .status(ok ? 200 : 404)
+    .type('html')
+    .send(renderExcludePage(ok, email))
+})
+
+/** 除外リンクを開いたときに出す画面 */
+function renderExcludePage(ok: boolean, email: string): string {
+  const body = ok
+    ? `<h1>このブラウザを除外しました</h1>
+       <p>${escapeHtml(email)} として登録された除外設定です。</p>
+       <p>これ以降、<b>このブラウザ</b>からのアクセスはレポートの数値に入りません。
+          ページはこれまでどおり普通に見られます。</p>
+       <p class="note">別のブラウザや別の端末には効きません。それぞれで同じリンクを開いてください。
+          ブラウザのデータ（Cookie）を消すと解除されます。</p>`
+    : `<h1>この除外リンクは無効です</h1>
+       <p>設定が削除されたか、URLが間違っている可能性があります。</p>`
+  return `<!doctype html><html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>レポート除外</title><style>
+body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+ background:#f4f6f9;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans",sans-serif;color:#1f2937}
+.card{background:#fff;border:1px solid #e6e9f0;border-radius:12px;padding:28px 32px;max-width:520px;
+ box-shadow:0 1px 3px rgba(16,24,40,.06)}
+h1{font-size:18px;margin:0 0 12px}p{font-size:13px;line-height:1.9;margin:0 0 10px}
+.note{color:#6b7280;font-size:12px}
+</style></head><body><div class="card">${body}</div></body></html>`
 }
 
 /**
@@ -571,13 +649,13 @@ deliveryRouter.get('/t/:uid', (req, res) => {
 })
 
 /** CORSプリフライト（Content-Type: application/json のPOSTはプリフライトされる） */
-deliveryRouter.options('/lp/:uid/__track', (_req, res) => {
-  setTrackCors(res)
+deliveryRouter.options('/lp/:uid/__track', (req, res) => {
+  setTrackCors(res, req.get('origin'))
   res.sendStatus(204)
 })
 
 deliveryRouter.post('/lp/:uid/__track', (req, res) => {
-  setTrackCors(res)
+  setTrackCors(res, req.get('origin'))
   const abTest = findAbTest(getState(), req.params.uid)
   if (abTest === undefined) {
     res.status(404).json({ ok: false })
@@ -620,6 +698,7 @@ deliveryRouter.post('/lp/:uid/__track', (req, res) => {
     referer: refererOrigin(req.get('referer')),
     params: queryPairsOf(body.u, req),
     excluded: false,
+    exclude_token: excludeTokenFromCookie(req.get('cookie')),
   }
   const isExcluded = shouldExclude(visitor, getState().reportExclusions)
   if (body.event === 'pv') {

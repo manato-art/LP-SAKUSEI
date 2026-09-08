@@ -44,6 +44,7 @@ const log = (over: Partial<RequestLogEntry> = {}): RequestLogEntry => ({
   referer: 'https://example.test/',
   params: ['utm_source=x'],
   excluded: false,
+  exclude_token: '',
   ...over,
 })
 
@@ -234,6 +235,50 @@ describe('レポート除外API', () => {
     expect(report.totals.pv).toBe(1)
   })
 
+  it('メールアドレスの除外は、除外リンクを開いたブラウザにだけ効く', async () => {
+    const created = await postJson<{ report_exclusion: { uid: string } }>(
+      `${server.api}/report-exclusions`,
+      { conditions: [{ kind: 'email', match_type: 'exact', value: 'a@example.test', join: 'or' }] },
+    )
+    const token = created.json.report_exclusion.uid
+    const page = await postJson<{ ab_test: { uid: string } }>(`${server.api}/ab_tests`, {
+      title: 'メール除外テスト',
+      media_id: 1,
+    })
+    const uid = page.json.ab_test.uid
+
+    // 目印を持たないブラウザは普通に数える
+    await fetch(`${server.baseUrl}/lp/${uid}/__track`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event: 'pv' }),
+    })
+    // 除外リンクを開いたブラウザ（Cookieを持つ）は数えない
+    const res = await fetch(`${server.baseUrl}/lp/${uid}/__track`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', cookie: `sb_report_exclude=${token}` },
+      body: JSON.stringify({ event: 'pv' }),
+    })
+    expect(await res.json()).toMatchObject({ excluded: true })
+
+    const report = await getJson<{ totals: { pv: number } }>(
+      `${server.api}/ab_tests/${uid}/reports?start_date=2000-01-01&end_date=2099-12-31`,
+    )
+    expect(report.totals.pv).toBe(1)
+  })
+
+  it('除外リンクを開くと目印が返る。壊れたリンクは404', async () => {
+    const created = await postJson<{ report_exclusion: { uid: string } }>(
+      `${server.api}/report-exclusions`,
+      { conditions: [{ kind: 'email', match_type: 'exact', value: 'b@example.test', join: 'or' }] },
+    )
+    const ok = await fetch(`${server.baseUrl}/exclude/${created.json.report_exclusion.uid}`)
+    expect(ok.status).toBe(200)
+    expect(ok.headers.get('set-cookie') ?? '').toContain('sb_report_exclude')
+    const ng = await fetch(`${server.baseUrl}/exclude/NOT_A_REAL_TOKEN`)
+    expect(ng.status).toBe(404)
+  })
+
   it('リクエスト集計は記録が無くても形を返す', async () => {
     const stats = await getJson<{ total: number; referers: unknown[] }>(
       `${server.api}/report-exclusions/requests?start_date=2026-01-01&end_date=2026-12-31`,
@@ -278,8 +323,28 @@ describe('画面は実物の構成に合わせる', () => {
     expect(src).toContain('中身を確認できていないため作っていません')
   })
 
+  it('分かりにくい名称は言い換える（指示）', () => {
+    expect(src).toContain("label: 'どこから来たか'")
+    expect(src).toContain('URLのパラメーター（utm_source=fb など）')
+    // 元の分かりにくい名称は出さない
+    expect(src).not.toContain("label: 'リファラ'")
+    expect(src).not.toContain("label: 'パラメータ'")
+  })
+
+  it('メールアドレスを先頭に置く（指示）', () => {
+    const first = src.indexOf("value: 'email'")
+    const ip = src.indexOf("value: 'ip'")
+    expect(first).toBeGreaterThan(0)
+    expect(first).toBeLessThan(ip)
+  })
+
+  it('メールアドレスは除外リンク方式だと画面で説明する', () => {
+    expect(src).toContain('ブラウザのログインアカウントはWebサイトからは読めない')
+    expect(src).toContain('除外リンクをコピー')
+  })
+
   it('プルダウンは実物どおりの選択肢', () => {
-    for (const label of ['IPアドレス', 'リファラ', 'パラメータ', 'チーム']) {
+    for (const label of ['IPアドレス', 'チーム']) {
       expect(src, label).toContain(label)
     }
     for (const label of ['完全一致', '部分一致', '前方一致', '後方一致']) {

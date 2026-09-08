@@ -548,8 +548,12 @@ export interface MediaAsset {
  *   除外対象   … IPアドレス / リファラ / パラメータ / チーム
  *   マッチタイプ … 完全一致 / 部分一致 / 前方一致 / 後方一致
  *   結合条件   … AND / OR
+ *
+ * `email` はこのクローンの追加分。Webサイトからブラウザのログイン
+ * アカウントは読めないので、本人に一度「除外リンク」を開いてもらい、
+ * そのブラウザに目印を残す方式で実現している（`exclude-link.ts`）。
  */
-export type ExclusionKind = 'ip' | 'referer' | 'param' | 'team'
+export type ExclusionKind = 'email' | 'ip' | 'referer' | 'param' | 'team'
 export type ExclusionMatch = 'exact' | 'partial' | 'prefix' | 'suffix'
 export type ExclusionJoin = 'and' | 'or'
 
@@ -591,6 +595,8 @@ export interface RequestLogEntry {
   params: readonly string[]
   /** この1件が除外条件に当たったか */
   excluded: boolean
+  /** 除外リンクを開いたブラウザに残っている目印（無ければ空） */
+  exclude_token: string
 }
 
 export interface User {
