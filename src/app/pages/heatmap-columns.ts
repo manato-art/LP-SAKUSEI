@@ -138,7 +138,14 @@ export interface ColumnDeps {
 
 /** 1列ぶんを組み立てる */
 function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
-  const stat = deps.stats.find((s) => s.version_uid === spec.versionUid) ?? null
+  // 外部LPの計測タグは Version を送らない（外部LPは当システム上「1ページ」で
+  // Version別の内訳を持たないため）。その場合データは version_uid='' で入るので、
+  // Version一致が無ければ version無しの集計にフォールバックする。
+  // これが無いと、タグを貼っても列が永久に「まだありません」のままになる。
+  const exact = deps.stats.find((s) => s.version_uid === spec.versionUid) ?? null
+  const shared = deps.stats.find((s) => s.version_uid === '') ?? null
+  const stat = exact ?? shared
+  const isShared = exact === null && shared !== null
 
   const col = document.createElement('div')
   col.className = 'hm-col'
@@ -160,7 +167,7 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
   met.append(metName, metStats)
   const note = document.createElement('div')
   note.className = 'hm-col-note'
-  note.textContent = '全パラメータ合算'
+  note.textContent = isShared ? '全パラメータ合算・外部LP（Version区別なし）' : '全パラメータ合算'
 
   const ctrl = document.createElement('div')
   ctrl.className = 'hm-col-ctrl'
