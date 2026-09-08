@@ -52,9 +52,12 @@ function injectStyles(): void {
     .hm-cols { display:flex; gap:16px; overflow-x:auto; padding:4px 2px 12px; align-items:flex-start; }
     /* 画面全体が白基調なので、列だけ黒いと浮くうえ文字が読みづらい。
        白地＋枠線にして、LPの絵が枠の中に収まって見えるようにする。 */
+    /* 実物はLPを375×667のスマホ枠で見せ、枠の中だけをスクロールさせる
+       （採取した実DOM: iframe style="width:375px;height:667px"）。
+       縮小して全体を出す作りだと文字が読めず、到達ラインの位置も合わない。 */
     .hm-col {
-      flex:0 0 320px; background:#fff; border:1px solid #dcdce2; border-radius:10px;
-      overflow:hidden; display:flex; flex-direction:column; max-height:70vh;
+      flex:0 0 377px; background:#fff; border:1px solid #dcdce2; border-radius:10px;
+      overflow:hidden; display:flex; flex-direction:column;
       box-shadow:0 1px 3px rgba(0,0,0,.06);
     }
     .hm-col-head {
@@ -77,9 +80,12 @@ function injectStyles(): void {
       margin-left:auto; background:#fff; color:#1a1a1a; border:1px solid #d5d5db;
       border-radius:4px; font-size:11px; padding:3px 6px; font-family:inherit;
     }
-    /* LPの外周に枠を出して「画面の中身」だと分かるようにする */
-    .hm-col-body { position:relative; overflow:auto; flex:1; background:#fff; }
-    .hm-canvas { box-shadow:inset 0 0 0 1px #e5e5ea; }
+    /* スマホ枠。ここ自体はスクロールさせず、中のLPだけが動く */
+    .hm-col-body {
+      position:relative; overflow:hidden; background:#fff;
+      width:375px; height:667px; flex:0 0 667px;
+    }
+    .hm-canvas { position:relative; width:375px; height:667px; overflow:hidden; }
     .hm-canvas { position:relative; }
     .hm-lp { transform-origin:top left; }
     .hm-lp img { max-width:100%; }
@@ -287,18 +293,20 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
     ? document.createElement('iframe')
     : document.createElement('div')
   lp.className = 'hm-lp'
+  // スマホ枠いっぱい。縮小はせず、枠の中だけをスクロールさせる（実物と同じ）。
   lp.style.width = '375px'
+  lp.style.height = '667px'
   if (useExternal) {
     const frame = lp as HTMLIFrameElement
-    // allow-scripts は与えない＝中のJSは動かない。allow-same-origin は高さ測定のため。
+    // allow-scripts は与えない＝中のJSは動かない。allow-same-origin は
+    // 高さ測定とスクロール操作のため。
     // （危険なのは allow-scripts と allow-same-origin の**同時**指定で、これは該当しない）
     frame.setAttribute('sandbox', 'allow-same-origin')
     frame.setAttribute('referrerpolicy', 'no-referrer')
-    frame.setAttribute('scrolling', 'no')
     frame.style.border = '0'
-    frame.style.height = '2000px'
     frame.srcdoc = deps.externalHtml as string
   } else {
+    lp.style.overflow = 'auto'
     lp.innerHTML = spec.html
   }
   const overlay = document.createElement('div')
@@ -309,25 +317,29 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
   // sticky で列の上端に貼り付けておく（高さ0なので場所は取らない）。
   body.append(overlay, canvas)
 
-  // 列幅にLPを収める（実物も縮小表示）
-  /** 背景の実高さ。iframe は中の文書を測る（sandbox に allow-scripts が無いので安全に読める）。 */
-  const lpHeight = (): number => {
-    if (!useExternal) return lp.scrollHeight
-    const doc = (lp as HTMLIFrameElement).contentDocument
-    return doc?.documentElement.scrollHeight ?? 2000
+  /** LPの中身をスクロールさせる要素（iframe なら中の window、そうでなければ自身）。 */
+  const lpScroller = (): { top: number; max: number; to: (y: number) => void } => {
+    if (useExternal) {
+      const win = (lp as HTMLIFrameElement).contentWindow
+      const doc = (lp as HTMLIFrameElement).contentDocument
+      const h = doc?.documentElement.scrollHeight ?? 0
+      return {
+        top: win?.scrollY ?? 0,
+        max: Math.max(0, h - 667),
+        to: (y) => win?.scrollTo({ top: y, behavior: 'smooth' }),
+      }
+    }
+    return {
+      top: lp.scrollTop,
+      max: Math.max(0, lp.scrollHeight - lp.clientHeight),
+      to: (y) => lp.scrollTo({ top: y, behavior: 'smooth' }),
+    }
   }
-
+  // 縮小はしない（実物どおり等倍のスマホ枠）。読み込み後に描き直すだけ。
   const applyScale = (): void => {
-    const w = body.clientWidth || 320
-    const lpW = parseFloat(lp.style.width) || 375
-    const scale = Math.min(1, w / lpW)
-    lp.style.transform = `scale(${scale})`
-    if (useExternal) lp.style.height = `${lpHeight()}px`
-    canvas.style.width = `${lpW * scale}px`
-    canvas.style.height = `${lpHeight() * scale}px`
+    /* 等倍表示なので寸法計算は不要。resize/読み込み時の再描画のフックとして残す。 */
   }
-  // iframe は中身の読み込みが終わってからでないと高さが出ない
-  if (useExternal) lp.addEventListener('load', applyScale)
+  if (useExternal) lp.addEventListener('load', () => drawOverlay())
 
   /**
    * 実物の到達ラインは **5%刻みの21行**（0%,5%,…,100%）で、行の位置はLPの高さと無関係に
@@ -344,15 +356,11 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
   const bandIndexOf = (row: number, bands: number): number =>
     Math.min(bands - 1, Math.floor((row / (ROW_COUNT - 1)) * bands))
 
-  /** 行を押したときにLPをその深さまで送る */
+  /** 行を押したときに、スマホ枠の中のLPをその深さまで送る */
   const scrollLpTo = (depth: number): void => {
-    const max = body.scrollHeight - body.clientHeight
-    if (max <= 0) return
-    const top = max * depth
-    // scrollTo(smooth) だけだと、直後の描き直しで移動が打ち消されることがあった
-    // （実測: バッジだけ動いてLPが0のまま）。値を直接入れてから滑らかに寄せる。
-    body.scrollTop = top
-    body.scrollTo({ top, behavior: 'smooth' })
+    const sc = lpScroller()
+    if (sc.max <= 0) return
+    sc.to(sc.max * depth)
   }
 
   const drawOverlay = (): void => {
