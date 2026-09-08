@@ -156,7 +156,10 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
   const exact = deps.stats.find((s) => s.version_uid === spec.versionUid) ?? null
   const shared = deps.stats.find((s) => s.version_uid === '') ?? null
   const stat = exact ?? shared
-  const isShared = exact === null && shared !== null
+  // 「外部LPの数字を見ている列か」は、行き着いた集計が version無しかどうかで決める。
+  // 外部LPの行（entity_uid='')を直接選んだ場合も exact 一致するので、
+  // 「フォールバックしたか」では判定できない。
+  const isShared = stat !== null && stat.version_uid === ''
 
   const col = document.createElement('div')
   col.className = 'hm-col'

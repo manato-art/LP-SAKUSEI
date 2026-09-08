@@ -63,11 +63,28 @@ export async function renderHeatmap(
   const versionHtml = new Map<string, string>()
   const columnHost = ensureColumnHost(root)
 
+  /**
+   * 外部LPの計測はVersionに紐づかない（version_uid='')ので report.rows に現れず、
+   * Version一覧からは選べない＝データがあるのに画面から永久に見えない。
+   * 外部の集計があるときだけ、選択用の行を1本足す。
+   */
+  const externalRow: ReportVersionRow | null = stats.versions.some((v) => v.version_uid === '')
+    ? {
+        ...report.totals,
+        scope: 'external',
+        entity_uid: '',
+        name: '外部LP（Version区別なし）',
+        status: '',
+        distribution_ratio: 0,
+      }
+    : null
+  const listRows = externalRow === null ? report.rows : [...report.rows, externalRow]
+
   const rebuild = (): void => {
     const specs: ColumnSpec[] = []
     for (const key of selection) {
       const [versionUid, metric] = key.split('|') as [string, HeatmapMetric]
-      const row = report.rows.find((r) => r.entity_uid === versionUid)
+      const row = listRows.find((r) => r.entity_uid === versionUid)
       if (row === undefined) continue
       specs.push({
         versionUid,
@@ -102,7 +119,7 @@ export async function renderHeatmap(
     }
   }
 
-  renderVersionList(root, report.rows, (versionUid, metric, on) => {
+  renderVersionList(root, listRows, (versionUid, metric, on) => {
     const key = `${versionUid}|${metric}`
     if (on) selection.add(key)
     else selection.delete(key)
