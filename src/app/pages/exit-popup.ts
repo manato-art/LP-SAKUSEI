@@ -915,16 +915,17 @@ function makePopupLinkField(draft: ExitPopup): HTMLElement {
   field.append(el('label', { text: 'ポップアップを触ったときの動作' }))
 
   // 指示172: 動作の選択 — 遷移先URLへ移動 / LPに戻る（閉じて元の位置へ・×と同じ）
-  const actionRow = el('div', { style: 'display:flex;gap:18px;margin:2px 0 10px' })
+  const actionRow = el('div', { style: 'display:flex;align-items:center;gap:16px;margin:2px 0 10px' })
   const rLink = document.createElement('input')
   rLink.type = 'radio'; rLink.name = `ep-action-${draft.uid}`; rLink.value = 'link'
   const rClose = document.createElement('input')
   rClose.type = 'radio'; rClose.name = `ep-action-${draft.uid}`; rClose.value = 'close'
   if (draft.link_action === 'close') rClose.checked = true
   else rLink.checked = true
-  const lLink = el('label', { style: 'display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px' })
+  // 指示: ラベルは折り返さず横一列に（white-space:nowrap + flex-shrink:0）
+  const lLink = el('label', { style: 'display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;white-space:nowrap;flex-shrink:0' })
   lLink.append(rLink, el('span', { text: '遷移先URLへ移動' }))
-  const lClose = el('label', { style: 'display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px' })
+  const lClose = el('label', { style: 'display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;white-space:nowrap;flex-shrink:0' })
   lClose.append(rClose, el('span', { text: 'LPに戻る（閉じて元の位置へ）' }))
   actionRow.append(lLink, lClose)
   field.append(actionRow)
