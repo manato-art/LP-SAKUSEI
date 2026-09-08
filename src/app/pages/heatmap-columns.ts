@@ -131,6 +131,11 @@ export interface ColumnSpec {
 
 export interface ColumnDeps {
   stats: readonly HeatmapVersionStat[]
+  /**
+   * LP全体（ab_testスコープ）の指標。外部LPの計測はVersionに紐づかないので、
+   * Version単位の数字を出すと常に0になる。version無しの集計を使う列ではこちらを出す。
+   */
+  totals: { pv: number; ctr: number | null; cv: number }
   range: { startDate: string; endDate: string }
   /** 全ページ表示（true）か スクロール表示（false） */
   fullPage: boolean
@@ -162,8 +167,11 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
   const metName = document.createElement('b')
   metName.textContent = METRIC_LABEL[spec.metric]
   const metStats = document.createElement('span')
+  // 外部LP（version無し）の列は、Version単位ではなくLP全体の数字を出す。
+  // そうしないとタグが動いていてもヘッダーが常に PV: 0 になり誤解を招く。
+  const shown = isShared ? deps.totals : { pv: spec.pv, ctr: spec.ctr, cv: spec.cv }
   metStats.textContent =
-    `PV: ${spec.pv}  CTR: ${spec.ctr === null ? '-' : `${(spec.ctr * 100).toFixed(2)}%`}  CV: ${spec.cv}`
+    `PV: ${shown.pv}  CTR: ${shown.ctr === null ? '-' : `${(shown.ctr * 100).toFixed(2)}%`}  CV: ${shown.cv}`
   met.append(metName, metStats)
   const note = document.createElement('div')
   note.className = 'hm-col-note'
@@ -292,6 +300,7 @@ export function renderHeatmapColumns(
   deps: ColumnDeps,
 ): void {
   injectStyles()
+  // eslint-disable-next-line no-param-reassign -- 描画先を空にするのはこの関数の責務
   host.innerHTML = ''
   if (specs.length === 0) return
   const wrap = document.createElement('div')

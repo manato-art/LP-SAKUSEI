@@ -78,6 +78,7 @@ export async function renderHeatmap(
     }
     renderHeatmapColumns(columnHost, specs, {
       stats: stats.versions,
+      totals: { pv: report.totals.pv, ctr: report.totals.ctr, cv: report.totals.cv },
       range: { startDate: range.startDate, endDate: range.endDate },
       fullPage: root.querySelector('[class*="_selectHeightType_"] [class*="_active_"]') !== null,
     })

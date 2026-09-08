@@ -99,8 +99,9 @@ describe('作成フロー（§1-4 creation flow・§10-9 セッション内永�
     expect(created.status).toBe(201)
     // 実機の初期Version名は `Ver.` + 4桁（企画書の「パターンA」は誤り・2026-08-31 実測）
     expect(created.json.version.name).toMatch(/^Ver\.\d{4}$/)
-    // 実機の新規作成直後の配信割合は 1（100ではない）
-    expect(created.json.version.distribution_ratio).toBe(1)
+    // 最初のVersionは100%で配信する（指示: 配信割合デフォルト100%化・eb656fc）。
+    // 実機の採取値は 1 だったが、ユーザー決定でこちらを正とする。
+    expect(created.json.version.distribution_ratio).toBe(100)
     expect(created.json.version.status).toBe('準備中')
     // 実APIの media はフラット（`media.attributes` ではない・2026-08-31 実測）
     expect(created.json.ab_test.media.name).toBe('AdAsia')
@@ -128,8 +129,8 @@ describe('作成フロー（§1-4 creation flow・§10-9 セッション内永�
     )
     expect(versions.versions).toHaveLength(1)
     expect(versions.versions[0]?.html).toContain('lp-root')
-    // 実機の初期配信割合は 1（企画書の100は誤り・2026-08-31 実測）
-    expect(versions.distribution_total).toBe(1)
+    // 初期Versionは100%で配信する（指示: 配信割合デフォルト100%化・eb656fc）
+    expect(versions.distribution_total).toBe(100)
   })
 })
 
@@ -162,9 +163,9 @@ describe('Version操作（§9-1[2][4]）', () => {
       distribution_warning: string | null
     }>(`${server.api}/articles/${articleUid}/versions`)
     expect(versions.versions).toHaveLength(2)
-    // 初期値1 + 追加分0 = 1% なので100%警告が出る
-    expect(versions.distribution_total).toBe(1)
-    expect(versions.distribution_warning).toContain('100%')
+    // 初期100% + 追加分0% = ちょうど100% なので警告は出ない
+    expect(versions.distribution_total).toBe(100)
+    expect(versions.distribution_warning).toBeNull()
   })
 
   it('配信割合を変更でき、合計が100%になれば警告が消える', async () => {

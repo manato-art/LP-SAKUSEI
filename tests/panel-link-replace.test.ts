@@ -100,11 +100,14 @@ describe('採取したリンク置換パネルの実DOM', () => {
     }
   })
 
-  it('土台が無いときに差し込む markup は採取物の部分木そのもの', () => {
+  it('土台が無いときに差し込む markup は採取物の部分木そのもの（暗テーマ除去のみ許容）', () => {
     const source = readFileSync(PANEL_SOURCE, 'utf8')
     const literal = /const LINK_REPLACE_MARKUP = `([\s\S]*?)`\n/.exec(source)?.[1]
     expect(literal).toBeDefined()
-    expect(readFileSync(PANEL_FRAGMENT, 'utf8')).toContain(literal as string)
+    // 指示116「全暗テーマ箇所を白基調に変換」で `_darkTheme_…` クラスだけを落としている。
+    // それ以外の手書きは許さないので、採取物から同じクラスを落とした上で完全一致を見る。
+    const captured = readFileSync(PANEL_FRAGMENT, 'utf8').replace(/ _darkTheme_[\w]+/g, '')
+    expect(captured).toContain(literal as string)
   })
 })
 

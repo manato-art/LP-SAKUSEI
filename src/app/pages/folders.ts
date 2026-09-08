@@ -863,7 +863,7 @@ function expandDetailPanel(body: HTMLElement): void {
   scrollParent.style.borderLeft = ''
   // 閉じるボタンは再びホバーで表示されるよう非表示に戻す
   const closeBtn = scrollParent.parentElement?.querySelector<HTMLElement>('[data-detail-close]')
-  if (closeBtn != null) closeBtn.style.display = 'none'
+  if (closeBtn !== null && closeBtn !== undefined) closeBtn.style.display = 'none'
 }
 
 /**
@@ -1680,7 +1680,7 @@ function wireRowActions(row: HTMLElement, folder: Folder, rerender: () => void):
  * 採取DOMに在るリサイズ用のグリップ（`.css-1tixm3t`）をドラッグ可能にする。
  * 実物と同じく `col-resize` カーソルは CSS で当たっている。
  *
- * 指示67: ↔ハンドルのドラッグで**左のフォルダサイドバー**（`.e1krw8ps3`：
+ * 指示67: リサイズハンドルのドラッグで**左のフォルダサイドバー**（`.e1krw8ps3`：
  * 検索・すべて/お気に入り/履歴 タブ・フォルダ一覧を含むエリア）の幅を変える。
  * ハンドルはサイドバーコンテナ内の右端に位置し、隣の mainPane が残りを埋める。
  */
@@ -1748,9 +1748,14 @@ function injectResizeHandleStyles(): void {
     .css-1tixm3t.sb-handle-active {
       background: #4A90D9 !important;
     }
-    /* ←→ アイコン：hover/active で表示 */
+    /* 左右矢印アイコン：hover/active で表示。
+       絵文字・記号グリフではなくSVG（共通指示「UIは絵文字をやめSVGアイコンに」）。 */
     .css-1tixm3t::after {
-      content: "↔";
+      content: "";
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 8 4 12l4 4'/%3E%3Cpath d='M16 8l4 4-4 4'/%3E%3Cpath d='M4 12h16'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: center;
+      background-size: 16px 16px;
       position: absolute;
       top: 50%;
       left: 50%;

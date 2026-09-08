@@ -59,13 +59,18 @@ describe('「…」→複製 はモーダルを開くよう結線されている
     expect(dots).not.toContain('async function duplicate(')
   })
 
-  it('パネルは採取した実モーダル断片を土台にする（手書きしない）', () => {
+  /**
+   * 指示76 で、実物の最新UIに合わせてライトテーマのカードに作り直した。
+   * 上の断片（ダークテーマの ReactModal）は当時の採取物で、現行UIの土台ではない。
+   * ここでは作り直した後の中身を突き合わせる。
+   */
+  it('パネルは指示76のライトテーマカードで、複製個数だけ実際に効く', () => {
     const panel = read(PANEL)
-    expect(panel).toContain('version-duplicate-modal.portals.html?raw')
-    expect(panel).toContain("overlay: '.ReactModal__Overlay'")
-    // ダークテーマのボタンは <button> でなく <div class="_btn_…">。button セレクタで拾う
-    expect(panel).toContain("button: '[class*=\"_btn_1bcs1_2\"]'")
-    expect(panel).toContain("close: '[data-test=\"DuplicateModal-BtnClose\"]'")
+    expect(panel).toContain('sb-dup-overlay')
+    // ヘッダと各オプションの文言（実物の最新UI）
+    expect(panel).toContain('Versionのhead/bodyタグを引き継ぐ')
+    expect(panel).toContain('ステップを引き継ぐ')
+    expect(panel).toContain('※最大4件まで')
     // 複製個数は 1〜4 にクランプして、その回数だけ複製する
     expect(panel).toContain('Math.min(4, Math.max(1, raw))')
     expect(panel).toContain('api.duplicateVersion(current.uid)')
