@@ -23,6 +23,7 @@ import { LP_BASE_CSS } from '../../src/app/lp-base-css.ts'
 import { masterStyleIframeCss } from '../../src/app/master-style.ts'
 import { withAutoplayVideos } from '../../src/app/lp-video.ts'
 import { buildAnimCss, buildAnimRuntimeScript } from '../../src/app/anim/anim-presets.ts'
+import { buildCvScriptBody, buildTrackingScriptBody } from '../../src/shared/tracking-tag.ts'
 
 export const deliveryRouter: Router = Router()
 
@@ -515,6 +516,35 @@ function setTrackCors(res: Response): void {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
   res.setHeader('Access-Control-Max-Age', '600')
 }
+
+/**
+ * 計測スクリプトの配信（外部LPが `<script src>` で読み込む）。
+ *
+ * 相手のLPには1行のローダーだけを貼ってもらい、中身はここから配る。
+ * こうすると計測ロジックを直したときに**貼り直しが要らない**（GA・Metaピクセルと同じ方式）。
+ *   /t/:uid.js     … PV / クリック / ヒートマップ（LP本体に貼る）
+ *   /t/:uid.cv.js  … CV（サンクスページに貼る）
+ *
+ * script は CORS の対象外なので配信側に許可は要らない。中のビーコンが叩く
+ * `/lp/:uid/__track` 側で許可済み。キャッシュは短め（修正を当日中に行き渡らせる）。
+ */
+function serveTrackingScript(res: Response, body: string): void {
+  res.setHeader('Content-Type', 'application/javascript; charset=utf-8')
+  // 5分キャッシュ + 再検証中は古いものを使わせる（毎回取りに来させない・でも当日中に反映）
+  res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=3600')
+  res.setHeader('Access-Control-Allow-Origin', '*')
+  res.send(body)
+}
+
+/** LP本体用: `/t/<uid>.js` */
+deliveryRouter.get('/t/:uid', (req, res) => {
+  const raw = req.params.uid
+  const origin = `${req.protocol}://${req.get('host') ?? ''}`
+  const isCv = raw.endsWith('.cv.js')
+  const uid = raw.replace(/\.cv\.js$/, '').replace(/\.js$/, '')
+  const endpoint = `${origin}/lp/${encodeURIComponent(uid)}/__track`
+  serveTrackingScript(res, isCv ? buildCvScriptBody(endpoint) : buildTrackingScriptBody(endpoint))
+})
 
 /** CORSプリフライト（Content-Type: application/json のPOSTはプリフライトされる） */
 deliveryRouter.options('/lp/:uid/__track', (_req, res) => {
