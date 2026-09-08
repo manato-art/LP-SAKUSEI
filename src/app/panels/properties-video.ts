@@ -15,11 +15,18 @@ import { readFileAsDataUrl } from './webp-convert.ts'
 import { group, row } from './properties-panel.ts'
 import { duplicateVideo, hasFlag, toggleFlag, willBlockAutoplay, type VideoFlag } from './video-controls.ts'
 
-/** ON/OFF のスイッチ1つ */
+/**
+ * ON/OFF のスイッチ1つ。
+ *
+ * 表示は**押した結果の返り値ではなく、必ずDOMの実体**から塗り直す。
+ * 返り値で塗ると、`quill.update()` の再構築で属性が戻ったときに
+ * 表示だけOFFのまま実体はONになり、次に押しても見た目が変わらず
+ * 「一度OFFにすると押せない」ように見える（実際にそう報告された）。
+ */
 function switchRow(
   label: string,
   hint: string,
-  onToggle: () => boolean,
+  onToggle: () => void,
 ): { el: HTMLElement; sync: (on: boolean) => void } {
   const r = row(label)
   r.title = hint
@@ -35,7 +42,7 @@ function switchRow(
     btn.style.borderColor = on ? '#0091ff' : '#d5d5db'
     btn.style.color = on ? '#fff' : '#555'
   }
-  btn.addEventListener('click', () => sync(onToggle()))
+  btn.addEventListener('click', onToggle)
   r.append(btn)
   return { el: r, sync }
 }
@@ -57,6 +64,33 @@ export function buildVideoBody(deps: VideoBodyDeps): VideoBody {
   container.className = 'sb-props-body'
   container.style.display = 'none'
   container.setAttribute('data-video-body', 'true')
+
+  /**
+   * 動画をひとつ操作する共通の段取り。
+   *
+   * `quill.update()` は取り込みのときに要素を作り直すことがある。作り直されると
+   * こちらが持っている参照は DOM から外れた古いノードになり、以後どのボタンを
+   * 押しても画面上の動画は変わらない（＝押せないように見える）。
+   * そこで、操作の前に**何番目の動画か**を覚えておき、更新後に同じ位置の
+   * 実体を選び直してから表示を塗り直す。
+   */
+  const withVideo = (change: (video: HTMLVideoElement) => void): void => {
+    const video = deps.getVideo()
+    if (video === null) return
+    const videosBefore = [...deps.quill.root.querySelectorAll('video')]
+    const at = videosBefore.indexOf(video)
+
+    change(video)
+    deps.quill.update()
+
+    let current: HTMLVideoElement = video
+    if (!current.isConnected && at >= 0) {
+      const again = deps.quill.root.querySelectorAll('video')[at]
+      if (again instanceof HTMLVideoElement) current = again
+    }
+    deps.setVideo(current)
+    container.sync?.(current)
+  }
 
   // ── ソース ──
   const srcRow = row('ソース')
@@ -90,15 +124,15 @@ export function buildVideoBody(deps: VideoBodyDeps): VideoBody {
 
   /** 幅を px で決める */
   const applyWidth = (px: number): void => {
-    const video = deps.getVideo()
-    if (video === null) return
     const w = Math.max(30, Math.round(px))
-    video.style.width = `${w}px`
-    video.style.height = 'auto'
-    video.setAttribute('width', String(w))
-    video.removeAttribute('height')
-    wInput.value = String(w)
-    deps.quill.update()
+    withVideo((video) => {
+      /* eslint-disable no-param-reassign -- 渡された動画の見た目を変えるのがこの関数の責務 */
+      video.style.width = `${w}px`
+      video.style.height = 'auto'
+      /* eslint-enable no-param-reassign */
+      video.setAttribute('width', String(w))
+      video.removeAttribute('height')
+    })
   }
   /**
    * 「幅いっぱい」＝横幅を親要素いっぱい（100%）にする。
@@ -106,15 +140,14 @@ export function buildVideoBody(deps: VideoBodyDeps): VideoBody {
    * 押しても何も起きないように見える（実際にそう報告された）。
    */
   const applyFullWidth = (): void => {
-    const video = deps.getVideo()
-    if (video === null) return
-    video.style.width = '100%'
-    video.style.height = 'auto'
-    video.removeAttribute('width')
-    video.removeAttribute('height')
-    deps.quill.update()
-    // 100% が何pxになったかを入力欄に映す
-    wInput.value = String(Math.round(video.getBoundingClientRect().width))
+    withVideo((video) => {
+      /* eslint-disable no-param-reassign -- 渡された動画の見た目を変えるのがこの関数の責務 */
+      video.style.width = '100%'
+      video.style.height = 'auto'
+      /* eslint-enable no-param-reassign */
+      video.removeAttribute('width')
+      video.removeAttribute('height')
+    })
     toast('横幅を親要素いっぱいにしました')
   }
   wInput.addEventListener('change', () => {
@@ -125,31 +158,36 @@ export function buildVideoBody(deps: VideoBodyDeps): VideoBody {
 
   // ── 再生設定 ──
   const playGroup = group('再生設定')
-  const flip = (flag: VideoFlag): boolean => {
-    const video = deps.getVideo()
-    if (video === null) return false
-    const next = toggleFlag(video, flag)
-    // 音ありの自動再生はブラウザが止める。黙って効かないままにしない。
-    if (willBlockAutoplay(video)) {
+  const flip = (flag: VideoFlag): void => {
+    let blocked = false
+    withVideo((video) => {
+      toggleFlag(video, flag)
+      // 音ありの自動再生はブラウザが止める。黙って効かないままにしない。
+      blocked = willBlockAutoplay(video)
+    })
+    if (blocked) {
       toast('音ありの自動再生はブラウザに止められます。ミュートを戻すか自動再生を切ってください', 'error')
     }
-    deps.quill.update()
-    return next
   }
-  const loop = switchRow('ループ再生', '最後まで再生したら先頭から繰り返します', () => flip('loop'))
-  const auto = switchRow('自動再生', '表示されたら自動で再生します', () => flip('autoplay'))
-  const mute = switchRow('ミュート', '音を出しません。自動再生と併用する場合は必要です', () =>
-    flip('muted'),
-  )
+  const loop = switchRow('ループ再生', '最後まで再生したら先頭から繰り返します', () => {
+    flip('loop')
+  })
+  const auto = switchRow('自動再生', '表示されたら自動で再生します', () => {
+    flip('autoplay')
+  })
+  const mute = switchRow('ミュート', '音を出しません。自動再生と併用する場合は必要です', () => {
+    flip('muted')
+  })
   playGroup.append(loop.el, auto.el, mute.el)
 
-  // ── 複製 ──
+  // ── 操作（差し替え → 複製の順） ──
   const actionGroup = group('操作')
-  const dupBtn = document.createElement('button')
-  dupBtn.type = 'button'
-  dupBtn.style.cssText =
+  const ACTION_BTN_CSS =
     'width:100%;border-radius:5px;border:1px solid #d5d5db;background:#fff;color:#333;' +
     'font:inherit;font-size:12px;padding:7px 10px;cursor:pointer'
+  const dupBtn = document.createElement('button')
+  dupBtn.type = 'button'
+  dupBtn.style.cssText = `${ACTION_BTN_CSS};margin-top:6px`
   dupBtn.textContent = 'この動画を複製する'
   dupBtn.title = 'すぐ下に同じ設定の動画をもう1つ置きます'
   dupBtn.addEventListener('click', () => {
@@ -157,13 +195,14 @@ export function buildVideoBody(deps: VideoBodyDeps): VideoBody {
     if (video === null) return
     const copy = duplicateVideo(video)
     deps.quill.update()
-    deps.setVideo(copy)
-    container.sync?.(copy)
+    // 複製したものを選択に移す（続けて設定を触れるように）
+    deps.setVideo(copy.isConnected ? copy : video)
+    container.sync?.(copy.isConnected ? copy : video)
     toast('動画を複製しました')
   })
   const swapBtn = document.createElement('button')
   swapBtn.type = 'button'
-  swapBtn.style.cssText = dupBtn.style.cssText + ';margin-top:6px'
+  swapBtn.style.cssText = ACTION_BTN_CSS
   swapBtn.textContent = '動画を差し替える'
   swapBtn.title = '大きさや再生設定はそのままに、中身の動画だけを入れ替えます'
   swapBtn.addEventListener('click', () => {
@@ -185,18 +224,20 @@ export function buildVideoBody(deps: VideoBodyDeps): VideoBody {
           return
         }
         // 差し替えるのは中身だけ。大きさと再生設定は今のまま残す。
-        video.setAttribute('src', url)
-        video.src = url
-        video.load()
-        deps.quill.update()
-        container.sync?.(video)
+        withVideo((target) => {
+          target.setAttribute('src', url)
+          // eslint-disable-next-line no-param-reassign -- 中身の差し替えがこの関数の責務
+          target.src = url
+          target.load()
+        })
         toast('動画を差し替えました')
       })
     })
     picker.click()
   })
 
-  actionGroup.append(dupBtn, swapBtn)
+  // 指示: 差し替えを先、複製を後
+  actionGroup.append(swapBtn, dupBtn)
 
   container.append(srcRow, sizeGroup, playGroup, actionGroup)
 

@@ -148,12 +148,26 @@ describe('右パネルの動画プロパティ', () => {
   })
 
   it('差し替えは中身だけ入れ替え、大きさと再生設定は残す', () => {
-    const swap = panel.slice(panel.indexOf('動画を差し替える'))
+    const swap = panel.slice(panel.indexOf("swapBtn.addEventListener"))
     expect(swap).toContain("picker.accept = 'video/*'")
-    expect(swap).toContain('video.load()')
+    expect(swap).toContain('target.load()')
     // 幅や再生設定を触っていないこと
-    expect(swap).not.toContain('removeAttribute(\'width\')')
+    expect(swap).not.toContain("removeAttribute('width')")
     expect(swap).not.toContain('toggleFlag(')
+  })
+
+  it('操作は 差し替え → 複製 の順に並べる', () => {
+    expect(panel).toContain('actionGroup.append(swapBtn, dupBtn)')
+  })
+
+  it('操作のたびに実体を取り直して表示を塗り直す（古いノードを掴んだままにしない）', () => {
+    expect(panel).toContain('!current.isConnected')
+    expect(panel).toContain('container.sync?.(current)')
+  })
+
+  it('スイッチの表示は押した返り値でなくDOMの実体から塗る', () => {
+    // onToggle は boolean を返さない＝返り値で塗れない形にしてある
+    expect(panel).toContain('onToggle: () => void')
   })
 
   it('動画以外のファイルを選んだら断る', () => {
