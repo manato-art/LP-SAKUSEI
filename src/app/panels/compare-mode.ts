@@ -6,6 +6,7 @@
  * 実物 SquadBeyond の比較モード UI を再現。
  */
 import { toast } from '../ui.ts'
+import { renderCompareHeatmap } from './compare-heatmap.ts'
 
 /* ──────────────────── SVG アイコン ──────────────────── */
 
@@ -335,6 +336,8 @@ export interface CompareVersionInfo {
 }
 
 export interface ComparePanelDeps {
+  /** このページ（beyondページ）の UID。ヒートマップの取得に使う */
+  abTestUid: string
   /** 現在 Version の HTML 本文を返す */
   getCurrentHtml: () => string
   /** 現在 Version の UID */
@@ -625,6 +628,16 @@ function renderTabContent(
   // 左にサムネ＋配信割合で常時表示し、選ぶとスマホ画面でプレビューできるようにする。
   if (tabIndex === 2) {
     renderOtherVersions(container, deps)
+    return
+  }
+
+  // ヒートマップタブ（index 1）はレポート画面と同じ描画を使う
+  if (tabIndex === 1) {
+    void renderCompareHeatmap(container, {
+      abTestUid: deps.abTestUid,
+      versionUid: deps.getVersionUid(),
+      getCurrentHtml: deps.getCurrentHtml,
+    })
     return
   }
 

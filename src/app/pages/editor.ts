@@ -839,6 +839,7 @@ function mountHeaderExtras(
   compareBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="3" x2="12" y2="21"/></svg>比較する`
   compareBtn.addEventListener('click', () => {
     toggleComparePanel(ctx.root, {
+      abTestUid: ctx.abTestUid,
       getCurrentHtml: () => buildFullHtml(ctx),
       getVersionUid: () => ctx.currentUid,
       // 指示138: このページの全 Version を渡す（現在 Version は編集中の最新HTMLを使う）
