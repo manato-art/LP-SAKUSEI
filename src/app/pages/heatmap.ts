@@ -165,14 +165,17 @@ function renderVersionList(
     return
   }
   const activeToken = findClassToken(template, '_active_')
-  const items = rows.map((row, index) => {
+  const items = rows.map((row) => {
     const item = template.cloneNode(true) as HTMLElement
     for (const node of item.querySelectorAll<HTMLElement>('[class*="_memo_"], [class*="_fullContent_"]')) {
       node.textContent = row.name
     }
     const count = item.querySelector<HTMLElement>('[class*="_count_"] div')
     if (count !== null) count.textContent = `PV: ${row.pv.toLocaleString('ja-JP')}`
-    if (activeToken !== null && index > 0) item.classList.remove(activeToken)
+    // 行の見た目は「何番目か」ではなく**チェックされているか**で決める。
+    // 採取物は先頭行に active が付いた状態なので、まず全行から外す。
+    // （付けたままだと、チェックを入れても2行目以降の色が変わらない）
+    if (activeToken !== null) item.classList.remove(activeToken)
     wireOverlayTabs(item, activeToken, row.entity_uid, onToggle)
     return item
   })
@@ -198,7 +201,14 @@ function wireOverlayTabs(
     if (box === null) return
     const metric = order[i]
     box.addEventListener('change', () => {
-      if (activeToken !== null) tab.classList.toggle(activeToken, box.checked)
+      if (activeToken !== null) {
+        tab.classList.toggle(activeToken, box.checked)
+        // 行そのものも、どれか1つでもチェックされていれば選択中の見た目にする
+        const anyChecked = [...item.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')].some(
+          (b) => b.checked,
+        )
+        item.classList.toggle(activeToken, anyChecked)
+      }
       if (metric !== undefined) onToggle?.(versionUid, metric, box.checked)
     })
   })
