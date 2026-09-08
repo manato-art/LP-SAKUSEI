@@ -249,21 +249,34 @@ function isEligible(v: Version, ctx: VisitorContext): boolean {
  * 配信割合で重み付け抽選する。満たすVersionが無ければ段階的にフォールバック
  * （割合条件を外す→デバイス条件だけ→生存Version全体）して「何も出ない」を避ける。
  */
+/**
+ * 配信するVersionを配信割合どおりに選ぶ（指示173）。
+ *
+ * 配信割合0%のVersionは**絶対に配信しない**。
+ * 以前は「割合1%以上の候補が無ければ割合を無視した候補へ落ちる」フォールバックがあり、
+ * 全部0%のときや出し分け条件から外れたときに0%のVersionが表示されていた。
+ * 重み付けも `Math.max(1, ratio)` で0%を1%扱いしていた。どちらも割合を裏切るのでやめる。
+ *
+ * 候補が無い場合は null を返し、呼び出し側が「配信できるVersionがありません」を出す。
+ * 表示できるものを無理に探すより、割合設定どおりに「配信しない」が正しい。
+ *
+ * なおプレビュー(`/preview/:versionUid`)はVersionを直接指定して開くので、
+ * 配信割合とは無関係に必ずそのVersionが出る（検証用途なのでこれが正しい）。
+ */
 function pickDeliveryVersion(versions: readonly Version[], ctx: VisitorContext): Version | null {
-  const alive = versions.filter((v) => v.archived !== true)
-  const eligible = alive.filter((v) => v.distribution_ratio >= 1 && isEligible(v, ctx))
-  const eligibleAny = alive.filter((v) => isEligible(v, ctx))
-  const deviceAlive = alive.filter((v) => targetsDevice(v, ctx.device))
-  const pool =
-    eligible.length > 0 ? eligible : eligibleAny.length > 0 ? eligibleAny : deviceAlive.length > 0 ? deviceAlive : alive
+  const pool = versions.filter(
+    (v) => v.archived !== true && v.distribution_ratio >= 1 && isEligible(v, ctx),
+  )
   if (pool.length === 0) return null
-  const total = pool.reduce((sum, v) => sum + Math.max(1, v.distribution_ratio), 0)
+  const total = pool.reduce((sum, v) => sum + v.distribution_ratio, 0)
+  if (total <= 0) return null
   let ticket = Math.random() * total
   for (const version of pool) {
-    ticket -= Math.max(1, version.distribution_ratio)
+    ticket -= version.distribution_ratio
     if (ticket <= 0) return version
   }
-  return pool[0] ?? null
+  // 浮動小数の誤差で最後まで残ったときは末尾（割合の合計を超えたケース）
+  return pool[pool.length - 1] ?? null
 }
 
 /** ランダムな計測用uid（訪問ごとに変わる。SBのsquadbeyond_uid相当） */

@@ -151,6 +151,9 @@ function injectPopupCss(): void {
     .ep-html-code-inner { display:flex; min-height:300px; }
     .ep-html-gutter { width:40px; background:#151515; border-right:1px solid #333; padding:10px 6px 10px 0; text-align:right; font:12px/1.6 "SF Mono",Menlo,monospace; color:#555; user-select:none; flex-shrink:0; overflow:hidden; }
     .ep-html-textarea { position:relative; z-index:1; width:100%; height:100%; border:none; resize:none; padding:10px 12px; font:12px/1.6 "SF Mono",Menlo,monospace; color:transparent; caret-color:#eeffff; background:transparent; outline:none; white-space:pre; tab-size:2; box-sizing:border-box; }
+    /* 指示177: 透明テキスト方式なので、選択背景が不透明だと下の色付きコードが隠れる */
+    .ep-html-textarea::selection { background:rgba(88,150,255,.34); color:transparent; }
+    .ep-html-textarea::-moz-selection { background:rgba(88,150,255,.34); color:transparent; }
     .ep-html-editor-box { flex:1; position:relative; overflow:auto; min-height:0; background:#151515; }
     .ep-html-highlight { position:absolute; inset:0; margin:0; padding:10px 12px; font:12px/1.6 "SF Mono",Menlo,monospace; white-space:pre; pointer-events:none; overflow:hidden; tab-size:2; word-wrap:normal; }
     .ep-back-link { background:none; border:none; cursor:pointer; font-size:13px; color:${T.primary}; font-family:${T.font}; padding:0; }

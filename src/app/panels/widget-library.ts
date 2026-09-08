@@ -11,6 +11,7 @@
  *   - 追加（本文へ挿入）／プレビュー
  *   - Widgetを作成（Widget名・カテゴリー・説明文・HTML/CSSエディタ）
  */
+import { applyCodeSelectionStyle } from './code-selection.ts'
 import type Quill from 'quill'
 import rawLibrary from '../fragments/ab_tests__UID__articles__widget-library.portals.html?raw'
 import { toast } from '../ui.ts'
@@ -980,6 +981,8 @@ function createCodePanel(title: string, placeholder: string): HTMLDivElement {
     'position:relative;z-index:1;width:100%;height:100%;border:none;resize:none;padding:10px 12px;' +
     'font:13px/1.5 "SF Mono",Menlo,monospace;color:transparent;caret-color:#eeffff;' +
     'background:transparent;outline:none;white-space:pre;tab-size:2;box-sizing:border-box'
+  // 指示177: 選択範囲が不透明だと下の色付きコードが隠れて読めなくなる
+  applyCodeSelectionStyle(textarea)
 
   textarea.addEventListener('input', () => {
     pre.innerHTML = highlight(textarea.value, lang)

@@ -9,6 +9,7 @@
  *   - 構文ハイライト: Material Theme 系
  *   - ブランドカラー: #0091ff (rgb(0,145,255))
  */
+import { applyCodeSelectionStyle } from './code-selection.ts'
 import type Quill from 'quill'
 import { toast } from '../ui.ts'
 import { highlightHtml, highlightCss } from './syntax-highlight.ts'
@@ -1231,6 +1232,8 @@ function createHighlightedCodePanel(
     `font:12px/1.6 ${MONO};color:transparent;caret-color:${COLOR.codeText};` +
     `background:transparent;outline:none;white-space:pre;overflow:auto;` +
     `tab-size:2;box-sizing:border-box`
+  // 指示177: 選択範囲が不透明だと下の色付きコードが隠れて読めなくなる
+  applyCodeSelectionStyle(textarea)
 
   // 入力同期
   const sync = (): void => {
