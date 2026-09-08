@@ -125,6 +125,10 @@ export async function renderHeatmap(
     else selection.delete(key)
     void ensureHtml(versionUid).then(rebuild)
   })
+  // 開いた直後は何もチェックされておらず右側が空になる。ユーザーからは
+  // 「反映されていない／壊れている」に見えるので、実測データが一番多い行を既定で開く。
+  openDefaultRow(root, listRows, stats.versions)
+
   wireSortSelect(root, report.rows)
   wireHeightTypeTabs(root, rebuild)
   wireSortModal(root)
@@ -198,6 +202,35 @@ function wireOverlayTabs(
       if (metric !== undefined) onToggle?.(versionUid, metric, box.checked)
     })
   })
+}
+
+/**
+ * 既定で1本開く。実測（ヒートマップ）のPVが一番多い行を選ぶ。
+ * どれにもデータが無ければ先頭行。チェックボックスに change を投げて、
+ * 通常の操作と同じ経路を通す（別経路を作ると片方だけ壊れる）。
+ */
+function openDefaultRow(
+  root: HTMLElement,
+  rows: readonly ReportVersionRow[],
+  stats: readonly { version_uid: string; pv: number }[],
+): void {
+  if (rows.length === 0) return
+  const pvOf = (uid: string): number =>
+    stats.find((s) => s.version_uid === uid)?.pv ?? 0
+  let bestIndex = 0
+  let bestPv = -1
+  rows.forEach((row, i) => {
+    const pv = pvOf(row.entity_uid)
+    if (pv > bestPv) {
+      bestPv = pv
+      bestIndex = i
+    }
+  })
+  const items = [...root.querySelectorAll<HTMLElement>('[class*="_articleList_"] ul[class*="_body_"] > li')]
+  const box = items[bestIndex]?.querySelector<HTMLInputElement>('input[type="checkbox"]')
+  if (box === undefined || box === null || box.checked) return
+  box.checked = true
+  box.dispatchEvent(new Event('change', { bubbles: true }))
 }
 
 /** 並び替え（PV / CLICK / CTR / CV / CVR） */
