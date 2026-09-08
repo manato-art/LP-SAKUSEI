@@ -1212,13 +1212,16 @@ function createHighlightedCodePanel(
 
   // エディタコンテナ（overlay パターン）
   const editorBox = document.createElement('div')
-  editorBox.style.cssText = `flex:1;position:relative;overflow:auto;min-height:0`
+  editorBox.style.cssText = `flex:1;position:relative;overflow:hidden;min-height:0`
 
   // ハイライト表示用 pre
   const highlight = document.createElement('pre')
   highlight.style.cssText =
-    `position:absolute;inset:0;margin:0;padding:4px 12px;` +
-    `font:12px/1.6 ${MONO};white-space:pre;pointer-events:none;overflow:hidden;` +
+    // 指示177: inset:0 で高さを固定し overflow:hidden にすると、内容がコンテナの高さで
+    // 切り落とされ、スクロールした先の行がハイライト層に存在しなくなる（文字が出ない）。
+    // 内容の高さのまま置き、はみ出しのクリップはコンテナ(editorBox)に任せる。
+    `position:absolute;top:0;left:0;min-width:100%;margin:0;padding:4px 12px;` +
+    `font:12px/1.6 ${MONO};white-space:pre;pointer-events:none;overflow:visible;` +
     `tab-size:2;word-wrap:normal`
   highlight.innerHTML = (lang === 'html' ? highlightHtml(content) : highlightCss(content))
 

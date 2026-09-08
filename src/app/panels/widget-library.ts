@@ -965,13 +965,14 @@ function createCodePanel(title: string, placeholder: string): HTMLDivElement {
   // overlay パターン: pre(ハイライト) + textarea(入力)
   const editorBox = document.createElement('div')
   editorBox.style.cssText =
-    'flex:1;position:relative;overflow:auto;min-height:100px;background:#151515'
+    'flex:1;position:relative;overflow:hidden;min-height:100px;background:#151515'
 
   const pre = document.createElement('pre')
   pre.style.cssText =
-    'position:absolute;inset:0;margin:0;padding:10px 12px;' +
+    // 指示177: inset:0 + overflow:hidden だと内容がコンテナ高さで切れ、スクロール先が空になる
+    'position:absolute;top:0;left:0;min-width:100%;margin:0;padding:10px 12px;' +
     'font:13px/1.5 "SF Mono",Menlo,monospace;white-space:pre;pointer-events:none;' +
-    'overflow:hidden;tab-size:2;word-wrap:normal'
+    'overflow:visible;tab-size:2;word-wrap:normal'
   pre.innerHTML = highlight(placeholder, lang)
 
   const textarea = document.createElement('textarea')
