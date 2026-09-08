@@ -503,6 +503,29 @@ export interface Heatmap {
   thumbnail_url: string | null
 }
 
+/**
+ * ヒートマップの集計（計測タグが送る位置情報を、LP×Version×日付で積む）。
+ *
+ * 実物のヒートマップは「到達率 / 離脱率 / 滞在時間 / クリック数」の4モードを持つ。
+ * どれもページ内の縦位置が要るので、ページを `bands` 等分したバンド単位で持つ。
+ *   reach[i] : そのバンドまで到達した訪問数（到達率＝reach[i]/pv）
+ *   exit[i]  : そのバンドで離脱した訪問数（離脱率＝exit[i]/pv）
+ *   dwell_ms[i] / dwell_n[i] : 滞在時間の合計とサンプル数（平均＝合計/サンプル数）
+ *   clicks   : クリックの相対座標（x=幅比, y=ページ高さ比）
+ */
+export interface HeatmapStat {
+  ab_test_uid: string
+  version_uid: string
+  date: string
+  bands: number
+  pv: number
+  reach: number[]
+  exit: number[]
+  dwell_ms: number[]
+  dwell_n: number[]
+  clicks: { x: number; y: number }[]
+}
+
 export interface MediaAsset {
   id: number
   uid: string
@@ -611,6 +634,8 @@ export interface State {
   sbAiConversations: readonly SbAiConversation[]
   sbAiMessages: readonly SbAiMessage[]
   heatmaps: readonly Heatmap[]
+  /** 計測タグが送るヒートマップの集計（LP×Version×日付） */
+  heatmapStats: readonly HeatmapStat[]
   mediaAssets: readonly MediaAsset[]
   reportExclusions: readonly ReportExclusion[]
   notificationSettings: readonly NotificationSetting[]

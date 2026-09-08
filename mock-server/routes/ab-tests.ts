@@ -617,6 +617,75 @@ abTestsRouter.get('/ab_tests/:uid/heatmaps/comparisons', (req, res) => {
   res.json({ heatmaps: applyEmptyState(req, heatmaps) })
 })
 
+/**
+ * ヒートマップの実測集計（計測タグ由来）。
+ *
+ * 実物のヒートマップが持つ4モードぶんを、Versionごとにバンド単位で返す:
+ *   arrival  到達率 = そのバンドまで到達した訪問 / PV
+ *   exit     離脱率 = そのバンドで離脱した訪問 / PV
+ *   attention 滞在時間 = 平均ミリ秒（サンプルが無いバンドは0）
+ *   elementClick クリック数 = そのバンドに落ちたクリック数
+ * 期間指定は日別集計を合算する。データが無ければ空配列（数字を作らない）。
+ */
+abTestsRouter.get('/ab_tests/:uid/heatmaps/stats', (req, res) => {
+  const state = getState()
+  const abTest = findAbTest(state, req.params.uid)
+  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
+  const { startDate, endDate } = dateRangeParams(req.query)
+
+  const rows = state.heatmapStats.filter(
+    (h) => h.ab_test_uid === abTest.uid && isWithin(h.date, startDate, endDate),
+  )
+  // Version ごとに日別を合算する
+  const byVersion = new Map<string, typeof rows>()
+  for (const row of rows) {
+    const list = byVersion.get(row.version_uid) ?? []
+    list.push(row)
+    byVersion.set(row.version_uid, list)
+  }
+
+  const versions = [...byVersion.entries()].map(([versionUid, list]) => {
+    const bands = list[0]?.bands ?? 20
+    const zero = (): number[] => new Array<number>(bands).fill(0)
+    const sum = { pv: 0, reach: zero(), exit: zero(), dwellMs: zero(), dwellN: zero() }
+    const clicks: { x: number; y: number }[] = []
+    for (const row of list) {
+      sum.pv += row.pv
+      for (let i = 0; i < bands; i++) {
+        sum.reach[i] = (sum.reach[i] ?? 0) + (row.reach[i] ?? 0)
+        sum.exit[i] = (sum.exit[i] ?? 0) + (row.exit[i] ?? 0)
+        sum.dwellMs[i] = (sum.dwellMs[i] ?? 0) + (row.dwell_ms[i] ?? 0)
+        sum.dwellN[i] = (sum.dwellN[i] ?? 0) + (row.dwell_n[i] ?? 0)
+      }
+      clicks.push(...row.clicks)
+    }
+    const ratio = (n: number): number | null => (sum.pv === 0 ? null : n / sum.pv)
+    // クリックはバンドへ落として本数を数える（座標そのものも返す）
+    const clickBands = zero()
+    for (const c of clicks) {
+      const i = Math.max(0, Math.min(bands - 1, Math.floor(c.y * bands)))
+      clickBands[i] = (clickBands[i] ?? 0) + 1
+    }
+    const version = state.versions.find((v) => v.uid === versionUid)
+    return {
+      version_uid: versionUid,
+      version_name: version?.name ?? null,
+      bands,
+      pv: sum.pv,
+      arrival: sum.reach.map((n) => ratio(n)),
+      exit: sum.exit.map((n) => ratio(n)),
+      attention: sum.dwellMs.map((ms, i) => {
+        const n = sum.dwellN[i] ?? 0
+        return n === 0 ? 0 : Math.round(ms / n)
+      }),
+      elementClick: clickBands,
+      clicks: clicks.slice(-2000),
+    }
+  })
+
+  res.json({ period: { start_date: startDate, end_date: endDate }, versions })
+})
+
 // ── Meta広告連携（媒体実績の取り込み）─────────────────────────
 //
 // トークンは環境変数 META_ACCESS_TOKEN のみ。Stateにも保存せず、レスポンスにも含めない。

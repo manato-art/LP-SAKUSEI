@@ -98,6 +98,52 @@ function buildTrackingScript(uid: string, versionUid: string): string {
     var tracked=/^tel:/i.test(href)?(a.getAttribute('data-sb-'+'tracking')==='true'):/[?&]sb_tracking=true(?:[&#]|$)/.test(href);
     if(tracked)send('click');
   },true);
+
+  /* ── ヒートマップ用の収集 ──
+     実物のヒートマップは「到達率 / 離脱率 / 滞在時間 / クリック数」の4モードを持つ。
+     どれもページ内の**位置**が要るので、回数だけでなく縦位置を集める。
+     ページ全体を BANDS 等分し、
+       reach[i]  : そのバンドまで到達したか（1回の訪問につき最大到達まで1）
+       dwell[i]  : そのバンドが画面内にあった時間(ms)
+       exitBand  : 最後に見ていたバンド（＝離脱位置）
+       clicks    : クリックの相対座標（x は幅比、y はページ高さ比）
+     離脱時にまとめて1回だけ送る（スクロールのたびに送らない）。 */
+  var BANDS=20;
+  var reach=new Array(BANDS).fill(0), dwell=new Array(BANDS).fill(0), clicks=[];
+  var lastT=Date.now(), maxBand=0, sent=false;
+  function docH(){ return Math.max(1, document.documentElement.scrollHeight - window.innerHeight); }
+  function curBand(){
+    var p=window.scrollY/docH();
+    return Math.max(0, Math.min(BANDS-1, Math.floor(p*BANDS)));
+  }
+  function tick(){
+    var now=Date.now(), b=curBand();
+    // 画面内に入っているバンドすべてに滞在時間を配る（1バンドだけだと長いLPで偏る）
+    var top=window.scrollY/ (docH()+window.innerHeight), bot=(window.scrollY+window.innerHeight)/(docH()+window.innerHeight);
+    var from=Math.max(0,Math.floor(top*BANDS)), to=Math.min(BANDS-1,Math.floor(bot*BANDS));
+    for(var i=from;i<=to;i++) dwell[i]+=(now-lastT);
+    lastT=now;
+    if(b>maxBand)maxBand=b;
+  }
+  window.addEventListener('scroll',tick,{passive:true});
+  setInterval(tick,1000);
+  document.addEventListener('click',function(e){
+    var h=document.documentElement.scrollHeight||1, w=window.innerWidth||1;
+    clicks.push({x:Math.round((e.clientX/w)*1000)/1000, y:Math.round(((e.pageY)/h)*1000)/1000});
+    if(clicks.length>300)clicks.shift();
+  },true);
+  function flush(){
+    if(sent)return; sent=true; tick();
+    for(var i=0;i<=maxBand;i++) reach[i]=1;
+    try{
+      var body=JSON.stringify({event:'heatmap',version:V,bands:BANDS,
+        reach:reach,dwell:dwell,exit_band:curBand(),clicks:clicks});
+      if(navigator.sendBeacon) navigator.sendBeacon(U,new Blob([body],{type:'application/json'}));
+      else fetch(U,{method:'POST',headers:{'Content-Type':'application/json'},body:body,keepalive:true});
+    }catch(e){}
+  }
+  window.addEventListener('pagehide',flush);
+  document.addEventListener('visibilitychange',function(){ if(document.hidden)flush(); });
 })()</script>`
 }
 
@@ -515,6 +561,78 @@ deliveryRouter.post('/lp/:uid/__track', (req, res) => {
       return out.state
     })
     if (pushed !== null) broadcastConversion(pushed)
+    res.json({ ok: true })
+    return
+  }
+
+  // ── ヒートマップ（実測）: 計測タグが離脱時にまとめて送る位置情報 ──
+  // 回数ではなく「ページのどこか」を積む。到達率/離脱率/滞在時間/クリック数の材料。
+  if (body.event === 'heatmap') {
+    const hb = body as unknown as {
+      bands?: unknown
+      reach?: unknown
+      dwell?: unknown
+      exit_band?: unknown
+      clicks?: unknown
+    }
+    const bands = typeof hb.bands === 'number' && hb.bands > 0 && hb.bands <= 100 ? hb.bands : 20
+    const numArray = (v: unknown, n: number): number[] => {
+      const src = Array.isArray(v) ? v : []
+      return Array.from({ length: n }, (_, i) => {
+        const x = src[i]
+        return typeof x === 'number' && Number.isFinite(x) && x >= 0 ? x : 0
+      })
+    }
+    const reach = numArray(hb.reach, bands)
+    const dwell = numArray(hb.dwell, bands)
+    const exitBand =
+      typeof hb.exit_band === 'number' && hb.exit_band >= 0 && hb.exit_band < bands
+        ? Math.floor(hb.exit_band)
+        : 0
+    const clicks = (Array.isArray(hb.clicks) ? hb.clicks : [])
+      .slice(0, 300)
+      .map((c) => c as { x?: unknown; y?: unknown })
+      .filter((c) => typeof c.x === 'number' && typeof c.y === 'number')
+      .map((c) => ({ x: c.x as number, y: c.y as number }))
+
+    setState((s) => {
+      const idx = s.heatmapStats.findIndex(
+        (h) =>
+          h.ab_test_uid === abTest.uid && h.version_uid === versionUid && h.date === date,
+      )
+      const base =
+        idx === -1
+          ? {
+              ab_test_uid: abTest.uid,
+              version_uid: versionUid,
+              date,
+              bands,
+              pv: 0,
+              reach: new Array<number>(bands).fill(0),
+              exit: new Array<number>(bands).fill(0),
+              dwell_ms: new Array<number>(bands).fill(0),
+              dwell_n: new Array<number>(bands).fill(0),
+              clicks: [] as { x: number; y: number }[],
+            }
+          : s.heatmapStats[idx]!
+      const merged = {
+        ...base,
+        pv: base.pv + 1,
+        reach: base.reach.map((v, i) => v + (reach[i] ?? 0)),
+        exit: base.exit.map((v, i) => v + (i === exitBand ? 1 : 0)),
+        dwell_ms: base.dwell_ms.map((v, i) => v + (dwell[i] ?? 0)),
+        dwell_n: base.dwell_n.map((v, i) => v + ((dwell[i] ?? 0) > 0 ? 1 : 0)),
+        // クリックは増え続けるので上限を設ける（古いものから捨てる）
+        clicks: [...base.clicks, ...clicks].slice(-5000),
+      }
+      return {
+        ...s,
+        heatmapStats:
+          idx === -1
+            ? [...s.heatmapStats, merged]
+            : s.heatmapStats.map((h, i) => (i === idx ? merged : h)),
+      }
+    })
     res.json({ ok: true })
     return
   }

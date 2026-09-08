@@ -87,6 +87,7 @@ export function createEmptyState(): State {
     sbAiConversations: [],
     sbAiMessages: [],
     heatmaps: [],
+    heatmapStats: [],
     mediaAssets: [],
     reportExclusions: [],
     htmlParts: [],
