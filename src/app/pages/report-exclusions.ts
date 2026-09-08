@@ -537,33 +537,17 @@ export async function renderReportExclusions(container: HTMLElement): Promise<vo
     }
   }
 
-  const showAudience = (): void => {
-    const box = document.createElement('div')
-    box.className = 'rx-card rx-empty'
-    box.style.whiteSpace = 'pre-line'
-    // 実物ではタブ名だけが採取できており、中身は開いた状態を採取していない。
-    // 推測で作らず、その旨をはっきり出す。
-    box.textContent =
-      '配信除外オーディエンス設定は未作成です。\n' +
-      '実物でもチームによっては出ないタブで、中身を確認できていないため作っていません。'
-    bodyHost.replaceChildren(box)
-  }
-
-  const TAB_DEFS = [
-    { label: 'アクセス拒否', show: () => void showDeny() },
-    { label: '配信除外オーディエンス設定', show: showAudience },
-  ]
-  TAB_DEFS.forEach((def, i) => {
-    const b = document.createElement('button')
-    b.type = 'button'
-    b.className = `rx-tab${i === 0 ? ' on' : ''}`
-    b.textContent = def.label
-    b.addEventListener('click', () => {
-      for (const other of tabs.querySelectorAll('button')) other.classList.toggle('on', other === b)
-      def.show()
-    })
-    tabs.append(b)
-  })
+  /**
+   * タブは「アクセス拒否」だけ。
+   * 実物には「配信除外オーディエンス設定」もあるが、中身を確認できておらず
+   * 指示で不要となったため置いていない。
+   */
+  const denyTab = document.createElement('button')
+  denyTab.type = 'button'
+  denyTab.className = 'rx-tab on'
+  denyTab.textContent = 'アクセス拒否'
+  denyTab.addEventListener('click', () => void showDeny())
+  tabs.append(denyTab)
 
   root.append(h1, tabs, bodyHost)
   await showDeny()

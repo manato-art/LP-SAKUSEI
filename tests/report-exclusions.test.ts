@@ -291,9 +291,9 @@ describe('レポート除外API', () => {
 describe('画面は実物の構成に合わせる', () => {
   const src = readFileSync('src/app/pages/report-exclusions.ts', 'utf8')
 
-  it('実物の2タブを出す', () => {
+  it('タブは「アクセス拒否」だけ（オーディエンス設定は指示で不要）', () => {
     expect(src).toContain('アクセス拒否')
-    expect(src).toContain('配信除外オーディエンス設定')
+    expect(src).not.toContain("textContent = '配信除外オーディエンス設定'")
   })
 
   it('実物の文言をそのまま出す', () => {
@@ -328,10 +328,6 @@ describe('画面は実物の構成に合わせる', () => {
     for (const label of ['今日', '今週', '今月', '3ヶ月', '半年', '1年']) {
       expect(src, label).toContain(label)
     }
-  })
-
-  it('確認できていないタブは作らずに、その旨を出す（推測で埋めない）', () => {
-    expect(src).toContain('中身を確認できていないため作っていません')
   })
 
   it('分かりにくい名称は言い換える（指示）', () => {
