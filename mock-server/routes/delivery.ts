@@ -622,9 +622,14 @@ deliveryRouter.post('/lp/:uid/__track', (req, res) => {
       .map((c) => ({ x: c.x as number, y: c.y as number }))
 
     setState((s) => {
+      // 分割数(bands)も一致条件に入れる。分割数を変えたときに、
+      // 古い配列へ新しい長さの値を足し込んで数字を壊さないため。
       const idx = s.heatmapStats.findIndex(
         (h) =>
-          h.ab_test_uid === abTest.uid && h.version_uid === versionUid && h.date === date,
+          h.ab_test_uid === abTest.uid &&
+          h.version_uid === versionUid &&
+          h.date === date &&
+          h.bands === bands,
       )
       const base =
         idx === -1

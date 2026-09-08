@@ -24,7 +24,8 @@ export const METRIC_LABEL: Readonly<Record<HeatmapMetric, string>> = {
 }
 
 /** 指標ごとの色相（実物: CV=紫系 / CLICK・離脱=橙〜赤）。 */
-const METRIC_HUE: Readonly<Record<HeatmapMetric, number>> = {
+/** 指標ごとの色（行の縁取りなど、面以外で使う） */
+export const METRIC_HUE: Readonly<Record<HeatmapMetric, number>> = {
   exit: 12,
   click: 28,
   cv: 275,
@@ -114,12 +115,15 @@ function injectStyles(): void {
  * 実物は「強い＝赤、弱い＝橙」の暖色グラデーションなので、強さで色相もずらす。
  * LPが透けて見える必要があるので不透明にはしない。
  */
-function bandColor(metric: HeatmapMetric, strength: number): string {
+function bandColor(_metric: HeatmapMetric, strength: number): string {
+  // 指示: 「赤が100%で、青に行くほどその値が少なくなっていくイメージ」。
+  // よくある熱スケール（赤→黄→緑→青）を色相で作る。
+  // metric は行の色分けにだけ使い、面の色は値そのものを表す。
   const t = Math.min(1, Math.max(0, strength))
-  const hue = METRIC_HUE[metric] + (1 - t) * 30
-  const light = 58 - t * 14
-  const alpha = 0.42 + t * 0.34
-  return `hsla(${hue}, 92%, ${light}%, ${alpha})`
+  const hue = (1 - t) * 240
+  // LPの絵柄が読めなくなるので濃くしすぎない。値が低いところは更に薄く。
+  const alpha = 0.26 + t * 0.26
+  return `hsla(${hue}, 85%, 52%, ${alpha})`
 }
 
 /** モードごとの「そのバンドの値」と表示文字列 */
@@ -328,7 +332,12 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
   /** 行を押したときにLPをその深さまで送る */
   const scrollLpTo = (depth: number): void => {
     const max = body.scrollHeight - body.clientHeight
-    if (max > 0) body.scrollTo({ top: max * depth, behavior: 'smooth' })
+    if (max <= 0) return
+    const top = max * depth
+    // scrollTo(smooth) だけだと、直後の描き直しで移動が打ち消されることがあった
+    // （実測: バッジだけ動いてLPが0のまま）。値を直接入れてから滑らかに寄せる。
+    body.scrollTop = top
+    body.scrollTo({ top, behavior: 'smooth' })
   }
 
   const drawOverlay = (): void => {
@@ -342,11 +351,14 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
     const bands = stat.bands
 
     // 熱の色。LPが読めなくなるので薄く敷く（実物もLPの絵柄がはっきり見える）。
-    const stops = Array.from({ length: ROW_COUNT }, (_, row) => {
-      const v = bandValue(stat, mode, bandIndexOf(row, bands))
+    // 面は行（5%刻み21段）より**細かく**出す。行は読むための目盛りで、
+    // 面は「そのあたりが実際どれだけ見られたか」を連続的に表すものなので、
+    // 集計しているバンド数ぶんの色停止点をそのまま使う。
+    const stops = Array.from({ length: bands }, (_, i) => {
+      const v = bandValue(stat, mode, i)
       return v === null
         ? null
-        : `${bandColor(spec.metric, v.strength)} ${((row / (ROW_COUNT - 1)) * 100).toFixed(2)}%`
+        : `${bandColor(spec.metric, v.strength)} ${(((i + 0.5) / bands) * 100).toFixed(2)}%`
     }).filter((x): x is string => x !== null)
     if (stops.length > 0) {
       const heat = document.createElement('div')
@@ -372,8 +384,8 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
       pill.append(label)
       pill.addEventListener('click', () => {
         activeRow = row
-        scrollLpTo(row / (ROW_COUNT - 1))
         drawOverlay()
+        scrollLpTo(row / (ROW_COUNT - 1))
       })
       overlay.append(pill)
     }

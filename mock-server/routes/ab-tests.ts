@@ -645,8 +645,20 @@ abTestsRouter.get('/ab_tests/:uid/heatmaps/stats', (req, res) => {
     byVersion.set(row.version_uid, list)
   }
 
-  const versions = [...byVersion.entries()].map(([versionUid, list]) => {
-    const bands = list[0]?.bands ?? 20
+  const versions = [...byVersion.entries()].map(([versionUid, all]) => {
+    // 分割数を変えた前後のデータが混ざることがある。長さの違う配列を足すと
+    // 数字が壊れるので、PVが最も多い分割数のぶんだけを使う。
+    const pvByBands = new Map<number, number>()
+    for (const row of all) pvByBands.set(row.bands, (pvByBands.get(row.bands) ?? 0) + row.pv)
+    let bands = all[0]?.bands ?? 20
+    let best = -1
+    for (const [b, pv] of pvByBands) {
+      if (pv > best) {
+        best = pv
+        bands = b
+      }
+    }
+    const list = all.filter((row) => row.bands === bands)
     const zero = (): number[] => new Array<number>(bands).fill(0)
     const sum = { pv: 0, reach: zero(), exit: zero(), dwellMs: zero(), dwellN: zero() }
     const clicks: { x: number; y: number }[] = []
