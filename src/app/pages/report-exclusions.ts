@@ -30,14 +30,26 @@ const PERIODS = [
   { key: 'year', label: '1年', days: 364 },
 ] as const
 
-/** 実物のプルダウンどおりの選択肢 */
+/**
+ * 除外対象の呼び名。プルダウンと下段のランキングで同じ言葉を使うため、ここに集約する。
+ * 実物は「リファラ」「パラメータ」だが、何を指すか分かりにくいので言い換えている。
+ */
+const KIND_LABELS = {
+  email: 'メールアドレス',
+  ip: 'IPアドレス',
+  referer: 'どこから来たか',
+  param: 'URLのパラメーター',
+  team: 'チーム',
+} as const satisfies Record<ExclusionKind, string>
+
+/** 実物のプルダウンどおりの選択肢（並び順もここで決める） */
 const KINDS: readonly { value: ExclusionKind; label: string }[] = [
-  // 実物は「リファラ」「パラメータ」だが、何を指すか分かりにくいので言い換えている
-  { value: 'email', label: 'メールアドレス' },
-  { value: 'ip', label: 'IPアドレス' },
-  { value: 'referer', label: 'どこから来たか' },
-  { value: 'param', label: 'URLのパラメーター（utm_source=fb など）' },
-  { value: 'team', label: 'チーム' },
+  { value: 'email', label: KIND_LABELS.email },
+  { value: 'ip', label: KIND_LABELS.ip },
+  { value: 'referer', label: KIND_LABELS.referer },
+  // プルダウンだけは例を添える（選ぶときに何のことか分かるように）
+  { value: 'param', label: `${KIND_LABELS.param}（utm_source=fb など）` },
+  { value: 'team', label: KIND_LABELS.team },
 ]
 
 /** メールアドレスは値の突き合わせではなく、除外リンクを開いたブラウザで判定する */
@@ -334,9 +346,7 @@ function buildRulesTable(rows: readonly ReportExclusionEntry[], reload: () => vo
   for (const row of rows) {
     const tr = document.createElement('tr')
     // 1件が複数条件を持つので、まとめて1行に並べる
-    const kindText = row.conditions
-      .map((c) => KINDS.find((k) => k.value === c.kind)?.label ?? c.kind)
-      .join(' / ')
+    const kindText = row.conditions.map((c) => KIND_LABELS[c.kind] ?? c.kind).join(' / ')
     const matchText = row.conditions
       .map((c) => MATCHES.find((m) => m.value === c.match_type)?.label ?? c.match_type)
       .join(' / ')
@@ -439,9 +449,9 @@ function buildRequests(): HTMLElement {
       (stats) => {
         totalLine.textContent = `対象リクエスト ${stats.total.toLocaleString('ja-JP')} 件（${range.startDate} 〜 ${range.endDate}）`
         ranks.replaceChildren(
-          rankBox('リファラ', stats.referers),
-          rankBox('ソースIP', stats.ips),
-          rankBox('パラメータ', stats.params),
+          rankBox(KIND_LABELS.referer, stats.referers),
+          rankBox(KIND_LABELS.ip, stats.ips),
+          rankBox(KIND_LABELS.param, stats.params),
         )
       },
       () => {

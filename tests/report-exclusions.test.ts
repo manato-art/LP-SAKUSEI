@@ -318,10 +318,14 @@ describe('画面は実物の構成に合わせる', () => {
     expect(src).toContain('i === rows.length - 1')
   })
 
-  it('リクエスト数は リファラ / ソースIP / パラメータ の3つ', () => {
-    expect(src).toContain("rankBox('リファラ'")
-    expect(src).toContain("rankBox('ソースIP'")
-    expect(src).toContain("rankBox('パラメータ'")
+  it('リクエスト数の見出しはプルダウンと同じ呼び名を使う（ばらつかせない）', () => {
+    expect(src).toContain('rankBox(KIND_LABELS.referer')
+    expect(src).toContain('rankBox(KIND_LABELS.ip')
+    expect(src).toContain('rankBox(KIND_LABELS.param')
+    // 元の分かりにくい呼び名は残っていない
+    expect(src).not.toContain("rankBox('リファラ'")
+    expect(src).not.toContain("rankBox('ソースIP'")
+    expect(src).not.toContain("rankBox('パラメータ'")
   })
 
   it('期間ボタンは実物と同じ6つ', () => {
@@ -331,8 +335,8 @@ describe('画面は実物の構成に合わせる', () => {
   })
 
   it('分かりにくい名称は言い換える（指示）', () => {
-    expect(src).toContain("label: 'どこから来たか'")
-    expect(src).toContain('URLのパラメーター（utm_source=fb など）')
+    expect(src).toContain("referer: 'どこから来たか'")
+    expect(src).toContain("param: 'URLのパラメーター'")
     // 元の分かりにくい名称は出さない
     expect(src).not.toContain("label: 'リファラ'")
     expect(src).not.toContain("label: 'パラメータ'")
