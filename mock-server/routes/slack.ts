@@ -15,6 +15,8 @@ import type { Request } from 'express'
 import { getState, setState } from '../store/store.ts'
 import { errorEnvelope } from '../lib/envelope.ts'
 import { ChatworkError, chatworkToken, listRooms } from '../chatwork.ts'
+import { NotifyError, sendNotification } from '../notify.ts'
+import { buildTaskReport } from '../task-report.ts'
 import {
   SlackError,
   authorizeUrl,
@@ -111,6 +113,91 @@ slackRouter.get('/chatwork/rooms', (_req, res) => {
   )
 })
 
+/**
+ * 画面から入れる資格情報。
+ *
+ * 返すのは「入っているか」と「環境変数で入っているか」だけ。
+ * 値そのものは**一切返さない**（画面に出す必要が無く、出せば漏れる経路になる）。
+ */
+slackRouter.get('/integrations', (_req, res) => {
+  const saved = getState().integrations
+  const byEnv = (name: string): boolean => (process.env[name] ?? '') !== ''
+  res.json({
+    slack: {
+      configured: slackCredentials() !== null,
+      // 環境変数で入っている項目は画面から変えられない（変えても効かないため）
+      from_env: byEnv('SLACK_CLIENT_ID') && byEnv('SLACK_CLIENT_SECRET'),
+      has_saved: saved.slackClientId !== '' && saved.slackClientSecret !== '',
+    },
+    chatwork: {
+      configured: chatworkToken() !== null,
+      from_env: byEnv('CHATWORK_API_TOKEN'),
+      has_saved: saved.chatworkApiToken !== '',
+    },
+  })
+})
+
+slackRouter.put('/integrations', (req, res) => {
+  const body = req.body as Record<string, unknown>
+  const read = (key: string): string | null => {
+    const v = body[key]
+    return typeof v === 'string' ? v.trim() : null
+  }
+  const next = { ...getState().integrations }
+  const slackId = read('slack_client_id')
+  const slackSecret = read('slack_client_secret')
+  const chatwork = read('chatwork_api_token')
+
+  // Slackは2つ揃って初めて意味がある。片方だけ入れられても認可へ飛べない。
+  if ((slackId === null) !== (slackSecret === null)) {
+    res
+      .status(422)
+      .json(
+        errorEnvelope('validation_failed', 'Client ID と Client Secret は両方入れてください。'),
+      )
+    return
+  }
+  if (slackId !== null && slackSecret !== null) {
+    if (slackId === '' || slackSecret === '') {
+      res
+        .status(422)
+        .json(errorEnvelope('validation_failed', 'Client ID と Client Secret を入れてください。'))
+      return
+    }
+    next.slackClientId = slackId
+    next.slackClientSecret = slackSecret
+  }
+  if (chatwork !== null) {
+    if (chatwork === '') {
+      res.status(422).json(errorEnvelope('validation_failed', 'APIトークンを入れてください。'))
+      return
+    }
+    next.chatworkApiToken = chatwork
+  }
+
+  setState((s) => ({ ...s, integrations: next }))
+  res.status(204).end()
+})
+
+/** 入れた資格情報を消す（`service` は slack / chatwork） */
+slackRouter.delete('/integrations/:service', (req, res) => {
+  const service = req.params.service
+  if (service !== 'slack' && service !== 'chatwork') {
+    res.status(404).json(errorEnvelope('not_found', '対象が見つかりません。'))
+    return
+  }
+  setState((s) => ({
+    ...s,
+    integrations:
+      service === 'slack'
+        ? { ...s.integrations, slackClientId: '', slackClientSecret: '' }
+        : { ...s.integrations, chatworkApiToken: '' },
+    // Slackの資格情報を消したら、それで取ったトークンも無効になる
+    slack: service === 'slack' ? null : s.slack,
+  }))
+  res.status(204).end()
+})
+
 slackRouter.delete('/slack', (_req, res) => {
   setState((s) => ({ ...s, slack: null }))
   res.status(204).end()
@@ -205,3 +292,79 @@ function escapeText(text: string): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
 }
+
+/**
+ * 通知の試し送り。
+ *
+ * 設定できたかどうかは、実際に1通届いて初めて分かる。
+ * 「設定済み」と表示するだけで済ませると、当日になって届かないことに気づく。
+ */
+slackRouter.post('/notify/test', (req, res) => {
+  const body = req.body as Record<string, unknown>
+  const service = body['service']
+  const destinationId = typeof body['destination_id'] === 'string' ? body['destination_id'] : ''
+  if (service !== 'slack' && service !== 'chatwork') {
+    res.status(422).json(errorEnvelope('validation_failed', '通知先を選んでください。'))
+    return
+  }
+  if (destinationId === '') {
+    res.status(422).json(errorEnvelope('validation_failed', '送り先を選んでください。'))
+    return
+  }
+  const text = [
+    '[通知テスト]',
+    'この内容が届いていれば、タスクの通知先として使えます。',
+    '',
+    buildTaskReport('通知テスト', 'today'),
+  ].join('\n')
+
+  void sendNotification(service, destinationId, text).then(
+    () => res.json({ ok: true }),
+    (error: unknown) => {
+      const known = error instanceof NotifyError
+      res
+        .status(502)
+        .json(
+          errorEnvelope(
+            known ? error.code : 'notify_failed',
+            known ? error.message : '通知を送れませんでした。',
+          ),
+        )
+    },
+  )
+})
+
+/** タスクをその場で1回実行して通知を送る（単発タスクの「作成直後に実行」） */
+slackRouter.post('/notify/run', (req, res) => {
+  const body = req.body as Record<string, unknown>
+  const service = body['service']
+  const destinationId = typeof body['destination_id'] === 'string' ? body['destination_id'] : ''
+  const name = typeof body['name'] === 'string' && body['name'] !== '' ? body['name'] : 'タスク'
+  const span = body['span']
+  if (service !== 'slack' && service !== 'chatwork') {
+    res.status(422).json(errorEnvelope('validation_failed', '通知先を選んでください。'))
+    return
+  }
+  if (destinationId === '') {
+    res.status(422).json(errorEnvelope('validation_failed', '送り先を選んでください。'))
+    return
+  }
+  if (span !== 'today' && span !== 'yesterday' && span !== 'last7days') {
+    res.status(422).json(errorEnvelope('validation_failed', 'レポート内容が正しくありません。'))
+    return
+  }
+  void sendNotification(service, destinationId, buildTaskReport(name, span)).then(
+    () => res.json({ ok: true }),
+    (error: unknown) => {
+      const known = error instanceof NotifyError
+      res
+        .status(502)
+        .json(
+          errorEnvelope(
+            known ? error.code : 'notify_failed',
+            known ? error.message : '通知を送れませんでした。',
+          ),
+        )
+    },
+  )
+})

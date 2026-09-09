@@ -699,6 +699,16 @@ export interface State {
    * アクセストークンはAPIのレスポンスには**含めない**（`routes/slack.ts`）。
    */
   slack: { teamName: string; accessToken: string } | null
+  /**
+   * 画面から入れた外部サービスの資格情報。
+   * 同じ名前の環境変数があればそちらが優先される（本番は環境変数で上書きできる）。
+   * 値はAPIのレスポンスに**一切返さない**。返すのは「入っているか」だけ。
+   */
+  integrations: {
+    slackClientId: string
+    slackClientSecret: string
+    chatworkApiToken: string
+  }
   reportExclusions: readonly ReportExclusion[]
   /** 配信リクエストの記録（直近ぶんだけ保持する） */
   requestLogs: readonly RequestLogEntry[]

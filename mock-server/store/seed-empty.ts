@@ -91,6 +91,7 @@ export function createEmptyState(): State {
     mediaAssets: [],
     themeAccent: '#0091FF',
     slack: null,
+    integrations: { slackClientId: '', slackClientSecret: '', chatworkApiToken: '' },
     reportExclusions: [],
     requestLogs: [],
     htmlParts: [],

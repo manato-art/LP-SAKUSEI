@@ -15,6 +15,7 @@
  * 無いと、他サイトから認可リクエストを差し込まれても見分けが付かない。
  */
 import { randomBytes } from 'node:crypto'
+import { getState } from './store/store.ts'
 
 /** 実物が要求していたのと同じ権限（2026-09-09 に確認） */
 export const SLACK_SCOPES = [
@@ -32,10 +33,14 @@ export interface SlackCredentials {
   clientSecret: string
 }
 
-/** 環境変数から資格情報を読む。片方でも欠けていたら未設定として扱う。 */
+/**
+ * 資格情報を読む。**環境変数が最優先**で、無ければ画面から入れた値を使う。
+ * 片方でも欠けていたら未設定として扱う（半端な状態で認可へ飛ばさない）。
+ */
 export function slackCredentials(): SlackCredentials | null {
-  const clientId = process.env['SLACK_CLIENT_ID'] ?? ''
-  const clientSecret = process.env['SLACK_CLIENT_SECRET'] ?? ''
+  const saved = getState().integrations
+  const clientId = process.env['SLACK_CLIENT_ID'] ?? saved.slackClientId
+  const clientSecret = process.env['SLACK_CLIENT_SECRET'] ?? saved.slackClientSecret
   if (clientId === '' || clientSecret === '') return null
   return { clientId, clientSecret }
 }

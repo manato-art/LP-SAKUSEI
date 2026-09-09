@@ -195,3 +195,66 @@ describe('チャットワーク連携', () => {
     expect(src).toContain('application/x-www-form-urlencoded')
   })
 })
+
+describe('画面だけで設定を完結させる', () => {
+  const src = readFileSync('src/app/panels/notify-target.ts', 'utf8')
+
+  it('資格情報を画面から入れられる（環境変数を触りに行かなくていい）', () => {
+    expect(src).toContain('api.saveIntegration')
+    expect(src).toContain("secretInput('Client ID')")
+    expect(src).toContain("secretInput('APIトークン')")
+  })
+
+  it('入力欄は伏せ字にする（肩越しに読まれないように）', () => {
+    expect(src).toContain("input.type = 'password'")
+  })
+
+  it('入れたら次の状態へ進む（保存後に読み直す）', () => {
+    expect(src).toContain('sb-credential-saved')
+  })
+
+  it('テスト送信で実際に届くか確かめられる', () => {
+    expect(src).toContain('api.testNotify')
+    expect(src).toContain('テスト送信')
+  })
+
+  it('入れたトークンは消せる', () => {
+    expect(src).toContain("api.clearIntegration('chatwork')")
+  })
+})
+
+describe('資格情報は環境変数が優先される', () => {
+  it('Slackは環境変数→画面の値の順に読む', () => {
+    const src = readFileSync('mock-server/slack.ts', 'utf8')
+    expect(src).toContain("process.env['SLACK_CLIENT_ID'] ?? saved.slackClientId")
+    expect(src).toContain("process.env['SLACK_CLIENT_SECRET'] ?? saved.slackClientSecret")
+  })
+
+  it('チャットワークも同じ順', () => {
+    const src = readFileSync('mock-server/chatwork.ts', 'utf8')
+    expect(src).toContain("process.env['CHATWORK_API_TOKEN'] ?? getState().integrations.chatworkApiToken")
+  })
+
+  it('入れた値はAPIのレスポンスに返さない', () => {
+    const src = readFileSync('mock-server/routes/slack.ts', 'utf8')
+    const handler = src.slice(src.indexOf("slackRouter.get('/integrations'"), src.indexOf("slackRouter.put('/integrations'"))
+    expect(handler).not.toContain('slackClientSecret,')
+    expect(handler).not.toContain('chatworkApiToken,')
+    expect(handler).toContain('has_saved')
+  })
+})
+
+describe('タスクの通知本文', () => {
+  it('数字が無いときは0件と書かず、無いことを書く（数字を発明しない）', () => {
+    const src = readFileSync('mock-server/task-report.ts', 'utf8')
+    expect(src).toContain('この期間に計測されたアクセスはありませんでした')
+  })
+
+  it('装飾を付けない（チャットワークはMarkdownを解釈しないため）', async () => {
+    const { buildTaskReport } = await import('../mock-server/task-report.ts')
+    const text = buildTaskReport('テスト', 'today')
+    // 見出し・太字・箇条書き記号を使わない
+    expect(text).not.toMatch(/^#|\*\*|^[*-] /m)
+    expect(text).toContain('[テスト]')
+  })
+})

@@ -14,6 +14,8 @@
  *   部屋一覧     GET  /rooms            → [{ room_id, name, type, ... }]
  *   投稿        POST /rooms/{id}/messages  body=... （form形式）
  */
+import { getState } from './store/store.ts'
+
 const BASE_URL = 'https://api.chatwork.com/v2'
 
 export class ChatworkError extends Error {
@@ -26,9 +28,12 @@ export class ChatworkError extends Error {
   }
 }
 
-/** 環境変数からトークンを読む。空なら未設定として扱う。 */
+/**
+ * トークンを読む。**環境変数が最優先**で、無ければ画面から入れた値を使う。
+ * 空なら未設定として扱う。
+ */
 export function chatworkToken(): string | null {
-  const token = process.env['CHATWORK_API_TOKEN'] ?? ''
+  const token = process.env['CHATWORK_API_TOKEN'] ?? getState().integrations.chatworkApiToken
   return token === '' ? null : token
 }
 

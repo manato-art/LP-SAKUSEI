@@ -12,6 +12,7 @@ import { T, el, toast } from '../ui.ts'
 import { buildNotifyTarget } from '../panels/notify-target.ts'
 import {
   MINUTES,
+  REPORT_SPANS,
   SCHEDULES,
   TASK_TEMPLATES,
   WEEKDAYS,
@@ -229,10 +230,6 @@ export function renderTaskForm(
   desc.className = 'tc-input'
   desc.placeholder = 'タスクの概要'
 
-  const prompt = document.createElement('textarea')
-  prompt.className = 'tc-textarea'
-  prompt.placeholder = 'AIへの指示内容'
-  prompt.value = template.preset.prompt
 
   const submit = document.createElement('button')
   submit.type = 'button'
@@ -245,20 +242,31 @@ export function renderTaskForm(
       name.focus()
       return
     }
-    if (prompt.value.trim() === '') {
-      toast('beyondAIへの指示を入力してください', 'error')
-      prompt.focus()
-      return
-    }
     if ((kind.value as ScheduleKind) === 'weekly' && chosenDays.size === 0) {
       toast('曜日を1つ以上選んでください', 'error')
       return
     }
     submit.disabled = true
     submit.textContent = '作成中…'
+    const target = notifyField.target()
     void api.createTask(title).then(
-      () => {
-        toast('タスクを作成しました')
+      async () => {
+        /**
+         * 単発は「作成直後に実行」なので、その場で1通送る。
+         * 作っただけで何も起きないと、動いているのか分からない。
+         * 定期のぶんはサーバー側の時計で送る。
+         */
+        if ((kind.value as ScheduleKind) === 'once' && target !== null) {
+          try {
+            await api.runTaskNow({ name: title, span: span.value, target })
+            toast('タスクを作成し、通知を送りました')
+          } catch (error) {
+            // タスク自体は作れているので、送れなかったことだけを伝える
+            toast(`タスクは作成しましたが、通知を送れませんでした: ${(error as Error).message}`, 'error')
+          }
+        } else {
+          toast('タスクを作成しました')
+        }
         deps.onDone()
       },
       (error: Error) => {
@@ -269,12 +277,16 @@ export function renderTaskForm(
     )
   })
 
+  // 何のレポートを送るか（beyondAIが無いので、プロンプトの代わりにこれを選ぶ）
+  const span = select(REPORT_SPANS.map((r) => ({ value: r.value, label: r.label })))
+  span.value = template.preset.span
+
   form.append(
     labelled('タスク名', true, name),
     labelled('スケジュール', true, scheduleRow),
     labelled('実行結果の通知', false, notifyField.el),
+    labelled('レポート内容', true, span),
     labelled('説明', false, desc),
-    labelled('beyondAIへの指示（プロンプト）', true, prompt),
     submit,
   )
   root.append(form)

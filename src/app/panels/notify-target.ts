@@ -33,6 +33,17 @@ const CHATWORK_STEPS: readonly string[] = [
   'Railway の環境変数に CHATWORK_API_TOKEN を入れて再デプロイする',
 ]
 
+/** 秘密情報の入力欄。入れた値は保存後に画面へ出さない（出せば漏れる経路になる） */
+function secretInput(placeholder: string): HTMLInputElement {
+  const input = document.createElement('input')
+  input.type = 'password'
+  input.autocomplete = 'off'
+  input.placeholder = placeholder
+  input.className = 'tc-input'
+  input.style.maxWidth = '320px'
+  return input
+}
+
 function guideBox(title: string, steps: readonly string[]): HTMLElement {
   const box = el('div', {
     style: [
@@ -80,10 +91,52 @@ function redirectRow(redirectUri: string): HTMLElement {
   return row
 }
 
+/** 秘密情報の入力欄と保存ボタン。保存できたら状態を取り直して画面を進める */
+function credentialRow(
+  label: string,
+  inputs: readonly HTMLInputElement[],
+  save: () => Promise<void>,
+): HTMLElement {
+  const box = el('div', { style: 'margin-top:12px' })
+  box.append(el('div', { text: label, style: `font-size:11px;color:${T.sub};margin-bottom:6px` }))
+  const row = el('div', { style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap' })
+  for (const input of inputs) row.append(input)
+  const button = el('button', {
+    text: '保存',
+    style: [
+      `font-family:${T.font};font-size:12px;padding:8px 18px;border-radius:6px;border:0`,
+      'background:var(--sb-accent, #0091FF);color:var(--sb-accent-ink, #fff);cursor:pointer',
+    ].join(';'),
+  })
+  button.addEventListener('click', () => {
+    if (inputs.some((i) => i.value.trim() === '')) {
+      toast('入力してください', 'error')
+      return
+    }
+    button.setAttribute('disabled', '')
+    void save().then(
+      () => {
+        toast('保存しました')
+        box.dispatchEvent(new CustomEvent('sb-credential-saved', { bubbles: true }))
+      },
+      (error: Error) => {
+        button.removeAttribute('disabled')
+        toast(error.message, 'error')
+      },
+    )
+  })
+  row.append(button)
+  box.append(row)
+  return box
+}
+
+/** 実際に送れる通知先（「通知しない」を除いたもの） */
+export type NotifyDestination = { service: 'slack' | 'chatwork'; id: string }
+
 export interface NotifyTargetResult {
   el: HTMLElement
   /** 選ばれた通知先。通知しないなら null */
-  target: () => { service: NotifyService; id: string } | null
+  target: () => NotifyDestination | null
 }
 
 export function buildNotifyTarget(): NotifyTargetResult {
@@ -112,6 +165,27 @@ export function buildNotifyTarget(): NotifyTargetResult {
   const notice = el('div', { style: `font-size:12px;color:${T.sub};line-height:1.9` })
   wrap.append(row, notice)
 
+  /** 実際に1通送ってみる。届いて初めて設定できたと分かる。 */
+  const testBtn = el('button', { class: 'tc-link', text: 'テスト送信' })
+  testBtn.addEventListener('click', () => {
+    const chosen = service.value as NotifyService
+    if (chosen === 'none' || destination.value === '') {
+      toast('送り先を選んでください', 'error')
+      return
+    }
+    testBtn.setAttribute('disabled', '')
+    void api.testNotify({ service: chosen, id: destination.value }).then(
+      () => {
+        testBtn.removeAttribute('disabled')
+        toast('テスト送信しました。届いているか確認してください')
+      },
+      (error: Error) => {
+        testBtn.removeAttribute('disabled')
+        toast(error.message, 'error')
+      },
+    )
+  })
+
   const setDestinations = (
     items: readonly { value: string; label: string }[],
     placeholder: string,
@@ -134,6 +208,17 @@ export function buildNotifyTarget(): NotifyTargetResult {
     // 認可はブラウザ遷移。別タブで開いて、終わったらこの画面に戻ってもらう
     window.open('/oauth/slack/start', '_blank', 'noopener')
   })
+  const clearChatwork = el('button', { class: 'tc-link', text: 'トークンを消す' })
+  clearChatwork.addEventListener('click', () => {
+    void api.clearIntegration('chatwork').then(
+      () => {
+        toast('チャットワークのトークンを消しました')
+        void refresh()
+      },
+      (error: Error) => toast(error.message, 'error'),
+    )
+  })
+
   const disconnect = el('button', { class: 'tc-link', text: '連携を解除' })
   disconnect.addEventListener('click', () => {
     void api.disconnectSlack().then(
@@ -156,6 +241,16 @@ export function buildNotifyTarget(): NotifyTargetResult {
     if (!status.configured) {
       const box = guideBox('Slackアプリを用意すると、ここから連携できるようになります', SLACK_STEPS)
       box.append(redirectRow(status.redirect_uri))
+      const id = secretInput('Client ID')
+      const secret = secretInput('Client Secret')
+      box.append(
+        credentialRow('控えた2つをここに入れてください', [id, secret], async () => {
+          await api.saveIntegration({
+            slack_client_id: id.value.trim(),
+            slack_client_secret: secret.value.trim(),
+          })
+        }),
+      )
       notice.replaceChildren(box)
       return
     }
@@ -164,7 +259,7 @@ export function buildNotifyTarget(): NotifyTargetResult {
       notice.textContent = '連携すると、送り先のチャンネルを選べるようになります。'
       return
     }
-    row.append(disconnect)
+    row.append(testBtn, disconnect)
     notice.textContent =
       status.team_name === null || status.team_name === ''
         ? '連携済みです。'
@@ -189,9 +284,14 @@ export function buildNotifyTarget(): NotifyTargetResult {
       return
     }
     if (!status.configured) {
-      notice.replaceChildren(
-        guideBox('APIトークンを入れると、ここから送り先を選べるようになります', CHATWORK_STEPS),
+      const box = guideBox('APIトークンを入れると、ここから送り先を選べるようになります', CHATWORK_STEPS)
+      const token = secretInput('APIトークン')
+      box.append(
+        credentialRow('控えたトークンをここに入れてください', [token], async () => {
+          await api.saveIntegration({ chatwork_api_token: token.value.trim() })
+        }),
       )
+      notice.replaceChildren(box)
       return
     }
     try {
@@ -200,7 +300,8 @@ export function buildNotifyTarget(): NotifyTargetResult {
         rooms.map((r) => ({ value: String(r.id), label: r.name })),
         '送り先の部屋を選ぶ',
       )
-      notice.textContent = 'APIトークンが設定されています。送り先の部屋を選んでください。'
+      row.append(testBtn, clearChatwork)
+      notice.textContent = 'APIトークンが設定されています。送り先の部屋を選んで、テスト送信で確かめてください。'
     } catch (error) {
       notice.textContent = (error as Error).message
     }
@@ -218,6 +319,8 @@ export function buildNotifyTarget(): NotifyTargetResult {
   }
 
   service.addEventListener('change', () => void refresh())
+  // 資格情報を入れたら、その場で次の状態（連携ボタン／送り先の選択）へ進む
+  wrap.addEventListener('sb-credential-saved', () => void refresh())
   void refresh()
 
   return {

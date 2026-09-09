@@ -34,7 +34,7 @@ describe('テンプレートは実物どおり', () => {
     expect(weekly?.preset.name).toBe('週次成果まとめレポート')
     expect(weekly?.preset.schedule).toBe('weekly')
     expect(weekly?.preset.hour).toBe('09')
-    expect(weekly?.preset.prompt).not.toBe('')
+    expect(weekly?.preset.span).toBe('last7days')
 
     const daily = TASK_TEMPLATES[1]
     expect(daily?.preset.name).toBe('デイリーCV速報')
@@ -46,7 +46,7 @@ describe('テンプレートは実物どおり', () => {
 
     const blank = TASK_TEMPLATES[3]
     expect(blank?.preset.name).toBe('')
-    expect(blank?.preset.prompt).toBe('')
+    expect(blank?.preset.schedule).toBe('once')
   })
 })
 
@@ -111,8 +111,10 @@ describe('画面の作りは実物に合わせる', () => {
       // 実物は「実行結果のSlack通知」。チャットワークも選べるようにしたので
       // ここだけサービス名を外している。
       '実行結果の通知',
+      // beyondAI が当システムに無いので、プロンプトの代わりに
+      // 「何のレポートを送るか」を選ばせる。
+      'レポート内容',
       '説明',
-      'beyondAIへの指示（プロンプト）',
       'タスクを作成',
     ]) {
       expect(create, label).toContain(label)
@@ -122,12 +124,14 @@ describe('画面の作りは実物に合わせる', () => {
   it('実物と同じ入力の案内文を使う', () => {
     expect(create).toContain('例: 週次レポート')
     expect(create).toContain('タスクの概要')
-    expect(create).toContain('AIへの指示内容')
   })
 
   it('必須の項目が空のまま作成させない', () => {
     expect(create).toContain('タスク名を入力してください')
-    expect(create).toContain('beyondAIへの指示を入力してください')
     expect(create).toContain('曜日を1つ以上選んでください')
+  })
+
+  it('beyondAIのプロンプト欄は置かない（当システムにbeyondAIが無いため）', () => {
+    expect(create).not.toContain('AIへの指示内容')
   })
 })

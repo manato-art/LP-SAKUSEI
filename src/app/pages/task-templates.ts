@@ -29,6 +29,15 @@ export function needsMinute(kind: ScheduleKind): boolean {
   return kind !== 'once'
 }
 
+/** 通知に載せるレポートの期間 */
+export type ReportSpan = 'today' | 'yesterday' | 'last7days'
+
+export const REPORT_SPANS: readonly { value: ReportSpan; label: string }[] = [
+  { value: 'today', label: '本日の成果' },
+  { value: 'yesterday', label: '昨日の成果' },
+  { value: 'last7days', label: '直近7日間の成果' },
+]
+
 export interface TaskTemplate {
   id: string
   title: string
@@ -41,7 +50,8 @@ export interface TaskTemplate {
     schedule: ScheduleKind
     hour: string
     minute: string
-    prompt: string
+    /** 送るレポートの期間 */
+    span: ReportSpan
   }
 }
 
@@ -57,16 +67,7 @@ export const TASK_TEMPLATES: readonly TaskTemplate[] = [
       schedule: 'weekly',
       hour: '09',
       minute: '00',
-      prompt: [
-        '先週(月曜〜日曜)の成果をまとめてレポートしてください。',
-        '',
-        '対象: (ここに対象のフォルダ名を書いてください。例: 「◯◯案件」フォルダ)',
-        '',
-        '手順:',
-        '1. 対象フォルダのレポートを取得し、主要KPI(セッション数・CV数・CVR)を集計する',
-        '2. 前週と比較し、大きく変動したbeyondページがあれば要因を分析する',
-        '3. 「主要指標(前週比) → ハイライト → 気になる点」の順に、見出し付きで簡潔にまとめる',
-      ].join('\n'),
+      span: 'last7days',
     },
   },
   {
@@ -79,20 +80,7 @@ export const TASK_TEMPLATES: readonly TaskTemplate[] = [
       schedule: 'daily',
       hour: '08',
       minute: '00',
-      prompt: [
-        '昨日のCV結果を速報としてまとめてください。',
-        '',
-        '出力は装飾のないプレーンテキストのみとする。' +
-          'Markdown記法（表・見出し・太字・箇条書き記号の * や - など）は使わない。',
-        '',
-        '対象: (ここに対象のフォルダ名を書いてください)',
-        '',
-        '手順:',
-        '1. 最初に「対象日 = 昨日」「前日」の日付(JST)を導出し、冒頭に明記する',
-        '2. 対象フォルダのレポートを 前日〜対象日 で取得する（複数ページある場合は全ページ取得する）',
-        '3. ページ別の一覧を、1行1ページで次の形式にまとめる',
-        '   順位. ページ名（フォルダ名）: 対象日 CV X件 / CLICK C件 / CTR a% / CVR b% ・ 前日 CV Y件 (Y→X, 差分)',
-      ].join('\n'),
+      span: 'yesterday',
     },
   },
   {
@@ -105,14 +93,7 @@ export const TASK_TEMPLATES: readonly TaskTemplate[] = [
       schedule: 'once',
       hour: '09',
       minute: '00',
-      prompt: [
-        '以下のbeyondページを複製してください。',
-        '',
-        '複製するbeyondページ: (beyondページの UID を列挙してください。URL でも指定できます)',
-        '複製先フォルダ: (フォルダ名を書いてください。未記入の場合は元のフォルダに複製します)',
-        '',
-        '注意: 1つのタスクで複製できるのは10件程度までです。それ以上は複数のタスクに分けてください。',
-      ].join('\n'),
+      span: 'today',
     },
   },
   {
@@ -120,6 +101,6 @@ export const TASK_TEMPLATES: readonly TaskTemplate[] = [
     title: '空白から作成',
     description: 'テンプレートを使わず、目的に合わせてゼロから設定します。',
     badge: '自由設定',
-    preset: { name: '', schedule: 'once', hour: '09', minute: '00', prompt: '' },
+    preset: { name: '', schedule: 'once', hour: '09', minute: '00', span: 'today' },
   },
 ]

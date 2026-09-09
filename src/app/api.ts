@@ -373,6 +373,39 @@ export const api = {
     request<{ channels: { id: string; name: string }[] }>('GET', '/slack/channels'),
   /** 連携を解除 */
   disconnectSlack: () => request<void>('DELETE', '/slack'),
+  /** 外部連携の資格情報の状態（値そのものは返らない） */
+  integrations: () =>
+    request<{
+      slack: { configured: boolean; from_env: boolean; has_saved: boolean }
+      chatwork: { configured: boolean; from_env: boolean; has_saved: boolean }
+    }>('GET', '/integrations'),
+  /** 資格情報を保存（渡した項目だけ更新する） */
+  saveIntegration: (patch: {
+    slack_client_id?: string
+    slack_client_secret?: string
+    chatwork_api_token?: string
+  }) => request<void>('PUT', '/integrations', patch),
+  /** 入れた資格情報を消す */
+  clearIntegration: (service: 'slack' | 'chatwork') =>
+    request<void>('DELETE', `/integrations/${service}`),
+  /** タスクをその場で1回実行して通知を送る */
+  runTaskNow: (input: {
+    name: string
+    span: string
+    target: { service: 'slack' | 'chatwork'; id: string }
+  }) =>
+    request<{ ok: boolean }>('POST', '/notify/run', {
+      name: input.name,
+      span: input.span,
+      service: input.target.service,
+      destination_id: input.target.id,
+    }),
+  /** 通知を試し送りする */
+  testNotify: (target: { service: 'slack' | 'chatwork'; id: string }) =>
+    request<{ ok: boolean }>('POST', '/notify/test', {
+      service: target.service,
+      destination_id: target.id,
+    }),
   /** チャットワーク連携の状態（トークンが入っているか） */
   chatworkStatus: () => request<{ configured: boolean }>('GET', '/chatwork/status'),
   /** 送り先に選べる部屋 */
