@@ -89,6 +89,33 @@ const IMAGE_LINK_SCRIPT = `<script>(function(){
  * ★プレビュー（`/preview/:versionUid`）にはこのスクリプトを入れない＝計測しない。
  * keepalive でリンク遷移時のクリックも取りこぼさない。
  */
+/**
+ * リクエスト記録の間引き。
+ *
+ * 件数だけで切ると、アクセスの多いLPでは数日で古いぶんが消え、
+ * レポート除外画面の「1年」表示が実際より少なく出る（画面が嘘をつく）。
+ * **保持は日数で決め**、件数の上限はメモリを守るための最後の砦として残す。
+ */
+/** 画面の期間ボタンが最長1年なので、少し余裕を持たせた日数だけ持つ */
+const REQUEST_LOG_DAYS = 400
+/**
+ * 件数の上限。state.json を丸ごと書き直す作りなので、
+ * 大きくしすぎるとデプロイのたびに重いファイルを読み書きすることになる。
+ * 1件およそ150バイトなので、5万件で 7〜8MB 程度に収まる。
+ */
+const REQUEST_LOG_MAX = 50_000
+
+export function pruneRequestLogs(
+  logs: readonly RequestLogEntry[],
+  today: string,
+): RequestLogEntry[] {
+  const limit = new Date(`${today}T00:00:00`)
+  limit.setDate(limit.getDate() - REQUEST_LOG_DAYS)
+  const oldest = toDateKey(limit)
+  const kept = logs.filter((log) => log.date >= oldest)
+  return kept.length > REQUEST_LOG_MAX ? kept.slice(-REQUEST_LOG_MAX) : kept
+}
+
 /** ブラウザに残した除外の目印（Cookie）を読む */
 function excludeTokenFromCookie(cookie: string | undefined): string {
   if (cookie === undefined || cookie === '') return ''
@@ -705,8 +732,7 @@ deliveryRouter.post('/lp/:uid/__track', (req, res) => {
     // 記録はPVのときだけ残す（1アクセス1件にする。クリックやCVで重複させない）
     setState((s) => ({
       ...s,
-      // 記録は増え続けるので直近ぶんだけ残す
-      requestLogs: [...s.requestLogs, { ...visitor, excluded: isExcluded }].slice(-5000),
+      requestLogs: pruneRequestLogs([...s.requestLogs, { ...visitor, excluded: isExcluded }], date),
     }))
   }
   if (isExcluded) {

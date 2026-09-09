@@ -376,3 +376,21 @@ describe('画面は実物の構成に合わせる', () => {
     expect(src).toContain('addBtn.addEventListener(\'click\', addRow)')
   })
 })
+
+describe('リクエスト記録の間引き', () => {
+  it('保持は日数で決める（件数だけで切ると1年表示が実際より少なく出る）', async () => {
+    const { pruneRequestLogs } = await import('../mock-server/routes/delivery.ts')
+    const make = (date: string): RequestLogEntry => log({ date })
+    const kept = pruneRequestLogs(
+      [make('2024-01-01'), make('2026-09-01'), make('2026-09-09')],
+      '2026-09-09',
+    )
+    expect(kept.map((l) => l.date)).toEqual(['2026-09-01', '2026-09-09'])
+  })
+
+  it('1年前のぶんは残す（画面に「1年」ボタンがあるため）', async () => {
+    const { pruneRequestLogs } = await import('../mock-server/routes/delivery.ts')
+    const kept = pruneRequestLogs([log({ date: '2025-09-20' })], '2026-09-09')
+    expect(kept).toHaveLength(1)
+  })
+})
