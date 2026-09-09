@@ -5,7 +5,7 @@ import { getState, setState } from '../store/store.ts'
 import { applyEmptyState } from '../lib/mock-state.ts'
 import { errorEnvelope } from '../lib/envelope.ts'
 import { makeUid } from '../store/ids.ts'
-import { optionalBoolean, optionalString } from '../lib/validate.ts'
+import { optionalBoolean, optionalString, requireString } from '../lib/validate.ts'
 import { dateRangeParams, str } from '../lib/query.ts'
 import { isIpLike, matchesExclusion } from '../store/exclusions.ts'
 import type {
@@ -47,6 +47,34 @@ settingsRouter.put('/settings/internal_notifications/:scope', (req, res) => {
     ),
   }))
   res.json({ settings: getState().notificationSettings.find((s) => s.scope === scope) ?? null })
+})
+
+/**
+ * 画面のテーマカラー。アカウントに紐づけて保存し、別のブラウザでも同じ色にする。
+ * 受け取るのは `#RGB` / `#RRGGBB` だけ。任意の文字列をCSSへ流すと
+ * そのまま値として差し込まれてしまうので、ここで形を確かめる。
+ */
+const HEX_COLOR = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i
+
+settingsRouter.get('/settings/theme', (_req, res) => {
+  res.json({ accent: getState().themeAccent })
+})
+
+settingsRouter.put('/settings/theme', (req, res) => {
+  const accent = requireString(req.body, 'accent')
+  if (!accent.ok) {
+    res.status(422).json(errorEnvelope('validation_failed', accent.message))
+    return
+  }
+  if (!HEX_COLOR.test(accent.value.trim())) {
+    res
+      .status(422)
+      .json(errorEnvelope('validation_failed', '色は #RRGGBB の形式で指定してください。'))
+    return
+  }
+  const value = accent.value.trim().toUpperCase()
+  setState((s) => ({ ...s, themeAccent: value }))
+  res.json({ accent: value })
 })
 
 settingsRouter.get('/report-exclusions', (req, res) => {

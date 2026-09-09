@@ -144,20 +144,20 @@ function injectStyles(): void {
     .cvt-page { display:flex; flex-direction:column; height:calc(100vh - 40px); background:#fff; font-family:"Hiragino Sans","Noto Sans JP",sans-serif; }
     .cvt-tabs { display:flex; gap:18px; padding:0 20px; height:48px; align-items:center; border-bottom:1px solid #e6e8ec; flex-shrink:0; }
     .cvt-tab { background:none; border:none; padding:0 2px; height:48px; font-size:14px; color:#8a94a6; cursor:pointer; border-bottom:2px solid transparent; }
-    .cvt-tab.active { color:#1a2233; font-weight:700; border-bottom-color:#0091ff; }
+    .cvt-tab.active { color:#1a2233; font-weight:700; border-bottom-color:var(--sb-accent, #0091FF); }
     .cvt-body { display:grid; grid-template-columns:280px 1fr; flex:1; min-height:0; }
     .cvt-list-col { display:flex; flex-direction:column; border-right:1px solid #eef0f3; min-height:0; }
     .cvt-search { margin:12px; padding:9px 12px; font-size:13px; border:1px solid #d6dae1; border-radius:8px; outline:none; }
-    .cvt-search:focus { border-color:#0091ff; }
+    .cvt-search:focus { border-color:var(--sb-accent, #0091FF); }
     .cvt-list { flex:1; overflow-y:auto; }
     .cvt-item { display:flex; align-items:center; gap:10px; padding:12px 16px; cursor:pointer; border-bottom:1px solid #f4f5f7; font-size:13.5px; color:#2f3a4d; }
     .cvt-item:hover { background:#f5f8ff; }
-    .cvt-item.active { background:#eaf5ff; color:#0091ff; font-weight:600; }
+    .cvt-item.active { background:#eaf5ff; color:var(--sb-accent, #0091FF); font-weight:600; }
     .cvt-item-dot { width:20px; height:20px; border-radius:50%; background:#e6e8ec; flex-shrink:0; }
-    .cvt-item.active .cvt-item-dot { background:#0091ff; }
+    .cvt-item.active .cvt-item-dot { background:var(--sb-accent, #0091FF); }
     .cvt-detail-col { display:flex; flex-direction:column; align-items:center; padding:48px 24px; gap:20px; }
     .cvt-detail-title { font-size:22px; font-weight:700; color:#1a2233; }
-    .cvt-connect { padding:9px 22px; font-size:13px; font-weight:600; color:#fff; background:#0091ff; border:none; border-radius:8px; cursor:pointer; }
+    .cvt-connect { padding:9px 22px; font-size:13px; font-weight:600; color:#fff; background:var(--sb-accent, #0091FF); border:none; border-radius:8px; cursor:pointer; }
     .cvt-connect:hover { background:#007ee0; }
     .cvt-empty { color:#8a94a6; font-size:13px; padding:32px 8px; text-align:center; }
   `

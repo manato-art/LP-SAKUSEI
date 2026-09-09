@@ -68,7 +68,7 @@ function injectTabBarCss(): void {
       padding: 0 16px;
       height: 40px;
       border-bottom: none;
-      background: #0091ff;
+      background: var(--sb-accent, #0091FF);
       flex-shrink: 0;
     }
     /* 指示86: 採取CSSに負けないよう !important で統一 */

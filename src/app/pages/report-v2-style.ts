@@ -7,7 +7,7 @@
  * 配色は指定画像から起こしたもの:
  *   ページ地  #f4f6f9 / カード #fff / 枠 #e6e9f0
  *   本文 #1f2937 / 補助 #6b7280 / 罫線 #eef1f6
- *   アクセント #2563eb（青）/ 増 #16a34a / 減 #dc2626
+ *   アクセント var(--sb-accent, #2563EB)（青）/ 増 #16a34a / 減 #dc2626
  */
 
 const CSS_ID = 'sb-report-v2-css'
@@ -19,7 +19,7 @@ export function injectReportStyles(): void {
   style.textContent = `
     .rv2 {
       --rv2-bg:#f4f6f9; --rv2-card:#fff; --rv2-line:#e6e9f0; --rv2-rule:#eef1f6;
-      --rv2-ink:#1f2937; --rv2-sub:#6b7280; --rv2-accent:#2563eb;
+      --rv2-ink:#1f2937; --rv2-sub:#6b7280; --rv2-accent:var(--sb-accent, #2563EB);
       --rv2-up:#16a34a; --rv2-down:#dc2626;
       background:var(--rv2-bg); padding:16px; box-sizing:border-box;
       display:flex; flex-direction:column; gap:16px;

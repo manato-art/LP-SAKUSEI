@@ -692,6 +692,8 @@ export interface State {
   /** 計測タグが送るヒートマップの集計（LP×Version×日付） */
   heatmapStats: readonly HeatmapStat[]
   mediaAssets: readonly MediaAsset[]
+  /** 画面のテーマカラー（アクセント色）。`#RRGGBB` */
+  themeAccent: string
   reportExclusions: readonly ReportExclusion[]
   /** 配信リクエストの記録（直近ぶんだけ保持する） */
   requestLogs: readonly RequestLogEntry[]

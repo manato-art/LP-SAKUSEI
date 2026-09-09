@@ -50,7 +50,7 @@ function injectStyles(): void {
       border:1px solid #e5e5ea; background:#fff; color:#333; font-family:inherit;
     }
     .sb-tt-btn:hover { background:#f5f6f8; }
-    .sb-tt-btn.primary { background:#0091ff; border-color:#0091ff; color:#fff; }
+    .sb-tt-btn.primary { background:var(--sb-accent, #0091FF); border-color:var(--sb-accent, #0091FF); color:#fff; }
     .sb-tt-btn.primary:hover { background:#007ee0; }
   `
   document.head.append(s)

@@ -81,7 +81,7 @@ function injectStyles(): void {
     .sb-ct-link-label { font:600 12px/1.4 -apple-system,sans-serif; color:#333; }
     .sb-ct-link-input { width:100%; height:34px; border:1px solid #ddd; border-radius:6px;
       padding:0 10px; font-size:13px; outline:none; box-sizing:border-box; }
-    .sb-ct-link-input:focus { border-color:#0091ff; box-shadow:0 0 0 2px rgba(0,145,255,.15); }
+    .sb-ct-link-input:focus { border-color:var(--sb-accent, #0091FF); box-shadow:0 0 0 2px rgba(0,145,255,.15); }
     .sb-ct-link-row { display:flex; align-items:center; gap:8px; }
     .sb-ct-link-row label { font:400 12px/1.4 -apple-system,sans-serif; color:#555;
       display:flex; align-items:center; gap:4px; cursor:pointer; }
@@ -90,7 +90,7 @@ function injectStyles(): void {
       background:#fff; font-size:13px; color:#333; cursor:pointer; }
     .sb-ct-link-cancel:hover { background:#f5f5f5; }
     .sb-ct-link-submit { height:32px; padding:0 16px; border:none; border-radius:6px;
-      background:#0091ff; font-size:13px; color:#fff; cursor:pointer; font-weight:600; }
+      background:var(--sb-accent, #0091FF); font-size:13px; color:#fff; cursor:pointer; font-weight:600; }
     .sb-ct-link-submit:hover { background:#007ae6; }
     .sb-ct-link-submit:disabled { background:#ccc; cursor:default; }
     .sb-ct-link-remove { height:32px; padding:0 12px; border:1px solid #e53935; border-radius:6px;

@@ -7,7 +7,7 @@
  *   - コードパネル背景: #151515 (rgb(21,21,21))
  *   - ラベル文字色: #fff
  *   - 構文ハイライト: Material Theme 系
- *   - ブランドカラー: #0091ff (rgb(0,145,255))
+ *   - ブランドカラー: var(--sb-accent, #0091FF) (rgb(0,145,255))
  */
 import { applyCodeSelectionStyle } from './code-selection.ts'
 import type Quill from 'quill'
@@ -29,10 +29,10 @@ const COLOR = {
   lineNumberText: '#555',
   divider: '#444',
   toggleBg: '#3a3a3a',
-  toggleBgOn: '#0091ff',
-  brand: '#0091ff',
+  toggleBgOn: 'var(--sb-accent, #0091FF)',
+  brand: 'var(--sb-accent, #0091FF)',
   // Widget 選択UI
-  selectBorder: '#0091ff',
+  selectBorder: 'var(--sb-accent, #0091FF)',
   selectLabel: '#333',
   selectLabelBg: 'rgba(0,145,255,.9)',
 } as const
@@ -367,7 +367,7 @@ function buildHeader(
   const rightBtns = document.createElement('div')
   rightBtns.style.cssText = 'display:flex;gap:8px;align-items:center'
 
-  // 「Widgetとして登録」（本番実測: fontSize:12px, color:#0091ff, border:none, SVG plus icon）
+  // 「Widgetとして登録」（本番実測: fontSize:12px, color:var(--sb-accent, #0091FF), border:none, SVG plus icon）
   const registerBtn = document.createElement('button')
   registerBtn.type = 'button'
   registerBtn.innerHTML = svgPlus() + ' Widgetとして登録'
@@ -378,7 +378,7 @@ function buildHeader(
     toast('Widgetとして登録はクローンでは未対応です')
   })
 
-  // 「更新する」（本番実測: fontSize:12px, color:white, bg:#0091ff, borderRadius:4px）
+  // 「更新する」（本番実測: fontSize:12px, color:white, bg:var(--sb-accent, #0091FF), borderRadius:4px）
   const updateBtn = document.createElement('button')
   updateBtn.type = 'button'
   updateBtn.textContent = '更新する'

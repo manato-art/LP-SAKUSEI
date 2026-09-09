@@ -86,7 +86,7 @@ function injectCss(): void {
     .rx-tabs { display:flex; gap:4px; border-bottom:1px solid #e6e9f0; margin-bottom:16px; }
     .rx-tab { border:0; background:transparent; font:inherit; font-size:13px; color:#6b7280;
       padding:9px 16px; cursor:pointer; border-bottom:2px solid transparent; }
-    .rx-tab.on { color:#2563eb; font-weight:700; border-bottom-color:#2563eb; }
+    .rx-tab.on { color:var(--sb-accent, #2563EB); font-weight:700; border-bottom-color:var(--sb-accent, #2563EB); }
     .rx-card { background:#fff; border:1px solid #e6e9f0; border-radius:10px;
       padding:16px 18px; margin-bottom:16px; }
     .rx-lead { font-size:12px; color:#4b5563; line-height:1.9; margin:0 0 10px; }
@@ -100,10 +100,10 @@ function injectCss(): void {
       border:1px solid #d5d5db; border-radius:6px; padding:7px 9px; font:inherit;
       font-size:12px; background:#fff; color:#1f2937; min-width:150px;
     }
-    .rx-btn { border:1px solid #2563eb; background:#2563eb; color:#fff; border-radius:6px;
+    .rx-btn { border:1px solid var(--sb-accent, #2563EB); background:var(--sb-accent, #2563EB); color:#fff; border-radius:6px;
       padding:8px 16px; font:inherit; font-size:12px; font-weight:600; cursor:pointer; }
     .rx-btn:hover { background:#1d4ed8; }
-    .rx-btn.ghost { background:#fff; color:#2563eb; }
+    .rx-btn.ghost { background:#fff; color:var(--sb-accent, #2563EB); }
     .rx-btn.ghost:hover { background:#f3f7ff; }
     .rx-check { display:flex; align-items:center; gap:6px; font-size:12px; color:#374151;
       margin:0 0 12px; cursor:pointer; }
@@ -116,7 +116,7 @@ function injectCss(): void {
     .rx-periods { display:flex; gap:4px; flex-wrap:wrap; }
     .rx-period { border:1px solid #d5d5db; background:#fff; color:#555; border-radius:6px;
       padding:5px 12px; font:inherit; font-size:11px; cursor:pointer; }
-    .rx-period.on { background:#2563eb; border-color:#2563eb; color:#fff; font-weight:700; }
+    .rx-period.on { background:var(--sb-accent, #2563EB); border-color:var(--sb-accent, #2563EB); color:#fff; font-weight:700; }
     .rx-ranks { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; margin-top:14px; }
     @media (max-width:1000px) { .rx-ranks { grid-template-columns:minmax(0,1fr); } }
     .rx-rank h3 { font-size:12px; font-weight:700; margin:0 0 6px; color:#374151; }

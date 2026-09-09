@@ -24,7 +24,7 @@ export interface FollowPreset {
 const C = {
   bg: '#F5F5F5',
   accent: '#FF6B35',
-  blue: '#0091FF',
+  blue: 'var(--sb-accent, #0091FF)',
   green: '#2FA84F',
   white: '#FFFFFF',
   text: '#333333',
@@ -51,9 +51,9 @@ export const FOLLOW_PRESETS: readonly FollowPreset[] = [
       <rect x="40" y="34" width="120" height="4" rx="2" fill="#eee"/>
       <rect x="50" y="46" width="100" height="4" rx="2" fill="#eee"/>
     `),
-    defaultHtml: `<div style="display:flex;align-items:center;justify-content:center;gap:12px;padding:14px 20px;background:linear-gradient(135deg,#0091FF,#0066CC);color:#fff;font-family:sans-serif">
+    defaultHtml: `<div style="display:flex;align-items:center;justify-content:center;gap:12px;padding:14px 20px;background:linear-gradient(135deg,var(--sb-accent, #0091FF),#0066CC);color:#fff;font-family:sans-serif">
   <span style="font-size:14px;font-weight:600">期間限定キャンペーン実施中！</span>
-  <a href="#" style="display:inline-block;padding:8px 20px;background:#fff;color:#0091FF;border-radius:20px;font-size:13px;font-weight:600;text-decoration:none">お申し込み →</a>
+  <a href="#" style="display:inline-block;padding:8px 20px;background:#fff;color:var(--sb-accent, #0091FF);border-radius:20px;font-size:13px;font-weight:600;text-decoration:none">お申し込み →</a>
 </div>`,
     defaultCss: '',
     defaultJavascript: '',
@@ -161,13 +161,13 @@ export const FOLLOW_PRESETS: readonly FollowPreset[] = [
       <rect x="128" y="116" width="54" height="8" rx="3" fill="${C.blue}"/>
     `),
     defaultHtml: `<div style="width:240px;background:#fff;border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,.15);font-family:sans-serif;overflow:hidden">
-  <div style="padding:14px 16px;background:#0091FF;color:#fff;display:flex;align-items:center;gap:8px">
+  <div style="padding:14px 16px;background:var(--sb-accent, #0091FF);color:#fff;display:flex;align-items:center;gap:8px">
     <svg width="20" height="20" viewBox="0 0 20 20" fill="#fff"><path d="M18 10c0 4.42-3.58 8-8 8a7.96 7.96 0 01-3.87-1L2 18l1.34-3.34A7.96 7.96 0 012 10c0-4.42 3.58-8 8-8s8 3.58 8 8z"/></svg>
     <span style="font-size:13px;font-weight:600">お困りですか？</span>
   </div>
   <div style="padding:14px 16px">
     <p style="font-size:12px;color:#555;margin:0 0 10px;line-height:1.5">ご質問やお見積もりなど、お気軽にお問い合わせください。</p>
-    <a href="#" style="display:block;text-align:center;padding:10px;background:#0091FF;color:#fff;border-radius:6px;font-size:13px;font-weight:600;text-decoration:none">チャットを始める</a>
+    <a href="#" style="display:block;text-align:center;padding:10px;background:var(--sb-accent, #0091FF);color:#fff;border-radius:6px;font-size:13px;font-weight:600;text-decoration:none">チャットを始める</a>
   </div>
 </div>`,
     defaultCss: '',

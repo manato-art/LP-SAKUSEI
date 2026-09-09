@@ -111,13 +111,13 @@ function textInput(placeholder: string, style?: string): HTMLInputElement {
   input.type = 'text'
   input.placeholder = placeholder
   input.style.cssText = style ?? `padding:8px 12px;border:1px solid #DDD;border-radius:6px;font-size:13px;font-family:${T.font};outline:none;flex:1;min-width:0`
-  input.addEventListener('focus', () => { input.style.borderColor = '#0091FF' })
+  input.addEventListener('focus', () => { input.style.borderColor = 'var(--sb-accent, #0091FF)' })
   input.addEventListener('blur', () => { input.style.borderColor = '#DDD' })
   return input
 }
 
 /** 小さいボタン */
-function smallBtn(label: string, bg = '#0091FF', color = '#FFF'): HTMLButtonElement {
+function smallBtn(label: string, bg = 'var(--sb-accent, #0091FF)', color = '#FFF'): HTMLButtonElement {
   const btn = document.createElement('button')
   btn.textContent = label
   btn.style.cssText = `padding:8px 16px;border:none;border-radius:6px;background:${bg};color:${color};cursor:pointer;font-size:13px;font-family:${T.font};white-space:nowrap`
@@ -186,12 +186,12 @@ export async function renderDashboard(container: HTMLElement): Promise<void> {
   }
 
   for (const p of periods) {
-    const btn = smallBtn(p.label, p.label === activePeriod ? '#0091FF' : '#F5F5F5', p.label === activePeriod ? '#FFF' : T.text)
+    const btn = smallBtn(p.label, p.label === activePeriod ? 'var(--sb-accent, #0091FF)' : '#F5F5F5', p.label === activePeriod ? '#FFF' : T.text)
     btn.addEventListener('click', () => {
       activePeriod = p.label
       for (const b of periodBar.querySelectorAll('button')) {
         const isActive = b.textContent === activePeriod
-        ;(b as HTMLElement).style.background = isActive ? '#0091FF' : '#F5F5F5'
+        ;(b as HTMLElement).style.background = isActive ? 'var(--sb-accent, #0091FF)' : '#F5F5F5'
         ;(b as HTMLElement).style.color = isActive ? '#FFF' : T.text
       }
       void loadDashboard(p.days)
@@ -255,7 +255,7 @@ function renderDashboardBody(
     for (const s of data.series) {
       const pct = Math.max(2, (s.pv / maxPv) * 100)
       const bar = el('div', {
-        style: `flex:1;min-width:6px;max-width:24px;background:#0091FF;border-radius:2px 2px 0 0;height:${pct}%`,
+        style: `flex:1;min-width:6px;max-width:24px;background:var(--sb-accent, #0091FF);border-radius:2px 2px 0 0;height:${pct}%`,
       })
       bar.title = `${s.date}: ${int(s.pv)} PV`
       chartWrap.append(bar)
@@ -481,12 +481,12 @@ export async function renderRankings(container: HTMLElement): Promise<void> {
   }
 
   for (const opt of sortOptions) {
-    const btn = smallBtn(opt.label, opt.value === activeSort ? '#0091FF' : '#F5F5F5', opt.value === activeSort ? '#FFF' : T.text)
+    const btn = smallBtn(opt.label, opt.value === activeSort ? 'var(--sb-accent, #0091FF)' : '#F5F5F5', opt.value === activeSort ? '#FFF' : T.text)
     btn.addEventListener('click', () => {
       activeSort = opt.value
       for (const b of sortBar.querySelectorAll('button')) {
         const isActive = b.textContent === sortOptions.find((o) => o.value === activeSort)?.label
-        ;(b as HTMLElement).style.background = isActive ? '#0091FF' : '#F5F5F5'
+        ;(b as HTMLElement).style.background = isActive ? 'var(--sb-accent, #0091FF)' : '#F5F5F5'
         ;(b as HTMLElement).style.color = isActive ? '#FFF' : T.text
       }
       void loadRankings()

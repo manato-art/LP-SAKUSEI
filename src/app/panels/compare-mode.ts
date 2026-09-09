@@ -869,7 +869,7 @@ function injectOtherVersionsStyles(): void {
       box-shadow:0 1px 2px rgba(0,0,0,.06); font-family:inherit;
     }
     .sb-cmp-ov-card:hover { border-color:#bcd8ff; }
-    .sb-cmp-ov-card.active { border-color:#0091ff; background:#f2f8ff; }
+    .sb-cmp-ov-card.active { border-color:var(--sb-accent, #0091FF); background:#f2f8ff; }
     .sb-cmp-ov-thumb {
       position:relative; width:100%; height:150px; overflow:hidden;
       border:1px solid #e6e8ec; border-radius:5px; background:#fff;
@@ -880,7 +880,7 @@ function injectOtherVersionsStyles(): void {
     }
     .sb-cmp-ov-meta { display:flex; flex-direction:column; gap:2px; }
     .sb-cmp-ov-name { font-size:12px; font-weight:700; color:#1a2233; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .sb-cmp-ov-ratio { font-size:11px; color:#0091ff; font-weight:600; }
+    .sb-cmp-ov-ratio { font-size:11px; color:var(--sb-accent, #0091FF); font-weight:600; }
     .sb-cmp-ov-preview { flex:1; min-width:0; display:flex; flex-direction:column; }
   `
   document.head.append(style)

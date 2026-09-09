@@ -8,7 +8,7 @@
  * 本番 SquadBeyond 実測:
  *   - サイドバー幅: 240px, position: fixed
  *   - カード: 224×90px, padding: 4px 12px, cursor: pointer
- *   - 名前行: SVG 13×13 + テキスト (10px, #0091ff)
+ *   - 名前行: SVG 13×13 + テキスト (10px, var(--sb-accent, #0091FF))
  *   - プレビュー: 200×64px, bg: #fff, border: 1px solid #eaeaea, radius: 4px
  */
 import type Quill from 'quill'
@@ -21,7 +21,7 @@ const CARD_W = 196
 const CARD_PAD_H = 12
 const CARD_PAD_V = 4
 const PREVIEW_H = 64
-const NAME_COLOR = '#0091ff'
+const NAME_COLOR = 'var(--sb-accent, #0091FF)'
 const NAME_FONT_SIZE = '10px'
 const BORDER_COLOR = '#eaeaea'
 const FONT = '"Hiragino Sans","Hiragino Kaku Gothic ProN",sans-serif'

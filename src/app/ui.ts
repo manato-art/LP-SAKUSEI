@@ -3,8 +3,16 @@
  * 実マークアップの完全再現は土台側（capture/clean）が担当し、ここは「動く部分」に集中する。
  */
 export const T = {
-  primary: '#0091FF',
-  primaryDark: '#0074CC',
+  /**
+   * アクセント色。設定画面で選べるので、直の色ではなく CSS 変数を通す
+   * （`theme-color.ts` が `:root` に流し込む）。変数が無い環境では既定の青になる。
+   */
+  primary: 'var(--sb-accent, #0091FF)',
+  primaryDark: 'var(--sb-accent-dark, #0074CC)',
+  /** アクセント色の上に載せる文字色。明るい色を選ばれても読めるように切り替わる */
+  primaryInk: 'var(--sb-accent-ink, #FFFFFF)',
+  /** アクセント色の薄い地（選択中の行やバッジ） */
+  primaryTint: 'var(--sb-accent-tint, #E6F4FF)',
   bg: '#ECECEC',
   neutral: '#F4F4F4',
   surface: '#FFFFFF',
@@ -34,7 +42,7 @@ export function button(label: string, kind: 'primary' | 'ghost' = 'primary'): HT
     text: label,
     style:
       kind === 'primary'
-        ? `${base}background:${T.primary};color:#fff`
+        ? `${base}background:${T.primary};color:${T.primaryInk}`
         : `${base}background:${T.neutral};color:${T.text};border:1px solid #DDD`,
   })
   b.addEventListener('mouseenter', () => {

@@ -122,7 +122,7 @@ function drawChart(daily: readonly ReportDailyRow[], key: KpiKey): SVGSVGElement
   const poly = svgEl('polyline')
   poly.setAttribute('points', line)
   poly.setAttribute('fill', 'none')
-  poly.setAttribute('stroke', '#2563eb')
+  poly.setAttribute('stroke', 'var(--sb-accent, #2563EB)')
   poly.setAttribute('stroke-width', '2')
   poly.setAttribute('stroke-linejoin', 'round')
   svg.append(area, poly)

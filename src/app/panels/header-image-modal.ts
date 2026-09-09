@@ -77,7 +77,7 @@ export function mountHeaderImageModal(root: HTMLElement): void {
   trigger.addEventListener('dragover', (e) => {
     e.preventDefault()
     e.stopPropagation()
-    trigger.style.outline = '2px dashed #0091ff'
+    trigger.style.outline = '2px dashed var(--sb-accent, #0091FF)'
     trigger.style.outlineOffset = '-2px'
   })
   trigger.addEventListener('dragleave', () => {
@@ -162,7 +162,7 @@ function setHeaderImage(headerBox: HTMLElement, dataUrl: string): void {
     remove.title = 'ヘッダー画像を削除'
     remove.style.cssText =
       'position:absolute;top:15px;right:15px;z-index:2;padding:8px 16px;border:none;border-radius:6px;' +
-      'background:#fff;color:#0091FF;font-size:14px;line-height:1;cursor:pointer;' +
+      'background:#fff;color:var(--sb-accent, #0091FF);font-size:14px;line-height:1;cursor:pointer;' +
       'box-shadow:0 1px 4px rgba(0,0,0,.2)'
     remove.addEventListener('click', (event) => {
       // 枠クリック＝モーダルを開く挙動へ伝播させない（削除だけ）

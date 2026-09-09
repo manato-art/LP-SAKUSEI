@@ -34,7 +34,7 @@ function injectStyles(): void {
       font-size:12px; padding:5px 10px; border:1px solid #e5e5ea; border-radius:14px;
       background:#fff; cursor:pointer; font-family:inherit; color:#333;
     }
-    .sb-pp-preset:hover { background:#f0f7ff; border-color:#0091ff; color:#0091ff; }
+    .sb-pp-preset:hover { background:#f0f7ff; border-color:var(--sb-accent, #0091FF); color:var(--sb-accent, #0091FF); }
     .sb-pp-row { display:flex; align-items:center; gap:6px; margin-bottom:8px; }
     .sb-pp-row label { font-size:11px; color:#666; width:34px; flex-shrink:0; }
     .sb-pp-row input {
@@ -46,7 +46,7 @@ function injectStyles(): void {
       font-size:12px; padding:6px 14px; border-radius:5px; cursor:pointer;
       border:1px solid #e5e5ea; background:#fff; color:#333; font-family:inherit;
     }
-    .sb-pp-btn.primary { background:#0091ff; border-color:#0091ff; color:#fff; }
+    .sb-pp-btn.primary { background:var(--sb-accent, #0091FF); border-color:var(--sb-accent, #0091FF); color:#fff; }
     .sb-pp-err { font-size:11px; color:#d32f2f; margin:6px 0 0; min-height:14px; }
   `
   document.head.append(s)

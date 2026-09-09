@@ -1097,10 +1097,10 @@ function injectVersionCardCss(): void {
         "Hiragino Sans","Hiragino Kaku Gothic ProN",sans-serif;
     }
     ._currentVersion_vc:hover {
-      border-color:#0091ff;
+      border-color:var(--sb-accent, #0091FF);
     }
     ._currentVersion_vc.${ACTIVE_CARD_CLASS} {
-      border-color:#0091ff;
+      border-color:var(--sb-accent, #0091FF);
       box-shadow:0 0 0 3px rgba(0,145,255,.15);
     }
     /* ── Version名行 ── */
@@ -1114,14 +1114,14 @@ function injectVersionCardCss(): void {
       transition:border-color .12s;
     }
     .sb-vc-name:hover { border-color:#e5e5ea; }
-    .sb-vc-name:focus { border-color:#0091ff;background:#fff; }
+    .sb-vc-name:focus { border-color:var(--sb-accent, #0091FF);background:#fff; }
     /* ── バッジ ── */
     .sb-vc-badge {
       font-size:11px;font-weight:600;padding:3px 10px;border-radius:12px;
       white-space:nowrap;flex-shrink:0;
     }
     .sb-vc-badge--editing { background:rgba(255,140,0,.15);color:#ff8c00; }
-    .sb-vc-badge--saved   { background:rgba(0,145,255,.1);color:#0091ff; }
+    .sb-vc-badge--saved   { background:rgba(0,145,255,.1);color:var(--sb-accent, #0091FF); }
     /* ── 配信割合（SB実物準拠: アイコン+説明 / −数値%+ / セレクト+保存） ── */
     .sb-vc-ratio-row {
       display:flex;flex-direction:column;gap:10px;margin-bottom:10px;
@@ -1129,7 +1129,7 @@ function injectVersionCardCss(): void {
     /* Row1: アイコン + タイトル + 説明 */
     .sb-vc-ratio-header { display:flex;align-items:flex-start;gap:8px; }
     .sb-vc-ratio-icon {
-      width:24px;height:24px;border-radius:50%;background:#0091ff;
+      width:24px;height:24px;border-radius:50%;background:var(--sb-accent, #0091FF);
       display:flex;align-items:center;justify-content:center;flex-shrink:0;
     }
     .sb-vc-ratio-headtext { min-width:0; }
@@ -1148,7 +1148,7 @@ function injectVersionCardCss(): void {
       padding:0;flex-shrink:0;font-family:inherit;transition:background .12s;
     }
     .sb-vc-ratio-btn:hover { background:#f0f0f2; }
-    .sb-vc-ratio-btn--plus { border-color:#0091ff;background:#0091ff;color:#fff; }
+    .sb-vc-ratio-btn--plus { border-color:var(--sb-accent, #0091FF);background:var(--sb-accent, #0091FF);color:#fff; }
     .sb-vc-ratio-btn--plus:hover { opacity:.88; }
     .sb-vc-ratio-display {
       font-size:18px;font-weight:700;color:#1a1a1a;min-width:1.6em;
@@ -1160,7 +1160,7 @@ function injectVersionCardCss(): void {
       font-size:12px;color:#1a1a1a;background:#fff;font-family:inherit;
       cursor:pointer;outline:none;margin-left:auto;
     }
-    .sb-vc-ratio-select:focus { border-color:#0091ff; }
+    .sb-vc-ratio-select:focus { border-color:var(--sb-accent, #0091FF); }
     /* 保存状態は下部タイムスタンプで表示 */
     /* ── サムネイル ── */
     .sb-vc-thumb {
@@ -1521,7 +1521,7 @@ function applySelectionMode(ctx: EditorContext, list: HTMLElement): void {
   selHeader.style.cssText =
     'display:flex;justify-content:space-between;align-items:center;padding:6px 10px;font-size:13px'
   selHeader.innerHTML =
-    '<div data-clone-sel-cancel style="cursor:pointer;color:#0091FF">キャンセル</div>' +
+    '<div data-clone-sel-cancel style="cursor:pointer;color:var(--sb-accent, #0091FF)">キャンセル</div>' +
     '<div data-clone-sel-bulk style="cursor:pointer;color:#bbb;pointer-events:none">アーカイブする</div>'
   top.prepend(selHeader)
 
@@ -1899,7 +1899,7 @@ function restoreHeaderImage(root: HTMLElement, src: string): void {
     remove.title = 'ヘッダー画像を削除'
     remove.style.cssText =
       'position:absolute;top:15px;right:15px;z-index:2;padding:8px 16px;border:none;border-radius:6px;' +
-      'background:#fff;color:#0091FF;font-size:14px;line-height:1;cursor:pointer;' +
+      'background:#fff;color:var(--sb-accent, #0091FF);font-size:14px;line-height:1;cursor:pointer;' +
       'box-shadow:0 1px 4px rgba(0,0,0,.2)'
     remove.addEventListener('click', (event) => {
       event.stopPropagation()
@@ -2435,9 +2435,9 @@ function injectVersionFilterCss(): void {
       background: #f0f0f2;
     }
     .sb-version-filter.sb-filter-active {
-      background: #0091ff;
+      background: var(--sb-accent, #0091FF);
       color: #fff;
-      border-color: #0091ff;
+      border-color: var(--sb-accent, #0091FF);
       font-weight: 500;
     }
   `

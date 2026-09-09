@@ -3,6 +3,7 @@
  * データはすべてローカルのモックAPIから供給される（§3-2・localhost固定）。
  */
 import { markActiveNav, mountShell } from './shell.ts'
+import { initAccent } from './theme-color.ts'
 import { renderReportExclusions } from './pages/report-exclusions.ts'
 import { renderFolders } from './pages/folders.ts'
 import { renderEditor } from './pages/editor.ts'
@@ -287,6 +288,20 @@ function renderNotBuilt(content: HTMLElement, path: string): void {
     ]),
   )
 }
+
+/**
+ * テーマカラーは描画より先に当てる。
+ * 後から当てると、既定色の画面が一瞬見えてから切り替わる。
+ */
+initAccent(async () => {
+  try {
+    const { accent } = await api.themeColor()
+    return accent
+  } catch {
+    // 未ログイン等で取れなくても、覚えている色で動く
+    return null
+  }
+})
 
 addEventListener('hashchange', () => void route())
 void route()

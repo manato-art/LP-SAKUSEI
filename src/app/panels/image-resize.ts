@@ -48,7 +48,7 @@ function injectResizeCss(): void {
   s.textContent = `
     .sb-img-resize-wrap {
       position: absolute;
-      border: 2px solid #0091FF;
+      border: 2px solid var(--sb-accent, #0091FF);
       pointer-events: none;
       z-index: 10;
       box-sizing: border-box;
@@ -57,7 +57,7 @@ function injectResizeCss(): void {
       position: absolute;
       width: 12px;
       height: 12px;
-      background: #0091FF;
+      background: var(--sb-accent, #0091FF);
       border: 2px solid #fff;
       border-radius: 50%;
       box-sizing: border-box;

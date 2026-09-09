@@ -131,7 +131,7 @@ function sparkline(values: readonly number[]): SVGSVGElement | null {
   const path = document.createElementNS('http://www.w3.org/2000/svg', 'polyline')
   path.setAttribute('points', line)
   path.setAttribute('fill', 'none')
-  path.setAttribute('stroke', '#2563eb')
+  path.setAttribute('stroke', 'var(--sb-accent, #2563EB)')
   path.setAttribute('stroke-width', '1.6')
   path.setAttribute('stroke-linejoin', 'round')
   svg.append(area, path)

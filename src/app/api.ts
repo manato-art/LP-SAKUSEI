@@ -360,6 +360,10 @@ export const api = {
   /** チームメンバー一覧 */
   teamMembers: () => request<{ members: Member[] }>('GET', '/teams/members'),
   /** レポート除外追加 */
+  /** 画面のテーマカラー */
+  themeColor: () => request<{ accent: string }>('GET', '/settings/theme'),
+  saveThemeColor: (accent: string) =>
+    request<{ accent: string }>('PUT', '/settings/theme', { accent }),
   /** レポート除外の一覧（除外アクセス数つき） */
   reportExclusions: () =>
     request<{ report_exclusions: ReportExclusionEntry[] }>('GET', '/report-exclusions'),

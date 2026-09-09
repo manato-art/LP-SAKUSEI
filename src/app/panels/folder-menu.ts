@@ -153,7 +153,7 @@ function openRenameDialog(folder: Folder): void {
   input.value = folder.name
   input.style.cssText = `width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid #DDD;border-radius:6px;font-size:14px;font-family:${T.font};outline:none`
   input.addEventListener('focus', () => {
-    input.style.borderColor = '#0091FF'
+    input.style.borderColor = 'var(--sb-accent, #0091FF)'
   })
   input.addEventListener('blur', () => {
     input.style.borderColor = '#DDD'
@@ -171,7 +171,7 @@ function openRenameDialog(folder: Folder): void {
 
   const saveBtn = el('button', {
     text: '保存',
-    style: `padding:8px 16px;border:none;border-radius:6px;background:#0091FF;color:#FFF;cursor:pointer;font-size:13px;font-family:${T.font}`,
+    style: `padding:8px 16px;border:none;border-radius:6px;background:var(--sb-accent, #0091FF);color:#FFF;cursor:pointer;font-size:13px;font-family:${T.font}`,
   })
   saveBtn.addEventListener('click', () => {
     const newName = input.value.trim()

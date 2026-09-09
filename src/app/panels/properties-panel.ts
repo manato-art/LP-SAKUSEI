@@ -92,7 +92,7 @@ function injectStyles(): void {
       font-family:inherit;
     }
     .sb-props-tab:hover { color:#333; }
-    .sb-props-tab.active { color:#0091ff; border-bottom-color:#0091ff; }
+    .sb-props-tab.active { color:var(--sb-accent, #0091FF); border-bottom-color:var(--sb-accent, #0091FF); }
     .sb-props-body {
       padding:12px; display:flex; flex-direction:column; gap:12px;
       flex:1; overflow-y:auto;
@@ -116,7 +116,7 @@ function injectStyles(): void {
       font-family:inherit; outline:none; background:#fff;
       box-sizing:border-box;
     }
-    .sb-pr-input:focus { border-color:#0091ff; }
+    .sb-pr-input:focus { border-color:var(--sb-accent, #0091FF); }
     .sb-pr-select {
       flex:1; height:28px; border:1px solid #e5e5ea; border-radius:4px;
       padding:0 4px; font-size:11px; color:#1a1a1a;
@@ -128,13 +128,13 @@ function injectStyles(): void {
       font-family:inherit; outline:none; resize:vertical;
       background:#fff; box-sizing:border-box;
     }
-    .sb-pr-textarea:focus { border-color:#0091ff; }
+    .sb-pr-textarea:focus { border-color:var(--sb-accent, #0091FF); }
     .sb-pr-toggle {
       width:34px; height:18px; border-radius:9px; border:none;
       background:#e5e5ea; position:relative; cursor:pointer;
       transition:background .2s; flex-shrink:0; padding:0;
     }
-    .sb-pr-toggle.on { background:#0091ff; }
+    .sb-pr-toggle.on { background:var(--sb-accent, #0091FF); }
     .sb-pr-toggle::after {
       content:''; position:absolute; top:2px; left:2px;
       width:14px; height:14px; border-radius:50%; background:#fff;
@@ -155,7 +155,7 @@ function injectStyles(): void {
       font-family:inherit; font-variant-numeric:tabular-nums;
       box-sizing:border-box; outline:none;
     }
-    .sb-pr-color-hex:focus { border-color:#0091ff; }
+    .sb-pr-color-hex:focus { border-color:var(--sb-accent, #0091FF); }
     .sb-pr-unit {
       font-size:10px; color:#b0b0b0; flex-shrink:0;
     }
@@ -170,10 +170,10 @@ function injectStyles(): void {
     .sb-align-btn + .sb-align-btn { border-left:none; }
     .sb-align-btn:hover { background:#f0f0f2; }
     .sb-align-btn.active {
-      background:rgba(0,145,255,.08); color:#0091ff;
+      background:rgba(0,145,255,.08); color:var(--sb-accent, #0091FF);
       /* 指示169: 隣接ボタンで border-left:none にしているため、選択時は左境界も復活させて
          四辺を完全に囲む。隣の右境界と重ならないよう margin-left:-1px で重ねる（二重線防止）。 */
-      border:1px solid #0091ff;
+      border:1px solid var(--sb-accent, #0091FF);
       margin-left:-1px; position:relative; z-index:1;
     }
     .sb-align-btn.active:first-child { margin-left:0; }
@@ -185,7 +185,7 @@ function injectStyles(): void {
     }
     .sb-fmt-btn:hover { background:#f0f0f2; }
     .sb-fmt-btn.active {
-      background:rgba(0,145,255,.08); color:#0091ff; border-color:#0091ff;
+      background:rgba(0,145,255,.08); color:var(--sb-accent, #0091FF); border-color:var(--sb-accent, #0091FF);
     }
     .sb-pr-action {
       width:100%; height:32px; border:1px solid #e5e5ea; border-radius:5px;
@@ -218,7 +218,7 @@ function injectStyles(): void {
       font-variant-numeric:tabular-nums; box-sizing:border-box;
       outline:none;
     }
-    .sb-pr-size-input:focus { border-color:#0091ff; }
+    .sb-pr-size-input:focus { border-color:var(--sb-accent, #0091FF); }
     .sb-pr-size-unit {
       font-size:9px; color:#b0b0b0;
     }
@@ -242,15 +242,15 @@ function injectStyles(): void {
       overflow:hidden; text-overflow:ellipsis; white-space:nowrap; transition:all .12s;
     }
     .sb-pr-anim-btn:hover { border-color:#8ab4ff; background:#f5f8ff; }
-    .sb-pr-anim-btn.active { border-color:#0091ff; background:#eaf4ff; color:#0072d6; font-weight:700; }
+    .sb-pr-anim-btn.active { border-color:var(--sb-accent, #0091FF); background:#eaf4ff; color:#0072d6; font-weight:700; }
     .sb-pr-anim-ctl { display:flex; gap:6px; align-items:center; margin-top:8px; }
     .sb-pr-anim-replay {
-      padding:7px 10px; font-size:11px; border:1px solid #0091ff; border-radius:6px;
-      background:#0091ff; color:#fff; cursor:pointer; font-family:inherit; white-space:nowrap; flex-shrink:0;
+      padding:7px 10px; font-size:11px; border:1px solid var(--sb-accent, #0091FF); border-radius:6px;
+      background:var(--sb-accent, #0091FF); color:#fff; cursor:pointer; font-family:inherit; white-space:nowrap; flex-shrink:0;
     }
     .sb-pr-anim-replay:hover { background:#007ee0; }
     .sb-pr-anim-loop { display:flex; align-items:center; gap:7px; margin-top:8px; font-size:12px; color:#444; cursor:pointer; user-select:none; }
-    .sb-pr-anim-loop input { width:15px; height:15px; cursor:pointer; accent-color:#0091ff; }
+    .sb-pr-anim-loop input { width:15px; height:15px; cursor:pointer; accent-color:var(--sb-accent, #0091FF); }
   `
   document.head.append(s)
 }
@@ -1198,7 +1198,7 @@ function buildImageBody(
   trackAddBtn.type = 'button'
   trackAddBtn.style.cssText =
     'display:inline-flex;align-items:center;gap:4px;padding:4px 0;font-size:11px;' +
-    'color:#0091ff;background:none;border:none;cursor:pointer;font-family:inherit'
+    'color:var(--sb-accent, #0091FF);background:none;border:none;cursor:pointer;font-family:inherit'
   trackAddBtn.textContent = '+ URLを追加'
   trackAddBtn.addEventListener('click', () => {
     const img = getImg()

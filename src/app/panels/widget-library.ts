@@ -493,7 +493,7 @@ function renderCreatedWidgets(root: HTMLElement, quill: Quill, close: () => void
     add.type = 'button'
     add.textContent = '追加'
     add.style.cssText =
-      'margin-left:auto;border:none;background:#0091ff;color:#fff;border-radius:6px;padding:6px 14px;' +
+      'margin-left:auto;border:none;background:var(--sb-accent, #0091FF);color:#fff;border-radius:6px;padding:6px 14px;' +
       'cursor:pointer;font:12px "Hiragino Sans",sans-serif'
     add.addEventListener('click', (e) => {
       e.stopPropagation()
@@ -560,7 +560,7 @@ function renderFavoriteWidgets(root: HTMLElement, quill: Quill, close: () => voi
     add.type = 'button'
     add.textContent = '追加'
     add.style.cssText =
-      'margin-left:auto;border:none;background:#0091ff;color:#fff;border-radius:6px;padding:6px 14px;' +
+      'margin-left:auto;border:none;background:var(--sb-accent, #0091FF);color:#fff;border-radius:6px;padding:6px 14px;' +
       'cursor:pointer;font:12px "Hiragino Sans",sans-serif'
     add.addEventListener('click', (e) => {
       e.stopPropagation()

@@ -37,7 +37,7 @@ const C = {
   bg: '#F5F5F5',
   accent: '#FF6B35',
   accentDark: '#E5532A',
-  blue: '#0091FF',
+  blue: 'var(--sb-accent, #0091FF)',
   green: '#2FA84F',
   white: '#FFFFFF',
   text: '#333333',
@@ -77,7 +77,7 @@ const CONFETTI_JS = `
 overlay.addEventListener('ep-show',function(){
   var content=overlay.querySelector('.ep-content');
   if(!content)return;
-  var colors=['#FF6B35','#0091FF','#2FA84F','#FFD700','#E040FB','#FF4081'];
+  var colors=['#FF6B35','var(--sb-accent, #0091FF)','#2FA84F','#FFD700','#E040FB','#FF4081'];
   for(var i=0;i<40;i++){
     var p=document.createElement('div');
     var sz=4+Math.random()*8;
@@ -96,7 +96,7 @@ overlay.addEventListener('ep-show',function(){
     if(code)navigator.clipboard.writeText(code.textContent.trim());
     btn.textContent='\\u2713 \\u30B3\\u30D4\\u30FC\\u3057\\u307E\\u3057\\u305F';
     btn.style.background='#2FA84F';
-    setTimeout(function(){btn.textContent='\\u30B3\\u30D4\\u30FC\\u3059\\u308B';btn.style.background='#0091FF'},2000);
+    setTimeout(function(){btn.textContent='\\u30B3\\u30D4\\u30FC\\u3059\\u308B';btn.style.background='var(--sb-accent, #0091FF)'},2000);
   });
 });`
 
@@ -127,7 +127,7 @@ overlay.addEventListener('ep-show',function(){
   tabs.forEach(function(tab,i){
     tab.addEventListener('click',function(){
       tabs.forEach(function(t){t.style.background='#f5f5f5';t.style.color='#888'});
-      tab.style.background='#0091FF';tab.style.color='#fff';
+      tab.style.background='var(--sb-accent, #0091FF)';tab.style.color='#fff';
       panels.forEach(function(p){p.style.display='none'});
       if(panels[i])panels[i].style.display='block';
     });
@@ -220,7 +220,7 @@ export const PRESETS: readonly PopupPreset[] = [
   <div style="background:#FFF3E0;border:2px dashed #FF6B35;padding:12px;border-radius:6px;margin-bottom:16px">
     <span class="ep-coupon-code" style="font-family:monospace;font-size:20px;font-weight:bold;color:#FF6B35;letter-spacing:2px">SAVE20</span>
   </div>
-  <button class="ep-copy-btn" style="background:#0091FF;color:#fff;border:none;padding:10px 24px;border-radius:4px;cursor:pointer;font-weight:bold">コピーする</button>
+  <button class="ep-copy-btn" style="background:var(--sb-accent, #0091FF);color:#fff;border:none;padding:10px 24px;border-radius:4px;cursor:pointer;font-weight:bold">コピーする</button>
 </div>`,
     defaultJavascript: COUPON_COPY_JS,
     defaults: { animation: 'bounceIn' },
@@ -306,7 +306,7 @@ export const PRESETS: readonly PopupPreset[] = [
     defaultHtml: `<div style="background:#fff;border-radius:12px;padding:24px;box-shadow:0 4px 24px rgba(0,0,0,.15);max-width:320px;margin:auto;text-align:center">
   <p style="font-weight:bold;font-size:16px;color:#333;margin:0 0 16px">今日の運勢は?</p>
   <div style="position:relative;width:140px;height:140px;margin:0 auto 16px">
-    <div class="ep-roulette-wheel" style="width:140px;height:140px;border-radius:50%;border:3px solid #FF6B35;display:flex;align-items:center;justify-content:center;font-size:48px;background:conic-gradient(#FF6B35 0deg 60deg,#0091FF 60deg 120deg,#2FA84F 120deg 180deg,#FFD700 180deg 240deg,#E040FB 240deg 300deg,#FF4081 300deg 360deg)">
+    <div class="ep-roulette-wheel" style="width:140px;height:140px;border-radius:50%;border:3px solid #FF6B35;display:flex;align-items:center;justify-content:center;font-size:48px;background:conic-gradient(#FF6B35 0deg 60deg,var(--sb-accent, #0091FF) 60deg 120deg,#2FA84F 120deg 180deg,#FFD700 180deg 240deg,#E040FB 240deg 300deg,#FF4081 300deg 360deg)">
       <span style="background:#fff;border-radius:50%;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:bold;color:#333">?</span>
     </div>
     <div style="position:absolute;top:-8px;left:50%;transform:translateX(-50%);font-size:18px">&#9660;</div>
@@ -342,24 +342,24 @@ export const PRESETS: readonly PopupPreset[] = [
     `),
     defaultHtml: `<div style="background:#fff;border-radius:8px;box-shadow:0 4px 24px rgba(0,0,0,.15);max-width:400px;margin:auto;overflow:hidden">
   <div style="display:flex;border-bottom:1px solid #eee">
-    <div class="ep-tab-btn" style="flex:1;padding:10px;text-align:center;background:#0091FF;color:#fff;font-weight:bold;font-size:13px;cursor:pointer">プラン1</div>
+    <div class="ep-tab-btn" style="flex:1;padding:10px;text-align:center;background:var(--sb-accent, #0091FF);color:#fff;font-weight:bold;font-size:13px;cursor:pointer">プラン1</div>
     <div class="ep-tab-btn" style="flex:1;padding:10px;text-align:center;background:#f5f5f5;color:#888;font-size:13px;cursor:pointer">プラン2</div>
     <div class="ep-tab-btn" style="flex:1;padding:10px;text-align:center;background:#f5f5f5;color:#888;font-size:13px;cursor:pointer">プラン3</div>
   </div>
   <div class="ep-tab-panel" style="padding:20px;text-align:center;display:block">
     <p style="font-weight:bold;color:#333;margin:0 0 8px">ベーシックプラン</p>
     <p style="color:#888;font-size:13px;margin:0 0 16px">月額 ¥980 で基本機能をすべて利用可能</p>
-    <a href="#" style="display:inline-block;background:#0091FF;color:#fff;padding:10px 24px;border-radius:4px;text-decoration:none;font-weight:bold">選択する</a>
+    <a href="#" style="display:inline-block;background:var(--sb-accent, #0091FF);color:#fff;padding:10px 24px;border-radius:4px;text-decoration:none;font-weight:bold">選択する</a>
   </div>
   <div class="ep-tab-panel" style="padding:20px;text-align:center;display:none">
     <p style="font-weight:bold;color:#333;margin:0 0 8px">スタンダードプラン</p>
     <p style="color:#888;font-size:13px;margin:0 0 16px">月額 ¥1,980 でプレミアム機能も利用可能</p>
-    <a href="#" style="display:inline-block;background:#0091FF;color:#fff;padding:10px 24px;border-radius:4px;text-decoration:none;font-weight:bold">選択する</a>
+    <a href="#" style="display:inline-block;background:var(--sb-accent, #0091FF);color:#fff;padding:10px 24px;border-radius:4px;text-decoration:none;font-weight:bold">選択する</a>
   </div>
   <div class="ep-tab-panel" style="padding:20px;text-align:center;display:none">
     <p style="font-weight:bold;color:#333;margin:0 0 8px">プレミアムプラン</p>
     <p style="color:#888;font-size:13px;margin:0 0 16px">月額 ¥3,980 で全機能を無制限に利用可能</p>
-    <a href="#" style="display:inline-block;background:#0091FF;color:#fff;padding:10px 24px;border-radius:4px;text-decoration:none;font-weight:bold">選択する</a>
+    <a href="#" style="display:inline-block;background:var(--sb-accent, #0091FF);color:#fff;padding:10px 24px;border-radius:4px;text-decoration:none;font-weight:bold">選択する</a>
   </div>
 </div>`,
     defaultJavascript: TAB_SWITCH_JS,
@@ -412,13 +412,13 @@ export const PRESETS: readonly PopupPreset[] = [
     defaultHtml: `<div style="background:#fff;border-radius:8px;padding:20px;box-shadow:0 4px 24px rgba(0,0,0,.15);max-width:360px;margin:auto;text-align:center">
   <p style="color:#888;font-size:12px;margin:0 0 12px">この特典の有効期限</p>
   <div style="display:flex;justify-content:center;gap:4px;font-size:24px;font-weight:bold;margin-bottom:16px">
-    <span class="cd-num" style="background:#0091FF;color:#fff;padding:6px 10px;border-radius:4px">00</span>
+    <span class="cd-num" style="background:var(--sb-accent, #0091FF);color:#fff;padding:6px 10px;border-radius:4px">00</span>
     <span style="line-height:40px">:</span>
-    <span class="cd-num" style="background:#0091FF;color:#fff;padding:6px 10px;border-radius:4px">10</span>
+    <span class="cd-num" style="background:var(--sb-accent, #0091FF);color:#fff;padding:6px 10px;border-radius:4px">10</span>
     <span style="line-height:40px">:</span>
-    <span class="cd-num" style="background:#0091FF;color:#fff;padding:6px 10px;border-radius:4px">00</span>
+    <span class="cd-num" style="background:var(--sb-accent, #0091FF);color:#fff;padding:6px 10px;border-radius:4px">00</span>
   </div>
-  <a class="ep-cta" href="#" style="display:inline-block;background:#0091FF;color:#fff;padding:10px 24px;border-radius:4px;text-decoration:none;font-weight:bold">お申し込みはこちら</a>
+  <a class="ep-cta" href="#" style="display:inline-block;background:var(--sb-accent, #0091FF);color:#fff;padding:10px 24px;border-radius:4px;text-decoration:none;font-weight:bold">お申し込みはこちら</a>
 </div>`,
     defaultJavascript: COUNTDOWN_JS + CTA_PULSE_JS,
     defaults: { animation: 'flipIn', countdown_trigger: true, countdown_seconds: 600 },
@@ -432,12 +432,12 @@ export const PRESETS: readonly PopupPreset[] = [
     thumbnailSvg: thumbSvg(`
       <rect x="30" y="35" width="140" height="75" rx="6" fill="${C.white}" stroke="${C.border}"/>
       <circle cx="40" cy="25" r="3" fill="#FF6B35"/>
-      <circle cx="70" cy="18" r="2" fill="#0091FF"/>
+      <circle cx="70" cy="18" r="2" fill="var(--sb-accent, #0091FF)"/>
       <circle cx="130" cy="22" r="3" fill="#2FA84F"/>
       <circle cx="160" cy="28" r="2" fill="#FFD700"/>
       <circle cx="55" cy="30" r="2" fill="#E040FB"/>
       <circle cx="145" cy="15" r="2" fill="#FF6B35"/>
-      <rect x="80" y="12" width="4" height="8" rx="1" fill="#0091FF" transform="rotate(30,82,16)"/>
+      <rect x="80" y="12" width="4" height="8" rx="1" fill="var(--sb-accent, #0091FF)" transform="rotate(30,82,16)"/>
       <rect x="110" y="18" width="4" height="8" rx="1" fill="#2FA84F" transform="rotate(-20,112,22)"/>
       <text x="100" y="60" text-anchor="middle" font-size="10" fill="${C.accent}" font-family="sans-serif" font-weight="bold">おめでとう!</text>
       <text x="100" y="76" text-anchor="middle" font-size="7" fill="${C.text}" font-family="sans-serif">特別クーポンを獲得しました</text>
@@ -497,7 +497,7 @@ export const PRESETS: readonly PopupPreset[] = [
     defaultHtml: `<div style="background:#fff;border-radius:8px;padding:20px;box-shadow:0 4px 24px rgba(0,0,0,.15);max-width:360px;margin:auto;text-align:center">
   <p style="font-weight:bold;font-size:15px;color:#333;margin:0 0 16px">どちらをご希望ですか?</p>
   <div style="display:flex;gap:12px">
-    <a href="#" style="flex:1;display:block;background:#0091FF;color:#fff;padding:16px;border-radius:6px;text-decoration:none;font-weight:bold;transition:transform .15s" onmouseover="this.style.transform='scale(1.04)'" onmouseout="this.style.transform='scale(1)'">プランA<br><span style="font-size:12px;opacity:.8">お得な方</span></a>
+    <a href="#" style="flex:1;display:block;background:var(--sb-accent, #0091FF);color:#fff;padding:16px;border-radius:6px;text-decoration:none;font-weight:bold;transition:transform .15s" onmouseover="this.style.transform='scale(1.04)'" onmouseout="this.style.transform='scale(1)'">プランA<br><span style="font-size:12px;opacity:.8">お得な方</span></a>
     <a href="#" style="flex:1;display:block;background:#FF6B35;color:#fff;padding:16px;border-radius:6px;text-decoration:none;font-weight:bold;transition:transform .15s" onmouseover="this.style.transform='scale(1.04)'" onmouseout="this.style.transform='scale(1)'">プランB<br><span style="font-size:12px;opacity:.8">人気の方</span></a>
   </div>
 </div>`,
@@ -512,7 +512,7 @@ export const PRESETS: readonly PopupPreset[] = [
     description: '紙吹雪 + カウントダウンの組み合わせ',
     thumbnailSvg: thumbSvg(`
       <circle cx="30" cy="20" r="2" fill="#FF6B35"/>
-      <circle cx="170" cy="25" r="3" fill="#0091FF"/>
+      <circle cx="170" cy="25" r="3" fill="var(--sb-accent, #0091FF)"/>
       <circle cx="50" cy="15" r="2" fill="#2FA84F"/>
       <circle cx="150" cy="18" r="2" fill="#E040FB"/>
       <rect x="30" y="30" width="140" height="85" rx="6" fill="${C.white}" stroke="${C.border}"/>
@@ -557,7 +557,7 @@ export const PRESETS: readonly PopupPreset[] = [
     defaultHtml: `<div style="background:#fff;border-radius:10px;padding:24px;box-shadow:0 4px 24px rgba(0,0,0,.15);max-width:340px;margin:auto;text-align:center">
   <p style="font-weight:bold;font-size:16px;color:#333;margin:0 0 6px">続きはこちら</p>
   <p style="color:#888;font-size:12px;margin:0 0 16px">詳しい情報は別ページでご確認ください</p>
-  <a class="ep-cta" href="https://example.com" target="_blank" rel="noopener" style="display:inline-block;background:#0091FF;color:#fff;padding:12px 28px;border-radius:24px;text-decoration:none;font-weight:bold">別タブで開く ↗</a>
+  <a class="ep-cta" href="https://example.com" target="_blank" rel="noopener" style="display:inline-block;background:var(--sb-accent, #0091FF);color:#fff;padding:12px 28px;border-radius:24px;text-decoration:none;font-weight:bold">別タブで開く ↗</a>
 </div>`,
     defaultJavascript: CTA_PULSE_JS,
     defaults: { animation: 'zoomIn', scroll_trigger: true, scroll_position: 95 },
@@ -617,7 +617,7 @@ export const PRESETS: readonly PopupPreset[] = [
     defaultHtml: `<div style="background:#fff;border-radius:10px;padding:16px;box-shadow:0 4px 24px rgba(0,0,0,.15);max-width:360px;margin:auto;text-align:center">
   <div style="border:2px dashed #ccc;border-radius:8px;padding:36px 12px;color:#999;font-size:12px;margin-bottom:14px">画像をHTMLタブで設定してください</div>
   <div style="display:flex;gap:10px">
-    <a href="#" style="flex:1;background:#0091FF;color:#fff;padding:12px 0;border-radius:24px;text-decoration:none;font-weight:bold">リンクA</a>
+    <a href="#" style="flex:1;background:var(--sb-accent, #0091FF);color:#fff;padding:12px 0;border-radius:24px;text-decoration:none;font-weight:bold">リンクA</a>
     <a href="#" style="flex:1;background:#2FA84F;color:#fff;padding:12px 0;border-radius:24px;text-decoration:none;font-weight:bold">リンクB</a>
   </div>
 </div>`,
@@ -642,7 +642,7 @@ export const PRESETS: readonly PopupPreset[] = [
   <div style="border:2px dashed #bbb;min-height:180px;display:flex;align-items:center;justify-content:center;color:#999;font-size:12px">背景画像をHTMLタブで設定</div>
   <div style="position:absolute;left:0;right:0;bottom:16px;display:flex;flex-direction:column;gap:8px;padding:0 24px">
     <a href="#" style="background:#FF6B35;color:#fff;padding:12px 0;border-radius:24px;text-decoration:none;font-weight:bold;text-align:center">ボタン1</a>
-    <a href="#" style="background:#0091FF;color:#fff;padding:12px 0;border-radius:24px;text-decoration:none;font-weight:bold;text-align:center">ボタン2</a>
+    <a href="#" style="background:var(--sb-accent, #0091FF);color:#fff;padding:12px 0;border-radius:24px;text-decoration:none;font-weight:bold;text-align:center">ボタン2</a>
   </div>
 </div>`,
     defaultJavascript: '',
@@ -662,10 +662,10 @@ export const PRESETS: readonly PopupPreset[] = [
       <rect x="80" y="82" width="70" height="14" rx="7" fill="${C.blue}"/>
     `),
     defaultHtml: `<div style="background:#fff;border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,.2);max-width:320px;margin:auto;overflow:hidden">
-  <div style="background:#0091FF;color:#fff;padding:14px 18px;font-weight:bold">サポートチャット</div>
+  <div style="background:var(--sb-accent, #0091FF);color:#fff;padding:14px 18px;font-weight:bold">サポートチャット</div>
   <div style="padding:16px">
     <div style="background:#f1f3f5;color:#333;padding:10px 14px;border-radius:12px;font-size:13px;display:inline-block;margin-bottom:12px">ご質問はありますか？</div>
-    <a class="ep-cta" href="#" style="display:block;background:#0091FF;color:#fff;padding:12px 0;border-radius:24px;text-decoration:none;font-weight:bold;text-align:center">チャットで相談する</a>
+    <a class="ep-cta" href="#" style="display:block;background:var(--sb-accent, #0091FF);color:#fff;padding:12px 0;border-radius:24px;text-decoration:none;font-weight:bold;text-align:center">チャットで相談する</a>
   </div>
 </div>`,
     defaultJavascript: CTA_PULSE_JS,
@@ -723,12 +723,12 @@ export const PRESETS: readonly PopupPreset[] = [
     defaultHtml: `<div style="background:#fff;border-radius:10px;padding:18px;box-shadow:0 4px 24px rgba(0,0,0,.15);max-width:360px;margin:auto;text-align:center">
   <p style="font-weight:bold;font-size:15px;color:#333;margin:0 0 12px">お住まいの地域を選択</p>
   <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
-    <a href="#" style="background:#EAF4FF;color:#0091FF;padding:10px 0;border-radius:6px;text-decoration:none;font-size:12px;font-weight:bold">北海道・東北</a>
-    <a href="#" style="background:#EAF4FF;color:#0091FF;padding:10px 0;border-radius:6px;text-decoration:none;font-size:12px;font-weight:bold">関東</a>
-    <a href="#" style="background:#EAF4FF;color:#0091FF;padding:10px 0;border-radius:6px;text-decoration:none;font-size:12px;font-weight:bold">中部</a>
-    <a href="#" style="background:#EAF4FF;color:#0091FF;padding:10px 0;border-radius:6px;text-decoration:none;font-size:12px;font-weight:bold">近畿</a>
-    <a href="#" style="background:#EAF4FF;color:#0091FF;padding:10px 0;border-radius:6px;text-decoration:none;font-size:12px;font-weight:bold">中国・四国</a>
-    <a href="#" style="background:#EAF4FF;color:#0091FF;padding:10px 0;border-radius:6px;text-decoration:none;font-size:12px;font-weight:bold">九州・沖縄</a>
+    <a href="#" style="background:#EAF4FF;color:var(--sb-accent, #0091FF);padding:10px 0;border-radius:6px;text-decoration:none;font-size:12px;font-weight:bold">北海道・東北</a>
+    <a href="#" style="background:#EAF4FF;color:var(--sb-accent, #0091FF);padding:10px 0;border-radius:6px;text-decoration:none;font-size:12px;font-weight:bold">関東</a>
+    <a href="#" style="background:#EAF4FF;color:var(--sb-accent, #0091FF);padding:10px 0;border-radius:6px;text-decoration:none;font-size:12px;font-weight:bold">中部</a>
+    <a href="#" style="background:#EAF4FF;color:var(--sb-accent, #0091FF);padding:10px 0;border-radius:6px;text-decoration:none;font-size:12px;font-weight:bold">近畿</a>
+    <a href="#" style="background:#EAF4FF;color:var(--sb-accent, #0091FF);padding:10px 0;border-radius:6px;text-decoration:none;font-size:12px;font-weight:bold">中国・四国</a>
+    <a href="#" style="background:#EAF4FF;color:var(--sb-accent, #0091FF);padding:10px 0;border-radius:6px;text-decoration:none;font-size:12px;font-weight:bold">九州・沖縄</a>
   </div>
 </div>`,
     defaultJavascript: '',
@@ -750,7 +750,7 @@ export const PRESETS: readonly PopupPreset[] = [
     defaultHtml: `<div style="background:#fff;border-radius:10px;padding:12px;box-shadow:0 4px 24px rgba(0,0,0,.15);max-width:360px;margin:auto">
   <a href="#" style="display:block;position:relative;height:180px;border-radius:8px;overflow:hidden;text-decoration:none">
     <div class="ep-switch-img" style="position:absolute;inset:0;background:#FFE0D0;display:flex;align-items:center;justify-content:center;color:#FF6B35;font-weight:bold;font-size:15px">画像1（HTMLで設定）</div>
-    <div class="ep-switch-img" style="position:absolute;inset:0;background:#D6ECFF;display:flex;align-items:center;justify-content:center;color:#0091FF;font-weight:bold;font-size:15px">画像2（HTMLで設定）</div>
+    <div class="ep-switch-img" style="position:absolute;inset:0;background:#D6ECFF;display:flex;align-items:center;justify-content:center;color:var(--sb-accent, #0091FF);font-weight:bold;font-size:15px">画像2（HTMLで設定）</div>
   </a>
 </div>`,
     defaultJavascript: IMAGE_SWITCH_JS,
@@ -833,7 +833,7 @@ export const PRESETS: readonly PopupPreset[] = [
     <div style="background:#fff;border:2px dashed #FF6B35;padding:12px;border-radius:6px;margin-bottom:14px">
       <span class="ep-coupon-code" style="font-family:monospace;font-size:20px;font-weight:bold;color:#FF6B35;letter-spacing:2px">CODE10</span>
     </div>
-    <button class="ep-copy-btn" style="background:#0091FF;color:#fff;border:none;padding:12px 28px;border-radius:24px;cursor:pointer;font-weight:bold">コピーする</button>
+    <button class="ep-copy-btn" style="background:var(--sb-accent, #0091FF);color:#fff;border:none;padding:12px 28px;border-radius:24px;cursor:pointer;font-weight:bold">コピーする</button>
   </div>
 </div>`,
     defaultJavascript: COUPON_COPY_JS,

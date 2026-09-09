@@ -38,8 +38,8 @@ function switchRow(
     'padding:4px 10px;cursor:pointer'
   const sync = (on: boolean): void => {
     btn.textContent = on ? 'ON' : 'OFF'
-    btn.style.background = on ? '#0091ff' : '#fff'
-    btn.style.borderColor = on ? '#0091ff' : '#d5d5db'
+    btn.style.background = on ? 'var(--sb-accent, #0091FF)' : '#fff'
+    btn.style.borderColor = on ? 'var(--sb-accent, #0091FF)' : '#d5d5db'
     btn.style.color = on ? '#fff' : '#555'
   }
   btn.addEventListener('click', onToggle)

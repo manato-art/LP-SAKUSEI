@@ -5,6 +5,7 @@
  */
 import { api } from '../api.ts'
 import { T, el, emptyState, toast } from '../ui.ts'
+import { buildThemeColorSection } from '../panels/theme-color-section.ts'
 
 export async function renderAccountSettings(container: HTMLElement): Promise<void> {
   container.style.cssText = `flex:1;min-width:0;background:${T.bg};min-height:100vh`
@@ -60,8 +61,8 @@ export async function renderAccountSettings(container: HTMLElement): Promise<voi
         text: tab,
         style: [
           'padding:10px 20px;cursor:pointer;font-size:14px;white-space:nowrap',
-          `color:${isActive ? '#0091FF' : T.sub}`,
-          `border-bottom:2px solid ${isActive ? '#0091FF' : 'transparent'}`,
+          `color:${isActive ? 'var(--sb-accent, #0091FF)' : T.sub}`,
+          `border-bottom:2px solid ${isActive ? 'var(--sb-accent, #0091FF)' : 'transparent'}`,
           'margin-bottom:-2px',
         ].join(';'),
       })
@@ -145,7 +146,7 @@ async function renderAccount(content: HTMLElement): Promise<void> {
   // 保存
   const saveBtn = document.createElement('button')
   saveBtn.textContent = '保存'
-  saveBtn.style.cssText = 'display:block;padding:10px 24px;border:none;border-radius:6px;background:#0091FF;color:#FFF;cursor:pointer;font-size:14px'
+  saveBtn.style.cssText = 'display:block;padding:10px 24px;border:none;border-radius:6px;background:var(--sb-accent, #0091FF);color:#FFF;cursor:pointer;font-size:14px'
   saveBtn.addEventListener('click', () => {
     const name = nameInput.value.trim()
     if (name === '') {
@@ -166,7 +167,7 @@ async function renderAccount(content: HTMLElement): Promise<void> {
   })
   form.append(saveBtn)
 
-  content.append(form)
+  content.append(form, buildThemeColorSection())
 }
 
 async function renderNotifications(content: HTMLElement): Promise<void> {
@@ -208,7 +209,7 @@ async function renderNotifications(content: HTMLElement): Promise<void> {
     const slider = el('span', {
       style: [
         'position:absolute;inset:0;border-radius:12px;transition:background .2s',
-        `background:${checkbox.checked ? '#0091FF' : '#CCC'}`,
+        `background:${checkbox.checked ? 'var(--sb-accent, #0091FF)' : '#CCC'}`,
       ].join(';'),
     })
     const dot = el('span', {
@@ -221,7 +222,7 @@ async function renderNotifications(content: HTMLElement): Promise<void> {
     switchEl.append(checkbox, slider)
 
     checkbox.addEventListener('change', () => {
-      slider.style.background = checkbox.checked ? '#0091FF' : '#CCC'
+      slider.style.background = checkbox.checked ? 'var(--sb-accent, #0091FF)' : '#CCC'
       dot.style.left = checkbox.checked ? '22px' : '2px'
       void api.updateNotificationSettings('member', { [toggle.key]: checkbox.checked }).then(
         () => toast(`${toggle.label}を${checkbox.checked ? 'オン' : 'オフ'}にしました`),

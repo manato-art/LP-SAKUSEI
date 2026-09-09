@@ -539,7 +539,7 @@ function wireInlineRename(titleEl: HTMLElement, abTest: AbTest): void {
     input.value = currentName
     input.style.cssText = [
       'width:100%;box-sizing:border-box;padding:4px 8px',
-      'border:2px solid #0091FF;border-radius:4px',
+      'border:2px solid var(--sb-accent, #0091FF);border-radius:4px',
       'background:#FFFDE7',
       `font-size:inherit;font-family:${T.font}`,
       'outline:none',
@@ -602,7 +602,7 @@ function wirePageRowActions(row: HTMLElement, abTest: AbTest): void {
   const navButtons: { label: string; hash: string; bg: string; color: string }[] = [
     { label: '分析', hash: `/ab_tests/${abTest.uid}/reports`, bg: '#6C63FF', color: '#FFF' },
     { label: 'ヒートマップ', hash: `/ab_tests/${abTest.uid}/reports`, bg: '#444', color: '#FFF' },
-    { label: 'レポート', hash: `/ab_tests/${abTest.uid}/reports`, bg: '#0091FF', color: '#FFF' },
+    { label: 'レポート', hash: `/ab_tests/${abTest.uid}/reports`, bg: 'var(--sb-accent, #0091FF)', color: '#FFF' },
     { label: 'バージョン', hash: `/ab_tests/${abTest.uid}/articles`, bg: '#7B61FF', color: '#FFF' },
   ]
 
@@ -1447,7 +1447,7 @@ function toggleTreeSearch(tree: HTMLElement, context: PageContext): void {
     if (bodyEl !== null) renderTree(bodyEl, context)
   })
   input.addEventListener('focus', () => {
-    input.style.borderColor = '#0091FF'
+    input.style.borderColor = 'var(--sb-accent, #0091FF)'
   })
   input.addEventListener('blur', () => {
     input.style.borderColor = '#DDD'
@@ -1953,8 +1953,8 @@ function updateStarAppearance(starBtn: HTMLElement, isFavorite: boolean): void {
   if (path === null) return
   if (isFavorite) {
     // 塗りつぶし（ブランド色）
-    path.setAttribute('fill', '#0091FF')
-    path.setAttribute('stroke', '#0091FF')
+    path.setAttribute('fill', 'var(--sb-accent, #0091FF)')
+    path.setAttribute('stroke', 'var(--sb-accent, #0091FF)')
   } else {
     // 線だけ（既定）— stroke を残さないと星が透明になる
     path.setAttribute('fill', 'none')

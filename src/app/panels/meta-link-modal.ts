@@ -52,7 +52,7 @@ function injectStyles(): void {
       font-size:12px; padding:4px 10px; border:1px solid #e5e5ea; border-radius:14px;
       background:#fff; cursor:pointer; font-family:inherit; color:#333;
     }
-    .sb-ml-preset:hover { background:#f0f7ff; border-color:#0091ff; color:#0091ff; }
+    .sb-ml-preset:hover { background:#f0f7ff; border-color:var(--sb-accent, #0091FF); color:var(--sb-accent, #0091FF); }
     .sb-ml-note { font-size:11px; color:#888; line-height:1.8; margin:12px 0 0; padding-left:16px; }
     .sb-ml-msg { font-size:12px; margin:10px 0 0; min-height:16px; }
     .sb-ml-msg.err { color:#d32f2f; }
@@ -62,7 +62,7 @@ function injectStyles(): void {
       font-size:13px; padding:8px 16px; border-radius:5px; cursor:pointer;
       border:1px solid #e5e5ea; background:#fff; color:#333; font-family:inherit;
     }
-    .sb-ml-btn.primary { background:#0091ff; border-color:#0091ff; color:#fff; }
+    .sb-ml-btn.primary { background:var(--sb-accent, #0091FF); border-color:var(--sb-accent, #0091FF); color:#fff; }
     .sb-ml-btn[disabled] { opacity:.55; cursor:default; }
   `
   document.head.append(s)

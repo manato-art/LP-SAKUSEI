@@ -53,7 +53,7 @@ function injectStyles(): void {
       transition:background .12s,border-color .12s,color .12s;
     }
     .sb-url-copy-btn:hover {
-      background:rgba(0,145,255,.08); border-color:#0091ff; color:#0091ff;
+      background:rgba(0,145,255,.08); border-color:var(--sb-accent, #0091FF); color:var(--sb-accent, #0091FF);
     }
     .sb-url-sep {
       width:1px; height:20px; background:#e5e5ea; flex-shrink:0;
