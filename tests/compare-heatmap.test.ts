@@ -22,8 +22,9 @@ describe('比較モードのヒートマップ', () => {
 
   it('ヒートマップ取得にページのUIDが要るので受け取る', () => {
     expect(compare).toContain('abTestUid: string')
-    const editor = readFileSync('src/app/pages/editor.ts', 'utf8')
-    expect(editor).toContain('abTestUid: ctx.abTestUid')
+    // 比較パネルを開くのは右レールの配線（editor-layout.ts）
+    const layout = readFileSync('src/app/pages/editor-layout.ts', 'utf8')
+    expect(layout).toContain('abTestUid: ctx.abTestUid')
   })
 
   it('実LPが取れなくても止めない（自前配信・未計測では404が正常）', () => {
