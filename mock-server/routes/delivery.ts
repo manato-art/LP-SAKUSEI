@@ -138,7 +138,7 @@ function clientIp(req: ExpressRequest): string {
 
 /**
  * リファラは**オリジンまで**に丸める。
- * 実物の一覧も `https://instagram.com/` のようにサイト単位で並んでいる。
+ * 実物の一覧も `https://<SNSのドメイン>/` のようにサイト単位で並んでいる。
  * パス以降は個人が特定され得るので残さない。
  */
 function refererOrigin(raw: string | undefined): string {

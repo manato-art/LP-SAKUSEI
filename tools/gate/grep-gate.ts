@@ -10,9 +10,11 @@ import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import { extname, join } from 'node:path'
 import {
+  EXCLUDED_BUILD_DIR,
   EXTERNAL_HOST_ALLOWLIST,
   EXTERNAL_HOST_PATTERN,
   EXTERNAL_SAAS_PATTERNS,
+  MONEY_SCAN_DIRS,
   PRODUCTION_HOST_PATTERN,
   PRODUCTION_TOKEN_PATTERNS,
   SCAN_DIRS,
@@ -34,15 +36,42 @@ function walk(dir: string): string[] {
   if (!existsSync(dir)) return []
   return readdirSync(dir).flatMap((entry) => {
     if (entry === 'node_modules' || entry.startsWith('.')) return []
+    // ビルド出力は走査しない（理由は denylist.ts の EXCLUDED_BUILD_DIR）。
+    // SCAN_DIRS から外すだけでは足りない: `.` を歩くとここへ降りてくる。
+    if (entry === EXCLUDED_BUILD_DIR) return []
     const full = join(dir, entry)
     return statSync(full).isDirectory() ? walk(full) : [full]
   })
 }
 
+/**
+ * 走査対象のファイル一覧。
+ *
+ * SCAN_DIRS には `src` などの個別ディレクトリと `.`（リポジトリ直下）が**両方**入っている。
+ * `.` を歩くと個別ディレクトリにも降りるので、重ねると同じファイルが2回入り、
+ * 同じ違反が2件として数えられていた（「110件」の実体は55件）。
+ * 件数が水増しされると、直したときにどれだけ減ったのかが読めない。
+ */
 function scanFiles(): string[] {
-  return SCAN_DIRS.flatMap(walk)
+  return [...new Set(SCAN_DIRS.flatMap(walk))]
     .filter((f) => SCAN_EXTENSIONS.includes(extname(f)))
     .filter((f) => !SELF_EXCLUDE.some((ex) => f.endsWith(ex)))
+}
+
+/** 金額ゲートだけは「観測してきたものが置かれる場所」に絞る（理由は MONEY_SCAN_DIRS） */
+function inMoneyScope(file: string): boolean {
+  return MONEY_SCAN_DIRS.some((dir) => file === dir || file.startsWith(`${dir}/`))
+}
+
+/** 同じ場所の同じ指摘は1件として数える */
+function dedupe(hits: readonly Hit[]): Hit[] {
+  const seen = new Set<string>()
+  return hits.filter((h) => {
+    const key = `${h.gate}\u0000${h.file}\u0000${h.line}\u0000${h.excerpt}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
 }
 
 function scanPattern(files: readonly string[], gate: string, pattern: RegExp): Hit[] {
@@ -174,7 +203,7 @@ function main(): void {
   const namesFile = resolveNamesFile()
   const files = scanFiles()
 
-  const hits: Hit[] = [
+  const hits: Hit[] = dedupe([
     ...scanPattern(files, '13-F 本番ドメイン', PRODUCTION_HOST_PATTERN),
     ...EXTERNAL_SAAS_PATTERNS.flatMap(({ name, pattern }) =>
       scanPattern(files, `13-G 外部SaaS(${name})`, pattern),
@@ -182,12 +211,12 @@ function main(): void {
     ...PRODUCTION_TOKEN_PATTERNS.flatMap(({ name, pattern }) =>
       scanPattern(files, `5-5 本番トークン(${name})`, pattern),
     ),
-    ...scanPattern(files, '13-E 実金額らしい値', SUSPICIOUS_MONEY_PATTERN),
+    ...scanPattern(files.filter(inMoneyScope), '13-E 実金額らしい値', SUSPICIOUS_MONEY_PATTERN),
     ...scanExternalHosts(files),
     ...scanUrlIdentifiers(files, loadRouteWords()),
     ...scanFallbackAssets(),
     ...scanGitTracked(),
-  ]
+  ])
 
   if (namesFile !== undefined && existsSync(namesFile)) {
     const names = parseKnownNames(readFileSync(namesFile, 'utf8'))

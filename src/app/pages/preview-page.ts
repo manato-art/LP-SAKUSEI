@@ -71,7 +71,7 @@ export async function renderPreview(
  *   配信URL:       「ドメインを設定すると使えるようになります」（そのまま）
  *   プレビューURL:  localhost起点のプレビューURL + 「※計測されません」
  *
- * ⚠️ squadbeyond.com は使わない（実サイトへ飛んでしまう）。
+ * ⚠️ 実サイトのドメインは使わない（本物のページへ飛んでしまう）。
  */
 function wireUrlCards(root: HTMLElement, _abTestUid: string, version: Version | undefined): void {
   const origin = location.origin
