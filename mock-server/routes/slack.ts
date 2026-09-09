@@ -14,6 +14,7 @@ import { Router } from 'express'
 import type { Request } from 'express'
 import { getState, setState } from '../store/store.ts'
 import { errorEnvelope } from '../lib/envelope.ts'
+import { ChatworkError, chatworkToken, listRooms } from '../chatwork.ts'
 import {
   SlackError,
   authorizeUrl,
@@ -74,6 +75,36 @@ slackRouter.get('/slack/channels', (_req, res) => {
           errorEnvelope(
             known ? error.code : 'slack_error',
             known ? error.message : 'チャンネル一覧を取得できませんでした。',
+          ),
+        )
+    },
+  )
+})
+
+/** チャットワークの状態（トークンが入っているか） */
+slackRouter.get('/chatwork/status', (_req, res) => {
+  res.json({ configured: chatworkToken() !== null })
+})
+
+/** 送り先に選べる部屋 */
+slackRouter.get('/chatwork/rooms', (_req, res) => {
+  const token = chatworkToken()
+  if (token === null) {
+    res
+      .status(409)
+      .json(errorEnvelope('not_configured', 'チャットワークのAPIトークンが設定されていません。'))
+    return
+  }
+  void listRooms(token).then(
+    (rooms) => res.json({ rooms }),
+    (error: unknown) => {
+      const known = error instanceof ChatworkError
+      res
+        .status(502)
+        .json(
+          errorEnvelope(
+            known ? error.code : 'chatwork_error',
+            known ? error.message : '部屋の一覧を取得できませんでした。',
           ),
         )
     },

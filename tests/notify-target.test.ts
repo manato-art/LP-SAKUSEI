@@ -111,7 +111,7 @@ describe('Slack連携のAPI', () => {
 })
 
 describe('画面は状態ごとに出し分ける', () => {
-  const src = readFileSync('src/app/panels/slack-connect.ts', 'utf8')
+  const src = readFileSync('src/app/panels/notify-target.ts', 'utf8')
 
   it('未設定のときは取得手順を出す', () => {
     expect(src).toContain('api.slack.com/apps')
@@ -135,5 +135,63 @@ describe('画面は状態ごとに出し分ける', () => {
     expect(src).toContain('if (!status.configured)')
     expect(src).toContain('if (!status.connected)')
     expect(src).toContain('api.slackChannels()')
+  })
+})
+
+describe('通知先はSlackとチャットワークから選べる', () => {
+  const src = readFileSync('src/app/panels/notify-target.ts', 'utf8')
+
+  it('3つの選択肢を出す', () => {
+    expect(src).toContain("['none', '通知しない']")
+    expect(src).toContain("['slack', 'Slack']")
+    expect(src).toContain("['chatwork', 'チャットワーク']")
+  })
+
+  it('チャットワークはトークンの取得手順を出す（OAuthではない）', () => {
+    expect(src).toContain('CHATWORK_API_TOKEN')
+    expect(src).toContain('API Token')
+    expect(src).toContain('サービス連携')
+  })
+
+  it('設定済みなら送り先を選べる', () => {
+    expect(src).toContain('api.chatworkRooms()')
+    expect(src).toContain('送り先の部屋を選ぶ')
+  })
+
+  it('通知しないを選んだら送り先は出さない', () => {
+    expect(src).toContain("chosen === 'none' ? 'none' : ''")
+  })
+
+  it('送り先が未選択なら通知先として扱わない', () => {
+    expect(src).toContain("destination.value === ''")
+  })
+})
+
+describe('チャットワーク連携', () => {
+  it('トークンは環境変数からのみ読む', async () => {
+    const { chatworkToken } = await import('../mock-server/chatwork.ts')
+    const keep = process.env['CHATWORK_API_TOKEN']
+    try {
+      delete process.env['CHATWORK_API_TOKEN']
+      expect(chatworkToken()).toBeNull()
+      process.env['CHATWORK_API_TOKEN'] = 'tok'
+      expect(chatworkToken()).toBe('tok')
+    } finally {
+      if (keep === undefined) delete process.env['CHATWORK_API_TOKEN']
+      else process.env['CHATWORK_API_TOKEN'] = keep
+    }
+  })
+
+  it('コードにトークンを書かない', () => {
+    const src = readFileSync('mock-server/chatwork.ts', 'utf8')
+    expect(src).toContain("process.env['CHATWORK_API_TOKEN']")
+  })
+
+  it('ドキュメントどおりの呼び方をする（ヘッダ名・エンドポイント・形式）', () => {
+    const src = readFileSync('mock-server/chatwork.ts', 'utf8')
+    expect(src).toContain('https://api.chatwork.com/v2')
+    expect(src).toContain("'x-chatworktoken'")
+    expect(src).toContain('/rooms/${roomId}/messages')
+    expect(src).toContain('application/x-www-form-urlencoded')
   })
 })

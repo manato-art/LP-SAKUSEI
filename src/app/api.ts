@@ -373,6 +373,11 @@ export const api = {
     request<{ channels: { id: string; name: string }[] }>('GET', '/slack/channels'),
   /** 連携を解除 */
   disconnectSlack: () => request<void>('DELETE', '/slack'),
+  /** チャットワーク連携の状態（トークンが入っているか） */
+  chatworkStatus: () => request<{ configured: boolean }>('GET', '/chatwork/status'),
+  /** 送り先に選べる部屋 */
+  chatworkRooms: () =>
+    request<{ rooms: { id: number; name: string; type: string }[] }>('GET', '/chatwork/rooms'),
   /** 画面のテーマカラー */
   themeColor: () => request<{ accent: string }>('GET', '/settings/theme'),
   saveThemeColor: (accent: string) =>

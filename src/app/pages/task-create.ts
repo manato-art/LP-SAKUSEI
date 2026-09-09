@@ -9,7 +9,7 @@
  */
 import { api } from '../api.ts'
 import { T, el, toast } from '../ui.ts'
-import { buildSlackField } from '../panels/slack-connect.ts'
+import { buildNotifyTarget } from '../panels/notify-target.ts'
 import {
   MINUTES,
   SCHEDULES,
@@ -221,8 +221,8 @@ export function renderTaskForm(
   kind.addEventListener('change', syncSchedule)
   syncSchedule()
 
-  // Slack通知。未設定なら取得手順、連携済みならチャンネル選択が出る
-  const slackField = buildSlackField()
+  // 通知先。未設定なら取得手順、設定済みなら送り先の選択が出る
+  const notifyField = buildNotifyTarget()
 
   const desc = document.createElement('input')
   desc.type = 'text'
@@ -272,7 +272,7 @@ export function renderTaskForm(
   form.append(
     labelled('タスク名', true, name),
     labelled('スケジュール', true, scheduleRow),
-    labelled('実行結果のSlack通知', false, slackField.el),
+    labelled('実行結果の通知', false, notifyField.el),
     labelled('説明', false, desc),
     labelled('beyondAIへの指示（プロンプト）', true, prompt),
     submit,
