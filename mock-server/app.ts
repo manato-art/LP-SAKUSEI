@@ -26,6 +26,7 @@ import { miscRouter } from './routes/misc.ts'
 import { reportRouter } from './routes/report.ts'
 import { sbAiRouter } from './routes/sb-ai.ts'
 import { settingsRouter } from './routes/settings.ts'
+import { slackOauthRouter, slackRouter } from './routes/slack.ts'
 import { tasksRouter } from './routes/tasks.ts'
 import { teamsRouter } from './routes/teams.ts'
 import { usersRouter } from './routes/users.ts'
@@ -111,6 +112,7 @@ export function createApp(): Express {
     teamsRouter,
     usersRouter,
     settingsRouter,
+    slackRouter,
     sbAiRouter,
     metaRouter,
     miscRouter,
@@ -143,6 +145,8 @@ export function createApp(): Express {
   // 配信ページ（配信URLの実体・実パス）。SPAのシェルは出さず、ここで完結してSSR応答する。
   // 認証（管理SPAのパスワード保護）は掛けない＝エンドユーザーが見るページなので素通し。
   // API群より後・SPAのcatch-allより前（dev/本番どちらでも有効にするので SERVE_DIST 判定の外）。
+  // Slackの認可はブラウザ遷移で戻ってくるので、API認証の外に置く
+  app.use(slackOauthRouter)
   app.use(deliveryRouter)
 
   // ── 本番: ビルドしたフロントを配信する（開発時は Vite が担当するので無効）──

@@ -90,6 +90,7 @@ export function createEmptyState(): State {
     heatmapStats: [],
     mediaAssets: [],
     themeAccent: '#0091FF',
+    slack: null,
     reportExclusions: [],
     requestLogs: [],
     htmlParts: [],

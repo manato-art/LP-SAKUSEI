@@ -61,7 +61,7 @@ function wireTabs(root: HTMLElement): void {
  *
  * 実物はモーダルを出さない。タスク一覧の中身がそのままテンプレート選択に
  * 差し替わり、テンプレートを選ぶと設定フォームに進む（URLは変わらない）。
- * 2026-09-09 に app.squadbeyond.com/tasks を開いて確認した。
+ * 2026-09-09 に 実物のタスク画面 を開いて確認した。
  */
 function wireNewTaskButton(container: HTMLElement, root: HTMLElement): void {
   for (const button of root.querySelectorAll<HTMLButtonElement>('button')) {

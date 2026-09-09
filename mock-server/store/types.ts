@@ -694,6 +694,11 @@ export interface State {
   mediaAssets: readonly MediaAsset[]
   /** 画面のテーマカラー（アクセント色）。`#RRGGBB` */
   themeAccent: string
+  /**
+   * Slack連携。認可が済むとここに入る。
+   * アクセストークンはAPIのレスポンスには**含めない**（`routes/slack.ts`）。
+   */
+  slack: { teamName: string; accessToken: string } | null
   reportExclusions: readonly ReportExclusion[]
   /** 配信リクエストの記録（直近ぶんだけ保持する） */
   requestLogs: readonly RequestLogEntry[]

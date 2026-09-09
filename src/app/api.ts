@@ -360,6 +360,19 @@ export const api = {
   /** チームメンバー一覧 */
   teamMembers: () => request<{ members: Member[] }>('GET', '/teams/members'),
   /** レポート除外追加 */
+  /** Slack連携の状態（未設定 / 未連携 / 連携済み） */
+  slackStatus: () =>
+    request<{
+      configured: boolean
+      connected: boolean
+      team_name: string | null
+      redirect_uri: string
+    }>('GET', '/slack/status'),
+  /** 送り先に選べるチャンネル */
+  slackChannels: () =>
+    request<{ channels: { id: string; name: string }[] }>('GET', '/slack/channels'),
+  /** 連携を解除 */
+  disconnectSlack: () => request<void>('DELETE', '/slack'),
   /** 画面のテーマカラー */
   themeColor: () => request<{ accent: string }>('GET', '/settings/theme'),
   saveThemeColor: (accent: string) =>

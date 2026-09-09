@@ -2,13 +2,14 @@
  * 「新しいタスク」の作成画面。
  *
  * 実物はモーダルではなく、タスク一覧の中身がそのまま差し替わる2段構え
- * （2026-09-09 に app.squadbeyond.com/tasks を開いて確認）:
+ * （2026-09-09 に 実物のタスク画面 を開いて確認）:
  *   1段目 … テンプレート選択（4枚のカード）
  *   2段目 … 設定フォーム（テンプレートの初期値が入った状態）
  * URLは変わらず、各段に「戻る」リンクが付く。
  */
 import { api } from '../api.ts'
 import { T, el, toast } from '../ui.ts'
+import { buildSlackField } from '../panels/slack-connect.ts'
 import {
   MINUTES,
   SCHEDULES,
@@ -220,14 +221,8 @@ export function renderTaskForm(
   kind.addEventListener('change', syncSchedule)
   syncSchedule()
 
-  // Slack通知（連携していないので選べるのは「通知しない」だけ。実物も同じ）
-  const slackRow = el('div', { class: 'tc-row' })
-  const slack = select([{ value: 'none', label: '通知しない' }])
-  const slackLink = el('button', { class: 'tc-link', text: 'Slackと連携する' })
-  slackLink.addEventListener('click', () => {
-    toast('Slack連携はまだ作っていません', 'error')
-  })
-  slackRow.append(slack, slackLink)
+  // Slack通知。未設定なら取得手順、連携済みならチャンネル選択が出る
+  const slackField = buildSlackField()
 
   const desc = document.createElement('input')
   desc.type = 'text'
@@ -277,7 +272,7 @@ export function renderTaskForm(
   form.append(
     labelled('タスク名', true, name),
     labelled('スケジュール', true, scheduleRow),
-    labelled('実行結果のSlack通知', false, slackRow),
+    labelled('実行結果のSlack通知', false, slackField.el),
     labelled('説明', false, desc),
     labelled('beyondAIへの指示（プロンプト）', true, prompt),
     submit,
