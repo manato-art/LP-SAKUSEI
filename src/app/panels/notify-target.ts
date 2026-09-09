@@ -21,8 +21,8 @@ const SLACK_STEPS: readonly string[] = [
   '「OAuth & Permissions」→ Bot Token Scopes に channels:join / channels:read / chat:write / groups:read / im:read / mpim:read を追加する',
   '同じ画面の User Token Scopes に groups:write.invites を追加する',
   '同じ画面の「Redirect URLs」に、下に表示されている戻り先URLをそのまま登録する',
-  '「Basic Information」の Client ID と Client Secret を控える',
-  'Railway の環境変数に SLACK_CLIENT_ID と SLACK_CLIENT_SECRET を入れて再デプロイする',
+  '「Basic Information」の Client ID と Client Secret を控え、下の欄に入れて保存する',
+  '（本番で環境変数から渡したい場合は SLACK_CLIENT_ID / SLACK_CLIENT_SECRET を設定してください。そちらが優先されます）',
 ]
 
 /** チャットワークのトークンを取ってもらう手順 */
@@ -30,7 +30,8 @@ const CHATWORK_STEPS: readonly string[] = [
   'チャットワークに、通知を送りたいアカウントでログインする',
   '右上のアカウント名→「サービス連携」→「API Token」を開く',
   'パスワードを入力してAPIトークンを表示し、控える',
-  'Railway の環境変数に CHATWORK_API_TOKEN を入れて再デプロイする',
+  '控えたトークンを下の欄に入れて保存する',
+  '（本番で環境変数から渡したい場合は CHATWORK_API_TOKEN を設定してください。そちらが優先されます）',
 ]
 
 /** 秘密情報の入力欄。入れた値は保存後に画面へ出さない（出せば漏れる経路になる） */
@@ -186,11 +187,18 @@ export function buildNotifyTarget(): NotifyTargetResult {
     )
   })
 
+  /**
+   * 送り先の選択肢を入れ替える。
+   * 選べるものが無いときは**欄ごと隠す**。空のプルダウンを出しても選べず、
+   * 何のための欄なのか分からない（実際にそう指摘された）。
+   */
   const setDestinations = (
     items: readonly { value: string; label: string }[],
     placeholder: string,
   ): void => {
     destination.replaceChildren()
+    destination.style.display = items.length === 0 ? 'none' : ''
+    if (items.length === 0) return
     const first = document.createElement('option')
     first.value = ''
     first.textContent = placeholder
@@ -310,9 +318,8 @@ export function buildNotifyTarget(): NotifyTargetResult {
   async function refresh(): Promise<void> {
     row.replaceChildren(service, destination)
     notice.replaceChildren()
-    setDestinations([], '—')
+    setDestinations([], '')
     const chosen = service.value as NotifyService
-    destination.style.display = chosen === 'none' ? 'none' : ''
     if (chosen === 'none') return
     if (chosen === 'slack') await showSlack()
     else await showChatwork()

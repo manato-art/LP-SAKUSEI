@@ -158,8 +158,13 @@ describe('通知先はSlackとチャットワークから選べる', () => {
     expect(src).toContain('送り先の部屋を選ぶ')
   })
 
-  it('通知しないを選んだら送り先は出さない', () => {
-    expect(src).toContain("chosen === 'none' ? 'none' : ''")
+  it('選べる送り先が無いときは欄ごと隠す（空のプルダウンを出さない）', () => {
+    expect(src).toContain("destination.style.display = items.length === 0 ? 'none' : ''")
+  })
+
+  it('手順の最後は「下の欄に入れて保存」（環境変数は代替として案内する）', () => {
+    expect(src).toContain('下の欄に入れて保存する')
+    expect(src).toContain('そちらが優先されます')
   })
 
   it('送り先が未選択なら通知先として扱わない', () => {
