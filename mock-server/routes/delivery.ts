@@ -20,12 +20,20 @@ import { shouldExclude } from '../store/exclusions.ts'
 import type { RequestLogEntry } from '../store/types.ts'
 import { broadcastConversion, type ConversionPush } from '../ws/cable.ts'
 import { toDateKey } from '../store/metrics.ts'
-import type { AbTest, Article, ExitPopup, FollowPopup, State, Version } from '../store/types.ts'
+import type { AbTest, Article, State } from '../store/types.ts'
 import { LP_BASE_CSS } from '../../src/app/lp-base-css.ts'
 import { masterStyleIframeCss } from '../../src/app/master-style.ts'
 import { withAutoplayVideos } from '../../src/app/lp-video.ts'
 import { buildAnimCss, buildAnimRuntimeScript } from '../../src/app/anim/anim-presets.ts'
 import { buildCvScriptBody, buildTrackingScriptBody } from '../../src/shared/tracking-tag.ts'
+import { buildVisitorContext, pickDeliveryVersion } from './delivery-targeting.ts'
+import { buildFollowPopupSnippet, buildPopupSnippet } from './delivery-popup-html.ts'
+import {
+  escapeHtml,
+  renderExcludePage,
+  renderNotice,
+  renderPreviewNotice,
+} from './delivery-notice.ts'
 
 export const deliveryRouter: Router = Router()
 
@@ -197,183 +205,23 @@ function buildTrackingScript(uid: string, versionUid: string): string {
   return `<script>${buildTrackingScriptBody(endpoint, versionUid)}</script>`
 }
 
-type DeviceKind = 'sp' | 'tablet' | 'pc'
-type MobileOS = 'android' | 'ios'
-type Carrier = 'docomo' | 'au' | 'softbank'
 
-/** 訪問者の出し分け判定に使う文脈（1リクエストぶん） */
-interface VisitorContext {
-  device: DeviceKind
-  /** モバイルOS。PC等では null */
-  mobileOS: MobileOS | null
-  /** 回線キャリア。ブラウザだけでは判定不可のため通常 null。?__carrier= で検証用に指定可 */
-  carrier: Carrier | null
-  /** URLクエリ（流入元別の照合に使う） */
-  query: Record<string, string>
-  /** 現在時刻 HH:MM（時間別） */
-  nowHHMM: string
-  /** 今日 YYYY-MM-DD（日付別） */
-  today: string
-}
 
-/** 訪問者のデバイスを User-Agent から判定する（sp / tablet / pc）。クライアント版と同じ判定式。 */
-function detectDevice(userAgent: string): DeviceKind {
-  if (/iPad|Tablet|Nexus 7|Nexus 10|Kindle|Silk|PlayBook/i.test(userAgent)) return 'tablet'
-  if (/Mobile|iPhone|Android.*Mobile|Windows Phone|iPod/i.test(userAgent)) return 'sp'
-  return 'pc'
-}
 
-/** モバイルOSを User-Agent から判定（PC等は null） */
-function detectMobileOS(userAgent: string): MobileOS | null {
-  if (/iPhone|iPad|iPod/i.test(userAgent)) return 'ios'
-  if (/Android/i.test(userAgent)) return 'android'
-  return null
-}
 
-/** キャリアは通常判定不可。検証用に ?__carrier=docomo|au|softbank で指定できる。 */
-function detectCarrier(raw: unknown): Carrier | null {
-  return raw === 'docomo' || raw === 'au' || raw === 'softbank' ? raw : null
-}
 
-/**
- * 現在の日本時間(JST)を HH:MM / YYYY-MM-DD で返す。
- * 時間別・日付別の出し分けは実SB（日本向けサービス）と同じく **日本時間**で判定する。
- * 本番サーバー(Railway)のTZはUTCなので、`new Date().getHours()` をそのまま使うと
- * 日本の日中でも時間帯条件が外れる（例: JST12:00=UTC03:00 が 06:00-22:00 の範囲外扱い）
- * バグになる。Intl でタイムゾーンを Asia/Tokyo に固定して判定する。
- */
-function jstNow(): { hhmm: string; today: string } {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Tokyo',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).formatToParts(new Date())
-  const get = (t: string): string => parts.find((p) => p.type === t)?.value ?? ''
-  const hour = get('hour') === '24' ? '00' : get('hour') // 一部環境で 24:xx を返すため丸める
-  return { hhmm: `${hour}:${get('minute')}`, today: `${get('year')}-${get('month')}-${get('day')}` }
-}
 
-function buildVisitorContext(req: import('express').Request): VisitorContext {
-  const ua = req.headers['user-agent'] ?? ''
-  const query: Record<string, string> = {}
-  for (const [k, v] of Object.entries(req.query)) {
-    query[k] = Array.isArray(v) ? String(v[0] ?? '') : String(v ?? '')
-  }
-  const { hhmm, today } = jstNow()
-  return {
-    device: detectDevice(ua),
-    mobileOS: detectMobileOS(ua),
-    carrier: detectCarrier(req.query['__carrier']),
-    query,
-    nowHHMM: hhmm,
-    today,
-  }
-}
 
-/** そのVersionが、指定デバイスへ配信可か（デバイス別ON/OFF）。未設定は全ON扱い。 */
-function targetsDevice(version: Version, device: DeviceKind): boolean {
-  return version.device_targets?.[device] !== false
-}
 
-/** 流入元別: URLクエリが1件のルールに一致するか */
-function matchesParamRule(rule: { name: string; match: string; value: string }, query: Record<string, string>): boolean {
-  const candidates = rule.name !== '' ? [query[rule.name]] : Object.values(query)
-  for (const raw of candidates) {
-    if (raw === undefined) continue
-    if (rule.match === 'exact' && raw === rule.value) return true
-    if (rule.match === 'prefix' && raw.startsWith(rule.value)) return true
-    if (rule.match === 'suffix' && raw.endsWith(rule.value)) return true
-    if (rule.match === 'contains' && raw.includes(rule.value)) return true
-  }
-  return false
-}
 
-/** 時間別: now が from〜to（HH:MM）内か。日をまたぐ範囲(22:00〜02:00)も許容 */
-function inTimeRange(now: string, from: string, to: string): boolean {
-  if (from === '' || to === '') return true
-  return from <= to ? now >= from && now <= to : now >= from || now <= to
-}
 
-/** 日付別: today が from〜to（YYYY-MM-DD、ISO文字列比較）内か */
-function inDatePeriod(today: string, from: string, to: string): boolean {
-  if (from === '' && to === '') return true
-  if (from !== '' && today < from) return false
-  if (to !== '' && today > to) return false
-  return true
-}
 
-/**
- * そのVersionが、この訪問者に配信可能か（6条件すべてを掛け算で判定）。
- * 各設定は「未設定＝制限なし（対象）」がデフォルト。デバイス別・パラメーター未登録は常に対象。
- */
-function isEligible(v: Version, ctx: VisitorContext): boolean {
-  // デバイス別
-  if (!targetsDevice(v, ctx.device)) return false
-  // モバイルOS別: いずれかON指定があれば「モバイル かつ そのOS」のみ対象（PCは除外）
-  if (v.os_targets && (v.os_targets.android || v.os_targets.ios)) {
-    if (ctx.mobileOS === null) return false
-    if (!v.os_targets[ctx.mobileOS]) return false
-  }
-  // キャリア別: 判定できた場合のみ適用（通常は判定不可＝スキップ＝対象）
-  if (ctx.carrier !== null && v.carrier_targets && (v.carrier_targets.docomo || v.carrier_targets.au || v.carrier_targets.softbank)) {
-    if (!v.carrier_targets[ctx.carrier]) return false
-  }
-  // 流入元別（旧パラメーター別）: ルールがあれば1件以上一致が必要。未登録は常に対象。
-  if (v.param_rules && v.param_rules.length > 0) {
-    if (!v.param_rules.some((r) => matchesParamRule(r, ctx.query))) return false
-  }
-  // 時間別: 範囲があれば1件以上に該当する時刻のみ対象
-  if (v.time_ranges && v.time_ranges.length > 0) {
-    if (!v.time_ranges.some((r) => inTimeRange(ctx.nowHHMM, r.from, r.to))) return false
-  }
-  // 日付別: off期間中は除外。on期間があれば on期間中のみ対象。期間無しは適用しない。
-  if (v.date_periods && v.date_periods.length > 0) {
-    const inOff = v.date_periods.some((p) => p.mode === 'off' && inDatePeriod(ctx.today, p.from, p.to))
-    if (inOff) return false
-    const onPeriods = v.date_periods.filter((p) => p.mode === 'on')
-    if (onPeriods.length > 0 && !onPeriods.some((p) => inDatePeriod(ctx.today, p.from, p.to))) return false
-  }
-  return true
-}
 
 /**
  * 配信するVersionを1つ選ぶ。6条件（デバイス/OS/キャリア/流入元/時間/日付）を満たすVersionから
  * 配信割合で重み付け抽選する。満たすVersionが無ければ段階的にフォールバック
  * （割合条件を外す→デバイス条件だけ→生存Version全体）して「何も出ない」を避ける。
  */
-/**
- * 配信するVersionを配信割合どおりに選ぶ（指示173）。
- *
- * 配信割合0%のVersionは**絶対に配信しない**。
- * 以前は「割合1%以上の候補が無ければ割合を無視した候補へ落ちる」フォールバックがあり、
- * 全部0%のときや出し分け条件から外れたときに0%のVersionが表示されていた。
- * 重み付けも `Math.max(1, ratio)` で0%を1%扱いしていた。どちらも割合を裏切るのでやめる。
- *
- * 候補が無い場合は null を返し、呼び出し側が「配信できるVersionがありません」を出す。
- * 表示できるものを無理に探すより、割合設定どおりに「配信しない」が正しい。
- *
- * なおプレビュー(`/preview/:versionUid`)はVersionを直接指定して開くので、
- * 配信割合とは無関係に必ずそのVersionが出る（検証用途なのでこれが正しい）。
- */
-function pickDeliveryVersion(versions: readonly Version[], ctx: VisitorContext): Version | null {
-  const pool = versions.filter(
-    (v) => v.archived !== true && v.distribution_ratio >= 1 && isEligible(v, ctx),
-  )
-  if (pool.length === 0) return null
-  const total = pool.reduce((sum, v) => sum + v.distribution_ratio, 0)
-  if (total <= 0) return null
-  let ticket = Math.random() * total
-  for (const version of pool) {
-    ticket -= version.distribution_ratio
-    if (ticket <= 0) return version
-  }
-  // 浮動小数の誤差で最後まで残ったときは末尾（割合の合計を超えたケース）
-  return pool[pool.length - 1] ?? null
-}
 
 /** ランダムな計測用uid（訪問ごとに変わる。SBのsquadbeyond_uid相当） */
 function genSquadbeyondUid(): string {
@@ -421,37 +269,7 @@ function externalWidgetLibs(html: string): string {
   return tags.join('')
 }
 
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
-}
 
-/** 実在しないID等で開かれたときの案内ページ（クライアント版 showNotice のSSR版） */
-function renderNotice(res: import('express').Response, uid: string): void {
-  const looksLikePlaceholder = /[<>]/.test(uid)
-  const html =
-    `<!doctype html><html lang="ja"><head><meta charset="utf-8">` +
-    `<meta name="viewport" content="width=device-width, initial-scale=1">` +
-    `<title>配信ページが見つかりません</title>` +
-    `<style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;` +
-    `padding:24px;font-family:"Hiragino Sans",sans-serif;background:#ECECEC}` +
-    `.card{background:#fff;border-radius:8px;padding:28px 32px;max-width:520px;text-align:center;` +
-    `box-shadow:0 1px 6px rgba(0,0,0,.12);line-height:1.9}` +
-    `.title{font-size:16px;font-weight:600;margin-bottom:8px}` +
-    `.desc{font-size:13px;color:#555}</style></head><body>` +
-    `<div class="card">` +
-    `<div class="title">このURLの配信ページは見つかりません</div>` +
-    `<div class="desc">指定されたID「${escapeHtml(uid)}」のbeyondページが存在しません。` +
-    (looksLikePlaceholder
-      ? '<br><b>&lt;uid&gt; は差し込み用の記号です。</b>実際のIDに置き換えてください。'
-      : '') +
-    `</div></div></body></html>`
-  res.status(404).type('html').send(html)
-}
 
 function findAbTest(state: State, uid: string): AbTest | undefined {
   return state.abTests.find((t) => t.uid === uid)
@@ -608,28 +426,6 @@ deliveryRouter.get('/exclude/:token', (req, res) => {
     .send(renderExcludePage(ok, email))
 })
 
-/** 除外リンクを開いたときに出す画面 */
-function renderExcludePage(ok: boolean, email: string): string {
-  const body = ok
-    ? `<h1>このブラウザを除外しました</h1>
-       <p>${escapeHtml(email)} として登録された除外設定です。</p>
-       <p>これ以降、<b>このブラウザ</b>からのアクセスはレポートの数値に入りません。
-          ページはこれまでどおり普通に見られます。</p>
-       <p class="note">別のブラウザや別の端末には効きません。それぞれで同じリンクを開いてください。
-          ブラウザのデータ（Cookie）を消すと解除されます。</p>`
-    : `<h1>この除外リンクは無効です</h1>
-       <p>設定が削除されたか、URLが間違っている可能性があります。</p>`
-  return `<!doctype html><html lang="ja"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>レポート除外</title><style>
-body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
- background:#f4f6f9;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans",sans-serif;color:#1f2937}
-.card{background:#fff;border:1px solid #e6e9f0;border-radius:12px;padding:28px 32px;max-width:520px;
- box-shadow:0 1px 3px rgba(16,24,40,.06)}
-h1{font-size:18px;margin:0 0 12px}p{font-size:13px;line-height:1.9;margin:0 0 10px}
-.note{color:#6b7280;font-size:12px}
-</style></head><body><div class="card">${body}</div></body></html>`
-}
 
 /**
  * 計測スクリプトの配信（外部LPが `<script src>` で読み込む）。
@@ -971,246 +767,5 @@ deliveryRouter.get('/preview/:versionUid', (req, res) => {
   res.type('html').send(html)
 })
 
-/** プレビューが見つからないときの案内 */
-function renderPreviewNotice(versionUid: string): string {
-  return `<!doctype html><html lang="ja"><head><meta charset="utf-8">` +
-    `<meta name="viewport" content="width=device-width, initial-scale=1">` +
-    `<title>プレビューが見つかりません</title>` +
-    `<style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;` +
-    `padding:24px;font-family:"Hiragino Sans",sans-serif;background:#ECECEC}` +
-    `.card{background:#fff;border-radius:8px;padding:28px 32px;max-width:520px;text-align:center;` +
-    `box-shadow:0 1px 6px rgba(0,0,0,.12);line-height:1.9}` +
-    `.title{font-size:16px;font-weight:600;margin-bottom:8px}` +
-    `.desc{font-size:13px;color:#555}</style></head><body>` +
-    `<div class="card">` +
-    `<div class="title">このプレビューURLは見つかりません</div>` +
-    `<div class="desc">Version「${escapeHtml(versionUid)}」が存在しないか、削除されています。</div>` +
-    `</div></body></html>`
-}
 
-/**
- * 離脱防止ポップアップのHTMLスニペットを構築する（指示80）。
- * デバイスフィルタを適用し、マッチしないポップアップは出さない。
- * 離脱防止トリガー: ページ離脱（mouseout / visibilitychange）で表示。
- */
-function buildPopupSnippet(popup: ExitPopup, device: 'sp' | 'tablet' | 'pc'): string {
-  // デバイスフィルタ
-  if (device === 'sp' && !popup.device_sp) return ''
-  if (device === 'tablet' && !popup.device_tablet) return ''
-  if (device === 'pc' && !popup.device_pc) return ''
 
-  const popupId = `exit-popup-${popup.uid}`
-  const animClass = popup.animation !== 'none' ? popup.animation : ''
-
-  // リンク設定（キャンバス画像と同じ規約）: 遷移先 link_url / 新タブ link_target / 計測URL tracking_urls。
-  // 旧データはこれらを持たない場合があるので既定値で守る。
-  const epLink = popup.link_url ?? ''
-  const epTarget = popup.link_target === '_self' ? '_self' : '_blank'
-  const epPins = Array.isArray(popup.tracking_urls) ? popup.tracking_urls : []
-
-  // アニメーションCSS（エントランス9種 + 内部アニメ用キーフレーム）
-  const animCss = `
-    @keyframes epFadeIn { from{opacity:0} to{opacity:1} }
-    @keyframes epSlideUp { from{opacity:0;transform:translateY(30px)} to{opacity:1;transform:translateY(0)} }
-    @keyframes epSlideDown { from{opacity:0;transform:translateY(-30px)} to{opacity:1;transform:translateY(0)} }
-    @keyframes epSlideLeft { from{opacity:0;transform:translateX(-50px)} to{opacity:1;transform:translateX(0)} }
-    @keyframes epSlideRight { from{opacity:0;transform:translateX(50px)} to{opacity:1;transform:translateX(0)} }
-    @keyframes epZoomIn { from{opacity:0;transform:scale(.8)} to{opacity:1;transform:scale(1)} }
-    @keyframes epBounceIn { 0%{opacity:0;transform:scale(.3)} 50%{opacity:1;transform:scale(1.05)} 70%{transform:scale(.95)} 100%{opacity:1;transform:scale(1)} }
-    @keyframes epElastic { 0%{opacity:0;transform:scale(.5)} 55%{opacity:1;transform:scale(1.12)} 75%{transform:scale(.96)} 100%{opacity:1;transform:scale(1)} }
-    @keyframes epFlipIn { 0%{opacity:0;transform:perspective(400px) rotateX(90deg)} 40%{transform:perspective(400px) rotateX(-10deg)} 70%{transform:perspective(400px) rotateX(10deg)} 100%{opacity:1;transform:perspective(400px) rotateX(0)} }
-    @keyframes epConfettiFall { 0%{transform:translateY(0) rotate(0deg);opacity:1} 100%{transform:translateY(400px) rotate(720deg);opacity:0} }
-    @keyframes epPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.06)} }
-    .ep-overlay { position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:99999; display:none; align-items:center; justify-content:center; }
-    .ep-overlay.visible { display:flex; }
-    .ep-content { max-width:min(500px,92vw); width:fit-content; max-height:80vh; overflow:auto; position:relative; scrollbar-width:none; -ms-overflow-style:none; }
-    .ep-content::-webkit-scrollbar { width:0; height:0; display:none; }
-    .ep-content.fade { animation:epFadeIn .3s ease }
-    .ep-content.slideUp { animation:epSlideUp .4s ease }
-    .ep-content.slideDown { animation:epSlideDown .4s ease }
-    .ep-content.slideLeft { animation:epSlideLeft .4s ease }
-    .ep-content.slideRight { animation:epSlideRight .4s ease }
-    .ep-content.zoomIn { animation:epZoomIn .3s ease }
-    .ep-content.bounceIn { animation:epBounceIn .6s ease }
-    .ep-content.elastic { animation:epElastic .8s ease }
-    .ep-content.flipIn { animation:epFlipIn .6s ease }
-    .ep-close { position:absolute; top:8px; right:8px; width:28px; height:28px; border-radius:50%; background:#fff; border:1px solid #ddd; cursor:pointer; font-size:14px; display:flex; align-items:center; justify-content:center; box-shadow:0 1px 4px rgba(0,0,0,.15); z-index:2; }
-  `
-
-  // 種別（指示176）とクリック動作（指示172）
-  const popupKind = popup.popup_kind === 'instant' ? 'instant' : 'exit'
-  const linkAction = popup.link_action === 'close' ? 'close' : 'link'
-
-  // 統合IIFE: 内部アニメJS(popup.javascript) + トリガーJS を1つのスコープにまとめ、
-  // overlay / epId をスコープ変数として共有。'ep-show' カスタムイベントで内部アニメを起動。
-  const scriptBody = `(function(){
-    var epId='${popupId}';
-    var overlay=document.getElementById(epId);
-    if(!overlay)return;
-    var shown=false;
-    var delay=${popup.delay_seconds * 1000};
-    var scrollTrigger=${popup.scroll_trigger};
-    var scrollPos=${popup.scroll_position};
-    var kind=${JSON.stringify(popupKind)};
-    var exitTrig=${popup.exit_trigger !== false};
-    var backTrig=${popup.back_button_trigger === true};
-    var cdTrig=${popup.countdown_trigger === true};
-    var cdSec=${popup.countdown_seconds || 0};
-    var linkAction=${JSON.stringify(linkAction)};
-
-    function showPopup(){
-      if(shown)return;
-      // 指示160: 離脱防止ポップは同時に1つだけ表示する（複数有効時に重なって×が2個出るのを防ぐ）。
-      if(document.querySelector('.ep-overlay.visible'))return;
-      shown=true;
-      overlay.classList.add('visible');
-      try{overlay.dispatchEvent(new CustomEvent('ep-show'))}catch(e){}
-    }
-    function closePopup(){ overlay.classList.remove('visible'); }
-
-    // ── 内部アニメーションJS（プリセットが設定）──
-    ${popup.javascript}
-
-    if(kind==='instant'){
-      // ── 指示176: 表示直後 — LPを開いた直後（delay後・既定0）にオーバーレイ表示 ──
-      setTimeout(showPopup, delay);
-    } else {
-      // ── 指示175: 離脱防止 — 開いた直後には出さず「離脱意図」でのみ出す ──
-      // （旧: mouseout全辺 + visibilitychange が読み込み直後に誤発火していた。両方やめる）
-      var armed=false;
-      setTimeout(function(){ armed=true; }, delay); // 読み込み直後の誤発火を防ぐ猶予
-      // PC: カーソルが画面「上端」の外へ出た（＝タブ/URLバー方向へ抜けた）とき。exit_trigger時。
-      if(exitTrig){
-        document.addEventListener('mouseout',function(e){
-          if(!armed)return;
-          if(e.clientY<=0 && !e.relatedTarget)showPopup();
-        });
-      }
-      // 戻る操作（ブラウザ戻る/スマホの戻るジェスチャ）で発動。exit_trigger または back_button_trigger時。
-      if(exitTrig||backTrig){
-        var trapped=false;
-        try{history.pushState({epTrap:1},'')}catch(e){}
-        window.addEventListener('popstate',function(){
-          if(trapped)return;            // 2回目の戻るは通す（離脱を許可）
-          trapped=true;
-          showPopup();
-          try{history.pushState({epTrap:1},'')}catch(e){} // 戻るを1回だけ捕まえてポップ表示
-        });
-      }
-      // カウントダウンで表示
-      if(cdTrig&&cdSec>0)setTimeout(showPopup, cdSec*1000);
-      // スクロールで表示
-      if(scrollTrigger){
-        window.addEventListener('scroll',function(){
-          var pct=(window.scrollY/(document.body.scrollHeight-window.innerHeight))*100;
-          if(pct>=scrollPos)showPopup();
-        });
-      }
-    }
-
-    // ── クリック時の動作（指示172）──
-    var epLink=${JSON.stringify(epLink)};
-    var epTarget=${JSON.stringify(epTarget)};
-    var epPins=${JSON.stringify(epPins)};
-    var content=overlay.querySelector('.ep-content');
-    if(linkAction!=='close'&&epLink&&content)content.style.cursor='pointer';
-
-    overlay.addEventListener('click',function(e){
-      var t=e.target;
-      // 背景 or ×ボタン → 閉じる
-      if(t===overlay||(t.classList&&t.classList.contains('ep-close'))){closePopup();return;}
-      // 指示172: 動作=LPに戻る → 中身タップでも閉じて、元のLPの見ていた位置へ戻る（×と同じ）
-      if(linkAction==='close'){closePopup();return;}
-      if(!epLink)return;
-      // 中身が本物のリンク/ボタン（href が # や javascript: 以外）ならそれを生かす
-      var inner=t.closest&&t.closest('a[href]');
-      if(inner){var h=inner.getAttribute('href')||'';if(h&&h!=='#'&&!/^javascript:/i.test(h))return;}
-      if(t.closest&&t.closest('button'))return;
-      // ポップアップ本体クリック → 遷移先へ
-      e.preventDefault();
-      // 計測URL（ピクセル）発火
-      epPins.forEach(function(u){try{navigator.sendBeacon(u)}catch(err){new Image().src=u}});
-      // レポート計測(sb_tracking)も拾えるよう、実 <a> クリックで遷移する（画像リンクと同じ経路）
-      var a=document.createElement('a');a.href=epLink;a.target=epTarget;
-      if(epTarget==='_blank')a.rel='noopener noreferrer';
-      document.body.appendChild(a);a.click();a.remove();
-    });
-  })()`
-
-  return `<style>${animCss}</style>` +
-    `<div id="${popupId}" class="ep-overlay">` +
-    `<div class="ep-content ${animClass}">` +
-    `<button class="ep-close">✕</button>` +
-    popup.html +
-    `</div></div>` +
-    (popup.head_tag !== '' ? popup.head_tag : '') +
-    (popup.body_tag !== '' ? popup.body_tag : '') +
-    `<script>${scriptBody}</script>`
-}
-
-/**
- * 追尾型ポップアップのHTMLスニペットを構築する（指示85）。
- * スクロール追従バナー: 画面の上端/下端/角に固定表示される。
- * オーバーレイ無し、ページ閲覧を妨げない控えめな表示。
- */
-function buildFollowPopupSnippet(fp: FollowPopup, device: 'sp' | 'tablet' | 'pc'): string {
-  if (device === 'sp' && !fp.device_sp) return ''
-  if (device === 'tablet' && !fp.device_tablet) return ''
-  if (device === 'pc' && !fp.device_pc) return ''
-
-  const fpId = `follow-popup-${fp.uid}`
-
-  // 位置に応じたCSS
-  const positionStyles: Record<string, string> = {
-    top: 'top:0;left:0;right:0',
-    bottom: 'bottom:0;left:0;right:0',
-    'bottom-right': 'bottom:16px;right:16px',
-    'bottom-left': 'bottom:16px;left:16px',
-  }
-  const posStyle = positionStyles[fp.position] ?? positionStyles.bottom
-
-  // アニメーション
-  const animMap: Record<string, string> = {
-    slideUp: 'fpSlideUp .4s ease',
-    slideDown: 'fpSlideDown .4s ease',
-    fade: 'fpFadeIn .3s ease',
-  }
-  const animValue = animMap[fp.animation] ?? ''
-
-  const css = `
-    @keyframes fpSlideUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
-    @keyframes fpSlideDown { from{opacity:0;transform:translateY(-20px)} to{opacity:1;transform:translateY(0)} }
-    @keyframes fpFadeIn { from{opacity:0} to{opacity:1} }
-    #${fpId} { position:fixed;${posStyle};z-index:99990;display:none;${animValue !== '' ? `animation:${animValue};` : ''} }
-    #${fpId}.fp-visible { display:block; }
-    #${fpId} .fp-close { position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:50%;background:rgba(0,0,0,.5);color:#fff;border:none;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;z-index:1; }
-    ${fp.css}
-  `
-
-  const showAfterScroll = fp.show_after_scroll
-  const scriptBody = `(function(){
-    var el=document.getElementById('${fpId}');if(!el)return;
-    var scrollThreshold=${showAfterScroll};
-    function show(){el.classList.add('fp-visible')}
-    ${showAfterScroll > 0
-      ? `window.addEventListener('scroll',function(){
-          var pct=(window.scrollY/(document.body.scrollHeight-window.innerHeight))*100;
-          if(pct>=scrollThreshold)show();
-        });`
-      : `show();`
-    }
-    el.querySelector('.fp-close')?.addEventListener('click',function(){el.remove()});
-    ${fp.javascript}
-  })()`
-
-  const closeButton = fp.show_close_button
-    ? `<button class="fp-close">✕</button>`
-    : ''
-
-  return `<style>${css}</style>` +
-    `<div id="${fpId}">` +
-    closeButton +
-    fp.html +
-    `</div>` +
-    `<script>${scriptBody}</script>`
-}
