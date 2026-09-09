@@ -22,12 +22,21 @@ export interface DateRange {
   endDate: string
 }
 
-/** YYYY-MM-DD（mock-server/store/metrics.ts の toDateKey と同じ書式） */
+/**
+ * YYYY-MM-DD（日本時間）。
+ *
+ * サーバーは記録も集計もJSTで日付を切る（mock-server/store/metrics.ts）。
+ * ここでブラウザのローカル時刻を使うと、日本の外から開いたときに
+ * 「今日」がサーバーと1日ズレて、レポートが空になったり前日の数字が出たりする。
+ * どこから見ても同じ日を指すよう、画面側もJSTに固定する。
+ */
 export function toDateKey(date: Date): string {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date)
 }
 
 function shiftDays(base: Date, days: number): Date {

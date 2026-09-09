@@ -184,10 +184,22 @@ function textLength(html: string): number {
  * 実機で「時」が1桁になるケースは採取できていないため、そこだけ推定（ja-JP準拠）。
  */
 export function formatHistoryTimestamp(unixSeconds: number): string {
-  const d = new Date(unixSeconds * 1000)
-  const pad = (n: number): string => String(n).padStart(2, '0')
-  return (
-    `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()} ` +
-    `${d.getHours()}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
-  )
+  // 実機は日本時間で表示している。サーバーのローカル時刻（本番Railwayは UTC）で
+  // 組み立てると9時間ずれた時刻が並ぶので、JSTに固定する。
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).formatToParts(new Date(unixSeconds * 1000))
+  const get = (type: string): string => parts.find((p) => p.type === type)?.value ?? ''
+  // 実機は年/月/日/時をゼロ埋めしない（en-CA は埋めるので数値に戻す）。
+  // 一部環境が 24 時を返すので 0 に丸める。
+  const hour = get('hour') === '24' ? 0 : Number(get('hour'))
+  const date = `${get('year')}-${Number(get('month'))}-${Number(get('day'))}`
+  return `${date} ${hour}:${get('minute')}:${get('second')}`
 }

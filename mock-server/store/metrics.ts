@@ -15,6 +15,7 @@
  * SquadBeyond の正確な定義は復元できなかった。広告運用の標準的な解釈で定義している
  * （実物とズレていたらこの4本を直せば全画面に反映される）。
  */
+import { jstNow } from '../lib/jst.ts'
 import type { DailyMetric } from './types.ts'
 
 /** CV1件あたりの平均単価（売上が取得できていないときのフォールバック・円） */
@@ -122,10 +123,12 @@ export function aggregate(metrics: readonly DailyMetric[]): DerivedKpi {
 
 /** YYYY-MM-DD */
 export function toDateKey(date: Date): string {
-  const y = date.getFullYear()
-  const m = String(date.getMonth() + 1).padStart(2, '0')
-  const d = String(date.getDate()).padStart(2, '0')
-  return `${y}-${m}-${d}`
+  // 本番(Railway)のTZはUTC。`date.getFullYear()` 等のローカルgetterで組み立てると、
+  // 日本の朝（00:00〜09:00 JST）が前日として記録される。
+  // 画面はブラウザのローカル時刻＝JSTで「今日」を問い合わせるので、
+  // そのままだと朝のアクセスがレポートから消えて前日に混ざる。
+  // 判定は lib/jst.ts に一本化してある（定期実行のスケジュール判定と同じ基準）。
+  return jstNow(date).date
 }
 
 export function parseDateKey(key: string): Date {

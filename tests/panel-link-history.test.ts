@@ -256,14 +256,20 @@ beforeEach(() => {
 })
 
 describe('日時書式（実機はゼロ埋めなし）', () => {
+  /**
+   * 入力は「その日本時間の瞬間」を UTC で指定して作る。
+   * `new Date(2026, 7, 31, ...)` はマシンのTZで解釈されるので、
+   * 本番(Railway=UTC)と手元(JST)でテストの意味が変わってしまう。
+   */
+  const jst = (y: number, m: number, d: number, h: number, mi: number, s: number): number =>
+    Math.floor(Date.UTC(y, m, d, h - 9, mi, s) / 1000)
+
   it('`2026-8-31 19:41:39` の形で出す', () => {
-    const at = Math.floor(new Date(2026, 7, 31, 19, 41, 39).getTime() / 1000)
-    expect(formatHistoryTimestamp(at)).toBe('2026-8-31 19:41:39')
+    expect(formatHistoryTimestamp(jst(2026, 7, 31, 19, 41, 39))).toBe('2026-8-31 19:41:39')
   })
 
   it('月日はゼロ埋めせず、分秒はゼロ埋めする', () => {
-    const at = Math.floor(new Date(2026, 0, 5, 10, 5, 3).getTime() / 1000)
-    expect(formatHistoryTimestamp(at)).toBe('2026-1-5 10:05:03')
+    expect(formatHistoryTimestamp(jst(2026, 0, 5, 10, 5, 3))).toBe('2026-1-5 10:05:03')
   })
 })
 
