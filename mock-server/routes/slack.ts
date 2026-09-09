@@ -14,6 +14,8 @@ import { Router } from 'express'
 import type { Request } from 'express'
 import { getState, setState } from '../store/store.ts'
 import { errorEnvelope } from '../lib/envelope.ts'
+import { isAdminAuthenticated, render404Page } from '../lib/admin-auth.ts'
+import { SERVE_DIST } from '../config.ts'
 import { ChatworkError, chatworkToken, listRooms } from '../chatwork.ts'
 import { NotifyError, sendNotification } from '../notify.ts'
 import { buildTaskReport } from '../task-report.ts'
@@ -209,6 +211,23 @@ slackRouter.delete('/slack', (_req, res) => {
  * APIの認証ミドルウェアではなくページとして扱う）。
  */
 export const slackOauthRouter: Router = Router()
+
+/**
+ * 認可の往復は**ログインしている人だけ**に許す。
+ *
+ * ここは API 認証の外（Slackからブラウザ遷移で戻ってくるため）に置いている。
+ * 素通しにすると、第三者が自分のワークスペースで認可を通して
+ * **通知先を丸ごと奪える**（以後のレポートが相手のSlackへ流れる）。
+ * 戻りは本人のブラウザなので、管理者のCookieは付いてくる。
+ */
+slackOauthRouter.use('/oauth/slack', (req, res, next) => {
+  // 開発（Vite経由）は認証自体が無効なので素通し。本番だけ効かせる。
+  if (SERVE_DIST === undefined || isAdminAuthenticated(req)) {
+    next()
+    return
+  }
+  res.status(404).type('html').send(render404Page())
+})
 
 slackOauthRouter.get('/oauth/slack/start', (req, res) => {
   const credentials = slackCredentials()

@@ -263,3 +263,20 @@ describe('タスクの通知本文', () => {
     expect(text).toContain('[テスト]')
   })
 })
+
+describe('Slackの認可経路は素通しにしない', () => {
+  const src = readFileSync('mock-server/routes/slack.ts', 'utf8')
+
+  it('ログインしている人だけが通れる', () => {
+    expect(src).toContain("slackOauthRouter.use('/oauth/slack'")
+    expect(src).toContain('isAdminAuthenticated(req)')
+  })
+
+  it('素通しにすると通知先を奪われる、と理由を残す', () => {
+    expect(src).toContain('通知先を丸ごと奪える')
+  })
+
+  it('開発では認証が無効なので素通しにする（テストの前提を変えない）', () => {
+    expect(src).toContain('SERVE_DIST === undefined')
+  })
+})
