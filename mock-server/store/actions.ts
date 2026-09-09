@@ -19,6 +19,9 @@ import type {
   Task,
   Version,
   VersionStatus,
+  TaskNotify,
+  TaskReportSpan,
+  TaskSchedule,
 } from './types.ts'
 
 /** 実APIは created_at/updated_at を数値（UNIXタイムスタンプ・秒）で返す（実測） */
@@ -621,7 +624,15 @@ export function unarchiveVersion(
 // ── タスク ───────────────────────────────────────────────
 export function createTask(
   state: State,
-  input: { title: string; assignee_member_id: number | null; due_at: string | null },
+  input: {
+    title: string
+    assignee_member_id: number | null
+    due_at: string | null
+    description?: string
+    schedule?: TaskSchedule
+    span?: TaskReportSpan
+    notify?: TaskNotify | null
+  },
 ): { state: State; task: Task } {
   const id = state.nextId
   const task: Task = {
@@ -633,6 +644,14 @@ export function createTask(
     status: 'todo',
     due_at: input.due_at,
     created_at: nowTs(),
+    description: input.description ?? '',
+    // 既定は単発。指定が無いタスクを勝手に定期実行しない。
+    schedule: input.schedule ?? { kind: 'once', hour: '09', minute: '00', weekdays: [] },
+    span: input.span ?? 'today',
+    notify: input.notify ?? null,
+    last_run_slot: null,
+    last_run_status: null,
+    last_run_error: null,
   }
   return { state: { ...state, tasks: [...state.tasks, task], nextId: id + 1 }, task }
 }

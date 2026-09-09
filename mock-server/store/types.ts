@@ -377,6 +377,35 @@ export interface OperatorArticle {
 
 export type TaskStatus = 'todo' | 'doing' | 'done'
 
+/** タスクの実行間隔（実物のプルダウンどおり） */
+export type TaskScheduleKind =
+  | 'once'
+  | 'hourly'
+  | 'daily'
+  | 'weekly'
+  | 'monthly_first'
+  | 'monthly_last'
+
+/** 通知に載せるレポートの期間 */
+export type TaskReportSpan = 'today' | 'yesterday' | 'last7days'
+
+/**
+ * いつ動かすか。時刻はすべて**日本時間**で判定する（`lib/jst.ts`）。
+ * `weekdays` は 0=日曜 … 6=土曜。`weekly` のときだけ使う。
+ */
+export interface TaskSchedule {
+  kind: TaskScheduleKind
+  hour: string
+  minute: string
+  weekdays: readonly number[]
+}
+
+/** どこへ送るか。未設定なら通知しない */
+export interface TaskNotify {
+  service: 'slack' | 'chatwork'
+  destination_id: string
+}
+
 export interface Task {
   id: number
   uid: string
@@ -386,6 +415,19 @@ export interface Task {
   status: TaskStatus
   due_at: string | null
   created_at: number
+  /** 説明（画面の「説明」欄） */
+  description: string
+  schedule: TaskSchedule
+  span: TaskReportSpan
+  notify: TaskNotify | null
+  /**
+   * 最後に実行した分（`YYYY-MM-DD HH:MM` のJST）。
+   * 1分の間に何度も見張りが回っても二重に送らないための目印。
+   */
+  last_run_slot: string | null
+  /** 最後の実行がどうなったか（画面に出して、届いていないことに気づけるようにする） */
+  last_run_status: 'ok' | 'failed' | null
+  last_run_error: string | null
 }
 
 export interface Inspection {

@@ -8,10 +8,15 @@ import { createServer } from 'node:http'
 import { createApp } from './app.ts'
 import { MOCK_PORT, PREFIX } from './config.ts'
 import { attachCable } from './ws/cable.ts'
+import { startTaskRunner } from './task-runner.ts'
 
 const app = createApp()
 const server = createServer(app)
 attachCable(server)
+
+// 定期タスクの見張り。サーバーが動いている間だけ回る。
+// テスト（app を直に使う）では回らないので、実行時刻に左右されない。
+startTaskRunner()
 
 server.listen(MOCK_PORT, () => {
   console.log(`[mock] http://localhost:${MOCK_PORT}`)

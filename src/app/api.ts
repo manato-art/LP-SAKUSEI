@@ -447,8 +447,13 @@ export const api = {
   addDomain: (host: string) =>
     request<{ domain: DomainEntry }>('POST', '/teams/domains', { host }),
   /** タスク作成 */
-  createTask: (title: string) =>
-    request<{ task: Task }>('POST', '/tasks', { title }),
+  createTask: (input: {
+    title: string
+    description?: string
+    schedule?: { kind: string; hour: string; minute: string; weekdays: readonly number[] }
+    span?: string
+    notify?: { service: 'slack' | 'chatwork'; destination_id: string } | null
+  }) => request<{ task: Task }>('POST', '/tasks', input),
   /** タスク更新 */
   updateTask: (uid: string, patch: { status?: string; title?: string }) =>
     request<{ task: Task }>('PUT', `/tasks/${uid}`, patch),
@@ -614,6 +619,10 @@ export interface Task {
   id: number
   uid: string
   title: string
+  /** 最後に実行した分（JST）。未実行なら null */
+  last_run_slot?: string | null
+  last_run_status?: 'ok' | 'failed' | null
+  last_run_error?: string | null
   assignee_member_id: number | null
   status: string
   due_at: string | null

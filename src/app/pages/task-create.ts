@@ -249,14 +249,33 @@ export function renderTaskForm(
     submit.disabled = true
     submit.textContent = '作成中…'
     const target = notifyField.target()
-    void api.createTask(title).then(
+    const scheduleKind = kind.value as ScheduleKind
+    // 定期なのに送り先が無いと、動いても誰にも届かない
+    if (scheduleKind !== 'once' && target === null) {
+      toast('定期タスクには通知先を選んでください', 'error')
+      return
+    }
+    void api
+      .createTask({
+        title,
+        description: desc.value.trim(),
+        schedule: {
+          kind: scheduleKind,
+          hour: hour.value,
+          minute: minute.value,
+          weekdays: [...chosenDays],
+        },
+        span: span.value,
+        notify: target === null ? null : { service: target.service, destination_id: target.id },
+      })
+      .then(
       async () => {
         /**
          * 単発は「作成直後に実行」なので、その場で1通送る。
          * 作っただけで何も起きないと、動いているのか分からない。
          * 定期のぶんはサーバー側の時計で送る。
          */
-        if ((kind.value as ScheduleKind) === 'once' && target !== null) {
+        if (scheduleKind === 'once' && target !== null) {
           try {
             await api.runTaskNow({ name: title, span: span.value, target })
             toast('タスクを作成し、通知を送りました')
