@@ -1,5 +1,6 @@
 /** 設定 / 通知 / レポート除外 / 課金・アドオン（企画書 §10-3）。 */
 import { Router } from 'express'
+import { randomBytes } from 'node:crypto'
 import { currentTeamId } from '../store/current-team.ts'
 import { getState, setState } from '../store/store.ts'
 import { applyEmptyState } from '../lib/mock-state.ts'
@@ -83,6 +84,8 @@ settingsRouter.get('/report-exclusions', (req, res) => {
   // 「除外アクセス数」は記録から数える。記録が無ければ null（実物も「―」）。
   const withCount = rows.map((r) => ({
     ...r,
+    // 除外リンクの組み立てに要るので、合言葉はここで渡す
+    exclude_token: r.exclude_token,
     excluded_count:
       state.requestLogs.length === 0
         ? null
@@ -175,6 +178,8 @@ settingsRouter.post('/report-exclusions', (req, res) => {
     id: state.nextId,
     uid: makeUid('reportExclusion', state.reportExclusions.length + 1),
     team_id: currentTeamId(state),
+    // 除外リンクは推測できてはいけないので、uidとは別に乱数を持たせる
+    exclude_token: randomBytes(16).toString('hex'),
     conditions,
     is_whitelist: body['is_whitelist'] === true,
     reason: optionalString(req.body, 'reason'),

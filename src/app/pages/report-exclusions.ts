@@ -380,7 +380,7 @@ function buildRulesTable(rows: readonly ReportExclusionEntry[], reload: () => vo
       copy.className = 'rx-btn ghost'
       copy.style.cssText += ';margin-right:6px;padding:4px 10px;font-size:11px'
       copy.textContent = '除外リンクをコピー'
-      const url = `${location.origin}/exclude/${row.uid}`
+      const url = `${location.origin}/exclude/${row.exclude_token}`
       copy.title = `${url}\n本人のChromeでこのURLを一度開いてもらうと、そのブラウザが除外されます。`
       copy.addEventListener('click', () => {
         void navigator.clipboard?.writeText(url).then(

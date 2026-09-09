@@ -574,6 +574,13 @@ export interface ReportExclusion {
   id: number
   uid: string
   team_id: number
+  /**
+   * 除外リンク（`/exclude/:token`）に使う合言葉。
+   * uid は連番で推測できるため、リンクには使わない。
+   * 推測できると、他人のメールアドレスが見えるうえ、
+   * 誰でも自分のアクセスをレポートから外せてしまう。
+   */
+  exclude_token: string
   conditions: readonly ExclusionCondition[]
   /**
    * ホワイトリスト対象。実物の説明どおり「アクセス拒否の対象から除外」する。

@@ -562,7 +562,7 @@ function setTrackCors(res: Response, origin: string | undefined): void {
  */
 deliveryRouter.get('/exclude/:token', (req, res) => {
   const token = req.params.token
-  const rule = getState().reportExclusions.find((r) => r.uid === token)
+  const rule = getState().reportExclusions.find((r) => r.exclude_token === token)
   const ok = rule !== undefined
   if (ok) {
     // 2年。ブラウザのデータを消すと外れるので、その旨も画面に書く。

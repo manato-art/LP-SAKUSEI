@@ -648,8 +648,9 @@ export interface ExclusionCondition {
 
 export interface ReportExclusionEntry {
   id: number
-  /** メールアドレス除外の「除外リンク」にも使う */
   uid: string
+  /** 除外リンクの合言葉。uidは連番で推測できるので、リンクにはこちらを使う */
+  exclude_token: string
   /** 実物は「＋複数条件を組み合わせる」で行を増やせるので、1件が複数条件を持つ */
   conditions: readonly ExclusionCondition[]
   is_whitelist: boolean

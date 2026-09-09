@@ -48,16 +48,6 @@ export function matchesText(actual: string, expected: string, how: ExclusionMatc
   }
 }
 
-/**
- * メールアドレスの除外に使う目印。
- * Webサイトからブラウザのログインアカウントは読めないので、
- * 本人に一度「除外リンク」を開いてもらい、そのブラウザに残った目印で判定する。
- * 目印はルールのuidそのもの（推測されても他人のブラウザには入れられない）。
- */
-export function excludeTokenOf(uid: string): string {
-  return uid
-}
-
 /** 記録の中で、その除外対象が指す値たち（パラメータは複数ありうる） */
 function valuesOf(log: RequestLogEntry, kind: ExclusionCondition['kind']): readonly string[] {
   switch (kind) {
@@ -77,16 +67,16 @@ function valuesOf(log: RequestLogEntry, kind: ExclusionCondition['kind']): reado
 
 /**
  * 1行ぶんの条件に当たるか。
- * @param ruleUid メールアドレスの判定に使う（そのルールの目印がブラウザにあるか）
+ * @param ruleToken メールアドレスの判定に使う（そのルールの目印がブラウザにあるか）
  */
 export function matchesCondition(
   log: RequestLogEntry,
   cond: ExclusionCondition,
-  ruleUid = '',
+  ruleToken = '',
 ): boolean {
   if (cond.kind === 'email') {
     // 値（メールアドレス）そのものは届かない。除外リンクを開いたブラウザかどうかで見る。
-    return log.exclude_token !== '' && log.exclude_token === excludeTokenOf(ruleUid)
+    return log.exclude_token !== '' && log.exclude_token === ruleToken
   }
   return valuesOf(log, cond.kind).some((actual) =>
     matchesText(actual, cond.value, cond.match_type),
@@ -103,12 +93,12 @@ export function matchesCondition(
 export function matchesExclusion(log: RequestLogEntry, rule: ReportExclusion): boolean {
   const conds = rule.conditions
   if (conds.length === 0) return false
-  let result = matchesCondition(log, conds[0] as ExclusionCondition, rule.uid)
+  let result = matchesCondition(log, conds[0] as ExclusionCondition, rule.exclude_token)
   for (let i = 1; i < conds.length; i++) {
     const cond = conds[i] as ExclusionCondition
     // 繋ぎ方は「前の行」に書かれているものを使う
     const join = (conds[i - 1] as ExclusionCondition).join
-    const hit = matchesCondition(log, cond, rule.uid)
+    const hit = matchesCondition(log, cond, rule.exclude_token)
     result = join === 'and' ? result && hit : result || hit
   }
   return result

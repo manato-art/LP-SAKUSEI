@@ -31,6 +31,7 @@ const rule = (over: Partial<ReportExclusion> = {}): ReportExclusion => ({
   id: 1,
   uid: 'rx1',
   team_id: 1,
+  exclude_token: 'tok1',
   conditions: [cond()],
   is_whitelist: false,
   reason: '',
@@ -236,11 +237,11 @@ describe('レポート除外API', () => {
   })
 
   it('メールアドレスの除外は、除外リンクを開いたブラウザにだけ効く', async () => {
-    const created = await postJson<{ report_exclusion: { uid: string } }>(
+    const created = await postJson<{ report_exclusion: { exclude_token: string } }>(
       `${server.api}/report-exclusions`,
       { conditions: [{ kind: 'email', match_type: 'exact', value: 'a@example.test', join: 'or' }] },
     )
-    const token = created.json.report_exclusion.uid
+    const token = created.json.report_exclusion.exclude_token
     const page = await postJson<{ ab_test: { uid: string } }>(`${server.api}/ab_tests`, {
       title: 'メール除外テスト',
       media_id: 1,
@@ -267,12 +268,15 @@ describe('レポート除外API', () => {
     expect(report.totals.pv).toBe(1)
   })
 
-  it('除外リンクを開くと目印が返る。壊れたリンクは404', async () => {
-    const created = await postJson<{ report_exclusion: { uid: string } }>(
+  it('除外リンクは推測できない合言葉で、連番uidでは開けない', async () => {
+    const created = await postJson<{ report_exclusion: { exclude_token: string } }>(
       `${server.api}/report-exclusions`,
       { conditions: [{ kind: 'email', match_type: 'exact', value: 'b@example.test', join: 'or' }] },
     )
-    const ok = await fetch(`${server.baseUrl}/exclude/${created.json.report_exclusion.uid}`)
+    const token = created.json.report_exclusion.exclude_token
+    // 連番のuidでは開けない（推測されても他人のメールが見えない）
+    expect((await fetch(`${server.baseUrl}/exclude/EXCLUSION_0001`)).status).toBe(404)
+    const ok = await fetch(`${server.baseUrl}/exclude/${token}`)
     expect(ok.status).toBe(200)
     expect(ok.headers.get('set-cookie') ?? '').toContain('sb_report_exclude')
     const ng = await fetch(`${server.baseUrl}/exclude/NOT_A_REAL_TOKEN`)
