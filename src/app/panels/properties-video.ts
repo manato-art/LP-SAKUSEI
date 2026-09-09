@@ -12,7 +12,7 @@
 import type Quill from 'quill'
 import { toast } from '../ui.ts'
 import { readFileAsDataUrl } from './webp-convert.ts'
-import { group, row } from './properties-panel.ts'
+import { group, row } from './properties-parts.ts'
 import { duplicateVideo, hasFlag, toggleFlag, willBlockAutoplay, type VideoFlag } from './video-controls.ts'
 
 /**
