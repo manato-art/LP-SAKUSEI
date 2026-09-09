@@ -13,6 +13,7 @@ import fragment from '../fragments/tasks__default.html?raw'
 import { stripGlobalSidebar } from './sidebar-shell.ts'
 import { api, type Task } from '../api.ts'
 import { T, el, toast } from '../ui.ts'
+import { renderTemplatePicker } from './task-create.ts'
 
 /** 実物のタブのアクティブ／非アクティブを表すクラス（採取物のEmotionハッシュ） */
 const TAB_ACTIVE_CLASS = 'css-1a9uxoy'
@@ -32,7 +33,7 @@ export function renderTasks(container: HTMLElement): void {
   container.append(root)
 
   wireTabs(root)
-  wireNewTaskButton(root)
+  wireNewTaskButton(container, root)
   disableStrayAnchors(root)
 
   // タスクリストを描画する領域を確保
@@ -55,92 +56,21 @@ function wireTabs(root: HTMLElement): void {
   }
 }
 
-/** 「新しいタスク」→ タスク名入力ダイアログ → API POST /tasks */
-function wireNewTaskButton(root: HTMLElement): void {
+/**
+ * 「新しいタスク」を押したときの挙動。
+ *
+ * 実物はモーダルを出さない。タスク一覧の中身がそのままテンプレート選択に
+ * 差し替わり、テンプレートを選ぶと設定フォームに進む（URLは変わらない）。
+ * 2026-09-09 に app.squadbeyond.com/tasks を開いて確認した。
+ */
+function wireNewTaskButton(container: HTMLElement, root: HTMLElement): void {
   for (const button of root.querySelectorAll<HTMLButtonElement>('button')) {
     if ((button.textContent ?? '').includes('新しいタスク')) {
       button.addEventListener('click', () => {
-        openCreateTaskDialog()
+        renderTemplatePicker(container, { onDone: () => renderTasks(container) })
       })
     }
   }
-}
-
-function openCreateTaskDialog(): void {
-  const overlay = el('div', {
-    style: 'position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:10000;display:flex;align-items:center;justify-content:center',
-  })
-
-  const dialog = el('div', {
-    style: `background:${T.surface};border-radius:12px;padding:24px;min-width:380px;max-width:90vw;font-family:${T.font}`,
-  })
-
-  const title = el('div', {
-    text: '新しいタスクを作成',
-    style: `font-size:16px;font-weight:700;color:${T.text};margin-bottom:16px`,
-  })
-
-  const input = document.createElement('input')
-  input.type = 'text'
-  input.placeholder = 'タスク名を入力'
-  input.style.cssText = `width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid #DDD;border-radius:6px;font-size:14px;font-family:${T.font};outline:none`
-  input.addEventListener('focus', () => { input.style.borderColor = 'var(--sb-accent, #0091FF)' })
-  input.addEventListener('blur', () => { input.style.borderColor = '#DDD' })
-
-  const buttons = el('div', {
-    style: 'display:flex;gap:8px;justify-content:flex-end;margin-top:16px',
-  })
-
-  const cancelBtn = el('button', {
-    text: 'キャンセル',
-    style: `padding:8px 16px;border:1px solid #DDD;border-radius:6px;background:${T.surface};cursor:pointer;font-size:13px;font-family:${T.font}`,
-  })
-  cancelBtn.addEventListener('click', () => overlay.remove())
-
-  const createBtn = el('button', {
-    text: '作成',
-    style: 'padding:8px 16px;border:none;border-radius:6px;background:var(--sb-accent, #0091FF);color:#FFF;cursor:pointer;font-size:13px',
-  })
-  createBtn.addEventListener('click', () => {
-    const name = input.value.trim()
-    if (name === '') {
-      toast('タスク名を入力してください', 'error')
-      return
-    }
-    createBtn.textContent = '作成中...'
-    createBtn.setAttribute('disabled', '')
-    void api.createTask(name).then(
-      () => {
-        overlay.remove()
-        toast('タスクを作成しました')
-        void loadAndRenderTasks()
-      },
-      (err: Error) => {
-        createBtn.textContent = '作成'
-        createBtn.removeAttribute('disabled')
-        toast(`作成に失敗しました: ${err.message}`, 'error')
-      },
-    )
-  })
-
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.isComposing) {
-      e.preventDefault()
-      createBtn.click()
-    }
-  })
-
-  buttons.append(cancelBtn, createBtn)
-  dialog.append(title, input, buttons)
-  overlay.append(dialog)
-  overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) overlay.remove()
-  })
-  document.body.append(overlay)
-
-  requestAnimationFrame(() => {
-    input.focus()
-  })
 }
 
 /** APIからタスクを取得して描画する */
