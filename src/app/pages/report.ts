@@ -20,7 +20,7 @@ import {
   wireCapturedLinks,
   wireThemeToggle,
 } from './report-dom.ts'
-import { recordHistory } from './folders.ts'
+import { recordHistory } from './folders-history.ts'
 import { defaultRange, toRangeQuery, type DateRange } from './report-period.ts'
 import { buildReportBody } from './report-v2.ts'
 import { wireAbTestTabs, setupHorizTabs, setupBreadcrumb } from './tab-nav.ts'

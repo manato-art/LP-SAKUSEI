@@ -15,7 +15,7 @@ import { toast } from '../ui.ts'
 import { openParamUrlModal } from '../panels/param-url-modal.ts'
 import { basicInfoApi, type MediaOption } from './basic-info-api.ts'
 import { wireAbTestTabs, setupHorizTabs, setupBreadcrumb } from './tab-nav.ts'
-import { recordHistory } from './folders.ts'
+import { recordHistory } from './folders-history.ts'
 import { renderBasicInfoRedesign } from './basic-info-redesign.ts'
 import {
   AD_STATUS_LABELS,

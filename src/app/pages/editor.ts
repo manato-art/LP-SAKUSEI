@@ -21,7 +21,7 @@ import {
 } from './editor-layout.ts'
 import { isStale } from '../main.ts'
 import { T, el, toast } from '../ui.ts'
-import { recordHistory } from './folders.ts'
+import { recordHistory } from './folders-history.ts'
 import { mountVersionListDropdown } from '../panels/version-actions.ts'
 import { mountHeaderImageModal } from '../panels/header-image-modal.ts'
 import { mountEditorScrollbar } from '../panels/editor-scrollbar.ts'
