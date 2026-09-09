@@ -126,10 +126,9 @@ export function buildVideoBody(deps: VideoBodyDeps): VideoBody {
   const applyWidth = (px: number): void => {
     const w = Math.max(30, Math.round(px))
     withVideo((video) => {
-      /* eslint-disable no-param-reassign -- 渡された動画の見た目を変えるのがこの関数の責務 */
+      // 渡された動画の見た目を変えるのがこの関数の責務
       video.style.width = `${w}px`
       video.style.height = 'auto'
-      /* eslint-enable no-param-reassign */
       video.setAttribute('width', String(w))
       video.removeAttribute('height')
     })
@@ -141,10 +140,9 @@ export function buildVideoBody(deps: VideoBodyDeps): VideoBody {
    */
   const applyFullWidth = (): void => {
     withVideo((video) => {
-      /* eslint-disable no-param-reassign -- 渡された動画の見た目を変えるのがこの関数の責務 */
+      // 渡された動画の見た目を変えるのがこの関数の責務
       video.style.width = '100%'
       video.style.height = 'auto'
-      /* eslint-enable no-param-reassign */
       video.removeAttribute('width')
       video.removeAttribute('height')
     })

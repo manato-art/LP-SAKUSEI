@@ -556,8 +556,9 @@ function wireResize(handle: HTMLElement, panel: HTMLElement, corner: Corner): vo
 
     let newLeft = startRect.left
     let newTop = startRect.top
-    let newW = startRect.width
-    let newH = startRect.height
+    // 4隅どの場合も下で必ず入れるので、ここでは初期値を置かない
+    let newW: number
+    let newH: number
 
     if (corner === 'tl') {
       newW = startRect.width - dx

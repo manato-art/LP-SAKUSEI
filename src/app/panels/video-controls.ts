@@ -52,7 +52,7 @@ export function toggleFlag(video: LoopTarget, flag: VideoFlag): boolean {
      */
     video.setAttribute(`data-sb-${flag}`, 'off')
   }
-  // eslint-disable-next-line no-param-reassign -- 対象要素の再生設定を変えるのがこの関数の責務
+  // 対象要素の再生設定を変えるのがこの関数の責務
   video[flag] = next
   return next
 }

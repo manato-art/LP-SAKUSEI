@@ -624,8 +624,19 @@ function buildVisualEditor(target: WidgetEditTarget): { pane: HTMLElement; conte
     return btn
   }
 
-  /** ビジュアルエディタの変更をコードパネルに反映する（後で配線） */
-  let syncContentToCode: () => void = () => {}
+  /**
+   * ツールバーの操作をコードパネルの textarea に反映させる。
+   *
+   * 同期は contentDiv の input イベント1本（呼び出し元で配線）。
+   * execCommand は input を出すが、`style.fontSize` を直に書くような DOM 直接操作は出さない。
+   * サイズ−/+ は execCommand の**後**に px を直書きするので、
+   * 何もしないと textarea は直書き前の HTML で止まり、
+   * 「更新する」（textarea から保存）でサイズ変更だけが失われる。
+   * ここで input を自分で出して、経路を1本に揃える（openMediaControl と同じ手）。
+   */
+  const syncContentToCode = (): void => {
+    contentRef?.dispatchEvent(new Event('input', { bubbles: true }))
+  }
 
   /** ツールバーセパレータ（本番実測: 1px × 16px） */
   const mkSep = (): HTMLElement => {

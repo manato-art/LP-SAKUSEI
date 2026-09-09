@@ -491,7 +491,7 @@ export function renderHeatmapColumns(
   deps: ColumnDeps,
 ): void {
   injectStyles()
-  // eslint-disable-next-line no-param-reassign -- 描画先を空にするのはこの関数の責務
+  // 描画先を空にするのはこの関数の責務
   host.innerHTML = ''
   if (specs.length === 0) return
   const wrap = document.createElement('div')

@@ -35,7 +35,7 @@ function span(color: string, text: string): string {
 
 export function highlightHtml(code: string): string {
   return code.replace(
-    /(<!\-\-[\s\S]*?\-\->)|(<\/?)([a-zA-Z][a-zA-Z0-9-]*)((?:\s+[^>]*?)?)(\s*\/?>)|([^<]+)/g,
+    /(<!--[\s\S]*?-->)|(<\/?)([a-zA-Z][a-zA-Z0-9-]*)((?:\s+[^>]*?)?)(\s*\/?>)|([^<]+)/g,
     (_m, comment?: string, open?: string, tagName?: string, attrs?: string, close?: string, text?: string) => {
       if (comment !== undefined) return span(HL.comment, esc(comment))
       if (text !== undefined) return span(HL.text, esc(text))

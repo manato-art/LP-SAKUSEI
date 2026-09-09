@@ -319,6 +319,6 @@ function buildPreviewPopupSnippet(popup: ExitPopup): string {
     <button id="${popupId}-trigger" class="ep-preview-trigger">
       ポップアップ: ${popup.name.substring(0, 10)}
     </button>
-    <script>${previewScript}<\/script>
+    <script>${previewScript}</script>
   `
 }

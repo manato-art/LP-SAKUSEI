@@ -37,11 +37,49 @@ export default tseslint.config(
           // ドメインデータの破壊的変更ではない。
           'root', 'paper', 'icon', 'headerBox', 'holder', 'card', 'select', 'row', 'folder',
         ] }],
-      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      // `_` 始まりは「意図的に使わない」印。引数だけでなく分割代入の変数にも効かせる
+      // （`const [, _id, uid] = ...` のような読み飛ばしで赤くならないように）。
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' },
+      ],
+      /**
+       * 全角スペースは日本語の表示テキストでは意図的に使う（項目名と値の間など）。
+       * 文字列は既定で除外されるが、この画面はテンプレートリテラルで組み立てているので
+       * そちらも除外する。コードの区切りに紛れ込んだものは引き続き弾かれる。
+       */
+      'no-irregular-whitespace': ['error', { skipStrings: true, skipTemplates: true }],
       '@typescript-eslint/no-explicit-any': 'error',
       'no-console': 'off',
       eqeqeq: ['error', 'always'],
       'prefer-const': 'error',
+    },
+  },
+  {
+    /**
+     * 画面側（src/）だけ、DOM要素と作業用オブジェクトへの代入を許す。
+     *
+     * §12 のイミュータブル規約が守りたいのは「ドメインデータを破壊的に変更しない」こと。
+     * サーバー側（mock-server/）の State は今も完全にイミュータブルで、
+     * このルールは上のブロックで厳しいまま効かせている。
+     * 画面側で出ているのは DOM要素の属性・スタイル操作と、
+     * 編集中の作業用コピー（draft）・画面のセッション状態（state）で、
+     * いずれもドメインデータではない。
+     * ここを赤いまま放置すると、本当の違反が埋もれて誰も見なくなる。
+     */
+    files: ['src/**/*.ts'],
+    rules: {
+      'no-param-reassign': ['error', { props: true, ignorePropertyModificationsFor: [
+          // DOM要素
+          'container', 'content', 'node', 'map', 'quill', 'ctx',
+          'root', 'paper', 'icon', 'headerBox', 'holder', 'card', 'select', 'row', 'folder',
+          'body', 'btn', 'panel', 'submit', 'popover', 'popup', 'handle', 'host',
+          'sidebar', 'gutter', 'leftPane', 'scrollContainer', 'video', 'img', 'wrap',
+          // 編集中の作業用コピー・画面のセッション状態
+          'draft', 'state', 'meta', 'fp',
+          // 小さなヘルパの引数（座標・範囲の入れ物）
+          'c', 'n', 'x', 'from', 'to',
+        ] }],
     },
   },
 )

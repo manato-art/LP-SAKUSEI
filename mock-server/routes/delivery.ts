@@ -1145,7 +1145,7 @@ function buildPopupSnippet(popup: ExitPopup, device: 'sp' | 'tablet' | 'pc'): st
     `</div></div>` +
     (popup.head_tag !== '' ? popup.head_tag : '') +
     (popup.body_tag !== '' ? popup.body_tag : '') +
-    `<script>${scriptBody}<\/script>`
+    `<script>${scriptBody}</script>`
 }
 
 /**
@@ -1212,5 +1212,5 @@ function buildFollowPopupSnippet(fp: FollowPopup, device: 'sp' | 'tablet' | 'pc'
     closeButton +
     fp.html +
     `</div>` +
-    `<script>${scriptBody}<\/script>`
+    `<script>${scriptBody}</script>`
 }
