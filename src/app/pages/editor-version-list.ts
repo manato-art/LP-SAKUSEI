@@ -25,7 +25,7 @@ import { buildFullHtml, isEffectivelyEmptyHtml, restoreHeaderImage, splitHeaderF
  * 採取テンプレートのクローンではなく、スクリーンショット準拠の構造を生成する。
  * wireVersionCard / wireArchivedCard が配線するための data-test 属性は全て保持する。
  */
-export function buildVersionCardEl(version: Version, isCurrent: boolean): HTMLElement {
+function buildVersionCardEl(version: Version, isCurrent: boolean): HTMLElement {
   injectVersionCardCss()
 
   const card = document.createElement('div')
@@ -188,7 +188,7 @@ export function buildVersionCardEl(version: Version, isCurrent: boolean): HTMLEl
   return card
 }
 /** ISO 日時文字列を相対表現に変換する */
-export function relativeTime(iso: string): string {
+function relativeTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime()
   const mins = Math.floor(diff / 60000)
   if (mins < 1) return 'たった今'
@@ -320,7 +320,7 @@ const CARD_CONTENT = '[class*="_abTestArticleContent"]'
  * 通常ヘッダ（Version▼等）は innerHTML を壊さず display で退避し、配線を失わない。
  * アーカイブは配信割合1以上を1件は残すサーバーガードが効く。
  */
-export function applySelectionMode(ctx: EditorContext, list: HTMLElement): void {
+function applySelectionMode(ctx: EditorContext, list: HTMLElement): void {
   const top = ctx.root.querySelector<HTMLElement>(ARTICLES_TOP)
   // 前回の選択ヘッダを消し、通常ヘッダの退避を解除する
   ctx.root.querySelector('[data-clone-selheader]')?.remove()
@@ -374,7 +374,7 @@ export function applySelectionMode(ctx: EditorContext, list: HTMLElement): void 
   })
 }
 /** 選択したVersionをまとめてアーカイブ（配信割合1以上を1件残すガードは各リクエストで効く） */
-export async function bulkArchive(ctx: EditorContext, uids: readonly string[]): Promise<void> {
+async function bulkArchive(ctx: EditorContext, uids: readonly string[]): Promise<void> {
   let failed = 0
   for (const uid of uids) {
     try {
@@ -396,7 +396,7 @@ export async function bulkArchive(ctx: EditorContext, uids: readonly string[]): 
   else renderVersionList(ctx)
 }
 /** アーカイブ一覧のカード: 名前/割合を表示し、「復元」でアーカイブ解除して通常一覧へ戻す（指示⑮） */
-export function wireArchivedCard(ctx: EditorContext, card: HTMLElement, version: Version): void {
+function wireArchivedCard(ctx: EditorContext, card: HTMLElement, version: Version): void {
   card.dataset['articleUid'] = version.uid
   card.setAttribute('data-id', String(version.id))
   card.querySelector<HTMLElement>(HOOK.currentVersion)?.classList.remove(ACTIVE_CARD_CLASS)

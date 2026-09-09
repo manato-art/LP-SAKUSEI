@@ -68,7 +68,7 @@ export function renderFollowCard(state: PopupPageState, fp: FollowPopup): HTMLEl
   card.addEventListener('click', () => openFollowEditor(state, fp))
   return card
 }
-export function toggleFollowDropdown(cardEl: HTMLElement, state: PopupPageState, fp: FollowPopup): void {
+function toggleFollowDropdown(cardEl: HTMLElement, state: PopupPageState, fp: FollowPopup): void {
   const existing = cardEl.querySelector('.ep-dropdown')
   if (existing !== null) { existing.remove(); return }
   for (const d of document.querySelectorAll('.ep-dropdown')) d.remove()
@@ -190,7 +190,7 @@ export function openFollowPresetModal(state: PopupPageState): void {
   })
   document.body.append(overlay)
 }
-export function renderFollowPresetItem(
+function renderFollowPresetItem(
   state: PopupPageState,
   preset: FollowPreset,
   overlay: HTMLElement,
@@ -248,7 +248,7 @@ export function renderFollowPresetItem(
 
   return item
 }
-export function createBlankFollowPopup(state: PopupPageState): void {
+function createBlankFollowPopup(state: PopupPageState): void {
   void api.createFollowPopup(state.abTestUid, {
     name: '新規追従型ポップアップ',
     html: '<div style="padding:12px 20px;background:#333;color:#fff;font-family:sans-serif;text-align:center;font-size:13px">追従型ポップアップの内容</div>',
@@ -263,13 +263,13 @@ export function createBlankFollowPopup(state: PopupPageState): void {
     (err: unknown) => toast((err as Error).message, 'error'),
   )
 }
-export type FollowEditorTab = 'settings' | 'device' | 'html'
-export const FOLLOW_EDITOR_TABS: readonly { id: FollowEditorTab; label: string }[] = [
+type FollowEditorTab = 'settings' | 'device' | 'html'
+const FOLLOW_EDITOR_TABS: readonly { id: FollowEditorTab; label: string }[] = [
   { id: 'settings', label: '表示設定' },
   { id: 'device', label: '出し分け' },
   { id: 'html', label: 'HTML' },
 ]
-export function openFollowEditor(state: PopupPageState, fp: FollowPopup): void {
+function openFollowEditor(state: PopupPageState, fp: FollowPopup): void {
   for (const p of state.root.querySelectorAll('.ep-panel')) p.remove()
   for (const e of state.root.querySelectorAll('.ep-editor')) e.remove()
 
@@ -399,7 +399,7 @@ export function openFollowEditor(state: PopupPageState, fp: FollowPopup): void {
     }
   }
 }
-export function renderFollowSettingsTab(body: HTMLElement, draft: FollowPopup): void {
+function renderFollowSettingsTab(body: HTMLElement, draft: FollowPopup): void {
   // 表示位置
   const posField = el('div', { class: 'ep-field' })
   posField.append(el('label', { text: '表示位置' }))
@@ -451,7 +451,7 @@ export function renderFollowSettingsTab(body: HTMLElement, draft: FollowPopup): 
   closeRow.append(closeToggle, el('span', { class: 'ep-toggle-label', text: '閉じるボタンを表示' }))
   body.append(closeRow)
 }
-export function renderFollowDeviceTab(body: HTMLElement, draft: FollowPopup): void {
+function renderFollowDeviceTab(body: HTMLElement, draft: FollowPopup): void {
   body.append(el('div', { class: 'ep-field' }, [el('label', { text: 'デバイス別の表示制御' })]))
   const devices: { key: 'device_sp' | 'device_tablet' | 'device_pc'; label: string }[] = [
     { key: 'device_sp', label: 'スマートフォン (SP)' },
@@ -470,7 +470,7 @@ export function renderFollowDeviceTab(body: HTMLElement, draft: FollowPopup): vo
     body.append(row)
   }
 }
-export function renderFollowHtmlTab(body: HTMLElement, draft: FollowPopup): void {
+function renderFollowHtmlTab(body: HTMLElement, draft: FollowPopup): void {
   type HtmlSubTab = 'html' | 'css' | 'javascript'
   const subTabs: { id: HtmlSubTab; label: string }[] = [
     { id: 'html', label: 'HTML' },
@@ -546,7 +546,7 @@ export function renderFollowHtmlTab(body: HTMLElement, draft: FollowPopup): void
   body.append(editorArea)
   renderSubTab()
 }
-export function previewFollowPopup(fp: FollowPopup | Partial<FollowPopup>): void {
+function previewFollowPopup(fp: FollowPopup | Partial<FollowPopup>): void {
   document.getElementById('fp-preview-overlay')?.remove()
 
   const overlay = el('div', {

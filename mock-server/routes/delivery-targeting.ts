@@ -7,11 +7,11 @@
  */
 
 import type { Version } from '../store/types.ts'
-export type DeviceKind = 'sp' | 'tablet' | 'pc'
-export type MobileOS = 'android' | 'ios'
-export type Carrier = 'docomo' | 'au' | 'softbank'
+type DeviceKind = 'sp' | 'tablet' | 'pc'
+type MobileOS = 'android' | 'ios'
+type Carrier = 'docomo' | 'au' | 'softbank'
 /** 訪問者の出し分け判定に使う文脈（1リクエストぶん） */
-export interface VisitorContext {
+interface VisitorContext {
   device: DeviceKind
   /** モバイルOS。PC等では null */
   mobileOS: MobileOS | null
@@ -25,19 +25,19 @@ export interface VisitorContext {
   today: string
 }
 /** 訪問者のデバイスを User-Agent から判定する（sp / tablet / pc）。クライアント版と同じ判定式。 */
-export function detectDevice(userAgent: string): DeviceKind {
+function detectDevice(userAgent: string): DeviceKind {
   if (/iPad|Tablet|Nexus 7|Nexus 10|Kindle|Silk|PlayBook/i.test(userAgent)) return 'tablet'
   if (/Mobile|iPhone|Android.*Mobile|Windows Phone|iPod/i.test(userAgent)) return 'sp'
   return 'pc'
 }
 /** モバイルOSを User-Agent から判定（PC等は null） */
-export function detectMobileOS(userAgent: string): MobileOS | null {
+function detectMobileOS(userAgent: string): MobileOS | null {
   if (/iPhone|iPad|iPod/i.test(userAgent)) return 'ios'
   if (/Android/i.test(userAgent)) return 'android'
   return null
 }
 /** キャリアは通常判定不可。検証用に ?__carrier=docomo|au|softbank で指定できる。 */
-export function detectCarrier(raw: unknown): Carrier | null {
+function detectCarrier(raw: unknown): Carrier | null {
   return raw === 'docomo' || raw === 'au' || raw === 'softbank' ? raw : null
 }
 /**
@@ -78,11 +78,11 @@ export function buildVisitorContext(req: import('express').Request): VisitorCont
   }
 }
 /** そのVersionが、指定デバイスへ配信可か（デバイス別ON/OFF）。未設定は全ON扱い。 */
-export function targetsDevice(version: Version, device: DeviceKind): boolean {
+function targetsDevice(version: Version, device: DeviceKind): boolean {
   return version.device_targets?.[device] !== false
 }
 /** 流入元別: URLクエリが1件のルールに一致するか */
-export function matchesParamRule(rule: { name: string; match: string; value: string }, query: Record<string, string>): boolean {
+function matchesParamRule(rule: { name: string; match: string; value: string }, query: Record<string, string>): boolean {
   const candidates = rule.name !== '' ? [query[rule.name]] : Object.values(query)
   for (const raw of candidates) {
     if (raw === undefined) continue
@@ -94,12 +94,12 @@ export function matchesParamRule(rule: { name: string; match: string; value: str
   return false
 }
 /** 時間別: now が from〜to（HH:MM）内か。日をまたぐ範囲(22:00〜02:00)も許容 */
-export function inTimeRange(now: string, from: string, to: string): boolean {
+function inTimeRange(now: string, from: string, to: string): boolean {
   if (from === '' || to === '') return true
   return from <= to ? now >= from && now <= to : now >= from || now <= to
 }
 /** 日付別: today が from〜to（YYYY-MM-DD、ISO文字列比較）内か */
-export function inDatePeriod(today: string, from: string, to: string): boolean {
+function inDatePeriod(today: string, from: string, to: string): boolean {
   if (from === '' && to === '') return true
   if (from !== '' && today < from) return false
   if (to !== '' && today > to) return false
@@ -109,7 +109,7 @@ export function inDatePeriod(today: string, from: string, to: string): boolean {
  * そのVersionが、この訪問者に配信可能か（6条件すべてを掛け算で判定）。
  * 各設定は「未設定＝制限なし（対象）」がデフォルト。デバイス別・パラメーター未登録は常に対象。
  */
-export function isEligible(v: Version, ctx: VisitorContext): boolean {
+function isEligible(v: Version, ctx: VisitorContext): boolean {
   // デバイス別
   if (!targetsDevice(v, ctx.device)) return false
   // モバイルOS別: いずれかON指定があれば「モバイル かつ そのOS」のみ対象（PCは除外）

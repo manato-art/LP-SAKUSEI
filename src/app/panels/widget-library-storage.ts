@@ -6,8 +6,8 @@
  */
 
 /** 自作Widget（「＋ Widgetを作成」で作ったもの）を保存する localStorage キー。 */
-export const CREATED_WIDGETS_KEY = 'lp-sakusei:created-widgets'
-export interface CreatedWidget {
+const CREATED_WIDGETS_KEY = 'lp-sakusei:created-widgets'
+interface CreatedWidget {
   id: string
   name: string
   html: string
@@ -46,8 +46,8 @@ export function deleteCreatedWidget(id: string): void {
 /* ── お気に入り（指示157）──────────────────────────────────
  * カード左下の★でWidgetをお気に入り登録し、「お気に入り」カテゴリーで再利用できる。
  * 同一Widgetは「すべて」でもカテゴリー別でも同じ名前なので、名前をキーにして状態を共有する。 */
-export const FAVORITE_WIDGETS_KEY = 'lp-sakusei:favorite-widgets'
-export interface FavoriteWidget {
+const FAVORITE_WIDGETS_KEY = 'lp-sakusei:favorite-widgets'
+interface FavoriteWidget {
   key: string
   name: string
   html: string

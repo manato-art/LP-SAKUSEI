@@ -10,7 +10,7 @@
  * 「見ている場所に関係なく同じ日時が出る」ようにここへ一本化する。
  */
 
-export interface JstParts {
+interface JstParts {
   year: number
   /** 1-12 */
   month: number

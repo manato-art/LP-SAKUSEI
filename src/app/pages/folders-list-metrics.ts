@@ -31,7 +31,7 @@ export function setListRange(range: DateRange): void {
  * 派生は metrics.ts の恒等式（ctr = click/pv, ctvr = cv/pv, media_ctr = media_click/imp,
  * mcpa = ad_cost/media_cv, roas = sales/ad_cost）。ゼロ除算は「-」。
  */
-export const LIST_METRIC_CELLS: readonly { index: number; column: ReportColumn }[] = [
+const LIST_METRIC_CELLS: readonly { index: number; column: ReportColumn }[] = [
   { index: 1, column: { label: '配信金額', unit: '円', metric: 'ad_cost', format: 'yen' } },
   { index: 2, column: { label: 'PV', unit: '', metric: 'pv', format: 'integer' } },
   { index: 3, column: { label: 'Click', unit: '', metric: 'click', format: 'integer' } },

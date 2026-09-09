@@ -365,7 +365,7 @@ export function refreshImageBody(container: HTMLElement, img: HTMLImageElement):
   }
 }
 /** 計測URLリストから img の data-tracking-urls 属性を同期 */
-export function syncTrackingUrls(list: HTMLElement, img: HTMLImageElement): void {
+function syncTrackingUrls(list: HTMLElement, img: HTMLImageElement): void {
   const urls: string[] = []
   for (const input of list.querySelectorAll<HTMLInputElement>('input[type="url"]')) {
     const v = input.value.trim()
@@ -378,7 +378,7 @@ export function syncTrackingUrls(list: HTMLElement, img: HTMLImageElement): void
   }
 }
 /** 計測URL入力行を1行追加 */
-export function appendTrackingRow(list: HTMLElement, img: HTMLImageElement, value: string): void {
+function appendTrackingRow(list: HTMLElement, img: HTMLImageElement, value: string): void {
   const rowEl = document.createElement('div')
   rowEl.style.cssText = 'display:flex;align-items:center;gap:4px;margin-bottom:4px'
 

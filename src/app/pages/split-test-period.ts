@@ -59,7 +59,7 @@ export function wirePeriodRow(row: HTMLElement, version: Version, kind: 'time' |
   }
 }
 /** 配信期間の編集行を1つ作る（time=開始〜終了 / date=開始〜終了＋配信する/しない＋削除）。 */
-export function buildPeriodEditor(
+function buildPeriodEditor(
   kind: 'time' | 'date',
   initial: { from?: string; to?: string; mode?: string } | undefined,
   onChange: () => void,
@@ -138,7 +138,7 @@ export function buildPeriodEditor(
  * セルを押し込んで横へドラッグすると開始〜終了の時間帯が選べ、from/to の時刻入力へ反映する。
  * from/to を手入力したときは `sync()` でタイムラインの塗りを合わせる。
  */
-export function buildHourTimeline(
+function buildHourTimeline(
   from: HTMLInputElement,
   to: HTMLInputElement,
   onChange: () => void,

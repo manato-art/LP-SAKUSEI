@@ -25,8 +25,8 @@ import {
   writeStyleProp,
 } from './exit-popup-fields.ts'
 
-export type EditorTab = 'basic' | 'design' | 'display' | 'position' | 'device' | 'html'
-export const EDITOR_TABS: readonly { id: EditorTab; label: string }[] = [
+type EditorTab = 'basic' | 'design' | 'display' | 'position' | 'device' | 'html'
+const EDITOR_TABS: readonly { id: EditorTab; label: string }[] = [
   { id: 'basic', label: '基本' },
   // デザイン: HTMLを要素ごとのカードに分解して文言・色を編集できる（クローン独自の編集支援）
   { id: 'design', label: 'デザイン' },
@@ -183,7 +183,7 @@ export function openEditor(state: PopupPageState, popup: ExitPopup): void {
 
   state.root.append(editor)
 }
-export function renderEditorTab(body: HTMLElement, draft: ExitPopup, tab: EditorTab): void {
+function renderEditorTab(body: HTMLElement, draft: ExitPopup, tab: EditorTab): void {
   body.innerHTML = ''
   switch (tab) {
     case 'basic': renderBasicTab(body, draft); break
@@ -194,7 +194,7 @@ export function renderEditorTab(body: HTMLElement, draft: ExitPopup, tab: Editor
     case 'html': renderHtmlTab(body, draft); break
   }
 }
-export function renderBasicTab(body: HTMLElement, draft: ExitPopup): void {
+function renderBasicTab(body: HTMLElement, draft: ExitPopup): void {
   // セクション見出し（実SB準拠: 「基本設定」）
   body.append(el('div', { class: 'ep-section-title', text: '基本設定' }))
   // 訪問回数
@@ -231,7 +231,7 @@ export function renderBasicTab(body: HTMLElement, draft: ExitPopup): void {
  *   - このシステムで計測する（遷移先に sb_tracking=true を付与 → 配信の計測が拾う）
  * ポップアップを触ると、この遷移先へ移動する（delivery.ts の buildPopupSnippet が配線）。
  */
-export function makePopupLinkField(draft: ExitPopup): HTMLElement {
+function makePopupLinkField(draft: ExitPopup): HTMLElement {
   const field = el('div', { class: 'ep-field' })
   field.append(el('label', { text: 'ポップアップを触ったときの動作' }))
 
@@ -291,7 +291,7 @@ export function makePopupLinkField(draft: ExitPopup): HTMLElement {
   return field
 }
 /** 計測用URL（複数）。クリック時にビーコンを飛ばす。画像の data-tracking-urls と同じ。 */
-export function makePopupTrackingField(draft: ExitPopup): HTMLElement {
+function makePopupTrackingField(draft: ExitPopup): HTMLElement {
   const field = el('div', { class: 'ep-field' })
   field.append(el('label', { text: '計測URL（クリック時にリクエストを送信・複数可）' }))
 
@@ -339,7 +339,7 @@ export function makePopupTrackingField(draft: ExitPopup): HTMLElement {
  * カードを編集すると、その生きたDOMを直接書き換え → draft.html を再シリアライズする
  * （＝大元のHTMLが変わる）。指示: ユーザー提案のカード分解方式。
  */
-export function renderDesignTab(body: HTMLElement, draft: ExitPopup): void {
+function renderDesignTab(body: HTMLElement, draft: ExitPopup): void {
   injectDesignTabCss()
   body.append(el('div', { class: 'ep-section-title', text: 'デザイン（要素ごとに編集）' }))
   body.append(el('div', {
@@ -380,7 +380,7 @@ export function renderDesignTab(body: HTMLElement, draft: ExitPopup): void {
   body.append(grid)
 }
 /** 1要素ぶんの編集カードを作る（文言 / 文字色 / 背景色 / ボタン色）。 */
-export function buildDesignCard(node: HTMLElement, idx: number, sync: () => void): HTMLElement {
+function buildDesignCard(node: HTMLElement, idx: number, sync: () => void): HTMLElement {
   const card = el('div', { class: 'ep-design-card' })
 
   // ── カード見出し: 種別 + 中身プレビュー ──
@@ -426,7 +426,7 @@ export function buildDesignCard(node: HTMLElement, idx: number, sync: () => void
   return card
 }
 /** 色編集の1行（スウォッチ + カラーピッカー + 反映ボタン）。 */
-export function buildColorRow(label: string, currentHex: string, onChange: (hex: string) => void): HTMLElement {
+function buildColorRow(label: string, currentHex: string, onChange: (hex: string) => void): HTMLElement {
   const row = el('div', { class: 'ep-design-row' })
   row.append(el('label', { class: 'ep-design-label', text: label }))
   const picker = document.createElement('input')
@@ -440,7 +440,7 @@ export function buildColorRow(label: string, currentHex: string, onChange: (hex:
   return row
 }
 /** 表示アニメーションの選択肢（本番準拠: 日本語名） */
-export const ANIMATION_OPTIONS: { value: string; label: string }[] = [
+const ANIMATION_OPTIONS: { value: string; label: string }[] = [
   { value: 'fade', label: 'フェード' },
   { value: 'spiral', label: '渦巻' },
   { value: 'slideUp', label: 'スライドアップ' },
@@ -453,7 +453,7 @@ export const ANIMATION_OPTIONS: { value: string; label: string }[] = [
   { value: 'flipIn', label: 'フリップイン' },
   { value: 'none', label: 'なし' },
 ]
-export function renderDisplayTab(body: HTMLElement, draft: ExitPopup): void {
+function renderDisplayTab(body: HTMLElement, draft: ExitPopup): void {
   // セクションヘッダ
   body.append(el('div', { style: 'font-size:14px;font-weight:600;margin-bottom:16px', text: '表示設定' }))
 
@@ -543,18 +543,18 @@ export function renderDisplayTab(body: HTMLElement, draft: ExitPopup): void {
  * 以前は自由X/Yクリックだったが、本物は9箇所の離散選択なので合わせる。
  * 保存は既存の position_x / position_y（%）に 0/50/100 でマッピングする。
  */
-export const POSITION_CELLS: readonly { x: number; y: number; icon: string; title: string }[] = [
+const POSITION_CELLS: readonly { x: number; y: number; icon: string; title: string }[] = [
   { x: 0, y: 0, icon: '↖', title: '左上' }, { x: 50, y: 0, icon: '↑', title: '上' }, { x: 100, y: 0, icon: '↗', title: '右上' },
   { x: 0, y: 50, icon: '←', title: '左' }, { x: 50, y: 50, icon: '◉', title: '中央' }, { x: 100, y: 50, icon: '→', title: '右' },
   { x: 0, y: 100, icon: '↙', title: '左下' }, { x: 50, y: 100, icon: '↓', title: '下' }, { x: 100, y: 100, icon: '↘', title: '右下' },
 ]
 /** 自由座標を最寄りの 0/50/100 に丸める（旧データの互換） */
-export function snapPos(v: number): number {
+function snapPos(v: number): number {
   if (v < 25) return 0
   if (v > 75) return 100
   return 50
 }
-export function renderPositionTab(body: HTMLElement, draft: ExitPopup): void {
+function renderPositionTab(body: HTMLElement, draft: ExitPopup): void {
   injectPositionGridCss()
   body.append(el('div', { class: 'ep-section-title', text: '表示位置' }))
 
@@ -595,7 +595,7 @@ export function renderPositionTab(body: HTMLElement, draft: ExitPopup): void {
   body.append(layout)
   updatePreview()
 }
-export function renderDeviceTab(body: HTMLElement, draft: ExitPopup): void {
+function renderDeviceTab(body: HTMLElement, draft: ExitPopup): void {
   body.append(el('div', { class: 'ep-field' }, [el('label', { text: 'デバイス別の表示制御' })]))
 
   const devices: { key: 'device_sp' | 'device_tablet' | 'device_pc'; label: string }[] = [
@@ -616,7 +616,7 @@ export function renderDeviceTab(body: HTMLElement, draft: ExitPopup): void {
     body.append(row)
   }
 }
-export function renderHtmlTab(body: HTMLElement, draft: ExitPopup): void {
+function renderHtmlTab(body: HTMLElement, draft: ExitPopup): void {
   type HtmlSubTab = 'html' | 'javascript' | 'head_tag' | 'body_tag'
   const subTabs: { id: HtmlSubTab; label: string }[] = [
     { id: 'html', label: 'HTML' },

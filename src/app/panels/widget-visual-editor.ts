@@ -459,7 +459,7 @@ export function buildVisualEditor(target: WidgetEditTarget): { pane: HTMLElement
  * Widget の上下余白（最外要素の padding-top / padding-bottom）を調整する小さなバー。
  * 「下の余白が多すぎる」を編集画面から直接詰められるようにする（指示144）。
  */
-export function buildSpacingBar(contentDiv: HTMLElement): HTMLElement {
+function buildSpacingBar(contentDiv: HTMLElement): HTMLElement {
   const bar = document.createElement('div')
   bar.style.cssText =
     `display:flex;align-items:center;gap:8px;background:#fafafa;border-bottom:1px solid #eee;` +

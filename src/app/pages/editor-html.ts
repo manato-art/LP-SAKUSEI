@@ -20,7 +20,7 @@ export function isEffectivelyEmptyHtml(html: string): boolean {
   return !hasMedia && text === ''
 }
 /** ヘッダー画像のsrcを取得（無ければnull） */
-export function getHeaderImageSrc(root: HTMLElement): string | null {
+function getHeaderImageSrc(root: HTMLElement): string | null {
   const img = root.querySelector<HTMLImageElement>('img[data-clone-header="true"]')
   return img?.src ?? null
 }

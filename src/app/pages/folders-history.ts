@@ -8,7 +8,7 @@ import { T, el } from '../ui.ts'
 import { jstParts } from '../jst.ts'
 
 /** 履歴エントリ。何をいつ触ったか記録する。 */
-export interface HistoryEntry {
+interface HistoryEntry {
   uid: string
   name: string
   type: 'folder' | 'ab_test'
@@ -16,7 +16,7 @@ export interface HistoryEntry {
   timestamp: number
 }
 /** 最近の操作を新しい順に保持（最大30件）。 */
-export const activityHistory: HistoryEntry[] = []
+const activityHistory: HistoryEntry[] = []
 /** 操作を履歴に記録する（先頭に挿入・同一UIDの直近エントリは更新）。 */
 export function recordHistory(uid: string, name?: string, type: 'folder' | 'ab_test' = 'folder', action = '閲覧'): void {
   // 同一UIDの直近操作が同じアクションなら更新だけ

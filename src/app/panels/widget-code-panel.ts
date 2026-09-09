@@ -63,7 +63,7 @@ export function buildCodePanels(target: WidgetEditTarget): HTMLElement {
   pane.append(toggleRow, htmlPanel, codeDivider, cssPanel)
   return pane
 }
-export function makeViewButton(svgHtml: string, title: string): HTMLButtonElement {
+function makeViewButton(svgHtml: string, title: string): HTMLButtonElement {
   const btn = document.createElement('button')
   btn.type = 'button'
   btn.title = title
@@ -73,7 +73,7 @@ export function makeViewButton(svgHtml: string, title: string): HTMLButtonElemen
     `padding:4px 6px;cursor:pointer;display:flex;align-items:center`
   return btn
 }
-export function createHighlightedCodePanel(
+function createHighlightedCodePanel(
   title: string,
   content: string,
   dataAttr: string,
@@ -157,7 +157,7 @@ export function createHighlightedCodePanel(
   panel.append(label, codeWrap)
   return panel
 }
-export function updateLineNumbers(gutter: HTMLElement, content: string): void {
+function updateLineNumbers(gutter: HTMLElement, content: string): void {
   const count = (content.match(/\n/g)?.length ?? 0) + 1
   const lines: string[] = []
   for (let i = 1; i <= Math.max(count, 20); i++) lines.push(String(i))

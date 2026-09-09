@@ -46,7 +46,7 @@ export function renderRealList(body: HTMLElement, context: PageContext): void {
  * 行クリックでそのページのエディタへ飛ばす。KPI値は採取の「準備中・¥0」がそのまま残る
  * （モックの準備中ページは実績0なので、これは正しい表示）。
  */
-export function wireRealPageRows(area: HTMLElement, context: PageContext, body?: HTMLElement): void {
+function wireRealPageRows(area: HTMLElement, context: PageContext, body?: HTMLElement): void {
   const container = area.querySelector<HTMLElement>(FOLDERS_HOOK.pageRowList)
   if (container === null) {
     console.warn('[folders]', FOLDERS_HOOK.pageRowList, 'が土台に見つかりませんでした')
@@ -94,7 +94,7 @@ export function wireRealPageRows(area: HTMLElement, context: PageContext, body?:
   void applyListMetrics(area)
 }
 /** 雛形の実行を複製し、名前・ステータス・媒体をモック値へ差し替えてクリックを配線する。 */
-export function buildPageRow(template: HTMLElement, abTest: AbTest): HTMLElement {
+function buildPageRow(template: HTMLElement, abTest: AbTest): HTMLElement {
   const row = template.cloneNode(true) as HTMLElement
   // 集計期間の実装（KPI列を実データで埋める）ために、行と beyondページを対応づける目印。
   row.dataset['abTestUid'] = abTest.uid
@@ -133,7 +133,7 @@ export function buildPageRow(template: HTMLElement, abTest: AbTest): HTMLElement
  * ページ名（タイトル）をクリックでインライン編集する（指示㉓）。
  * クリック → テキストが input に変わる（黄色背景・青ボーダー）→ Enter/blur で確定 → API更新。
  */
-export function wireInlineRename(titleEl: HTMLElement, abTest: AbTest): void {
+function wireInlineRename(titleEl: HTMLElement, abTest: AbTest): void {
   const el$ = titleEl  // eslint-safe alias（no-param-reassign 回避）
   el$.style.cursor = 'text'
   el$.addEventListener('click', (e) => {
@@ -190,7 +190,7 @@ export function wireInlineRename(titleEl: HTMLElement, abTest: AbTest): void {
  * 実物は行ホバー時に「分析 / ヒートマップ / レポート / バージョン / ... / 歯車」が出る。
  * 採取物にはこのバーが無い（ホバー時だけ描画されるため）ので、自前で追加する。
  */
-export function wirePageRowActions(row: HTMLElement, abTest: AbTest): void {
+function wirePageRowActions(row: HTMLElement, abTest: AbTest): void {
   const item = row.querySelector<HTMLElement>('[data-testid="list-menu-item"]')
   if (item === null) return
 
@@ -280,7 +280,7 @@ export function wirePageRowActions(row: HTMLElement, abTest: AbTest): void {
 }
 /** ページ行の三点メニュー（…）の中身（指示㉒） */
 let pageMoreMenuEl: HTMLElement | null = null
-export function openPageMoreMenu(anchor: HTMLElement, abTest: AbTest): void {
+function openPageMoreMenu(anchor: HTMLElement, abTest: AbTest): void {
   if (pageMoreMenuEl !== null) {
     pageMoreMenuEl.remove()
     pageMoreMenuEl = null

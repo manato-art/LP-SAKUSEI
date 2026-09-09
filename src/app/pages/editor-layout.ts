@@ -69,7 +69,7 @@ export async function applyMasterStyleToEditor(ctx: EditorContext): Promise<void
   }
 }
 /** 旧フローティングツールバーを非表示にする */
-export function hideFloatingToolbar(root: HTMLElement): void {
+function hideFloatingToolbar(root: HTMLElement): void {
   const wrapper = root.querySelector<HTMLElement>('[data-test="EditorToolbar-EditorToolbarWrapper"]')
   if (wrapper !== null) {
     wrapper.style.display = 'none'
@@ -81,7 +81,7 @@ export function hideFloatingToolbar(root: HTMLElement): void {
  * サイドバーは Versionカード + 最下部の「Version追加」だけにする。
  * 「Version追加」は funnelBar と同じ高さに固定して "下でくっつける"。
  */
-export function mountSidebarToolbarPanel(ctx: EditorContext): void {
+function mountSidebarToolbarPanel(ctx: EditorContext): void {
   const versionPanel = ctx.root.querySelector<HTMLElement>('[class*="_abTestArticlesWrapper_"]')
   if (versionPanel === null) return
 
@@ -113,7 +113,7 @@ export function mountSidebarToolbarPanel(ctx: EditorContext): void {
  * 右プロパティパネルを editorWrapper の最右端に挿入する。
  * レイアウト: [versionPanel] [widgetNav?] [contentWrapper] [iconRail] [propsPanel]
  */
-export function mountPropertiesPanelInEditor(ctx: EditorContext): void {
+function mountPropertiesPanelInEditor(ctx: EditorContext): void {
   const editorWrapper = ctx.root.querySelector<HTMLElement>('[class*="_editorWrapper_"]')
   if (editorWrapper === null) return
   if (editorWrapper.querySelector('[data-props-panel]') !== null) return
@@ -213,7 +213,7 @@ export function mountHeaderExtras(
  * 旧コンテンツツールバーを置き換え、検証用/本番用URLのワンクリックコピーを提供する。
  * 編集機能はすべて右プロパティパネルに集約された。
  */
-export function mountUrlBarInEditor(ctx: EditorContext): HTMLElement | null {
+function mountUrlBarInEditor(ctx: EditorContext): HTMLElement | null {
   const contentWrapper = ctx.root.querySelector<HTMLElement>('.quillEditorContentWrapper')
   if (contentWrapper === null) return null
   // 既存の旧ツールバーがあれば除去
@@ -559,7 +559,7 @@ export function formatSaveTime(saved: Date): string {
   return jstHhmm(saved)
 }
 /** ヘッダーの保存時刻表示を「今」に更新 */
-export function updateSaveTimestamp(): void {
+function updateSaveTimestamp(): void {
   const el = document.querySelector<HTMLElement>('[data-save-time]')
   if (el === null) return
   const now = new Date()

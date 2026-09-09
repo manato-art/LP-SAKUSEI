@@ -198,7 +198,7 @@ export function openWidgetCreator(
     })
   })
 }
-export function createFormGroup(label: string, type: string, placeholder: string): HTMLDivElement {
+function createFormGroup(label: string, type: string, placeholder: string): HTMLDivElement {
   const group = document.createElement('div')
   group.style.cssText = 'flex:1;min-width:0'
   const lbl = document.createElement('label')
@@ -213,7 +213,7 @@ export function createFormGroup(label: string, type: string, placeholder: string
   group.append(lbl, input)
   return group
 }
-export function createEditorToolbar(): HTMLDivElement {
+function createEditorToolbar(): HTMLDivElement {
   const toolbar = document.createElement('div')
   toolbar.style.cssText =
     'display:flex;flex-wrap:wrap;gap:2px;padding:6px 8px;border-bottom:1px solid #ddd;background:#fafafa'
@@ -237,7 +237,7 @@ export function createEditorToolbar(): HTMLDivElement {
   }
   return toolbar
 }
-export function createCodePanel(title: string, placeholder: string): HTMLDivElement {
+function createCodePanel(title: string, placeholder: string): HTMLDivElement {
   const lang = title.toLowerCase().includes('css') ? 'css' : 'html'
   const panel = document.createElement('div')
   panel.style.cssText =

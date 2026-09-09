@@ -21,7 +21,7 @@ import { jstParts } from '../jst.ts'
  * パネル左端にタブ型で配置。クリックでパネルを畳む（非表示ではなく折り畳み）。
  * ページ行をホバー/クリックしたら再展開する。
  */
-export function wireDetailPanelCloseButton(panel: HTMLElement): void {
+function wireDetailPanelCloseButton(panel: HTMLElement): void {
   if (document.querySelector('[data-detail-close]') !== null) return
 
   // 親要素(.efy50tl23)が overflow:scroll のため、
@@ -128,7 +128,7 @@ export function expandDetailPanel(body: HTMLElement): void {
 /**
  * 指示64: 詳細パネルのセクションヘッダー（URL情報・beyondページ情報・配信情報）に色をつける。
  */
-export function colorSectionHeaders(panel: HTMLElement): void {
+function colorSectionHeaders(panel: HTMLElement): void {
   const headers = panel.querySelectorAll<HTMLElement>('.ej6u9q11')
   for (const header of headers) {
     header.style.background = '#F5F7FA'
@@ -235,7 +235,7 @@ export function wireRealDetailPanel(body: HTMLElement, context: PageContext): vo
  * ヘッダーのページ名鉛筆（パネル外にある `.efy50tl4` 内の pencil-icon）を配線する。
  * クリック → ページ名のテキストが input に変わり、Enter/blur で API 更新。
  */
-export function wireHeaderPencil(body: HTMLElement, context: PageContext): void {
+function wireHeaderPencil(body: HTMLElement, context: PageContext): void {
   const abTest = context.abTests[0]
   if (abTest === undefined) return
 
@@ -258,7 +258,7 @@ export function wireHeaderPencil(body: HTMLElement, context: PageContext): void 
  * ヘッダー（ej6u9q11）をクリックでコンテンツ（ej6u9q10）をトグルし、
  * 矢印アイコン（arrow-down-icon）を回転させる。
  */
-export function wireAccordionSections(panel: HTMLElement): void {
+function wireAccordionSections(panel: HTMLElement): void {
   const sections = panel.querySelectorAll<HTMLElement>('.ej6u9q12')
   for (const section of sections) {
     const header = section.querySelector<HTMLElement>('.ej6u9q11')
@@ -285,7 +285,7 @@ export function wireAccordionSections(panel: HTMLElement): void {
  *
  * 鉛筆をクリック → 値テキストが input/select に変わる → 確定で PUT /ab_tests/:uid → DOM更新。
  */
-export function wirePencilIcons(panel: HTMLElement, context: PageContext): void {
+function wirePencilIcons(panel: HTMLElement, context: PageContext): void {
   const abTest = context.abTests[0]
   if (abTest === undefined) return
 
@@ -315,7 +315,7 @@ export function wirePencilIcons(panel: HTMLElement, context: PageContext): void 
     })
   }
 }
-export interface PencilField {
+interface PencilField {
   key: string
   type: 'text' | 'select'
   options?: readonly string[]
@@ -326,7 +326,7 @@ export interface PencilField {
  * 鉛筆アイコンの横に小さなポップオーバーを出してインライン編集する。
  * テキスト → input, セレクト → select を表示。保存で API 呼び出し → DOM 更新。
  */
-export function openInlineEdit(
+function openInlineEdit(
   pencilSvg: SVGElement,
   field: PencilField,
   abTestUid: string,
@@ -444,7 +444,7 @@ export function openInlineEdit(
   setTimeout(() => document.addEventListener('mousedown', onOutsideClick), 0)
 }
 /** 鉛筆SVGの隣にある値テキストの要素を探す */
-export function findValueContainer(pencilSvg: SVGElement): HTMLElement | null {
+function findValueContainer(pencilSvg: SVGElement): HTMLElement | null {
   // パターン1: 鉛筆が <dd> 内にある → <dd> の中で SVG/div.css-fbr94v 以外のテキストノード
   const dd = pencilSvg.closest('dd')
   if (dd !== null) {
@@ -475,7 +475,7 @@ export function findValueContainer(pencilSvg: SVGElement): HTMLElement | null {
   return null
 }
 /** フィールドキーに応じて、PUT /ab_tests/:uid に送る部分更新ボディを作る */
-export function buildPatchBody(key: string, value: string): Record<string, unknown> {
+function buildPatchBody(key: string, value: string): Record<string, unknown> {
   switch (key) {
     case 'title': return { title: value }
     case 'ad_status': {
@@ -493,7 +493,7 @@ export function buildPatchBody(key: string, value: string): Record<string, unkno
  * 配線時ではなく**クリック時**にここを見る（先頭LP固定だと別のLPに紐付いてしまう）。
  * `updateDetailPanelForAbTest` が data 属性に現在の対象を書いている。
  */
-export function currentPanelAbTest(
+function currentPanelAbTest(
   panel: HTMLElement,
   context: PageContext,
 ): { uid: string; title: string } | null {
@@ -505,7 +505,7 @@ export function currentPanelAbTest(
   const first = context.abTests[0]
   return first === undefined ? null : { uid: first.uid, title: first.title }
 }
-export function paramUrlBase(panel: HTMLElement, context: PageContext): string {
+function paramUrlBase(panel: HTMLElement, context: PageContext): string {
   const current = currentPanelAbTest(panel, context)
   if (current !== null) return `${location.origin}/lp/${current.uid}`
   const shown = Array.from(panel.querySelectorAll<HTMLElement>('a, div')).find((node) =>
@@ -515,7 +515,7 @@ export function paramUrlBase(panel: HTMLElement, context: PageContext): string {
   return `${location.origin}${path}`
 }
 /** 子孫から、指定文字列と完全一致するテキストだけを持つ最小要素を探す（アイコン等を巻き込まない）。 */
-export function findByText(root: HTMLElement, text: string): HTMLElement | null {
+function findByText(root: HTMLElement, text: string): HTMLElement | null {
   const nodes = Array.from(root.querySelectorAll<HTMLElement>('div, button, span, a'))
   return (
     nodes.find(
@@ -531,13 +531,13 @@ export function formatAbsoluteTime(ts: number | undefined): string {
   return `${p.year}年${p.month}月${p.day}日 ${p.hour}時${mi}分`
 }
 /** editor_version を表示名に変換 */
-export function editorTypeName(v: number): string {
+function editorTypeName(v: number): string {
   if (v === 2) return 'beyondエディター'
   if (v === 3) return 'HTMLエディター'
   return '-'
 }
 /** conversion_condition を表示名に変換 */
-export function conversionConditionName(c: string | undefined): string {
+function conversionConditionName(c: string | undefined): string {
   if (c === 'click') return 'クリック'
   if (c === 'access') return 'アクセス'
   return '-'
@@ -647,7 +647,7 @@ export function updateDetailPanelForAbTest(body: HTMLElement, abTest: AbTest, co
   }
 }
 /** dt のテキストが一致する次の dd を返す */
-export function findDdByDtText(panel: HTMLElement, dtText: string): HTMLElement | null {
+function findDdByDtText(panel: HTMLElement, dtText: string): HTMLElement | null {
   const dts = panel.querySelectorAll('dt')
   for (const dt of dts) {
     if ((dt.textContent ?? '').trim() === dtText) {
@@ -658,7 +658,7 @@ export function findDdByDtText(panel: HTMLElement, dtText: string): HTMLElement 
   return null
 }
 /** dd の中のテキストを更新（鉛筆アイコン等は残す） */
-export function setDdText(dd: HTMLElement, text: string): void {
+function setDdText(dd: HTMLElement, text: string): void {
   for (const child of dd.childNodes) {
     if (child.nodeType === Node.TEXT_NODE && (child.textContent ?? '').trim() !== '') {
       child.textContent = text
