@@ -9,7 +9,7 @@
  */
 import { api, type ReportKpi, type ReportResponse } from '../api.ts'
 import { toast } from '../ui.ts'
-import { toDateKey, toRangeQuery, type DateRange } from './report-period.ts'
+import { toRangeQuery, type DateRange } from './report-period.ts'
 import { injectReportStyles } from './report-v2-style.ts'
 import { buildKpiCards } from './report-v2-kpi.ts'
 import { buildCreativeReport } from './report-v2-chart.ts'
@@ -17,14 +17,15 @@ import { buildBranchOperation, buildReportList } from './report-v2-tables.ts'
 
 /** 同じ日数だけ手前にずらした期間（増減の比較対象） */
 export function previousRange(range: DateRange): DateRange {
-  const start = new Date(`${range.startDate}T00:00:00`)
-  const end = new Date(`${range.endDate}T00:00:00`)
-  const days = Math.max(1, Math.round((end.getTime() - start.getTime()) / 86400000) + 1)
-  const prevEnd = new Date(start)
-  prevEnd.setDate(prevEnd.getDate() - 1)
-  const prevStart = new Date(prevEnd)
-  prevStart.setDate(prevStart.getDate() - (days - 1))
-  return { startDate: toDateKey(prevStart), endDate: toDateKey(prevEnd) }
+  // 日付文字列はタイムゾーンを付けずに `new Date()` へ渡すと**ブラウザのローカル時刻**として
+  // 解釈される。日付キーはJST固定なので、ローカル解釈を挟むと日本より東の地域で1日ずれる。
+  // ここは暦日の足し引きだけなので、UTCの正午を基準にして計算する（DSTの影響も受けない）。
+  const start = Date.parse(`${range.startDate}T00:00:00Z`)
+  const end = Date.parse(`${range.endDate}T00:00:00Z`)
+  const days = Math.max(1, Math.round((end - start) / 86400000) + 1)
+  const shift = (base: number, byDays: number): string =>
+    new Date(base + byDays * 86400000).toISOString().slice(0, 10)
+  return { startDate: shift(start, -days), endDate: shift(start, -1) }
 }
 
 function field(label: string, control: HTMLElement): HTMLElement {

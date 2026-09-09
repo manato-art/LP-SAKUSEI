@@ -17,6 +17,8 @@ export const DATE_PRESET_VALUES = [
 
 export type DatePreset = (typeof DATE_PRESET_VALUES)[number]
 
+import { jstDateKey } from '../jst.ts'
+
 export interface DateRange {
   startDate: string
   endDate: string
@@ -28,21 +30,20 @@ export interface DateRange {
  * サーバーは記録も集計もJSTで日付を切る（mock-server/store/metrics.ts）。
  * ここでブラウザのローカル時刻を使うと、日本の外から開いたときに
  * 「今日」がサーバーと1日ズレて、レポートが空になったり前日の数字が出たりする。
- * どこから見ても同じ日を指すよう、画面側もJSTに固定する。
+ * 実装は src/app/jst.ts に一本化してある（画面全体で同じ基準を使う）。
  */
-export function toDateKey(date: Date): string {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Tokyo',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(date)
-}
+export const toDateKey = jstDateKey
 
+/**
+ * 暦日をずらす。
+ *
+ * `setDate(getDate() + n)` は**ブラウザのローカル暦**で動くため、
+ * 夏時間のある地域では1日が23時間や25時間になり、JST基準の日付キーに直すと
+ * 境目で1日ずれることがある。JSTは固定オフセットなので、
+ * 24時間ちょうどを足し引きすればJSTの暦日が正確に1日動く。
+ */
 function shiftDays(base: Date, days: number): Date {
-  const next = new Date(base)
-  next.setDate(next.getDate() + days)
-  return next
+  return new Date(base.getTime() + days * 86_400_000)
 }
 
 /**

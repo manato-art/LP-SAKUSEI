@@ -131,9 +131,10 @@ function injectCss(): void {
 }
 
 function rangeOf(days: number): DateRange {
+  // 日付キーはJST基準。ローカル暦で日をずらすと夏時間のある地域で境目がずれるので、
+  // 固定オフセットのJSTに合わせて24時間ちょうどで引く。
   const end = new Date()
-  const start = new Date(end)
-  start.setDate(start.getDate() - days)
+  const start = new Date(end.getTime() - days * 86_400_000)
   return { startDate: toDateKey(start), endDate: toDateKey(end) }
 }
 

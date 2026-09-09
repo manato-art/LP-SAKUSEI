@@ -6,6 +6,7 @@
 import { api } from '../api.ts'
 import { T, el, emptyState, toast } from '../ui.ts'
 import { buildThemeColorSection } from '../panels/theme-color-section.ts'
+import { jstDateKey } from '../jst.ts'
 
 export async function renderAccountSettings(container: HTMLElement): Promise<void> {
   container.style.cssText = `flex:1;min-width:0;background:${T.bg};min-height:100vh`
@@ -389,7 +390,7 @@ async function renderAccessManagement(content: HTMLElement): Promise<void> {
       const left = el('div', {}, [
         el('div', { text: entry.email, style: `font-size:14px;color:${T.text}` }),
         el('div', {
-          text: `追加: ${new Date(entry.created_at).toLocaleDateString('ja-JP')}`,
+          text: `追加: ${jstDateKey(new Date(entry.created_at))}`,
           style: `font-size:11px;color:${T.sub};margin-top:2px`,
         }),
       ])

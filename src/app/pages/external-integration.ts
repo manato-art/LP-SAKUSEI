@@ -14,6 +14,7 @@ import { isStale } from '../main.ts'
 import { toast } from '../ui.ts'
 import { stripShellFromFragment } from './report-substrate.ts'
 import { bindBackdropClose } from '../panels/portal.ts'
+import { jstDateKey } from '../jst.ts'
 
 /** 採取物で名前が判別できる媒体（この中に無い名前＝匿名化されたMeta行） */
 const KNOWN_MEDIA = new Set([
@@ -226,7 +227,7 @@ function authenticate(
     toast(`${found.name}（${found.account_id}）を認証しました`)
   } else {
     // トークンなし: モックアカウントを作成して一覧に追加
-    const today = new Date().toISOString().split('T')[0] ?? ''
+    const today = jstDateKey(new Date())
     const mockAccount: MetaAdAccount = {
       account_id: cleanId,
       name: `広告アカウント ${cleanId}`,

@@ -32,6 +32,7 @@ import type { EditorContext } from './editor-context.ts'
 import { HOOK } from './editor-hooks.ts'
 import { buildFullHtml } from './editor-html.ts'
 import { findUpdateButton, saveHtml } from './editor-version-list.ts'
+import { jstHhmm } from '../jst.ts'
 import {
   injectCardSeamStyles,
   injectHeaderExtrasCss,
@@ -555,9 +556,7 @@ export function formatSaveTime(saved: Date): string {
   if (mins < 60) return `${mins}分前`
   const hours = Math.floor(mins / 60)
   if (hours < 12) return `${hours}時間前`
-  const hh = String(saved.getHours()).padStart(2, '0')
-  const mm = String(saved.getMinutes()).padStart(2, '0')
-  return `${hh}:${mm}`
+  return jstHhmm(saved)
 }
 /** ヘッダーの保存時刻表示を「今」に更新 */
 export function updateSaveTimestamp(): void {

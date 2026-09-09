@@ -5,6 +5,7 @@
  * 左ツリーの履歴タブがそれを並べる。保存先はブラウザ内だけ。
  */
 import { T, el } from '../ui.ts'
+import { jstParts } from '../jst.ts'
 
 /** 履歴エントリ。何をいつ触ったか記録する。 */
 export interface HistoryEntry {
@@ -105,6 +106,6 @@ export function formatTimestamp(ts: number): string {
   const day = Math.floor(hour / 24)
   if (day === 1) return '昨日'
   if (day < 7) return `${day}日前`
-  const d = new Date(ts)
-  return `${d.getMonth() + 1}/${d.getDate()}`
+  const p = jstParts(new Date(ts))
+  return `${p.month}/${p.day}`
 }

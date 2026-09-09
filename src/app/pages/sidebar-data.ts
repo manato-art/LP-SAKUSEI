@@ -8,6 +8,7 @@
  * /report-exclusions, /ab_tests/rankings）を叩いて描く。空ならそのまま空状態を出す。
  */
 import { T, el, emptyState, toast } from '../ui.ts'
+import { jstDateKey, jstParts } from '../jst.ts'
 
 const API = '/api/v1'
 
@@ -145,6 +146,29 @@ interface DashboardSeries {
   cv: number
 }
 
+/**
+ * ダッシュボードの期間。日付は**日本時間**で決める。
+ *
+ * `days` は 0=今日 / 1=昨日 / N=過去N日 / -1=今月。
+ * ブラウザのローカル時刻で組み立てると、日本の朝や月初に1日（1ヶ月）ずれる。
+ */
+export function dashboardRange(days: number, now: Date = new Date()): {
+  startDate: string
+  endDate: string
+} {
+  const endDate = jstDateKey(now)
+  if (days === 0) return { startDate: endDate, endDate }
+  if (days === -1) {
+    const t = jstParts(now)
+    return { startDate: `${t.year}-${String(t.month).padStart(2, '0')}-01`, endDate }
+  }
+  if (days === 1) {
+    const yesterday = jstDateKey(new Date(now.getTime() - 86400000))
+    return { startDate: yesterday, endDate: yesterday }
+  }
+  return { startDate: jstDateKey(new Date(now.getTime() - days * 86400000)), endDate }
+}
+
 export async function renderDashboard(container: HTMLElement): Promise<void> {
   const content = pageShell(
     container,
@@ -164,23 +188,9 @@ export async function renderDashboard(container: HTMLElement): Promise<void> {
   let activePeriod = '過去7日'
 
   async function loadDashboard(days: number): Promise<void> {
-    const now = new Date()
-    let start: Date
-    let end: Date = now
-    if (days === 0) {
-      start = now
-    } else if (days === -1) {
-      start = new Date(now.getFullYear(), now.getMonth(), 1)
-    } else if (days === 1) {
-      start = new Date(now.getTime() - 86400000)
-      end = start
-    } else {
-      start = new Date(now.getTime() - days * 86400000)
-    }
-    const fmt = (d: Date): string => d.toISOString().slice(0, 10)
-    const qs = `start_date=${fmt(start)}&end_date=${fmt(end)}`
+    const { startDate, endDate } = dashboardRange(days)
     const data = await getJson<{ kpi: Kpi; series: DashboardSeries[]; new_ab_tests: unknown[] }>(
-      `/teams/dashboard?${qs}`,
+      `/teams/dashboard?start_date=${startDate}&end_date=${endDate}`,
     )
     renderDashboardBody(content, data)
   }
@@ -291,12 +301,12 @@ interface ConversionRow {
 }
 
 /** 発生時刻（UNIX秒）を実物の並びに近い表記へ。文字列で来たらそのまま出す。 */
-function cvTime(value: unknown): string {
+export function cvTime(value: unknown): string {
   if (typeof value === 'string' && value !== '') return value
   if (typeof value !== 'number' || !Number.isFinite(value)) return '-'
-  const d = new Date(value * 1000)
+  const t = jstParts(new Date(value * 1000))
   const p = (n: number): string => String(n).padStart(2, '0')
-  return `${d.getFullYear()}/${p(d.getMonth() + 1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
+  return `${t.year}/${p(t.month)}/${p(t.day)} ${p(t.hour)}:${p(t.minute)}:${p(t.second)}`
 }
 
 /**

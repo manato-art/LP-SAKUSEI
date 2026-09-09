@@ -14,6 +14,7 @@ import { openParamUrlModal } from '../panels/param-url-modal.ts'
 import { openTrackingTagModal } from '../panels/tracking-tag-modal.ts'
 import { openMetaLinkModal } from '../panels/meta-link-modal.ts'
 import { AD_STATUS_LABELS, type PageContext } from './folders-shared.ts'
+import { jstParts } from '../jst.ts'
 
 /**
  * 指示60→65: 詳細パネルの「閉じる »」ボタン。
@@ -525,13 +526,9 @@ export function findByText(root: HTMLElement, text: string): HTMLElement | null 
 /** UNIXタイムスタンプ（秒）を「2026年8月31日 19時27分」形式に変換 */
 export function formatAbsoluteTime(ts: number | undefined): string {
   if (ts === undefined || ts === 0) return '-'
-  const d = new Date(ts * 1000)
-  const y = d.getFullYear()
-  const mo = d.getMonth() + 1
-  const day = d.getDate()
-  const h = d.getHours()
-  const mi = String(d.getMinutes()).padStart(2, '0')
-  return `${y}年${mo}月${day}日 ${h}時${mi}分`
+  const p = jstParts(new Date(ts * 1000))
+  const mi = String(p.minute).padStart(2, '0')
+  return `${p.year}年${p.month}月${p.day}日 ${p.hour}時${mi}分`
 }
 /** editor_version を表示名に変換 */
 export function editorTypeName(v: number): string {
