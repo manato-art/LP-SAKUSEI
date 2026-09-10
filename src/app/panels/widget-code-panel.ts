@@ -2,13 +2,24 @@
  * Widget編集画面の右側「コードパネル」（widget-editor.ts から分離）。
  *
  * HTML と CSS を行番号つきで出し、色分けしたまま編集できるようにする。
+ *
+ * 右上の2つのアイコンは表示の切り替え（指示183）。
+ *   分割表示   … 左にビジュアルエディタ、右にコード（既定）
+ *   コード表示 … ビジュアルを畳んでコードだけを全幅にする
+ * 実際に左ペインを畳むのは呼び出し側なので、`onViewChange` で知らせる。
  */
 import { COLOR, FONT, MONO, type WidgetEditTarget } from './widget-editor-theme.ts'
 import { highlightHtml, highlightCss } from './syntax-highlight.ts'
 import { svgViewCode, svgViewSplit } from './widget-editor-icons.ts'
 import { applyCodeSelectionStyle } from './code-selection.ts'
 
-export function buildCodePanels(target: WidgetEditTarget): HTMLElement {
+/** コードパネルの表示モード */
+export type CodePaneView = 'split' | 'code'
+
+export function buildCodePanels(
+  target: WidgetEditTarget,
+  onViewChange?: (view: CodePaneView) => void,
+): HTMLElement {
   const pane = document.createElement('div')
   pane.style.cssText = `flex:1;display:flex;flex-direction:column;min-width:0`
 
@@ -43,9 +54,19 @@ export function buildCodePanels(target: WidgetEditTarget): HTMLElement {
   // ビュー切替アイコン（本番の2つのアイコンボタン）
   const viewBtns = document.createElement('div')
   viewBtns.style.cssText = 'display:flex;gap:2px;margin-left:8px'
-  const viewSplit = makeViewButton(svgViewSplit(), '分割表示')
-  const viewCode = makeViewButton(svgViewCode(), 'コード表示')
-  viewCode.style.background = '#444' // アクティブ
+  const viewSplit = makeViewButton(svgViewSplit(), '分割表示（ビジュアルとコード）')
+  const viewCode = makeViewButton(svgViewCode(), 'コード表示（コードだけ全幅）')
+  let view: CodePaneView = 'split'
+  const setView = (next: CodePaneView): void => {
+    if (next === view) return
+    view = next
+    viewSplit.style.background = next === 'split' ? '#444' : COLOR.container
+    viewCode.style.background = next === 'code' ? '#444' : COLOR.container
+    onViewChange?.(next)
+  }
+  viewSplit.style.background = '#444' // 既定は分割表示（開いた直後の見た目と合わせる）
+  viewSplit.addEventListener('click', () => setView('split'))
+  viewCode.addEventListener('click', () => setView('code'))
   viewBtns.append(viewSplit, viewCode)
 
   toggleRow.append(toggleLabel, toggle, viewBtns)
@@ -98,7 +119,9 @@ function createHighlightedCodePanel(
   gutter.style.cssText =
     `width:40px;background:${COLOR.codePanel};border-right:1px solid ${COLOR.codeBorder};` +
     `overflow:hidden;flex-shrink:0;padding:4px 6px 4px 0;text-align:right;box-sizing:border-box;` +
-    `font:12px/1.6 ${MONO};color:${COLOR.lineNumberText};user-select:none`
+    // white-space:pre が無いと改行が畳まれ、行番号が「1 2」「3 4」と折り返して
+    // コードの行とズレる（指示181のスクショで発生していた）。
+    `font:12px/1.6 ${MONO};color:${COLOR.lineNumberText};user-select:none;white-space:pre`
   updateLineNumbers(gutter, content)
 
   // エディタコンテナ（overlay パターン）
@@ -112,8 +135,10 @@ function createHighlightedCodePanel(
     // 切り落とされ、スクロールした先の行がハイライト層に存在しなくなる（文字が出ない）。
     // 内容の高さのまま置き、はみ出しのクリップはコンテナ(editorBox)に任せる。
     `position:absolute;top:0;left:0;min-width:100%;margin:0;padding:4px 12px;` +
-    `font:12px/1.6 ${MONO};white-space:pre;pointer-events:none;overflow:visible;` +
-    `tab-size:2;word-wrap:normal`
+    // 指示181: 地の文字色を必ず置く。ハイライトが取りこぼした語は span に包まれず
+    // 素のまま出るので、ここが無いと既定の黒文字＝ほぼ黒の地に溶けて読めない。
+    `font:12px/1.6 ${MONO};color:${COLOR.codeText};white-space:pre;` +
+    `pointer-events:none;overflow:visible;tab-size:2;word-wrap:normal`
   highlight.innerHTML = (lang === 'html' ? highlightHtml(content) : highlightCss(content))
 
   // textarea（透明・入力受付）

@@ -105,8 +105,38 @@ export function masterStyleIframeCss(s: MasterStyleSheet): string {
 
 /**
  * 編集画面用。Quill本文（`.ql-editor`）へ当てる宣言だけを返す
- * （フォント/色/行間/文字間/余白/Version背景/枠線）。配信幅/全体背景は編集画面の骨格を壊すので当てない。
+ * （フォント/色/行間/文字間/余白/Version背景/枠線）。配信幅は編集画面の骨格を壊すので当てない。
  */
 export function masterStyleEditorDecls(s: MasterStyleSheet): string {
   return containerDecls(s).join(';')
+}
+
+/**
+ * 編集画面のキャンバスに当てる `background` の**値**（宣言ではなく値）。
+ *
+ * 編集画面のキャンバスは、クローン自身のCSSが `background: … !important` で
+ * 塗っている。そのため記事設定の色をインラインで足しても勝てず、
+ * 「設定したのに編集画面だけ変わらない」状態だった（指示179）。
+ * CSS変数を1つ挟んで、そこにこの値を入れることで効かせる。
+ * 未設定なら空文字＝変数を置かない＝既定色のまま。
+ *
+ * 色と画像を1つの値にまとめるのは、`background` ショートハンドが
+ * 画像側を打ち消すため（片方だけ変数に入れると、もう片方が消える）。
+ */
+function backgroundValue(color: string, image: string): string {
+  const c = hex(color)
+  const parts: string[] = []
+  if (c !== null) parts.push(c)
+  if (image !== '') parts.push(`url("${image}") center/cover no-repeat`)
+  return parts.join(' ')
+}
+
+/** 土台（LPの外側）＝記事設定の「全体背景設定」。 */
+export function masterStyleCanvasBackground(s: MasterStyleSheet): string {
+  return backgroundValue(s.outer_background_color, s.outer_background_image)
+}
+
+/** LP本体＝記事設定の「Version背景設定」。 */
+export function masterStylePageBackground(s: MasterStyleSheet): string {
+  return backgroundValue(s.inner_background_color, s.inner_background_image)
 }

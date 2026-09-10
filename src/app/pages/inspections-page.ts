@@ -21,6 +21,7 @@
 import { api, type InspectionEntry, type InspectionFolder } from '../api.ts'
 import { toast } from '../ui.ts'
 import { buildToolGuide } from './tool-guide.ts'
+import { FAVORITE_STAR_COLOR } from './folders-detail-panel.ts'
 
 type Kind = 'version' | 'popup'
 
@@ -383,7 +384,7 @@ function injectStyles(): void {
     .ins-group-row{display:flex;flex-direction:row;align-items:center;gap:6px;padding:6px 2px}
     .ins-caret{color:#888;font-size:11px}
     .ins-group-name{flex:1;font-size:12px}
-    .ins-star{color:#F5A623}
+    .ins-star{color:${FAVORITE_STAR_COLOR}}
     .ins-folder-row{display:flex;flex-direction:row;align-items:center;gap:8px;padding:8px 2px;
       background:#fff;border-radius:4px;margin-bottom:6px;padding-left:10px}
     .ins-folder-row.nested{margin-left:18px}

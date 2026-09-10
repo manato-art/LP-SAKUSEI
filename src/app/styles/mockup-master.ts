@@ -247,7 +247,9 @@ const MOCKUP_CSS = `
     display: flex !important;
     flex-direction: column !important;
     min-width: 0 !important;
-    background: var(--ground) !important;
+    /* 記事設定の「全体背景設定」があれば --lp-canvas-base に入る（指示179）。
+       無ければ従来どおり --ground。!important のままだと設定が勝てないので変数を挟む。 */
+    background: var(--lp-canvas-base, var(--ground)) !important;
     position: relative !important;
     border-radius: 0 !important;
   }
@@ -261,7 +263,8 @@ const MOCKUP_CSS = `
   .quillEditorContentWrapper .ql-editor {
     max-width: 640px !important;
     margin: 0 auto !important;
-    background: var(--surface) !important;
+    /* 記事設定の「Version背景設定」があれば --lp-page-bg に入る（指示179） */
+    background: var(--lp-page-bg, var(--surface)) !important;
     border: 1px solid var(--border) !important;
     border-radius: 4px !important;
     min-height: 400px !important;

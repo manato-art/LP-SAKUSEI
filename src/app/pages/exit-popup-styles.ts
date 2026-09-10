@@ -141,7 +141,9 @@ export function injectPopupCss(): void {
     .ep-html-textarea::-moz-selection { background:rgba(88,150,255,.34); color:transparent; }
     .ep-html-editor-box { flex:1; position:relative; overflow:auto; min-height:0; background:#151515; }
     /* 指示177: inset:0 + overflow:hidden だと内容がコンテナ高さで切れ、スクロール先の行が消える */
-    .ep-html-highlight { position:absolute; top:0; left:0; min-width:100%; margin:0; padding:10px 12px; font:12px/1.6 "SF Mono",Menlo,monospace; white-space:pre; pointer-events:none; overflow:visible; tab-size:2; word-wrap:normal; }
+    /* color は必須。ハイライトが取りこぼした語は span に包まれず素のまま出るので、
+       これが無いと既定の黒文字がほぼ黒の地に溶ける（指示181）。 */
+    .ep-html-highlight { position:absolute; top:0; left:0; min-width:100%; margin:0; padding:10px 12px; font:12px/1.6 "SF Mono",Menlo,monospace; color:#eeffff; white-space:pre; pointer-events:none; overflow:visible; tab-size:2; word-wrap:normal; }
     .ep-back-link { background:none; border:none; cursor:pointer; font-size:13px; color:${T.primary}; font-family:${T.font}; padding:0; }
     .ep-back-link:hover { text-decoration:underline; }
 

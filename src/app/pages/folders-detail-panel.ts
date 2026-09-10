@@ -674,6 +674,9 @@ function setDdText(dd: HTMLElement, text: string): void {
   const textNode = document.createTextNode(text)
   dd.prepend(textNode)
 }
+/** お気に入りの★の色。審査画面の `.ins-star` と同じ値に保つこと。 */
+export const FAVORITE_STAR_COLOR = '#F5A623'
+
 /** 星アイコンの見た目をお気に入り状態に合わせて変える。 */
 export function updateStarAppearance(starBtn: HTMLElement, isFavorite: boolean): void {
   const svg = starBtn.querySelector('svg')
@@ -681,9 +684,10 @@ export function updateStarAppearance(starBtn: HTMLElement, isFavorite: boolean):
   const path = svg.querySelector('path')
   if (path === null) return
   if (isFavorite) {
-    // 塗りつぶし（ブランド色）
-    path.setAttribute('fill', 'var(--sb-accent, #0091FF)')
-    path.setAttribute('stroke', 'var(--sb-accent, #0091FF)')
+    // 中まで塗りつぶした黄色い★（指示180）。テーマ色（青）だと「選択中」に見えて
+    // お気に入りだと分からなかった。審査画面の★（.ins-star）と同じ色に揃える。
+    path.setAttribute('fill', FAVORITE_STAR_COLOR)
+    path.setAttribute('stroke', FAVORITE_STAR_COLOR)
   } else {
     // 線だけ（既定）— stroke を残さないと星が透明になる
     path.setAttribute('fill', 'none')

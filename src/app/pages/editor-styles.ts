@@ -39,7 +39,8 @@ export function injectCardSeamStyles(): void {
     /* contentWrapper: モック準拠でグレー背景 + 角丸外す */
     .quillEditorContentWrapper {
       border-radius: 0 !important;
-      background: #f5f6f8 !important;
+      /* 記事設定の「全体背景設定」があれば --lp-canvas-base に入る（指示179） */
+      background: var(--lp-canvas-base, #f5f6f8) !important;
       position: relative !important;
       display: flex !important;
       flex-direction: column !important;
@@ -56,7 +57,8 @@ export function injectCardSeamStyles(): void {
     .quillEditorContentWrapper .ql-editor {
       width: 100% !important;
       max-width: 640px !important;
-      background: #fff !important;
+      /* 記事設定の「Version背景設定」があれば --lp-page-bg に入る（指示179） */
+      background: var(--lp-page-bg, #fff) !important;
       border: 1px solid #e5e5ea !important;
       border-radius: 4px !important;
       min-height: 400px !important;

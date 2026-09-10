@@ -272,8 +272,9 @@ function createCodePanel(title: string, placeholder: string): HTMLDivElement {
   pre.style.cssText =
     // 指示177: inset:0 + overflow:hidden だと内容がコンテナ高さで切れ、スクロール先が空になる
     'position:absolute;top:0;left:0;min-width:100%;margin:0;padding:10px 12px;' +
-    'font:13px/1.5 "SF Mono",Menlo,monospace;white-space:pre;pointer-events:none;' +
-    'overflow:visible;tab-size:2;word-wrap:normal'
+    // 指示181: 地の文字色（ハイライトの取りこぼしが黒くならないように）
+    'font:13px/1.5 "SF Mono",Menlo,monospace;color:#eeffff;white-space:pre;' +
+    'pointer-events:none;overflow:visible;tab-size:2;word-wrap:normal'
   pre.innerHTML = highlight(placeholder, lang)
 
   const textarea = document.createElement('textarea')

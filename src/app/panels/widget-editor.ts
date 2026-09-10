@@ -242,8 +242,15 @@ function openWidgetEditor(quill: Quill, target: WidgetEditTarget): void {
     `width:10px;background:${COLOR.container};cursor:col-resize;flex-shrink:0;` +
     `display:flex;align-items:center;justify-content:center`
 
-  // 右: コードパネル
-  const rightPane = buildCodePanels(target)
+  // 右: コードパネル。「コード表示」を選んだら左ペインと仕切りを畳んで全幅にする（指示183）。
+  // display を空文字に戻すと cssText 側の display:flex ごと消えるので、元の値を控えておく。
+  const leftDisplay = leftPane.style.display
+  const dividerDisplay = divider.style.display
+  const rightPane = buildCodePanels(target, (view) => {
+    const codeOnly = view === 'code'
+    leftPane.style.display = codeOnly ? 'none' : leftDisplay
+    divider.style.display = codeOnly ? 'none' : dividerDisplay
+  })
 
   darkContainer.append(leftPane, divider, rightPane)
 

@@ -104,9 +104,12 @@ export function highlightCss(code: string): string {
 
 function highlightCssValue(val: string): string {
   return val.replace(
-    /([0-9]+(?:\.[0-9]+)?)(px|em|rem|%|vw|vh|s|ms|deg)?|(#[0-9a-fA-F]{3,8})|(\b(?:auto|none|inherit|initial|unset|block|flex|grid|center|left|right|top|bottom|bold|normal|solid|hidden|visible|absolute|relative|fixed|sticky)\b)|([a-zA-Z-]+\s*\()|(\))|([^0-9#a-zA-Z()\s]+)|(\s+)/g,
-    (_m, num?: string, unit?: string, hex?: string, keyword?: string, fn?: string, paren?: string, punct?: string, ws?: string) => {
+    // 末尾の `ident` は取りこぼし防止。これが無いと、フォント名や `important` のような
+    // ただの語がどの枝にも当たらず**素のまま**出て、地の色（黒）のまま読めなくなる（指示181）。
+    /([0-9]+(?:\.[0-9]+)?)(px|em|rem|%|vw|vh|s|ms|deg)?|(#[0-9a-fA-F]{3,8})|(\b(?:auto|none|inherit|initial|unset|block|flex|grid|center|left|right|top|bottom|bold|normal|solid|hidden|visible|absolute|relative|fixed|sticky)\b)|([a-zA-Z-]+\s*\()|(\))|([^0-9#a-zA-Z()\s]+)|(\s+)|([a-zA-Z_][\w-]*)/g,
+    (_m, num?: string, unit?: string, hex?: string, keyword?: string, fn?: string, paren?: string, punct?: string, ws?: string, ident?: string) => {
       if (ws !== undefined) return ws
+      if (ident !== undefined) return span(HL.text, esc(ident))
       if (num !== undefined) return span(HL.number, esc(num)) + (unit !== undefined ? span(HL.keyword, esc(unit)) : '')
       if (hex !== undefined) return span(HL.number, esc(hex))
       if (keyword !== undefined) return span(HL.keyword, esc(keyword))
@@ -122,8 +125,10 @@ function highlightCssValue(val: string): string {
 
 export function highlightJs(code: string): string {
   return code.replace(
-    /(\/\/[^\n]*|\/\*[\s\S]*?\*\/)|("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`)|(\b(?:function|return|var|let|const|if|else|for|while|do|switch|case|break|continue|new|this|typeof|instanceof|in|of|class|extends|import|export|default|try|catch|finally|throw|async|await|yield|void|delete|null|undefined|true|false|NaN|Infinity)\b)|(\b[0-9]+(?:\.[0-9]+)?\b)|([a-zA-Z_$][a-zA-Z0-9_$]*\s*(?=\())|([{}()[\];,.])|([^/'"`\s{}()[\];,.0-9a-zA-Z_$]+)|(\s+)/g,
-    (_m, comment?: string, str?: string, kw?: string, num?: string, fn?: string, punct?: string, other?: string, ws?: string) => {
+    // 末尾の `ident` は取りこぼし防止（CSS と同じ理由・指示181）
+    /(\/\/[^\n]*|\/\*[\s\S]*?\*\/)|("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`)|(\b(?:function|return|var|let|const|if|else|for|while|do|switch|case|break|continue|new|this|typeof|instanceof|in|of|class|extends|import|export|default|try|catch|finally|throw|async|await|yield|void|delete|null|undefined|true|false|NaN|Infinity)\b)|(\b[0-9]+(?:\.[0-9]+)?\b)|([a-zA-Z_$][a-zA-Z0-9_$]*\s*(?=\())|([{}()[\];,.])|([^/'"`\s{}()[\];,.0-9a-zA-Z_$]+)|(\s+)|([a-zA-Z_$][\w$]*)/g,
+    (_m, comment?: string, str?: string, kw?: string, num?: string, fn?: string, punct?: string, other?: string, ws?: string, ident?: string) => {
+      if (ident !== undefined) return span(HL.text, esc(ident))
       if (comment !== undefined) return span(HL.comment, esc(comment))
       if (str !== undefined) return span(HL.string, esc(str))
       if (kw !== undefined) return span(HL.keyword, esc(kw))

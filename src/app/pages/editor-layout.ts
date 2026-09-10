@@ -25,7 +25,11 @@ import { wireWidgetClick } from '../panels/widget-editor.ts'
 import { mountWidgetNav } from '../panels/widget-nav.ts'
 import { EXTERNAL_IMAGE_TOOL_INDEX, mountExternalImage } from '../panels/external-image.ts'
 import { toggleComparePanel } from '../panels/compare-mode.ts'
-import { masterStyleEditorDecls } from '../master-style.ts'
+import {
+  masterStyleCanvasBackground,
+  masterStyleEditorDecls,
+  masterStylePageBackground,
+} from '../master-style.ts'
 import { createAutosave } from './autosave.ts'
 import { deliveryUrl } from './basic-info-form.ts'
 import type { EditorContext } from './editor-context.ts'
@@ -58,14 +62,50 @@ const SIDE_TOOLS: readonly string[] = [
   '進む',
   '画像',
 ]
-/** 記事設定（MasterStyleSheet）を Quill 本文へ当てて、編集画面でも見た目を反映する。 */
+/**
+ * 記事設定（MasterStyleSheet）を編集画面へ当てる。
+ *   Quill本文（`.ql-editor`）… フォント/色/余白/Version背景など
+ *   キャンバスの土台        … 全体背景（指示179。配信では html に当たっているもの）
+ */
 export async function applyMasterStyleToEditor(ctx: EditorContext): Promise<void> {
   try {
     const { master_style_sheet } = await api.masterStyleSheet(ctx.articleUid)
     const decls = masterStyleEditorDecls(master_style_sheet)
     if (decls !== '') ctx.quill.root.setAttribute('style', decls)
+    applyCanvasBackground(
+      ctx.quill.root,
+      masterStyleCanvasBackground(master_style_sheet),
+      masterStylePageBackground(master_style_sheet),
+    )
   } catch {
     // 取得に失敗しても編集は続けられる（既定の見た目のまま）
+  }
+}
+
+/**
+ * 記事設定の背景2つを、編集画面のキャンバスへ効かせる（指示179）。
+ *
+ *   土台   = `.quillEditorContentWrapper`（LPの周りに見えているグレーの地）… 全体背景設定
+ *   LP本体 = その中の `.ql-editor`                                        … Version背景設定
+ *
+ * どちらもクローン自身のCSSが `background: … !important` で塗っているため、
+ * インラインで色を足しても勝てない。CSSを `var(--lp-canvas-base, 既定)` /
+ * `var(--lp-page-bg, 既定)` に変えてあるので、ここでは**変数だけ**を置く。
+ * 変数は継承するので、土台に置けば中の `.ql-editor` にも届く。
+ * 空＝未設定なら変数を消す＝既定の色に戻る。
+ *
+ * 土台は Quill本文の**先祖**をたどって探す。`ctx.root` から querySelector すると
+ * この時点ではまだ見つからず、変数が置かれないまま終わっていた。
+ */
+function applyCanvasBackground(quillRoot: HTMLElement, canvasBg: string, pageBg: string): void {
+  const base = quillRoot.closest<HTMLElement>('.quillEditorContentWrapper')
+  if (base === null) return
+  for (const [name, value] of [
+    ['--lp-canvas-base', canvasBg],
+    ['--lp-page-bg', pageBg],
+  ] as const) {
+    if (value === '') base.style.removeProperty(name)
+    else base.style.setProperty(name, value)
   }
 }
 /** 旧フローティングツールバーを非表示にする */
