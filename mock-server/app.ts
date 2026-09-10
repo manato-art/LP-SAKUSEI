@@ -34,6 +34,7 @@ import { versionsRouter } from './routes/versions.ts'
 import { deliveryRouter } from './routes/delivery.ts'
 import { adminAuthRouter, isAdminAuthenticated, render404Page } from './lib/admin-auth.ts'
 import { allowedEmailsRouter } from './routes/allowed-emails.ts'
+import { bulkReplaceRouter } from './routes/bulk-replace.ts'
 import { bulkTagsRouter } from './routes/bulk-tags.ts'
 
 /** `?reset=1` で新規アカウント発行直後（空）へ戻す（§10-9） */
@@ -126,6 +127,8 @@ export function createApp(): Express {
     allowedEmailsRouter,
     // 一括タグ設定
     bulkTagsRouter,
+    // マジック置換（画像/テキスト/リンクの一括置換）
+    bulkReplaceRouter,
   ]
 
   // [A] メインREST API（実物は v1 / v2 が混在するため両方に同じルーターを載せる）

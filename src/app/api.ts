@@ -180,6 +180,27 @@ export interface HeatmapEntry {
   thumbnail_url: string | null
 }
 
+/** マジック置換の一覧（1ページぶん） */
+export interface BulkReplacePage {
+  ab_test_uid: string
+  title: string
+  rows: BulkReplaceRow[]
+}
+
+export interface BulkReplaceRow {
+  /** 置換のときにこの行を指す値（画像/リンクはURL、テキストは検索語） */
+  value: string
+  /** 画面に出す文字（テキストは前後の文脈） */
+  label: string
+  count: number
+  version_uid: string
+  version_name: string
+  /** リンクのみ: 計測機能が付いているか */
+  tracking?: boolean
+  /** テキストのみ: そのVersion内で何番目の一致か */
+  text_index?: number
+}
+
 export const api = {
   folders: () => request<{ folders: Folder[] }>('GET', '/folders?per_page=200'),
   // 計測ツール・ASPアカウント一覧（一括タグ/基本情報で使う）
@@ -191,6 +212,19 @@ export const api = {
   updateBulkTag: (uid: string, patch: Record<string, unknown>) =>
     request<{ bulk_tag: BulkTag }>('PATCH', `/bulk_tags/${uid}`, patch),
   deleteBulkTag: (uid: string) => request<{ ok: boolean }>('DELETE', `/bulk_tags/${uid}`),
+  // マジック置換（/articles/bulk_replaces）
+  bulkReplaceTargets: (params: { abTestUids: readonly string[]; kind: string; q?: string }) =>
+    request<{ pages: BulkReplacePage[]; message?: string }>(
+      'GET',
+      `/articles/bulk_replaces/targets?ab_test_uids=${encodeURIComponent(params.abTestUids.join(','))}` +
+        `&kind=${encodeURIComponent(params.kind)}&q=${encodeURIComponent(params.q ?? '')}`,
+    ),
+  bulkReplace: (body: {
+    kind: string
+    targets: { version_uid: string; value: string; indexes?: number[] }[]
+    replacement: string
+    tracking?: string
+  }) => request<{ replaced: number; versions: number }>('POST', '/articles/bulk_replaces', body),
   createFolder: (name: string) => request<{ folder: Folder }>('POST', '/folders', { name }),
   folderDetail: (uid: string) =>
     request<{ folder: Folder; ab_tests: AbTest[] }>('GET', `/folders/${uid}`),

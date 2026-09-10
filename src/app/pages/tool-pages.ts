@@ -22,6 +22,7 @@ import formsFragment from '../fragments/folders__forms__default.html?raw'
 import { stripGlobalSidebar } from './sidebar-shell.ts'
 import { rewireToolSubnav, type ToolPage } from './tool-subnav.ts'
 import { renderBulkTagsPage } from './bulk-tags-page.ts'
+import { renderBulkReplacePage } from './bulk-replace-page.ts'
 import { toast } from '../ui.ts'
 
 /**
@@ -69,10 +70,14 @@ export function renderToolTags(container: HTMLElement): void {
   void renderBulkTagsPage(host)
 }
 
-// ── マジック置換（/articles/bulk_replaces）＝設定フォーム。実行系のみ配線 ──
+// ── マジック置換（/articles/bulk_replaces）＝実SB同等の機能実装 ──
 export function renderToolBulkReplaces(container: HTMLElement): void {
   const root = mountToolFragment(container, bulkReplacesFragment)
-  wireUnimplementedByText(root, ['置換する', 'アップロード', 'リセット'])
+  // 採取フラグメントの本文領域を機能UIに差し替える（一括タグと同じやり方）。
+  const host = root.querySelector<HTMLElement>('.ehppitp0') ?? root
+  if (host !== root) host.style.paddingLeft = '0'
+  host.style.height = 'calc(100vh - 120px)'
+  void renderBulkReplacePage(host)
 }
 
 // ── メディア（/teams/product_search_forms）＝一覧は空＋新規作成フォーム ──

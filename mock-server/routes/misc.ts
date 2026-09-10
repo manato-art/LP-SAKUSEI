@@ -52,19 +52,12 @@ miscRouter.get('/terms', (_req, res) => {
   res.json({ html: '<h1>利用規約</h1><p>これは合成データです。</p>' })
 })
 
-/** 記事一括置換（/articles/bulk_replaces） */
-miscRouter.get('/articles/bulk_replaces', (req, res) => {
-  res.json({ bulk_replaces: applyEmptyState(req, []) })
-})
-
-miscRouter.post('/articles/bulk_replaces', (req, res) => {
-  const from = requireString(req.body, 'from')
-  if (!from.ok) {
-    res.status(422).json(errorEnvelope('validation_failed', from.message))
-    return
-  }
-  res.json({ ok: true, replaced_count: 0 })
-})
+/**
+ * 記事一括置換（マジック置換 = /articles/bulk_replaces）は
+ * `routes/bulk-replace.ts` が実装している。
+ * ここには「常に replaced_count: 0 を返す」置き石があったが、
+ * 先に登録されていて本実装を横取りしてしまうため削除した。
+ */
 
 // ── 管理者（§10-3 /admin/*）──
 miscRouter.get('/admin/report', (req, res) => {
