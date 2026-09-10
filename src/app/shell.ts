@@ -27,6 +27,9 @@ const NAV_TARGETS: readonly { label: string; href: string }[] = [
   // 指示㊷: イベント・セミナー / ランキング / 新UI OFF はサイドバーから除去。
 ]
 
+/** 本文のスクロール領域。採取CSSがスクロールバーを消しているので、ここだけ出す。 */
+const CONTENT_CLASS = 'sb-shell-content'
+
 let shellRoot: HTMLElement | null = null
 let contentRoot: HTMLElement | null = null
 
@@ -36,15 +39,30 @@ export function mountShell(): { content: HTMLElement } {
 
   if (shellRoot === null) {
     app.innerHTML = ''
+    /**
+     * 採取した実SBのCSSに `html{height:100vh}` と `body{height:100vh}` がある。
+     * つまりページ全体はスクロールしない作りで、実物は中に別のスクロール領域を持っている。
+     * それを再現しないと、長い画面（一括タグの設定フォームなど）は
+     * 本文が画面外へはみ出したまま届かず、サイドバーも一緒に流れて見える。
+     *
+     * そこで **横に並べた本文側だけをスクロールさせる**。
+     * サイドバーは flex の兄弟として画面いっぱいの高さのまま残るので、
+     * どのページでも、どこまでスクロールしても出たままになる。
+     */
     const wrapper = document.createElement('div')
-    wrapper.style.cssText = 'display:flex;min-height:100vh;background:#ECECEC'
+    wrapper.style.cssText =
+      'display:flex;height:100vh;max-height:100vh;overflow:hidden;background:#ECECEC'
 
     const nav = document.createElement('div')
     nav.innerHTML = sidebarHtml
     wireSidebar(nav)
 
     const content = document.createElement('div')
+    // スクロールの指定は**クラス側**に置く。各ページが本文の style.cssText を
+    // 丸ごと書き換える（`flex:1;min-width:0` を入れ直す）ので、
+    // インラインに書くと消されてスクロールしなくなる。
     content.style.cssText = 'flex:1;min-width:0'
+    content.classList.add(CONTENT_CLASS)
 
     wrapper.append(nav, content)
     app.append(wrapper)
@@ -455,6 +473,14 @@ function injectRailStyles(): void {
   `.${RAIL_CLASS}::-webkit-scrollbar{width:6px}`,
   `.${RAIL_CLASS}::-webkit-scrollbar-track{background:rgba(0,0,0,.06)}`,
   `.${RAIL_CLASS}::-webkit-scrollbar-thumb{background:rgba(0,0,0,.22);border-radius:3px;min-height:40px}`,
+  // 採取CSSの `::-webkit-scrollbar{display:none}` で本文のスクロールバーまで消えていた。
+  // 動かせることが見た目で分かるよう、本文側だけ細いバーを出す。
+  // min-height:0 が無いと flex の子は縮まず、中身が溢れてもスクロールしない
+  `.${CONTENT_CLASS}{min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin}`,
+  `.${CONTENT_CLASS}::-webkit-scrollbar{display:block;width:8px}`,
+  `.${CONTENT_CLASS}::-webkit-scrollbar-track{background:transparent}`,
+  `.${CONTENT_CLASS}::-webkit-scrollbar-thumb{background:rgba(0,0,0,.2);border-radius:4px}`,
+  `.${CONTENT_CLASS}::-webkit-scrollbar-thumb:hover{background:rgba(0,0,0,.32)}`,
   `.${RAIL_CLASS}::-webkit-scrollbar-thumb:hover{background:rgba(0,0,0,.35)}`,
   `.${RAIL_CLASS}{scrollbar-width:thin;scrollbar-color:rgba(0,0,0,.22) rgba(0,0,0,.06)}`,
   // 指示66: 採取CSSの body ラッパーは padding-left:60px（元のサイドバー幅）を持つが、
