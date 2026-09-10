@@ -22,6 +22,7 @@ import { broadcastConversion, type ConversionPush } from '../ws/cable.ts'
 import { toDateKey } from '../store/metrics.ts'
 import type { AbTest, Article, State } from '../store/types.ts'
 import { LP_BASE_CSS } from '../../src/app/lp-base-css.ts'
+import { WIDGET_RESET_CSS, neutralizeWidgetStyles } from '../../src/shared/sb-preview-css.ts'
 import { masterStyleIframeCss } from '../../src/app/master-style.ts'
 import { withAutoplayVideos } from '../../src/app/lp-video.ts'
 import { buildAnimCss, buildAnimRuntimeScript } from '../../src/app/anim/anim-presets.ts'
@@ -326,6 +327,9 @@ deliveryRouter.get('/lp/:uid', (req, res) => {
   // 付与するパラメーター: squadbeyond_uid / sb_tracking=true / sb_article_uid
   const affilicodeOn = bulkTags.some((b) => b.asp === 'AFFILICODE')
   const versionHtml = affilicodeOn ? appendAffilicodeParams(version.html, article.uid) : version.html
+  // Widget に紛れ込んだ SquadBeyond のプレビュー用CSSが、ページの背景・余白・高さを上書きしないようにする。
+  // 保存データは書き換えず、ここで取り除く。Widget の見た目に要る指定は Widget の中だけに効かせて置く。
+  const lp = neutralizeWidgetStyles(versionHtml)
 
   // 離脱防止ポップアップ（指示80）: 有効なポップアップのHTML/JS/CSSをLP末尾に挿入
   const exitPopups = (state.exitPopups ?? []).filter(
@@ -350,10 +354,10 @@ deliveryRouter.get('/lp/:uid', (req, res) => {
     `<title>${escapeHtml(abTest.page_title || abTest.title)}</title>` +
     `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Noto+Serif+JP:wght@400;700&family=Shippori+Mincho:wght@400;700&family=M+PLUS+Rounded+1c:wght@400;700&family=Zen+Maru+Gothic:wght@400;700&family=Kosugi+Maru&family=Dela+Gothic+One&family=RocknRoll+One&family=Reggae+One&family=Yuji+Syuku&family=Hachi+Maru+Pop&family=Yomogi&display=swap">` +
     `<style>body{margin:0 auto;max-width:${DELIVERY_WIDTH}px;font-family:"Hiragino Sans",sans-serif;background:#fff}` +
-    `${LP_BASE_CSS}${version.css}${styleCss}${buildAnimCss()}</style>` +
-    externalWidgetLibs(versionHtml) +
+    `${LP_BASE_CSS}${version.css}${styleCss}${buildAnimCss()}${lp.hasWidget ? WIDGET_RESET_CSS : ''}</style>` +
+    externalWidgetLibs(lp.html) +
     headTags +
-    `</head><body>${withAutoplayVideos(versionHtml)}${bodyTags}${popupHtml}${followHtml}` +
+    `</head><body>${withAutoplayVideos(lp.html)}${bodyTags}${popupHtml}${followHtml}` +
     IMAGE_LINK_SCRIPT +
     buildTrackingScript(abTest.uid, version.uid) +
     buildAnimRuntimeScript() +
@@ -705,6 +709,8 @@ deliveryRouter.get('/preview/:versionUid', (req, res) => {
     ? `<img src="${escapeHtml(headerMatch[1] ?? '')}" style="display:block;width:100%;object-fit:cover;position:sticky;top:0;z-index:10;max-height:200px" alt="ヘッダー画像">`
     : ''
   const bodyHtml = headerMatch !== null ? version.html.slice(headerMatch[0].length) : version.html
+  // 公開LPと同じく、Widget に紛れ込んだプレビュー用CSSがページ全体を上書きしないようにする
+  const lp = neutralizeWidgetStyles(bodyHtml)
 
   const title = abTest !== undefined
     ? `${escapeHtml(abTest.title)} - ${escapeHtml(version.name)} プレビュー`
@@ -745,8 +751,9 @@ deliveryRouter.get('/preview/:versionUid', (req, res) => {
     `cursor:pointer;padding:4px;display:flex;align-items:center;flex-shrink:0}` +
     `.preview-close:hover{color:#fff}` +
     buildAnimCss() +
+    (lp.hasWidget ? WIDGET_RESET_CSS : '') +
     `</style>` +
-    externalWidgetLibs(bodyHtml) +
+    externalWidgetLibs(lp.html) +
     `</head><body>` +
     `<div class="preview-banner" id="preview-banner">` +
     `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>` +
@@ -757,7 +764,7 @@ deliveryRouter.get('/preview/:versionUid', (req, res) => {
     `</button>` +
     `</div>` +
     headerHtml +
-    withAutoplayVideos(bodyHtml) +
+    withAutoplayVideos(lp.html) +
     previewPopupHtml +
     previewFollowHtml +
     buildAnimRuntimeScript() +

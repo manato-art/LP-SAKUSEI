@@ -13,6 +13,7 @@
  * まだ計測が無いバンドは色を塗らず「-」にする（0と「データ無し」を混ぜない）。
  */
 import type { HeatmapVersionStat } from '../api.ts'
+import { containWidgetStyles } from '../panels/widget-style-scope.ts'
 
 /** 列の指標（左のチェックボックスに対応）。実物は指標ごとに配色が違う。 */
 export type HeatmapMetric = 'exit' | 'click' | 'cv'
@@ -308,6 +309,9 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
   } else {
     lp.style.overflow = 'auto'
     lp.innerHTML = spec.html
+    // Widget の <style> はこの列の LP の中だけに効かせる（ヒートマップの画面や隣の列に漏らさない）。
+    // 枠はスマホ/PCで幅が変わるので、@media の判定はこれまでどおりブラウザに任せる。
+    containWidgetStyles(lp, 'lp', null)
   }
   const overlay = document.createElement('div')
   overlay.className = 'hm-overlay'

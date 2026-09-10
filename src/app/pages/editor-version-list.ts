@@ -19,6 +19,7 @@ import type { EditorContext } from './editor-context.ts'
 import { ACTIVE_CARD_CLASS, injectVersionCardCss } from './editor-styles.ts'
 import { HOOK } from './editor-hooks.ts'
 import { buildFullHtml, isEffectivelyEmptyHtml, restoreHeaderImage, splitHeaderFromHtml } from './editor-html.ts'
+import { containWidgetStyles } from '../panels/widget-style-scope.ts'
 
 /**
  * バージョンカードのDOM要素を一から組み立てる。
@@ -141,6 +142,8 @@ function buildVersionCardEl(version: Version, isCurrent: boolean): HTMLElement {
     const preview = document.createElement('div')
     preview.style.cssText = `position:absolute;top:0;left:0;width:${LP_W}px;height:${Math.round(THUMB_H / THUMB_SCALE)}px;transform:scale(${THUMB_SCALE});transform-origin:top left;pointer-events:none;overflow:hidden`
     preview.innerHTML = thumbHtml
+    // Widget の <style> はこのサムネイルの中だけに効かせる（そのまま置くと編集画面全体に効いていた）
+    containWidgetStyles(preview, 'lp')
     thumb.append(preview)
   } else {
     const placeholder = document.createElement('div')

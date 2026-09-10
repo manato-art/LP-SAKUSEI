@@ -71,6 +71,17 @@ describe('HTMLダウンロードの組み立て（純粋関数）', () => {
     expect(doc).toContain('<body><p>hi</p></body>')
   })
 
+  it('Widget に紛れ込んだ SquadBeyond のプレビュー用CSSは、ダウンロードするHTMLでもページ全体を上書きしない', () => {
+    const bundled =
+      'html{height:100vh}body{margin:0 auto;height:100vh;background-color:#ececec;font-family:Hiragino Sans,sans-serif}' +
+      'td,th{padding:0}'
+    const html = `<section class="sb-widget-block"><style>${bundled}.a{color:red}</style><div class="a">x</div></section>`
+    const doc = buildVersionHtmlDocument({ name: 'Ver.1', html, css: '' })
+    expect(doc).not.toContain('#ececec')
+    expect(doc).toContain('<style>.a{color:red}</style>')
+    expect(doc).toContain(':where(.sb-widget-block) a{color:#000;text-decoration:none}')
+  })
+
   it('title の中身はエスケープする（XSSにしない）', () => {
     const doc = buildVersionHtmlDocument({ name: '<script>', html: '', css: '' })
     expect(doc).toContain('<title>&lt;script&gt;</title>')

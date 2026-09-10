@@ -13,6 +13,7 @@
  */
 import type Quill from 'quill'
 import { guessWidgetName, openWidgetEditorForNode } from './widget-editor.ts'
+import { containWidgetStyles } from './widget-style-scope.ts'
 
 /* ── 定数 ── */
 
@@ -151,8 +152,10 @@ function createWidgetCard(widgetNode: HTMLElement, quill: Quill): HTMLElement {
     `transform:scale(${scale});transform-origin:top left;` +
     `width:${100 / scale}%;pointer-events:none;position:absolute;top:0;left:0`
 
-  // style タグも含めてクローン（CSS が効くように）
+  // style タグも含めて写す（CSS が効くように）。ただし CSS はこの縮小プレビューの中だけに効かせる。
+  // そのまま置くと編集画面全体に効き、キャンバスに PC 用の @media の値が出ていた（2026-09-11 実測）。
   previewContent.innerHTML = widgetNode.innerHTML
+  containWidgetStyles(previewContent, 'widget')
 
   previewWrap.append(previewContent)
   card.append(nameRow, previewWrap)

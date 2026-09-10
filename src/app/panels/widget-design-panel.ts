@@ -22,6 +22,7 @@ import { T, el } from '../ui.ts'
 import { directText } from '../pages/exit-popup-fields.ts'
 import { designCardCss } from './design-card-styles.ts'
 import { openColorPicker } from './toolbar/color-picker.ts'
+import { lpMediaMatches } from './lp-width-media.ts'
 import {
   colorToHex,
   numberStep,
@@ -389,11 +390,9 @@ export function buildDesignPanel(deps: DesignPanelDeps): DesignPanel {
     }
 
     // いまのプレビューで効いていない行を見分ける。
-    // 編集画面のプレビューは @media をブラウザの画面幅で判定するので、PCで開くと
-    // スマホ向けの値（条件なし）が「画面幅768px以上」の値に上書きされ、変えても見た目が動かない
-    // （テキストバルーンで実際に起きた）。行は変えられるまま、薄くして理由を添える。
-    const isMediaInEffect = (setting: Setting): boolean =>
-      setting.media.every((query) => window.matchMedia(query).matches)
+    // 編集画面は @media を LPの幅（620px）で判定する（本人指定）。そのため公開ページをPCで見たときに使われる
+    // 「画面幅768px以上」などの値は、編集画面では使われない。行は変えられるまま、薄くして理由を添える。
+    const isMediaInEffect = (setting: Setting): boolean => setting.media.every((query) => lpMediaMatches(query))
     const winners = card.rows.filter(
       (r): r is CssRow => r.kind === 'css' && r.setting.media.length > 0 && isMediaInEffect(r.setting),
     )
@@ -412,10 +411,10 @@ export function buildDesignPanel(deps: DesignPanelDeps): DesignPanel {
     const inactiveNote = (r: RowSource): string => {
       if (r.kind !== 'css') return ''
       if (r.setting.media.length > 0) {
-        return isMediaInEffect(r.setting) ? '' : 'いまのプレビューの画面幅では使われていません'
+        return isMediaInEffect(r.setting) ? '' : 'LPの幅（620px）では使われていません（広い画面で見たときの値です）'
       }
       const winner = winners.find((w) => overrides(w, r))
-      return winner === undefined ? '' : `いまのプレビューでは（${winner.setting.context}）の値が使われています`
+      return winner === undefined ? '' : `LPの幅（620px）では（${winner.setting.context}）の値が使われています`
     }
 
     for (const group of GROUP_ORDER) {

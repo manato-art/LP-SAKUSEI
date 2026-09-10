@@ -8,6 +8,7 @@
 import { COLOR, FONT, WIDGET_PREVIEW_WIDTH, type WidgetEditTarget } from './widget-editor-theme.ts'
 import { closeMediaControl, openMediaControl, pickImageDataUrl } from './widget-media-control.ts'
 import { toast } from '../ui.ts'
+import { markStyleScope, widgetPreviewCss } from './widget-style-scope.ts'
 import {
   TOOLBAR_FONT_FAMILIES,
   cssFontFamilyValue,
@@ -35,8 +36,8 @@ import {
 export function buildVisualEditor(target: WidgetEditTarget): {
   pane: HTMLElement
   contentDiv: HTMLElement
-  /** プレビューに当てている Widget の CSS。コード欄や「要素ごとに編集」の変更をここへ流し込む */
-  styleTag: HTMLStyleElement
+  /** プレビューに当てる Widget の CSS を差し替える。コード欄や「要素ごとに編集」の変更をここへ流し込む */
+  setPreviewCss: (css: string) => void
 } {
   const pane = document.createElement('div')
   // 既定幅は 620px プレビュー＋左右padding(20px) が収まる 660px（仕切りドラッグで変更可）。
@@ -378,10 +379,16 @@ export function buildVisualEditor(target: WidgetEditTarget): {
     `flex:1;background:#fff;overflow:auto;padding:20px;min-height:0`
   // CSS を style タグとして注入してからHTMLをレンダリング。
   // 空でも必ず1つ置く（あとからコード欄や「要素ごとに編集」の変更をここへ流し込むため）。
+  // 表示用に作り直す（保存するCSSはそのまま）: このプレビューの中だけに効かせ（編集画面のボタンや後ろのキャンバスに漏らさない）、
+  // SquadBeyond のプレビュー用CSSを除き、@media は LPの幅（620px）で判定し、配信と同じ土台を付ける。
   const styleTag = document.createElement('style')
-  styleTag.textContent = target.css
   editorBody.append(styleTag)
   const contentDiv = document.createElement('div')
+  const previewScope = markStyleScope(contentDiv)
+  const setPreviewCss = (css: string): void => {
+    styleTag.textContent = widgetPreviewCss(css, previewScope)
+  }
+  setPreviewCss(target.css)
   contentDiv.setAttribute('contenteditable', 'true')
   // WYSIWYG: 編集プレビューを **配信LPと同じ幅(620px)** で表示する。
   // 以前は左ペインの可変幅で表示していたため、編集時の見た目とLPの見た目（画像幅など）がズレていた。
@@ -458,7 +465,7 @@ export function buildVisualEditor(target: WidgetEditTarget): {
   const spacingBar = buildSpacingBar(contentDiv)
 
   pane.append(toolbar, spacingBar, editorBody)
-  return { pane, contentDiv, styleTag }
+  return { pane, contentDiv, setPreviewCss }
 }
 /**
  * Widget の上下余白（最外要素の padding-top / padding-bottom）を調整する小さなバー。

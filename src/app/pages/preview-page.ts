@@ -15,6 +15,7 @@ import { toast } from '../ui.ts'
 import { mountCapturedPage, setTopBarNames, wireBackLink, wireCapturedLinks } from './report-dom.ts'
 import { setupHorizTabs, setupBreadcrumb } from './tab-nav.ts'
 import { LP_BASE_CSS } from '../lp-base-css.ts'
+import { WIDGET_RESET_CSS, neutralizeWidgetStyles } from '../../shared/sb-preview-css.ts'
 import { masterStyleIframeCss } from '../master-style.ts'
 import { withAutoplayVideos } from '../lp-video.ts'
 
@@ -240,13 +241,15 @@ function fillPreviewIframe(
 
   // ヘッダー画像をHTMLコメントから復元
   const { headerHtml, body } = extractHeaderImage(version.html)
+  // 公開LPと同じく、Widget に紛れ込んだ SquadBeyond のプレビュー用CSSがページ全体を上書きしないようにする
+  const lp = neutralizeWidgetStyles(body)
 
   doc.open()
   doc.write(
     `<!doctype html><html lang="ja"><head><meta charset="utf-8">` +
       `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Noto+Serif+JP:wght@400;700&family=M+PLUS+Rounded+1c:wght@400;700&family=Kosugi+Maru&family=Sawarabi+Gothic&display=swap">` +
-      `<style>body{margin:0;font-family:"Hiragino Sans",sans-serif}${LP_BASE_CSS}${version.css}${styleCss}</style>` +
-      `</head><body>${headerHtml}${withAutoplayVideos(body)}${popupSnippets}</body></html>`,
+      `<style>body{margin:0;font-family:"Hiragino Sans",sans-serif}${LP_BASE_CSS}${version.css}${styleCss}${lp.hasWidget ? WIDGET_RESET_CSS : ''}</style>` +
+      `</head><body>${headerHtml}${withAutoplayVideos(lp.html)}${popupSnippets}</body></html>`,
   )
   doc.close()
 }

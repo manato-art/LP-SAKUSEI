@@ -22,6 +22,7 @@ import { toast } from '../ui.ts'
 import { confirmCard } from '../dialog.ts'
 import { bindBackdropClose, findByExactText, openPortal } from './portal.ts'
 import { LP_BASE_CSS } from '../lp-base-css.ts'
+import { WIDGET_RESET_CSS, neutralizeWidgetStyles } from '../../shared/sb-preview-css.ts'
 import { withAutoplayVideos } from '../lp-video.ts'
 import { openDuplicateModal } from './version-duplicate-modal.ts'
 import { openDuplicateToOtherModal } from './version-duplicate-to-other-modal.ts'
@@ -64,15 +65,17 @@ export const DOTS_MENU_LABELS = {
  * （外部へは一切出さない・§3-2）。
  */
 export function buildVersionHtmlDocument(version: Pick<Version, 'name' | 'html' | 'css'>): string {
+  // 公開LPと同じく、Widget に紛れ込んだ SquadBeyond のプレビュー用CSSがページ全体を上書きしないようにする
+  const lp = neutralizeWidgetStyles(version.html)
   return [
     '<!doctype html>',
     '<html lang="ja">',
     '<head>',
     '<meta charset="utf-8">',
     `<title>${escapeHtml(version.name)}</title>`,
-    `<style>${LP_BASE_CSS}${version.css}</style>`,
+    `<style>${LP_BASE_CSS}${version.css}${lp.hasWidget ? WIDGET_RESET_CSS : ''}</style>`,
     '</head>',
-    `<body>${withAutoplayVideos(version.html)}</body>`,
+    `<body>${withAutoplayVideos(lp.html)}</body>`,
     '</html>',
     '',
   ].join('\n')

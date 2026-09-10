@@ -14,6 +14,7 @@
 import type Quill from 'quill'
 import rawLibrary from '../fragments/ab_tests__UID__articles__widget-library.portals.html?raw'
 import { toast } from '../ui.ts'
+import { stripSbPreviewCss } from '../../shared/sb-preview-css.ts'
 import { ensureWhiteBase } from '../white-base.ts'
 import { bindBackdropClose, findByExactText, openPortal } from './portal.ts'
 import {
@@ -570,13 +571,23 @@ function wireFavoriteToggle(card: HTMLElement, title: string): void {
   })
 }
 
+/**
+ * 見本 iframe の中身から、LPに入れる Widget の HTML を作る。
+ *
+ * <head> の <style> は、ライブラリ25件すべてで SquadBeyond のプレビュー用CSS（3つ・約30KB）だけで、
+ * Widget 自身のCSSは <body> 側にある（2026-09-10 全件確認）。プレビュー用CSSまで写すと、
+ * 公開LPの背景・余白・高さを上書きしてしまうので、取り除いてから入れる。
+ * <head> に Widget 自身の指定が残っていれば、それは入れる。
+ */
 function widgetBodyHtml(card: HTMLElement): string | null {
   const srcdoc = card.querySelector('iframe')?.getAttribute('srcdoc')
   if (srcdoc === null || srcdoc === undefined || srcdoc === '') return null
   const doc = new DOMParser().parseFromString(srcdoc, 'text/html')
   if (doc.body.innerHTML.trim() === '') return null
   const headStyles = [...doc.head.querySelectorAll('style')]
-    .map((s) => s.outerHTML)
+    .map((s) => stripSbPreviewCss(s.textContent ?? '').trim())
+    .filter((css) => css !== '')
+    .map((css) => `<style>${css}</style>`)
     .join('')
   return headStyles + doc.body.innerHTML
 }

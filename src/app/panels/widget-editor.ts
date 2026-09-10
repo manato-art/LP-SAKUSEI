@@ -24,6 +24,8 @@ import {
 import { closeMediaControl } from './widget-media-control.ts'
 import { buildCodePanels } from './widget-code-panel.ts'
 import { buildDesignPanel } from './widget-design-panel.ts'
+import { widgetResetCss } from '../../shared/sb-preview-css.ts'
+import { scopeWidgetCss } from './widget-style-scope.ts'
 import { buildVisualEditor } from './widget-visual-editor.ts'
 
 /* ================================================================
@@ -136,59 +138,34 @@ function labelAllWidgets(editor: HTMLElement): void {
  *
  * 対策: 各ウィジェットの `<style>` を `.ql-editor .sb-widget-block` で前置きした写しを head に注入し、
  * 詳細度をQuillリセットのさらにELに上げて、ウィジェット作者のCSSを勝たせる（キャンバス限定）。
- * 元の `<style>` はそのまま残す（保存・配信は不変）。
+ * 元の `<style>` は止めて、写しだけで表示する（@media を LPの幅で判定するため。作り直しは widget-style-scope.ts）。
+ * HTML には触らないので、保存・配信は不変。
  */
+const CANVAS_SCOPE = '.ql-editor .sb-widget-block'
+
 function refreshWidgetCanvasCss(editor: HTMLElement): void {
-  const SCOPE = '.ql-editor .sb-widget-block'
-  let css = ''
+  let imports = ''
+  let rules = ''
   for (const style of editor.querySelectorAll<HTMLStyleElement>('section.sb-widget-block style')) {
-    css += scopeCssText(style.textContent ?? '', SCOPE)
+    const scoped = scopeWidgetCss(style.textContent ?? '', CANVAS_SCOPE)
+    imports += scoped.imports
+    rules += scoped.rules
+    // 元の <style> は止める。ブラウザは @media をウィンドウ幅で判定するので、残すとPC用の値が勝ってしまう
+    // （本人指定: 編集画面は LPの幅 620px で判定）。SquadBeyond のプレビュー用CSSも画面全体に効いてしまう。
+    // 表示は上で作り直した写しで行う。sheet.disabled は HTML に書き出されないので、保存される内容は変わらない。
+    if (style.sheet !== null) style.sheet.disabled = true
   }
+  // 配信と同じ「Widget の見た目に要る土台」を Widget 自身の指定より前に置く（同じ強さなら Widget が勝つ）。
+  // @import は先頭にしか書けないので、さらにその前へまとめる。
+  const hasWidget = editor.querySelector('section.sb-widget-block') !== null
+  const next = hasWidget ? imports + widgetResetCss(CANVAS_SCOPE) + rules : ''
   let head = document.getElementById('sb-widget-canvas-scope') as HTMLStyleElement | null
   if (head === null) {
     head = document.createElement('style')
     head.id = 'sb-widget-canvas-scope'
     document.head.append(head)
   }
-  if (head.textContent !== css) head.textContent = css
-}
-
-/** CSSテキストの各セレクタを scope で前置きして返す（CSSOMでパースし値は保持）。 */
-function scopeCssText(cssText: string, scope: string): string {
-  if (cssText.trim() === '') return ''
-  const tmp = document.createElement('style')
-  tmp.textContent = cssText
-  document.head.append(tmp)
-  let out: string
-  try {
-    out = serializeScopedRules(tmp.sheet?.cssRules ?? null, scope)
-  } catch {
-    out = ''
-  }
-  tmp.remove()
-  return out
-}
-
-function serializeScopedRules(rules: CSSRuleList | null, scope: string): string {
-  if (rules === null) return ''
-  let out = ''
-  for (const r of Array.from(rules)) {
-    if (r instanceof CSSStyleRule) {
-      const sels = r.selectorText
-        .split(',')
-        .map((s) => `${scope} ${s.trim()}`)
-        .join(',')
-      out += `${sels}{${r.style.cssText}}`
-    } else if (typeof CSSMediaRule !== 'undefined' && r instanceof CSSMediaRule) {
-      out += `@media ${r.media.mediaText}{${serializeScopedRules(r.cssRules, scope)}}`
-    } else if (typeof CSSSupportsRule !== 'undefined' && r instanceof CSSSupportsRule) {
-      out += `@supports ${(r as CSSSupportsRule).conditionText}{${serializeScopedRules(r.cssRules, scope)}}`
-    } else {
-      // @keyframes / @font-face など：スコープ不要、そのまま
-      out += r.cssText
-    }
-  }
-  return out
+  if (head.textContent !== next) head.textContent = next
 }
 
 /* ================================================================
@@ -235,7 +212,7 @@ function openWidgetEditor(quill: Quill, target: WidgetEditTarget): void {
     `flex:1;display:flex;background:${COLOR.container};overflow:hidden;min-height:0`
 
   // 左: ビジュアルエディタ
-  const { pane: leftPane, contentDiv, styleTag } = buildVisualEditor(target)
+  const { pane: leftPane, contentDiv, setPreviewCss } = buildVisualEditor(target)
 
   // 仕切り（本番実測: ~10px幅, cursor:col-resize, 中身は空＝ドットなし）
   const divider = document.createElement('div')
@@ -267,9 +244,8 @@ function openWidgetEditor(quill: Quill, target: WidgetEditTarget): void {
       divider.style.display = codeOnly ? 'none' : dividerDisplay
     },
     design,
-    onCssInput: (css) => {
-      styleTag.textContent = css
-    },
+    // プレビューの見た目だけを作り直す（textarea の中身＝保存するCSSはそのまま）
+    onCssInput: setPreviewCss,
   })
   cssArea = rightPane.querySelector<HTMLTextAreaElement>('[data-code-css]')
 
