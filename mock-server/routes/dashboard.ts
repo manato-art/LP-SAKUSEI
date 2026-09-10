@@ -9,7 +9,7 @@ import { serializeAbTest } from '../lib/serialize.ts'
 import { applyEmptyState, isEmptyState } from '../lib/mock-state.ts'
 import { pagination } from '../lib/envelope.ts'
 import { dateRangeParams, pageParams, paginate, sortItems, sortParams } from '../lib/query.ts'
-import type { DailyMetric } from '../store/types.ts'
+import type { DailyMetric, State } from '../store/types.ts'
 
 export const dashboardRouter: Router = Router()
 
@@ -20,6 +20,35 @@ function metricsFor(
   end: string,
 ): readonly DailyMetric[] {
   return metrics.filter((m) => m.scope === scope && isWithin(m.date, start, end))
+}
+
+/**
+ * 「各ページ」の内訳。全体KPIと**同じ rows** から作るので、足し算は必ず全体と一致する
+ * （画面は全体と各ページを並べて出すので、ここがズレると信じられない画面になる）。
+ * 数値が1件も無いページは出さない。内訳＝全体の分解であって、ページの一覧ではない
+ * （ページ全件を見るのはランキング画面）。
+ */
+function breakdownByAbTest(
+  state: State,
+  rows: readonly DailyMetric[],
+): Record<string, unknown>[] {
+  const uids = [...new Set(rows.map((m) => m.entity_uid))]
+  return uids
+    .flatMap((uid) => {
+      const abTest = state.abTests.find((t) => t.uid === uid)
+      if (abTest === undefined) return []
+      const folder = state.folders.find((f) => f.id === abTest.folder_id)
+      return [
+        {
+          uid,
+          title: abTest.title,
+          folder_name: folder?.name ?? null,
+          ad_status: abTest.ad_status,
+          ...aggregate(rows.filter((m) => m.entity_uid === uid)),
+        },
+      ]
+    })
+    .sort((a, b) => b.pv - a.pv || a.title.localeCompare(b.title, 'ja'))
 }
 
 dashboardRouter.get('/teams/dashboard', (req, res) => {
@@ -47,6 +76,7 @@ dashboardRouter.get('/teams/dashboard', (req, res) => {
 
   res.json({
     kpi: aggregate(rows),
+    by_ab_test: breakdownByAbTest(state, rows),
     series,
     new_ab_tests: newAbTests,
     new_versions: newVersions,

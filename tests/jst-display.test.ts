@@ -99,14 +99,14 @@ describe('期間の計算（文字列の往復）', () => {
 
 describe('ダッシュボードの期間', () => {
   it('「今月」の起点が、日本時間の月初になる', async () => {
-    const { dashboardRange } = await import('../src/app/pages/sidebar-data.ts')
+    const { dashboardRange } = await import('../src/app/pages/dashboard-page.ts')
     // 2026-09-01 00:30 JST = 2026-08-31 15:30 UTC（UTCではまだ8月）
     const at = new Date('2026-08-31T15:30:00Z')
     expect(dashboardRange(-1, at).startDate).toBe('2026-09-01')
   })
 
   it('「過去7日」も日本時間の日付で問い合わせる', async () => {
-    const { dashboardRange } = await import('../src/app/pages/sidebar-data.ts')
+    const { dashboardRange } = await import('../src/app/pages/dashboard-page.ts')
     // 2026-09-09 08:00 JST = 2026-09-08 23:00 UTC
     const at = new Date('2026-09-08T23:00:00Z')
     expect(dashboardRange(7, at).endDate).toBe('2026-09-09')

@@ -20,8 +20,8 @@ import { renderTasks } from './pages/tasks.ts'
 import { renderSbAi } from './pages/sb-ai.ts'
 import { renderExternalIntegration } from './pages/external-integration.ts'
 import { renderCvTracking } from './pages/cv-tracking-page.ts'
+import { renderDashboard } from './pages/dashboard-page.ts'
 import {
-  renderDashboard,
   renderConversions,
   renderDomains,
   renderRankings,
