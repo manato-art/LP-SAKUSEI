@@ -188,13 +188,12 @@ function removeUnwantedItems(nav: HTMLElement): void {
 
 // ── ツールアコーディオン（指示㊲㊳） ──
 
-/** ツールのサブ項目（サブナビと同じ5ページ）。 */
+/** ツールのサブ項目（サブナビと同じ4ページ）。フォームは使わないので出さない（本人指示 2026-09-10）。 */
 const TOOL_ACCORDION_ITEMS: readonly { label: string; href: string }[] = [
   { label: '一括タグ', href: '#/teams/tags' },
   { label: 'マジック置換', href: '#/articles/bulk_replaces' },
   { label: 'メディア', href: '#/teams/product_search_forms' },
   { label: '審査', href: '#/inspections' },
-  { label: 'フォーム', href: '#/folders/forms' },
 ]
 
 let toolSubMenu: HTMLElement | null = null

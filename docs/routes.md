@@ -57,7 +57,7 @@
 
 ## フォルダ（Tier1 core / Tier2-3）
 - [ ] /folders — 状態: 0/? （木+一覧。normal/empty/loading/error/delete-confirm/filter-empty/page-last/pc/sp）
-- [ ] /folders/forms
+- [—] /folders/forms — **クローンでは作らない**（2026-09-10 本人指示で廃止）。実物も2021年の告知ページのままで、唯一のボタンは href が無く押しても何も起きない。サイドバー項目・サブナビタブとも消してある。
 - [ ] /folders/:uid/edit
 - [ ] /folders/:folder_uid/ab_tests/:ab_test_uid/edit  ← LPエディタの別入口。/ab_tests/:uid/articles と同一コンポーネント共有（関係は§16-3で確定）
 - [ ] /folders/:folder_uid/ab_tests/:ab_test_uid/redirect_pages

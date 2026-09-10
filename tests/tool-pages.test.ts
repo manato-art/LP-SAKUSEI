@@ -1,5 +1,5 @@
 /**
- * ツール5ページ（一括タグ / マジック置換 / メディア / 審査 / フォーム）の機械証明。
+ * ツール4ページ（一括タグ / マジック置換 / メディア / 審査）の機械証明。
  *
  * 環境は node（jsdom 無し）なので、DOMを触る配線はテストせず、
  * 「採取した実HTMLに、配線が前提にする目印・サブナビの遷移先が実在するか」と、
@@ -13,6 +13,7 @@ import { stripGlobalSidebar } from '../src/app/pages/sidebar-shell.ts'
 import { INSPECTION_LIST_IDS } from '../src/app/pages/tool-pages.ts'
 import {
   INSPECTIONS_CANONICAL_ROUTE,
+  REMOVED_SUBNAV_PATHS,
   TOOL_PAGE_ROUTES,
   TOOL_SUBNAV_LABELS,
   TOOL_SUBNAV_PATHS,
@@ -26,7 +27,6 @@ const FRAGMENT_BY_PAGE = {
   bulkReplaces: 'articles__bulk_replaces__default.html',
   media: 'teams__product_search_forms__default.html',
   inspections: 'inspections__folders__default.html',
-  forms: 'folders__forms__default.html',
 } as const
 
 function read(file: string): string {
@@ -55,7 +55,6 @@ describe('ルート解決の純粋関数', () => {
     expect(matchToolPage(TOOL_PAGE_ROUTES.bulkReplaces)).toBe('bulkReplaces')
     expect(matchToolPage(TOOL_PAGE_ROUTES.media)).toBe('media')
     expect(matchToolPage(TOOL_PAGE_ROUTES.inspections)).toBe('inspections')
-    expect(matchToolPage(TOOL_PAGE_ROUTES.forms)).toBe('forms')
   })
 
   it('審査はサブナビの /inspections と採取した本体 /inspections/folders の両方を受ける', () => {
@@ -70,6 +69,14 @@ describe('ルート解決の純粋関数', () => {
     expect(matchToolPage('')).toBeNull()
   })
 
+  it('フォームはページを持たない（消したので解決しない・張り替えもしない）', () => {
+    for (const path of REMOVED_SUBNAV_PATHS) {
+      expect(matchToolPage(path)).toBeNull()
+      expect(toolSubnavHash(path)).toBeNull()
+      expect((TOOL_SUBNAV_PATHS as readonly string[])).not.toContain(path)
+    }
+  })
+
   it('サブナビのハッシュ変換は既知パスだけ・形が一致する', () => {
     expect(toolSubnavHash('/teams/tags')).toBe('#/teams/tags')
     expect(toolSubnavHash('/articles/bulk_replaces')).toBe('#/articles/bulk_replaces')
@@ -78,24 +85,23 @@ describe('ルート解決の純粋関数', () => {
     expect(toolSubnavHash('/unknown')).toBeNull()
   })
 
-  it('サブナビ6タブの正本が順番どおり', () => {
+  it('サブナビ5タブの正本が順番どおり', () => {
     expect([...TOOL_SUBNAV_PATHS]).toEqual([
       '/folders',
       '/teams/tags',
       '/articles/bulk_replaces',
       '/teams/product_search_forms',
       '/inspections',
-      '/folders/forms',
     ])
   })
 })
 
-describe('共通サブナビが5ページすべてに、同じ遷移先・同じ文言で実在する', () => {
+describe('共通サブナビが4ページすべてに、同じ遷移先・同じ文言で実在する', () => {
   for (const [page, file] of Object.entries(FRAGMENT_BY_PAGE)) {
-    it(`${page}: サブナビ6タブが全部そろい、定数の表示名と一致する`, () => {
+    it(`${page}: 出す5タブが全部そろい、定数の表示名と一致する`, () => {
       const pairs = capturedSubnavPairs(read(file))
       const paths = new Set(pairs.map((p) => p.path))
-      // 6タブすべての遷移先が採取物に在る
+      // 5タブすべての遷移先が採取物に在る
       expect(paths).toEqual(new Set(TOOL_SUBNAV_PATHS))
       // 表示名の定数が採取物の文言と一致する
       for (const { path, label } of pairs) {
@@ -108,18 +114,32 @@ describe('共通サブナビが5ページすべてに、同じ遷移先・同じ
         expect(toolSubnavHash(path)).toBe(`#${path}`)
       }
     })
+
+    // 消す対象が採取物に実在し、かつ `<li>` の直下に在ることを固定する。
+    // `stripRemovedSubnavTabs` は `closest('li')` ごと外すので、この形が崩れると
+    // リンクだけ消えてタブの枠が残る。実在しなくなれば空振りにも気づける。
+    // サブナビはPC用とSP用で2回出るので、数も一致させる。
+    it(`${page}: 消すフォームタブが li ごと採取物に在る（＝空振り・枠残りをしない）`, () => {
+      const html = read(file)
+      for (const path of REMOVED_SUBNAV_PATHS) {
+        const anchors = html.split(`href="${path}"`).length - 1
+        const inList = html.match(new RegExp(`<li[^>]*>\\s*<a[^>]*href="${path}"`, 'g')) ?? []
+        expect(anchors).toBeGreaterThan(0)
+        expect(inList.length).toBe(anchors)
+      }
+    })
   }
 })
 
 describe('採取物に、配線が前提にする目印が実在する', () => {
-  it('5ページともグローバルサイドバー（ロゴ）を落として本体が残る', () => {
+  it('4ページともグローバルサイドバー（ロゴ）を落として本体が残る', () => {
     for (const file of Object.values(FRAGMENT_BY_PAGE)) {
       const html = read(file)
       expect(html).toContain('Squadbeyond Logo')
       const body = stripGlobalSidebar(html)
       expect(body).not.toContain('Squadbeyond Logo')
       // 本体側のサブナビは残る
-      expect(body).toContain('/folders/forms')
+      expect(body).toContain('/teams/tags')
     }
   })
 
@@ -148,11 +168,5 @@ describe('採取物に、配線が前提にする目印が実在する', () => {
     // 採取物には実データ行（フォルダグループ）が入っている＝落とす対象が実在する
     expect(html).toContain('data-folder-group-id=')
     expect(html).toContain('data-folder-id=')
-  })
-
-  it('フォーム: 告知ページの見出しと問い合わせ導線が在る（静的・行なし）', () => {
-    const html = read(FRAGMENT_BY_PAGE.forms)
-    expect(html).toContain('フォーム機能追加のお知らせ')
-    expect(html).toContain('担当者に問い合わせをする')
   })
 })

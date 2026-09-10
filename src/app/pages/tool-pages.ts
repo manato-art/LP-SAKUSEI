@@ -1,12 +1,12 @@
 /**
- * ツールの5ページ（一括タグ / マジック置換 / メディア / 審査 / フォーム）。
+ * ツールの4ページ（一括タグ / マジック置換 / メディア / 審査）。
  * どれも採取した実DOM＋実CSSを土台にし、共通サブナビだけをクローンのハッシュへ張り替える
- * （`tool-subnav.ts`）。書き込み系の操作は挙動を採取していないので未実装トーストで正直に返す。
+ * （`tool-subnav.ts`）。本文は4つとも実SB同等の機能実装に差し替えてある。
  *
  * ## クローンの基準＝新規空アカウント（企画書 §1-4・ledger `_model`）
  * 実データ行は再現しない。採取物に実データ行が残っているのは審査だけ（フォルダグループの一覧）。
  * それは容器の中身を落として「枠だけ」にする（手本: `folders.ts` の行落とし）。
- * 残り4ページは採取時点で既に空／作成フォーム／告知なので、行落としは不要。
+ * 残り3ページは採取時点で既に空／作成フォームなので、行落としは不要。
  *
  * ## 採取物に無く、ここで作り足さないもの（推測で埋めない・共通指示 §3-5）
  * - マジック置換・メディア新規作成の**フォーム内部の挙動**（画像/テキスト/リンクのタブ切替、
@@ -18,14 +18,12 @@ import tagsFragment from '../fragments/teams__tags__default.html?raw'
 import bulkReplacesFragment from '../fragments/articles__bulk_replaces__default.html?raw'
 import mediaFragment from '../fragments/teams__product_search_forms__default.html?raw'
 import inspectionsFragment from '../fragments/inspections__folders__default.html?raw'
-import formsFragment from '../fragments/folders__forms__default.html?raw'
 import { stripGlobalSidebar } from './sidebar-shell.ts'
-import { rewireToolSubnav, type ToolPage } from './tool-subnav.ts'
+import { rewireToolSubnav, stripRemovedSubnavTabs, type ToolPage } from './tool-subnav.ts'
 import { renderBulkTagsPage } from './bulk-tags-page.ts'
 import { renderBulkReplacePage } from './bulk-replace-page.ts'
 import { renderMediaPage } from './media-page.ts'
 import { renderInspections, renderInspectionTargets } from './inspections-page.ts'
-import { toast } from '../ui.ts'
 
 /**
  * 審査ページで実データ行を落とす容器のID（採取物のまま）。
@@ -34,33 +32,16 @@ import { toast } from '../ui.ts'
  */
 export const INSPECTION_LIST_IDS = ['ts-sortableFolderGroupList', 'ts-sortableFolderList'] as const
 
-/** 共通の土台マウント: サイドバー除去 → 本体挿入 → サブナビ張り替え。 */
+/** 共通の土台マウント: サイドバー除去 → 本体挿入 → 出さないタブを外す → サブナビ張り替え。 */
 function mountToolFragment(container: HTMLElement, fragment: string): HTMLElement {
   container.style.cssText = 'flex:1;min-width:0'
   container.innerHTML = ''
   const root = document.createElement('div')
   root.innerHTML = stripGlobalSidebar(fragment)
   container.append(root)
+  stripRemovedSubnavTabs(root)
   rewireToolSubnav(root)
   return root
-}
-
-/**
- * 指定ラベルの要素（葉ノード）を押したら未実装トーストを出す。
- * 書き込み系（保存/作成/アップロード/送信/追加）は採取物に挙動が無いので実行しない（§3-5）。
- */
-function wireUnimplementedByText(root: HTMLElement, labels: readonly string[]): void {
-  const wanted = new Set(labels)
-  for (const node of root.querySelectorAll<HTMLElement>('*')) {
-    if (node.children.length > 0) continue // 葉ノードだけ（親コンテナを誤爆させない）
-    const text = (node.textContent ?? '').trim()
-    if (!wanted.has(text)) continue
-    const target = (node.closest('button, [role="button"], a') as HTMLElement | null) ?? node
-    target.style.cursor = 'pointer'
-    target.addEventListener('click', () => {
-      toast(`「${text}」はモックでは未実装です`, 'error')
-    })
-  }
 }
 
 // ── 一括タグ（/teams/tags）＝実SB同等の機能実装（一覧＋追加＋設定フォーム） ──
@@ -110,13 +91,6 @@ export function renderToolInspections(container: HTMLElement): void {
   void (isTargets ? renderInspectionTargets(host) : renderInspections(host))
 }
 
-// ── フォーム（/folders/forms）＝機能追加の告知ページ（静的） ──────
-export function renderToolForms(container: HTMLElement): void {
-  const root = mountToolFragment(container, formsFragment)
-  // 「担当者に問い合わせをする」＝送信相当。押しても実行しない。
-  wireUnimplementedByText(root, ['担当者に問い合わせをする'])
-}
-
 /** ルート種別 → 描画関数のディスパッチ（`main.ts` から呼ぶ）。 */
 export function renderToolPage(page: ToolPage, container: HTMLElement): void {
   switch (page) {
@@ -131,9 +105,6 @@ export function renderToolPage(page: ToolPage, container: HTMLElement): void {
       return
     case 'inspections':
       renderToolInspections(container)
-      return
-    case 'forms':
-      renderToolForms(container)
       return
   }
 }
