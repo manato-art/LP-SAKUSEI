@@ -19,6 +19,7 @@
  */
 import { api, type Media, type MediaField, type Product } from '../api.ts'
 import { toast } from '../ui.ts'
+import { buildToolGuide } from './tool-guide.ts'
 
 type Tab = 'media' | 'product'
 
@@ -47,11 +48,12 @@ export async function renderMediaPage(host: HTMLElement): Promise<void> {
 
   const root = h('div', 'md-page')
   const tabs = h('div', 'md-tabs')
+  const guideSlot = h('div', 'md-guide-slot')
   const body = h('div', 'md-body')
   const left = h('div', 'md-left')
   const right = h('div', 'md-right')
   body.append(left, right)
-  root.append(tabs, body)
+  root.append(tabs, guideSlot, body)
   host.append(root)
 
   for (const [id, label] of [
@@ -119,7 +121,19 @@ export async function renderMediaPage(host: HTMLElement): Promise<void> {
         })
         list.append(item)
       }
-      if (shown.length === 0) list.append(h('div', 'md-empty', '登録がありません'))
+      if (shown.length === 0) {
+        list.append(
+          h(
+            'div',
+            'md-empty',
+            q !== ''
+              ? '見つかりませんでした'
+              : tab === 'media'
+                ? '右のテンプレートから作成してください'
+                : '右のフォームか、下のCSVインポートから登録してください',
+          ),
+        )
+      }
     }
     search.addEventListener('input', fill)
     fill()
@@ -458,10 +472,41 @@ export async function renderMediaPage(host: HTMLElement): Promise<void> {
     right.append(bar)
   }
 
+  /**
+   * この画面はメディア（絞り込みの条件）と商品（絞り込まれる中身）の2つでできている。
+   * タブが2枚あるだけだと関係が分からないので、それぞれの役割を書く。
+   */
+  function renderGuide(): void {
+    guideSlot.innerHTML = ''
+    const guide =
+      tab === 'media'
+        ? buildToolGuide({
+            id: 'media-forms',
+            summary:
+              'LPに置く「絞り込み検索」の条件を作る画面です。ここで作った条件で、商品一覧に登録した商品をしぼり込みます。',
+            steps: [
+              { label: 'テンプレートを選んで作成', done: mediaList.length > 0 },
+              { label: '項目名や選択肢を整える' },
+              { label: '「商品一覧」で商品を登録する', done: products.length > 0 },
+            ],
+          })
+        : buildToolGuide({
+            id: 'media-products',
+            summary:
+              '絞り込まれる側の商品を登録する画面です。件数が多いときはCSVでまとめて取り込めます。',
+            steps: [
+              { label: '商品を登録する（CSV取り込み可）', done: products.length > 0 },
+              { label: '「メディア一覧」で絞り込み条件を作る', done: mediaList.length > 0 },
+            ],
+          })
+    if (guide !== null) guideSlot.append(guide)
+  }
+
   function render(): void {
     for (const b of tabs.querySelectorAll('button')) {
       b.classList.toggle('on', b.dataset['tab'] === tab)
     }
+    renderGuide()
     renderLeft()
     renderRight()
   }
@@ -517,6 +562,7 @@ function injectStyles(): void {
     .md-tab{border:none;background:none;font-size:13px;color:#666;cursor:pointer;
       padding:5px 16px;border-radius:4px}
     .md-tab.on{background:#eef0f4;color:#111;font-weight:600}
+    .md-guide-slot{padding:0 20px;flex-shrink:0}
     .md-body{flex:1;min-height:0;display:grid;grid-template-columns:300px 1fr;gap:20px;
       padding:0 20px 20px}
     .md-left{background:#f2f3f5;border-radius:4px;padding:14px;display:flex;flex-direction:column;min-height:0}

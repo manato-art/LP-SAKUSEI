@@ -20,6 +20,7 @@
  */
 import { api, type InspectionEntry, type InspectionFolder } from '../api.ts'
 import { toast } from '../ui.ts'
+import { buildToolGuide } from './tool-guide.ts'
 
 type Kind = 'version' | 'popup'
 
@@ -45,6 +46,20 @@ export async function renderInspectionTargets(host: HTMLElement): Promise<void> 
   host.innerHTML = ''
   const root = h('div', 'ins-page')
   host.append(root)
+
+  const guide = buildToolGuide({
+    id: 'inspection-targets',
+    summary:
+      'どのフォルダを審査にかけるかを決める画面です。ここでONにしたフォルダのVersionだけが「審査」に並びます。',
+    steps: [{ label: '審査したいフォルダをONにする' }, { label: '「審査」画面で承認する' }],
+    action: {
+      label: '審査画面へ →',
+      onClick: () => {
+        location.hash = '#/inspections'
+      },
+    },
+  })
+  if (guide !== null) root.append(guide)
 
   const bar = h('div', 'ins-bar')
   const sort = iconButton('↑↓', '並び替え')
@@ -133,6 +148,23 @@ export async function renderInspections(host: HTMLElement): Promise<void> {
   let kind: Kind = 'version'
   let status = 'all'
 
+  const guide = buildToolGuide({
+    id: 'inspections',
+    summary:
+      '公開前のVersionを承認する画面です。先に「審査対象」でフォルダをONにしないと、ここには何も並びません。',
+    steps: [
+      { label: '「審査対象」でフォルダをONにする' },
+      { label: '並んだVersionを承認 / 非承認にする' },
+    ],
+    action: {
+      label: '審査対象を設定する →',
+      onClick: () => {
+        location.hash = '#/inspections/folders'
+      },
+    },
+  })
+  if (guide !== null) root.append(guide)
+
   const tabs = h('div', 'ins-tabs')
   for (const [id, label] of [
     ['version', 'Version'],
@@ -196,15 +228,27 @@ export async function renderInspections(host: HTMLElement): Promise<void> {
       c.textContent = `${STATUS_CHIPS.find(([s]) => s === id)?.[1] ?? ''} ${n}`
     }
     if (data.entries.length === 0) {
-      list.append(
-        h(
-          'div',
-          'ins-empty',
-          data.total === 0
-            ? '審査対象のフォルダがありません。「審査対象」で対象にするフォルダを選んでください。'
-            : 'この絞り込みに当てはまるものはありません。',
-        ),
-      )
+      const box = h('div', 'ins-empty')
+      if (data.total === 0) {
+        // 行き止まりにしない。ここから審査対象へ行けるようにする。
+        box.append(
+          h('div', 'ins-empty-title', 'まだ審査するものがありません'),
+          h(
+            'div',
+            'ins-empty-body',
+            '審査は「審査対象」でONにしたフォルダのVersionだけが並びます。まず対象のフォルダを選んでください。',
+          ),
+        )
+        const go = h('button', 'ins-empty-btn', '審査対象を設定する') as HTMLButtonElement
+        go.type = 'button'
+        go.addEventListener('click', () => {
+          location.hash = '#/inspections/folders'
+        })
+        box.append(go)
+      } else {
+        box.append(h('div', 'ins-empty-body', 'この絞り込みに当てはまるものはありません。'))
+      }
+      list.append(box)
       return
     }
     for (const e of data.entries) list.append(entryRow(e))
@@ -351,7 +395,11 @@ function injectStyles(): void {
     .ins-knob{position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;
       background:#fff;transition:left .15s}
     .ins-toggle.on .ins-knob{left:18px}
-    .ins-empty{font-size:12px;color:#888;padding:14px 4px;text-align:center}
+    .ins-empty{font-size:12px;color:#888;padding:28px 4px;text-align:center}
+    .ins-empty-title{font-size:14px;font-weight:700;color:#333;margin-bottom:6px}
+    .ins-empty-body{font-size:12px;color:#777;line-height:1.8;max-width:34em;margin:0 auto}
+    .ins-empty-btn{margin-top:14px;border:none;border-radius:4px;padding:8px 20px;
+      background:var(--sb-accent,#0091FF);color:var(--sb-accent-ink,#fff);font-size:12px;cursor:pointer}
     .ins-entry{display:flex;flex-direction:row;align-items:center;gap:10px;padding:10px 12px;
       border:1px solid #eee;border-radius:6px;margin-bottom:8px;background:#fff}
     .ins-entry-main{flex:1;min-width:0}
