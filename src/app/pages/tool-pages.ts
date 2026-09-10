@@ -23,6 +23,7 @@ import { stripGlobalSidebar } from './sidebar-shell.ts'
 import { rewireToolSubnav, type ToolPage } from './tool-subnav.ts'
 import { renderBulkTagsPage } from './bulk-tags-page.ts'
 import { renderBulkReplacePage } from './bulk-replace-page.ts'
+import { renderMediaPage } from './media-page.ts'
 import { toast } from '../ui.ts'
 
 /**
@@ -80,10 +81,13 @@ export function renderToolBulkReplaces(container: HTMLElement): void {
   void renderBulkReplacePage(host)
 }
 
-// ── メディア（/teams/product_search_forms）＝一覧は空＋新規作成フォーム ──
+// ── メディア（/teams/product_search_forms）＝実SB同等の機能実装 ──
 export function renderToolMedia(container: HTMLElement): void {
   const root = mountToolFragment(container, mediaFragment)
-  wireUnimplementedByText(root, ['保存する', '新規作成'])
+  const host = root.querySelector<HTMLElement>('.ehppitp0') ?? root
+  if (host !== root) host.style.paddingLeft = '0'
+  host.style.height = 'calc(100vh - 120px)'
+  void renderMediaPage(host)
 }
 
 // ── 審査（/inspections・/inspections/folders）＝実データ行を落として枠だけ ──

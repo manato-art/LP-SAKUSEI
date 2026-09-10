@@ -84,6 +84,7 @@ export function createEmptyState(): State {
     tags: [],
     bulkTags: [],
     productSearchForms: [],
+    products: [],
     sbAiConversations: [],
     sbAiMessages: [],
     heatmaps: [],

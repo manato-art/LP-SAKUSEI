@@ -201,6 +201,35 @@ export interface BulkReplaceRow {
   text_index?: number
 }
 
+/** メディアの検索項目（実SB「ツール > メディア」） */
+export interface MediaField {
+  name: string
+  /** ボタン / セレクトボックス / 上限下限メディア / チェックボックス */
+  type: 'button' | 'select_box' | 'min_max' | 'check_box'
+  /** 商品への選択肢の紐付け（単一 / 複数） */
+  link: 'single' | 'multiple'
+  options: string[]
+}
+
+/** メディア＝商品検索フォームの定義 */
+export interface Media {
+  uid: string
+  name: string
+  keyword: string
+  fields: MediaField[]
+}
+
+/** メディアが絞り込む対象の商品 */
+export interface Product {
+  uid: string
+  name: string
+  price: number
+  rating: number
+  site_url: string
+  description: string
+  image: string
+}
+
 export const api = {
   folders: () => request<{ folders: Folder[] }>('GET', '/folders?per_page=200'),
   // 計測ツール・ASPアカウント一覧（一括タグ/基本情報で使う）
@@ -219,6 +248,31 @@ export const api = {
       `/articles/bulk_replaces/targets?ab_test_uids=${encodeURIComponent(params.abTestUids.join(','))}` +
         `&kind=${encodeURIComponent(params.kind)}&q=${encodeURIComponent(params.q ?? '')}`,
     ),
+  // メディア（商品検索フォーム）と商品（/teams/product_search_forms）
+  mediaTemplates: () =>
+    request<{ templates: { id: string; name: string }[] }>(
+      'GET',
+      '/teams/product_search_forms/templates',
+    ),
+  mediaList: () =>
+    request<{ product_search_forms: Media[] }>('GET', '/teams/product_search_forms'),
+  createMedia: (templateId: string, name: string) =>
+    request<{ product_search_form: Media }>('POST', '/teams/product_search_forms', {
+      template_id: templateId,
+      name,
+    }),
+  updateMedia: (uid: string, patch: { name?: string; fields?: MediaField[] }) =>
+    request<{ product_search_form: Media }>('PUT', `/teams/product_search_forms/${uid}`, patch),
+  deleteMedia: (uid: string) =>
+    request<null>('DELETE', `/teams/product_search_forms/${uid}`),
+  products: () => request<{ products: Product[] }>('GET', '/teams/products'),
+  createProduct: (body: Partial<Product>) =>
+    request<{ product: Product }>('POST', '/teams/products', body),
+  updateProduct: (uid: string, body: Partial<Product>) =>
+    request<{ product: Product }>('PUT', `/teams/products/${uid}`, body),
+  deleteProduct: (uid: string) => request<null>('DELETE', `/teams/products/${uid}`),
+  importProductCsv: (csv: string) =>
+    request<{ imported: number }>('POST', '/teams/products/import', { csv }),
   bulkReplace: (body: {
     kind: string
     targets: { version_uid: string; value: string; indexes?: number[] }[]

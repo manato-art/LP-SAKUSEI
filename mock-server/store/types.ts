@@ -3,6 +3,8 @@
  * 本ファイルは「形」だけを定義し、実データは一切持たない（§3-1）。
  */
 
+import type { MediaField } from './media-templates.ts'
+
 export type MediaIconName = string
 
 export interface Media {
@@ -512,12 +514,34 @@ export interface BulkTagSetting {
   updated_at: number
 }
 
+/**
+ * メディア＝商品検索フォームの定義（実SB「ツール > メディア > メディア一覧」）。
+ * 商品一覧（Product）を絞り込むための項目を持つ。
+ */
 export interface ProductSearchForm {
   id: number
   uid: string
   team_id: number
   name: string
   keyword: string
+  /** 検索項目。テンプレートから作られ、あとから編集できる */
+  fields: MediaField[]
+}
+
+/** メディアが絞り込む対象の商品（実SB「ツール > メディア > 商品一覧」） */
+export interface Product {
+  id: number
+  uid: string
+  team_id: number
+  name: string
+  /** 税抜価格。未入力は0 */
+  price: number
+  /** 1〜5。未入力は0 */
+  rating: number
+  site_url: string
+  description: string
+  /** 画像（データURL）。未設定は空文字 */
+  image: string
 }
 
 export interface SbAiConversation {
@@ -735,6 +759,7 @@ export interface State {
   tags: readonly Tag[]
   bulkTags: readonly BulkTagSetting[]
   productSearchForms: readonly ProductSearchForm[]
+  products: readonly Product[]
   sbAiConversations: readonly SbAiConversation[]
   sbAiMessages: readonly SbAiMessage[]
   heatmaps: readonly Heatmap[]

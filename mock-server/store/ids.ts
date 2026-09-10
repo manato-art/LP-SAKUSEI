@@ -16,6 +16,7 @@ export function uid(kind: string, n: number): string {
 
 export const UID_KINDS = {
   team: 'TEAM',
+  product: 'PRODUCT',
   member: 'MEMBER',
   user: 'USER',
   folder: 'FOLDER',
