@@ -139,6 +139,8 @@ export function openColorPicker(
   apply: (hex: string) => void,
   ctx: ToolbarState,
   refresh: () => void,
+  /** 開いたときに合わせておく色（`#rrggbb`）。無ければ既定のまま */
+  initialHex?: string,
 ): void {
   document.querySelector('.editor-toolbar-color-picker')?.remove()
 
@@ -185,6 +187,8 @@ export function openColorPicker(
 
   // onChange を渡して、ドラッグ・色相・hex入力のたびに選択文字へライブ反映する
   const picker = wireChromePicker(popover, apply)
+  // 今の色に合わせて開く。set は反映（apply）を呼ばないので、開いただけでは色は変わらない
+  if (initialHex !== undefined) picker.set(initialHex)
   for (const swatch of popover.querySelectorAll<HTMLElement>('.github-picker [title]')) {
     swatch.addEventListener('click', () => {
       const hex = swatch.getAttribute('title') ?? ''

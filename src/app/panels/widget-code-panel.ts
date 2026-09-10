@@ -16,10 +16,20 @@ import { applyCodeSelectionStyle } from './code-selection.ts'
 /** コードパネルの表示モード */
 export type CodePaneView = 'split' | 'code'
 
-export function buildCodePanels(
-  target: WidgetEditTarget,
-  onViewChange?: (view: CodePaneView) => void,
-): HTMLElement {
+export interface CodePanelOptions {
+  /** 分割表示／コード表示が切り替わったとき（左ペインを畳むのは呼び出し側） */
+  readonly onViewChange?: (view: CodePaneView) => void
+  /**
+   * 普段（「デフォルト時のコードを表示」がOFF）に出す「要素ごとに編集」。
+   * ONにすると代わりに今の HTML / CSS が出る（本人指定）。無ければ従来どおりコードだけを出す。
+   */
+  readonly design?: { readonly element: HTMLElement; readonly refresh: () => void }
+  /** CSS欄が書き換えられたとき（手入力でも「要素ごとに編集」からでも）。プレビューへ流す */
+  readonly onCssInput?: (css: string) => void
+}
+
+export function buildCodePanels(target: WidgetEditTarget, options: CodePanelOptions = {}): HTMLElement {
+  const { onViewChange, design, onCssInput } = options
   const pane = document.createElement('div')
   pane.style.cssText = `flex:1;display:flex;flex-direction:column;min-width:0`
 
@@ -44,12 +54,6 @@ export function buildCodePanels(
     `position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;` +
     `background:#fff;transition:left .2s;box-shadow:0 1px 2px rgba(0,0,0,.3)`
   toggle.append(toggleKnob)
-  toggle.addEventListener('click', () => {
-    const on = toggle.getAttribute('aria-checked') === 'true'
-    toggle.setAttribute('aria-checked', String(!on))
-    toggle.style.background = on ? COLOR.toggleBg : COLOR.toggleBgOn
-    toggleKnob.style.left = on ? '2px' : '18px'
-  })
 
   // ビュー切替アイコン（本番の2つのアイコンボタン）
   const viewBtns = document.createElement('div')
@@ -80,8 +84,34 @@ export function buildCodePanels(
 
   // CSS(カスタム) パネル
   const cssPanel = createHighlightedCodePanel('CSS(カスタム)', target.css, 'data-code-css', 'css')
+  cssPanel
+    .querySelector<HTMLTextAreaElement>('[data-code-css]')
+    ?.addEventListener('input', (e) => onCssInput?.((e.currentTarget as HTMLTextAreaElement).value))
 
-  pane.append(toggleRow, htmlPanel, codeDivider, cssPanel)
+  // HTML と CSS はひとまとめにして、トグルで「要素ごとに編集」と入れ替える
+  const codeArea = document.createElement('div')
+  codeArea.style.cssText = 'flex:1;display:flex;flex-direction:column;min-height:0'
+  codeArea.append(htmlPanel, codeDivider, cssPanel)
+
+  // 「デフォルト時のコードを表示」: 押すと今のコードを出す／戻すと「要素ごとに編集」（本人指定）
+  let isCodeVisible = false
+  const setCodeVisible = (visible: boolean): void => {
+    const wasVisible = isCodeVisible
+    isCodeVisible = visible
+    toggle.setAttribute('aria-checked', String(visible))
+    toggle.style.background = visible ? COLOR.toggleBgOn : COLOR.toggleBg
+    toggleKnob.style.left = visible ? '18px' : '2px'
+    codeArea.style.display = visible || design === undefined ? 'flex' : 'none'
+    if (design === undefined) return
+    design.element.style.display = visible ? 'none' : ''
+    // コードを直接書き換えてから戻ってきたら、今のコードでカードを作り直す
+    if (wasVisible && !visible) design.refresh()
+  }
+  toggle.addEventListener('click', () => setCodeVisible(!isCodeVisible))
+
+  pane.append(toggleRow, codeArea)
+  if (design !== undefined) pane.append(design.element)
+  setCodeVisible(false)
   return pane
 }
 function makeViewButton(svgHtml: string, title: string): HTMLButtonElement {

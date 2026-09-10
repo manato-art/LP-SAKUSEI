@@ -32,7 +32,12 @@ import {
   svgToolUndo,
 } from './widget-editor-icons.ts'
 
-export function buildVisualEditor(target: WidgetEditTarget): { pane: HTMLElement; contentDiv: HTMLElement } {
+export function buildVisualEditor(target: WidgetEditTarget): {
+  pane: HTMLElement
+  contentDiv: HTMLElement
+  /** プレビューに当てている Widget の CSS。コード欄や「要素ごとに編集」の変更をここへ流し込む */
+  styleTag: HTMLStyleElement
+} {
   const pane = document.createElement('div')
   // 既定幅は 620px プレビュー＋左右padding(20px) が収まる 660px（仕切りドラッグで変更可）。
   pane.style.cssText = `flex:0 0 660px;display:flex;flex-direction:column;min-width:0`
@@ -371,12 +376,11 @@ export function buildVisualEditor(target: WidgetEditTarget): { pane: HTMLElement
   const editorBody = document.createElement('div')
   editorBody.style.cssText =
     `flex:1;background:#fff;overflow:auto;padding:20px;min-height:0`
-  // CSS を style タグとして注入してからHTMLをレンダリング
-  if (target.css.trim() !== '') {
-    const styleTag = document.createElement('style')
-    styleTag.textContent = target.css
-    editorBody.append(styleTag)
-  }
+  // CSS を style タグとして注入してからHTMLをレンダリング。
+  // 空でも必ず1つ置く（あとからコード欄や「要素ごとに編集」の変更をここへ流し込むため）。
+  const styleTag = document.createElement('style')
+  styleTag.textContent = target.css
+  editorBody.append(styleTag)
   const contentDiv = document.createElement('div')
   contentDiv.setAttribute('contenteditable', 'true')
   // WYSIWYG: 編集プレビューを **配信LPと同じ幅(620px)** で表示する。
@@ -454,7 +458,7 @@ export function buildVisualEditor(target: WidgetEditTarget): { pane: HTMLElement
   const spacingBar = buildSpacingBar(contentDiv)
 
   pane.append(toolbar, spacingBar, editorBody)
-  return { pane, contentDiv }
+  return { pane, contentDiv, styleTag }
 }
 /**
  * Widget の上下余白（最外要素の padding-top / padding-bottom）を調整する小さなバー。

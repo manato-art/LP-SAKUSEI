@@ -23,6 +23,7 @@ import {
 } from './widget-editor-theme.ts'
 import { closeMediaControl } from './widget-media-control.ts'
 import { buildCodePanels } from './widget-code-panel.ts'
+import { buildDesignPanel } from './widget-design-panel.ts'
 import { buildVisualEditor } from './widget-visual-editor.ts'
 
 /* ================================================================
@@ -234,7 +235,7 @@ function openWidgetEditor(quill: Quill, target: WidgetEditTarget): void {
     `flex:1;display:flex;background:${COLOR.container};overflow:hidden;min-height:0`
 
   // 左: ビジュアルエディタ
-  const { pane: leftPane, contentDiv } = buildVisualEditor(target)
+  const { pane: leftPane, contentDiv, styleTag } = buildVisualEditor(target)
 
   // 仕切り（本番実測: ~10px幅, cursor:col-resize, 中身は空＝ドットなし）
   const divider = document.createElement('div')
@@ -242,15 +243,35 @@ function openWidgetEditor(quill: Quill, target: WidgetEditTarget): void {
     `width:10px;background:${COLOR.container};cursor:col-resize;flex-shrink:0;` +
     `display:flex;align-items:center;justify-content:center`
 
-  // 右: コードパネル。「コード表示」を選んだら左ペインと仕切りを畳んで全幅にする（指示183）。
+  // 右: 普段は「要素ごとに編集」、「デフォルト時のコードを表示」で今のHTML/CSS（本人指定）。
+  // CSS の正本はコード欄の textarea（「更新する」もそこから保存する）。カードからの変更も
+  // textarea へ書いて input を投げるので、色付け・行番号・プレビューの style まで同じ道で更新される。
+  let cssArea: HTMLTextAreaElement | null = null
+  const design = buildDesignPanel({
+    content: contentDiv,
+    readCss: () => cssArea?.value ?? target.css,
+    writeCss: (css) => {
+      if (cssArea === null) return
+      cssArea.value = css
+      cssArea.dispatchEvent(new Event('input'))
+    },
+  })
+  // 「コード表示」を選んだら左ペインと仕切りを畳んで全幅にする（指示183）。
   // display を空文字に戻すと cssText 側の display:flex ごと消えるので、元の値を控えておく。
   const leftDisplay = leftPane.style.display
   const dividerDisplay = divider.style.display
-  const rightPane = buildCodePanels(target, (view) => {
-    const codeOnly = view === 'code'
-    leftPane.style.display = codeOnly ? 'none' : leftDisplay
-    divider.style.display = codeOnly ? 'none' : dividerDisplay
+  const rightPane = buildCodePanels(target, {
+    onViewChange: (view) => {
+      const codeOnly = view === 'code'
+      leftPane.style.display = codeOnly ? 'none' : leftDisplay
+      divider.style.display = codeOnly ? 'none' : dividerDisplay
+    },
+    design,
+    onCssInput: (css) => {
+      styleTag.textContent = css
+    },
   })
+  cssArea = rightPane.querySelector<HTMLTextAreaElement>('[data-code-css]')
 
   darkContainer.append(leftPane, divider, rightPane)
 
