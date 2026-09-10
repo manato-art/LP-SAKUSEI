@@ -204,6 +204,10 @@ export interface ColumnDeps {
   fullPage: boolean
 }
 
+/** LPを見せる枠の幅（スマホ／PC） */
+const SP_WIDTH = 375
+const PC_WIDTH = 980
+
 /** 1列ぶんを組み立てる */
 function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
   // 外部LPの計測タグは Version を送らない（外部LPは当システム上「1ページ」で
@@ -258,7 +262,7 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
     b.addEventListener('click', () => {
       sp.classList.toggle('on', b === sp)
       pc.classList.toggle('on', b === pc)
-      lp.style.width = b === pc ? '980px' : '375px'
+      setLpWidth(b === pc ? PC_WIDTH : SP_WIDTH)
       applyScale()
     })
   }
@@ -295,8 +299,10 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
     : document.createElement('div')
   lp.className = 'hm-lp'
   // スマホ枠いっぱい。縮小はせず、枠の中だけをスクロールさせる（実物と同じ）。
-  lp.style.width = '375px'
+  lp.style.width = `${SP_WIDTH}px`
   lp.style.height = '667px'
+  /** 自前LPの Widget の @media を枠の幅で判定し直す（外部LPの iframe はブラウザが枠の幅で判定するので要らない） */
+  let restyleWidgets: ((width: number) => void) | null = null
   if (useExternal) {
     const frame = lp as HTMLIFrameElement
     // allow-scripts は与えない＝中のJSは動かない。allow-same-origin は
@@ -309,9 +315,14 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
   } else {
     lp.style.overflow = 'auto'
     lp.innerHTML = spec.html
-    // Widget の <style> はこの列の LP の中だけに効かせる（ヒートマップの画面や隣の列に漏らさない）。
-    // 枠はスマホ/PCで幅が変わるので、@media の判定はこれまでどおりブラウザに任せる。
-    containWidgetStyles(lp, 'lp', null)
+    // Widget の <style> はこの列の LP の中だけに効かせ（ヒートマップの画面や隣の列に漏らさない）、
+    // @media は枠の幅で判定する（ブラウザの幅だと、PCで開いたときスマホ枠にPC用の見た目が出ていた）。
+    restyleWidgets = containWidgetStyles(lp, 'lp', SP_WIDTH)
+  }
+  /** 枠の幅をスマホ／PCに切り替える。自前LPの Widget は、@media をその幅で判定し直す */
+  const setLpWidth = (width: number): void => {
+    lp.style.width = `${width}px`
+    restyleWidgets?.(width)
   }
   const overlay = document.createElement('div')
   overlay.className = 'hm-overlay'

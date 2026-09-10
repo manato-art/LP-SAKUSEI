@@ -97,12 +97,21 @@ describe('Widget／LP の写しを画面に置く箇所は、CSS を入れ物の
       'previewContent.innerHTML = widgetNode.innerHTML',
       "containWidgetStyles(previewContent, 'widget')",
     ],
-    ['src/app/pages/heatmap-columns.ts', 'lp.innerHTML = spec.html', "containWidgetStyles(lp, 'lp', null)"],
   ])('%s', (file, insert, contain) => {
     const lines = readFileSync(file, 'utf8').split('\n')
     const at = lines.findIndex((line) => line.includes(insert))
     expect(at, `${insert} が見つからない`).toBeGreaterThanOrEqual(0)
     expect(lines.slice(at + 1, at + 4).join('\n')).toContain(contain)
+  })
+
+  it('ヒートマップの自前LPは、スマホ／PCの枠の幅で @media を判定し直す（切り替えるたびに作り直す）', () => {
+    const source = readFileSync('src/app/pages/heatmap-columns.ts', 'utf8')
+    const lines = source.split('\n')
+    const at = lines.findIndex((line) => line.includes('lp.innerHTML = spec.html'))
+    expect(at, 'lp.innerHTML = spec.html が見つからない').toBeGreaterThanOrEqual(0)
+    expect(lines.slice(at + 1, at + 4).join('\n')).toContain("containWidgetStyles(lp, 'lp', SP_WIDTH)")
+    expect(source).toContain('setLpWidth(b === pc ? PC_WIDTH : SP_WIDTH)')
+    expect(source).toContain('restyleWidgets?.(width)')
   })
 
   it('Widget編集のプレビューは入れ物に目印を付け、その中だけに効く CSS を当てる', () => {
