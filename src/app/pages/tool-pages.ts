@@ -24,6 +24,7 @@ import { rewireToolSubnav, type ToolPage } from './tool-subnav.ts'
 import { renderBulkTagsPage } from './bulk-tags-page.ts'
 import { renderBulkReplacePage } from './bulk-replace-page.ts'
 import { renderMediaPage } from './media-page.ts'
+import { renderInspections, renderInspectionTargets } from './inspections-page.ts'
 import { toast } from '../ui.ts'
 
 /**
@@ -90,13 +91,23 @@ export function renderToolMedia(container: HTMLElement): void {
   void renderMediaPage(host)
 }
 
-// ── 審査（/inspections・/inspections/folders）＝実データ行を落として枠だけ ──
+/**
+ * 審査。実物は**2画面**あって役割が違う（2026-09-10 実機確認）:
+ *   /inspections          「審査」   … Version/ポップアップ を絞り込んで審査する
+ *   /inspections/folders  「審査対象」… どのフォルダを審査に載せるかのトグル
+ * サイドバーは /inspections を指すので、ハッシュを見て出し分ける。
+ */
 export function renderToolInspections(container: HTMLElement): void {
   const root = mountToolFragment(container, inspectionsFragment)
   // 実データ行（フォルダグループ一覧）は再現しない。容器の中身を空にする（枠は残す）。
   for (const id of INSPECTION_LIST_IDS) {
     root.querySelector(`#${id}`)?.replaceChildren()
   }
+  const host = root.querySelector<HTMLElement>('.ehppitp0') ?? root
+  if (host !== root) host.style.paddingLeft = '0'
+  host.style.height = 'calc(100vh - 120px)'
+  const isTargets = location.hash.includes('/inspections/folders')
+  void (isTargets ? renderInspectionTargets(host) : renderInspections(host))
 }
 
 // ── フォーム（/folders/forms）＝機能追加の告知ページ（静的） ──────

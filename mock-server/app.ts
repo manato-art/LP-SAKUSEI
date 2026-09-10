@@ -36,6 +36,7 @@ import { adminAuthRouter, isAdminAuthenticated, render404Page } from './lib/admi
 import { allowedEmailsRouter } from './routes/allowed-emails.ts'
 import { bulkReplaceRouter } from './routes/bulk-replace.ts'
 import { mediaRouter } from './routes/media.ts'
+import { inspectionsRouter } from './routes/inspections.ts'
 import { bulkTagsRouter } from './routes/bulk-tags.ts'
 
 /** `?reset=1` で新規アカウント発行直後（空）へ戻す（§10-9） */
@@ -132,6 +133,8 @@ export function createApp(): Express {
     bulkReplaceRouter,
     // メディア（商品検索フォーム）と商品
     mediaRouter,
+    // 審査（審査対象の設定と、審査キュー）
+    inspectionsRouter,
   ]
 
   // [A] メインREST API（実物は v1 / v2 が混在するため両方に同じルーターを載せる）

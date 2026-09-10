@@ -56,6 +56,11 @@ export interface Folder {
   uid: string
   name: string
   parent_id: number | null
+  /**
+   * 審査の対象にするフォルダか（実SB「ツール > 審査」の /inspections/folders でトグル）。
+   * ONにしたフォルダのVersion／ポップアップだけが審査画面に並ぶ。既定はOFF。
+   */
+  inspection_target?: boolean
   ab_tests_count: number
   is_favorite: boolean
   created_at: number
@@ -442,6 +447,24 @@ export interface Inspection {
   submitted_at: string | null
 }
 
+/**
+ * 審査の状態（実SB「ツール > 審査」の絞り込みチップと同じ4つ）。
+ * 何も出していないものは「審査待ち」として扱う。
+ */
+export type InspectionStatus = 'waiting' | 'reviewing' | 'approved' | 'rejected'
+
+/** 審査の対象（Version か 離脱防止ポップアップ）1件ぶんの状態 */
+export interface InspectionEntry {
+  /** 'version' | 'popup' */
+  kind: string
+  /** 対象のuid（Version または ExitPopup） */
+  target_uid: string
+  status: InspectionStatus
+  /** 差し戻し・承認のときのひとこと */
+  comment: string
+  updated_at: number
+}
+
 export type AdProvider = 'facebook' | 'google' | 'microsoft' | 'x' | 'yahoo'
 
 export interface AdAccount {
@@ -753,6 +776,7 @@ export interface State {
   operatorArticles: readonly OperatorArticle[]
   tasks: readonly Task[]
   inspections: readonly Inspection[]
+  inspectionEntries: readonly InspectionEntry[]
   adAccounts: readonly AdAccount[]
   aspAccounts: readonly AspAccount[]
   domains: readonly Domain[]

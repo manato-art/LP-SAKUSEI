@@ -230,6 +230,30 @@ export interface Product {
   image: string
 }
 
+/** 審査対象のフォルダ1件 */
+export interface InspectionFolder {
+  uid: string
+  name: string
+  is_favorite: boolean
+  inspection_target: boolean
+}
+
+export interface InspectionFolderGroup extends InspectionFolder {
+  folders: InspectionFolder[]
+}
+
+/** 審査に並ぶ1件（Version か 離脱防止ポップアップ） */
+export interface InspectionEntry {
+  uid: string
+  name: string
+  kind: string
+  status: string
+  comment: string
+  folder_name: string
+  ab_test_uid: string
+  ab_test_title: string
+}
+
 export const api = {
   folders: () => request<{ folders: Folder[] }>('GET', '/folders?per_page=200'),
   // 計測ツール・ASPアカウント一覧（一括タグ/基本情報で使う）
@@ -273,6 +297,28 @@ export const api = {
   deleteProduct: (uid: string) => request<null>('DELETE', `/teams/products/${uid}`),
   importProductCsv: (csv: string) =>
     request<{ imported: number }>('POST', '/teams/products/import', { csv }),
+  // 審査（/inspections）
+  inspectionFolders: () =>
+    request<{ groups: InspectionFolderGroup[]; ungrouped: InspectionFolder[] }>(
+      'GET',
+      '/inspections/folders',
+    ),
+  setInspectionTarget: (uid: string, on: boolean) =>
+    request<{ uid: string; inspection_target: boolean }>('PUT', `/inspections/folders/${uid}`, {
+      inspection_target: on,
+    }),
+  inspectionEntries: (params: { kind: string; status: string; q?: string }) =>
+    request<{
+      entries: InspectionEntry[]
+      counts: Record<string, number>
+      total: number
+    }>(
+      'GET',
+      `/inspections/entries?kind=${encodeURIComponent(params.kind)}` +
+        `&status=${encodeURIComponent(params.status)}&q=${encodeURIComponent(params.q ?? '')}`,
+    ),
+  setInspectionStatus: (uid: string, body: { kind: string; status: string; comment?: string }) =>
+    request<{ entry: InspectionEntry }>('PUT', `/inspections/entries/${uid}`, body),
   bulkReplace: (body: {
     kind: string
     targets: { version_uid: string; value: string; indexes?: number[] }[]

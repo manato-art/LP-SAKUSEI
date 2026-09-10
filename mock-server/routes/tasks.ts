@@ -136,12 +136,8 @@ tasksRouter.get('/inspections/authorities', (req, res) => {
   })
 })
 
-tasksRouter.get('/inspections/folders', (req, res) => {
-  const state = getState()
-  res.json({
-    folders: applyEmptyState(
-      req,
-      state.folders.map((f) => ({ id: f.id, uid: f.uid, name: f.name })),
-    ),
-  })
-})
+/**
+ * 審査対象（/inspections/folders）は `routes/inspections.ts` が実装している。
+ * ここにフォルダ名だけを返す置き石があったが、先に登録されていて
+ * 本実装を横取りしてしまうため削除した（マジック置換で踏んだのと同じ罠）。
+ */

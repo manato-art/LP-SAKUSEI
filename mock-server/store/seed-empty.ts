@@ -78,6 +78,7 @@ export function createEmptyState(): State {
     operatorArticles: [],
     tasks: [],
     inspections: [],
+    inspectionEntries: [],
     adAccounts: [],
     aspAccounts: [],
     domains: [],
