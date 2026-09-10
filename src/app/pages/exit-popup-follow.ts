@@ -8,7 +8,8 @@
  * 一覧の描き直しは `state.rerender()` を通す。
  */
 import { api, type FollowPopup } from '../api.ts'
-import { T, el, toast, confirmCard } from '../ui.ts'
+import { T, el, toast } from '../ui.ts'
+import { confirmCard } from '../dialog.ts'
 import { highlight } from '../panels/syntax-highlight.ts'
 import { FOLLOW_PRESETS, type FollowPreset } from './follow-popup-presets.ts'
 import type { PopupPageState } from './exit-popup-state.ts'
@@ -93,7 +94,13 @@ function toggleFollowDropdown(cardEl: HTMLElement, state: PopupPageState, fp: Fo
   deleteBtn.addEventListener('click', (e) => {
     e.stopPropagation()
     dropdown.remove()
-    void confirmCard('この追従型ポップアップを削除しますか？', '削除する').then((ok) => {
+    void confirmCard({
+      title: 'この追従型ポップアップを削除しますか？',
+      message: 'このbeyondページから外れ、配信ページにも出なくなります。',
+      detail: '削除すると元に戻せません。',
+      submitLabel: '削除する',
+      danger: true,
+    }).then((ok) => {
       if (!ok) return
       void api.deleteFollowPopup(state.abTestUid, fp.uid).then(
         () => {

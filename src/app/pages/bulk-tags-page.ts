@@ -8,6 +8,7 @@
  */
 import { api, type BulkTag, type Folder } from '../api.ts'
 import { toast } from '../ui.ts'
+import { confirmCard } from '../dialog.ts'
 
 const CV_OPTIONS: readonly [string, string][] = [
   ['', '指定なし'],
@@ -212,7 +213,15 @@ function buildForm(
   const delBtn = h('button', 'bt-delete', 'タグ設定を削除') as HTMLButtonElement
   delBtn.type = 'button'
   delBtn.addEventListener('click', () => {
-    if (confirm('このタグ設定を削除しますか？')) void handlers.onDelete()
+    void confirmCard({
+      title: 'このタグ設定を削除しますか？',
+      message: '設定範囲のフォルダに入っていたタグが、これ以降は差し込まれなくなります。',
+      detail: '削除すると元に戻せません。',
+      submitLabel: '削除する',
+      danger: true,
+    }).then((ok) => {
+      if (ok) void handlers.onDelete()
+    })
   })
   actions.append(saveBtn, delBtn)
   form.append(actions)

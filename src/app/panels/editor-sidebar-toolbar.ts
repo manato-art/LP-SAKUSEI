@@ -15,6 +15,7 @@ import {
 } from './toolbar/text-format.ts'
 import { makeFontDropdown } from './toolbar/font-dropdown.ts'
 import { pickAndInsertMedia } from './media-insert.ts'
+import { promptCard } from '../dialog.ts'
 
 // ── 定数 ──
 
@@ -486,7 +487,13 @@ function wireLinkAction(quill: Quill): void {
     return
   }
 
-  const url = prompt('リンクURL', 'https://')
-  if (url === null || url.trim() === '' || url.trim() === 'https://') return
-  quill.formatText(range.index, range.length, 'link', url.trim(), 'user')
+  void promptCard({
+    title: 'リンクを設定',
+    label: 'リンク先のURL',
+    placeholder: 'https://',
+    submitLabel: '設定する',
+  }).then((url) => {
+    if (url === null || url === '' || url === 'https://') return
+    quill.formatText(range.index, range.length, 'link', url, 'user')
+  })
 }

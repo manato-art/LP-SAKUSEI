@@ -18,7 +18,8 @@
 import rawMenu from '../fragments/ab_tests__UID__articles__version-dots-menu.portals.html?raw'
 import type { Version } from '../api.ts'
 import { api } from '../api.ts'
-import { toast, confirmCard } from '../ui.ts'
+import { toast } from '../ui.ts'
+import { confirmCard } from '../dialog.ts'
 import { bindBackdropClose, findByExactText, openPortal } from './portal.ts'
 import { LP_BASE_CSS } from '../lp-base-css.ts'
 import { withAutoplayVideos } from '../lp-video.ts'
@@ -153,7 +154,14 @@ function openMenu(deps: DotsMenuDeps, onClosed: () => void): void {
         getCurrentVersion: deps.getCurrentVersion,
       }),
     [DOTS_MENU_LABELS.archive]: () => {
-      if (globalThis.confirm('このVersionをアーカイブしますか？')) void archive(deps)
+      void confirmCard({
+        title: 'このVersionをアーカイブしますか？',
+        message: 'Version一覧から「アーカイブ」タブへ移り、配信されなくなります。',
+        detail: 'あとから復元できます。',
+        submitLabel: 'アーカイブする',
+      }).then((ok) => {
+        if (ok) void archive(deps)
+      })
     },
     [DOTS_MENU_LABELS.archiveSelected]: () => deps.onSelectArchiveMode(),
   }
@@ -197,7 +205,13 @@ function injectDeleteItem(portal: { root: HTMLElement; close: () => void }, deps
   deleteItem.addEventListener('click', (event) => {
     event.stopPropagation()
     portal.close()
-    void confirmCard('このVersionを削除しますか？\n（元に戻せません）', '削除する').then((ok) => {
+    void confirmCard({
+      title: 'このVersionを削除しますか？',
+      message: '本文・設定・計測の記録がまとめて消えます。',
+      detail: '削除すると元に戻せません。',
+      submitLabel: '削除する',
+      danger: true,
+    }).then((ok) => {
       if (ok) void deleteVersion(deps)
     })
   })

@@ -18,6 +18,7 @@ import {
 } from './toolbar/text-format.ts'
 import { makeFontDropdown } from './toolbar/font-dropdown.ts'
 import { pickAndInsertMedia } from './media-insert.ts'
+import { promptCard } from '../dialog.ts'
 import { ANIM_PRESETS, ANIM_SPEEDS } from '../anim/anim-presets.ts'
 import { colorPicker, fmtBtn, group, row } from './properties-parts.ts'
 import { buildImageBody, refreshImageBody } from './properties-image.ts'
@@ -390,14 +391,21 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
     if (r === null || r.length === 0) return
     const fmt = quill.getFormat(r.index, r.length)
     const existing = typeof fmt['link'] === 'string' ? fmt['link'] : ''
-    const url = prompt('リンクURL', existing || 'https://')
-    if (url === null) return
-    if (url === '' || url === 'https://') {
-      quill.formatText(r.index, r.length, 'link', false, 'user')
-    } else {
-      quill.formatText(r.index, r.length, 'link', url, 'user')
-    }
-    refresh()
+    void promptCard({
+      title: 'リンクを設定',
+      label: 'リンク先のURL（空にすると解除します）',
+      value: existing,
+      placeholder: 'https://',
+      submitLabel: '設定する',
+    }).then((url) => {
+      if (url === null) return
+      if (url === '' || url === 'https://') {
+        quill.formatText(r.index, r.length, 'link', false, 'user')
+      } else {
+        quill.formatText(r.index, r.length, 'link', url, 'user')
+      }
+      refresh()
+    })
   })
 
   const clearBtn = fmtBtn(SVG.clearFmt, '書式クリア')

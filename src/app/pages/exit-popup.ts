@@ -11,7 +11,8 @@
  */
 import { api, type ExitPopup } from '../api.ts'
 import { isStale } from '../main.ts'
-import { el, toast, confirmCard } from '../ui.ts'
+import { el, toast } from '../ui.ts'
+import { confirmCard } from '../dialog.ts'
 import { setupHorizTabs, setupBreadcrumb } from './tab-nav.ts'
 import { PRESETS, type PopupPreset } from './exit-popup-presets.ts'
 import { popupKindOf, type PopupPageState, type SubTab } from './exit-popup-state.ts'
@@ -346,7 +347,13 @@ function toggleDropdown(cardEl: HTMLElement, state: PopupPageState, popup: ExitP
   deleteBtn.addEventListener('click', (e) => {
     e.stopPropagation()
     dropdown.remove()
-    void confirmCard('このポップアップを削除しますか？', '削除する').then((ok) => {
+    void confirmCard({
+      title: 'このポップアップを削除しますか？',
+      message: 'このbeyondページから外れ、配信ページにも出なくなります。',
+      detail: '削除すると元に戻せません。',
+      submitLabel: '削除する',
+      danger: true,
+    }).then((ok) => {
       if (!ok) return
       void api.deleteExitPopup(state.abTestUid, popup.uid).then(
         () => {
