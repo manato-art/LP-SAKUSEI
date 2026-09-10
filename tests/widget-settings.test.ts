@@ -225,6 +225,67 @@ describe('直接書かれた設定（ライブラリの大半）', () => {
   })
 })
 
+describe('隅々まで確認で見つかった取りこぼし', () => {
+  it('属性セレクタの値（"…"）がそのまま残る（空白に潰れて当たらなくならない）', () => {
+    const [s] = scanSettings('.btn[data-type="primary"]{width:120px}')
+    expect(s?.targets[0]?.selector).toBe('.btn[data-type="primary"]')
+  })
+
+  it('大文字を含むCSS変数も拾え、差し替えられる（変数名は大文字小文字を区別する）', () => {
+    const css = '.a{--Main-Color:#123456}.b{color:var(--Main-Color)}'
+    const [s] = scanSettings(css)
+    expect([s?.property, s?.value, s?.label]).toEqual(['--Main-Color', '#123456', 'Main-Color'])
+    expect(replaceSetting(css, s?.key ?? '', '#abcdef')).toBe('.a{--Main-Color:#abcdef}.b{color:var(--Main-Color)}')
+  })
+
+  it('枠線に rgba() の色があっても、太さは数値の行・色は見本の行になる', () => {
+    expect(scanSettings('.a{border:1px solid rgba(0,0,0,.2)}').map((s) => [s.label, s.kind])).toEqual([
+      ['枠線の色', 'color'],
+      ['枠線の太さ', 'number'],
+    ])
+  })
+
+  it(':not(:hover) の中の :hover は外さない（セレクタが壊れて当たらなくならない）', () => {
+    const s = scanSettings('.a:not(:hover){width:10px}.b:hover{width:20px}')
+    expect(s.map((x) => [x.targets[0]?.selector, x.targets[0]?.state])).toEqual([
+      ['.a:not(:hover)', ''],
+      ['.b', 'ホバー時'],
+    ])
+  })
+
+  it('入れ子のCSS（ルールの中のルール）を宣言と取り違えない', () => {
+    const css = '.a{color:#111;&:hover{background:#222}padding:10px}'
+    expect(scanSettings(css).map((s) => [s.property, s.value])).toEqual([['color', '#111']])
+  })
+})
+
+describe('@keyframes（動きの途中の値）', () => {
+  const css =
+    '.arrow{animation:tap-down 1.2s ease-in-out infinite}' +
+    '@keyframes tap-down{0%,100%{transform:translateY(0);opacity:.55}8%{transform:translateY(6px);opacity:1}}' +
+    '@keyframes unused{from{opacity:0}to{opacity:1}}'
+
+  it('使っている要素のカードに「動き」として出る（使われていない動きは出さない）', () => {
+    expect(scanSettings(css).map((s) => [s.targets[0]?.selector, s.group, s.label, s.value])).toEqual([
+      ['.arrow', 'motion', '動き1回の時間', '1.2'],
+      ['.arrow', 'motion', '変形（位置・回転・拡大）（動きの 0%・100%）', 'translateY(0)'],
+      ['.arrow', 'motion', '不透明度（動きの 0%・100%）', '.55'],
+      ['.arrow', 'motion', '変形（位置・回転・拡大）（動きの 8%）', 'translateY(6px)'],
+      ['.arrow', 'motion', '不透明度（動きの 8%）', '1'],
+    ])
+  })
+
+  it('動きの途中の値を変えても、ほかは1文字も変わらない', () => {
+    const lift = scanSettings(css).find((s) => s.value === 'translateY(6px)')
+    expect(replaceSetting(css, lift?.key ?? '', 'translateY(12px)')).toBe(css.replace('translateY(6px)', 'translateY(12px)'))
+  })
+
+  it('from / to は「はじめ」「おわり」と読む', () => {
+    const s = scanSettings('.a{animation:fade 1s}@keyframes fade{from{opacity:0}to{opacity:1}}')
+    expect(s.map((x) => x.label)).toEqual(['動き1回の時間', '不透明度（動きの はじめ）', '不透明度（動きの おわり）'])
+  })
+})
+
 describe('色の見本とピッカーに使う #rrggbb', () => {
   it.each([
     ['#d096bb', '#d096bb'],

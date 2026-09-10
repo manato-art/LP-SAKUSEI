@@ -287,6 +287,9 @@ function openWidgetEditor(quill: Quill, target: WidgetEditTarget): void {
   const syncFn = (): void => {
     if (htmlArea !== null && contentDiv !== null) {
       htmlArea.value = contentDiv.innerHTML
+      // 値を入れるだけでは、上に重ねた色付き表示と行番号が古いまま（文字は透明の textarea の方にある）。
+      // 「デフォルト時のコードを表示」を押したときに古いHTMLが見えてしまうので、同じ更新を通す。
+      htmlArea.dispatchEvent(new Event('input'))
     }
   }
   contentDiv.addEventListener('input', syncFn)

@@ -80,7 +80,7 @@ const GLOBAL_SCOPE: ReadonlySet<string> = new Set([':root', 'html', 'body', '*']
  * 突き合わせの前に外す擬似要素・状態と、その注記。
  * `focus-visible` / `focus-within` は `focus` より先に並べる（途中で切れないように）。
  */
-const PSEUDO = /::?(before|after|placeholder|marker|selection|first-line|first-letter)\b|:(hover|focus-visible|focus-within|focus|active|visited|checked|disabled)\b/g
+const PSEUDO = /::?(before|after|placeholder|marker|selection|first-line|first-letter)\b|:(hover|focus-visible|focus-within|focus|active|visited|checked|disabled)\b/y
 const STATE_LABELS: Readonly<Record<string, string>> = {
   before: '前の飾り',
   after: '後ろの飾り',
@@ -198,10 +198,18 @@ interface Rule {
   readonly media: readonly string[]
 }
 
+/** `@keyframes 名前 { … }` の中身の範囲 */
+interface KeyframesBlock {
+  readonly name: string
+  readonly bodyStart: number
+  readonly bodyEnd: number
+}
+
 interface DeclContext {
   readonly css: string
   readonly masked: string
-  readonly ruleIndex: number
+  /** 規則の通し番号（@keyframes の段は `k段落.段` ）。key の先頭になる */
+  readonly ruleId: string
   readonly declIndex: number
   readonly property: string
   /** 値の範囲（前後の空白を含む。rawEnd は `;` か `}` の位置） */
@@ -211,6 +219,8 @@ interface DeclContext {
   readonly isGlobal: boolean
   readonly context: string
   readonly media: readonly string[]
+  /** @keyframes の段（「8%」「はじめ」など）。普通の規則なら空文字 */
+  readonly keyframeStep: string
 }
 
 interface Part {
@@ -266,10 +276,12 @@ function conditionLabel(prelude: string): string {
 
 /** 規則を出てきた順に集める。`@media` などの中は潜り（条件を控える）、`@keyframes` `@font-face` は飛ばす。 */
 function collectRules(
+  css: string,
   masked: string,
   from: number,
   to: number,
   out: Rule[],
+  keyframes: KeyframesBlock[],
   context = '',
   media: readonly string[] = [],
 ): void {
@@ -295,10 +307,15 @@ function collectRules(
       if (/^@(?:media|supports|container|layer)\b/i.test(prelude)) {
         const inner = [context, conditionLabel(prelude)].filter((c) => c !== '').join('・')
         const query = /^@media\b/i.test(prelude) ? prelude.replace(/^@media\s*/i, '').replace(/\s+/g, ' ') : ''
-        collectRules(masked, stop + 1, close, out, inner, query === '' ? media : [...media, query])
+        collectRules(css, masked, stop + 1, close, out, keyframes, inner, query === '' ? media : [...media, query])
+      } else {
+        const kf = /^@(?:-webkit-)?keyframes\s+([\w-]+)/i.exec(prelude)
+        if (kf !== null) keyframes.push({ name: kf[1] ?? '', bodyStart: stop + 1, bodyEnd: close })
       }
     } else if (prelude !== '') {
-      out.push({ selector: prelude, bodyStart: stop + 1, bodyEnd: close, context, media })
+      // セレクタは伏せ字にする前の文字から取る（`[data-type="primary"]` の値を空白に潰さない）
+      const selector = css.slice(i, stop).replace(/\/\*[\s\S]*?\*\//g, '').trim()
+      out.push({ selector, bodyStart: stop + 1, bodyEnd: close, context, media })
     }
     i = close + 1
   }
@@ -360,11 +377,33 @@ function trimmedRange(masked: string, start: number, end: number): { start: numb
   return { start: s, end: e }
 }
 
+/**
+ * セレクタ1つから擬似要素・状態を外す。外すのは括弧の外だけ
+ * （`:not(:hover)` の中や `[data-x=":hover"]` を外すとセレクタが壊れて当たらなくなる）。
+ */
 function toTarget(part: string): SettingTarget {
-  const states = [...part.matchAll(PSEUDO)]
-    .map((m) => STATE_LABELS[m[1] ?? m[2] ?? ''] ?? '')
-    .filter((s) => s !== '')
-  return { selector: part.replace(PSEUDO, '').trim(), state: [...new Set(states)].join('・') }
+  const states: string[] = []
+  let selector = ''
+  let depth = 0
+  let i = 0
+  while (i < part.length) {
+    const c = part[i] ?? ''
+    if (depth === 0 && c === ':') {
+      PSEUDO.lastIndex = i
+      const m = PSEUDO.exec(part)
+      if (m !== null) {
+        const label = STATE_LABELS[m[1] ?? m[2] ?? '']
+        if (label !== undefined) states.push(label)
+        i += m[0].length
+        continue
+      }
+    }
+    if (c === '(' || c === '[') depth++
+    else if ((c === ')' || c === ']') && depth > 0) depth--
+    selector += c
+    i++
+  }
+  return { selector: selector.trim(), state: [...new Set(states)].join('・') }
 }
 
 function colorLabel(property: string): string {
@@ -391,21 +430,78 @@ function escapeRegExp(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
-/** 規則の宣言を1つずつ渡す（地の色など、body 等に直接書かれた変数以外の宣言は渡さない） */
+interface RawDeclaration {
+  readonly declIndex: number
+  readonly property: string
+  readonly rawStart: number
+  readonly rawEnd: number
+}
+
+/** 規則の中身を宣言に分ける */
+function declarationsOf(masked: string, bodyStart: number, bodyEnd: number): RawDeclaration[] {
+  const body = masked.slice(bodyStart, bodyEnd)
+  const out: RawDeclaration[] = []
+  splitTopLevel(body, ';').forEach((decl, declIndex) => {
+    const segment = body.slice(decl.start, decl.end)
+    // 入れ子のCSS（ルールの中のルール）は宣言ではない
+    if (/[{}]/.test(segment)) return
+    const colon = segment.indexOf(':')
+    if (colon === -1) return
+    const name = segment.slice(0, colon).trim()
+    if (name === '') return
+    out.push({
+      declIndex,
+      // CSS変数の名前は大文字小文字を区別する（`--Main` と `var(--Main)` を結び付けるため）
+      property: name.startsWith('--') ? name : name.toLowerCase(),
+      rawStart: bodyStart + decl.start + colon + 1,
+      rawEnd: bodyStart + decl.end,
+    })
+  })
+  return out
+}
+
+const ANIMATION_KEYWORDS: ReadonlySet<string> = new Set([
+  'none', 'infinite', 'normal', 'reverse', 'alternate', 'alternate-reverse', 'forwards', 'backwards',
+  'both', 'running', 'paused', 'ease', 'ease-in', 'ease-out', 'ease-in-out', 'linear', 'step-start',
+  'step-end', 'initial', 'inherit', 'unset',
+])
+
+/** `animation: tap-down 1.2s ease infinite` から動きの名前（tap-down）を取り出す */
+function animationNames(value: string): string[] {
+  return value.split(',').flatMap((group) =>
+    group
+      .trim()
+      .split(/\s+(?![^(]*\))/)
+      .filter((token) => /^[A-Za-z_-][\w-]*$/.test(token) && !ANIMATION_KEYWORDS.has(token.toLowerCase())),
+  )
+}
+
+/** @keyframes の段の名前（`from` / `to` は読み替える） */
+function stepLabel(selector: string): string {
+  return selector
+    .split(',')
+    .map((s) => s.trim())
+    .map((s) => (s === 'from' ? 'はじめ' : s === 'to' ? 'おわり' : s))
+    .join('・')
+}
+
+/**
+ * 宣言を1つずつ渡す。普通の規則のあとに @keyframes の段も渡す。
+ * （地の色など、要素名だけのセレクタに直接書かれた変数以外の宣言は渡さない）
+ */
 function forEachDeclaration(css: string, visit: (ctx: DeclContext) => void): void {
   const masked = maskCss(css)
   const rules: Rule[] = []
-  collectRules(masked, 0, masked.length, rules)
+  const keyframes: KeyframesBlock[] = []
+  collectRules(css, masked, 0, masked.length, rules, keyframes)
+  /** 動きの名前 → その動きを使う要素のセレクタ（@keyframes の行をどのカードに出すか） */
+  const animationTargets = new Map<string, SettingTarget[]>()
+
   rules.forEach((rule, ruleIndex) => {
     const allTargets = splitTopLevel(rule.selector, ',')
       .map((p) => toTarget(rule.selector.slice(p.start, p.end)))
       .filter((t) => t.selector !== '')
-    const body = masked.slice(rule.bodyStart, rule.bodyEnd)
-    splitTopLevel(body, ';').forEach((decl, declIndex) => {
-      const colon = body.indexOf(':', decl.start)
-      if (colon === -1 || colon >= decl.end) return
-      const property = body.slice(decl.start, colon).trim().toLowerCase()
-      if (property === '' || /[{}]/.test(property)) return
+    for (const { declIndex, property, rawStart, rawEnd } of declarationsOf(masked, rule.bodyStart, rule.bodyEnd)) {
       const isVariable = property.startsWith('--')
       // 変数でない設定は、クラス・id・属性で書かれた規則のものだけにする。
       // `h1{…}` `img{…}` `body a{…}` のような要素名だけの規則は、Widget の CSS に同梱された
@@ -413,20 +509,59 @@ function forEachDeclaration(css: string, visit: (ctx: DeclContext) => void): voi
       // （全件確認で、1つのWidgetに777行出た原因）。Widget 自身のCSSでこの形は 1987件中11件だけ。
       // 変数は `:root` などに書かれていても `var()` で届くので、そのまま残す。
       const targets = isVariable ? allTargets : allTargets.filter((t) => /[.#[]/.test(t.selector))
-      if (targets.length === 0) return
+      if (targets.length === 0) continue
+      if (/^(?:-webkit-)?animation(?:-name)?$/.test(property)) {
+        for (const name of animationNames(masked.slice(rawStart, rawEnd))) {
+          animationTargets.set(name, [...(animationTargets.get(name) ?? []), ...targets])
+        }
+      }
       visit({
         css,
         masked,
-        ruleIndex,
+        ruleId: String(ruleIndex),
         declIndex,
         property,
-        rawStart: rule.bodyStart + colon + 1,
-        rawEnd: rule.bodyStart + decl.end,
+        rawStart,
+        rawEnd,
         targets,
         isGlobal: targets.every((t) => GLOBAL_SCOPE.has(t.selector)),
         context: rule.context,
         media: rule.media,
+        keyframeStep: '',
       })
+    }
+  })
+
+  // @keyframes: 動きの途中の値（矢印が何px動くか など）。使っている要素のカードに出す
+  keyframes.forEach((block, blockIndex) => {
+    const seen = new Set<string>()
+    const targets = (animationTargets.get(block.name) ?? []).filter((t) => {
+      const id = `${t.selector}|${t.state}`
+      if (seen.has(id)) return false
+      seen.add(id)
+      return true
+    })
+    if (targets.length === 0) return // どの要素にも使われていない動きは、変えても何も起きない
+    const steps: Rule[] = []
+    collectRules(css, masked, block.bodyStart, block.bodyEnd, steps, [])
+    steps.forEach((step, stepIndex) => {
+      for (const { declIndex, property, rawStart, rawEnd } of declarationsOf(masked, step.bodyStart, step.bodyEnd)) {
+        if (property.startsWith('--')) continue
+        visit({
+          css,
+          masked,
+          ruleId: `k${blockIndex}.${stepIndex}`,
+          declIndex,
+          property,
+          rawStart,
+          rawEnd,
+          targets,
+          isGlobal: false,
+          context: '',
+          media: [],
+          keyframeStep: stepLabel(step.selector),
+        })
+      }
     })
   })
 }
@@ -436,7 +571,7 @@ function declarationSettings(ctx: DeclContext): Located[] {
   const range = trimmedRange(masked, ctx.rawStart, ctx.rawEnd)
   const text = masked.slice(range.start, range.end)
   if (text === '') return []
-  const key = (suffix: string): string => `${ctx.ruleIndex}:${ctx.declIndex}:${suffix}`
+  const key = (suffix: string): string => `${ctx.ruleId}:${ctx.declIndex}:${suffix}`
   const common = {
     targets: ctx.targets,
     property,
@@ -499,7 +634,10 @@ function declarationSettings(ctx: DeclContext): Located[] {
   if (text.includes('var(')) return out
 
   const parts = valueParts(masked, range.start, range.end)
-  const hasFunction = parts.some((p) => p.text.includes('(') && /\d/.test(p.text))
+  // 色の関数（rgba() など）は数字を含んでも「組み合わせの値」ではない（色は見本の行で変える）
+  const hasFunction = parts.some(
+    (p) => p.text.includes('(') && /\d/.test(p.text) && !/^(?:rgba?|hsla?)\(/i.test(p.text),
+  )
   let numberIndex = 0
   const pushNumber = (part: Part, label: string, group: SettingGroup): void => {
     const m = NUMBER_PART.exec(part.text)
@@ -574,7 +712,12 @@ function locateSettings(css: string): Located[] {
       const used = new RegExp(`var\\(\\s*${escapeRegExp(ctx.property)}(?![\\w-])`).test(ctx.masked)
       if (!used) return
     }
-    out.push(...declarationSettings(ctx))
+    const settings = declarationSettings(ctx)
+    out.push(
+      ...(ctx.keyframeStep === ''
+        ? settings
+        : settings.map((s) => ({ ...s, group: 'motion' as const, label: `${s.label}（動きの ${ctx.keyframeStep}）` }))),
+    )
   })
   return out
 }
@@ -595,7 +738,7 @@ export function replaceSetting(css: string, key: string, next: string): string {
   if (!key.endsWith(':v')) return css
   let range: { start: number; end: number } | null = null
   forEachDeclaration(css, (ctx) => {
-    if (range === null && `${ctx.ruleIndex}:${ctx.declIndex}:v` === key) {
+    if (range === null && `${ctx.ruleId}:${ctx.declIndex}:v` === key) {
       range = trimmedRange(ctx.masked, ctx.rawStart, ctx.rawEnd)
     }
   })

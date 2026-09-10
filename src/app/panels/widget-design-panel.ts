@@ -59,6 +59,8 @@ type RowSource =
     }
   | { readonly kind: 'inline'; readonly nodes: readonly HTMLElement[]; readonly property: 'color' | 'background-color' }
 
+type CssRow = Extract<RowSource, { kind: 'css' }>
+
 interface Card {
   readonly kind: string
   readonly snippet: string
@@ -180,6 +182,31 @@ function collectCards(content: HTMLElement, css: string): Card[] {
     drafts.push(draft)
     if (signature !== '' && inline.length === 0) bySignature.set(signature, draft)
   }
+
+  // 同じ名前のカードが並ぶと、どれがどれか分からない（矢印小刻みで「.arrow」が3枚並んだ）。
+  // 名前がかぶった文字なしのカードは、そのカードの行を出している一番くわしいセレクタで呼ぶ
+  // （.arrow:nth-child(2) など）。それでもかぶるものには「何つ目か」を添える。
+  const countSnippets = (): Map<string, number> => {
+    const counts = new Map<string, number>()
+    for (const d of drafts) counts.set(d.snippet, (counts.get(d.snippet) ?? 0) + 1)
+    return counts
+  }
+  const firstCounts = countSnippets()
+  for (const d of drafts) {
+    if ((firstCounts.get(d.snippet) ?? 0) < 2 || d.texts.length > 0) continue
+    const best = d.rows
+      .map((r) => (r.kind === 'css' ? r.selector : ''))
+      .reduce((a, b) => (b.length > a.length ? b : a), '')
+    if (best !== '') d.snippet = best
+  }
+  const finalCounts = countSnippets()
+  const order = new Map<string, number>()
+  for (const d of drafts) {
+    if ((finalCounts.get(d.snippet) ?? 0) < 2) continue
+    const n = (order.get(d.snippet) ?? 0) + 1
+    order.set(d.snippet, n)
+    d.snippet = `${d.snippet}（${n}つ目）`
+  }
   return drafts
 }
 
@@ -191,6 +218,13 @@ export function buildDesignPanel(deps: DesignPanelDeps): DesignPanel {
   let swatches = new Map<string, { swatch: HTMLElement; hex: HTMLElement }[]>()
   /** 変えた後の色（ピッカーを開き直したとき、今の色から始めるため） */
   const currentColors = new Map<string, string>()
+  /**
+   * 数値・値まるごとの入力欄。同じ設定が状態違いで別のカードにも出ることがあるので、
+   * 片方を変えたらもう片方の表示もそろえる（色の見本は swatches で同じことをしている）。
+   */
+  let valueInputs = new Map<string, { input: HTMLInputElement; unitEl: HTMLElement | null }[]>()
+  /** 数値の行で最後に書いた単位（無単位の 0 を変えると px が付くので、別の行とも共有する） */
+  const units = new Map<string, string>()
   /** カードからの変更で飛ぶ input では作り直さない（打っている入力欄が消えないように） */
   let isApplying = false
   let refreshTimer: ReturnType<typeof setTimeout> | undefined
@@ -252,14 +286,17 @@ export function buildDesignPanel(deps: DesignPanelDeps): DesignPanel {
     input.step = String(numberStep(setting))
     // `.5` は number 入力欄が受け付けないので、数として正規化してから入れる
     input.value = String(Number(setting.value))
-    let unit = setting.unit
-    const unitEl = el('span', { class: 'ep-design-hex wdp-unit', text: unit })
+    const unitEl = el('span', { class: 'ep-design-hex wdp-unit', text: units.get(setting.key) ?? setting.unit })
+    valueInputs.set(setting.key, [...(valueInputs.get(setting.key) ?? []), { input, unitEl }])
     input.addEventListener('input', () => {
       const n = input.valueAsNumber
       if (!Number.isFinite(n)) return
-      const next = numberToken({ ...setting, unit }, n)
-      unit = next.unit
-      unitEl.textContent = unit
+      const next = numberToken({ ...setting, unit: units.get(setting.key) ?? setting.unit }, n)
+      units.set(setting.key, next.unit)
+      for (const other of valueInputs.get(setting.key) ?? []) {
+        if (other.input !== input) other.input.value = input.value
+        if (other.unitEl !== null) other.unitEl.textContent = next.unit
+      }
       writeSetting(setting.key, next.token)
     })
     row.append(labelEl(label), input, unitEl)
@@ -272,9 +309,13 @@ export function buildDesignPanel(deps: DesignPanelDeps): DesignPanel {
     input.type = 'text'
     input.value = setting.value
     input.spellcheck = false
+    valueInputs.set(setting.key, [...(valueInputs.get(setting.key) ?? []), { input, unitEl: null }])
     input.addEventListener('input', () => {
       const clean = sanitizeValue(input.value)
       if (clean !== input.value) input.value = clean
+      for (const other of valueInputs.get(setting.key) ?? []) {
+        if (other.input !== input) other.input.value = clean
+      }
       writeSetting(setting.key, clean)
     })
     // 書き終わったら作り直す（同じ宣言にある色の見本などの位置を最新にする）
@@ -353,19 +394,28 @@ export function buildDesignPanel(deps: DesignPanelDeps): DesignPanel {
     // （テキストバルーンで実際に起きた）。行は変えられるまま、薄くして理由を添える。
     const isMediaInEffect = (setting: Setting): boolean =>
       setting.media.every((query) => window.matchMedia(query).matches)
-    const winners = new Map<string, string>()
-    for (const r of card.rows) {
-      if (r.kind === 'css' && r.setting.media.length > 0 && isMediaInEffect(r.setting)) {
-        winners.set(`${r.setting.label}|${r.state}`, r.setting.context)
-      }
+    const winners = card.rows.filter(
+      (r): r is CssRow => r.kind === 'css' && r.setting.media.length > 0 && isMediaInEffect(r.setting),
+    )
+    /** いま効いている条件つきの行 winner が、条件なしの行 row を上書きしているか */
+    const overrides = (winner: CssRow, row: CssRow): boolean => {
+      if (winner.state !== row.state) return false
+      const w = winner.setting
+      const r = row.setting
+      if (w.label === r.label) return true
+      if (w.kind === 'color' || r.kind === 'color' || w.isVariable || r.isVariable) return false
+      // まとめ書きは個別の指定を上書きする（PCの margin:0 が スマホの margin-top:7.5% を上書き）
+      if (r.property.startsWith(`${w.property}-`)) return true
+      // 同じまとめ書きで、PC側が1つの値なら、スマホ側の「上下」「左右」などの部分も全部上書き
+      return w.property === r.property && !w.label.includes('・')
     }
     const inactiveNote = (r: RowSource): string => {
       if (r.kind !== 'css') return ''
       if (r.setting.media.length > 0) {
         return isMediaInEffect(r.setting) ? '' : 'いまのプレビューの画面幅では使われていません'
       }
-      const winner = winners.get(`${r.setting.label}|${r.state}`)
-      return winner === undefined ? '' : `いまのプレビューでは（${winner}）の値が使われています`
+      const winner = winners.find((w) => overrides(w, r))
+      return winner === undefined ? '' : `いまのプレビューでは（${winner.setting.context}）の値が使われています`
     }
 
     for (const group of GROUP_ORDER) {
@@ -393,7 +443,9 @@ export function buildDesignPanel(deps: DesignPanelDeps): DesignPanel {
 
   const render = (): void => {
     swatches = new Map()
+    valueInputs = new Map()
     currentColors.clear()
+    units.clear()
     const cards = collectCards(deps.content, deps.readCss())
     const grid = el('div', { class: 'ep-design-grid' })
     if (cards.length === 0) {
