@@ -13,15 +13,12 @@ import { Router } from 'express'
 import { getState, setState } from '../store/store.ts'
 import { errorEnvelope } from '../lib/envelope.ts'
 import { makeUid } from '../store/ids.ts'
+import { freshUid } from '../store/actions-shared.ts'
 import { currentTeamId } from '../store/current-team.ts'
 import { MEDIA_TEMPLATES, findMediaTemplate, type MediaField } from '../store/media-templates.ts'
 import type { Product, ProductSearchForm, State } from '../store/types.ts'
 
 export const mediaRouter: Router = Router()
-
-function nextSeq(list: readonly { id: number }[]): number {
-  return list.length + 1
-}
 
 /** テンプレート一覧（画面のプルダウン） */
 mediaRouter.get('/teams/product_search_forms/templates', (_req, res) => {
@@ -49,7 +46,7 @@ mediaRouter.post('/teams/product_search_forms', (req, res) => {
     const auto = `${template.name} ${s.productSearchForms.length + 1}`
     created = {
       id,
-      uid: makeUid('productSearchForm', nextSeq(s.productSearchForms)),
+      uid: freshUid(s.productSearchForms, id, (n) => makeUid('productSearchForm', n)),
       team_id: currentTeamId(s),
       name: typed === '' ? auto : typed,
       keyword: '',
@@ -130,7 +127,7 @@ mediaRouter.post('/teams/products', (req, res) => {
     const id = s.nextId
     created = {
       id,
-      uid: makeUid('product', nextSeq(s.products)),
+      uid: freshUid(s.products, id, (n) => makeUid('product', n)),
       team_id: currentTeamId(s),
       ...productFrom(body, {}),
     }
@@ -235,17 +232,18 @@ mediaRouter.post('/teams/products/import', (req, res) => {
     return
   }
   setState((s: State) => {
-    let id = s.nextId
-    const added = rows.map((r, i) => {
+    // 取り込む行ごとに、id と同じ通し番号で uid を付ける（件数から作ると、削除のあとに既存と重なる）
+    const added = rows.reduce<Product[]>((list, r, i) => {
+      const id = s.nextId + i
       const product: Product = {
-        id: id++,
-        uid: makeUid('product', s.products.length + i + 1),
+        id,
+        uid: freshUid([...s.products, ...list], id, (n) => makeUid('product', n)),
         team_id: currentTeamId(s),
         ...r,
       }
-      return product
-    })
-    return { ...s, products: [...s.products, ...added], nextId: id }
+      return [...list, product]
+    }, [])
+    return { ...s, products: [...s.products, ...added], nextId: s.nextId + rows.length }
   })
   res.json({ imported: rows.length })
 })

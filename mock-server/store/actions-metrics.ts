@@ -8,7 +8,7 @@ import { currentTeamId } from './current-team.ts'
 import { makeUid } from './ids.ts'
 import { toDateKey } from './metrics.ts'
 import type { Conversion, State, Task, TaskNotify, TaskReportSpan, TaskSchedule } from './types.ts'
-import { nextSeq, nowTs } from './actions-shared.ts'
+import { nowTs, freshUid } from './actions-shared.ts'
 
 // ── タスク ───────────────────────────────────────────────
 export function createTask(
@@ -26,7 +26,7 @@ export function createTask(
   const id = state.nextId
   const task: Task = {
     id,
-    uid: makeUid('task', nextSeq(state.tasks)),
+    uid: freshUid(state.tasks, id, (n) => makeUid('task', n)),
     team_id: currentTeamId(state),
     title: input.title,
     assignee_member_id: input.assignee_member_id,
@@ -65,7 +65,7 @@ export function recordConversion(
   const id = state.nextId
   const conversion: Conversion = {
     id,
-    uid: makeUid('conversion', nextSeq(state.conversions)),
+    uid: freshUid(state.conversions, id, (n) => makeUid('conversion', n)),
     ab_test_uid: input.ab_test_uid,
     version_uid: input.version_uid,
     media_id: input.media_id,

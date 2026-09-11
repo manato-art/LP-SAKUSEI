@@ -5,7 +5,7 @@
  * 関連エンティティと非正規化カウントの整合をここで一括して保つ。
  */
 import { hashString } from './rng.ts'
-import { nextSeq, nowTs } from './actions-shared.ts'
+import { nextSeq, nowTs, freshUid } from './actions-shared.ts'
 
 // 分割したモジュールを、今までと同じ入口から使えるように再export する
 // （取り込み側は `store/actions.ts` のままでよい）
@@ -45,7 +45,7 @@ export function createFolder(
   const folder: Folder = {
     id,
     team_id: team?.id ?? 1,
-    uid: makeUid('folder', nextSeq(state.folders)),
+    uid: freshUid(state.folders, id, (n) => makeUid('folder', n)),
     name: input.name,
     parent_id: input.parent_id,
     ab_tests_count: 0,
@@ -116,7 +116,7 @@ export function createAbTest(
     id: abTestId,
     team_id: team?.id ?? 1,
     // AbTestのuidは18文字の短縮ID（Folderのuuidとは別形式・実機確認）
-    uid: makeAbTestUid(nextSeq(state.abTests)),
+    uid: freshUid(state.abTests, abTestId, makeAbTestUid),
     title: input.title,
     memo: input.memo,
     media_id: input.media_id,
@@ -138,7 +138,7 @@ export function createAbTest(
   }
   const article: Article = {
     id: articleId,
-    uid: makeUid('article', nextSeq(state.articles)),
+    uid: freshUid(state.articles, articleId, (n) => makeUid('article', n)),
     ab_test_id: abTestId,
     memo: '',
     archived: false,
@@ -148,7 +148,7 @@ export function createAbTest(
   }
   const version: Version = {
     id: versionId,
-    uid: makeUid('version', nextSeq(state.versions)),
+    uid: freshUid(state.versions, versionId, (n) => makeUid('version', n)),
     article_id: articleId,
     name: generateVersionName(nextSeq(state.versions)),
     // 最初のVersionは100%で配信（追加・複製は0%）
@@ -271,7 +271,7 @@ export function addVersion(
   const id = state.nextId
   const version: Version = {
     id,
-    uid: makeUid('version', nextSeq(state.versions)),
+    uid: freshUid(state.versions, id, (n) => makeUid('version', n)),
     article_id: article.id,
     name: generateVersionName(state.versions.length + 1),
     distribution_ratio: 0,
@@ -307,7 +307,7 @@ export function duplicateVersion(
   const copy: Version = {
     ...source,
     id,
-    uid: makeUid('version', nextSeq(state.versions)),
+    uid: freshUid(state.versions, id, (n) => makeUid('version', n)),
     name: generateVersionName(state.versions.length + 1),
     distribution_ratio: 0,
     is_control: false,
@@ -452,7 +452,7 @@ export function addRedirectPage(
   if (abTest === undefined) return { state, page: null }
   const page: RedirectPage = {
     id: state.nextId,
-    uid: makeUid('redirectPage', nextSeq(state.redirectPages)),
+    uid: freshUid(state.redirectPages, state.nextId, (n) => makeUid('redirectPage', n)),
     ab_test_id: abTest.id,
     name: '中間ページ名なし',
     url: '',
@@ -516,7 +516,7 @@ export function addArticle(
   const versionId = state.nextId + 1
   const article: Article = {
     id: articleId,
-    uid: makeUid('article', nextSeq(state.articles)),
+    uid: freshUid(state.articles, articleId, (n) => makeUid('article', n)),
     ab_test_id: abTest.id,
     memo: opts?.name ?? '',
     archived: false,
@@ -526,7 +526,7 @@ export function addArticle(
   }
   const version: Version = {
     id: versionId,
-    uid: makeUid('version', nextSeq(state.versions)),
+    uid: freshUid(state.versions, versionId, (n) => makeUid('version', n)),
     article_id: articleId,
     name: generateVersionName(nextSeq(state.versions)),
     // 記事の最初のVersionは100%で配信（追加・複製は0%）
@@ -569,7 +569,7 @@ export function duplicateVersionToArticle(
   const copy: Version = {
     ...source,
     id: state.nextId,
-    uid: makeUid('version', nextSeq(state.versions)),
+    uid: freshUid(state.versions, state.nextId, (n) => makeUid('version', n)),
     article_id: targetArticle.id,
     name: `${source.name}の複製`,
     distribution_ratio: 0,
