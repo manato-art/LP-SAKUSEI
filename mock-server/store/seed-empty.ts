@@ -111,6 +111,9 @@ export function createEmptyState(): State {
     introductions: INTRODUCTION_CATALOG,
 
     htmlTags: [],
+    // Version設定（記事ごとの文字サイズ・色・背景など。store/master-style-sheet.ts が State に足したキー）。
+    // 保存データの読み込みは「空シードにあるキー」だけを残すので、ここに無いと再起動のたびに消えていた（2026-09-11）
+    masterStyleSheets: [],
   nextId: 100,
   }
 }
