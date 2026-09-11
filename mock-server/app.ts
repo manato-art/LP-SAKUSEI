@@ -80,8 +80,12 @@ export function createApp(): Express {
   // 計測ビーコンは sendBeacon で送られる。クロスオリジンだと application/json は
   // プリフライトが要って送れないため text/plain で来る。中身はJSONなのでここで受ける。
   app.use(express.text({ type: 'text/plain', limit: '1mb' }))
-  app.use(resetMiddleware)
-  app.use(mockStateMiddleware)
+  // 開発・テスト用の口（`?reset=1` で全データを空に・`?mock_state` でわざとエラー/遅延）は本番では載せない。
+  // 本番に残っていたため、URLに ?reset=1 を付けるだけでログインなしで全データが消えた（2026-09-11 全体監査）。
+  if (SERVE_DIST === undefined) {
+    app.use(resetMiddleware)
+    app.use(mockStateMiddleware)
+  }
 
   // ── 採取シンク（隔離ディレクトリへ直接書き出す・§5-1[1]）──
   // 本番配信モードでは載せない。公開サーバーに書き込み口を残さないため。
@@ -93,15 +97,23 @@ export function createApp(): Express {
   // 最近のエラーを保持する（デバッグ用・最大20件）
   const recentErrors: { time: string; method: string; url: string; message: string; type?: string; stack?: string }[] = []
 
-  // 診断エンドポイント: 最近のサーバーエラーを返す（SPAのcatch-allより前に登録する）
-  app.get('/__mock/errors', (_req, res) => {
+  // 診断エンドポイント: 最近のサーバーエラーを返す（SPAのcatch-allより前に登録する）。
+  // URLやスタックトレースが載るので、本番ではログインした人だけに見せる（未ログインには存在ごと隠す）。
+  app.get('/__mock/errors', (req, res) => {
+    if (SERVE_DIST !== undefined && !isAdminAuthenticated(req)) {
+      res.status(404).json(errorEnvelope('not_found', 'エンドポイントが見つかりません。'))
+      return
+    }
     res.json({ errors: recentErrors, count: recentErrors.length })
   })
 
-  app.post('/__mock/reset', (_req, res) => {
-    resetAll()
-    res.json({ ok: true })
-  })
+  // 全データを空に戻す（開発・テスト用）。本番では載せない
+  if (SERVE_DIST === undefined) {
+    app.post('/__mock/reset', (_req, res) => {
+      resetAll()
+      res.json({ ok: true })
+    })
+  }
 
   // 管理SPAのパスワード保護（ログイン/確認/ログアウト＋ADMIN_PATHでのログイン画面表示）。
   // 認証不要（これ自体が認証の入口）。

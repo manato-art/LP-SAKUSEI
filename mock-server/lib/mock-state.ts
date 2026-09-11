@@ -3,8 +3,10 @@
  * `?mock_state=empty|loading|error|success` を任意エンドポイントに付けて
  * 空配列 / 意図的遅延 / エラー封筒 / 正常 を返し分ける。既定は success。
  * フロントにデバッグ用の状態切替UIは出さない（URL直叩き or 開発用パネルのみ）。
+ * 開発・テストだけで使う。本番では常に success（誰でもページをエラーや空にできてしまうため）。
  */
 import type { NextFunction, Request, Response } from 'express'
+import { SERVE_DIST } from '../config.ts'
 import { errorEnvelope } from './envelope.ts'
 
 export const MOCK_STATES = ['success', 'empty', 'loading', 'error'] as const
@@ -14,6 +16,7 @@ export type MockState = (typeof MOCK_STATES)[number]
 export const LOADING_DELAY_MS = 2000
 
 export function readMockState(req: Request): MockState {
+  if (SERVE_DIST !== undefined) return 'success'
   const raw = req.query['mock_state']
   const value = typeof raw === 'string' ? raw : undefined
   return MOCK_STATES.includes(value as MockState) ? (value as MockState) : 'success'
