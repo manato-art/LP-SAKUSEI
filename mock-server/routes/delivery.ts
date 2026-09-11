@@ -26,6 +26,7 @@ import { LP_BASE_CSS } from '../../src/app/lp-base-css.ts'
 import { WIDGET_RESET_CSS, neutralizeWidgetStyles } from '../../src/shared/sb-preview-css.ts'
 import { LP_FONTS_URL, externalWidgetLibs } from '../../src/shared/lp-page-assets.ts'
 import { buildLpLinkParamsScript } from './lp-link-params-script.ts'
+import { splitHeaderImage } from '../../src/shared/header-image.ts'
 import { masterStyleIframeCss } from '../../src/app/master-style.ts'
 import { withAutoplayVideos } from '../../src/app/lp-video.ts'
 import { buildAnimCss, buildAnimRuntimeScript } from '../../src/app/anim/anim-presets.ts'
@@ -311,7 +312,9 @@ deliveryRouter.get('/lp/:uid', (req, res) => {
   const affilicodeOn = bulkTags.some((b) => b.asp === 'AFFILICODE')
   // 訪問者の目印（本体と同じく、LPを見るたびに新しいID＝Cookie _sb_tu）。リンクの squadbeyond_uid にも使う
   const visitorId = randomUUID()
-  const versionHtml = affilicodeOn ? appendAffilicodeParams(version.html, article.uid, visitorId) : version.html
+  // ヘッダー画像（本文の先頭の `<!--header-image:…-->`）は、プレビューと同じく本文の上の画像にする
+  const { headerHtml, body: versionBody } = splitHeaderImage(version.html)
+  const versionHtml = affilicodeOn ? appendAffilicodeParams(versionBody, article.uid, visitorId) : versionBody
   // Widget に紛れ込んだ SquadBeyond のプレビュー用CSSが、ページの背景・余白・高さを上書きしないようにする。
   // 保存データは書き換えず、ここで取り除く。Widget の見た目に要る指定は Widget の中だけに効かせて置く。
   const lp = neutralizeWidgetStyles(versionHtml)
@@ -342,7 +345,7 @@ deliveryRouter.get('/lp/:uid', (req, res) => {
     `${LP_BASE_CSS}${version.css}${styleCss}${buildAnimCss()}${lp.hasWidget ? WIDGET_RESET_CSS : ''}</style>` +
     externalWidgetLibs(lp.html) +
     headTags +
-    `</head><body>${withAutoplayVideos(lp.html)}${bodyTags}${popupHtml}${followHtml}` +
+    `</head><body>${headerHtml}${withAutoplayVideos(lp.html)}${bodyTags}${popupHtml}${followHtml}` +
     IMAGE_LINK_SCRIPT +
     // 本文のリンクに、本体と同じく LP のパラメーター・訪問者ID・記事uid を付ける（中間ページへは article_url も）
     buildLpLinkParamsScript(article.uid) +
@@ -699,12 +702,8 @@ deliveryRouter.get('/preview/:versionUid', (req, res) => {
   // 記事設定（Version設定）をLPへ反映する
   const styleCss = masterStyleIframeCss(getMasterStyleSheet(state, article.uid))
 
-  // ヘッダー画像をHTMLコメントから復元
-  const headerMatch = version.html.match(/^<!--header-image:(.+?)-->/)
-  const headerHtml = headerMatch !== null
-    ? `<img src="${escapeHtml(headerMatch[1] ?? '')}" style="display:block;width:100%;object-fit:cover;position:sticky;top:0;z-index:10;max-height:200px" alt="ヘッダー画像">`
-    : ''
-  const bodyHtml = headerMatch !== null ? version.html.slice(headerMatch[0].length) : version.html
+  // ヘッダー画像をHTMLコメントから復元（公開LPと同じタグ）
+  const { headerHtml, body: bodyHtml } = splitHeaderImage(version.html)
   // 公開LPと同じく、Widget に紛れ込んだプレビュー用CSSがページ全体を上書きしないようにする
   const lp = neutralizeWidgetStyles(bodyHtml)
 

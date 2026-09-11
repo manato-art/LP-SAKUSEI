@@ -61,3 +61,11 @@ describe('ヒートマップの列は、自前配信のLPも iframe（枠の幅�
     expect(source).not.toMatch(/sandbox['"],\s*['"][^'"]*allow-scripts/)
   })
 })
+
+describe('ヘッダー画像（公開LPと同じ・2026-09-11）', () => {
+  it('本文の先頭のヘッダー画像を、本文の上に画像として出す', () => {
+    const doc = buildHeatmapLpDocument({ html: '<!--header-image:/uploads/h.png--><p>本文</p>', css: '', styleCss: '' })
+    expect(doc).not.toContain('<!--header-image:')
+    expect(doc).toMatch(/<body><img src="\/uploads\/h\.png" [^>]*alt="ヘッダー画像"><p>本文<\/p><\/body>/)
+  })
+})
