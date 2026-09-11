@@ -13,10 +13,10 @@
  *   - SquadBeyond のプレビュー用CSSを除く
  *   - 普通の規則は scope の中だけを指すようにする（`body .x` の `body` は外す）
  *   - `:root` / `html` / `body` そのものへの指定は、CSS変数だけを scope に移す（背景・高さ等は移さない）
- *   - @media は LPの幅（620px）で判定し直す（本人指定）。枠の幅が変わる所（ヒートマップのスマホ／PC）はその幅で判定する
+ *   - @media は LPの幅（620px）で判定し直す（本人指定）
  */
 import { stripSbPreviewCss, widgetResetCss } from '../../shared/sb-preview-css.ts'
-import { LP_WIDTH, mediaAtLpWidth } from './lp-width-media.ts'
+import { mediaAtLpWidth } from './lp-width-media.ts'
 
 export interface ScopedCss {
   /** @import（シートの先頭にしか書けないので分けて返す） */
@@ -90,22 +90,22 @@ export function scopeStyleRule(rule: StyleRuleLike, scope: string): string {
 }
 
 /** CSSOM の規則を scope の中だけに効く文字にする（@import は先頭に集めるので呼び出し側で扱う） */
-function serializeRules(rules: CSSRuleList, scope: string, width: number): string {
+function serializeRules(rules: CSSRuleList, scope: string): string {
   let out = ''
   for (const rule of Array.from(rules)) {
     if (rule instanceof CSSStyleRule) {
       out += scopeStyleRule(rule, scope)
     } else if (rule instanceof CSSMediaRule) {
       // 幅の条件は LPの幅で決め、外れる中身は捨てる。決められない条件だけ @media に残す
-      const verdict = mediaAtLpWidth(rule.media.mediaText, width)
+      const verdict = mediaAtLpWidth(rule.media.mediaText)
       if (!verdict.applies) continue
-      const inner = serializeRules(rule.cssRules, scope, width)
+      const inner = serializeRules(rule.cssRules, scope)
       out += verdict.rest === '' ? inner : `@media ${verdict.rest}{${inner}}`
     } else if (rule instanceof CSSSupportsRule || rule instanceof CSSContainerRule) {
       // @supports / @container: 条件はそのまま（@container は置いた場所の大きさで決まる）、中身だけ範囲をつける。
       // ライブラリにも @container を使う Widget がある（サイトフッター・ポイント説明）。
       const prelude = rule.cssText.slice(0, rule.cssText.indexOf('{')).trim()
-      out += `${prelude}{${serializeRules(rule.cssRules, scope, width)}}`
+      out += `${prelude}{${serializeRules(rule.cssRules, scope)}}`
     } else if (!(rule instanceof CSSImportRule)) {
       // @keyframes / @font-face など: 範囲をつけるものが無いのでそのまま
       out += rule.cssText
@@ -114,8 +114,8 @@ function serializeRules(rules: CSSRuleList, scope: string, width: number): strin
   return out
 }
 
-/** Widget の CSS を scope の中だけに効く形にする（SquadBeyond のプレビュー用CSSは除き、@media は width で判定） */
-export function scopeWidgetCss(css: string, scope: string, width = LP_WIDTH): ScopedCss {
+/** Widget の CSS を scope の中だけに効く形にする（SquadBeyond のプレビュー用CSSは除き、@media は LPの幅で判定） */
+export function scopeWidgetCss(css: string, scope: string): ScopedCss {
   const text = stripSbPreviewCss(css)
   if (text.trim() === '') return { imports: '', rules: '' }
   const probe = document.createElement('style')
@@ -130,7 +130,7 @@ export function scopeWidgetCss(css: string, scope: string, width = LP_WIDTH): Sc
       .filter((rule) => rule instanceof CSSImportRule)
       .map((rule) => rule.cssText)
       .join('')
-    return { imports, rules: serializeRules(rules, scope, width) }
+    return { imports, rules: serializeRules(rules, scope) }
   } finally {
     probe.remove()
   }
@@ -154,30 +154,19 @@ export function widgetPreviewCss(css: string, scope: string): string {
 }
 
 /**
- * 表示するだけの写し（サムネイル・縮小プレビュー・ヒートマップのLP）の <style> を、その入れ物の中だけに効く形へ書き換える。
+ * 表示するだけの写し（サムネイル・縮小プレビュー）の <style> を、その入れ物の中だけに効く形へ書き換える。
  * `root` は入れ物が何の写しか: 'widget' = Widget 1つ分の中身 / 'lp' = LP の本文（Widget を含むことがある）。
- * `width` は @media を判定する画面の幅。返す関数に幅を渡すと、元の CSS から判定し直す（枠の幅が変わる所で使う）。
  * Widget があれば配信と同じ土台も、最初の <style> の頭（Widget 自身の指定より前）に置く。
  * 要素は足さない（足すと :first-child や何番目かの指定がずれる）。
  */
-export function containWidgetStyles(
-  container: HTMLElement,
-  root: 'widget' | 'lp',
-  width = LP_WIDTH,
-): (nextWidth: number) => void {
+export function containWidgetStyles(container: HTMLElement, root: 'widget' | 'lp'): void {
   const styles = Array.from(container.querySelectorAll('style'))
-  // 元の CSS を覚えておく（幅を変えるたびにここから作り直す）。プレビュー用CSSは先に除いて軽くしておく
-  const sources = styles.map((style) => stripSbPreviewCss(style.textContent ?? ''))
-  const scope = styles.length > 0 ? markStyleScope(container) : ''
+  if (styles.length === 0) return
+  const scope = markStyleScope(container)
   const hasWidget = root === 'widget' || container.querySelector('.sb-widget-block') !== null
-  const reset =
-    hasWidget && scope !== '' ? widgetResetCss(root === 'widget' ? scope : `${scope} .sb-widget-block`) : ''
-  const restyle = (atWidth: number): void => {
-    for (const [i, style] of styles.entries()) {
-      const scoped = scopeWidgetCss(sources[i] ?? '', scope, atWidth)
-      style.textContent = scoped.imports + (i === 0 ? reset : '') + scoped.rules
-    }
+  const reset = hasWidget ? widgetResetCss(root === 'widget' ? scope : `${scope} .sb-widget-block`) : ''
+  for (const [i, style] of styles.entries()) {
+    const scoped = scopeWidgetCss(style.textContent ?? '', scope)
+    style.textContent = scoped.imports + (i === 0 ? reset : '') + scoped.rules
   }
-  restyle(width)
-  return restyle
 }

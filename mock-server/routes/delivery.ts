@@ -23,6 +23,7 @@ import { toDateKey } from '../store/metrics.ts'
 import type { AbTest, Article, State } from '../store/types.ts'
 import { LP_BASE_CSS } from '../../src/app/lp-base-css.ts'
 import { WIDGET_RESET_CSS, neutralizeWidgetStyles } from '../../src/shared/sb-preview-css.ts'
+import { LP_FONTS_URL, externalWidgetLibs } from '../../src/shared/lp-page-assets.ts'
 import { masterStyleIframeCss } from '../../src/app/master-style.ts'
 import { withAutoplayVideos } from '../../src/app/lp-video.ts'
 import { buildAnimCss, buildAnimRuntimeScript } from '../../src/app/anim/anim-presets.ts'
@@ -245,30 +246,6 @@ function appendAffilicodeParams(html: string, articleUid: string): string {
   })
 }
 
-/**
- * ウィジェットが必要とする外部JSライブラリを、本文HTMLの内容から判定して <head> に読み込む。
- * 実SBのカルーセル等のウィジェットは Swiper / SmoothScroll / jQuery / GLightbox 前提で書かれており、
- * これらを読み込まないと内蔵JS（new Swiper 等）が ReferenceError で動かない。
- * 同期 <script> を head に置くことで、body内のウィジェットJSより前に定義される。
- */
-function externalWidgetLibs(html: string): string {
-  const tags: string[] = []
-  if (/jQuery\s*\(|(?:^|[^\w.$])\$\(/.test(html)) {
-    tags.push('<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>')
-  }
-  if (/new Swiper|class="[^"]*\bswiper|\bswiper-(?:container|wrapper|slide)/i.test(html)) {
-    tags.push('<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css">')
-    tags.push('<script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>')
-  }
-  if (/new SmoothScroll|SmoothScroll\s*\(/.test(html)) {
-    tags.push('<script src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.polyfills.min.js"></script>')
-  }
-  if (/GLightbox|glightbox/i.test(html)) {
-    tags.push('<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/glightbox/dist/css/glightbox.min.css">')
-    tags.push('<script src="https://cdn.jsdelivr.net/npm/glightbox/dist/js/glightbox.min.js"></script>')
-  }
-  return tags.join('')
-}
 
 
 
@@ -352,7 +329,7 @@ deliveryRouter.get('/lp/:uid', (req, res) => {
     `<meta name="viewport" content="width=device-width, initial-scale=1">` +
     robotsMeta +
     `<title>${escapeHtml(abTest.page_title || abTest.title)}</title>` +
-    `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Noto+Serif+JP:wght@400;700&family=Shippori+Mincho:wght@400;700&family=M+PLUS+Rounded+1c:wght@400;700&family=Zen+Maru+Gothic:wght@400;700&family=Kosugi+Maru&family=Dela+Gothic+One&family=RocknRoll+One&family=Reggae+One&family=Yuji+Syuku&family=Hachi+Maru+Pop&family=Yomogi&display=swap">` +
+    `<link rel="stylesheet" href="${LP_FONTS_URL}">` +
     `<style>body{margin:0 auto;max-width:${DELIVERY_WIDTH}px;font-family:"Hiragino Sans",sans-serif;background:#fff}` +
     `${LP_BASE_CSS}${version.css}${styleCss}${buildAnimCss()}${lp.hasWidget ? WIDGET_RESET_CSS : ''}</style>` +
     externalWidgetLibs(lp.html) +
@@ -737,7 +714,7 @@ deliveryRouter.get('/preview/:versionUid', (req, res) => {
     `<meta name="viewport" content="width=device-width, initial-scale=1">` +
     `<meta name="robots" content="noindex,nofollow">` +
     `<title>${title}</title>` +
-    `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Noto+Serif+JP:wght@400;700&family=Shippori+Mincho:wght@400;700&family=M+PLUS+Rounded+1c:wght@400;700&family=Zen+Maru+Gothic:wght@400;700&family=Kosugi+Maru&family=Dela+Gothic+One&family=RocknRoll+One&family=Reggae+One&family=Yuji+Syuku&family=Hachi+Maru+Pop&family=Yomogi&display=swap">` +
+    `<link rel="stylesheet" href="${LP_FONTS_URL}">` +
     `<style>body{margin:0 auto;max-width:${DELIVERY_WIDTH}px;font-family:"Hiragino Sans",sans-serif;background:#fff}` +
     `${LP_BASE_CSS}${version.css}${styleCss}` +
     `.preview-banner{position:sticky;top:0;z-index:99999;background:#D32F2F;` +

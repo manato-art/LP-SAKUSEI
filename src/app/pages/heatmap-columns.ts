@@ -13,7 +13,7 @@
  * まだ計測が無いバンドは色を塗らず「-」にする（0と「データ無し」を混ぜない）。
  */
 import type { HeatmapVersionStat } from '../api.ts'
-import { containWidgetStyles } from '../panels/widget-style-scope.ts'
+import { buildHeatmapLpDocument } from './heatmap-lp-document.ts'
 
 /** 列の指標（左のチェックボックスに対応）。実物は指標ごとに配色が違う。 */
 export type HeatmapMetric = 'exit' | 'click' | 'cv'
@@ -89,7 +89,6 @@ function injectStyles(): void {
     .hm-canvas { position:relative; width:375px; height:667px; overflow:hidden; }
     .hm-canvas { position:relative; }
     .hm-lp { transform-origin:top left; }
-    .hm-lp img { max-width:100%; }
     .hm-overlay { position:sticky; top:0; height:0; z-index:5; }
     /* 熱の色は1枚のグラデーションで敷く（帯ごとに矩形を置くと段差が出る） */
     /* 集計はバンド単位なので停止点の間に段差が出る。ぼかして自然につなぐ。
@@ -180,6 +179,8 @@ export interface ColumnSpec {
   metric: HeatmapMetric
   /** LPの本文HTML（プレビュー用） */
   html: string
+  /** Version の CSS（公開LPと同じ見た目で敷くため） */
+  css: string
   /** レポートの指標（ヘッダーに出す） */
   pv: number
   ctr: number | null
@@ -199,6 +200,8 @@ export interface ColumnDeps {
    * これがあるときは実LPを背景に敷く。取得できていなければ null。
    */
   externalHtml: string | null
+  /** 記事設定（Version設定）の CSS（自前配信のLPを公開LPと同じ見た目で敷くため） */
+  styleCss: string
   range: { startDate: string; endDate: string }
   /** 全ページ表示（true）か スクロール表示（false） */
   fullPage: boolean
@@ -262,7 +265,7 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
     b.addEventListener('click', () => {
       sp.classList.toggle('on', b === sp)
       pc.classList.toggle('on', b === pc)
-      setLpWidth(b === pc ? PC_WIDTH : SP_WIDTH)
+      lp.style.width = `${b === pc ? PC_WIDTH : SP_WIDTH}px`
       applyScale()
     })
   }
@@ -288,42 +291,27 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
   canvas.className = 'hm-canvas'
   // 上下へ広げた熱の層がLPの外へはみ出さないようにする
   canvas.style.overflow = 'hidden'
-  // 背景。外部LPは実LPを iframe で敷く（自前配信は従来どおりVersionのHTML）。
-  // iframe にしているのは、他所のLPのCSSがこの画面に漏れ出さないようにするためと、
-  // sandbox でスクリプトを**実行させない**ため（サーバー側の除去と合わせて二重の防御）。
+  // 背景の LP は iframe で敷く（外部LPは取得した実HTML、自前配信は Version の HTML を公開LPと同じ土台で包んだもの）。
+  // iframe にしているのは:
+  //   - 枠の幅がそのまま画面の幅になり、@media の切り替えも vw で決めた大きさもスマホ／PCの実機と同じになるため
+  //     （以前は自前配信のLPをこの画面に直接置いていて、パソコンの画面の広さで決まっていた）
+  //   - LP の CSS がこの画面に漏れ出さないようにするため
+  //   - sandbox でスクリプトを**実行させない**ため（計測タグも動かない。外部LPはサーバー側の除去と合わせて二重の防御）
   // 指示: 「LPの画面に関しては元のLPの画面そのまま使う」。
   // 実LPを取得できているなら、どの列でもそれを背景にする（サンプルLPでは位置が合わない）。
-  const useExternal = deps.externalHtml !== null
-  const lp: HTMLElement = useExternal
-    ? document.createElement('iframe')
-    : document.createElement('div')
+  const lp = document.createElement('iframe')
   lp.className = 'hm-lp'
   // スマホ枠いっぱい。縮小はせず、枠の中だけをスクロールさせる（実物と同じ）。
   lp.style.width = `${SP_WIDTH}px`
   lp.style.height = '667px'
-  /** 自前LPの Widget の @media を枠の幅で判定し直す（外部LPの iframe はブラウザが枠の幅で判定するので要らない） */
-  let restyleWidgets: ((width: number) => void) | null = null
-  if (useExternal) {
-    const frame = lp as HTMLIFrameElement
-    // allow-scripts は与えない＝中のJSは動かない。allow-same-origin は
-    // 高さ測定とスクロール操作のため。
-    // （危険なのは allow-scripts と allow-same-origin の**同時**指定で、これは該当しない）
-    frame.setAttribute('sandbox', 'allow-same-origin')
-    frame.setAttribute('referrerpolicy', 'no-referrer')
-    frame.style.border = '0'
-    frame.srcdoc = deps.externalHtml as string
-  } else {
-    lp.style.overflow = 'auto'
-    lp.innerHTML = spec.html
-    // Widget の <style> はこの列の LP の中だけに効かせ（ヒートマップの画面や隣の列に漏らさない）、
-    // @media は枠の幅で判定する（ブラウザの幅だと、PCで開いたときスマホ枠にPC用の見た目が出ていた）。
-    restyleWidgets = containWidgetStyles(lp, 'lp', SP_WIDTH)
-  }
-  /** 枠の幅をスマホ／PCに切り替える。自前LPの Widget は、@media をその幅で判定し直す */
-  const setLpWidth = (width: number): void => {
-    lp.style.width = `${width}px`
-    restyleWidgets?.(width)
-  }
+  lp.style.border = '0'
+  // allow-scripts は与えない＝中のJSは動かない。allow-same-origin は
+  // 高さ測定とスクロール操作のため。
+  // （危険なのは allow-scripts と allow-same-origin の**同時**指定で、これは該当しない）
+  lp.setAttribute('sandbox', 'allow-same-origin')
+  lp.setAttribute('referrerpolicy', 'no-referrer')
+  lp.srcdoc =
+    deps.externalHtml ?? buildHeatmapLpDocument({ html: spec.html, css: spec.css, styleCss: deps.styleCss })
   const overlay = document.createElement('div')
   overlay.className = 'hm-overlay'
   canvas.append(lp)
@@ -332,29 +320,21 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
   // sticky で列の上端に貼り付けておく（高さ0なので場所は取らない）。
   body.append(overlay, canvas)
 
-  /** LPの中身をスクロールさせる要素（iframe なら中の window、そうでなければ自身）。 */
+  /** LPの中身をスクロールさせる（iframe の中の window）。 */
   const lpScroller = (): { top: number; max: number; to: (y: number) => void } => {
-    if (useExternal) {
-      const win = (lp as HTMLIFrameElement).contentWindow
-      const doc = (lp as HTMLIFrameElement).contentDocument
-      const h = doc?.documentElement.scrollHeight ?? 0
-      return {
-        top: win?.scrollY ?? 0,
-        max: Math.max(0, h - 667),
-        to: (y) => win?.scrollTo({ top: y, behavior: 'smooth' }),
-      }
-    }
+    const win = lp.contentWindow
+    const h = lp.contentDocument?.documentElement.scrollHeight ?? 0
     return {
-      top: lp.scrollTop,
-      max: Math.max(0, lp.scrollHeight - lp.clientHeight),
-      to: (y) => lp.scrollTo({ top: y, behavior: 'smooth' }),
+      top: win?.scrollY ?? 0,
+      max: Math.max(0, h - 667),
+      to: (y) => win?.scrollTo({ top: y, behavior: 'smooth' }),
     }
   }
   // 縮小はしない（実物どおり等倍のスマホ枠）。読み込み後に描き直すだけ。
   const applyScale = (): void => {
     /* 等倍表示なので寸法計算は不要。resize/読み込み時の再描画のフックとして残す。 */
   }
-  if (useExternal) lp.addEventListener('load', () => drawOverlay())
+  lp.addEventListener('load', () => drawOverlay())
 
   /**
    * 実物の到達ラインは **5%刻みの21行**（0%,5%,…,100%）で、行の位置はLPの高さと無関係に

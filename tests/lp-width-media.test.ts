@@ -50,14 +50,3 @@ describe('@media を LPの幅（620px）で判定する', () => {
     })
   })
 })
-
-describe('幅を渡すと、その幅の画面として判定する（ヒートマップのスマホ／PCの枠）', () => {
-  it.each([
-    ['screen and (min-width: 768px)', 375, { applies: false, rest: '' }],
-    ['screen and (min-width: 768px)', 980, { applies: true, rest: '' }],
-    ['(max-width: 767px)', 375, { applies: true, rest: '' }],
-    ['(max-width: 767px)', 980, { applies: false, rest: '' }],
-  ])('%s を幅 %ipx で', (media, width, expected) => {
-    expect(mediaAtLpWidth(media, width)).toEqual(expected)
-  })
-})

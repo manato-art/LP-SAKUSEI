@@ -104,16 +104,6 @@ describe('Widget／LP の写しを画面に置く箇所は、CSS を入れ物の
     expect(lines.slice(at + 1, at + 4).join('\n')).toContain(contain)
   })
 
-  it('ヒートマップの自前LPは、スマホ／PCの枠の幅で @media を判定し直す（切り替えるたびに作り直す）', () => {
-    const source = readFileSync('src/app/pages/heatmap-columns.ts', 'utf8')
-    const lines = source.split('\n')
-    const at = lines.findIndex((line) => line.includes('lp.innerHTML = spec.html'))
-    expect(at, 'lp.innerHTML = spec.html が見つからない').toBeGreaterThanOrEqual(0)
-    expect(lines.slice(at + 1, at + 4).join('\n')).toContain("containWidgetStyles(lp, 'lp', SP_WIDTH)")
-    expect(source).toContain('setLpWidth(b === pc ? PC_WIDTH : SP_WIDTH)')
-    expect(source).toContain('restyleWidgets?.(width)')
-  })
-
   it('Widget編集のプレビューは入れ物に目印を付け、その中だけに効く CSS を当てる', () => {
     const source = readFileSync('src/app/panels/widget-visual-editor.ts', 'utf8')
     expect(source).toContain('markStyleScope(contentDiv)')

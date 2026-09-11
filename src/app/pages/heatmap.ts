@@ -22,6 +22,7 @@ import {
 import { defaultRange, toRangeQuery, type DateRange } from './report-period.ts'
 import { sortVersions, type HeatmapSortKey } from './heatmap-sort.ts'
 import { renderHeatmapColumns, type ColumnSpec, type HeatmapMetric } from './heatmap-columns.ts'
+import { fetchHeatmapLpSources, type HeatmapLpSources } from './heatmap-lp-sources.ts'
 import { wireAbTestTabs, setupHorizTabs, setupBreadcrumb } from './tab-nav.ts'
 
 export async function renderHeatmap(
@@ -60,7 +61,8 @@ export async function renderHeatmap(
   // 実物は「Version × 指標(離脱/CLICK/CV)」でチェックした数だけ右に列が増える。
   // 選択状態をここで持ち、変わるたびに列を組み直す。
   const selection = new Set<string>()
-  const versionHtml = new Map<string, string>()
+  /** LPの材料（本文・Version の CSS・記事設定）。最初にチェックされたときに取る */
+  let lpSources: HeatmapLpSources | null = null
   const columnHost = ensureColumnHost(root)
 
   /**
@@ -90,7 +92,8 @@ export async function renderHeatmap(
         versionUid,
         versionName: row.name,
         metric,
-        html: versionHtml.get(versionUid) ?? '',
+        html: lpSources?.versions.get(versionUid)?.html ?? '',
+        css: lpSources?.versions.get(versionUid)?.css ?? '',
         pv: row.pv,
         ctr: row.ctr,
         cv: row.cv,
@@ -100,20 +103,17 @@ export async function renderHeatmap(
       stats: stats.versions,
       totals: { pv: report.totals.pv, ctr: report.totals.ctr, cv: report.totals.cv },
       externalHtml: externalPage?.html ?? null,
+      styleCss: lpSources?.styleCss ?? '',
       range: { startDate: range.startDate, endDate: range.endDate },
       fullPage: root.querySelector('[class*="_selectHeightType_"] [class*="_active_"]') !== null,
     })
   }
 
-  // LP本文はプレビューに要るので、選択されたVersionのぶんだけ取りに行く
-  const ensureHtml = async (versionUid: string): Promise<void> => {
-    if (versionHtml.has(versionUid)) return
+  // LPの本文と見た目（Version の CSS・記事設定）はプレビューに要るので、チェックされたときに取りに行く
+  const ensureLpSources = async (): Promise<void> => {
+    if (lpSources !== null) return
     try {
-      const article = await api.articles(abTestUid)
-      const first = article.articles[0]
-      if (first === undefined) return
-      const { versions } = await api.versions(first.uid)
-      for (const v of versions) versionHtml.set(v.uid, v.html)
+      lpSources = await fetchHeatmapLpSources(abTestUid)
     } catch {
       /* 取れなければプレビュー無しで帯だけ出す */
     }
@@ -123,7 +123,7 @@ export async function renderHeatmap(
     const key = `${versionUid}|${metric}`
     if (on) selection.add(key)
     else selection.delete(key)
-    void ensureHtml(versionUid).then(rebuild)
+    void ensureLpSources().then(rebuild)
   })
   // 開いた直後は何もチェックされておらず右側が空になる。ユーザーからは
   // 「反映されていない／壊れている」に見えるので、実測データが一番多い行を既定で開く。

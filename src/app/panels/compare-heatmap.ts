@@ -11,6 +11,7 @@
 import { api, type HeatmapVersionStat } from '../api.ts'
 import { defaultRange, toRangeQuery } from '../pages/report-period.ts'
 import { renderHeatmapColumns, type ColumnSpec } from '../pages/heatmap-columns.ts'
+import { fetchHeatmapLpSources, type HeatmapLpSources } from '../pages/heatmap-lp-sources.ts'
 
 export interface CompareHeatmapDeps {
   abTestUid: string
@@ -42,16 +43,20 @@ export async function renderCompareHeatmap(
   let stats: readonly HeatmapVersionStat[]
   let report: Awaited<ReturnType<typeof api.report>>
   let externalHtml: string | null
+  let lpSources: HeatmapLpSources
   try {
-    const [s, r, ext] = await Promise.all([
+    const [s, r, ext, sources] = await Promise.all([
       api.heatmapStats(deps.abTestUid, query),
       api.report(deps.abTestUid, query),
       // 外部LPの実HTML。自前配信や未計測では404が正常なので、失敗しても止めない。
       api.externalPage(deps.abTestUid).catch(() => null),
+      // 公開LPと同じ見た目で敷くための Version の CSS と記事設定
+      fetchHeatmapLpSources(deps.abTestUid),
     ])
     stats = s.versions
     report = r
     externalHtml = ext?.html ?? null
+    lpSources = sources
   } catch {
     message(container, 'ヒートマップを読み込めませんでした。\n時間をおいて開き直してください。')
     return
@@ -77,6 +82,7 @@ export async function renderCompareHeatmap(
     versionName: row?.name ?? '編集中のVersion',
     metric: 'exit',
     html: deps.getCurrentHtml(),
+    css: lpSources.versions.get(deps.versionUid)?.css ?? '',
     pv: row?.pv ?? 0,
     ctr: row?.ctr ?? null,
     cv: row?.cv ?? 0,
@@ -89,6 +95,7 @@ export async function renderCompareHeatmap(
     stats,
     totals: { pv: report.totals.pv, ctr: report.totals.ctr, cv: report.totals.cv },
     externalHtml,
+    styleCss: lpSources.styleCss,
     range: { startDate: range.startDate, endDate: range.endDate },
     fullPage: false,
   })
