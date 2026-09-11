@@ -57,6 +57,24 @@ h1{font-size:18px;margin:0 0 12px}p{font-size:13px;line-height:1.9;margin:0 0 10
 .note{color:#6b7280;font-size:12px}
 </style></head><body><div class="card">${body}</div></body></html>`
 }
+/** 中間ページとして応答できないときの案内（移動はしない） */
+export function renderRedirectPageNotice(kind: 'not_found' | 'no_destination'): string {
+  const message =
+    kind === 'not_found'
+      ? { title: 'この中間ページは見つかりません', desc: '中間ページが存在しないか、削除されています。' }
+      : { title: 'リダイレクト先が設定されていません', desc: '中間ページ設定の「リダイレクト先」にURLを入力してください。' }
+  return `<!doctype html><html lang="ja"><head><meta charset="utf-8">` +
+    `<meta name="viewport" content="width=device-width, initial-scale=1">` +
+    `<title>${message.title}</title>` +
+    `<style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;` +
+    `padding:24px;font-family:"Hiragino Sans",sans-serif;background:#ECECEC}` +
+    `.card{background:#fff;border-radius:8px;padding:28px 32px;max-width:520px;text-align:center;` +
+    `box-shadow:0 1px 6px rgba(0,0,0,.12);line-height:1.9}` +
+    `.title{font-size:16px;font-weight:600;margin-bottom:8px}` +
+    `.desc{font-size:13px;color:#555}</style></head><body>` +
+    `<div class="card"><div class="title">${message.title}</div><div class="desc">${message.desc}</div></div>` +
+    `</body></html>`
+}
 /** プレビューが見つからないときの案内 */
 export function renderPreviewNotice(versionUid: string): string {
   return `<!doctype html><html lang="ja"><head><meta charset="utf-8">` +

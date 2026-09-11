@@ -32,6 +32,7 @@ import { teamsRouter } from './routes/teams.ts'
 import { usersRouter } from './routes/users.ts'
 import { versionsRouter } from './routes/versions.ts'
 import { deliveryRouter } from './routes/delivery.ts'
+import { redirectPageDeliveryRouter } from './routes/redirect-page-delivery.ts'
 import { adminAuthRouter, isAdminAuthenticated, render404Page } from './lib/admin-auth.ts'
 import { allowedEmailsRouter } from './routes/allowed-emails.ts'
 import { bulkReplaceRouter } from './routes/bulk-replace.ts'
@@ -157,6 +158,8 @@ export function createApp(): Express {
   // Slackの認可はブラウザ遷移で戻ってくるので、API認証の外に置く
   app.use(slackOauthRouter)
   app.use(deliveryRouter)
+  // 中間ページ（中間ページリンクの実体・実パス）。配信ページと同じく認証を掛けない
+  app.use(redirectPageDeliveryRouter)
 
   // ── 本番: ビルドしたフロントを配信する（開発時は Vite が担当するので無効）──
   if (SERVE_DIST !== undefined) {

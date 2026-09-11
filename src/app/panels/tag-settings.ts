@@ -80,18 +80,28 @@ function scriptFieldMarkup(field: (typeof SCRIPT_FIELDS)[number]): string {
 </div>`
 }
 
-/** 採取した実マークアップ（コードエディタ部だけ上の簡易実装に差し替え） */
-const MARKUP = `<div class="ReactModalPortal">
+/** 採取した「タグ設定」モーダルの外枠（閉じる・見出し・保存）。中身を差し替えて使う */
+function modalMarkup(title: string, contents: string): string {
+  return `<div class="ReactModalPortal">
 <div class="ReactModal__Overlay ReactModal__Overlay--after-open _overlay_11n4w_118" style="display:flex;align-items:center;justify-content:center">
 <div class="ReactModal__Content ReactModal__Content--after-open _modal_11n4w_1" tabindex="-1" role="dialog" aria-modal="true" style="max-width: 1000px;">
 <div class="_modalWrapper_11n4w_20" data-test="HtmlSettingModal-ModalWrapper">
 <div class="_modalHeader_11n4w_20">
 <div class="_left_11n4w_55"><div data-test="HtmlSettingModal-BtnCloseModal" class="_btnCnacel_1bcs1_140 sample_token_44b6d400"></div></div>
-<div class="_center_11n4w_56"><div class="_title_11n4w_70">タグ設定</div></div>
+<div class="_center_11n4w_56"><div class="_title_11n4w_70">${title}</div></div>
 <div class="_right_11n4w_57"><div data-test="HtmlSettingModal-BtnUpdateScriptTag" class="_btn_1bcs1_2 _btnDarkThemePrimary_1bcs1_78 _btnSmall_1bcs1_32 _btnAlignRight_1bcs1_53 ">保存</div></div>
 </div>
 <div class="_contents_obetg_6">
-<div class="_heading_3cs34_1">
+${contents}
+</div>
+</div>
+</div>
+</div>
+</div>`
+}
+
+/** 記事のタグ設定の中身（採取した実マークアップ。コードエディタ部だけ上の簡易実装に差し替え） */
+const ARTICLE_CONTENTS = `<div class="_heading_3cs34_1">
 <div class="_headingTitle_3cs34_7">一括タグ設定</div>
 <div class="_headingNotes_3cs34_11">一括タグ設定のタグは一括タグ設定で管理できます</div>
 </div>
@@ -118,12 +128,12 @@ const MARKUP = `<div class="ReactModalPortal">
 </div>
 </div>
 <div><div>個別設定</div></div>
-${SCRIPT_FIELDS.map(scriptFieldMarkup).join('\n')}
-</div>
-</div>
-</div>
-</div>
-</div>`
+${SCRIPT_FIELDS.map(scriptFieldMarkup).join('\n')}`
+
+const MARKUP = modalMarkup('タグ設定', ARTICLE_CONTENTS)
+
+/** 中間ページタグ設定の中身。実物の編集画面は未採取なので、同じモーダルの個別設定の2欄（JavaScript head / body）を使う */
+const REDIRECT_PAGE_CONTENTS = SCRIPT_FIELDS.map(scriptFieldMarkup).join('\n')
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
@@ -183,16 +193,59 @@ export async function openTagSettings(articleUid: string): Promise<void> {
     return
   }
 
+  const modal = mountModal(MARKUP)
+  if (modal === null) return
+  const noindex = wireNoindexToggle(modal.wrapper, setting.noindex)
+  const editors = wireScriptEditors(modal.wrapper, setting.html_tags)
+
+  modal.wrapper.querySelector<HTMLElement>(HOOK.save)?.addEventListener('click', () => {
+    void save(articleUid, modal.wrapper, noindex, editors, modal.close)
+  })
+}
+
+/**
+ * 中間ページタグ設定（中間ページ設定の「HEAD」「BODY」）を開く。
+ * 保存したタグは、その中間ページを開いたときだけ読み込まれる（mock-server/routes/redirect-page-delivery.ts）。
+ */
+export function openRedirectPageTagSettings(
+  redirectPageUid: string,
+  tags: readonly HtmlTag[],
+  focus: 'head' | 'body',
+  onSaved: () => void,
+): void {
+  const modal = mountModal(modalMarkup('中間ページタグ設定', REDIRECT_PAGE_CONTENTS))
+  if (modal === null) return
+  const editors = wireScriptEditors(modal.wrapper, tags)
+  editors.find((e) => e.property === focus)?.textarea.focus()
+
+  modal.wrapper.querySelector<HTMLElement>(HOOK.save)?.addEventListener('click', () => {
+    void submit(
+      modal.wrapper,
+      editors,
+      async () => {
+        await request<{ redirect_page: unknown }>('PATCH', `/redirect_pages/${redirectPageUid}`, {
+          html_tags: collectHtmlTags(editors),
+        })
+        onSaved()
+      },
+      { message: '中間ページタグ設定を保存しました', close: modal.close },
+    )
+  })
+}
+
+/** 採取モーダルを出し、閉じる（×・Escape）を配線する。すでに開いていれば出さない */
+function mountModal(markup: string): { wrapper: HTMLElement; close: () => void } | null {
+  if (openPortal !== null) return null
   ensureWhiteBase()
   const portal = document.createElement('div')
-  portal.innerHTML = MARKUP
+  portal.innerHTML = markup
   const node = portal.firstElementChild
-  if (node === null) return
+  if (node === null) return null
   document.body.append(node)
   openPortal = node as HTMLElement
 
   const wrapper = openPortal.querySelector<HTMLElement>(HOOK.wrapper)
-  if (wrapper === null) return
+  if (wrapper === null) return null
 
   const close = (): void => {
     openPortal?.remove()
@@ -205,13 +258,7 @@ export async function openTagSettings(articleUid: string): Promise<void> {
   document.addEventListener('keydown', onKeydown)
 
   wrapper.querySelector<HTMLElement>(HOOK.close)?.addEventListener('click', close)
-
-  const noindex = wireNoindexToggle(wrapper, setting.noindex)
-  const editors = wireScriptEditors(wrapper, setting.html_tags)
-
-  wrapper.querySelector<HTMLElement>(HOOK.save)?.addEventListener('click', () => {
-    void save(articleUid, wrapper, noindex, editors, close)
-  })
+  return { wrapper, close }
 }
 
 interface ScriptEditor {
@@ -293,29 +340,49 @@ async function save(
   editors: readonly ScriptEditor[],
   close: () => void,
 ): Promise<void> {
-  for (const editor of editors) editor.field.classList.remove(STATE_CLASS.alert)
+  await submit(
+    wrapper,
+    editors,
+    async () => {
+      await request<HtmlSettingResponse>('PUT', `/articles/${articleUid}/html_tags`, {
+        html_tags: collectHtmlTags(editors),
+        noindex: noindex.isOn(),
+      })
+    },
+    { message: 'タグ設定を保存しました', close },
+  )
+}
 
-  const html_tags: HtmlTag[] = editors
+/** 個別設定の2欄を保存する形にする（空の欄は保存しない） */
+function collectHtmlTags(editors: readonly ScriptEditor[]): HtmlTag[] {
+  return editors
     .filter((e) => e.textarea.value.trim() !== '')
     .map((e) => ({ tag: SCRIPT_TAG, document_property: e.property, body: e.textarea.value }))
+}
+
+/** 保存ボタンの「保存中…」と、失敗したときに不正な欄を赤くするところまでを共通にする */
+async function submit(
+  wrapper: HTMLElement,
+  editors: readonly ScriptEditor[],
+  send: () => Promise<void>,
+  done: { message: string; close: () => void },
+): Promise<void> {
+  for (const editor of editors) editor.field.classList.remove(STATE_CLASS.alert)
 
   const button = wrapper.querySelector<HTMLElement>(HOOK.save)
   const label = button?.textContent ?? '保存'
-  if (button !== undefined && button !== null) button.textContent = '保存中…'
+  if (button !== null) button.textContent = '保存中…'
 
   try {
-    await request<HtmlSettingResponse>('PUT', `/articles/${articleUid}/html_tags`, {
-      html_tags,
-      noindex: noindex.isOn(),
-    })
-    toast('タグ設定を保存しました')
-    close()
+    await send()
+    toast(done.message)
+    done.close()
   } catch (error) {
     // サーバーが返した code から、どちらの欄を赤くするか決める（実CSSのアラート状態）
     const code = error instanceof TagSettingsError ? error.code : 'unknown'
     const target = editors.find((e) => code === `invalid_script_${e.property}`)
     target?.field.classList.add(STATE_CLASS.alert)
     toast((error as Error).message, 'error')
-    if (button !== undefined && button !== null) button.textContent = label
+    if (button !== null) button.textContent = label
   }
 }

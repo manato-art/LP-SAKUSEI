@@ -15,6 +15,7 @@ import { api, type RedirectPage } from '../api.ts'
 import { isStale } from '../main.ts'
 import { toast } from '../ui.ts'
 import { confirmCard } from '../dialog.ts'
+import { openRedirectPageTagSettings } from '../panels/tag-settings.ts'
 import { applyBeyondTopBar, wireBeyondBack } from './beyond-topbar.ts'
 import { wireBeyondNavAnchors } from './beyond-nav.ts'
 import { applyLightTheme } from './report-dom.ts'
@@ -35,7 +36,14 @@ const HOOK = {
   copyButton: '[class*="_copy_ga7j8"]',
   linkInput: '[class*="_wrapper_ga7j8"] input[readonly]',
   deleteButton: '[class*="_destroy_1tjuv"]',
+  /** 「タグ発火条件設定」の説明（前方一致のURL例を、選んでいる中間ページのURLにする） */
+  description: '[class*="_description_1tjuv"]',
+  /** 中間ページタグ設定の「HEAD」「BODY」 */
+  tagChip: '[class*="_tagWrapper_1tjuv"] [class*="_tag_dolrq"]',
 } as const
+
+/** 採取物の「前方一致で発火させる場合 https://…」の書き出し */
+const PREFIX_MATCH_LABEL = '前方一致で発火させる場合 '
 
 export async function renderRedirectPages(
   container: HTMLElement,
@@ -145,6 +153,7 @@ async function renderList(
   wireSave(root, abTestUid, template)
   wireDelete(root, abTestUid, template)
   wireCopyLink(root)
+  wireTagChips(root, abTestUid, template)
 }
 
 /** 設定フォームを選択中の中間ページに束ねる（未選択なら空にする） */
@@ -161,11 +170,19 @@ function bindForm(root: HTMLElement, page: RedirectPage | null): void {
   if (referrer !== null) referrer.value = page?.referrer_type ?? 'version'
   root.dataset['cloneSelectedRedirect'] = page?.uid ?? ''
 
-  // 中間ページリンクをモックのURLで更新
+  // 中間ページリンク（採取物と同じ形の実パス。開くとサーバーがリダイレクト先へ移動させる）。
+  // sbrp / sbrpuid はタグの発火条件に使う目印。
   if (linkInput !== null && page !== null) {
-    linkInput.value = `${location.origin}/#/redirect_pages/${page.uid}?sbrp=true&sbrpuid=${page.uid}`
+    linkInput.value = `${location.origin}/redirect_pages/${page.uid}?sbrp=true&sbrpuid=${page.uid}`
   } else if (linkInput !== null) {
     linkInput.value = ''
+  }
+  // 「前方一致で発火させる場合」の例は、選んでいる中間ページのURLにする（採取物のままだと架空のURLが出る）
+  const prefixNote = [...root.querySelectorAll<HTMLElement>(HOOK.description)].find((el) =>
+    (el.textContent ?? '').startsWith(PREFIX_MATCH_LABEL),
+  )
+  if (prefixNote !== undefined && page !== null) {
+    prefixNote.textContent = `${PREFIX_MATCH_LABEL}${location.origin}/redirect_pages/${page.uid}`
   }
 }
 
@@ -195,6 +212,32 @@ function wireSave(root: HTMLElement, abTestUid: string, template: HTMLElement | 
       .then(() => toast('中間ページ設定を保存しました'))
       .catch((error: unknown) => toast((error as Error).message, 'error'))
   })
+}
+
+/** 中間ページタグ設定の「HEAD」「BODY」を押すと、選んでいる中間ページのタグを編集する */
+function wireTagChips(root: HTMLElement, abTestUid: string, template: HTMLElement | null): void {
+  for (const chip of root.querySelectorAll<HTMLElement>(HOOK.tagChip)) {
+    if (chip.dataset['cloneTagWired'] === 'true') continue
+    chip.dataset['cloneTagWired'] = 'true'
+    const focus = (chip.textContent ?? '').trim().toLowerCase() === 'body' ? 'body' : 'head'
+    chip.addEventListener('click', () => {
+      const uid = root.dataset['cloneSelectedRedirect'] ?? ''
+      if (uid === '') {
+        toast('中間ページを選択してください', 'error')
+        return
+      }
+      void api
+        .redirectPages(abTestUid)
+        .then(({ redirect_pages }) => {
+          const page = redirect_pages.find((p) => p.uid === uid)
+          if (page === undefined) return
+          openRedirectPageTagSettings(uid, page.html_tags ?? [], focus, () => {
+            void renderList(root, abTestUid, template, uid)
+          })
+        })
+        .catch((error: unknown) => toast((error as Error).message, 'error'))
+    })
+  }
 }
 
 /** 中間ページリンクのコピーボタンを配線する */

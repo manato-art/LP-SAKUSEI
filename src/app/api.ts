@@ -701,6 +701,8 @@ export interface RedirectPage {
   enabled: boolean
   redirect_time?: number
   referrer_type?: 'version' | 'redirect_page'
+  /** 中間ページタグ設定（HEAD / BODY） */
+  html_tags?: { tag: string; document_property: 'head' | 'body'; body: string }[]
 }
 
 /** Meta広告のアカウント集計KPI（実取得） */

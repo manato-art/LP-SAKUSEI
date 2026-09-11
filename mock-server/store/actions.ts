@@ -26,6 +26,7 @@ import type {
   State,
   Version,
   VersionStatus,
+  HtmlTag,
 } from './types.ts'
 
 
@@ -466,11 +467,11 @@ export function addRedirectPage(
   }
 }
 
-/** 中間ページの設定を更新する（名前 / リダイレクト先URL / リダイレクト時間） */
+/** 中間ページの設定を更新する（名前 / リダイレクト先URL / リダイレクト時間 / リファラー / 中間ページタグ） */
 export function updateRedirectPage(
   state: State,
   uid: string,
-  patch: { name?: string; url?: string; redirect_time?: number; referrer_type?: string },
+  patch: { name?: string; url?: string; redirect_time?: number; referrer_type?: string; html_tags?: readonly HtmlTag[] },
 ): { state: State; page: RedirectPage | null } {
   const target = state.redirectPages.find((p) => p.uid === uid)
   if (target === undefined) return { state, page: null }
@@ -481,6 +482,7 @@ export function updateRedirectPage(
     ...(patch.url !== undefined ? { url: patch.url } : {}),
     ...(patch.redirect_time !== undefined ? { redirect_time: patch.redirect_time } : {}),
     ...(validReferrer !== undefined ? { referrer_type: validReferrer } : {}),
+    ...(patch.html_tags !== undefined ? { html_tags: patch.html_tags } : {}),
   }
   return {
     state: { ...state, redirectPages: state.redirectPages.map((p) => (p.uid === uid ? updated : p)) },

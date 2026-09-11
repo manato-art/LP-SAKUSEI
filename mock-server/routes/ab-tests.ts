@@ -23,6 +23,8 @@ import { optionalNumber, optionalString, requireString } from '../lib/validate.t
 import { serializeAbTest, serializeArticle } from '../lib/serialize.ts'
 import { fetchMetaInsights } from '../meta-insights.ts'
 import { findAbTest, notFound } from './ab-tests-shared.ts'
+import { parseHtmlTags } from './panel-tag-settings.ts'
+import { REDIRECT_SECONDS, isRedirectSeconds, redirectDestination } from '../lib/redirect-page-rules.ts'
 import { abTestsPopupsRouter } from './ab-tests-popups.ts'
 import { abTestsReportsRouter } from './ab-tests-reports.ts'
 
@@ -214,17 +216,38 @@ abTestsRouter.post('/ab_tests/:uid/redirect_pages/create', (req, res) => {
   res.status(201).json({ redirect_page: out.page })
 })
 
-/** 中間ページの設定を更新（名前 / リダイレクト先 / リダイレクト時間） */
+/** 中間ページの設定を更新（名前 / リダイレクト先 / リダイレクト時間 / リファラー / 中間ページタグ） */
 abTestsRouter.patch('/redirect_pages/:uid', (req, res) => {
-  const name = optionalString(req.body, 'name')
-  const url = optionalString(req.body, 'url')
-  const redirectTime = optionalNumber(req.body, 'redirect_time')
-  const referrerType = optionalString(req.body, 'referrer_type')
+  const body = (req.body ?? {}) as Record<string, unknown>
+  const name = optionalString(body, 'name')
+  const redirectTime = optionalNumber(body, 'redirect_time')
+  const referrerType = optionalString(body, 'referrer_type')
+  // 送られてきた項目だけを変える（中間ページタグだけを保存したときに、リダイレクト先を消さない）
+  const url = typeof body['url'] === 'string' ? body['url'].trim() : undefined
+  // リダイレクト先は http / https のURLだけ（javascript: などで、開いた人のブラウザを動かされないように）。空は「未設定」
+  if (url !== undefined && url !== '' && redirectDestination(url) === null) {
+    res
+      .status(422)
+      .json(errorEnvelope('validation_failed', 'リダイレクト先は http:// または https:// から始まるURLを入力してください。'))
+    return
+  }
+  if (redirectTime !== undefined && !isRedirectSeconds(redirectTime)) {
+    res
+      .status(422)
+      .json(errorEnvelope('validation_failed', `リダイレクト時間は${REDIRECT_SECONDS.min}〜${REDIRECT_SECONDS.max}秒で入力してください。`))
+    return
+  }
+  const tags = 'html_tags' in body ? parseHtmlTags(body) : null
+  if (tags !== null && !tags.ok) {
+    res.status(422).json(errorEnvelope(tags.code, tags.message))
+    return
+  }
   const out = updateRedirectPage(getState(), req.params.uid, {
     ...(name !== '' ? { name } : {}),
-    url,
+    ...(url !== undefined ? { url } : {}),
     ...(redirectTime !== undefined ? { redirect_time: redirectTime } : {}),
     ...(referrerType !== '' ? { referrer_type: referrerType } : {}),
+    ...(tags !== null && tags.ok ? { html_tags: tags.value } : {}),
   })
   if (out.page === null) return notFound(res, '中間ページが見つかりません。')
   setState(() => out.state)

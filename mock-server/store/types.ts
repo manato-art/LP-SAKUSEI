@@ -224,6 +224,8 @@ export interface RedirectPage {
   redirect_time?: number
   /** リファラー設定（version=VersionURL / redirect_page=中間ページURL） */
   referrer_type?: 'version' | 'redirect_page'
+  /** 中間ページタグ設定（この中間ページだけに入れる HEAD / BODY のタグ。未設定は空） */
+  html_tags?: readonly HtmlTag[]
 }
 
 export interface ExitPopup {

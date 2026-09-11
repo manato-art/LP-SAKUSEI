@@ -16,6 +16,8 @@ export default defineConfig({
       '/lp': `http://localhost:${MOCK_PORT}`,
       // プレビューページ（実パス・認証不要）もモックサーバー側SSR
       '/preview': `http://localhost:${MOCK_PORT}`,
+      // 中間ページ（中間ページリンクの実体・実パス）もモックサーバー側SSR
+      '/redirect_pages': `http://localhost:${MOCK_PORT}`,
       '/cable': { target: `ws://localhost:${MOCK_PORT}`, ws: true },
     },
   },

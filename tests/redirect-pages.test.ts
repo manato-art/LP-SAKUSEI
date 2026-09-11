@@ -84,3 +84,17 @@ describe('中間ページのハッシュルートが採取した実 href と形�
     expect(`#${shaped}`).toBe(redirectPagesHash(':folder_uid', ':ab_test_uid'))
   })
 })
+
+describe('中間ページリンクは実パス（配信と同じサーバーが応答する）', () => {
+  it('コピーする中間ページリンクは /redirect_pages/:uid?sbrp=true&sbrpuid=:uid（採取物のリンクと同じ形）', () => {
+    const detail = readFileSync('src/app/fragments/folders__UID__ab_tests__UID__redirect_pages__detail.html', 'utf8')
+    expect(detail).toMatch(/\/redirect_pages\/([^?"]+)\?sbrp=true&amp;sbrpuid=\1"/)
+    const source = readFileSync('src/app/pages/redirect-pages.ts', 'utf8')
+    expect(source).toContain('`${location.origin}/redirect_pages/${page.uid}?sbrp=true&sbrpuid=${page.uid}`')
+    expect(source).not.toContain('/#/redirect_pages/')
+  })
+
+  it('開発サーバー（Vite）でも中間ページリンクをモックサーバーへ渡す', () => {
+    expect(readFileSync('vite.config.ts', 'utf8')).toContain("'/redirect_pages': `http://localhost:${MOCK_PORT}`")
+  })
+})
