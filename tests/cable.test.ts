@@ -160,11 +160,18 @@ describe('CV速報の発火条件（実測CVのみ・合成CVは廃止）', () =
     client.socket.send(JSON.stringify({ command: 'subscribe', identifier: CONVERSIONS_CHANNEL }))
     await waitForFrame(client, (f) => f.type === 'confirm_subscription', 2000)
 
-    // CV計測タグ（サンクスページ）と同じ経路で1件送る
+    // 計測リンクを押した人（目印 vid）の成果だけがCVになる（2026-09-11・本体と同じ数え方）。
+    // LPの計測スクリプトと同じ経路でクリックを送ってから、CV計測タグ（サンクスページ）と同じ経路で1件送る
+    const vid = 'cable-test-visitor-0001'
     await fetch(`${origin}/lp/${abTestUid}/__track`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ event: 'cv', amount: 12345 }),
+      body: JSON.stringify({ event: 'click', vid }),
+    })
+    await fetch(`${origin}/lp/${abTestUid}/__track`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event: 'cv', amount: 12345, vid }),
     })
 
     const frame = await waitForFrame(client, (f) => f.message?.conversion !== undefined, 5000)

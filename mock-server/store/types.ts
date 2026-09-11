@@ -365,6 +365,25 @@ export interface Conversion {
   status: string
 }
 
+/**
+ * 訪問者の目印（squadbeyond_uid）ごとの、LPを見た・計測リンクを押した記録（2026-09-11）。
+ * CVタグから成果が届いたとき、その人がどのVersionを見て（押して）いたかを照らし合わせて、Version別にCVを数える。
+ * SquadBeyond 本体と同じく「計測リンクを押してから1日以内の成果」だけを数えるので、1日を過ぎた記録は消す（store/visitor-touches.ts）。
+ */
+export interface VisitorTouch {
+  /** 訪問者の目印（LPのリンクに付く squadbeyond_uid ＝ Cookie _sb_tu） */
+  vid: string
+  ab_test_uid: string
+  /** 見ていたVersion（外部LPの計測タグでは空） */
+  version_uid: string
+  /** LPを見た時刻（UNIXミリ秒） */
+  viewed_at: number | null
+  /** 計測リンクを押した時刻（UNIXミリ秒） */
+  clicked_at: number | null
+  /** この目印の成果を数えた時刻（同じ目印の成果は1回だけ数える） */
+  converted_at: number | null
+}
+
 export interface ConversionTag {
   id: number
   uid: string
@@ -824,6 +843,8 @@ export interface State {
   reportExclusions: readonly ReportExclusion[]
   /** 配信リクエストの記録（直近ぶんだけ保持する） */
   requestLogs: readonly RequestLogEntry[]
+  /** 訪問者の目印ごとの「見た・押した」記録（CVをVersion別に数えるため。1日分だけ持つ・store/visitor-touches.ts） */
+  visitorTouches: readonly VisitorTouch[]
   notificationSettings: readonly NotificationSetting[]
   htmlParts: readonly HtmlPart[]
   seminars: readonly Seminar[]

@@ -114,6 +114,8 @@ export function createEmptyState(): State {
     // Version設定（記事ごとの文字サイズ・色・背景など。store/master-style-sheet.ts が State に足したキー）。
     // 保存データの読み込みは「空シードにあるキー」だけを残すので、ここに無いと再起動のたびに消えていた（2026-09-11）
     masterStyleSheets: [],
+    // 訪問者の目印ごとの「見た・押した」記録（CVをVersion別に数える・1日分だけ持つ）
+    visitorTouches: [],
   nextId: 100,
   }
 }

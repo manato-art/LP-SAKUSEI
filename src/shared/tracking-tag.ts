@@ -9,6 +9,8 @@
  *   pv      : 表示ごとに1
  *   click   : 「計測機能付きリンク」(`sb_tracking=true`)のクリック
  *   heatmap : ページを20バンドに割った 到達 / 滞在(ms) / 離脱位置 / クリック座標
+ *   vid     : pv / click に付ける訪問者の目印（Cookie _sb_tu、押したリンクに付いた squadbeyond_uid）。
+ *             CVタグから届いた成果を、この表示・クリックのVersionに結びつける（2026-09-11）
  *             離脱時(pagehide/visibilitychange)に1回だけまとめて送る
  *
  * 送信の注意（実測で踏んだ）:
@@ -31,6 +33,10 @@ export function buildTrackingScriptBody(endpoint: string, versionUid?: string): 
   const v = versionUid === undefined ? 'null' : JSON.stringify(versionUid)
   return `(function(){
   var U=${JSON.stringify(endpoint)},V=${v},B=${HEATMAP_BANDS};
+  function cookie(n){var m=document.cookie.match(new RegExp('(^| )'+n+'=([^;]+)'));return m?m[2]:null}
+  function withVid(obj,id){if(id)obj.vid=id;return obj}
+  /* 訪問者の目印（SquadBeyond 本体と同じ Cookie _sb_tu）。CVタグの成果を、この表示・クリックに結びつける */
+  var VID=cookie('_sb_tu');
   function post(obj){
     var s=JSON.stringify(V===null?obj:Object.assign({version:V},obj));
     try{
@@ -43,7 +49,7 @@ export function buildTrackingScriptBody(endpoint: string, versionUid?: string): 
   /* ヒートマップの背景に実LPを敷くため、どのページで測っているかを1度だけ知らせる。
      クエリとハッシュは落とす（広告パラメータや個人情報が紛れ得るので保存しない）。
      背景に使うのは見た目だけなので origin+pathname で足りる。 */
-  post({event:'pv',u:location.origin+location.pathname});
+  post(withVid({event:'pv',u:location.origin+location.pathname},VID));
 
   document.addEventListener('click',function(e){
     var a=e.target&&e.target.closest&&e.target.closest('a');
@@ -51,7 +57,8 @@ export function buildTrackingScriptBody(endpoint: string, versionUid?: string): 
     var h=a.getAttribute('href')||'';
     var t=/^tel:/i.test(h)?(a.getAttribute('data-sb-'+'tracking')==='true')
                           :/[?&]sb_tracking=true(?:[&#]|$)/.test(h);
-    if(t)post({event:'click'});
+    /* 押したリンクに付いた目印（遷移先に届くのと同じ値）を優先する */
+    if(t){var q=/[?&]squadbeyond_uid=([^&#]+)/.exec(h);post(withVid({event:'click'},q?decodeURIComponent(q[1]):VID));}
   },true);
 
   var reach=new Array(B).fill(0),dwell=new Array(B).fill(0),clicks=[];
@@ -87,18 +94,48 @@ export function buildTrackingScriptBody(endpoint: string, versionUid?: string): 
 })()`
 }
 
-/** CV計測（サンクスページ用）。`amount` に金額を入れれば売上も計上する。 */
+/** 受け渡しタグとCVタグが、広告主サイトに目印を保存するキー（localStorage） */
+const KEEP_KEY = 'sb_uid'
+
+/** 目印（squadbeyond_uid）をURLから拾って1日保存する処理（受け渡しタグとCVタグで共通） */
+function keepUidSnippet(): string {
+  return `var K=${JSON.stringify(KEEP_KEY)},DAY=86400000;
+  function fromUrl(){try{var v=new URLSearchParams(location.search).get('squadbeyond_uid');return v?v:null}catch(e){return null}}
+  function keep(v){try{localStorage.setItem(K,JSON.stringify({v:v,t:Date.now()}))}catch(e){}}
+  function kept(){try{var o=JSON.parse(localStorage.getItem(K)||'null');return o&&typeof o.v==='string'&&Date.now()-o.t<=DAY?o.v:null}catch(e){return null}}
+  var UID=fromUrl();if(UID)keep(UID);`
+}
+
+/**
+ * CV計測（サンクスページ用）。`amount` に金額を入れれば売上も計上する。
+ * 成果は訪問者の目印（squadbeyond_uid）と一緒に送る。目印はサンクスページのURL、無ければ受け渡しタグが保存したもの（1日以内）。
+ * 目印が無い成果は、どのLPを見た人か分からず数えられないので送らない（SquadBeyond 本体と同じ・2026-09-11）。
+ */
 export function buildCvScriptBody(endpoint: string): string {
   return `(function(){
   var U=${JSON.stringify(endpoint)};
+  ${keepUidSnippet()}
+  var uid=UID||kept();
+  if(!uid)return;
   // 売上も計上する場合: window.__sbCvAmount = 12800 をこのタグより前に置く
   var amt=(typeof window.__sbCvAmount==='number')?window.__sbCvAmount:0;
-  var s=JSON.stringify({event:'cv',amount:amt});
+  var s=JSON.stringify({event:'cv',amount:amt,vid:uid});
   try{
     if(navigator.sendBeacon&&navigator.sendBeacon(U,new Blob([s],{type:'text/plain'})))return;
   }catch(e){}
   try{
     fetch(U,{method:'POST',mode:'cors',headers:{'Content-Type':'text/plain'},body:s,keepalive:true});
   }catch(e){}
+})()`
+}
+
+/**
+ * 受け渡しタグ（広告主サイトの最初のページ＝LPのリンク先に貼る）。
+ * LPのリンクに付いてきた目印（squadbeyond_uid）を、そのサイトに1日保存するだけ。
+ * サンクスページまでURLの目印が引き継がれなくても、同じサイトのサンクスページのCVタグがこの目印を使える。
+ */
+export function buildKeepUidScriptBody(): string {
+  return `(function(){
+  ${keepUidSnippet()}
 })()`
 }

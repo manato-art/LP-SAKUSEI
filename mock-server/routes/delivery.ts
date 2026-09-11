@@ -30,7 +30,8 @@ import { splitHeaderImage } from '../../src/shared/header-image.ts'
 import { masterStyleIframeCss } from '../../src/app/master-style.ts'
 import { withAutoplayVideos } from '../../src/app/lp-video.ts'
 import { buildAnimCss, buildAnimRuntimeScript } from '../../src/app/anim/anim-presets.ts'
-import { buildCvScriptBody, buildTrackingScriptBody } from '../../src/shared/tracking-tag.ts'
+import { buildCvScriptBody, buildKeepUidScriptBody, buildTrackingScriptBody } from '../../src/shared/tracking-tag.ts'
+import { attributeConversion, recordTouch, toVisitorId } from '../store/visitor-touches.ts'
 import { buildVisitorContext, pickDeliveryVersion } from './delivery-targeting.ts'
 import { buildFollowPopupSnippet, buildPopupSnippet } from './delivery-popup-html.ts'
 import {
@@ -437,6 +438,7 @@ deliveryRouter.get('/exclude/:token', (req, res) => {
  * こうすると計測ロジックを直したときに**貼り直しが要らない**（GA・Metaピクセルと同じ方式）。
  *   /t/:uid.js     … PV / クリック / ヒートマップ（LP本体に貼る）
  *   /t/:uid.cv.js  … CV（サンクスページに貼る）
+ *   /t/:uid.keep.js … 目印の受け渡し（サンクスページが別ドメインのとき、広告主サイトの最初のページに貼る）
  *
  * script は CORS の対象外なので配信側に許可は要らない。中のビーコンが叩く
  * `/lp/:uid/__track` 側で許可済み。キャッシュは短め（修正を当日中に行き渡らせる）。
@@ -468,6 +470,11 @@ function beaconOrigin(req: { protocol: string; get: (name: string) => string | u
 deliveryRouter.get('/t/:uid', (req, res) => {
   const raw = req.params.uid
   const origin = beaconOrigin(req)
+  // 受け渡しタグ: LPのリンクから来た目印（squadbeyond_uid）を広告主サイトに保存するだけ（送信先は使わない）
+  if (raw.endsWith('.keep.js')) {
+    serveTrackingScript(res, buildKeepUidScriptBody())
+    return
+  }
   const isCv = raw.endsWith('.cv.js')
   const uid = raw.replace(/\.cv\.js$/, '').replace(/\.js$/, '')
   const endpoint = `${origin}/lp/${encodeURIComponent(uid)}/__track`
@@ -506,8 +513,11 @@ deliveryRouter.post('/lp/:uid/__track', (req, res) => {
     amount?: unknown
     /** 計測タグが知らせる、測っているページのURL（origin+pathname） */
     u?: unknown
+    /** 訪問者の目印（LPのリンクに付く squadbeyond_uid）。CVをVersion別に数える照らし合わせに使う */
+    vid?: unknown
   }
   const versionUid = typeof body.version === 'string' ? body.version : ''
+  const vid = toVisitorId(body.vid)
   const date = toDateKey(new Date())
 
   /**
@@ -540,21 +550,27 @@ deliveryRouter.post('/lp/:uid/__track', (req, res) => {
   }
 
   // ── CV（実測）: CV計測タグ（サンクスページ）からの通知 ──
-  // 合成CVを廃止したので、CVが増える経路はここだけ。売上(amount)は任意で、
-  // 送られてこなければ0（金額を発明しない）。
+  // SquadBeyond 本体と同じく、目印（squadbeyond_uid）が「計測リンクを押した記録」（CV条件がアクセスなら「見た記録」）と
+  // 1日以内に結びついた成果だけを、そのとき見ていたVersionとページ全体のCVに数える（2026-09-11・本人承認）。
+  // 結びつかない成果は数えない。同じ目印の成果は1回だけ。売上(amount)は任意で、送られてこなければ0（金額を発明しない）。
   if (body.event === 'cv') {
     const amount =
       typeof body.amount === 'number' && Number.isFinite(body.amount) ? Math.max(0, body.amount) : 0
+    const condition = abTest.conversion_setting.conversion_condition === 'access' ? 'access' : 'click'
     let pushed: ConversionPush | null = null
+    let counted = false
     setState((s) => {
-      const out = recordConversion(s, {
-        ab_test_uid: abTest.uid,
-        version_uid: versionUid,
-        media_id: abTest.media_id,
-        amount,
-      })
+      if (vid === null) return s
+      const matched = attributeConversion(s.visitorTouches, { vid, ab_test_uid: abTest.uid, condition, at: Date.now() })
+      if (!matched.counted) return s
+      counted = true
+      const versionOfCv = matched.touch.version_uid
+      const out = recordConversion(
+        { ...s, visitorTouches: matched.touches },
+        { ab_test_uid: abTest.uid, version_uid: versionOfCv, media_id: abTest.media_id, amount },
+      )
       const media = out.state.media.find((m) => m.id === abTest.media_id)
-      const version = out.state.versions.find((v) => v.uid === versionUid)
+      const version = out.state.versions.find((v) => v.uid === versionOfCv)
       pushed = {
         uid: out.conversion.uid,
         ab_test_uid: abTest.uid,
@@ -567,7 +583,7 @@ deliveryRouter.post('/lp/:uid/__track', (req, res) => {
       return out.state
     })
     if (pushed !== null) broadcastConversion(pushed)
-    res.json({ ok: true })
+    res.json({ ok: true, counted })
     return
   }
 
@@ -659,6 +675,19 @@ deliveryRouter.post('/lp/:uid/__track', (req, res) => {
     let next: State = { ...s, metrics: bumpMetric(s, abTest.uid, 'ab_test', date, delta) }
     if (versionUid !== '') {
       next = { ...next, metrics: bumpMetric(next, versionUid, 'version', date, delta) }
+    }
+    // 目印があれば「見た・押した」記録を残す（CVタグから成果が届いたとき、どのVersionの成果かを照らし合わせる）
+    if (vid !== null) {
+      next = {
+        ...next,
+        visitorTouches: recordTouch(next.visitorTouches, {
+          vid,
+          ab_test_uid: abTest.uid,
+          version_uid: versionUid,
+          kind: event === 'click' ? 'click' : 'view',
+          at: Date.now(),
+        }),
+      }
     }
     if (reportedUrl !== null && reportedUrl !== abTest.external_url) {
       next = {

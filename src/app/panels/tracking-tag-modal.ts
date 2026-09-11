@@ -69,11 +69,21 @@ export function buildExternalTrackingTag(origin: string, uid: string): string {
 }
 
 /**
- * CV計測タグ。**サンクスページ（申込完了ページ）**に貼ると、表示ごとにCVを1件計上する。
- * 売上を送りたいときは `amount` に数値（円）を入れる（省略時は0＝金額を発明しない）。
+ * CV計測タグ。**サンクスページ（申込完了ページ）**に貼る。
+ * LPで計測機能付きリンクを押してから1日以内の成果だけを、見ていたVersionのCVとして数える（SquadBeyond本体と同じ・2026-09-11）。
+ * 売上を送りたいときは、タグより前に `window.__sbCvAmount = 金額` を置く（省略時は0＝金額を発明しない）。
  */
 export function buildCvTag(origin: string, uid: string): string {
   return `<script async src="${origin}/t/${encodeURIComponent(uid)}.cv.js"></script>`
+}
+
+/**
+ * 受け渡しタグ。**広告主サイトの最初のページ（LPのリンク先）**に貼る。
+ * LPのリンクに付いてきた訪問者の目印（squadbeyond_uid）をそのサイトに1日保存し、サンクスページのCVタグが使う。
+ * サンクスページまでURLの目印を引き継げるサイトなら不要。
+ */
+export function buildKeepUidTag(origin: string, uid: string): string {
+  return `<script async src="${origin}/t/${encodeURIComponent(uid)}.keep.js"></script>`
 }
 
 /** 配信URLから origin と ab_test uid を取り出す（取れなければ null）。 */
@@ -161,11 +171,37 @@ export function openTrackingTagModal(deliveryUrl: string): void {
     )
   })
 
+  // ③ 受け渡しタグ（サンクスページが別ドメインのとき、広告主サイトの最初のページに貼る）
+  const keepTag = buildKeepUidTag(parsed.origin, parsed.uid)
+  const keepLabel = document.createElement('div')
+  keepLabel.className = 'sb-tt-label'
+  keepLabel.style.marginTop = '14px'
+  keepLabel.textContent = '③ 広告主サイトの最初のページ（LPのリンク先）に貼る（サンクスページが別ドメインのとき）'
+  const keepCode = document.createElement('textarea')
+  keepCode.className = 'sb-tt-code'
+  keepCode.style.height = '90px'
+  keepCode.readOnly = true
+  keepCode.value = keepTag
+  keepCode.addEventListener('focus', () => keepCode.select())
+  const keepCopy = document.createElement('button')
+  keepCopy.type = 'button'
+  keepCopy.className = 'sb-tt-btn'
+  keepCopy.style.marginTop = '8px'
+  keepCopy.textContent = '受け渡しタグをコピー'
+  keepCopy.addEventListener('click', () => {
+    void navigator.clipboard?.writeText(keepTag).then(
+      () => toast('受け渡しタグをコピーしました'),
+      () => toast('コピーできませんでした', 'error'),
+    )
+  })
+
   const notes = document.createElement('ul')
   notes.className = 'sb-tt-notes'
   for (const t of [
     'クリックは「計測機能付きリンク」のみ（相手LPのリンクが計測機能付きである必要があります）',
-    'CVはサンクスページの表示ごとに1件。売上を入れたい場合はCVタグの amount に金額を足してください',
+    'CVは、LPで計測機能付きリンクを押してから1日以内に届いた成果だけを、見ていたVersionに数えます（SquadBeyond本体と同じ。同じ人の成果は1回だけ）',
+    'サンクスページがLPと別のドメインのときは、③を広告主サイトの最初のページにも貼ってください（URLの squadbeyond_uid をサンクスページまで引き継げるなら不要）',
+    '売上も入れたい場合は、CVタグより前に window.__sbCvAmount = 金額 を置いてください',
     'タグを貼った時点からの計測です。過去には遡れません',
     'SquadBeyond側のレポート数値とは独立したカウンタなので、完全一致はしません',
   ]) {
@@ -201,7 +237,7 @@ export function openTrackingTagModal(deliveryUrl: string): void {
     )
   })
 
-  card.append(title, lead, steps, label, code, cvLabel, cvCode, cvCopy, notes, actions)
+  card.append(title, lead, steps, label, code, cvLabel, cvCode, cvCopy, keepLabel, keepCode, keepCopy, notes, actions)
   overlay.append(card)
   document.body.append(overlay)
 }

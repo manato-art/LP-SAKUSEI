@@ -74,14 +74,18 @@ export function recordConversion(
     status: '承認',
   }
   const date = toDateKey(new Date())
+  const delta = { cv: 1, sales: input.amount }
+  const pageMetrics = bumpMetric(state, input.ab_test_uid, 'ab_test', date, delta)
+  // 見ていたVersionが分かる成果は、そのVersionのCVにも数える（外部LPの計測タグの成果は Version を持たない）
+  const metrics =
+    input.version_uid === ''
+      ? pageMetrics
+      : bumpMetric({ ...state, metrics: pageMetrics }, input.version_uid, 'version', date, delta)
   return {
     state: {
       ...state,
       conversions: [conversion, ...state.conversions],
-      metrics: bumpMetric(state, input.ab_test_uid, 'ab_test', date, {
-        cv: 1,
-        sales: input.amount,
-      }),
+      metrics,
       nextId: id + 1,
     },
     conversion,
