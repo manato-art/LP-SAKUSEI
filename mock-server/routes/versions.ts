@@ -22,6 +22,7 @@ import { errorEnvelope } from '../lib/envelope.ts'
 import { serializeVersion, serializeVersions } from '../lib/serialize.ts'
 import { checkRatioTotal, optionalNumber, optionalString, validateRatio } from '../lib/validate.ts'
 import type { State, Version } from '../store/types.ts'
+import { externalizeDataUrls } from '../lib/uploads.ts'
 
 export const versionsRouter: Router = Router()
 
@@ -190,8 +191,9 @@ versionsRouter.patch('/versions/:uid/targeting', (req, res) => {
 /** LP保存（コード編集の保存・§9-1[4]） */
 versionsRouter.put('/versions/:uid', (req, res) => {
   try {
-    const html = optionalString(req.body, 'html')
-    const css = optionalString(req.body, 'css')
+    // 埋め込み画像（data URL）は別ファイルにしてから保存する（保存データとLPを軽くする・lib/uploads.ts）
+    const html = externalizeDataUrls(optionalString(req.body, 'html')).text
+    const css = externalizeDataUrls(optionalString(req.body, 'css')).text
     const name = optionalString(req.body, 'name')
     console.log(`[versions] PUT /versions/${req.params.uid} html=${html.length}bytes css=${css.length}bytes name="${name}"`)
     let updated: Version | null = null

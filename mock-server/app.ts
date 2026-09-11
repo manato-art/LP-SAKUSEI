@@ -40,6 +40,7 @@ import { bulkReplaceRouter } from './routes/bulk-replace.ts'
 import { mediaRouter } from './routes/media.ts'
 import { inspectionsRouter } from './routes/inspections.ts'
 import { bulkTagsRouter } from './routes/bulk-tags.ts'
+import { UPLOADS_PATH, uploadsDir } from './lib/uploads.ts'
 
 /** `?reset=1` で新規アカウント発行直後（空）へ戻す（§10-9） */
 function resetAll(): void {
@@ -175,6 +176,20 @@ export function createApp(): Express {
   app.use(deliveryRouter)
   // 中間ページ（中間ページリンクの実体・実パス）。配信ページと同じく認証を掛けない
   app.use(redirectPageDeliveryRouter)
+  // LPの画像・動画ファイル（本文に埋め込まれていた data URL を別ファイルにしたもの・lib/uploads.ts）。
+  // 配信LPから読むので認証を掛けない。ファイル名は中身のハッシュなので、長くキャッシュしてよい
+  app.use(
+    UPLOADS_PATH,
+    express.static(uploadsDir(), {
+      index: false,
+      immutable: true,
+      maxAge: '365d',
+      setHeaders: (res) => res.setHeader('X-Content-Type-Options', 'nosniff'),
+    }),
+  )
+  app.use(UPLOADS_PATH, (_req, res) => {
+    res.status(404).end()
+  })
 
   // ── 本番: ビルドしたフロントを配信する（開発時は Vite が担当するので無効）──
   if (SERVE_DIST !== undefined) {

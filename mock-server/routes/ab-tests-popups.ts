@@ -10,6 +10,7 @@ import { optionalNumber, optionalString, requireString } from '../lib/validate.t
 import { applyEmptyState } from '../lib/mock-state.ts'
 import { errorEnvelope } from '../lib/envelope.ts'
 import { findAbTest, notFound } from './ab-tests-shared.ts'
+import { externalizeDataUrls } from '../lib/uploads.ts'
 
 export const abTestsPopupsRouter: Router = Router()
 
@@ -60,7 +61,7 @@ abTestsPopupsRouter.post('/ab_tests/:uid/exit_popups', (req, res) => {
     device_sp: body.device_sp !== false,
     device_tablet: body.device_tablet !== false,
     device_pc: body.device_pc !== false,
-    html: optionalString(req.body, 'html') || '<div class="popup-wrap"><p>ポップアップ</p></div>',
+    html: externalizeDataUrls(optionalString(req.body, 'html')).text || '<div class="popup-wrap"><p>ポップアップ</p></div>',
     javascript: optionalString(req.body, 'javascript') || '',
     head_tag: optionalString(req.body, 'head_tag') || '',
     body_tag: optionalString(req.body, 'body_tag') || '',
@@ -110,7 +111,7 @@ abTestsPopupsRouter.put('/ab_tests/:uid/exit_popups/:popup_uid', (req, res) => {
     ...(typeof body.device_sp === 'boolean' ? { device_sp: body.device_sp } : {}),
     ...(typeof body.device_tablet === 'boolean' ? { device_tablet: body.device_tablet } : {}),
     ...(typeof body.device_pc === 'boolean' ? { device_pc: body.device_pc } : {}),
-    ...(typeof body.html === 'string' ? { html: body.html } : {}),
+    ...(typeof body.html === 'string' ? { html: externalizeDataUrls(body.html).text } : {}),
     ...(typeof body.javascript === 'string' ? { javascript: body.javascript } : {}),
     ...(typeof body.head_tag === 'string' ? { head_tag: body.head_tag } : {}),
     ...(typeof body.body_tag === 'string' ? { body_tag: body.body_tag } : {}),
@@ -208,9 +209,9 @@ abTestsPopupsRouter.post('/ab_tests/:uid/follow_popups', (req, res) => {
     device_sp: body.device_sp !== false,
     device_tablet: body.device_tablet !== false,
     device_pc: body.device_pc !== false,
-    html: optionalString(req.body, 'html') || '<div class="follow-popup-wrap"><p>追尾バナー</p></div>',
+    html: externalizeDataUrls(optionalString(req.body, 'html')).text || '<div class="follow-popup-wrap"><p>追尾バナー</p></div>',
     javascript: optionalString(req.body, 'javascript') || '',
-    css: optionalString(req.body, 'css') || '',
+    css: externalizeDataUrls(optionalString(req.body, 'css')).text || '',
   }
   setState((s) => ({ ...s, followPopups: [...s.followPopups, created], nextId: s.nextId + 1 }))
   res.status(201).json({ follow_popup: created })
@@ -240,9 +241,9 @@ abTestsPopupsRouter.put('/ab_tests/:uid/follow_popups/:popup_uid', (req, res) =>
     ...(typeof body.device_sp === 'boolean' ? { device_sp: body.device_sp } : {}),
     ...(typeof body.device_tablet === 'boolean' ? { device_tablet: body.device_tablet } : {}),
     ...(typeof body.device_pc === 'boolean' ? { device_pc: body.device_pc } : {}),
-    ...(typeof body.html === 'string' ? { html: body.html } : {}),
+    ...(typeof body.html === 'string' ? { html: externalizeDataUrls(body.html).text } : {}),
     ...(typeof body.javascript === 'string' ? { javascript: body.javascript } : {}),
-    ...(typeof body.css === 'string' ? { css: body.css } : {}),
+    ...(typeof body.css === 'string' ? { css: externalizeDataUrls(body.css).text } : {}),
   }
   setState((s) => ({
     ...s,

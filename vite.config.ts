@@ -18,6 +18,8 @@ export default defineConfig({
       '/preview': `http://localhost:${MOCK_PORT}`,
       // 中間ページ（中間ページリンクの実体・実パス）もモックサーバー側SSR
       '/redirect_pages': `http://localhost:${MOCK_PORT}`,
+      // LPの画像・動画ファイル（本文に埋め込まれていた画像を別ファイルにしたもの）もモックサーバーが配る
+      '/uploads': `http://localhost:${MOCK_PORT}`,
       '/cable': { target: `ws://localhost:${MOCK_PORT}`, ws: true },
     },
   },

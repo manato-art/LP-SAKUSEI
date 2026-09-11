@@ -94,3 +94,23 @@ describe('HTMLダウンロードの組み立て（純粋関数）', () => {
     expect(versionHtmlFilename('   ')).toBe('version.html')
   })
 })
+
+describe('HTMLダウンロードの画像URL（2026-09-11）', () => {
+  it('別ファイルにした画像（/uploads/…）は、手元で開いても表示されるように絶対URLにする', () => {
+    const doc = buildVersionHtmlDocument(
+      {
+        name: 'Ver.1',
+        html:
+          '<!--header-image:/uploads/a.png--><img src="/uploads/b.webp">' +
+          '<img srcset="/uploads/c.webp 1x, /uploads/d.webp 2x"><img src="https://cdn.example.com/uploads/e.png">',
+        css: '.x{background:url(/uploads/f.jpg)}',
+      },
+      'https://lp.example.test',
+    )
+    expect(doc).toContain('<!--header-image:https://lp.example.test/uploads/a.png-->')
+    expect(doc).toContain('<img src="https://lp.example.test/uploads/b.webp">')
+    expect(doc).toContain('srcset="https://lp.example.test/uploads/c.webp 1x, https://lp.example.test/uploads/d.webp 2x"')
+    expect(doc).toContain('<img src="https://cdn.example.com/uploads/e.png">')
+    expect(doc).toContain('.x{background:url(https://lp.example.test/uploads/f.jpg)}')
+  })
+})

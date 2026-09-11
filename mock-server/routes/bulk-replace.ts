@@ -26,6 +26,7 @@ import {
   type TrackingMode,
 } from '../store/bulk-replace.ts'
 import type { State, Version } from '../store/types.ts'
+import { externalizeDataUrls } from '../lib/uploads.ts'
 
 export const bulkReplaceRouter: Router = Router()
 
@@ -146,7 +147,9 @@ bulkReplaceRouter.post('/articles/bulk_replaces', (req, res) => {
     res.status(422).json(errorEnvelope('invalid', '種別は画像・テキスト・リンクのいずれかです。'))
     return
   }
-  const replacement = typeof body.replacement === 'string' ? body.replacement : ''
+  const rawReplacement = typeof body.replacement === 'string' ? body.replacement : ''
+  // 新しい画像が埋め込み（data URL）なら、別ファイルにしてからそのURLで置き換える
+  const replacement = kind === 'image' ? externalizeDataUrls(rawReplacement).text : rawReplacement
   if (replacement === '') {
     const what = kind === 'image' ? '新しい画像' : kind === 'link' ? '新しいリンク' : '新しい文字列'
     res.status(422).json(errorEnvelope('invalid', `${what}を指定してください。`))

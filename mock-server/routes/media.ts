@@ -17,6 +17,7 @@ import { freshUid } from '../store/actions-shared.ts'
 import { currentTeamId } from '../store/current-team.ts'
 import { MEDIA_TEMPLATES, findMediaTemplate, type MediaField } from '../store/media-templates.ts'
 import type { Product, ProductSearchForm, State } from '../store/types.ts'
+import { externalizeDataUrls } from '../lib/uploads.ts'
 
 export const mediaRouter: Router = Router()
 
@@ -108,7 +109,8 @@ function productFrom(body: Record<string, unknown>, base: Partial<Product>): Omi
     rating: body['rating'] === undefined ? (base.rating ?? 0) : toNumber(body['rating'], 5),
     site_url: text('site_url', base.site_url ?? ''),
     description: text('description', base.description ?? ''),
-    image: text('image', base.image ?? ''),
+    // 商品画像が埋め込み（data URL）なら別ファイルにする
+    image: externalizeDataUrls(text('image', base.image ?? '')).text,
   }
 }
 

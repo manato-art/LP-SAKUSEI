@@ -64,21 +64,31 @@ export const DOTS_MENU_LABELS = {
  * 実物のダウンロード物の中身は未採取なので、クローンでは保存済みの html を css 付きで包むだけにする
  * （外部へは一切出さない・§3-2）。
  */
-export function buildVersionHtmlDocument(version: Pick<Version, 'name' | 'html' | 'css'>): string {
+export function buildVersionHtmlDocument(version: Pick<Version, 'name' | 'html' | 'css'>, origin = ''): string {
   // 公開LPと同じく、Widget に紛れ込んだ SquadBeyond のプレビュー用CSSがページ全体を上書きしないようにする
-  const lp = neutralizeWidgetStyles(version.html)
+  const lp = neutralizeWidgetStyles(absolutizeUploads(version.html, origin))
+  const css = absolutizeUploads(version.css, origin)
   return [
     '<!doctype html>',
     '<html lang="ja">',
     '<head>',
     '<meta charset="utf-8">',
     `<title>${escapeHtml(version.name)}</title>`,
-    `<style>${LP_BASE_CSS}${version.css}${lp.hasWidget ? WIDGET_RESET_CSS : ''}</style>`,
+    `<style>${LP_BASE_CSS}${css}${lp.hasWidget ? WIDGET_RESET_CSS : ''}</style>`,
     '</head>',
     `<body>${withAutoplayVideos(lp.html)}</body>`,
     '</html>',
     '',
   ].join('\n')
+}
+
+/**
+ * 別ファイルにした画像（/uploads/…・2026-09-11）は、ダウンロードしたHTMLを手元で開いても表示されるよう、配信元の絶対URLにする。
+ * 属性値の先頭・CSSの url( の直後・srcset の区切りの直後・ヘッダー画像コメントの直後だけを見る（既に絶対URLのものは触らない）。
+ */
+function absolutizeUploads(text: string, origin: string): string {
+  if (origin === '') return text
+  return text.replace(/(^|["'(\s,:])\/uploads\//g, (_whole, lead: string) => `${lead}${origin}/uploads/`)
 }
 
 /** ダウンロードファイル名（Version 名を安全化して .html を付ける・純粋関数） */
@@ -257,7 +267,7 @@ function downloadHtml(deps: DotsMenuDeps): void {
     toast('ダウンロード対象のVersionが見つかりません', 'error')
     return
   }
-  const blob = new Blob([buildVersionHtmlDocument(current)], { type: 'text/html' })
+  const blob = new Blob([buildVersionHtmlDocument(current, location.origin)], { type: 'text/html' })
   const url = URL.createObjectURL(blob)
   try {
     const anchor = document.createElement('a')

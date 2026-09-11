@@ -28,6 +28,7 @@ import { errorEnvelope } from '../lib/envelope.ts'
 import { serializeVersion } from '../lib/serialize.ts'
 import { optionalString } from '../lib/validate.ts'
 import type { Article, State, Version } from '../store/types.ts'
+import { externalizeDataUrls } from '../lib/uploads.ts'
 
 export const historyRouter: Router = Router()
 
@@ -120,8 +121,9 @@ historyRouter.post('/articles/:uid/histories', (req, res) => {
   ensureSeeded(found.key, found.article, found.version)
 
   const version = found.version
-  const html = optionalString(req.body, 'html')
-  const css = optionalString(req.body, 'css')
+  // 履歴はメモリに持つので、埋め込み画像（data URL）は別ファイルにしてから積む
+  const html = externalizeDataUrls(optionalString(req.body, 'html')).text
+  const css = externalizeDataUrls(optionalString(req.body, 'css')).text
   let created: ArticleHistory | null = null
   let recorded = false
   setArticleHistoryState((history) => {
@@ -163,7 +165,10 @@ historyRouter.post('/articles/:uid/histories/:id/restore', (req, res) => {
 
   let updated: Version | null = null
   setState((s) => {
-    const out = updateVersion(s, target.version_uid, { html: target.html, css: target.css })
+    const out = updateVersion(s, target.version_uid, {
+      html: externalizeDataUrls(target.html).text,
+      css: externalizeDataUrls(target.css).text,
+    })
     updated = out.version
     return out.state
   })
