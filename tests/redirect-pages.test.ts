@@ -8,7 +8,7 @@
  *   3) 中間ページのハッシュルートが採取した実 href と形として一致すること
  * の3点。DOMは触らない（環境は node）。
  */
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { stripShellFromFragment } from '../src/app/pages/report-substrate.ts'
 import { redirectPagesHash } from '../src/app/pages/beyond-nav.ts'
@@ -96,5 +96,42 @@ describe('中間ページリンクは実パス（配信と同じサーバーが�
 
   it('開発サーバー（Vite）でも中間ページリンクをモックサーバーへ渡す', () => {
     expect(readFileSync('vite.config.ts', 'utf8')).toContain("'/redirect_pages': `http://localhost:${MOCK_PORT}`")
+  })
+})
+
+describe('中間ページタグ設定は、本体と同じ名前付きのタグカード（2026-09-11 に本体で採取）', () => {
+  const source = readFileSync('src/app/pages/redirect-pages.ts', 'utf8')
+  // 画面が読むのは src/index.html の /clean/_merged/cssom.css
+  const css = readFileSync('capture/clean/_merged/cssom.css', 'utf8')
+
+  it.each(['_tag_u9uou_1', '_tagTitleWrapper_u9uou_7', '_tagTitle_u9uou_7', '_destroy_u9uou_22', '_inputText_o4ifl_1', '_base_1yavp_1'])(
+    'カードの目印 %s を使い、その見た目（CSS）は採取物にある',
+    (className) => {
+      expect(source).toContain(className)
+      expect(css).toContain(`.${className}`)
+    },
+  )
+
+  it('タグ名と JavaScript の欄は、本体と同じ名前と案内文', () => {
+    expect(source).toContain("nameInput.name = 'title'")
+    expect(source).toContain("nameInput.placeholder = 'タグ名を入力してください'")
+    expect(source).toContain("bodyArea.name = 'body'")
+    expect(source).toContain("bodyArea.placeholder = '<script></script>'")
+    expect(source).toContain('bodyArea.rows = 5')
+  })
+
+  it('HEAD / BODY を押すとタグを1件足し、入力するとその場で保存し、1件ずつ消せる（モーダルは開かない）', () => {
+    expect(source).toContain('api.addRedirectPageTag(')
+    expect(source).toContain('api.updateRedirectPageTag(')
+    expect(source).toContain('api.deleteRedirectPageTag(')
+    expect(source).not.toContain('openRedirectPageTagSettings')
+  })
+
+  it('カードと「HEAD」「BODY」は画面の白基調にそろえ、削除ボタンは採取済みの赤いゴミ箱の画像を使う（実物の trash3_red は未採取）', () => {
+    const whiteBase = readFileSync('src/app/white-base.ts', 'utf8')
+    expect(whiteBase).toContain('[data-clone-theme="light"] ._tagWrapper_1tjuv_117 ._tag_dolrq_1 {')
+    expect(whiteBase).toContain('[data-clone-theme="light"] ._tag_u9uou_1 {')
+    expect(whiteBase).toContain('url("/assets/trash_red-9ce5ac55.svg")')
+    expect(existsSync('capture/assets/trash_red-9ce5ac55.svg')).toBe(true)
   })
 })

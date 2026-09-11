@@ -233,6 +233,39 @@ const OVERRIDES = /* css */ `
   color: #666 !important;
 }
 
+/* ---- 中間ページタグ設定の「HEAD」「BODY」（採取CSSは暗い茶色の背景） ----
+ * ページ描画時に右側の文字をまとめて #333 にしているので、そのままだと暗い茶色の上で読めない（コントラスト約1.6）。
+ * 「中間ページを追加」と同じ薄いオレンジにそろえる（＋のアイコンはそのまま）。 */
+[data-clone-theme="light"] ._tagWrapper_1tjuv_117 ._tag_dolrq_1 {
+  background-color: #fff3e0 !important;
+  color: #e68a00 !important;
+}
+
+/* ---- 中間ページタグ設定のタグカード（採取CSSは黒背景・白文字） ----
+ * カードは「HEAD」「BODY」を押したときに後から足すので、ページ描画時のインライン上書き（redirect-pages.ts）が届かない。
+ * ここで中間ページの入力欄と同じ白基調にそろえる。
+ * 削除ボタンの実物のアイコン（trash3_red）は採取できていないので、採取済みの赤いゴミ箱を使う。 */
+[data-clone-theme="light"] ._tag_u9uou_1 {
+  background-color: #f5f6f8 !important;
+  border: 1px solid #e5e5ea;
+}
+[data-clone-theme="light"] ._tag_u9uou_1 ._tagTitle_u9uou_7,
+[data-clone-theme="light"] ._tag_u9uou_1 label {
+  color: #333 !important;
+}
+[data-clone-theme="light"] ._tag_u9uou_1 input,
+[data-clone-theme="light"] ._tag_u9uou_1 textarea {
+  background-color: #fff !important;
+  color: #333 !important;
+  border: 1px solid #d0d0d0 !important;
+  border-radius: 6px !important;
+}
+[data-clone-theme="light"] ._tag_u9uou_1 ._destroy_u9uou_22 {
+  background: url("/assets/trash_red-9ce5ac55.svg") center no-repeat #fce4e4 !important;
+  border: 1px solid #f5c6c6;
+  box-sizing: border-box;
+}
+
 /* ---- Widget ライブラリ (MUI Dialog) ---- */
 .MuiDialog-root .MuiPaper-root {
   background: #fff !important;

@@ -9,6 +9,7 @@
  * （`master-style.ts` / `lp-base-css.ts` / `lp-video.ts` はいずれも純粋関数・定数でDOMに依存しない。
  * cross-boundary import は `panel-link-replace.ts` が `src/shared/link-html.ts` を読む既存の前例に倣う）。
  */
+import { randomUUID } from 'node:crypto'
 import { Router } from 'express'
 import type { Request as ExpressRequest, Response } from 'express'
 import { getState, setState } from '../store/store.ts'
@@ -24,7 +25,7 @@ import type { AbTest, Article, State } from '../store/types.ts'
 import { LP_BASE_CSS } from '../../src/app/lp-base-css.ts'
 import { WIDGET_RESET_CSS, neutralizeWidgetStyles } from '../../src/shared/sb-preview-css.ts'
 import { LP_FONTS_URL, externalWidgetLibs } from '../../src/shared/lp-page-assets.ts'
-import { REDIRECT_LINK_SCRIPT } from './redirect-link-script.ts'
+import { buildLpLinkParamsScript } from './lp-link-params-script.ts'
 import { masterStyleIframeCss } from '../../src/app/master-style.ts'
 import { withAutoplayVideos } from '../../src/app/lp-video.ts'
 import { buildAnimCss, buildAnimRuntimeScript } from '../../src/app/anim/anim-presets.ts'
@@ -137,6 +138,16 @@ function excludeTokenFromCookie(cookie: string | undefined): string {
   return ''
 }
 
+/** 本体と同じく、_sb_global は同じブラウザで同じIDを使い続ける（読めない値なら新しく作る） */
+function knownGlobalId(cookie: string | undefined): string | null {
+  for (const part of (cookie ?? '').split(';')) {
+    const [key, raw] = part.split('=')
+    const value = raw?.trim() ?? ''
+    if (key?.trim() === '_sb_global' && /^[A-Za-z0-9._-]{1,100}$/.test(value)) return value
+  }
+  return null
+}
+
 /** 送信元IP。Railway等のプロキシ経由では X-Forwarded-For の先頭が実体。 */
 function clientIp(req: ExpressRequest): string {
   const forwarded = req.get('x-forwarded-for')
@@ -226,19 +237,13 @@ function buildTrackingScript(uid: string, versionUid: string): string {
  * （割合条件を外す→デバイス条件だけ→生存Version全体）して「何も出ない」を避ける。
  */
 
-/** ランダムな計測用uid（訪問ごとに変わる。SBのsquadbeyond_uid相当） */
-function genSquadbeyondUid(): string {
-  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`
-}
-
 /**
  * AFFILICODE連携: 本文中の外部リンク(http/https)へ計測用パラメーターを付与する。
  * SB公式FAQ準拠: squadbeyond_uid / sb_tracking=true / sb_article_uid。
  * 既にクエリがあれば & で連結する。アンカー(#)やパラメーター重複は素朴に扱う。
  */
-function appendAffilicodeParams(html: string, articleUid: string): string {
-  const uid = genSquadbeyondUid()
-  const params = `squadbeyond_uid=${encodeURIComponent(uid)}&sb_tracking=true&sb_article_uid=${encodeURIComponent(articleUid)}`
+function appendAffilicodeParams(html: string, articleUid: string, visitorId: string): string {
+  const params = `squadbeyond_uid=${encodeURIComponent(visitorId)}&sb_tracking=true&sb_article_uid=${encodeURIComponent(articleUid)}`
   return html.replace(/href="(https?:\/\/[^"]*)"/g, (_m, url: string) => {
     if (url.includes('sb_tracking=true')) return `href="${url}"`
     const [base, hash = ''] = url.split('#')
@@ -304,7 +309,9 @@ deliveryRouter.get('/lp/:uid', (req, res) => {
   // 計測ツール・ASP＝AFFILICODE のとき、SB公式FAQ準拠の連携用パラメーターを本文リンクへ付与する。
   // 付与するパラメーター: squadbeyond_uid / sb_tracking=true / sb_article_uid
   const affilicodeOn = bulkTags.some((b) => b.asp === 'AFFILICODE')
-  const versionHtml = affilicodeOn ? appendAffilicodeParams(version.html, article.uid) : version.html
+  // 訪問者の目印（本体と同じく、LPを見るたびに新しいID＝Cookie _sb_tu）。リンクの squadbeyond_uid にも使う
+  const visitorId = randomUUID()
+  const versionHtml = affilicodeOn ? appendAffilicodeParams(version.html, article.uid, visitorId) : version.html
   // Widget に紛れ込んだ SquadBeyond のプレビュー用CSSが、ページの背景・余白・高さを上書きしないようにする。
   // 保存データは書き換えず、ここで取り除く。Widget の見た目に要る指定は Widget の中だけに効かせて置く。
   const lp = neutralizeWidgetStyles(versionHtml)
@@ -337,11 +344,20 @@ deliveryRouter.get('/lp/:uid', (req, res) => {
     headTags +
     `</head><body>${withAutoplayVideos(lp.html)}${bodyTags}${popupHtml}${followHtml}` +
     IMAGE_LINK_SCRIPT +
-    // 中間ページへのリンクに、本体と同じく LP のパラメーターと article_url を付ける（リファラー設定「Version」に使う）
-    (`${lp.html}${popupHtml}${followHtml}`.includes('/redirect_pages/') ? REDIRECT_LINK_SCRIPT : '') +
+    // 本文のリンクに、本体と同じく LP のパラメーター・訪問者ID・記事uid を付ける（中間ページへは article_url も）
+    buildLpLinkParamsScript(article.uid) +
     buildTrackingScript(abTest.uid, version.uid) +
     buildAnimRuntimeScript() +
     `</body></html>`
+
+  // 本体と同じ Cookie（2026-09-11 本体の配信で確認）: _sb_a＝記事uid・_sb_tu＝見るたびに新しいID（どちらも5分）、
+  // _sb_global＝同じブラウザでは同じID（20年）。リンクのスクリプトが JS で _sb_tu を読むので HttpOnly にしない
+  const inFiveMinutes = new Date(Date.now() + 5 * 60 * 1000)
+  const inTwentyYears = new Date()
+  inTwentyYears.setUTCFullYear(inTwentyYears.getUTCFullYear() + 20)
+  res.cookie('_sb_a', article.uid, { expires: inFiveMinutes, sameSite: 'lax', path: '/' })
+  res.cookie('_sb_tu', visitorId, { expires: inFiveMinutes, sameSite: 'lax', path: '/' })
+  res.cookie('_sb_global', knownGlobalId(req.get('cookie')) ?? randomUUID(), { expires: inTwentyYears, sameSite: 'lax', path: '/' })
 
   // 配信内容はStateの更新に応じて即時反映すべきなのでキャッシュしない
   res.set('Cache-Control', 'no-cache')

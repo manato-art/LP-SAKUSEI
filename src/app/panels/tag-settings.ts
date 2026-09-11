@@ -132,9 +132,6 @@ ${SCRIPT_FIELDS.map(scriptFieldMarkup).join('\n')}`
 
 const MARKUP = modalMarkup('タグ設定', ARTICLE_CONTENTS)
 
-/** 中間ページタグ設定の中身。実物の編集画面は未採取なので、同じモーダルの個別設定の2欄（JavaScript head / body）を使う */
-const REDIRECT_PAGE_CONTENTS = SCRIPT_FIELDS.map(scriptFieldMarkup).join('\n')
-
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     method,
@@ -200,36 +197,6 @@ export async function openTagSettings(articleUid: string): Promise<void> {
 
   modal.wrapper.querySelector<HTMLElement>(HOOK.save)?.addEventListener('click', () => {
     void save(articleUid, modal.wrapper, noindex, editors, modal.close)
-  })
-}
-
-/**
- * 中間ページタグ設定（中間ページ設定の「HEAD」「BODY」）を開く。
- * 保存したタグは、その中間ページを開いたときだけ読み込まれる（mock-server/routes/redirect-page-delivery.ts）。
- */
-export function openRedirectPageTagSettings(
-  redirectPageUid: string,
-  tags: readonly HtmlTag[],
-  focus: 'head' | 'body',
-  onSaved: () => void,
-): void {
-  const modal = mountModal(modalMarkup('中間ページタグ設定', REDIRECT_PAGE_CONTENTS))
-  if (modal === null) return
-  const editors = wireScriptEditors(modal.wrapper, tags)
-  editors.find((e) => e.property === focus)?.textarea.focus()
-
-  modal.wrapper.querySelector<HTMLElement>(HOOK.save)?.addEventListener('click', () => {
-    void submit(
-      modal.wrapper,
-      editors,
-      async () => {
-        await request<{ redirect_page: unknown }>('PATCH', `/redirect_pages/${redirectPageUid}`, {
-          html_tags: collectHtmlTags(editors),
-        })
-        onSaved()
-      },
-      { message: '中間ページタグ設定を保存しました', close: modal.close },
-    )
   })
 }
 

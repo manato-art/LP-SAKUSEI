@@ -32,6 +32,7 @@ import { teamsRouter } from './routes/teams.ts'
 import { usersRouter } from './routes/users.ts'
 import { versionsRouter } from './routes/versions.ts'
 import { deliveryRouter } from './routes/delivery.ts'
+import { redirectPageTagsRouter } from './routes/redirect-page-tags.ts'
 import { redirectPageDeliveryRouter } from './routes/redirect-page-delivery.ts'
 import { adminAuthRouter, isAdminAuthenticated, render404Page } from './lib/admin-auth.ts'
 import { allowedEmailsRouter } from './routes/allowed-emails.ts'
@@ -110,6 +111,8 @@ export function createApp(): Express {
     dashboardRouter,
     foldersRouter,
     abTestsRouter,
+    // 中間ページタグ設定（名前付きのタグを1件ずつ）
+    redirectPageTagsRouter,
     versionsRouter,
     conversionsRouter,
     tasksRouter,

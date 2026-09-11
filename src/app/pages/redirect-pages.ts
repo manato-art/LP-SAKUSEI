@@ -11,11 +11,10 @@
  *   - 中間ページリンクのコピー / 中間ページの削除
  */
 import substrate from '../fragments/folders__UID__ab_tests__UID__redirect_pages__detail.html?raw'
-import { api, type RedirectPage } from '../api.ts'
+import { api, type RedirectPage, type RedirectPageTag } from '../api.ts'
 import { isStale } from '../main.ts'
 import { toast } from '../ui.ts'
 import { confirmCard } from '../dialog.ts'
-import { openRedirectPageTagSettings } from '../panels/tag-settings.ts'
 import { applyBeyondTopBar, wireBeyondBack } from './beyond-topbar.ts'
 import { wireBeyondNavAnchors } from './beyond-nav.ts'
 import { applyLightTheme } from './report-dom.ts'
@@ -139,10 +138,8 @@ async function renderList(
     item.classList.toggle(HOOK.active, page.uid === target)
     item.style.cursor = 'pointer'
     item.addEventListener('click', () => {
-      for (const other of left.querySelectorAll<HTMLElement>(HOOK.item)) {
-        other.classList.toggle(HOOK.active, other === item)
-      }
-      bindForm(root, page)
+      // 選び直すたびに一覧を取り直す（タグを足したり消したりしたあとでも、最新のタグカードを出す）
+      void renderList(root, abTestUid, template, page.uid)
     })
     if (addButton !== null) left.insertBefore(item, addButton)
     else left.append(item)
@@ -153,7 +150,7 @@ async function renderList(
   wireSave(root, abTestUid, template)
   wireDelete(root, abTestUid, template)
   wireCopyLink(root)
-  wireTagChips(root, abTestUid, template)
+  wireTagChips(root)
 }
 
 /** 設定フォームを選択中の中間ページに束ねる（未選択なら空にする） */
@@ -184,6 +181,7 @@ function bindForm(root: HTMLElement, page: RedirectPage | null): void {
   if (prefixNote !== undefined && page !== null) {
     prefixNote.textContent = `${PREFIX_MATCH_LABEL}${location.origin}/redirect_pages/${page.uid}`
   }
+  renderTagCards(root, page)
 }
 
 function wireSave(root: HTMLElement, abTestUid: string, template: HTMLElement | null): void {
@@ -214,28 +212,160 @@ function wireSave(root: HTMLElement, abTestUid: string, template: HTMLElement | 
   })
 }
 
-/** 中間ページタグ設定の「HEAD」「BODY」を押すと、選んでいる中間ページのタグを編集する */
-function wireTagChips(root: HTMLElement, abTestUid: string, template: HTMLElement | null): void {
+/**
+ * 中間ページタグ設定のタグカード（2026-09-11 に SquadBeyond 本体の中間ページ設定で採取した実マークアップ）。
+ * CSS は採取物の cssom.css にあるクラスをそのまま使う。
+ */
+const TAG_CARD = {
+  card: '_tag_u9uou_1',
+  titleWrapper: '_tagTitleWrapper_u9uou_7',
+  title: '_tagTitle_u9uou_7',
+  destroy: '_destroy_u9uou_22',
+  input: '_inputText_o4ifl_1 _full_o4ifl_14 _field_1tjuv_135 ',
+  textarea: '_base_1yavp_1 _full_1yavp_17 _resizeVertical_1yavp_20 _field_1tjuv_135 ',
+} as const
+
+/** 入力が止まってから保存するまでの待ち（本体も、入力するとその場で保存される） */
+const TAG_SAVE_DELAY_MS = 600
+
+type TagValues = { name: string; body: string }
+
+/** 押した「HEAD」「BODY」がどちらか */
+function chipProperty(chip: HTMLElement): 'head' | 'body' {
+  return (chip.textContent ?? '').trim().toLowerCase() === 'body' ? 'body' : 'head'
+}
+
+/**
+ * 入力が止まったら保存し、欄から離れたらすぐ保存する。
+ * 閉じていないタグなどで保存できなかったときは、欄から離れたときにだけ知らせる（入力の途中で何度も出さない）。
+ */
+function tagAutosaver(pageUid: string, tag: RedirectPageTag): (values: TagValues, immediate: boolean) => void {
+  let timer: ReturnType<typeof setTimeout> | null = null
+  let saved = JSON.stringify({ name: tag.name, body: tag.body })
+  const save = (values: TagValues, notify: boolean): void => {
+    const next = JSON.stringify(values)
+    if (next === saved) return
+    void api.updateRedirectPageTag(pageUid, tag.id, values).then(
+      () => {
+        saved = next
+      },
+      (error: unknown) => {
+        if (notify) toast((error as Error).message, 'error')
+      },
+    )
+  }
+  return (values, immediate) => {
+    if (timer !== null) clearTimeout(timer)
+    timer = null
+    if (immediate) save(values, true)
+    else timer = setTimeout(() => save(values, false), TAG_SAVE_DELAY_MS)
+  }
+}
+
+/** タグカードを1枚作る（タグ名＋JavaScript・右上に削除）。値は value / textContent に入れ、HTMLとして解釈させない */
+function createTagCard(pageUid: string, tag: RedirectPageTag): HTMLElement {
+  const card = document.createElement('div')
+  card.className = TAG_CARD.card
+  card.dataset['tagId'] = String(tag.id)
+
+  const titleWrapper = document.createElement('div')
+  titleWrapper.className = TAG_CARD.titleWrapper
+  const title = document.createElement('div')
+  title.className = TAG_CARD.title
+  title.textContent = tag.name
+  const destroy = document.createElement('div')
+  destroy.className = TAG_CARD.destroy
+  titleWrapper.append(title, destroy)
+
+  const nameLabel = document.createElement('label')
+  nameLabel.textContent = 'タグ名'
+  const nameInput = document.createElement('input')
+  nameInput.type = 'text'
+  nameInput.name = 'title'
+  nameInput.className = TAG_CARD.input
+  nameInput.placeholder = 'タグ名を入力してください'
+  nameInput.value = tag.name
+
+  const bodyLabel = document.createElement('label')
+  bodyLabel.textContent = 'JavaScript'
+  const bodyArea = document.createElement('textarea')
+  bodyArea.name = 'body'
+  bodyArea.placeholder = '<script></script>'
+  bodyArea.className = TAG_CARD.textarea
+  bodyArea.rows = 5
+  bodyArea.value = tag.body
+
+  const autosave = tagAutosaver(pageUid, tag)
+  const values = (): TagValues => ({ name: nameInput.value, body: bodyArea.value })
+  nameInput.addEventListener('input', () => {
+    title.textContent = nameInput.value
+    autosave(values(), false)
+  })
+  bodyArea.addEventListener('input', () => autosave(values(), false))
+  nameInput.addEventListener('blur', () => autosave(values(), true))
+  bodyArea.addEventListener('blur', () => autosave(values(), true))
+
+  destroy.addEventListener('click', () => {
+    void confirmCard({
+      title: 'このタグを削除しますか？',
+      message: 'この中間ページを開いたときに、このタグは動かなくなります。',
+      detail: '削除すると元に戻せません。',
+      submitLabel: '削除する',
+      danger: true,
+    }).then((ok) => {
+      if (!ok) return
+      void api.deleteRedirectPageTag(pageUid, tag.id).then(
+        () => {
+          card.remove()
+          toast('タグを削除しました')
+        },
+        (error: unknown) => toast((error as Error).message, 'error'),
+      )
+    })
+  })
+
+  card.append(titleWrapper, nameLabel, nameInput, bodyLabel, bodyArea)
+  return card
+}
+
+/**
+ * 選んでいる中間ページのタグカードを、HEAD / BODY それぞれの下に並べ直す。
+ * 同じ中間ページを描き直すとき（設定の保存・同じ項目をもう一度押す）は、今のカードを残す
+ * （入力中や保存待ちの内容を、取り直した一覧の古い値で上書きしないため）。
+ */
+function renderTagCards(root: HTMLElement, page: RedirectPage | null): void {
+  const pageUid = page?.uid ?? ''
+  if (root.dataset['cloneTagCardsFor'] === pageUid) return
+  root.dataset['cloneTagCardsFor'] = pageUid
+  for (const old of root.querySelectorAll<HTMLElement>(`.${TAG_CARD.card}`)) old.remove()
+  if (page === null) return
+  for (const chip of root.querySelectorAll<HTMLElement>(HOOK.tagChip)) {
+    const property = chipProperty(chip)
+    for (const tag of (page.tags ?? []).filter((t) => t.document_property === property)) {
+      chip.parentElement?.append(createTagCard(page.uid, tag))
+    }
+  }
+}
+
+/** 中間ページタグ設定の「HEAD」「BODY」を押すと、名前の無いタグを1件足してカードを出す（本体と同じ） */
+function wireTagChips(root: HTMLElement): void {
   for (const chip of root.querySelectorAll<HTMLElement>(HOOK.tagChip)) {
     if (chip.dataset['cloneTagWired'] === 'true') continue
     chip.dataset['cloneTagWired'] = 'true'
-    const focus = (chip.textContent ?? '').trim().toLowerCase() === 'body' ? 'body' : 'head'
     chip.addEventListener('click', () => {
       const uid = root.dataset['cloneSelectedRedirect'] ?? ''
       if (uid === '') {
         toast('中間ページを選択してください', 'error')
         return
       }
-      void api
-        .redirectPages(abTestUid)
-        .then(({ redirect_pages }) => {
-          const page = redirect_pages.find((p) => p.uid === uid)
-          if (page === undefined) return
-          openRedirectPageTagSettings(uid, page.html_tags ?? [], focus, () => {
-            void renderList(root, abTestUid, template, uid)
-          })
-        })
-        .catch((error: unknown) => toast((error as Error).message, 'error'))
+      void api.addRedirectPageTag(uid, chipProperty(chip)).then(
+        ({ tag }) => {
+          const card = createTagCard(uid, tag)
+          chip.parentElement?.append(card)
+          card.querySelector<HTMLInputElement>('input[name="title"]')?.focus()
+        },
+        (error: unknown) => toast((error as Error).message, 'error'),
+      )
     })
   }
 }

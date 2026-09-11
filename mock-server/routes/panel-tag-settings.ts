@@ -29,7 +29,7 @@ export const tagSettingsRouter: Router = Router()
 const MAX_TAG_BODY_LENGTH = 20000
 const MAX_TAGS = 50
 
-export type ParseResult =
+type ParseResult =
   | { ok: true; value: readonly HtmlTag[] }
   | { ok: false; code: string; message: string }
 
@@ -45,7 +45,7 @@ function fail(code: string, message: string): ParseResult {
  * リクエストの `html_tags` を検証する（§12「外部データを信用しない・境界で検証・fail fast」）。
  * 既知のキーだけを取り出して組み直す（未知のキーは落とす＝マスアサインメント防止）。
  */
-export function parseHtmlTags(body: unknown): ParseResult {
+function parseHtmlTags(body: unknown): ParseResult {
   const raw = isRecord(body) ? body['html_tags'] : undefined
   if (raw === undefined) return { ok: true, value: [] }
   if (!Array.isArray(raw)) return fail('validation_failed', 'html_tagsは配列で指定してください。')

@@ -365,6 +365,12 @@ export const api = {
     request<{ redirect_page: RedirectPage }>('POST', `/ab_tests/${abTestUid}/redirect_pages/create`),
   updateRedirectPage: (uid: string, patch: { name?: string; url?: string; redirect_time?: number; referrer_type?: string }) =>
     request<{ redirect_page: RedirectPage }>('PATCH', `/redirect_pages/${uid}`, patch),
+  addRedirectPageTag: (uid: string, documentProperty: 'head' | 'body') =>
+    request<{ tag: RedirectPageTag }>('POST', `/redirect_pages/${uid}/tags`, { document_property: documentProperty }),
+  updateRedirectPageTag: (uid: string, id: number, patch: { name?: string; body?: string }) =>
+    request<{ tag: RedirectPageTag }>('PATCH', `/redirect_pages/${uid}/tags/${id}`, patch),
+  deleteRedirectPageTag: (uid: string, id: number) =>
+    request<undefined>('DELETE', `/redirect_pages/${uid}/tags/${id}`),
   deleteRedirectPage: (uid: string) =>
     request<void>('DELETE', `/redirect_pages/${uid}`),
 
@@ -701,8 +707,16 @@ export interface RedirectPage {
   enabled: boolean
   redirect_time?: number
   referrer_type?: 'version' | 'redirect_page'
-  /** 中間ページタグ設定（HEAD / BODY） */
-  html_tags?: { tag: string; document_property: 'head' | 'body'; body: string }[]
+  /** 中間ページタグ設定（名前付きの HEAD / BODY のタグ） */
+  tags?: RedirectPageTag[]
+}
+
+/** 中間ページタグ設定の1件 */
+export interface RedirectPageTag {
+  id: number
+  name: string
+  document_property: 'head' | 'body'
+  body: string
 }
 
 /** Meta広告のアカウント集計KPI（実取得） */

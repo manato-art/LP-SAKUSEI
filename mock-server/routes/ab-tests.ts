@@ -23,8 +23,8 @@ import { optionalNumber, optionalString, requireString } from '../lib/validate.t
 import { serializeAbTest, serializeArticle } from '../lib/serialize.ts'
 import { fetchMetaInsights } from '../meta-insights.ts'
 import { findAbTest, notFound } from './ab-tests-shared.ts'
-import { parseHtmlTags } from './panel-tag-settings.ts'
 import { REDIRECT_SECONDS, isRedirectSeconds, redirectDestination } from '../lib/redirect-page-rules.ts'
+import { migrateLegacyRedirectPageTags } from '../store/redirect-page-tags.ts'
 import { abTestsPopupsRouter } from './ab-tests-popups.ts'
 import { abTestsReportsRouter } from './ab-tests-reports.ts'
 
@@ -197,7 +197,10 @@ abTestsRouter.get('/ab_tests/:uid/redirect_pages', (req, res) => {
   const state = getState()
   const abTest = findAbTest(state, req.params.uid)
   if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
-  const pages = state.redirectPages.filter((p) => p.ab_test_id === abTest.id)
+  // 旧形式（名前なしの2欄）で保存したタグは、名前付きのタグに置き換えてから返す（画面で1件ずつ直せるように）
+  const migrated = migrateLegacyRedirectPageTags(state, abTest.id)
+  if (migrated !== state) setState(() => migrated)
+  const pages = migrated.redirectPages.filter((p) => p.ab_test_id === abTest.id)
   res.json({ redirect_pages: applyEmptyState(req, pages) })
 })
 
@@ -216,13 +219,13 @@ abTestsRouter.post('/ab_tests/:uid/redirect_pages/create', (req, res) => {
   res.status(201).json({ redirect_page: out.page })
 })
 
-/** 中間ページの設定を更新（名前 / リダイレクト先 / リダイレクト時間 / リファラー / 中間ページタグ） */
+/** 中間ページの設定を更新（名前 / リダイレクト先 / リダイレクト時間 / リファラー） */
 abTestsRouter.patch('/redirect_pages/:uid', (req, res) => {
   const body = (req.body ?? {}) as Record<string, unknown>
   const name = optionalString(body, 'name')
   const redirectTime = optionalNumber(body, 'redirect_time')
   const referrerType = optionalString(body, 'referrer_type')
-  // 送られてきた項目だけを変える（中間ページタグだけを保存したときに、リダイレクト先を消さない）
+  // 送られてきた項目だけを変える（一部だけ保存したときに、ほかの設定を消さない）
   const url = typeof body['url'] === 'string' ? body['url'].trim() : undefined
   // リダイレクト先は http / https のURLだけ（javascript: などで、開いた人のブラウザを動かされないように）。空は「未設定」
   if (url !== undefined && url !== '' && redirectDestination(url) === null) {
@@ -237,17 +240,11 @@ abTestsRouter.patch('/redirect_pages/:uid', (req, res) => {
       .json(errorEnvelope('validation_failed', `リダイレクト時間は${REDIRECT_SECONDS.min}〜${REDIRECT_SECONDS.max}秒で入力してください。`))
     return
   }
-  const tags = 'html_tags' in body ? parseHtmlTags(body) : null
-  if (tags !== null && !tags.ok) {
-    res.status(422).json(errorEnvelope(tags.code, tags.message))
-    return
-  }
   const out = updateRedirectPage(getState(), req.params.uid, {
     ...(name !== '' ? { name } : {}),
     ...(url !== undefined ? { url } : {}),
     ...(redirectTime !== undefined ? { redirect_time: redirectTime } : {}),
     ...(referrerType !== '' ? { referrer_type: referrerType } : {}),
-    ...(tags !== null && tags.ok ? { html_tags: tags.value } : {}),
   })
   if (out.page === null) return notFound(res, '中間ページが見つかりません。')
   setState(() => out.state)

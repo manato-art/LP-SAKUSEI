@@ -212,6 +212,16 @@ export interface Version {
   updated_at: number
 }
 
+/** 中間ページタグ設定の1件（本体: HEAD / BODY を押すと名前付きのタグが1件増える） */
+export interface RedirectPageTag {
+  id: number
+  /** タグ名 */
+  name: string
+  document_property: HtmlTagDocumentProperty
+  /** JavaScript */
+  body: string
+}
+
 export interface RedirectPage {
   id: number
   uid: string
@@ -224,7 +234,9 @@ export interface RedirectPage {
   redirect_time?: number
   /** リファラー設定（version=VersionURL / redirect_page=中間ページURL） */
   referrer_type?: 'version' | 'redirect_page'
-  /** 中間ページタグ設定（この中間ページだけに入れる HEAD / BODY のタグ。未設定は空） */
+  /** 中間ページタグ設定（この中間ページだけに入れる、名前付きの HEAD / BODY のタグ。未設定は空） */
+  tags?: readonly RedirectPageTag[]
+  /** 旧形式（2026-09-11 の一時期、名前なしの HEAD / BODY 2欄で保存していた）。読むだけで、一覧を開くと tags に置き換える */
   html_tags?: readonly HtmlTag[]
 }
 

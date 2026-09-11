@@ -8,6 +8,7 @@
 import { Router } from 'express'
 import { getState } from '../store/store.ts'
 import { bulkTagsForFolder } from '../store/bulk-tags.ts'
+import { redirectPageTags } from '../store/redirect-page-tags.ts'
 import { DEFAULT_REDIRECT_SECONDS, redirectDestination } from '../lib/redirect-page-rules.ts'
 import { buildRedirectPageHtml } from './redirect-page-html.ts'
 import { renderRedirectPageNotice } from './delivery-notice.ts'
@@ -30,7 +31,7 @@ redirectPageDeliveryRouter.get('/redirect_pages/:uid', (req, res) => {
 
   // タグ＝一括タグ設定（範囲一致・配信ページと同じ決め方）＋ この中間ページのタグ（中間ページタグ設定）
   const bulkTags = bulkTagsForFolder(state, abTest.team_id, abTest.folder_id)
-  const ownTags = page.html_tags ?? []
+  const ownTags = redirectPageTags(page)
   const tagsFor = (property: 'head' | 'body'): string =>
     bulkTags.map((b) => (property === 'head' ? b.head_js : b.body_js)).join('') +
     ownTags

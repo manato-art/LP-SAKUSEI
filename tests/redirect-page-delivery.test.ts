@@ -53,6 +53,16 @@ async function save(uid: string, body: Record<string, unknown>): Promise<{ statu
   return sendJson('PATCH', `${server.api}/redirect_pages/${uid}`, body)
 }
 
+/** 中間ページタグ設定: HEAD / BODY を押して1件足し、タグ名と JavaScript を入れる（本体と同じ操作） */
+async function addTag(uid: string, property: 'head' | 'body', body: string, name = 'テスト'): Promise<number> {
+  const created = await postJson<{ tag: { id: number } }>(`${server.api}/redirect_pages/${uid}/tags`, {
+    document_property: property,
+  })
+  expect(created.status).toBe(201)
+  expect((await sendJson('PATCH', `${server.api}/redirect_pages/${uid}/tags/${created.json.tag.id}`, { name, body })).status).toBe(200)
+  return created.json.tag.id
+}
+
 /** 中間ページリンクを開く（リンクの形は採取した設定画面と同じ） */
 async function open(uid: string): Promise<{ status: number; html: string }> {
   const res = await fetch(`${server.baseUrl}/redirect_pages/${uid}?sbrp=true&sbrpuid=${uid}`, { redirect: 'manual' })
@@ -154,13 +164,9 @@ describe('応答は SquadBeyond 本体の中間ページと同じ形', () => {
         body_js: '<script>window.bulkBody=1</script>',
       }).state
     })
-    await save(uid, {
-      url: 'https://example.com/',
-      html_tags: [
-        { tag: 'script', document_property: 'head', body: '<script>window.pageHead=1</script>' },
-        { tag: 'script', document_property: 'body', body: '<script>window.pageBody=1</script>' },
-      ],
-    })
+    await save(uid, { url: 'https://example.com/' })
+    await addTag(uid, 'head', '<script>window.pageHead=1</script>')
+    await addTag(uid, 'body', '<script>window.pageBody=1</script>')
 
     const { html } = await open(uid)
     const head = html.slice(0, html.indexOf('</head>'))
@@ -173,18 +179,46 @@ describe('応答は SquadBeyond 本体の中間ページと同じ形', () => {
     expect(body.indexOf('js-referrer-type')).toBeLessThan(body.indexOf('window.pageBody=1'))
   })
 
-  it('中間ページタグだけを保存しても、リダイレクト先は消えない', async () => {
+  it('中間ページタグ設定は、名前付きのタグを何件でも足せて、1件ずつ直したり消したりできる（本体と同じ）', async () => {
     const { abTestUid, uid } = await createRedirectPage()
     await save(uid, { url: 'https://example.com/keep' })
-    await save(uid, { html_tags: [{ tag: 'script', document_property: 'head', body: '<script>window.x=1</script>' }] })
+    const first = await addTag(uid, 'head', '<script>window.first=1</script>', '計測タグA')
+    const second = await addTag(uid, 'head', '<script>window.second=1</script>', '計測タグB')
+    expect((await sendJson('DELETE', `${server.api}/redirect_pages/${uid}/tags/${first}`)).status).toBe(204)
 
-    const list = await getJson<{ redirect_pages: { uid: string; url: string; html_tags?: unknown[] }[] }>(
+    const list = await getJson<{ redirect_pages: { uid: string; url: string; tags?: unknown[] }[] }>(
       `${server.api}/ab_tests/${abTestUid}/redirect_pages`,
     )
     const saved = list.redirect_pages.find((p) => p.uid === uid)
     expect(saved?.url).toBe('https://example.com/keep')
-    expect(saved?.html_tags).toHaveLength(1)
-    expect((await open(uid)).html).toContain('data-value="https://example.com/keep"')
+    expect(saved?.tags).toEqual([
+      { id: second, name: '計測タグB', document_property: 'head', body: '<script>window.second=1</script>' },
+    ])
+    const html = (await open(uid)).html
+    expect(html).toContain('window.second=1')
+    expect(html).not.toContain('window.first=1')
+  })
+
+  it('以前の形（名前なしの2欄）で保存したタグも入り、一覧を開くと名前付きのタグに置き換わる', async () => {
+    const { abTestUid, uid } = await createRedirectPage()
+    await save(uid, { url: 'https://example.com/' })
+    setState((state) => ({
+      ...state,
+      redirectPages: state.redirectPages.map((p) =>
+        p.uid === uid
+          ? { ...p, html_tags: [{ tag: 'script', document_property: 'body' as const, body: '<script>window.legacy=1</script>' }] }
+          : p,
+      ),
+    }))
+    expect((await open(uid)).html).toContain('window.legacy=1')
+
+    const list = await getJson<{ redirect_pages: { uid: string; tags?: unknown[] }[] }>(
+      `${server.api}/ab_tests/${abTestUid}/redirect_pages`,
+    )
+    expect(list.redirect_pages.find((p) => p.uid === uid)?.tags).toEqual([
+      { id: expect.any(Number), name: '', document_property: 'body', body: '<script>window.legacy=1</script>' },
+    ])
+    expect((await open(uid)).html).toContain('window.legacy=1')
   })
 })
 
@@ -271,13 +305,24 @@ describe('中間ページ設定の保存で、危ない値や範囲外の値を�
     expect((await save(uid, { url: 'https://example.com/', redirect_time: seconds })).status).toBe(422)
   })
 
-  it('閉じていないタグは保存できず、どちらの欄かを返す', async () => {
+  it('閉じていないタグは保存できず、どちらの欄のタグかを返す', async () => {
     const { uid } = await createRedirectPage()
-    const res = await save(uid, {
-      html_tags: [{ tag: 'script', document_property: 'body', body: '<script>window.x=1' }],
+    const created = await postJson<{ tag: { id: number } }>(`${server.api}/redirect_pages/${uid}/tags`, {
+      document_property: 'body',
+    })
+    const res = await sendJson('PATCH', `${server.api}/redirect_pages/${uid}/tags/${created.json.tag.id}`, {
+      body: '<script>window.x=1',
     })
     expect(res.status).toBe(422)
     expect(JSON.stringify(res.json)).toContain('invalid_script_body')
+  })
+
+  it('タグは HEAD か BODY にしか足せず、無い中間ページ・無いタグは 404', async () => {
+    const { uid } = await createRedirectPage()
+    expect((await postJson(`${server.api}/redirect_pages/${uid}/tags`, { document_property: 'footer' })).status).toBe(422)
+    expect((await postJson(`${server.api}/redirect_pages/REDIRECT_NOPE/tags`, { document_property: 'head' })).status).toBe(404)
+    expect((await sendJson('PATCH', `${server.api}/redirect_pages/${uid}/tags/999999`, { body: '' })).status).toBe(404)
+    expect((await sendJson('DELETE', `${server.api}/redirect_pages/${uid}/tags/999999`)).status).toBe(404)
   })
 
   it('リダイレクト先のURLに書かれた文字で、ページにスクリプトを差し込めない', async () => {
