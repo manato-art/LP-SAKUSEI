@@ -14,6 +14,7 @@ import {
   schedulePersist,
 } from './persistence.ts'
 import type { State } from './types.ts'
+import { repairDuplicateUids } from './uid-repair.ts'
 
 /** シード（保存済みが無いときの初期状態）。SEED_DEMO=1 なら架空デモ1式、なければ空。 */
 function seedState(): State {
@@ -28,11 +29,26 @@ function initialState(): State {
   const persisted = loadPersistedState()
   if (persisted !== null) {
     console.log(`[store] 永続化データから復元しました（abTests: ${persisted.abTests.length}件、folders: ${persisted.folders.length}件）`)
-    return persisted
+    return repairOnLoad(persisted)
   }
   const seed = seedState()
   console.log(`[store] シードから初期化（${persistenceEnabled() ? '永続化ファイル未検出' : 'DATA_DIR未設定'}、abTests: ${seed.abTests.length}件）`)
   return seed
+}
+
+/**
+ * 保存データに同じ uid が2件以上あれば直す（uid を件数＋1で作っていた頃の不具合の後始末・2026-09-11 本人承認）。
+ * 直す前の内容は退避へ強制保存し、何を付け直したかをログに残してから、直した内容を保存し直す。
+ */
+function repairOnLoad(persisted: State): State {
+  const { state, changes } = repairDuplicateUids(persisted)
+  if (changes.length === 0) return persisted
+  archiveBeforeDestruction(persisted)
+  for (const change of changes) {
+    console.log(`[store] 同じ uid を付け直しました: ${change.collection} id=${change.id} ${change.from} → ${change.to}`)
+  }
+  schedulePersist(state)
+  return state
 }
 
 let current: State = initialState()
