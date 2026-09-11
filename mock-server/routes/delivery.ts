@@ -24,6 +24,7 @@ import type { AbTest, Article, State } from '../store/types.ts'
 import { LP_BASE_CSS } from '../../src/app/lp-base-css.ts'
 import { WIDGET_RESET_CSS, neutralizeWidgetStyles } from '../../src/shared/sb-preview-css.ts'
 import { LP_FONTS_URL, externalWidgetLibs } from '../../src/shared/lp-page-assets.ts'
+import { REDIRECT_LINK_SCRIPT } from './redirect-link-script.ts'
 import { masterStyleIframeCss } from '../../src/app/master-style.ts'
 import { withAutoplayVideos } from '../../src/app/lp-video.ts'
 import { buildAnimCss, buildAnimRuntimeScript } from '../../src/app/anim/anim-presets.ts'
@@ -336,6 +337,8 @@ deliveryRouter.get('/lp/:uid', (req, res) => {
     headTags +
     `</head><body>${withAutoplayVideos(lp.html)}${bodyTags}${popupHtml}${followHtml}` +
     IMAGE_LINK_SCRIPT +
+    // 中間ページへのリンクに、本体と同じく LP のパラメーターと article_url を付ける（リファラー設定「Version」に使う）
+    (`${lp.html}${popupHtml}${followHtml}`.includes('/redirect_pages/') ? REDIRECT_LINK_SCRIPT : '') +
     buildTrackingScript(abTest.uid, version.uid) +
     buildAnimRuntimeScript() +
     `</body></html>`

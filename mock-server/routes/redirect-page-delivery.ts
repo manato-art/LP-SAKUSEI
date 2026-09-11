@@ -39,15 +39,16 @@ redirectPageDeliveryRouter.get('/redirect_pages/:uid', (req, res) => {
       .join('')
 
   const html = buildRedirectPageHtml({
-    title: abTest.page_title || abTest.title,
     destination,
     redirectSeconds: page.redirect_time ?? DEFAULT_REDIRECT_SECONDS,
     // リファラー設定の初期値は Version（設定画面の初期選択）
-    versionPath: (page.referrer_type ?? 'version') === 'version' ? `/lp/${encodeURIComponent(abTest.uid)}` : null,
+    referrerType: page.referrer_type ?? 'version',
     headTags: tagsFor('head'),
     bodyTags: tagsFor('body'),
     noindex: bulkTags.some((b) => b.noindex),
   })
+  // 本体と同じくヘッダーで付ける。移動先へURLのパスまで渡す（ブラウザ既定だと別サイトにはドメインしか渡らず、リファラー設定の違いが伝わらない）
+  res.set('Referrer-Policy', 'no-referrer-when-downgrade')
   // 設定の変更はすぐ反映すべきなのでキャッシュしない（配信ページと同じ）
   res.set('Cache-Control', 'no-cache')
   res.type('html').send(html)

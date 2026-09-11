@@ -1,53 +1,72 @@
 /**
  * 中間ページ（`/redirect_pages/:uid`）の応答HTML（純粋関数）。
  *
- * 採取した中間ページ設定の画面の説明どおりに動かす:
- *   - タグ（一括タグ設定の範囲に入るタグ ＋ この中間ページのタグ）を読み込み、
- *     「リダイレクト時間」待ってから「リダイレクト先」へ移動する
- *     （待つのはタグが送信を終えるため。推奨: SmartNews・Gunosy は0.4秒、TikTok Ads は1秒）
- *   - 「リファラー設定」: Version なら移動先に Version のURL（このクローンでは配信URL `/lp/:uid`）を、
- *     中間ページなら中間ページのURLを「どこから来たか」として渡す
- * 画面には何も出さない（白いページのまま移動する）。
+ * SquadBeyond 本体の中間ページ（2026-09-11 に本人の画面でテスト用を作って確かめた）と同じ作りにする:
+ *   - 本文に `.js-redirect-url`（リダイレクト先）と `.js-referrer-type`（リファラー設定）を data-value で置き、
+ *     「自動でジャンプしない場合は…」の案内と `.js-redirect-url-link` を出す
+ *   - スクリプトが、開いたURLのパラメーターを article_url / sbrp / sbrpuid を除いてリダイレクト先へ引き継ぎ、
+ *     リダイレクト時間待ってから移動する（待つのはタグが送信を終えるため）
+ *   - リファラー設定: Version なら article_url（LPのURL・同じドメイン）へ、中間ページなら中間ページのURL
+ *     （パラメーターを外す）へ URL を書き換えてから移動する。どちらも squadbeyond_uid / sb_article_uid を付ける
+ *     （値が無いときは名前だけ）。article_url が無い・別ドメインのときは書き換えない
+ * Referrer-Policy（no-referrer-when-downgrade）はレスポンスヘッダーで付ける（routes/redirect-page-delivery.ts）。
  */
 import { escapeHtml } from './delivery-notice.ts'
 
+export type RedirectReferrerType = 'version' | 'redirect_page'
+
 export interface RedirectPageHtmlInput {
-  /** タブに出る題名（beyondページのページタイトル） */
-  readonly title: string
   /** 移動先（検証済みの http / https の絶対URL） */
   readonly destination: string
   /** 移動するまでの秒数 */
   readonly redirectSeconds: number
-  /** リファラーを Version のURLにするときの、そのパス（中間ページのURLのまま渡すときは null） */
-  readonly versionPath: string | null
+  readonly referrerType: RedirectReferrerType
   readonly headTags: string
   readonly bodyTags: string
   readonly noindex: boolean
 }
 
-/** <script> の中に文字列を埋める（`</script>` で抜け出させないよう `<` も逃がす） */
-function scriptString(value: string): string {
-  return JSON.stringify(value).replace(/</g, '\\u003c')
+/** 移動のスクリプト（ブラウザで動く。値は本文の data-value から読むので、ここへ文字列を埋め込まない） */
+function redirectScript(waitMs: number): string {
+  return `(function(){
+var params=new URLSearchParams(location.search);
+var articleUrl=params.get('article_url');
+params.delete('article_url');params.delete('sbrp');params.delete('sbrpuid');
+var destination=new URL(document.querySelector('.js-redirect-url').dataset.value);
+params.forEach(function(value,key){destination.searchParams.append(key,value);});
+var to=destination.toString();
+Array.prototype.forEach.call(document.querySelectorAll('.js-redirect-url-link'),function(link){link.href=to;});
+function withIds(base){
+var uid=params.get('squadbeyond_uid');var articleUid=params.get('sb_article_uid');
+return base+(base.indexOf('?')===-1?'?':'&')+'squadbeyond_uid'+(uid===null?'':'='+encodeURIComponent(uid))+'&sb_article_uid'+(articleUid===null?'':'='+encodeURIComponent(articleUid));
+}
+function sameSite(raw){
+if(raw===null)return null;
+try{var url=new URL(raw);return url.origin===location.origin?url:null;}catch(e){return null;}
+}
+setTimeout(function(){
+var type=document.querySelector('.js-referrer-type').dataset.value;
+if(type==='version'){var article=sameSite(articleUrl);if(article!==null)history.replaceState(null,'',withIds(article.href));}
+else if(type==='redirect_page'){history.replaceState(null,'',withIds(location.origin+location.pathname));}
+location.replace(to);
+},${waitMs});
+})();`
 }
 
 export function buildRedirectPageHtml(input: RedirectPageHtmlInput): string {
-  const waitMs = Math.round(input.redirectSeconds * 1000)
-  // 移動の直前に、このページのURLを Version のURLへ書き換える（移動先へ渡る「どこから来たか」がそのURLになる）
-  const rewriteReferrer =
-    input.versionPath === null ? '' : `history.replaceState(null,'',${scriptString(input.versionPath)});`
+  const robots = input.noindex ? 'noindex,nofollow,noarchive' : 'nofollow,noarchive'
   return (
-    `<!doctype html><html lang="ja"><head><meta charset="utf-8">` +
-    `<meta name="viewport" content="width=device-width, initial-scale=1">` +
-    (input.noindex ? '<meta name="robots" content="noindex,nofollow">' : '') +
-    // 移動先へURLのパスまで渡す。ブラウザ既定だと別サイトにはドメインしか渡らず、リファラー設定の違いが伝わらない
-    `<meta name="referrer" content="no-referrer-when-downgrade">` +
-    `<title>${escapeHtml(input.title)}</title>` +
+    '<!DOCTYPE html><html><head><link href="data:," rel="icon" /><meta charset="utf-8" />' +
+    `<meta content="${robots}" name="robots" />` +
+    '<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport" />' +
     input.headTags +
-    // JavaScript が動かない環境でも移動はする（その場合タグは動かない）
-    `<noscript><meta http-equiv="refresh" content="${input.redirectSeconds};url=${escapeHtml(input.destination)}"></noscript>` +
-    `</head><body style="margin:0;background:#fff">` +
+    '</head><body>' +
+    `<div class="js-redirect-url" data-value="${escapeHtml(input.destination)}"></div>` +
+    `<div class="js-referrer-type" data-value="${input.referrerType}"></div>` +
     input.bodyTags +
-    `<script>setTimeout(function(){${rewriteReferrer}location.replace(${scriptString(input.destination)})},${waitMs})</script>` +
-    `</body></html>`
+    '<div>自動でジャンプしない場合は、下記のＵＲＬをクリックしてください。</div>\n' +
+    '<a class="js-redirect-url-link">URL</a>\n' +
+    `<script>${redirectScript(Math.round(input.redirectSeconds * 1000))}</script>` +
+    '</body></html>'
   )
 }

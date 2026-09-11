@@ -7,7 +7,17 @@
  *   - リファラー設定 … Version なら /articles/ のような Version のURL、中間ページなら /redirect_pages/ のURLになる
  *   - タグ … 一括タグ設定のタグ ＋ 中間ページタグ設定（HEAD / BODY）
  * これまでは設定を保存できるだけで、リンクを開いても「この画面はまだ作っていません」と出ていた。
+ *
+ * 2026-09-11 に SquadBeyond 本体（本人がログインした画面）でテスト用の中間ページを作り、実際の応答と移動を確かめた:
+ *   - 応答は 200 のHTML（サーバーでは飛ばさない）。ヘッダー Referrer-Policy: no-referrer-when-downgrade、robots は nofollow,noarchive
+ *   - 本文に .js-redirect-url / .js-referrer-type の data-value、「自動でジャンプしない場合は…」と .js-redirect-url-link
+ *   - リンクに付いたパラメーターは article_url / sbrp / sbrpuid を除いてリダイレクト先へ引き継ぐ（先にあるパラメーターの後ろに足す）
+ *   - リファラー「Version」: article_url（同じドメインのLPのURL）へ URL を書き換えてから移動。article_url が無ければ書き換えない
+ *   - リファラー「中間ページ」: 中間ページのURL（パラメーターを外す）へ書き換えてから移動
+ *   - どちらも書き換えたURLに squadbeyond_uid / sb_article_uid を付ける（値が無いときは名前だけ）
+ *   - 待ち時間はリダイレクト時間×1000ミリ秒
  */
+import { runInNewContext } from 'node:vm'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { getJson, postJson, resetStore, sendJson, startTestServer, type TestServer } from './helpers/server.ts'
 import { getState, setState } from '../mock-server/store/store.ts'
@@ -49,37 +59,91 @@ async function open(uid: string): Promise<{ status: number; html: string }> {
   return { status: res.status, html: await res.text() }
 }
 
-describe('中間ページリンクを開くと、リダイレクト時間のあとにリダイレクト先へ移動する', () => {
-  it('リダイレクト先へ、リダイレクト時間（秒）待ってから移動する', async () => {
+
+function decodeHtml(text: string): string {
+  return text
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+}
+
+interface Moved {
+  /** location.replace で移動した先 */
+  readonly to: string | null
+  /** 移動の前に書き換えたURL（移動先に「どこから来たか」として渡るURL）。書き換えなければ null */
+  readonly rewrittenTo: string | null
+  /** 「自動でジャンプしない場合は」のリンク先 */
+  readonly linkHref: string | null
+  readonly waitMs: number | null
+}
+
+/** 応答HTMLの移動スクリプトを、ブラウザの代わりの最小の入れ物で動かす（pageUrl で開いたとして） */
+function runRedirect(html: string, pageUrl: string): Moved {
+  const script = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)]
+    .map((m) => m[1] ?? '')
+    .find((body) => body.includes('js-redirect-url'))
+  if (script === undefined) throw new Error('移動スクリプトが見つからない')
+  const dataValue = (className: string): string =>
+    decodeHtml(new RegExp(`<div class="${className}" data-value="([^"]*)"`).exec(html)?.[1] ?? '')
+  const url = new URL(pageUrl)
+  const link = { href: '' }
+  const seen: { to: string | null; rewrittenTo: string | null; timer: { run: () => void; ms: number } | null } = {
+    to: null,
+    rewrittenTo: null,
+    timer: null,
+  }
+  runInNewContext(script, {
+    URL,
+    URLSearchParams,
+    location: {
+      href: url.href,
+      search: url.search,
+      pathname: url.pathname,
+      origin: url.origin,
+      replace: (to: string) => {
+        seen.to = to
+      },
+    },
+    document: {
+      querySelector: (selector: string) =>
+        selector === '.js-redirect-url' || selector === '.js-referrer-type'
+          ? { dataset: { value: dataValue(selector.slice(1)) } }
+          : null,
+      querySelectorAll: (selector: string) => (selector === '.js-redirect-url-link' ? [link] : []),
+    },
+    history: {
+      replaceState: (_state: unknown, _title: unknown, next: string) => {
+        seen.rewrittenTo = String(next)
+      },
+    },
+    setTimeout: (run: () => void, ms: number) => {
+      seen.timer = { run, ms }
+    },
+  })
+  seen.timer?.run()
+  return { to: seen.to, rewrittenTo: seen.rewrittenTo, linkHref: link.href === '' ? null : link.href, waitMs: seen.timer?.ms ?? null }
+}
+
+describe('応答は SquadBeyond 本体の中間ページと同じ形', () => {
+  it('200 のHTMLで、リダイレクト先・リファラー設定・待ち時間・案内文を持つ', async () => {
     const { uid } = await createRedirectPage()
-    expect((await save(uid, { url: 'https://example.com/product?a=1', redirect_time: 1 })).status).toBe(200)
+    expect((await save(uid, { url: 'https://example.com/product?a=1', redirect_time: 1, referrer_type: 'redirect_page' })).status).toBe(200)
 
-    const { status, html } = await open(uid)
-    expect(status).toBe(200)
-    expect(html).toContain('location.replace("https://example.com/product?a=1")')
-    expect(html).toContain('},1000)</script>')
-    // JavaScript が動かない環境でも移動する
-    expect(html).toContain('<meta http-equiv="refresh" content="1;url=https://example.com/product?a=1">')
+    const res = await fetch(`${server.baseUrl}/redirect_pages/${uid}?sbrp=true&sbrpuid=${uid}`)
+    const html = await res.text()
+    expect(res.status).toBe(200)
+    expect(res.headers.get('referrer-policy')).toBe('no-referrer-when-downgrade')
+    expect(html).toContain('<meta content="nofollow,noarchive" name="robots" />')
+    expect(html).toContain('<div class="js-redirect-url" data-value="https://example.com/product?a=1"></div>')
+    expect(html).toContain('<div class="js-referrer-type" data-value="redirect_page"></div>')
+    expect(html).toContain('<div>自動でジャンプしない場合は、下記のＵＲＬをクリックしてください。</div>')
+    expect(html).toContain('<a class="js-redirect-url-link">URL</a>')
+    expect(runRedirect(html, `https://lp.example.test/redirect_pages/${uid}?sbrp=true&sbrpuid=${uid}`).waitMs).toBe(1000)
   })
 
-  it('リファラー設定「Version」なら、移動する直前にURLをVersionの配信URL（/lp/:uid）へ書き換える', async () => {
-    const { abTestUid, uid } = await createRedirectPage()
-    await save(uid, { url: 'https://example.com/', referrer_type: 'version' })
-    const { html } = await open(uid)
-    expect(html).toContain(`history.replaceState(null,'',"/lp/${abTestUid}")`)
-    // 移動先にURLのパスまで渡す（ブラウザ既定だと別サイトにはドメインしか渡らず、設定の違いが伝わらない）
-    expect(html).toContain('<meta name="referrer" content="no-referrer-when-downgrade">')
-  })
-
-  it('リファラー設定「中間ページ」なら、中間ページのURLのまま移動する', async () => {
-    const { uid } = await createRedirectPage()
-    await save(uid, { url: 'https://example.com/', referrer_type: 'redirect_page' })
-    const { html } = await open(uid)
-    expect(html).not.toContain('history.replaceState')
-    expect(html).toContain('location.replace("https://example.com/")')
-  })
-
-  it('一括タグ設定の範囲に入るタグと、この中間ページのタグを入れ、読み込んでから移動する', async () => {
+  it('一括タグ設定の範囲に入るタグと、この中間ページのタグを入れる（HEAD は head の中、BODY は案内文より前）', async () => {
     const { abTestUid, uid } = await createRedirectPage()
     const teamId = getState().abTests.find((t) => t.uid === abTestUid)?.team_id ?? -1
     setState((state) => {
@@ -103,9 +167,10 @@ describe('中間ページリンクを開くと、リダイレクト時間のあ�
     const body = html.slice(html.indexOf('<body'))
     expect(head).toContain('window.bulkHead=1')
     expect(head).toContain('window.pageHead=1')
-    expect(body).toContain('window.bulkBody=1')
-    expect(body).toContain('window.pageBody=1')
-    expect(body.indexOf('window.pageBody=1')).toBeLessThan(body.indexOf('location.replace('))
+    const guide = body.indexOf('自動でジャンプしない場合は')
+    expect(body.indexOf('window.bulkBody=1')).toBeLessThan(guide)
+    expect(body.indexOf('window.pageBody=1')).toBeLessThan(guide)
+    expect(body.indexOf('js-referrer-type')).toBeLessThan(body.indexOf('window.pageBody=1'))
   })
 
   it('中間ページタグだけを保存しても、リダイレクト先は消えない', async () => {
@@ -119,7 +184,59 @@ describe('中間ページリンクを開くと、リダイレクト時間のあ�
     const saved = list.redirect_pages.find((p) => p.uid === uid)
     expect(saved?.url).toBe('https://example.com/keep')
     expect(saved?.html_tags).toHaveLength(1)
-    expect((await open(uid)).html).toContain('location.replace("https://example.com/keep")')
+    expect((await open(uid)).html).toContain('data-value="https://example.com/keep"')
+  })
+})
+
+describe('移動の動き（SquadBeyond 本体で確かめたとおり）', () => {
+  const LP = 'https://lp.example.test'
+
+  it('付いているパラメーターは、article_url・sbrp・sbrpuid を除いてリダイレクト先へ引き継ぐ', async () => {
+    const { uid } = await createRedirectPage()
+    await save(uid, { url: 'https://example.com/', referrer_type: 'version' })
+    const moved = runRedirect((await open(uid)).html, `${LP}/redirect_pages/${uid}?sbrp=true&sbrpuid=${uid}&cc_check=1`)
+    expect(moved.to).toBe('https://example.com/?cc_check=1')
+    expect(moved.linkHref).toBe('https://example.com/?cc_check=1')
+    // リファラー「Version」でも article_url が無ければURLは書き換えない（本体では中間ページのURLがそのまま渡った）
+    expect(moved.rewrittenTo).toBeNull()
+  })
+
+  it('リダイレクト先に元からあるパラメーターの後ろに足す', async () => {
+    const { uid } = await createRedirectPage()
+    await save(uid, { url: 'https://example.com/?dest=1', referrer_type: 'redirect_page' })
+    const page = `${LP}/redirect_pages/${uid}?sbrp=true&sbrpuid=${uid}&article_url=${encodeURIComponent(`${LP}/articles/test-lp`)}&squadbeyond_uid=test-visitor&sb_article_uid=test-article&cc_check=1`
+    expect(runRedirect((await open(uid)).html, page).to).toBe(
+      'https://example.com/?dest=1&squadbeyond_uid=test-visitor&sb_article_uid=test-article&cc_check=1',
+    )
+  })
+
+  it('リファラー「中間ページ」は、中間ページのURL（パラメーターを外して計測用の2つだけ）へ書き換えてから移動する', async () => {
+    const { uid } = await createRedirectPage()
+    await save(uid, { url: 'https://example.com/', referrer_type: 'redirect_page' })
+    const html = (await open(uid)).html
+    const withIds = runRedirect(html, `${LP}/redirect_pages/${uid}?sbrp=true&sbrpuid=${uid}&squadbeyond_uid=test-visitor&sb_article_uid=test-article`)
+    expect(withIds.rewrittenTo).toBe(`${LP}/redirect_pages/${uid}?squadbeyond_uid=test-visitor&sb_article_uid=test-article`)
+    // 値が無いときは名前だけが付く（本体と同じ）
+    const withoutIds = runRedirect(html, `${LP}/redirect_pages/${uid}?sbrp=true&sbrpuid=${uid}&cc_check=1`)
+    expect(withoutIds.rewrittenTo).toBe(`${LP}/redirect_pages/${uid}?squadbeyond_uid&sb_article_uid`)
+  })
+
+  it('リファラー「Version」は、article_url（LPのURL）へ書き換えてから移動する。別ドメインのURLには書き換えない', async () => {
+    const { uid } = await createRedirectPage()
+    await save(uid, { url: 'https://example.com/', referrer_type: 'version' })
+    const html = (await open(uid)).html
+    const sameSite = runRedirect(
+      html,
+      `${LP}/redirect_pages/${uid}?sbrp=true&sbrpuid=${uid}&article_url=${encodeURIComponent(`${LP}/articles/test-lp`)}&squadbeyond_uid=test-visitor&sb_article_uid=test-article`,
+    )
+    expect(sameSite.rewrittenTo).toBe(`${LP}/articles/test-lp?squadbeyond_uid=test-visitor&sb_article_uid=test-article`)
+    expect(sameSite.to).toBe('https://example.com/?squadbeyond_uid=test-visitor&sb_article_uid=test-article')
+    const otherSite = runRedirect(
+      html,
+      `${LP}/redirect_pages/${uid}?sbrp=true&sbrpuid=${uid}&article_url=${encodeURIComponent('https://other.example.test/articles/x')}`,
+    )
+    expect(otherSite.rewrittenTo).toBeNull()
+    expect(otherSite.to).toBe('https://example.com/')
   })
 })
 
