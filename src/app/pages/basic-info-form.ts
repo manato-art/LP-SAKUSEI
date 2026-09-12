@@ -23,7 +23,8 @@ export interface AbTestForEdit {
   age_from: number | null
   age_to: number | null
   media: { id: number; name: string } | null
-  folder: { uid: string; name: string } | null
+  /** domain＝配信URLに使うドメイン（'' ＝未設定 / 'system' ＝このシステムのドメイン / ホスト名） */
+  folder: { uid: string; name: string; domain?: string } | null
 }
 
 /**
@@ -146,6 +147,35 @@ export function validateBasicInfo(input: BasicInfoValues): BasicInfoValidation {
  */
 export function deliveryUrl(origin: string, abTestUid: string): string {
   return `${origin}/lp/${abTestUid}`
+}
+
+/** フォルダにドメインが無いときの案内（実物は配信URLを出さず、フォルダの設定から直すよう促す） */
+export const DELIVERY_DOMAIN_UNSET_NOTE =
+  'フォルダにドメインが設定されていません。フォルダの「…」＞ドメイン変更 から設定してください。'
+
+/**
+ * 配信URL。実物と同じく、フォルダのドメインに従う（2026-09-13）。
+ * 'system' はこのシステムのドメイン、ホスト名ならそのドメイン、未設定（''・項目なし）なら null＝URLを出さない。
+ */
+export function deliveryUrlFor(
+  folderDomain: string | undefined,
+  origin: string,
+  abTestUid: string,
+): string | null {
+  if (folderDomain === undefined || folderDomain === '') return null
+  const base = folderDomain === 'system' ? origin : `https://${folderDomain}`
+  return `${base}/lp/${abTestUid}`
+}
+
+/** ページ詳細の「フォルダドメイン」欄に出す文字（配信URLと同じ決まりで、未設定は「未設定」） */
+export function folderDomainLabel(folderDomain: string | undefined, origin: string): string {
+  if (folderDomain === undefined || folderDomain === '') return '未設定'
+  if (folderDomain !== 'system') return folderDomain
+  try {
+    return new URL(origin).host
+  } catch {
+    return origin
+  }
 }
 
 /** 4つのタブの遷移先（実DOMの href をクローンのハッシュルートへ写したもの） */

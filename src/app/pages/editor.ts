@@ -278,6 +278,7 @@ export async function renderEditor(
     quill,
     abTestUid,
     folderUid: folder?.uid ?? '',
+    folderDomain: folder?.domain ?? '',
     articleUid,
     articles: [...articles],
     stepIndex: Math.max(0, articles.findIndex((a) => a.uid === articleUid)),

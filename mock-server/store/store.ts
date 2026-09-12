@@ -16,6 +16,7 @@ import {
 import type { State } from './types.ts'
 import { repairDuplicateUids } from './uid-repair.ts'
 import { externalizeStateImages } from './externalize-images.ts'
+import { migrateFolderDomains } from './folder-domain.ts'
 
 /** シード（保存済みが無いときの初期状態）。SEED_DEMO=1 なら架空デモ1式、なければ空。 */
 function seedState(): State {
@@ -41,12 +42,15 @@ function initialState(): State {
  * 保存データを読み込んだあとの後始末（2026-09-11 本人承認）。
  *   1. 同じ uid が2件以上あれば直す（uid を件数＋1で作っていた頃の不具合）
  *   2. 本文などに埋め込まれた画像・動画（data URL）を別ファイルにする（保存データが102MBあった件）
+ *   3. ドメインの項目が無い古いフォルダを「このシステムのドメイン」にする（2026-09-13）
  * 何か直したときは、直す前の内容を退避へ強制保存し、何をしたかをログに残してから、直した内容を保存し直す。
  */
 function repairOnLoad(persisted: State): State {
   const repaired = repairDuplicateUids(persisted)
   const externalized = externalizeStateImages(repaired.state)
-  if (repaired.changes.length === 0 && externalized.converted === 0) return persisted
+  // ドメインの項目が無い古いフォルダは、今まで配信URLに使ってきた「このシステムのドメイン」にする
+  const folderDomains = migrateFolderDomains(externalized.state)
+  if (repaired.changes.length === 0 && externalized.converted === 0 && folderDomains.changed === 0) return persisted
   archiveBeforeDestruction(persisted)
   for (const change of repaired.changes) {
     console.log(`[store] 同じ uid を付け直しました: ${change.collection} id=${change.id} ${change.from} → ${change.to}`)
@@ -54,8 +58,11 @@ function repairOnLoad(persisted: State): State {
   if (externalized.converted > 0) {
     console.log(`[store] 本文などに埋め込まれていた画像・動画 ${externalized.converted} 個を別ファイルにしました`)
   }
-  schedulePersist(externalized.state)
-  return externalized.state
+  if (folderDomains.changed > 0) {
+    console.log(`[store] フォルダ ${folderDomains.changed} 件のドメインを「このシステムのドメイン」にしました（項目が無い古いデータ）`)
+  }
+  schedulePersist(folderDomains.state)
+  return folderDomains.state
 }
 
 let current: State = initialState()

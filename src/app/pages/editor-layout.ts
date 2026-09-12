@@ -31,7 +31,7 @@ import {
   masterStylePageBackground,
 } from '../master-style.ts'
 import { createAutosave } from './autosave.ts'
-import { deliveryUrl } from './basic-info-form.ts'
+import { DELIVERY_DOMAIN_UNSET_NOTE, deliveryUrlFor } from './basic-info-form.ts'
 import type { EditorContext } from './editor-context.ts'
 import { HOOK } from './editor-hooks.ts'
 import { buildFullHtml } from './editor-html.ts'
@@ -262,7 +262,9 @@ function mountUrlBarInEditor(ctx: EditorContext): HTMLElement | null {
   if (contentWrapper.querySelector('[data-url-bar]') !== null) return null
 
   const testUrl = `${location.origin}/preview/${ctx.currentUid}`
-  const prodUrl = deliveryUrl(location.origin, ctx.abTestUid)
+  // 実物と同じく、配信URLはフォルダのドメインで決まる。未設定ならURLの代わりに案内を出す（2026-09-13）
+  const prodUrl =
+    deliveryUrlFor(ctx.folderDomain, location.origin, ctx.abTestUid) ?? DELIVERY_DOMAIN_UNSET_NOTE
 
   const bar = mountUrlBar({ testUrl, prodUrl })
 

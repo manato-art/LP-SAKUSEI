@@ -17,18 +17,7 @@ import { basicInfoApi, type MediaOption } from './basic-info-api.ts'
 import { wireAbTestTabs, setupHorizTabs, setupBreadcrumb } from './tab-nav.ts'
 import { recordHistory } from './folders-history.ts'
 import { renderBasicInfoRedesign } from './basic-info-redesign.ts'
-import {
-  AD_STATUS_LABELS,
-  CONVERSION_CONDITION_LABELS,
-  DELIVERY_TYPE_LABELS,
-  EDITOR_VERSION_LABELS,
-  buildUpdatePayload,
-  deliveryUrl,
-  toFormValues,
-  validateBasicInfo,
-  type AbTestForEdit,
-  type BasicInfoValues,
-} from './basic-info-form.ts'
+import { AD_STATUS_LABELS, CONVERSION_CONDITION_LABELS, DELIVERY_TYPE_LABELS, EDITOR_VERSION_LABELS, buildUpdatePayload, toFormValues, validateBasicInfo, type AbTestForEdit, type BasicInfoValues, DELIVERY_DOMAIN_UNSET_NOTE, deliveryUrlFor } from './basic-info-form.ts'
 
 /** 採取DOM内の目印（実物の属性・クラス。書き換えていない） */
 const HOOK = {
@@ -341,15 +330,27 @@ function openSelectDropdown(
 }
 
 function wireDeliveryUrl(ctx: PageContext): void {
-  const url = deliveryUrl(location.origin, ctx.abTestUid)
+  // 実物と同じく、配信URLはフォルダのドメインで決まる。未設定なら出さずに案内する（2026-09-13）
+  const url = deliveryUrlFor(ctx.abTest.folder?.domain, location.origin, ctx.abTestUid)
   const link = ctx.root.querySelector<HTMLAnchorElement>(HOOK.deliveryUrlLink)
   if (link !== null) {
     // 表示は実物と同じ「配信URL」だが、遷移先はクローン内の実パス `/lp/:uid`（SSR配信）にする（外へ出さない）
-    link.setAttribute('href', `/lp/${ctx.abTestUid}`)
     link.removeAttribute('target')
-    link.textContent = url
+    if (url === null) {
+      link.removeAttribute('href')
+      link.textContent = DELIVERY_DOMAIN_UNSET_NOTE
+      link.style.color = '#8b93a1'
+      link.style.cursor = 'default'
+    } else {
+      link.setAttribute('href', url)
+      link.textContent = url
+    }
   }
   ctx.root.querySelector<HTMLElement>(HOOK.copyUrl)?.addEventListener('click', () => {
+    if (url === null) {
+      toast(DELIVERY_DOMAIN_UNSET_NOTE, 'error')
+      return
+    }
     void navigator.clipboard
       .writeText(url)
       .then(() => toast('URLをコピーしました'))
@@ -357,7 +358,13 @@ function wireDeliveryUrl(ctx: PageContext): void {
   })
   for (const button of ctx.root.querySelectorAll<HTMLElement>('button')) {
     if ((button.textContent ?? '').trim() !== 'パラメータ付きURLの発行') continue
-    button.addEventListener('click', () => openParamUrlModal(url))
+    button.addEventListener('click', () => {
+      if (url === null) {
+        toast(DELIVERY_DOMAIN_UNSET_NOTE, 'error')
+        return
+      }
+      openParamUrlModal(url)
+    })
   }
 
   // 「タブ表示名」入力欄を配信URLセクションの直後に挿入する。

@@ -8,6 +8,8 @@ import type Quill from 'quill'
 import type { Version } from '../api.ts'
 
 export interface EditorContext {
+  /** フォルダのドメイン（配信URLに使う。'' ＝未設定 / 'system' ＝このシステムのドメイン / ホスト名） */
+  folderDomain?: string
   root: HTMLElement
   quill: Quill
   abTestUid: string

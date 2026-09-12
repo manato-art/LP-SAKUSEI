@@ -19,17 +19,7 @@ import { openParamUrlModal } from '../panels/param-url-modal.ts'
 import { basicInfoApi, type MediaOption } from './basic-info-api.ts'
 import { setupHorizTabs, setupBreadcrumb } from './tab-nav.ts'
 import { recordHistory } from './folders-history.ts'
-import {
-  AD_STATUS_LABELS,
-  CONVERSION_CONDITION_LABELS,
-  DELIVERY_TYPE_LABELS,
-  EDITOR_VERSION_LABELS,
-  buildUpdatePayload,
-  deliveryUrl,
-  validateBasicInfo,
-  type AbTestForEdit,
-  type BasicInfoValues,
-} from './basic-info-form.ts'
+import { AD_STATUS_LABELS, CONVERSION_CONDITION_LABELS, DELIVERY_TYPE_LABELS, EDITOR_VERSION_LABELS, buildUpdatePayload, validateBasicInfo, type AbTestForEdit, type BasicInfoValues, DELIVERY_DOMAIN_UNSET_NOTE, deliveryUrlFor } from './basic-info-form.ts'
 
 const AGE_CHOICES: readonly number[] = [15, 18, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70]
 const UNSET = '未設定'
@@ -87,7 +77,14 @@ function buildPage(
   medias: readonly MediaOption[],
   abTestUid: string,
 ): HTMLElement {
-  const url = deliveryUrl(location.origin, abTestUid)
+  // 実物と同じく、配信URLはフォルダのドメインで決まる。未設定なら出さずに案内する（2026-09-13）
+  const url = deliveryUrlFor(abTest.folder?.domain, location.origin, abTestUid)
+  const urlText = url ?? DELIVERY_DOMAIN_UNSET_NOTE
+  const needsDomain = (): boolean => {
+    if (url !== null) return false
+    toast(DELIVERY_DOMAIN_UNSET_NOTE, 'error')
+    return true
+  }
 
   const page = h('div', 'bi-page')
   const grid = h('div', 'bi-grid')
@@ -110,7 +107,17 @@ function buildPage(
   gBasic.append(fTitle, fEditor)
 
   const fUrl = field('配信URL', true)
-  fUrl.append(urlRow(url, () => copy(url), () => openParamUrlModal(url)))
+  fUrl.append(
+    urlRow(
+      urlText,
+      () => {
+        if (!needsDomain() && url !== null) copy(url)
+      },
+      () => {
+        if (!needsDomain() && url !== null) openParamUrlModal(url)
+      },
+    ),
+  )
   secBasic.body.append(fUrl)
 
   const fDelivery = field('配信タイプ', true)
@@ -193,7 +200,7 @@ function buildPage(
   root.append(page)
 
   // ── 配線（入力→要約の追従・保存） ──
-  const ctx = { root, abTest, abTestUid, url, medias }
+  const ctx = { root, abTest, abTestUid, url: urlText, medias }
   wire(ctx, submit)
 
   return page

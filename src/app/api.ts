@@ -24,6 +24,8 @@ export interface Folder {
   uid: string
   name: string
   parent_id: number | null
+  /** 配信URLに使うドメイン（'' ＝未設定 / 'system' ＝このシステムのドメイン / ホスト名） */
+  domain?: string
   ab_tests_count: number
   is_favorite: boolean
 }
@@ -49,7 +51,8 @@ export interface AbTest {
   product_genres?: readonly string[]
   created_at?: number
   updated_at?: number
-  folder?: { uid: string; name: string } | null
+  /** domain＝配信URLに使うドメイン（'' ＝未設定 / 'system' ＝このシステムのドメイン / ホスト名） */
+  folder?: { uid: string; name: string; domain?: string } | null
   /** Meta広告連携の紐付け（未設定は null）。トークンは含まない＝サーバーの環境変数のみ。 */
   meta_level?: string | null
   meta_object_id?: string | null
@@ -326,6 +329,9 @@ export const api = {
     tracking?: string
   }) => request<{ replaced: number; versions: number }>('POST', '/articles/bulk_replaces', body),
   createFolder: (name: string) => request<{ folder: Folder }>('POST', '/folders', { name }),
+  /** フォルダのドメインを変える（'' ＝未設定 / 'system' ＝このシステムのドメイン / ホスト名） */
+  setFolderDomain: (uid: string, domain: string) =>
+    request<{ folder: Folder }>('PUT', `/folders/${uid}`, { domain }),
   folderDetail: (uid: string) =>
     request<{ folder: Folder; ab_tests: AbTest[] }>('GET', `/folders/${uid}`),
   toggleFavorite: (uid: string, isFavorite: boolean) =>
@@ -583,6 +589,8 @@ export const api = {
     request<ExclusionRequestStats>('GET', `/report-exclusions/requests?${query}`),
   /** レポート除外削除 */
   deleteReportExclusion: (uid: string) => request<void>('DELETE', `/report-exclusions/${uid}`),
+  /** 登録済みドメイン一覧（フォルダのドメイン変更で選ぶ） */
+  domains: () => request<{ domains: DomainEntry[] }>('GET', '/teams/domains'),
   /** ドメイン追加 */
   addDomain: (host: string) =>
     request<{ domain: DomainEntry }>('POST', '/teams/domains', { host }),

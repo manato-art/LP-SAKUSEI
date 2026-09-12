@@ -38,6 +38,23 @@ export interface PromptOptions {
   validate?: (value: string) => string | null
 }
 
+export interface ChooseOption {
+  /** 選ばれたときに返す値 */
+  value: string
+  label: string
+  /** 小さく薄い字で出す補足 */
+  hint?: string
+}
+
+export interface ChooseOptions {
+  title: string
+  /** 選択肢の上に出す説明 */
+  message?: string
+  options: readonly ChooseOption[]
+  /** いま選ばれている値（印を付ける） */
+  value?: string
+}
+
 /** はい/いいえの確認。取り消しなら false。 */
 export function confirmCard(
   messageOrOptions: string | ConfirmOptions,
@@ -126,6 +143,52 @@ export function promptCard(options: PromptOptions): Promise<string | null> {
     })
     show(overlay, input)
     input.select()
+  })
+}
+
+/** 選択肢から1つ選ぶ（フォルダのドメイン変更など）。取り消しなら null。 */
+export function chooseCard(options: ChooseOptions): Promise<string | null> {
+  return new Promise((resolve) => {
+    const { overlay, card, footer, close } = buildShell(() => resolve(null))
+    card.append(header(options.title, false))
+
+    const body = div('sbd-body sbd-body-form')
+    if (options.message !== undefined) {
+      const message = div('sbd-label')
+      message.textContent = options.message
+      body.append(message)
+    }
+    const buttons = options.options.map((option) => {
+      const button = document.createElement('button')
+      button.type = 'button'
+      button.className = option.value === options.value ? 'sbd-choice sbd-choice-current' : 'sbd-choice'
+      const label = div('sbd-choice-label')
+      label.textContent = option.value === options.value ? `${option.label}（いま選ばれています）` : option.label
+      button.append(label)
+      if (option.hint !== undefined) {
+        const hint = div('sbd-choice-hint')
+        hint.textContent = option.hint
+        button.append(hint)
+      }
+      button.addEventListener('click', () => close(() => resolve(option.value)))
+      body.append(button)
+      return button
+    })
+    card.append(body, footer)
+
+    const cancel = ghostButton('キャンセル')
+    footer.append(cancel)
+    cancel.addEventListener('click', () => close(() => resolve(null)))
+
+    wireKeys(overlay, [...buttons, cancel], {
+      onEscape: () => close(() => resolve(null)),
+      // Enter は今あたっている選択肢を選ぶ
+      onEnter: () => {
+        const active = document.activeElement
+        if (active instanceof HTMLButtonElement) active.click()
+      },
+    })
+    show(overlay, buttons[0] ?? cancel)
   })
 }
 
@@ -277,6 +340,14 @@ function injectStyles(): void {
     .sbd-input:focus{outline:none;border-color:var(--sb-accent,${T.primary});
       box-shadow:0 0 0 3px rgba(0,145,255,.15)}
     .sbd-error{margin-top:6px;font-size:11.5px;color:#C0392B;line-height:1.6}
+    .sbd-choice{display:block;width:100%;text-align:left;font-family:inherit;cursor:pointer;
+      border:1px solid #dcdfe5;border-radius:8px;background:#fff;padding:11px 13px;margin-top:8px}
+    .sbd-choice:hover{background:#f6f8fb}
+    .sbd-choice:focus-visible{outline:2px solid var(--sb-accent,${T.primary});outline-offset:2px}
+    .sbd-choice-current{border-color:var(--sb-accent,${T.primary});
+      box-shadow:0 0 0 3px rgba(0,145,255,.12)}
+    .sbd-choice-label{font-size:13.5px;color:#1a1d22;line-height:1.6}
+    .sbd-choice-hint{font-size:11.5px;color:#8b93a1;line-height:1.6;margin-top:2px}
     .sbd-footer{display:flex;flex-direction:row;gap:8px;justify-content:flex-end;
       padding:20px 22px 20px}
     .sbd-btn{font-family:inherit;font-size:13px;padding:8px 18px;border-radius:6px;

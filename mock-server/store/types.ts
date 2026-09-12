@@ -57,6 +57,12 @@ export interface Folder {
   name: string
   parent_id: number | null
   /**
+   * 配信URLに使うドメイン（実物はフォルダが持つ・2026-09-13）。
+   * '' ＝ 未設定（配信URLを出さない）/ 'system' ＝ このシステムのドメイン / それ以外 ＝ 独自ドメインのホスト名。
+   * 項目が無い古いデータは起動時に 'system' にする（store/folder-domain.ts）。
+   */
+  domain?: string
+  /**
    * 審査の対象にするフォルダか（実SB「ツール > 審査」の /inspections/folders でトグル）。
    * ONにしたフォルダのVersion／ポップアップだけが審査画面に並ぶ。既定はOFF。
    */

@@ -15,6 +15,7 @@ import { openTrackingTagModal } from '../panels/tracking-tag-modal.ts'
 import { openMetaLinkModal } from '../panels/meta-link-modal.ts'
 import { AD_STATUS_LABELS, type PageContext } from './folders-shared.ts'
 import { jstParts } from '../jst.ts'
+import { DELIVERY_DOMAIN_UNSET_NOTE, deliveryUrlFor, folderDomainLabel } from './basic-info-form.ts'
 
 /**
  * 指示60→65: 詳細パネルの「閉じる »」ボタン。
@@ -170,7 +171,13 @@ export function wireRealDetailPanel(body: HTMLElement, context: PageContext): vo
   const paramButton = findByText(panel, 'パラメータ付きURLの発行')
   if (paramButton !== null) {
     paramButton.style.cursor = 'pointer'
-    paramButton.addEventListener('click', () => openParamUrlModal(baseUrl))
+    paramButton.addEventListener('click', () => {
+      if (baseUrl === '') {
+        toast(DELIVERY_DOMAIN_UNSET_NOTE, 'error')
+        return
+      }
+      openParamUrlModal(baseUrl)
+    })
 
     // 外部LP計測タグの発行（クローン独自機能）。別アカウントで配信中のLPに貼ると、その
     // PV/クリックをこの beyondページのレポートへ計上できる。URL/計測系の並びに置く。
@@ -185,9 +192,15 @@ export function wireRealDetailPanel(body: HTMLElement, context: PageContext): vo
       // 配線時ではなくクリック時に「今パネルが見ているLP」を引く（先頭LP固定にしない）
       tagButton.addEventListener('click', () => {
         const current = currentPanelAbTest(panel, context)
-        openTrackingTagModal(
-          current === null ? baseUrl : `${location.origin}/lp/${current.uid}`,
-        )
+        const url =
+          current === null
+            ? baseUrl
+            : (deliveryUrlFor(context.folder?.domain, location.origin, current.uid) ?? '')
+        if (url === '') {
+          toast(DELIVERY_DOMAIN_UNSET_NOTE, 'error')
+          return
+        }
+        openTrackingTagModal(url)
       })
       paramButton.insertAdjacentElement('afterend', tagButton)
 
@@ -507,7 +520,8 @@ function currentPanelAbTest(
 }
 function paramUrlBase(panel: HTMLElement, context: PageContext): string {
   const current = currentPanelAbTest(panel, context)
-  if (current !== null) return `${location.origin}/lp/${current.uid}`
+  // 実物と同じく、配信URLはフォルダのドメインで決まる（未設定なら空＝配信URLを出さない・2026-09-13）
+  if (current !== null) return deliveryUrlFor(context.folder?.domain, location.origin, current.uid) ?? ''
   const shown = Array.from(panel.querySelectorAll<HTMLElement>('a, div')).find((node) =>
     /^\/(?:ab|lp)\//.test((node.textContent ?? '').trim()),
   )
@@ -565,13 +579,18 @@ export function updateDetailPanelForAbTest(body: HTMLElement, abTest: AbTest, co
 
   // ── パネル内の値を更新 ──
   // 配信URL
-  const deliveryLinks = panel.querySelectorAll<HTMLAnchorElement>('a')
-  for (const link of deliveryLinks) {
+  // 実物と同じく、配信URLはフォルダのドメインで決まる。未設定なら出さずに案内する（2026-09-13）
+  const deliveryUrlText = deliveryUrlFor(context.folder?.domain, location.origin, abTest.uid)
+  for (const link of panel.querySelectorAll<HTMLAnchorElement>('a')) {
     const href = link.getAttribute('href') ?? ''
-    if (/\/(?:ab|lp)\//.test(href)) {
-      const newPath = `/lp/${abTest.uid}`
-      link.setAttribute('href', newPath)
-      link.textContent = newPath
+    if (!/\/(?:ab|lp)\//.test(href)) continue
+    if (deliveryUrlText === null) {
+      link.removeAttribute('href')
+      link.textContent = DELIVERY_DOMAIN_UNSET_NOTE
+      link.style.color = '#8b93a1'
+    } else {
+      link.setAttribute('href', deliveryUrlText)
+      link.textContent = deliveryUrlText
     }
   }
 
@@ -625,14 +644,11 @@ export function updateDetailPanelForAbTest(body: HTMLElement, abTest: AbTest, co
   const measureDd = findDdByDtText(panel, '計測方法')
   if (measureDd !== null) setDdText(measureDd, abTest.affiliate_service_provider ?? '-')
 
-  // フォルダドメイン
-  const folder = context.folder
-  if (folder !== null) {
-    const domainDd = findDdByDtText(panel, 'フォルダドメイン')
-    if (domainDd !== null) {
-      const nameSpan = domainDd.querySelector<HTMLElement>('span, div, p')
-      if (nameSpan !== null) nameSpan.textContent = `${folder.name.toLowerCase().replace(/\s+/g, '-')}.example.test`
-    }
+  // フォルダドメイン（フォルダに設定されたドメイン。未設定なら「未設定」）
+  const domainDd = findDdByDtText(panel, 'フォルダドメイン')
+  if (domainDd !== null) {
+    const nameSpan = domainDd.querySelector<HTMLElement>('span, div, p')
+    if (nameSpan !== null) nameSpan.textContent = folderDomainLabel(context.folder?.domain, location.origin)
   }
 
   // ページ名の「サンプル施策NNN」部分

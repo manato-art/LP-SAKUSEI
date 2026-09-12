@@ -22,7 +22,8 @@ export function serializeMedia(state: State, mediaId: number | null): unknown {
 export function serializeFolder(state: State, folderId: number | null): unknown {
   const folder = state.folders.find((f) => f.id === folderId)
   if (folder === undefined) return null
-  return { id: folder.id, uid: folder.uid, name: folder.name, parent_id: folder.parent_id }
+  // domain＝配信URLに使うドメイン（'' ＝未設定）。画面はこれを見て配信URLを出す（2026-09-13）
+  return { id: folder.id, uid: folder.uid, name: folder.name, parent_id: folder.parent_id, domain: folder.domain ?? '' }
 }
 
 /** 実APIの creator は Member よりリッチ（role/権限フラグ/参加状態を含む・実測） */

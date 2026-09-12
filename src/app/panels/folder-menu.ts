@@ -2,9 +2,10 @@
  * フォルダ操作メニュー（歯車アイコンから開くドロップダウン）。
  * 実物の構成: ヘッダー（フォルダ名 設定）/ お気に入りトグル / フォルダを作成 / 名称変更 / グループを削除。
  */
-import { api, type Folder } from '../api.ts'
+import { api, type DomainEntry, type Folder } from '../api.ts'
 import { T, el, toast } from '../ui.ts'
 import { openCreateFolder } from '../pages/folders-create.ts'
+import { chooseCard } from '../dialog.ts'
 
 let currentMenu: HTMLElement | null = null
 
@@ -80,6 +81,13 @@ export function openFolderMenu(anchor: HTMLElement, folder: Folder): void {
       },
     },
     {
+      label: 'ドメイン変更',
+      action: () => {
+        closeMenu()
+        void openDomainDialog(folder)
+      },
+    },
+    {
       label: 'グループを削除',
       danger: true,
       icon: TRASH_ICON,
@@ -134,6 +142,42 @@ export function openFolderMenu(anchor: HTMLElement, folder: Folder): void {
 }
 
 /** フォルダ名変更ダイアログ */
+/**
+ * フォルダのドメインを選ぶ（実物の「フォルダの設定＞ドメイン変更」にあたる・2026-09-13）。
+ * 配信URLはここで選んだドメインで出る。未設定にすると、実物と同じく配信URLを出さない。
+ */
+async function openDomainDialog(folder: Folder): Promise<void> {
+  const registered = await api.domains().catch(() => ({ domains: [] as DomainEntry[] }))
+  const current = folder.domain ?? ''
+  const picked = await chooseCard({
+    title: 'ドメイン変更',
+    message: '配信URLに使うドメインを選びます。',
+    value: current,
+    options: [
+      {
+        value: 'system',
+        label: 'このシステムのドメイン',
+        hint: `${location.host}／設定してすぐ配信できます`,
+      },
+      ...registered.domains.map((entry) => ({
+        value: entry.host,
+        label: entry.host,
+        hint: 'このドメインをこのシステムへ向けるまでは開けません',
+      })),
+      { value: '', label: '未設定にする', hint: '配信URLを出しません（実物と同じ）' },
+    ],
+  })
+  if (picked === null || picked === current) return
+  try {
+    await api.setFolderDomain(folder.uid, picked)
+    toast(picked === '' ? 'ドメインを未設定にしました' : 'ドメインを変更しました')
+    // 一覧と詳細を描き直す（配信URLの表示がドメインで変わる）
+    dispatchEvent(new HashChangeEvent('hashchange'))
+  } catch (error) {
+    toast(`変更に失敗しました: ${(error as Error).message}`, 'error')
+  }
+}
+
 function openRenameDialog(folder: Folder): void {
   const overlay = el('div', {
     style: 'position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:10000;display:flex;align-items:center;justify-content:center',

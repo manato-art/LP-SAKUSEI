@@ -48,6 +48,8 @@ export function createFolder(
     uid: freshUid(state.folders, id, (n) => makeUid('folder', n)),
     name: input.name,
     parent_id: input.parent_id,
+    // 実物と同じく、作った直後のフォルダはドメイン未設定（配信URLはまだ出ない）
+    domain: '',
     ab_tests_count: 0,
     is_favorite: false,
     created_at: nowTs(),
@@ -59,7 +61,7 @@ export function createFolder(
 export function updateFolder(
   state: State,
   uid: string,
-  patch: Partial<Pick<Folder, 'name' | 'parent_id'>>,
+  patch: Partial<Pick<Folder, 'name' | 'parent_id' | 'domain'>>,
 ): { state: State; folder: Folder | null } {
   const target = state.folders.find((f) => f.uid === uid)
   if (target === undefined) return { state, folder: null }

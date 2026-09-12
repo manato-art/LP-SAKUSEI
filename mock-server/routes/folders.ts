@@ -11,6 +11,7 @@ import { filterItems, pageParams, paginate, searchItems, sortItems, sortParams }
 import { optionalNumber, optionalString, requireString } from '../lib/validate.ts'
 import { serializeAbTest } from '../lib/serialize.ts'
 import { makeUid } from '../store/ids.ts'
+import { normalizeFolderDomain } from '../store/folder-domain.ts'
 
 export const foldersRouter: Router = Router()
 
@@ -82,14 +83,32 @@ foldersRouter.patch('/folders/:uid/favorite', (req, res) => {
 })
 
 foldersRouter.put('/folders/:uid', (req, res) => {
+  const body = (req.body ?? {}) as Record<string, unknown>
+  const hasName = 'name' in body
   const name = requireString(req.body, 'name', { maxLength: 100 })
-  if (!name.ok) {
+  if (hasName && !name.ok) {
     res.status(422).json(errorEnvelope('validation_failed', name.message))
+    return
+  }
+  // ドメインは送られたときだけ変える（名前だけ変えたときに消さない）
+  const parsedDomain = 'domain' in body ? normalizeFolderDomain(body['domain']) : undefined
+  if (parsedDomain === null) {
+    res
+      .status(422)
+      .json(errorEnvelope('validation_failed', 'ドメインは sb.example.com のような形で入力してください。'))
+    return
+  }
+  const domain: string | undefined = parsedDomain
+  if (!hasName && domain === undefined) {
+    res.status(422).json(errorEnvelope('validation_failed', '変更する項目がありません。'))
     return
   }
   let updated = null
   setState((state) => {
-    const out = updateFolder(state, req.params.uid, { name: name.value })
+    const out = updateFolder(state, req.params.uid, {
+      ...(hasName && name.ok ? { name: name.value } : {}),
+      ...(domain !== undefined ? { domain } : {}),
+    })
     updated = out.folder
     return out.state
   })
