@@ -110,3 +110,25 @@ describe('画面は色を直書きせずCSS変数を見る', () => {
     }
   })
 })
+
+/**
+ * サイドバーから色を変えられること（2026-09-13・本人指示）。
+ * これまでは「設定＞アカウント」の一番下まで行かないと変えられなかった。
+ */
+describe('サイドバーから色を切り替えられる', () => {
+  it('サイドバーの下部にテーマカラーの項目があり、押すと色の選択が開く', () => {
+    const shell = readFileSync('src/app/shell.ts', 'utf8')
+    expect(shell).toContain('テーマカラー')
+    expect(shell).toContain('openThemeColorMenu')
+  })
+
+  it('色の並びは1か所にまとめ、設定画面とサイドバーで同じものを使う', () => {
+    const files = ['src/app/panels/theme-color-section.ts', 'src/app/panels/theme-color-menu.ts']
+    for (const file of files) {
+      const src = readFileSync(file, 'utf8')
+      // 片方だけ色を足す・並べ替える、が起きないように共通の部品を使う
+      expect(src, file).toContain('buildAccentPicker')
+      expect(src, file).not.toContain('ACCENT_PRESETS')
+    }
+  })
+})

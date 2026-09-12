@@ -504,7 +504,7 @@ export const api = {
   /** 現在のユーザー */
   currentUser: () => request<{ user: User | null }>('GET', '/users/me'),
   /** ユーザー更新 */
-  updateUser: (patch: { name?: string }) =>
+  updateUser: (patch: { name?: string; email?: string }) =>
     request<{ user: User | null }>('PUT', '/users/me', patch),
   /** チームメンバー一覧 */
   teamMembers: () => request<{ members: Member[] }>('GET', '/teams/members'),

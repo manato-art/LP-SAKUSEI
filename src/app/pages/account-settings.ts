@@ -109,15 +109,15 @@ async function renderAccount(content: HTMLElement): Promise<void> {
   nameInput.style.cssText = `width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid #DDD;border-radius:6px;font-size:14px;font-family:${T.font};outline:none;margin-bottom:16px`
   form.append(nameInput)
 
-  // メール（読み取り専用）
+  // メールアドレス（本人が書き換えられる。空シードの見本アドレスが出たままにならないように）
   form.append(
     el('div', { text: 'メールアドレス', style: `font-size:12px;color:${T.sub};margin-bottom:4px` }),
   )
-  const emailDisplay = el('div', {
-    text: user.email,
-    style: `padding:10px 12px;background:#F7F7F7;border-radius:6px;font-size:14px;margin-bottom:16px;color:${T.text}`,
-  })
-  form.append(emailDisplay)
+  const emailInput = document.createElement('input')
+  emailInput.type = 'email'
+  emailInput.value = user.email
+  emailInput.style.cssText = `width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid #DDD;border-radius:6px;font-size:14px;font-family:${T.font};outline:none;margin-bottom:16px`
+  form.append(emailInput)
 
   // 公開APIキー
   form.append(
@@ -154,15 +154,20 @@ async function renderAccount(content: HTMLElement): Promise<void> {
       toast('名前を入力してください', 'error')
       return
     }
+    const email = emailInput.value.trim()
+    if (email === '') {
+      toast('メールアドレスを入力してください', 'error')
+      return
+    }
     saveBtn.textContent = '保存中...'
-    void api.updateUser({ name }).then(
+    void api.updateUser({ name, email }).then(
       () => {
         saveBtn.textContent = '保存'
         toast('アカウント情報を更新しました')
       },
-      () => {
+      (error: Error) => {
         saveBtn.textContent = '保存'
-        toast('更新に失敗しました', 'error')
+        toast(error.message, 'error')
       },
     )
   })

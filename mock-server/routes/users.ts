@@ -77,11 +77,30 @@ usersRouter.get('/users/me', (_req, res) => {
 })
 
 usersRouter.put('/users/me', (req, res) => {
+  const body = (req.body ?? {}) as Record<string, unknown>
   const name = optionalString(req.body, 'name')
-  setState((state) => ({
-    ...state,
-    users: state.users.map((u, i) => (i === 0 && name !== '' ? { ...u, name } : u)),
-  }))
+  // メールは送られたときだけ変える（名前だけ変えたときに消さない）
+  const email = typeof body['email'] === 'string' ? body['email'].trim() : undefined
+  if (email !== undefined && !isEmailLike(email)) {
+    res
+      .status(422)
+      .json(errorEnvelope('validation_failed', 'メールアドレスは name@example.com のような形で入力してください。'))
+    return
+  }
+  setState((state) => {
+    const owner = state.users[0]
+    if (owner === undefined) return state
+    const nextName = name !== '' ? name : owner.name
+    const nextEmail = email ?? owner.email
+    return {
+      ...state,
+      users: state.users.map((u, i) => (i === 0 ? { ...u, name: nextName, email: nextEmail } : u)),
+      // チームメンバー一覧の本人の行も合わせる（片方だけ古いと、どちらが本当か分からない）
+      members: state.members.map((m) =>
+        m.email === owner.email || m.role === 'team-owner' ? { ...m, name: nextName, email: nextEmail } : m,
+      ),
+    }
+  })
   res.json({ user: getState().users[0] ?? null })
 })
 

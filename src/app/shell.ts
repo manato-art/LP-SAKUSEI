@@ -5,6 +5,7 @@
  */
 import { NAV_ACTIVE_CLASS, NAV_INACTIVE_CLASS } from './shell-nav.ts'
 import { toast } from './ui.ts'
+import { openThemeColorMenu } from './panels/theme-color-menu.ts'
 import sidebarHtml from './templates/sidebar.html?raw'
 
 export interface Route {
@@ -399,7 +400,25 @@ function appendSettingsLink(nav: HTMLElement): void {
     location.hash = '/settings/account'
   })
 
-  bottomArea.append(myPageItem, settingsItem)
+  // ── テーマカラー（どの画面からでもすぐ色を変えられるように・2026-09-13 本人指示）──
+  const themeItem = createSidebarBottomItem(
+    [
+      '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">',
+      '<path d="M10 2.5a7.5 7.5 0 000 15c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1a1.5 1.5 0 011.14-2.5H14a3.5 3.5 0 003.5-3.5c0-3.59-3.36-6.5-7.5-6.5z"',
+      ' stroke="#888" stroke-width="1.5" stroke-linejoin="round"/>',
+      '<circle cx="6.75" cy="9.25" r="1" fill="var(--sb-accent, #0091FF)"/>',
+      '<circle cx="9.25" cy="6.25" r="1" fill="var(--sb-accent, #0091FF)"/>',
+      '<circle cx="12.75" cy="7" r="1" fill="var(--sb-accent, #0091FF)"/>',
+      '</svg>',
+    ].join(''),
+    'テーマカラー',
+  )
+  themeItem.addEventListener('click', (event) => {
+    event.stopPropagation()
+    openThemeColorMenu(themeItem)
+  })
+
+  bottomArea.append(themeItem, myPageItem, settingsItem)
 
   // 指示128: position:sticky を壊さないよう position:relative は付けない
   rail.append(bottomArea)
