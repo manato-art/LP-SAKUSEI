@@ -167,7 +167,7 @@ async function openDomainDialog(folder: Folder): Promise<void> {
         label: 'クイックドメインを発行',
         hint:
           base === ''
-            ? '土台ドメインが未設定です（ドメイン画面で設定してください）'
+            ? 'まだ使えません。先に配信用のドメインを取得し、ドメイン画面で土台ドメインを設定してください'
             : `<ランダム>.${base} をこのフォルダ専用に作ります`,
       },
       {

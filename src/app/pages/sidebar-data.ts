@@ -12,6 +12,11 @@
  */
 import { T, el, emptyState, toast } from '../ui.ts'
 import { api } from '../api.ts'
+import {
+  QUICK_DOMAIN_EXISTING_DOMAIN_WARNING,
+  QUICK_DOMAIN_NEED_DOMAIN_NOTE,
+  quickDomainSteps,
+} from '../quick-domain-note.ts'
 import { jstParts } from '../jst.ts'
 import {
   getJson,
@@ -119,6 +124,22 @@ function quickDomainSection(container: HTMLElement, base: string): HTMLElement {
     }),
   )
 
+  if (base === '') {
+    const warn = el('div', {
+      style: [
+        'border-left:3px solid #DD6B20;background:#FFF7ED;border-radius:4px',
+        'padding:12px 14px;margin-bottom:14px;font-size:12px;line-height:1.8',
+        `color:${T.text}`,
+      ].join(';'),
+    })
+    warn.append(
+      el('div', { text: 'ドメインの取得が必要です', style: 'font-weight:700;margin-bottom:4px' }),
+      el('div', { text: QUICK_DOMAIN_NEED_DOMAIN_NOTE }),
+      el('div', { text: QUICK_DOMAIN_EXISTING_DOMAIN_WARNING, style: `color:${T.sub};margin-top:6px` }),
+    )
+    box.append(warn)
+  }
+
   const bar = el('div', { style: 'display:flex;gap:8px;align-items:center;margin-bottom:12px' })
   const input = textInput('example.com')
   input.value = base
@@ -140,23 +161,9 @@ function quickDomainSection(container: HTMLElement, base: string): HTMLElement {
   bar.append(input, saveBtn)
   box.append(bar)
 
-  const steps =
-    base === ''
-      ? [
-          'ドメインを1本用意する（このシステムからは購入できません）',
-          '上の欄にそのドメインを入れて保存する',
-          '下に出る手順どおりにDNSを設定する',
-        ]
-      : [
-          `Railway のこのサービスに、カスタムドメインとして *.${base} を登録する`,
-          'Railway が出す CNAME 2本（ワイルドカード用と _acme-challenge 用）と TXT 1本 を、ドメインのDNSに登録する',
-          '_acme-challenge の CNAME はプロキシしない（Cloudflare ならオレンジの雲をOFF）',
-          'Cloudflare を使う場合は Universal SSL を有効・SSL/TLS を Full にする',
-          'DNSの反映まで数時間〜24時間かかることがある（反映後、発行済みのドメインがそのまま開けるようになる）',
-        ]
   const list = el('div', { style: `font-size:12px;color:${T.sub};line-height:1.9` })
   list.append(el('div', { text: 'DNS側でやること', style: `color:${T.text};font-weight:600;margin-bottom:4px` }))
-  steps.forEach((step, index) => {
+  quickDomainSteps(base).forEach((step, index) => {
     list.append(el('div', { text: `${index + 1}. ${step}` }))
   })
   box.append(list)
