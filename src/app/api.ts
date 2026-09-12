@@ -332,6 +332,9 @@ export const api = {
   /** フォルダのドメインを変える（'' ＝未設定 / 'system' ＝このシステムのドメイン / ホスト名） */
   setFolderDomain: (uid: string, domain: string) =>
     request<{ folder: Folder }>('PUT', `/folders/${uid}`, { domain }),
+  /** クイックドメインを発行してフォルダに割り当てる（土台ドメインが未設定なら422） */
+  issueQuickDomain: (uid: string) =>
+    request<{ folder: Folder }>('POST', `/folders/${uid}/quick_domain`),
   folderDetail: (uid: string) =>
     request<{ folder: Folder; ab_tests: AbTest[] }>('GET', `/folders/${uid}`),
   toggleFavorite: (uid: string, isFavorite: boolean) =>
@@ -591,6 +594,10 @@ export const api = {
   deleteReportExclusion: (uid: string) => request<void>('DELETE', `/report-exclusions/${uid}`),
   /** 登録済みドメイン一覧（フォルダのドメイン変更で選ぶ） */
   domains: () => request<{ domains: DomainEntry[] }>('GET', '/teams/domains'),
+  /** クイックドメインの土台（'' ＝未設定） */
+  quickDomain: () => request<{ quick_domain: { base: string } }>('GET', '/teams/quick_domain'),
+  setQuickDomain: (base: string) =>
+    request<{ quick_domain: { base: string } }>('PUT', '/teams/quick_domain', { base }),
   /** ドメイン追加 */
   addDomain: (host: string) =>
     request<{ domain: DomainEntry }>('POST', '/teams/domains', { host }),
@@ -794,6 +801,8 @@ export interface DomainEntry {
   host: string
   status: string
   ssl: boolean
+  /** quick＝クイックドメイン（自動発行） / custom＝手で登録した独自ドメイン */
+  kind?: 'quick' | 'custom'
 }
 
 /** レポート除外 */

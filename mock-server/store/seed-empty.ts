@@ -82,6 +82,8 @@ export function createEmptyState(): State {
     adAccounts: [],
     aspAccounts: [],
     domains: [],
+    // クイックドメインの土台（'' ＝未設定）。空シードに無いと保存データから落ちる（2026-09-11の教訓）
+    quickDomainBase: '',
     tags: [],
     bulkTags: [],
     productSearchForms: [],

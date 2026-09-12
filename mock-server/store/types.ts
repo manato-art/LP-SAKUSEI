@@ -531,6 +531,8 @@ export interface Domain {
   host: string
   status: 'active' | 'pending' | 'error'
   ssl: boolean
+  /** quick＝クイックドメイン（土台ドメインの下に自動発行したもの） / custom＝手で登録した独自ドメイン */
+  kind?: 'quick' | 'custom'
 }
 
 export interface Tag {
@@ -819,6 +821,8 @@ export interface State {
   adAccounts: readonly AdAccount[]
   aspAccounts: readonly AspAccount[]
   domains: readonly Domain[]
+  /** クイックドメインの土台（'' ＝未設定。`*.<これ>` をこのシステムへ向けて使う） */
+  quickDomainBase: string
   tags: readonly Tag[]
   bulkTags: readonly BulkTagSetting[]
   productSearchForms: readonly ProductSearchForm[]

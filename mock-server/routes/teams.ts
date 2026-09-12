@@ -8,6 +8,7 @@ import { applyEmptyState } from '../lib/mock-state.ts'
 import { errorEnvelope } from '../lib/envelope.ts'
 import { optionalString, requireString } from '../lib/validate.ts'
 import type { AdProvider } from '../store/types.ts'
+import { normalizeQuickDomainBase } from '../store/quick-domain.ts'
 
 export const teamsRouter: Router = Router()
 
@@ -22,6 +23,31 @@ teamsRouter.get('/teams/ad_accounts', (req, res) => {
 
 teamsRouter.get('/teams/asp_accounts', (req, res) => {
   res.json({ asp_accounts: applyEmptyState(req, getState().aspAccounts), available_asps: ASP_ROSTER })
+})
+
+/**
+ * クイックドメインの土台（本体のフリードメインにあたる仕組み・2026-09-13）。
+ * `*.<base>` をこのシステムへ向けておけば、フォルダごとのドメインを即発行できる。
+ */
+teamsRouter.get('/teams/quick_domain', (_req, res) => {
+  res.json({ quick_domain: { base: getState().quickDomainBase } })
+})
+
+teamsRouter.put('/teams/quick_domain', (req, res) => {
+  const base = normalizeQuickDomainBase((req.body as Record<string, unknown> | undefined)?.['base'])
+  if (base === null) {
+    res
+      .status(422)
+      .json(
+        errorEnvelope(
+          'validation_failed',
+          '土台ドメインは example.com のような形で入力してください（*. は付いていても構いません）。',
+        ),
+      )
+    return
+  }
+  setState((s) => ({ ...s, quickDomainBase: base }))
+  res.json({ quick_domain: { base } })
 })
 
 teamsRouter.get('/teams/domains', (req, res) => {
@@ -42,6 +68,7 @@ teamsRouter.post('/teams/domains', (req, res) => {
     host: host.value,
     status: 'pending' as const,
     ssl: false,
+    kind: 'custom' as const,
   }
   setState((s) => ({ ...s, domains: [...s.domains, created], nextId: s.nextId + 1 }))
   res.status(201).json({ domain: created })

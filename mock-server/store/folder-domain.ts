@@ -17,13 +17,17 @@ export const SYSTEM_FOLDER_DOMAIN = 'system'
 /** ホスト名の形（英数とハイフンのラベルを . でつないだもの） */
 const HOST = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/
 
+/** ホスト名として使える形か（英数とハイフンのラベルが . で2つ以上つながっていること） */
+export function isHostName(value: string): boolean {
+  return value.length <= 253 && HOST.test(value)
+}
+
 /** 受け取った値をドメインとして整える（受け付けられない形なら null） */
 export function normalizeFolderDomain(raw: unknown): string | null {
   if (typeof raw !== 'string') return null
   const value = raw.trim().toLowerCase()
   if (value === '' || value === SYSTEM_FOLDER_DOMAIN) return value
-  if (value.length > 253 || !HOST.test(value)) return null
-  return value
+  return isHostName(value) ? value : null
 }
 
 /**

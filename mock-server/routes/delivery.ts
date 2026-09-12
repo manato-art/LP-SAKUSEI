@@ -33,6 +33,7 @@ import { buildAnimCss, buildAnimRuntimeScript } from '../../src/app/anim/anim-pr
 import { buildCvScriptBody, buildKeepUidScriptBody, buildTrackingScriptBody } from '../../src/shared/tracking-tag.ts'
 import { attributeConversion, recordTouch, toVisitorId } from '../store/visitor-touches.ts'
 import { buildVisitorContext, pickDeliveryVersion } from './delivery-targeting.ts'
+import { canonicalHost, isServableOnHost } from '../lib/delivery-host.ts'
 import { buildFollowPopupSnippet, buildPopupSnippet } from './delivery-popup-html.ts'
 import {
   escapeHtml,
@@ -269,6 +270,10 @@ deliveryRouter.get('/lp/:uid', (req, res) => {
   const state = getState()
   const abTest = findAbTest(state, req.params.uid)
   if (abTest === undefined) return renderNotice(res, req.params.uid)
+  // 来たドメインが別フォルダの配信ドメインなら出さない（ドメインを分ける意味を守る）
+  if (!isServableOnHost(state, abTest, canonicalHost(req.headers.host))) {
+    return renderNotice(res, req.params.uid)
+  }
 
   const article = firstArticle(state, abTest)
   if (article === undefined) return renderNotice(res, req.params.uid)
@@ -489,8 +494,14 @@ deliveryRouter.options('/lp/:uid/__track', (req, res) => {
 
 deliveryRouter.post('/lp/:uid/__track', (req, res) => {
   setTrackCors(res, req.get('origin'))
-  const abTest = findAbTest(getState(), req.params.uid)
+  const trackState = getState()
+  const abTest = findAbTest(trackState, req.params.uid)
   if (abTest === undefined) {
+    res.status(404).json({ ok: false })
+    return
+  }
+  // 表示と同じ判定を書き込みにも通す（別フォルダの配信ドメインから数字を入れさせない）
+  if (!isServableOnHost(trackState, abTest, canonicalHost(req.headers.host))) {
     res.status(404).json({ ok: false })
     return
   }

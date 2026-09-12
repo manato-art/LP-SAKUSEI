@@ -12,6 +12,7 @@ import { optionalNumber, optionalString, requireString } from '../lib/validate.t
 import { serializeAbTest } from '../lib/serialize.ts'
 import { makeUid } from '../store/ids.ts'
 import { normalizeFolderDomain } from '../store/folder-domain.ts'
+import { issueQuickDomainHost } from '../store/quick-domain.ts'
 
 export const foldersRouter: Router = Router()
 
@@ -117,6 +118,49 @@ foldersRouter.put('/folders/:uid', (req, res) => {
     return
   }
   res.json({ folder: updated })
+})
+
+/**
+ * クイックドメインを発行してフォルダに割り当てる（本体のフリードメインにあたる・2026-09-13）。
+ * 土台ドメイン（`*.<土台>` をこのシステムへ向けたもの）が設定されているときだけ使える。
+ */
+foldersRouter.post('/folders/:uid/quick_domain', (req, res) => {
+  const state = getState()
+  const base = state.quickDomainBase
+  if (base === '') {
+    res
+      .status(422)
+      .json(
+        errorEnvelope(
+          'validation_failed',
+          'クイックドメインの土台が未設定です。ドメイン画面で土台ドメインを設定してください。',
+        ),
+      )
+    return
+  }
+  const folder = state.folders.find((f) => f.uid === req.params.uid)
+  if (folder === undefined) {
+    res.status(404).json(errorEnvelope('not_found', 'フォルダが見つかりません。'))
+    return
+  }
+  const taken = [...state.domains.map((d) => d.host), ...state.folders.map((f) => f.domain ?? '')]
+  const host = issueQuickDomainHost(base, taken)
+  let updated = null
+  setState((current) => {
+    const out = updateFolder(current, req.params.uid, { domain: host })
+    updated = out.folder
+    const domain = {
+      id: out.state.nextId,
+      uid: makeUid('domain', out.state.domains.length + 1),
+      team_id: folder.team_id,
+      host,
+      status: 'pending' as const,
+      ssl: false,
+      kind: 'quick' as const,
+    }
+    return { ...out.state, domains: [...out.state.domains, domain], nextId: out.state.nextId + 1 }
+  })
+  res.status(201).json({ folder: updated })
 })
 
 foldersRouter.delete('/folders/:uid', (req, res) => {

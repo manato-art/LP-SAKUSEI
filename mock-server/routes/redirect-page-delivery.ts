@@ -12,6 +12,7 @@ import { redirectPageTags } from '../store/redirect-page-tags.ts'
 import { DEFAULT_REDIRECT_SECONDS, redirectDestination } from '../lib/redirect-page-rules.ts'
 import { buildRedirectPageHtml } from './redirect-page-html.ts'
 import { renderRedirectPageNotice } from './delivery-notice.ts'
+import { canonicalHost, isServableOnHost } from '../lib/delivery-host.ts'
 
 export const redirectPageDeliveryRouter: Router = Router()
 
@@ -20,6 +21,11 @@ redirectPageDeliveryRouter.get('/redirect_pages/:uid', (req, res) => {
   const page = state.redirectPages.find((p) => p.uid === req.params.uid)
   const abTest = page === undefined ? undefined : state.abTests.find((t) => t.id === page.ab_test_id)
   if (page === undefined || abTest === undefined) {
+    res.status(404).type('html').send(renderRedirectPageNotice('not_found'))
+    return
+  }
+  // 中間ページはLPの導線の一部なので、LPと同じく来たドメインで絞る
+  if (!isServableOnHost(state, abTest, canonicalHost(req.headers.host))) {
     res.status(404).type('html').send(renderRedirectPageNotice('not_found'))
     return
   }

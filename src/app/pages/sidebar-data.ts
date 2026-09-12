@@ -11,6 +11,7 @@
  * （`dashboard-page.ts`）。共通の部品は `data-ui.ts`。
  */
 import { T, el, emptyState, toast } from '../ui.ts'
+import { api } from '../api.ts'
 import { jstParts } from '../jst.ts'
 import {
   getJson,
@@ -97,13 +98,80 @@ interface DomainRow {
   host?: string
   status?: string
   ssl?: boolean
+  kind?: 'quick' | 'custom'
 }
+/**
+ * クイックドメインの土台の設定欄と、DNS側でやることの案内。
+ * ここで設定した土台の下に、フォルダごとのドメインを即発行できる（本体のフリードメインにあたる仕組み）。
+ */
+function quickDomainSection(container: HTMLElement, base: string): HTMLElement {
+  const box = el('div', {
+    style: `border:1px solid #E6E6E6;border-radius:8px;padding:16px;margin-bottom:20px;background:${T.bg}`,
+  })
+  box.append(
+    el('div', {
+      text: 'クイックドメインの土台',
+      style: `font-size:14px;font-weight:700;color:${T.text};margin-bottom:6px`,
+    }),
+    el('div', {
+      text: 'ここにドメインを1本だけ設定し、そのドメインをこのシステムへワイルドカードで向けておくと、フォルダごとのドメインをその場で発行できます（ドメインの追加購入もDNS作業も要りません）。',
+      style: `font-size:12px;color:${T.sub};line-height:1.7;margin-bottom:12px`,
+    }),
+  )
+
+  const bar = el('div', { style: 'display:flex;gap:8px;align-items:center;margin-bottom:12px' })
+  const input = textInput('example.com')
+  input.value = base
+  const saveBtn = smallBtn('保存')
+  saveBtn.addEventListener('click', () => {
+    saveBtn.textContent = '保存中...'
+    void api.setQuickDomain(input.value.trim()).then(
+      (result) => {
+        saveBtn.textContent = '保存'
+        toast(result.quick_domain.base === '' ? '土台ドメインを未設定にしました' : '土台ドメインを保存しました')
+        void renderDomains(container)
+      },
+      (error: Error) => {
+        saveBtn.textContent = '保存'
+        toast(error.message, 'error')
+      },
+    )
+  })
+  bar.append(input, saveBtn)
+  box.append(bar)
+
+  const steps =
+    base === ''
+      ? [
+          'ドメインを1本用意する（このシステムからは購入できません）',
+          '上の欄にそのドメインを入れて保存する',
+          '下に出る手順どおりにDNSを設定する',
+        ]
+      : [
+          `Railway のこのサービスに、カスタムドメインとして *.${base} を登録する`,
+          'Railway が出す CNAME 2本（ワイルドカード用と _acme-challenge 用）と TXT 1本 を、ドメインのDNSに登録する',
+          '_acme-challenge の CNAME はプロキシしない（Cloudflare ならオレンジの雲をOFF）',
+          'Cloudflare を使う場合は Universal SSL を有効・SSL/TLS を Full にする',
+          'DNSの反映まで数時間〜24時間かかることがある（反映後、発行済みのドメインがそのまま開けるようになる）',
+        ]
+  const list = el('div', { style: `font-size:12px;color:${T.sub};line-height:1.9` })
+  list.append(el('div', { text: 'DNS側でやること', style: `color:${T.text};font-weight:600;margin-bottom:4px` }))
+  steps.forEach((step, index) => {
+    list.append(el('div', { text: `${index + 1}. ${step}` }))
+  })
+  box.append(list)
+  return box
+}
+
 export async function renderDomains(container: HTMLElement): Promise<void> {
   const content = pageShell(
     container,
     'ドメイン',
-    '※クローンが自作した画面です。独自ドメイン・フリードメインの一覧を表示します。',
+    '※クローンが自作した画面です。クイックドメイン（自動発行）と独自ドメインの一覧を表示します。',
   )
+
+  const quick = await api.quickDomain().catch(() => ({ quick_domain: { base: '' } }))
+  content.append(quickDomainSection(container, quick.quick_domain.base))
 
   // ドメイン追加フォーム
   const addBar = el('div', { style: 'display:flex;gap:8px;margin-bottom:16px;align-items:center' })
@@ -139,15 +207,15 @@ export async function renderDomains(container: HTMLElement): Promise<void> {
   }
 
   const domainList = el('div', { style: '' })
-  const grid = `grid-template-columns:1fr 100px 60px 60px`
+  const grid = `grid-template-columns:1fr 120px 100px 60px`
   const head = el('div', {
     style: `display:grid;${grid};gap:12px;padding:10px 8px;border-bottom:2px solid #EEE;font-size:12px;color:${T.sub}`,
   })
   head.append(
     el('div', { text: 'ドメイン' }),
+    el('div', { text: '種別' }),
     el('div', { text: 'ステータス' }),
     el('div', { text: 'SSL' }),
-    el('div', { text: '' }),
   )
   domainList.append(head)
 
@@ -159,11 +227,11 @@ export async function renderDomains(container: HTMLElement): Promise<void> {
     const sslLabel = row.ssl === true ? 'ON' : 'OFF'
     tr.append(
       el('div', { text: row.host ?? '-', style: 'word-break:break-all' }),
+      el('div', { text: row.kind === 'quick' ? 'クイック' : '独自' }),
       el('div', { text: statusLabel, style: `color:${row.status === 'active' ? '#38A169' : '#DD6B20'}` }),
       el('div', { text: sslLabel }),
     )
     // 削除ボタンは実装しない（実物もOwnerのみ・配信停止後のみ）
-    tr.append(el('div', { text: '' }))
     domainList.append(tr)
   }
   content.append(domainList)

@@ -146,28 +146,49 @@ export function openFolderMenu(anchor: HTMLElement, folder: Folder): void {
  * フォルダのドメインを選ぶ（実物の「フォルダの設定＞ドメイン変更」にあたる・2026-09-13）。
  * 配信URLはここで選んだドメインで出る。未設定にすると、実物と同じく配信URLを出さない。
  */
+const ISSUE_QUICK_DOMAIN = '\u0000issue-quick-domain'
+
 async function openDomainDialog(folder: Folder): Promise<void> {
-  const registered = await api.domains().catch(() => ({ domains: [] as DomainEntry[] }))
+  const [registered, quick] = await Promise.all([
+    api.domains().catch(() => ({ domains: [] as DomainEntry[] })),
+    api.quickDomain().catch(() => ({ quick_domain: { base: '' } })),
+  ])
   const current = folder.domain ?? ''
+  const base = quick.quick_domain.base
+  // 自動発行したドメインは、下の「クイックドメインを発行」から作るので選択肢には並べない
+  const selectable = registered.domains.filter((entry) => entry.kind !== 'quick' || entry.host === current)
   const picked = await chooseCard({
     title: 'ドメイン変更',
     message: '配信URLに使うドメインを選びます。',
     value: current,
     options: [
       {
+        value: ISSUE_QUICK_DOMAIN,
+        label: 'クイックドメインを発行',
+        hint:
+          base === ''
+            ? '土台ドメインが未設定です（ドメイン画面で設定してください）'
+            : `<ランダム>.${base} をこのフォルダ専用に作ります`,
+      },
+      {
         value: 'system',
         label: 'このシステムのドメイン',
         hint: `${location.host}／設定してすぐ配信できます`,
       },
-      ...registered.domains.map((entry) => ({
+      ...selectable.map((entry) => ({
         value: entry.host,
         label: entry.host,
-        hint: 'このドメインをこのシステムへ向けるまでは開けません',
+        hint: entry.kind === 'quick' ? 'クイックドメイン' : 'このドメインをこのシステムへ向けるまでは開けません',
       })),
       { value: '', label: '未設定にする', hint: '配信URLを出しません（実物と同じ）' },
     ],
   })
-  if (picked === null || picked === current) return
+  if (picked === null) return
+  if (picked === ISSUE_QUICK_DOMAIN) {
+    await issueQuickDomain(folder)
+    return
+  }
+  if (picked === current) return
   try {
     await api.setFolderDomain(folder.uid, picked)
     toast(picked === '' ? 'ドメインを未設定にしました' : 'ドメインを変更しました')
@@ -175,6 +196,17 @@ async function openDomainDialog(folder: Folder): Promise<void> {
     dispatchEvent(new HashChangeEvent('hashchange'))
   } catch (error) {
     toast(`変更に失敗しました: ${(error as Error).message}`, 'error')
+  }
+}
+
+/** クイックドメインを1本作って、このフォルダの配信ドメインにする */
+async function issueQuickDomain(folder: Folder): Promise<void> {
+  try {
+    const issued = await api.issueQuickDomain(folder.uid)
+    toast(`クイックドメイン ${issued.folder.domain ?? ''} を発行しました`)
+    dispatchEvent(new HashChangeEvent('hashchange'))
+  } catch (error) {
+    toast(`発行できませんでした: ${(error as Error).message}`, 'error')
   }
 }
 
