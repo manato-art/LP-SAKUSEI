@@ -54,6 +54,18 @@ describe('保存データの読み戻し', () => {
     expect(sheet.font_size).toBe(21)
     expect(sheet.color).toBe('ff0000')
   })
+
+  it('新しい項目が無い古い保存データでも、空シードの値で補われる（undefined のまま使わない）', async () => {
+    const old = createEmptyState() as unknown as Record<string, unknown>
+    delete old['quickDomainBase']
+    writeFileSync(join(dataDir, 'state.json'), JSON.stringify(old))
+    vi.stubEnv('DATA_DIR', dataDir)
+    vi.resetModules()
+    const { loadPersistedState } = await import('../mock-server/store/persistence.ts')
+    const loaded = loadPersistedState()
+    if (loaded === null) throw new Error('保存データを読み戻せませんでした')
+    expect(loaded.quickDomainBase).toBe('')
+  })
 })
 
 describe('State に後から足したキーは、空シードにも入れる（入れないと再起動で消える）', () => {
