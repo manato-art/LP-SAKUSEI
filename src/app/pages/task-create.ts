@@ -41,7 +41,7 @@ function injectCss(): void {
     @media (max-width:1100px) { .tc-cards { grid-template-columns:repeat(2,minmax(0,1fr)); } }
     @media (max-width:720px) { .tc-cards { grid-template-columns:minmax(0,1fr); } }
     .tc-card {
-      text-align:left; background:${T.surface}; border:1px solid #E6E9F0; border-radius:10px;
+      text-align:left; background:${T.surface}; border:1px solid var(--sb-c-e6e9f0, #E6E9F0); border-radius:10px;
       padding:16px 18px; cursor:pointer; font:inherit; color:inherit;
       display:flex; flex-direction:column; gap:8px; min-height:118px;
     }
@@ -50,7 +50,7 @@ function injectCss(): void {
     .tc-card-desc { font-size:12px; color:${T.sub}; line-height:1.8; flex:1; }
     .tc-badge {
       align-self:flex-start; font-size:11px; padding:3px 10px; border-radius:999px;
-      background:#EEF2F7; color:#5B6472;
+      background:#EEF2F7; color:var(--sb-c-5b6472, #5B6472);
     }
     .tc-badge.on { background:var(--sb-accent-tint, #E6F4FF); color:var(--sb-accent, #0091FF); }
 
@@ -61,7 +61,7 @@ function injectCss(): void {
     .tc-label { font-size:13px; font-weight:600; display:flex; align-items:center; gap:6px; }
     .tc-req { font-size:10px; color:#D0021B; border:1px solid #F5C2C7; border-radius:3px; padding:1px 5px; }
     .tc-input, .tc-select, .tc-textarea {
-      border:1px solid #DDD; border-radius:6px; padding:9px 11px; font:inherit; font-size:13px;
+      border:1px solid var(--sb-c-dddddd, #DDDDDD); border-radius:6px; padding:9px 11px; font:inherit; font-size:13px;
       background:${T.surface}; color:${T.text}; outline:none; box-sizing:border-box; width:100%;
     }
     .tc-input:focus, .tc-select:focus, .tc-textarea:focus { border-color:var(--sb-accent, #0091FF); }
@@ -70,19 +70,19 @@ function injectCss(): void {
     .tc-row .tc-select { width:auto; min-width:160px; }
     .tc-days { display:flex; gap:6px; }
     .tc-day {
-      width:34px; height:32px; border:1px solid #DDD; border-radius:6px; background:${T.surface};
+      width:34px; height:32px; border:1px solid var(--sb-c-dddddd, #DDDDDD); border-radius:6px; background:${T.surface};
       color:${T.sub}; font:inherit; font-size:12px; cursor:pointer;
     }
     .tc-day.on {
       background:var(--sb-accent, #0091FF); border-color:var(--sb-accent, #0091FF);
-      color:var(--sb-accent-ink, #fff); font-weight:700;
+      color:var(--sb-accent-ink, #FFFFFF); font-weight:700;
     }
     .tc-link { border:0; background:transparent; color:var(--sb-accent, #0091FF);
       font:inherit; font-size:12px; cursor:pointer; padding:0; }
     .tc-link:hover { text-decoration:underline; }
     .tc-submit {
       align-self:flex-start; border:0; border-radius:6px; padding:10px 24px; cursor:pointer;
-      background:var(--sb-accent, #0091FF); color:var(--sb-accent-ink, #fff);
+      background:var(--sb-accent, #0091FF); color:var(--sb-accent-ink, #FFFFFF);
       font:inherit; font-size:13px; font-weight:700;
     }
     .tc-submit:disabled { opacity:.5; cursor:default; }

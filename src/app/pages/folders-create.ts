@@ -54,7 +54,7 @@ export async function openCreatePage(folder: Folder): Promise<void> {
   let editorValue = 2
   for (const choice of EDITOR_CHOICES) {
     const option = el('label', {
-      style: `display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid #E5E5E5;
+      style: `display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--sb-c-e5e5e5, #E5E5E5);
         border-radius:4px;margin-bottom:8px;cursor:pointer;font-size:13px`,
     })
     const radio = el('input')
@@ -75,7 +75,7 @@ export async function openCreatePage(folder: Folder): Promise<void> {
 
   const title = textInput('未入力でも作成できます')
   const mediaSelect = el('select', {
-    style: `width:100%;padding:10px 12px;border:1px solid #DDD;border-radius:4px;font-size:14px;font-family:${T.font}`,
+    style: `width:100%;padding:10px 12px;border:1px solid var(--sb-c-dddddd, #DDDDDD);border-radius:4px;font-size:14px;font-family:${T.font}`,
   })
   for (const media of mediaCache) {
     const option = el('option', { text: media.name })

@@ -523,12 +523,12 @@ function createBlankPopup(state: PopupPageState): void {
     // 新規ポップアップも「中身が入った状態」で始める（従来は無装飾のプレースホルダ文字だけで、
     // 配信すると何も入っていないように見えていた）。カード型の見た目＋編集しやすい要素で用意する。
     html:
-      `<div style="background:#ffffff;border-radius:12px;padding:28px 24px;` +
+      `<div style="background:var(--sb-c-ffffff, #FFFFFF);border-radius:12px;padding:28px 24px;` +
       `box-shadow:0 8px 32px rgba(0,0,0,.18);max-width:360px;margin:auto;text-align:center;` +
       `font-family:'Hiragino Sans',sans-serif">` +
-      `<p style="font-size:18px;font-weight:700;color:#333333;margin:0 0 10px">タイトルを入力してください</p>` +
-      `<p style="font-size:14px;color:#666666;line-height:1.7;margin:0 0 20px">本文を入力してください。「デザイン」タブや「HTML」タブから文言・色・ボタンを編集できます。</p>` +
-      `<a href="#" style="display:inline-block;background:#E5532A;color:#ffffff;padding:12px 28px;` +
+      `<p style="font-size:18px;font-weight:700;color:var(--sb-c-333333, #333333);margin:0 0 10px">タイトルを入力してください</p>` +
+      `<p style="font-size:14px;color:var(--sb-c-666666, #666666);line-height:1.7;margin:0 0 20px">本文を入力してください。「デザイン」タブや「HTML」タブから文言・色・ボタンを編集できます。</p>` +
+      `<a href="#" style="display:inline-block;background:#E5532A;color:#FFFFFF;padding:12px 28px;` +
       `border-radius:6px;text-decoration:none;font-weight:700">ボタン</a>` +
       `</div>`,
     popup_kind: state.activeSubTab === 'instant' ? 'instant' : 'exit',

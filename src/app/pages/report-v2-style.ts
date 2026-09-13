@@ -39,7 +39,7 @@ export function injectReportStyles(): void {
     .rv2-filter-fields { display:flex; gap:10px; align-items:center; flex-wrap:wrap; flex:1 1 auto; min-width:0; }
     .rv2-field {
       display:flex; flex-direction:column; gap:2px; min-width:132px;
-      border:1px solid var(--rv2-line); border-radius:8px; padding:6px 10px; background:#fff;
+      border:1px solid var(--rv2-line); border-radius:8px; padding:6px 10px; background:var(--sb-c-ffffff, #FFFFFF);
     }
     .rv2-field-label { font-size:10px; color:var(--rv2-sub); }
     .rv2-field select, .rv2-field input {
@@ -51,7 +51,7 @@ export function injectReportStyles(): void {
     .rv2-icon { color:var(--rv2-accent); flex-shrink:0; }
     .rv2-apply {
       flex:0 0 auto; align-self:stretch; display:inline-flex; align-items:center; gap:6px;
-      border:1px solid #c7d7fb; background:#fff; color:var(--rv2-accent);
+      border:1px solid #c7d7fb; background:var(--sb-c-ffffff, #FFFFFF); color:var(--rv2-accent);
       border-radius:8px; padding:9px 16px; font:inherit; font-size:12px; font-weight:600;
       cursor:pointer;
     }
@@ -95,11 +95,11 @@ export function injectReportStyles(): void {
     .rv2-head-right { margin-left:auto; display:flex; align-items:center; gap:8px; }
     .rv2-btn {
       display:inline-flex; align-items:center; gap:6px; border:1px solid var(--rv2-line);
-      background:#fff; color:var(--rv2-ink); border-radius:8px; padding:7px 12px;
+      background:var(--sb-c-ffffff, #FFFFFF); color:var(--rv2-ink); border-radius:8px; padding:7px 12px;
       font:inherit; font-size:12px; cursor:pointer;
     }
     .rv2-btn:hover { background:#f7f9fc; }
-    .rv2-btn.primary { background:var(--rv2-accent); border-color:var(--rv2-accent); color:#fff; }
+    .rv2-btn.primary { background:var(--rv2-accent); border-color:var(--rv2-accent); color:#FFFFFF; }
     .rv2-btn.primary:hover { background:#1d4ed8; }
 
     /* ── グラフ ── */
@@ -125,7 +125,7 @@ export function injectReportStyles(): void {
     }
     .rv2-table th:last-child, .rv2-table td:last-child { border-right:0; }
     .rv2-table thead th {
-      background:#f8fafc; color:#475467; font-weight:600; font-size:11px;
+      background:#f8fafc; color:var(--sb-c-475467, #475467); font-weight:600; font-size:11px;
       border-top:1px solid var(--rv2-rule);
     }
     .rv2-table thead th.group { text-align:center; }
@@ -144,7 +144,7 @@ export function injectReportStyles(): void {
       min-width:24px; height:24px; border-radius:6px; border:1px solid transparent;
       background:transparent; color:var(--rv2-sub); font:inherit; font-size:11px; cursor:pointer;
     }
-    .rv2-page.on { background:var(--rv2-accent); border-color:var(--rv2-accent); color:#fff; font-weight:700; }
+    .rv2-page.on { background:var(--rv2-accent); border-color:var(--rv2-accent); color:#FFFFFF; font-weight:700; }
     .rv2-page:disabled { opacity:.35; cursor:default; }
     .rv2-rowmenu {
       border:0; background:transparent; color:#98a2b3; cursor:pointer; font-size:14px;
@@ -152,7 +152,7 @@ export function injectReportStyles(): void {
     }
     .rv2-search {
       display:flex; align-items:center; gap:6px; border:1px solid var(--rv2-line);
-      border-radius:8px; padding:7px 10px; background:#fff; min-width:190px;
+      border-radius:8px; padding:7px 10px; background:var(--sb-c-ffffff, #FFFFFF); min-width:190px;
     }
     .rv2-search input { border:0; outline:0; font:inherit; font-size:12px; width:100%; background:transparent; }
     .rv2-note { padding:10px 14px; font-size:11px; color:var(--rv2-sub); line-height:1.8; }

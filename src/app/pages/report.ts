@@ -73,7 +73,7 @@ export async function renderReport(
   if (navWrapper86?.parentElement !== null && navWrapper86?.parentElement !== undefined) {
     navWrapper86.parentElement.style.display = 'flex'
     navWrapper86.parentElement.style.flexDirection = 'column'
-    navWrapper86.parentElement.style.background = '#fff'
+    navWrapper86.parentElement.style.background = 'var(--sb-c-ffffff, #FFFFFF)'
   }
   wireBackLink(root, folder?.uid ?? null)
   setTopBarNames(root, ab_test.title, folderName)

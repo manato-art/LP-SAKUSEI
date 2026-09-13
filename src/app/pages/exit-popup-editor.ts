@@ -150,7 +150,7 @@ export function openEditor(state: PopupPageState, popup: ExitPopup): void {
   ratioInput.type = 'number'
   ratioInput.min = '0'
   ratioInput.value = String(draft.ratio)
-  ratioInput.style.cssText = 'width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:4px;font-size:13px;box-sizing:border-box'
+  ratioInput.style.cssText = 'width:100%;padding:8px 10px;border:1px solid var(--sb-c-dddddd, #DDDDDD);border-radius:4px;font-size:13px;box-sizing:border-box'
   ratioInput.addEventListener('input', () => {
     const n = Number(ratioInput.value)
     if (Number.isFinite(n)) draft.ratio = n
@@ -729,7 +729,7 @@ export function previewPopup(popup: ExitPopup | Partial<ExitPopup>): void {
 
   const closeHint = el('div', {
     text: 'クリックで閉じる',
-    style: 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);color:#fff;font-size:13px;opacity:.7',
+    style: 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);color:#FFFFFF;font-size:13px;opacity:.7',
   })
   overlay.append(closeHint)
 

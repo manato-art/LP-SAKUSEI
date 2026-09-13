@@ -303,7 +303,7 @@ function openSelectDropdown(
   const menu = document.createElement('div')
   menu.setAttribute('data-clone-select-menu', '')
   menu.style.cssText =
-    'position:absolute;z-index:9700;background:#fff;border:1px solid #ccc;border-radius:6px;' +
+    'position:absolute;z-index:9700;background:var(--sb-c-ffffff, #FFFFFF);border:1px solid var(--sb-c-cccccc, #CCCCCC);border-radius:6px;' +
     'box-shadow:0 4px 16px rgba(0,0,0,.15);max-height:240px;overflow:auto;min-width:160px;' +
     'font-size:14px;left:0;right:0;margin-top:2px'
   for (const option of options) {

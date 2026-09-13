@@ -52,7 +52,7 @@ export function mountShell(): { content: HTMLElement } {
      */
     const wrapper = document.createElement('div')
     wrapper.style.cssText =
-      'display:flex;height:100vh;max-height:100vh;overflow:hidden;background:#ECECEC'
+      'display:flex;height:100vh;max-height:100vh;overflow:hidden;background:var(--sb-c-ececec, #ECECEC)'
 
     const nav = document.createElement('div')
     nav.innerHTML = sidebarHtml
@@ -411,7 +411,7 @@ function appendSettingsLink(nav: HTMLElement): void {
       '<circle cx="12.75" cy="7" r="1" fill="var(--sb-accent, #0091FF)"/>',
       '</svg>',
     ].join(''),
-    'テーマカラー',
+    'テーマ',
   )
   themeItem.addEventListener('click', (event) => {
     event.stopPropagation()
@@ -482,9 +482,9 @@ function injectRailStyles(): void {
     `.${RAIL_CLASS}:hover .sb-accordion-sub.sb-accordion-open{max-height:200px;opacity:1}`,
     `}`,
     `.sb-accordion-item{display:flex;align-items:center;padding:5px 8px 5px 40px;`,
-    `cursor:pointer;font-size:13px;color:#666;white-space:nowrap;overflow:hidden}`,
+    `cursor:pointer;font-size:13px;color:var(--sb-c-666666, #666666);white-space:nowrap;overflow:hidden}`,
     `.sb-accordion-item:hover{background:rgba(0,0,0,.04)}`,
-    `.sb-accordion-item.sb-accordion-item-active{color:#333;font-weight:500}`,
+    `.sb-accordion-item.sb-accordion-item-active{color:var(--sb-c-333333, #333333);font-weight:500}`,
     `.sb-accordion-item::before{content:'';display:inline-block;width:5px;height:5px;`,
     `border-radius:50%;background:currentColor;margin-right:8px;flex-shrink:0}`,
   // 指示125/129: サイドバーに常時表示の可視スクロールバー

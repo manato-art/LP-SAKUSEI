@@ -33,8 +33,8 @@ function switchRow(
   const btn = document.createElement('button')
   btn.type = 'button'
   btn.style.cssText =
-    'margin-left:auto;min-width:56px;border-radius:5px;border:1px solid #d5d5db;' +
-    'background:#fff;color:#555;font:inherit;font-size:11px;font-weight:600;' +
+    'margin-left:auto;min-width:56px;border-radius:5px;border:1px solid var(--sb-c-d5d5db, #D5D5DB);' +
+    'background:var(--sb-c-ffffff, #FFFFFF);color:var(--sb-c-555555, #555555);font:inherit;font-size:11px;font-weight:600;' +
     'padding:4px 10px;cursor:pointer'
   const sync = (on: boolean): void => {
     btn.textContent = on ? 'ON' : 'OFF'
@@ -96,9 +96,9 @@ export function buildVideoBody(deps: VideoBodyDeps): VideoBody {
   const srcRow = row('ソース')
   const srcField = document.createElement('div')
   srcField.style.cssText =
-    'flex:1;font-size:10px;color:#999;height:26px;line-height:26px;overflow:hidden;' +
-    'text-overflow:ellipsis;white-space:nowrap;border:1px solid #e5e5ea;border-radius:4px;' +
-    'padding:0 6px;background:#f5f6f8'
+    'flex:1;font-size:10px;color:#999999;height:26px;line-height:26px;overflow:hidden;' +
+    'text-overflow:ellipsis;white-space:nowrap;border:1px solid var(--sb-c-e5e5ea, #E5E5EA);border-radius:4px;' +
+    'padding:0 6px;background:var(--sb-c-f5f6f8, #F5F6F8)'
   srcRow.append(srcField)
 
   // ── サイズ ──
@@ -110,12 +110,12 @@ export function buildVideoBody(deps: VideoBodyDeps): VideoBody {
   wInput.className = 'sb-pr-input'
   wInput.style.maxWidth = '90px'
   const wUnit = document.createElement('span')
-  wUnit.style.cssText = 'font-size:10px;color:#999;margin-left:4px'
+  wUnit.style.cssText = 'font-size:10px;color:#999999;margin-left:4px'
   wUnit.textContent = 'px'
   const fitBtn = document.createElement('button')
   fitBtn.type = 'button'
   fitBtn.style.cssText =
-    'margin-left:auto;border-radius:5px;border:1px solid #d5d5db;background:#fff;color:#555;' +
+    'margin-left:auto;border-radius:5px;border:1px solid var(--sb-c-d5d5db, #D5D5DB);background:var(--sb-c-ffffff, #FFFFFF);color:var(--sb-c-555555, #555555);' +
     'font:inherit;font-size:11px;padding:4px 10px;cursor:pointer'
   fitBtn.textContent = '幅いっぱい'
   fitBtn.title = '横幅を親要素いっぱい（100%）にします'
@@ -181,7 +181,7 @@ export function buildVideoBody(deps: VideoBodyDeps): VideoBody {
   // ── 操作（差し替え → 複製の順） ──
   const actionGroup = group('操作')
   const ACTION_BTN_CSS =
-    'width:100%;border-radius:5px;border:1px solid #d5d5db;background:#fff;color:#333;' +
+    'width:100%;border-radius:5px;border:1px solid var(--sb-c-d5d5db, #D5D5DB);background:var(--sb-c-ffffff, #FFFFFF);color:var(--sb-c-333333, #333333);' +
     'font:inherit;font-size:12px;padding:7px 10px;cursor:pointer'
   const dupBtn = document.createElement('button')
   dupBtn.type = 'button'

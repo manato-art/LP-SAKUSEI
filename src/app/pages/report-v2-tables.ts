@@ -91,7 +91,7 @@ export function buildReportList(deps: ReportListDeps): HTMLElement {
   right.className = 'rv2-head-right'
   const perLabel = document.createElement('span')
   perLabel.textContent = '表示件数'
-  perLabel.style.cssText = 'font-size:11px;color:#6b7280'
+  perLabel.style.cssText = 'font-size:11px;color:var(--sb-c-6b7280, #6B7280)'
   const per = document.createElement('select')
   per.className = 'rv2-btn'
   for (const n of [10, 25, 50]) {
@@ -301,7 +301,7 @@ export function buildBranchOperation(deps: BranchDeps): HTMLElement {
       const td = document.createElement('td')
       td.colSpan = 9
       td.textContent = '該当する行がありません'
-      td.style.cssText = 'color:#6b7280;text-align:center;padding:20px'
+      td.style.cssText = 'color:var(--sb-c-6b7280, #6B7280);text-align:center;padding:20px'
       empty.append(td)
       tbody.append(empty)
     }

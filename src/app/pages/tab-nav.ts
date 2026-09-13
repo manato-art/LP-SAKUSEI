@@ -91,12 +91,12 @@ function injectTabBarCss(): void {
       white-space: nowrap !important;
     }
     .sb-tab-bar a:hover {
-      color: #fff !important;
+      color: #FFFFFF !important;
       background: rgba(255,255,255,.1) !important;
     }
     .sb-tab-bar a.sb-tab-active {
-      color: #1a1a1a !important;
-      background: #fff !important;
+      color: var(--sb-c-1a1a1a, #1A1A1A) !important;
+      background: var(--sb-c-ffffff, #FFFFFF) !important;
       font-weight: 500 !important;
     }
     /* 採取物の3アイコン → ヘッダー行に新規DOM版を配置済み→非表示 */
@@ -109,17 +109,17 @@ function injectTabBarCss(): void {
       align-items: center;
       gap: 8px;
       padding: 0 12px;
-      background: #fff;
+      background: var(--sb-c-ffffff, #FFFFFF);
       flex-shrink: 0;
       height: 48px;
-      border-bottom: 1px solid #e5e5ea;
+      border-bottom: 1px solid var(--sb-c-e5e5ea, #E5E5EA);
     }
     .sb-breadcrumb {
       display: flex;
       align-items: center;
       gap: 6px;
       font-size: 13px;
-      color: #555;
+      color: var(--sb-c-555555, #555555);
       flex-shrink: 0;
     }
     .sb-breadcrumb-icon {
@@ -134,7 +134,7 @@ function injectTabBarCss(): void {
       text-overflow: ellipsis;
     }
     .sb-breadcrumb-sep {
-      color: #bbb;
+      color: #BBBBBB;
       flex-shrink: 0;
     }
     .sb-breadcrumb-row-right {
@@ -185,7 +185,7 @@ export function setupBreadcrumb(
   // 戻るボタン（フォルダ一覧へ）
   const backHref = '#/folders'
   const back = document.createElement('a')
-  back.style.cssText = 'cursor:pointer;color:#888;font-size:16px;text-decoration:none;line-height:1;margin-right:4px'
+  back.style.cssText = 'cursor:pointer;color:#888888;font-size:16px;text-decoration:none;line-height:1;margin-right:4px'
   back.textContent = '←'
   back.href = backHref
   crumb.append(back)
@@ -216,7 +216,7 @@ export function setupBreadcrumb(
   const titleLabel = document.createElement('span')
   titleLabel.className = 'sb-breadcrumb-name'
   titleLabel.style.fontWeight = '600'
-  titleLabel.style.color = '#333'
+  titleLabel.style.color = 'var(--sb-c-333333, #333333)'
   titleLabel.textContent = title || '検証'
   crumb.append(titleLabel)
 
@@ -307,7 +307,7 @@ export function setupHorizTabs(
     // 採取 CSS の固定 height ではタブバー分が足りず見切れる → auto に
     navWrapper.style.height = 'auto'
     navWrapper.style.paddingTop = '8px'
-    navWrapper.style.background = '#fff'
+    navWrapper.style.background = 'var(--sb-c-ffffff, #FFFFFF)'
     navWrapper.style.position = 'sticky'
     navWrapper.style.top = '0'
     navWrapper.style.zIndex = '50'

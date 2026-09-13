@@ -129,7 +129,7 @@ function openMetaModal(meta: { configured: boolean; accounts: MetaAdAccount[] })
 
   const panel = document.createElement('div')
   panel.style.cssText =
-    'background:#ECECEC;border-radius:12px;width:min(1100px,96vw);padding:0 0 8px;' +
+    'background:var(--sb-c-ececec, #ECECEC);border-radius:12px;width:min(1100px,96vw);padding:0 0 8px;' +
     'font-family:"Hiragino Sans",sans-serif;box-shadow:0 8px 40px rgba(0,0,0,.25)'
 
   const tableWrap = document.createElement('div')
@@ -152,11 +152,11 @@ function buildHeader(close: () => void): HTMLElement {
   closeBtn.textContent = '閉じる'
   closeBtn.style.cssText =
     'position:absolute;left:20px;top:18px;padding:9px 20px;border:1px solid #B9D3FF;border-radius:8px;' +
-    'background:#fff;color:#2B7CFF;font-size:14px;cursor:pointer'
+    'background:var(--sb-c-ffffff, #FFFFFF);color:#2B7CFF;font-size:14px;cursor:pointer'
   closeBtn.addEventListener('click', close)
   const title = document.createElement('div')
   title.textContent = 'Meta(旧Facebook)連携'
-  title.style.cssText = 'font-size:18px;color:#333'
+  title.style.cssText = 'font-size:18px;color:var(--sb-c-333333, #333333)'
   head.append(closeBtn, title)
   return head
 }
@@ -168,13 +168,13 @@ function buildAuthForm(meta: { configured: boolean; accounts: MetaAdAccount[] },
   const fb = document.createElement('div')
   fb.textContent = 'f'
   fb.style.cssText =
-    'width:56px;height:56px;border-radius:50%;background:#1877F2;color:#fff;font-weight:800;' +
+    'width:56px;height:56px;border-radius:50%;background:#1877F2;color:#FFFFFF;font-weight:800;' +
     'font-size:34px;display:flex;align-items:center;justify-content:center;font-family:Georgia,serif'
   const col = document.createElement('div')
   col.style.cssText = 'display:flex;flex-direction:column;gap:8px'
   const label = document.createElement('div')
   label.textContent = '広告アカウントID'
-  label.style.cssText = 'font-size:14px;color:#333'
+  label.style.cssText = 'font-size:14px;color:var(--sb-c-333333, #333333)'
   const input = document.createElement('input')
   input.type = 'text'
   input.placeholder = '例: 1234567890123456'
@@ -185,7 +185,7 @@ function buildAuthForm(meta: { configured: boolean; accounts: MetaAdAccount[] },
   authBtn.textContent = '認証'
   authBtn.style.cssText =
     'align-self:flex-start;padding:10px 26px;border:none;border-radius:8px;background:#2B7CFF;' +
-    'color:#fff;font-size:14px;cursor:pointer'
+    'color:#FFFFFF;font-size:14px;cursor:pointer'
   authBtn.addEventListener('click', () => {
     authenticate(input.value.trim(), meta, renderTable)
     input.value = ''
@@ -244,12 +244,12 @@ function authenticate(
 
 function buildAccountsTable(meta: { configured: boolean; accounts: MetaAdAccount[] }): HTMLElement {
   const card = document.createElement('div')
-  card.style.cssText = 'background:#fff;margin:0 16px;border-radius:10px;overflow:hidden'
+  card.style.cssText = 'background:var(--sb-c-ffffff, #FFFFFF);margin:0 16px;border-radius:10px;overflow:hidden'
 
   const cols = ['ステータス', '登録日', 'アカウントID', 'アカウント名', 'beyondページ数', '削除']
   const grid = 'grid-template-columns:110px 120px 200px 1fr 130px 70px'
   const head = document.createElement('div')
-  head.style.cssText = `display:grid;${grid};gap:12px;padding:18px 24px;color:#666;font-size:14px`
+  head.style.cssText = `display:grid;${grid};gap:12px;padding:18px 24px;color:var(--sb-c-666666, #666666);font-size:14px`
   for (const c of cols) {
     const cell = document.createElement('div')
     cell.textContent = c
@@ -271,14 +271,14 @@ function buildAccountsTable(meta: { configured: boolean; accounts: MetaAdAccount
 
 function buildAccountRow(acc: MetaAdAccount, grid: string): HTMLElement {
   const row = document.createElement('div')
-  row.style.cssText = `display:grid;${grid};gap:12px;padding:20px 24px;border-top:1px solid #EEE;align-items:center;font-size:14px;color:#333`
+  row.style.cssText = `display:grid;${grid};gap:12px;padding:20px 24px;border-top:1px solid var(--sb-c-eeeeee, #EEEEEE);align-items:center;font-size:14px;color:var(--sb-c-333333, #333333)`
 
   const status = document.createElement('span')
   const active = acc.account_status === 1
   status.textContent = active ? '接続可' : '停止中'
   status.style.cssText =
-    `justify-self:start;padding:6px 14px;border-radius:6px;color:#fff;font-size:13px;` +
-    `background:${active ? '#7ED07E' : '#C0C0C0'}`
+    `justify-self:start;padding:6px 14px;border-radius:6px;color:#FFFFFF;font-size:13px;` +
+    `background:${active ? '#7ED07E' : 'var(--sb-c-c0c0c0, #C0C0C0)'}`
 
   const date = cell(acc.created_date || '-')
   const id = cell(acc.account_id)
@@ -305,6 +305,6 @@ function cell(text: string): HTMLElement {
 function notice(text: string): HTMLElement {
   const el = document.createElement('div')
   el.textContent = text
-  el.style.cssText = 'padding:22px 24px;border-top:1px solid #EEE;color:#666;font-size:13px;line-height:1.9'
+  el.style.cssText = 'padding:22px 24px;border-top:1px solid var(--sb-c-eeeeee, #EEEEEE);color:var(--sb-c-666666, #666666);font-size:13px;line-height:1.9'
   return el
 }

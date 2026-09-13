@@ -33,7 +33,7 @@ function injectStyles(): void {
       display: flex; align-items: center; justify-content: center;
     }
     .sb-dup-card {
-      background: #fff; border-radius: 12px; width: 420px; max-width: calc(100vw - 32px);
+      background: var(--sb-c-ffffff, #FFFFFF); border-radius: 12px; width: 420px; max-width: calc(100vw - 32px);
       box-shadow: 0 4px 24px rgba(0,0,0,0.14);
       overflow: hidden;
     }
@@ -43,23 +43,23 @@ function injectStyles(): void {
       padding: 14px 20px;
     }
     .sb-dup-cancel {
-      color: #666; font-size: 14px; cursor: pointer; background: none; border: none;
+      color: var(--sb-c-666666, #666666); font-size: 14px; cursor: pointer; background: none; border: none;
       padding: 0; font-family: inherit;
     }
-    .sb-dup-cancel:hover { color: #333; }
+    .sb-dup-cancel:hover { color: var(--sb-c-333333, #333333); }
     .sb-dup-title {
-      font-size: 16px; font-weight: 700; color: #1a1a1a;
+      font-size: 16px; font-weight: 700; color: var(--sb-c-1a1a1a, #1A1A1A);
       position: absolute; left: 50%; transform: translateX(-50%);
     }
     .sb-dup-submit {
-      background: #4A8DF8; color: #fff; font-size: 14px; font-weight: 600;
+      background: #4A8DF8; color: #FFFFFF; font-size: 14px; font-weight: 600;
       border: none; border-radius: 8px; padding: 8px 22px; cursor: pointer;
       font-family: inherit;
     }
     .sb-dup-submit:hover { background: #3B7DE8; }
     .sb-dup-submit:disabled { opacity: 0.5; cursor: not-allowed; }
     /* ── 区切り線 ── */
-    .sb-dup-divider { height: 1px; background: #E5E5EA; margin: 0; }
+    .sb-dup-divider { height: 1px; background: var(--sb-c-e5e5ea, #E5E5EA); margin: 0; }
     /* ── ボディ ── */
     .sb-dup-body { padding: 20px; }
     .sb-dup-field { margin-bottom: 18px; }
@@ -74,8 +74,8 @@ function injectStyles(): void {
     }
     .sb-dup-select {
       width: 100%; appearance: none; -webkit-appearance: none;
-      background: #F2F2F7; border: none; border-radius: 10px;
-      padding: 13px 40px 13px 16px; font-size: 15px; color: #1a1a1a;
+      background: var(--sb-c-f2f2f7, #F2F2F7); border: none; border-radius: 10px;
+      padding: 13px 40px 13px 16px; font-size: 15px; color: var(--sb-c-1a1a1a, #1A1A1A);
       font-family: inherit; cursor: pointer; outline: none;
     }
     .sb-dup-select:focus { box-shadow: 0 0 0 2px rgba(74,141,248,0.3); }
@@ -90,7 +90,7 @@ function injectStyles(): void {
     }
     .sb-dup-check-box {
       flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%;
-      border: 2px solid #D1D1D6; background: #fff;
+      border: 2px solid var(--sb-c-d1d1d6, #D1D1D6); background: var(--sb-c-ffffff, #FFFFFF);
       display: flex; align-items: center; justify-content: center;
       transition: background 0.15s, border-color 0.15s;
     }
@@ -99,7 +99,7 @@ function injectStyles(): void {
     }
     .sb-dup-check-box svg { opacity: 0; transition: opacity 0.15s; }
     .sb-dup-check-box.checked svg { opacity: 1; }
-    .sb-dup-check-text { font-size: 15px; color: #1a1a1a; }
+    .sb-dup-check-text { font-size: 15px; color: var(--sb-c-1a1a1a, #1A1A1A); }
   `
   document.head.append(style)
 }

@@ -359,7 +359,7 @@ function enhanceColorFields(wrapper: HTMLElement): void {
     picker.type = 'color'
     picker.value = normalizeHex(textInput.value)
     picker.style.cssText =
-      'width:28px;height:28px;padding:0;border:1px solid #ccc;border-radius:4px;' +
+      'width:28px;height:28px;padding:0;border:1px solid var(--sb-c-cccccc, #CCCCCC);border-radius:4px;' +
       'cursor:pointer;vertical-align:middle;margin-left:6px;flex-shrink:0'
     picker.addEventListener('input', () => {
       textInput.value = picker.value
@@ -407,7 +407,7 @@ function mountTextAlignButtons(wrapper: HTMLElement, currentValue: string): void
   const row = document.createElement('div')
   row.setAttribute('data-clone-text-align-row', 'true')
   row.style.cssText =
-    'display:flex;align-items:center;gap:4px;padding:8px 16px;font-size:12px;color:#666'
+    'display:flex;align-items:center;gap:4px;padding:8px 16px;font-size:12px;color:var(--sb-c-666666, #666666)'
   const label = document.createElement('span')
   label.textContent = 'テキスト揃え'
   label.style.cssText = 'min-width:100px;flex-shrink:0'
@@ -423,7 +423,7 @@ function mountTextAlignButtons(wrapper: HTMLElement, currentValue: string): void
     btn.title = opt.label
     btn.style.cssText =
       'width:30px;height:28px;display:flex;align-items:center;justify-content:center;' +
-      'border:1px solid #ccc;border-radius:4px;cursor:pointer;background:#fff;padding:0'
+      'border:1px solid var(--sb-c-cccccc, #CCCCCC);border-radius:4px;cursor:pointer;background:var(--sb-c-ffffff, #FFFFFF);padding:0'
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
     svg.setAttribute('viewBox', '0 0 24 24')
     svg.setAttribute('width', '16')
@@ -443,9 +443,9 @@ function mountTextAlignButtons(wrapper: HTMLElement, currentValue: string): void
       row.dataset[ALIGN_DATA_KEY] = opt.value
       // 全ボタンのスタイルをリセットし、押されたものだけアクティブにする
       for (const sibling of group.children) {
-        ;(sibling as HTMLElement).style.background = '#fff'
-        ;(sibling as HTMLElement).style.borderColor = '#ccc'
-        ;(sibling as HTMLElement).style.color = '#333'
+        ;(sibling as HTMLElement).style.background = 'var(--sb-c-ffffff, #FFFFFF)'
+        ;(sibling as HTMLElement).style.borderColor = 'var(--sb-c-cccccc, #CCCCCC)'
+        ;(sibling as HTMLElement).style.color = 'var(--sb-c-333333, #333333)'
       }
       btn.style.background = '#e3f2fd'
       btn.style.borderColor = '#2196f3'

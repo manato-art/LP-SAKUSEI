@@ -258,7 +258,7 @@ function renderFollowPresetItem(
 function createBlankFollowPopup(state: PopupPageState): void {
   void api.createFollowPopup(state.abTestUid, {
     name: '新規追従型ポップアップ',
-    html: '<div style="padding:12px 20px;background:#333;color:#fff;font-family:sans-serif;text-align:center;font-size:13px">追従型ポップアップの内容</div>',
+    html: '<div style="padding:12px 20px;background:var(--sb-c-333333, #333333);color:var(--sb-c-ffffff, #FFFFFF);font-family:sans-serif;text-align:center;font-size:13px">追従型ポップアップの内容</div>',
     position: 'bottom',
   }).then(
     ({ follow_popup }) => {
@@ -588,7 +588,7 @@ function previewFollowPopup(fp: FollowPopup | Partial<FollowPopup>): void {
 
   const closeHint = el('div', {
     text: 'クリックで閉じる',
-    style: 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);color:#fff;font-size:14px;opacity:.8;background:rgba(0,0,0,.5);padding:8px 16px;border-radius:6px',
+    style: 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);color:var(--sb-c-ffffff, #FFFFFF);font-size:14px;opacity:.8;background:rgba(0,0,0,.5);padding:8px 16px;border-radius:6px',
   })
   overlay.append(closeHint)
 

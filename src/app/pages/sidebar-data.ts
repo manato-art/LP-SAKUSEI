@@ -111,7 +111,7 @@ interface DomainRow {
  */
 function quickDomainSection(container: HTMLElement, base: string): HTMLElement {
   const box = el('div', {
-    style: `border:1px solid #E6E6E6;border-radius:8px;padding:16px;margin-bottom:20px;background:${T.bg}`,
+    style: `border:1px solid var(--sb-c-e6e6e6, #E6E6E6);border-radius:8px;padding:16px;margin-bottom:20px;background:${T.bg}`,
   })
   box.append(
     el('div', {
@@ -127,7 +127,7 @@ function quickDomainSection(container: HTMLElement, base: string): HTMLElement {
   if (base === '') {
     const warn = el('div', {
       style: [
-        'border-left:3px solid #DD6B20;background:#FFF7ED;border-radius:4px',
+        'border-left:3px solid var(--sb-warn-line, #DD6B20);background:var(--sb-warn-bg, #FFF7ED);border-radius:4px',
         'padding:12px 14px;margin-bottom:14px;font-size:12px;line-height:1.8',
         `color:${T.text}`,
       ].join(';'),
@@ -216,7 +216,7 @@ export async function renderDomains(container: HTMLElement): Promise<void> {
   const domainList = el('div', { style: '' })
   const grid = `grid-template-columns:1fr 120px 100px 60px`
   const head = el('div', {
-    style: `display:grid;${grid};gap:12px;padding:10px 8px;border-bottom:2px solid #EEE;font-size:12px;color:${T.sub}`,
+    style: `display:grid;${grid};gap:12px;padding:10px 8px;border-bottom:2px solid var(--sb-c-eeeeee, #EEEEEE);font-size:12px;color:${T.sub}`,
   })
   head.append(
     el('div', { text: 'ドメイン' }),
@@ -228,7 +228,7 @@ export async function renderDomains(container: HTMLElement): Promise<void> {
 
   for (const row of rows) {
     const tr = el('div', {
-      style: `display:grid;${grid};gap:12px;padding:12px 8px;border-bottom:1px solid #F2F2F2;font-size:13px;color:${T.text};align-items:center`,
+      style: `display:grid;${grid};gap:12px;padding:12px 8px;border-bottom:1px solid var(--sb-c-f2f2f2, #F2F2F2);font-size:13px;color:${T.text};align-items:center`,
     })
     const statusLabel = row.status === 'active' ? 'アクティブ' : row.status === 'pending' ? '確認中' : (row.status ?? '-')
     const sslLabel = row.ssl === true ? 'ON' : 'OFF'
@@ -302,12 +302,12 @@ export async function renderRankings(container: HTMLElement): Promise<void> {
   }
 
   for (const opt of sortOptions) {
-    const btn = smallBtn(opt.label, opt.value === activeSort ? 'var(--sb-accent, #0091FF)' : '#F5F5F5', opt.value === activeSort ? '#FFF' : T.text)
+    const btn = smallBtn(opt.label, opt.value === activeSort ? 'var(--sb-accent, #0091FF)' : T.neutral, opt.value === activeSort ? '#FFF' : T.text)
     btn.addEventListener('click', () => {
       activeSort = opt.value
       for (const b of sortBar.querySelectorAll('button')) {
         const isActive = b.textContent === sortOptions.find((o) => o.value === activeSort)?.label
-        ;(b as HTMLElement).style.background = isActive ? 'var(--sb-accent, #0091FF)' : '#F5F5F5'
+        ;(b as HTMLElement).style.background = isActive ? 'var(--sb-accent, #0091FF)' : T.neutral
         ;(b as HTMLElement).style.color = isActive ? '#FFF' : T.text
       }
       void loadRankings()

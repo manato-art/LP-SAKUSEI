@@ -38,7 +38,7 @@ export function mountMinimap(editorRoot: HTMLElement, scrollContainer: HTMLEleme
     'overflow:hidden',
     'z-index:5',
     'background:rgba(255,255,255,.85)',
-    'border-left:1px solid var(--border-light, #f0f0f0)',
+    'border-left:1px solid var(--border-light, var(--sb-c-f0f0f0, #F0F0F0))',
     'cursor:pointer',
     'user-select:none',
   ].join(';')

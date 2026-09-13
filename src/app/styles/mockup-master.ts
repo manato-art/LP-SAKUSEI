@@ -35,6 +35,21 @@ const MOCKUP_CSS = `
     --font: "Hiragino Sans","Hiragino Kaku Gothic ProN",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
   }
 
+  /* ダークモードの配色（2026-09-13）。変数の自動変換は向きを取り違えるので、ここで明示する。
+     ブランド色（--brand / --publish / --editing / --saved / --danger）はライトと同じ。 */
+  html[data-theme="dark"] .lps-mockup, html[data-theme="dark"] {
+    --ground: #161616;
+    --surface: #242424;
+    --border: #3a3a3a;
+    --border-light: #2e2e2e;
+    --text-primary: #e8e8e8;
+    --text-secondary: #b5b5b5;
+    --text-tertiary: #9b9b9b;
+    --text-muted: #8a8a8a;
+    --sidebar-bg: #1f1f1f;
+    --sidebar-icon: #9aa3b2;
+  }
+
   /* ── Left sidebar (60px) ── */
   .sidebar { width:60px; background:var(--surface); border-right:1px solid var(--border); display:flex; flex-direction:column; align-items:center; padding:12px 0 8px; flex-shrink:0; z-index:10; }
   .sidebar-logo { width:32px; height:32px; border-radius:8px; background:var(--brand); display:flex; align-items:center; justify-content:center; margin-bottom:16px; }
@@ -263,8 +278,10 @@ const MOCKUP_CSS = `
   .quillEditorContentWrapper .ql-editor {
     max-width: 640px !important;
     margin: 0 auto !important;
-    /* 記事設定の「Version背景設定」があれば --lp-page-bg に入る（指示179） */
-    background: var(--lp-page-bg, var(--surface)) !important;
+    /* 記事設定の「Version背景設定」があれば --lp-page-bg に入る（指示179）。
+       既定は白で固定する＝LPそのものはユーザーが作った見た目なので、
+       ダークモードでも色を変えない（2026-09-13）。 */
+    background: var(--lp-page-bg, #ffffff) !important;
     border: 1px solid var(--border) !important;
     border-radius: 4px !important;
     min-height: 400px !important;

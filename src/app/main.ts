@@ -4,6 +4,7 @@
  */
 import { markActiveNav, mountShell } from './shell.ts'
 import { initAccent } from './theme-color.ts'
+import { initThemeMode, isThemeMode } from './theme-mode.ts'
 import { renderReportExclusions } from './pages/report-exclusions.ts'
 import { renderFolders } from './pages/folders.ts'
 import { renderEditor } from './pages/editor.ts'
@@ -299,6 +300,16 @@ initAccent(async () => {
     return accent
   } catch {
     // 未ログイン等で取れなくても、覚えている色で動く
+    return null
+  }
+})
+
+/** ライト／ダークも描画より先に当てる（ライトの画面が一瞬見えてから暗くなるのを防ぐ） */
+initThemeMode(async () => {
+  try {
+    const { mode } = await api.themeColor()
+    return isThemeMode(mode) ? mode : null
+  } catch {
     return null
   }
 })

@@ -65,7 +65,7 @@ export function restoreHeaderImage(root: HTMLElement, src: string): void {
   headerBox.style.padding = '0'
   headerBox.style.margin = '0'
   headerBox.style.outline = 'none'
-  headerBox.style.background = '#fff'
+  headerBox.style.background = 'var(--sb-c-ffffff, #FFFFFF)'
   let img = headerBox.querySelector<HTMLImageElement>('img[data-clone-header="true"]')
   if (img === null) {
     img = document.createElement('img')
@@ -91,7 +91,7 @@ export function restoreHeaderImage(root: HTMLElement, src: string): void {
     remove.title = 'ヘッダー画像を削除'
     remove.style.cssText =
       'position:absolute;top:15px;right:15px;z-index:2;padding:8px 16px;border:none;border-radius:6px;' +
-      'background:#fff;color:var(--sb-accent, #0091FF);font-size:14px;line-height:1;cursor:pointer;' +
+      'background:var(--sb-c-ffffff, #FFFFFF);color:var(--sb-accent, #0091FF);font-size:14px;line-height:1;cursor:pointer;' +
       'box-shadow:0 1px 4px rgba(0,0,0,.2)'
     remove.addEventListener('click', (event) => {
       event.stopPropagation()

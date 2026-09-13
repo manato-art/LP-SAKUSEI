@@ -74,7 +74,7 @@ export async function renderRedirectPages(
   if (navWrapper86?.parentElement !== null && navWrapper86?.parentElement !== undefined) {
     navWrapper86.parentElement.style.display = 'flex'
     navWrapper86.parentElement.style.flexDirection = 'column'
-    navWrapper86.parentElement.style.background = '#fff'
+    navWrapper86.parentElement.style.background = 'var(--sb-c-ffffff, #FFFFFF)'
   }
   setupBreadcrumb(root, folder?.name ?? '', ab_test.title, folder?.uid)
   wireBeyondBack(root, folderUid)
@@ -437,22 +437,22 @@ function applyRedirectPagesWhiteTheme(root: HTMLElement): void {
   // 左パネル（一覧サイドバー）
   const left = root.querySelector<HTMLElement>('[class*="_left_1tjuv"]')
   if (left !== null) {
-    left.style.backgroundColor = '#f5f6f8'
+    left.style.backgroundColor = 'var(--sb-c-f5f6f8, #F5F6F8)'
     left.style.borderRadius = '10px 0 0 10px'
   }
   // 左パネル内の各項目
   for (const item of root.querySelectorAll<HTMLElement>('[class*="_redirectPage_1tjuv_1"]')) {
-    item.style.color = '#333'
+    item.style.color = 'var(--sb-c-333333, #333333)'
   }
   // アクティブ項目
   for (const active of root.querySelectorAll<HTMLElement>('[class*="_active_1tjuv"]')) {
-    active.style.backgroundColor = '#fff'
+    active.style.backgroundColor = 'var(--sb-c-ffffff, #FFFFFF)'
   }
   // 右パネル（設定フォーム）
   const right = root.querySelector<HTMLElement>('[class*="_right_1tjuv"]')
   if (right !== null) {
-    right.style.backgroundColor = '#fff'
-    right.style.color = '#333'
+    right.style.backgroundColor = 'var(--sb-c-ffffff, #FFFFFF)'
+    right.style.color = 'var(--sb-c-333333, #333333)'
     right.style.borderRadius = '0 10px 10px 0'
     right.style.border = '1px solid #e5e5ea'
     right.style.borderLeft = 'none'
@@ -467,7 +467,7 @@ function applyRedirectPagesWhiteTheme(root: HTMLElement): void {
   for (const label of root.querySelectorAll<HTMLElement>(
     '[class*="_right_1tjuv"] label, [class*="_right_1tjuv"] p, [class*="_right_1tjuv"] h2, [class*="_right_1tjuv"] h3, [class*="_right_1tjuv"] span, [class*="_right_1tjuv"] div',
   )) {
-    if (label.style.color === '') label.style.color = '#333'
+    if (label.style.color === '') label.style.color = 'var(--sb-c-333333, #333333)'
   }
   // 保存ボタン
   const saveBtn = root.querySelector<HTMLElement>('[class*="_save_1tjuv"]')

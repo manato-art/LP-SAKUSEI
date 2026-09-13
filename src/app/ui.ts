@@ -13,11 +13,17 @@ export const T = {
   primaryInk: 'var(--sb-accent-ink, #FFFFFF)',
   /** アクセント色の薄い地（選択中の行やバッジ） */
   primaryTint: 'var(--sb-accent-tint, #E6F4FF)',
-  bg: '#ECECEC',
-  neutral: '#F4F4F4',
-  surface: '#FFFFFF',
-  text: '#151515',
-  sub: '#808080',
+  /**
+   * 地・面・文字の色。ライト／ダークで差し替わるので直の色ではなく CSS 変数を通す
+   * （定義は src/index.html。変数が無い環境ではライトの値になる）。
+   */
+  bg: 'var(--sb-bg, #ECECEC)',
+  neutral: 'var(--sb-neutral, #F4F4F4)',
+  surface: 'var(--sb-surface, #FFFFFF)',
+  text: 'var(--sb-text, #151515)',
+  sub: 'var(--sb-sub, #808080)',
+  /** 罫線・枠線 */
+  line: 'var(--sb-line, #DDDDDD)',
   font: '"Hiragino Sans", sans-serif',
 } as const
 
@@ -43,7 +49,7 @@ export function button(label: string, kind: 'primary' | 'ghost' = 'primary'): HT
     style:
       kind === 'primary'
         ? `${base}background:${T.primary};color:${T.primaryInk}`
-        : `${base}background:${T.neutral};color:${T.text};border:1px solid #DDD`,
+        : `${base}background:${T.neutral};color:${T.text};border:1px solid var(--sb-c-dddddd, #DDDDDD)`,
   })
   b.addEventListener('mouseenter', () => {
     if (kind === 'primary') b.style.background = T.primaryDark
@@ -59,7 +65,7 @@ export function toast(message: string, kind: 'success' | 'error' = 'success'): v
   const t = el('div', {
     text: message,
     style: `position:fixed;left:50%;top:24px;transform:translateX(-50%);z-index:9999;
-      background:${kind === 'success' ? '#2FA84F' : '#D0021B'};color:#fff;font-family:${T.font};
+      background:${kind === 'success' ? '#2FA84F' : '#D0021B'};color:#FFFFFF;font-family:${T.font};
       font-size:13px;padding:10px 20px;border-radius:4px;box-shadow:0 2px 12px rgba(0,0,0,.2)`,
   })
   document.body.append(t)
@@ -77,7 +83,7 @@ export function modal(title: string, body: HTMLElement, onSubmit: () => void | P
       display:flex;flex-direction:column;overflow:hidden`,
   })
   const head = el('div', {
-    style: 'display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #EEE',
+    style: 'display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--sb-c-eeeeee, #EEEEEE)',
   })
   const cancel = button('キャンセル', 'ghost')
   const submit = button(submitLabel)
@@ -114,7 +120,7 @@ export function field(label: string, input: HTMLElement, hint?: string): HTMLEle
 
 export function textInput(placeholder = ''): HTMLInputElement {
   const i = el('input', {
-    style: `width:100%;padding:10px 12px;border:1px solid #DDD;border-radius:4px;
+    style: `width:100%;padding:10px 12px;border:1px solid var(--sb-c-dddddd, #DDDDDD);border-radius:4px;
       font-family:${T.font};font-size:14px;box-sizing:border-box`,
   })
   i.placeholder = placeholder

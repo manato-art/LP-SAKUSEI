@@ -313,7 +313,7 @@ function injectStyles(): void {
       background:rgba(17,20,26,.42);font-family:${T.font};
       animation:sbd-fade .12s ease-out}
     .sbd-overlay.closing{animation:sbd-fade .1s ease-in reverse}
-    .sbd-card{background:#fff;border-radius:12px;width:400px;max-width:100%;
+    .sbd-card{background:var(--sb-c-ffffff, #FFFFFF);border-radius:12px;width:400px;max-width:100%;
       box-shadow:0 12px 40px rgba(0,0,0,.22),0 0 0 1px rgba(0,0,0,.04);
       overflow:hidden;animation:sbd-pop .14s cubic-bezier(.2,.9,.3,1)}
     .sbd-overlay.closing .sbd-card{animation:sbd-pop .1s ease-in reverse}
@@ -327,37 +327,37 @@ function injectStyles(): void {
       padding:20px 22px 0}
     .sbd-icon{width:28px;height:28px;border-radius:50%;background:#FBEBE7;color:#C0392B;
       display:flex;align-items:center;justify-content:center;flex-shrink:0}
-    .sbd-title{font-size:15px;font-weight:700;color:#1a1d22;line-height:1.5}
+    .sbd-title{font-size:15px;font-weight:700;color:var(--sb-c-1a1d22, #1A1D22);line-height:1.5}
     /* 改行をそのまま出す（ネイティブ confirm では効かなかった） */
-    .sbd-body{padding:12px 22px 0;font-size:13.5px;color:#3c424f;line-height:1.85;
+    .sbd-body{padding:12px 22px 0;font-size:13.5px;color:var(--sb-c-3c424f, #3C424F);line-height:1.85;
       white-space:pre-line}
     .sbd-body-form{padding-top:16px}
-    .sbd-detail{padding:8px 22px 0;font-size:12px;color:#8b93a1;line-height:1.7;
+    .sbd-detail{padding:8px 22px 0;font-size:12px;color:#8B93A1;line-height:1.7;
       white-space:pre-line}
-    .sbd-label{font-size:11.5px;color:#6b7280;margin-bottom:5px}
-    .sbd-input{width:100%;box-sizing:border-box;border:1px solid #dcdfe5;border-radius:6px;
-      padding:9px 11px;font:inherit;font-size:13.5px;color:#1a1d22;background:#fff}
+    .sbd-label{font-size:11.5px;color:var(--sb-c-6b7280, #6B7280);margin-bottom:5px}
+    .sbd-input{width:100%;box-sizing:border-box;border:1px solid var(--sb-c-dcdfe5, #DCDFE5);border-radius:6px;
+      padding:9px 11px;font:inherit;font-size:13.5px;color:var(--sb-c-1a1d22, #1A1D22);background:var(--sb-c-ffffff, #FFFFFF)}
     .sbd-input:focus{outline:none;border-color:var(--sb-accent,${T.primary});
       box-shadow:0 0 0 3px rgba(0,145,255,.15)}
     .sbd-error{margin-top:6px;font-size:11.5px;color:#C0392B;line-height:1.6}
     .sbd-choice{display:block;width:100%;text-align:left;font-family:inherit;cursor:pointer;
-      border:1px solid #dcdfe5;border-radius:8px;background:#fff;padding:11px 13px;margin-top:8px}
+      border:1px solid var(--sb-c-dcdfe5, #DCDFE5);border-radius:8px;background:var(--sb-c-ffffff, #FFFFFF);padding:11px 13px;margin-top:8px}
     .sbd-choice:hover{background:#f6f8fb}
     .sbd-choice:focus-visible{outline:2px solid var(--sb-accent,${T.primary});outline-offset:2px}
     .sbd-choice-current{border-color:var(--sb-accent,${T.primary});
       box-shadow:0 0 0 3px rgba(0,145,255,.12)}
-    .sbd-choice-label{font-size:13.5px;color:#1a1d22;line-height:1.6}
-    .sbd-choice-hint{font-size:11.5px;color:#8b93a1;line-height:1.6;margin-top:2px}
+    .sbd-choice-label{font-size:13.5px;color:var(--sb-c-1a1d22, #1A1D22);line-height:1.6}
+    .sbd-choice-hint{font-size:11.5px;color:#8B93A1;line-height:1.6;margin-top:2px}
     .sbd-footer{display:flex;flex-direction:row;gap:8px;justify-content:flex-end;
       padding:20px 22px 20px}
     .sbd-btn{font-family:inherit;font-size:13px;padding:8px 18px;border-radius:6px;
       cursor:pointer;min-width:96px;line-height:1.5;transition:filter .12s}
     .sbd-btn:focus-visible{outline:2px solid var(--sb-accent,${T.primary});outline-offset:2px}
     .sbd-btn:hover{filter:brightness(.96)}
-    .sbd-btn-ghost{border:1px solid #dcdfe5;background:#fff;color:#4b5563}
+    .sbd-btn-ghost{border:1px solid var(--sb-c-dcdfe5, #DCDFE5);background:var(--sb-c-ffffff, #FFFFFF);color:var(--sb-c-4b5563, #4B5563)}
     .sbd-btn-primary{border:none;background:var(--sb-accent,${T.primary});
-      color:var(--sb-accent-ink,#fff);font-weight:600}
-    .sbd-btn-danger{border:none;background:#C0392B;color:#fff;font-weight:600}
+      color:var(--sb-accent-ink,#FFFFFF);font-weight:600}
+    .sbd-btn-danger{border:none;background:#C0392B;color:#FFFFFF;font-weight:600}
   `
   document.head.append(s)
 }

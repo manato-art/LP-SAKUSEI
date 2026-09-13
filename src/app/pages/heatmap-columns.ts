@@ -57,33 +57,33 @@ function injectStyles(): void {
        （採取した実DOM: iframe style="width:375px;height:667px"）。
        縮小して全体を出す作りだと文字が読めず、到達ラインの位置も合わない。 */
     .hm-col {
-      flex:0 0 377px; background:#fff; border:1px solid #dcdce2; border-radius:10px;
+      flex:0 0 377px; background:var(--sb-c-ffffff, #FFFFFF); border:1px solid var(--sb-c-dcdce2, #DCDCE2); border-radius:10px;
       overflow:hidden; display:flex; flex-direction:column;
       box-shadow:0 1px 3px rgba(0,0,0,.06);
     }
     .hm-col-head {
       padding:12px 14px 10px; display:flex; flex-direction:column; gap:4px; flex-shrink:0;
-      background:#f7f8fa; border-bottom:1px solid #e5e5ea;
+      background:var(--sb-c-f7f8fa, #F7F8FA); border-bottom:1px solid var(--sb-c-e5e5ea, #E5E5EA);
     }
-    .hm-col-version { font-size:13px; font-weight:700; color:#1a1a1a; }
-    .hm-col-metric { font-size:12px; color:#444; display:flex; gap:8px; align-items:baseline; flex-wrap:wrap; }
-    .hm-col-metric b { font-size:13px; color:#1a1a1a; }
-    .hm-col-note { font-size:11px; color:#8a8a90; }
+    .hm-col-version { font-size:13px; font-weight:700; color:var(--sb-c-1a1a1a, #1A1A1A); }
+    .hm-col-metric { font-size:12px; color:var(--sb-c-444444, #444444); display:flex; gap:8px; align-items:baseline; flex-wrap:wrap; }
+    .hm-col-metric b { font-size:13px; color:var(--sb-c-1a1a1a, #1A1A1A); }
+    .hm-col-note { font-size:11px; color:#8A8A90; }
     .hm-col-ctrl { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:6px; }
     .hm-dev { display:flex; gap:4px; }
     .hm-dev button {
-      width:24px; height:22px; border-radius:4px; border:1px solid #d5d5db; background:#fff;
-      color:#555; cursor:pointer; font-size:11px; line-height:1; padding:0;
+      width:24px; height:22px; border-radius:4px; border:1px solid var(--sb-c-d5d5db, #D5D5DB); background:var(--sb-c-ffffff, #FFFFFF);
+      color:var(--sb-c-555555, #555555); cursor:pointer; font-size:11px; line-height:1; padding:0;
     }
-    .hm-dev button.on { background:#f0960a; border-color:#f0960a; color:#fff; }
-    .hm-range { font-size:11px; color:#555; font-variant-numeric:tabular-nums; }
+    .hm-dev button.on { background:#f0960a; border-color:#f0960a; color:#FFFFFF; }
+    .hm-range { font-size:11px; color:var(--sb-c-555555, #555555); font-variant-numeric:tabular-nums; }
     .hm-line-select {
-      margin-left:auto; background:#fff; color:#1a1a1a; border:1px solid #d5d5db;
+      margin-left:auto; background:var(--sb-c-ffffff, #FFFFFF); color:var(--sb-c-1a1a1a, #1A1A1A); border:1px solid var(--sb-c-d5d5db, #D5D5DB);
       border-radius:4px; font-size:11px; padding:3px 6px; font-family:inherit;
     }
     /* スマホ枠。ここ自体はスクロールさせず、中のLPだけが動く */
     .hm-col-body {
-      position:relative; overflow:hidden; background:#fff;
+      position:relative; overflow:hidden; background:var(--sb-c-ffffff, #FFFFFF);
       width:375px; height:667px; flex:0 0 667px;
     }
     .hm-canvas { position:relative; width:375px; height:667px; overflow:hidden; }
@@ -98,31 +98,31 @@ function injectStyles(): void {
        押すとLPがその深さまでスクロールするので、ボタンとして扱う。 */
     .hm-pill {
       position:absolute; left:8px; display:flex; align-items:center; justify-content:flex-end;
-      height:20px; margin-top:-10px; background:#fff; border-radius:999px;
+      height:20px; margin-top:-10px; background:var(--sb-c-ffffff, #FFFFFF); border-radius:999px;
       box-shadow:0 1px 3px rgba(0,0,0,.25); padding:0 10px; box-sizing:border-box;
       cursor:pointer; border:0; font-family:inherit; transition:background .12s;
       pointer-events:auto;
     }
     .hm-pill span {
-      font-size:11px; font-weight:700; color:#1a1a1a; white-space:nowrap;
+      font-size:11px; font-weight:700; color:var(--sb-c-1a1a1a, #1A1A1A); white-space:nowrap;
       font-variant-numeric:tabular-nums;
     }
-    .hm-pill:hover { background:#f2f2f4; }
+    .hm-pill:hover { background:var(--sb-c-f2f2f4, #F2F2F4); }
     /* 選択中の行。実物は黒地だが、画面全体が白基調なので黒は重く読みづらい。
        アプリ共通の青（var(--sb-accent, #0091FF)）に白文字で「選択中」を出す。 */
     .hm-pill.on { background:var(--sb-accent, #0091FF); box-shadow:0 1px 4px rgba(0,145,255,.35); }
-    .hm-pill.on span { color:#fff; }
+    .hm-pill.on span { color:#FFFFFF; }
     /* 1%未満は幅を持たせず文言だけ出す（実物の zero） */
     .hm-pill.zero { width:auto !important; }
     /* 右端のバッジ＝選択中の行が示す「LPのどの深さか」（実物の scrollPosition） */
     .hm-depth {
       position:absolute; right:0; height:26px; margin-top:-13px; min-width:44px;
-      background:var(--sb-accent, #0091FF); color:#fff; display:flex; align-items:center; justify-content:center;
+      background:var(--sb-accent, #0091FF); color:#FFFFFF; display:flex; align-items:center; justify-content:center;
       border-radius:13px 0 0 13px; font-size:11px; font-weight:700;
       font-variant-numeric:tabular-nums;
     }
     .hm-dot { position:absolute; width:10px; height:10px; margin:-5px 0 0 -5px; border-radius:50%; }
-    .hm-empty { padding:28px 14px; color:#6a6a72; font-size:12px; text-align:center; line-height:1.9; }
+    .hm-empty { padding:28px 14px; color:var(--sb-c-6a6a72, #6A6A72); font-size:12px; text-align:center; line-height:1.9; }
   `
   document.head.append(s)
 }

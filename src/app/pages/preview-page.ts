@@ -105,7 +105,7 @@ function wireUrlCards(root: HTMLElement, _abTestUid: string, version: Version | 
       const note = document.createElement('span')
       note.textContent = '※計測されません'
       note.style.cssText =
-        'margin-left:12px;font-size:12px;color:#999;white-space:nowrap;flex-shrink:0'
+        'margin-left:12px;font-size:12px;color:#999999;white-space:nowrap;flex-shrink:0'
       card.append(note)
       wireCardButtons(card, previewUrl)
     } else {
@@ -173,7 +173,7 @@ function mountPreviewWarningBanner(root: HTMLElement): void {
     'gap:10px',
     'font-size:15px',
     'font-weight:700',
-    'color:#fff',
+    'color:#FFFFFF',
     'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif',
     'box-shadow:0 2px 8px rgba(0,0,0,.25)',
   ].join(';')
@@ -310,8 +310,8 @@ function buildPreviewPopupSnippet(popup: ExitPopup): string {
       .ep-content.bounceIn{animation:epBounceIn .6s ease}
       .ep-content.elastic{animation:epElastic .8s ease}
       .ep-content.flipIn{animation:epFlipIn .6s ease}
-      .ep-close{position:absolute;top:-12px;right:-12px;width:28px;height:28px;border-radius:50%;background:#fff;border:1px solid #ddd;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.15);z-index:1}
-      .ep-preview-trigger{position:fixed;bottom:16px;right:16px;background:var(--sb-accent, #0091FF);color:#fff;border:none;border-radius:24px;padding:8px 16px;font-size:12px;cursor:pointer;z-index:99998;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+      .ep-close{position:absolute;top:-12px;right:-12px;width:28px;height:28px;border-radius:50%;background:var(--sb-c-ffffff, #FFFFFF);border:1px solid var(--sb-c-dddddd, #DDDDDD);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.15);z-index:1}
+      .ep-preview-trigger{position:fixed;bottom:16px;right:16px;background:var(--sb-accent, #0091FF);color:#FFFFFF;border:none;border-radius:24px;padding:8px 16px;font-size:12px;cursor:pointer;z-index:99998;box-shadow:0 2px 8px rgba(0,0,0,.2)}
     </style>
     <div id="${popupId}" class="ep-overlay">
       <div class="ep-content ${animClass}">

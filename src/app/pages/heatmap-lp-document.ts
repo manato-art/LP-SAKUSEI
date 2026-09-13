@@ -37,7 +37,7 @@ export function buildHeatmapLpDocument(source: HeatmapLpSource): string {
     `<!doctype html><html lang="ja"><head><meta charset="utf-8">` +
     `<meta name="viewport" content="width=device-width, initial-scale=1">` +
     `<link rel="stylesheet" href="${LP_FONTS_URL}">` +
-    `<style>body{margin:0 auto;max-width:${LP_WIDTH}px;font-family:"Hiragino Sans",sans-serif;background:#fff}` +
+    `<style>body{margin:0 auto;max-width:${LP_WIDTH}px;font-family:"Hiragino Sans",sans-serif;background:var(--sb-c-ffffff, #FFFFFF)}` +
     `${LP_BASE_CSS}${source.css}${source.styleCss}${lp.hasWidget ? WIDGET_RESET_CSS : ''}</style>` +
     externalWidgetStylesheets(lp.html) +
     `</head><body>${headerHtml}${withAutoplayVideos(lp.html)}</body></html>`

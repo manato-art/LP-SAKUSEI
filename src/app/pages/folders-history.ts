@@ -42,7 +42,7 @@ export function folderHistoryUids(): readonly string[] {
 export function renderHistoryList(container: Element): void {
   if (activityHistory.length === 0) {
     const msg = document.createElement('div')
-    msg.style.cssText = 'padding:24px 16px;color:#999;font-size:13px;text-align:center'
+    msg.style.cssText = 'padding:24px 16px;color:#999999;font-size:13px;text-align:center'
     msg.textContent = '最近の操作はありません'
     container.append(msg)
     return
@@ -52,13 +52,13 @@ export function renderHistoryList(container: Element): void {
     const row = el('div', {
       style: [
         'display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer',
-        `border-bottom:1px solid #F0F0F0;font-family:${T.font}`,
+        `border-bottom:1px solid var(--sb-c-f0f0f0, #F0F0F0);font-family:${T.font}`,
       ].join(';'),
     })
 
     // アイコン（フォルダ/ページ）
     const icon = el('div', {
-      style: 'width:28px;height:28px;display:flex;align-items:center;justify-content:center;flex-shrink:0;border-radius:6px;background:#F5F5F5',
+      style: 'width:28px;height:28px;display:flex;align-items:center;justify-content:center;flex-shrink:0;border-radius:6px;background:var(--sb-c-f5f5f5, #F5F5F5)',
     })
     icon.innerHTML = entry.type === 'folder'
       ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="#666"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>'
@@ -88,7 +88,7 @@ export function renderHistoryList(container: Element): void {
     })
 
     // ホバー
-    row.addEventListener('mouseenter', () => { row.style.background = '#F8F8F8' })
+    row.addEventListener('mouseenter', () => { row.style.background = 'var(--sb-c-f8f8f8, #F8F8F8)' })
     row.addEventListener('mouseleave', () => { row.style.background = '' })
 
     container.append(row)

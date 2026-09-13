@@ -49,7 +49,7 @@ export async function renderAccountSettings(container: HTMLElement): Promise<voi
   const tabs = ['アカウント', '通知設定', 'チームメンバー', 'アクセス管理'] as const
   let activeTab: (typeof tabs)[number] = 'アカウント'
 
-  const tabBar = el('div', { style: 'display:flex;gap:0;margin-bottom:20px;border-bottom:2px solid #EEE' })
+  const tabBar = el('div', { style: 'display:flex;gap:0;margin-bottom:20px;border-bottom:2px solid var(--sb-c-eeeeee, #EEEEEE)' })
   const contentArea = el('div', {
     style: `background:${T.surface};border-radius:10px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,.06)`,
   })
@@ -106,7 +106,7 @@ async function renderAccount(content: HTMLElement): Promise<void> {
   const nameInput = document.createElement('input')
   nameInput.type = 'text'
   nameInput.value = user.name
-  nameInput.style.cssText = `width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid #DDD;border-radius:6px;font-size:14px;font-family:${T.font};outline:none;margin-bottom:16px`
+  nameInput.style.cssText = `width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--sb-c-dddddd, #DDDDDD);border-radius:6px;font-size:14px;font-family:${T.font};outline:none;margin-bottom:16px`
   form.append(nameInput)
 
   // メールアドレス（本人が書き換えられる。空シードの見本アドレスが出たままにならないように）
@@ -116,7 +116,7 @@ async function renderAccount(content: HTMLElement): Promise<void> {
   const emailInput = document.createElement('input')
   emailInput.type = 'email'
   emailInput.value = user.email
-  emailInput.style.cssText = `width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid #DDD;border-radius:6px;font-size:14px;font-family:${T.font};outline:none;margin-bottom:16px`
+  emailInput.style.cssText = `width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--sb-c-dddddd, #DDDDDD);border-radius:6px;font-size:14px;font-family:${T.font};outline:none;margin-bottom:16px`
   form.append(emailInput)
 
   // 公開APIキー
@@ -125,13 +125,13 @@ async function renderAccount(content: HTMLElement): Promise<void> {
   )
   const apiKeyDisplay = el('div', {
     text: user.public_api_key ?? '未発行',
-    style: `padding:10px 12px;background:#F7F7F7;border-radius:6px;font-size:14px;margin-bottom:8px;color:${T.text};word-break:break-all`,
+    style: `padding:10px 12px;background:var(--sb-c-f7f7f7, #F7F7F7);border-radius:6px;font-size:14px;margin-bottom:8px;color:${T.text};word-break:break-all`,
   })
   form.append(apiKeyDisplay)
 
   const genKeyBtn = document.createElement('button')
   genKeyBtn.textContent = user.public_api_key !== null ? 'APIキーを再発行' : 'APIキーを発行'
-  genKeyBtn.style.cssText = `padding:6px 14px;border:1px solid #DDD;border-radius:6px;background:${T.surface};cursor:pointer;font-size:12px;font-family:${T.font};margin-bottom:20px`
+  genKeyBtn.style.cssText = `padding:6px 14px;border:1px solid var(--sb-c-dddddd, #DDDDDD);border-radius:6px;background:${T.surface};cursor:pointer;font-size:12px;font-family:${T.font};margin-bottom:20px`
   genKeyBtn.addEventListener('click', () => {
     void fetch('/api/v1/users/public_api_key', { method: 'POST' })
       .then((r) => r.json())
@@ -147,7 +147,7 @@ async function renderAccount(content: HTMLElement): Promise<void> {
   // 保存
   const saveBtn = document.createElement('button')
   saveBtn.textContent = '保存'
-  saveBtn.style.cssText = 'display:block;padding:10px 24px;border:none;border-radius:6px;background:var(--sb-accent, #0091FF);color:#FFF;cursor:pointer;font-size:14px'
+  saveBtn.style.cssText = 'display:block;padding:10px 24px;border:none;border-radius:6px;background:var(--sb-accent, #0091FF);color:#FFFFFF;cursor:pointer;font-size:14px'
   saveBtn.addEventListener('click', () => {
     const name = nameInput.value.trim()
     if (name === '') {
@@ -198,7 +198,7 @@ async function renderNotifications(content: HTMLElement): Promise<void> {
 
   for (const toggle of toggles) {
     const row = el('div', {
-      style: 'display:flex;justify-content:space-between;align-items:center;padding:16px 0;border-bottom:1px solid #F2F2F2',
+      style: 'display:flex;justify-content:space-between;align-items:center;padding:16px 0;border-bottom:1px solid var(--sb-c-f2f2f2, #F2F2F2)',
     })
 
     const left = el('div', { style: '' }, [
@@ -215,12 +215,12 @@ async function renderNotifications(content: HTMLElement): Promise<void> {
     const slider = el('span', {
       style: [
         'position:absolute;inset:0;border-radius:12px;transition:background .2s',
-        `background:${checkbox.checked ? 'var(--sb-accent, #0091FF)' : '#CCC'}`,
+        `background:${checkbox.checked ? 'var(--sb-accent, #0091FF)' : 'var(--sb-c-cccccc, #CCCCCC)'}`,
       ].join(';'),
     })
     const dot = el('span', {
       style: [
-        'position:absolute;top:2px;width:20px;height:20px;border-radius:50%;background:#FFF',
+        'position:absolute;top:2px;width:20px;height:20px;border-radius:50%;background:var(--sb-c-ffffff, #FFFFFF)',
         `left:${checkbox.checked ? '22px' : '2px'};transition:left .2s`,
       ].join(';'),
     })
@@ -259,7 +259,7 @@ async function renderMembers(content: HTMLElement): Promise<void> {
 
   const grid = `grid-template-columns:1fr 1fr 100px`
   const head = el('div', {
-    style: `display:grid;${grid};gap:12px;padding:10px 8px;border-bottom:2px solid #EEE;font-size:12px;color:${T.sub}`,
+    style: `display:grid;${grid};gap:12px;padding:10px 8px;border-bottom:2px solid var(--sb-c-eeeeee, #EEEEEE);font-size:12px;color:${T.sub}`,
   })
   head.append(
     el('div', { text: '名前' }),
@@ -270,7 +270,7 @@ async function renderMembers(content: HTMLElement): Promise<void> {
 
   for (const member of members) {
     const tr = el('div', {
-      style: `display:grid;${grid};gap:12px;padding:12px 8px;border-bottom:1px solid #F2F2F2;font-size:13px;color:${T.text};align-items:center`,
+      style: `display:grid;${grid};gap:12px;padding:12px 8px;border-bottom:1px solid var(--sb-c-f2f2f2, #F2F2F2);font-size:13px;color:${T.text};align-items:center`,
     })
     tr.append(
       el('div', { text: member.name }),
@@ -314,7 +314,7 @@ async function renderAccessManagement(content: HTMLElement): Promise<void> {
   const copyBtn = document.createElement('button')
   copyBtn.textContent = 'コピー'
   copyBtn.style.cssText = [
-    `padding:6px 16px;border:1px solid #4A7FBF;border-radius:6px;background:#FFF`,
+    `padding:6px 16px;border:1px solid #4A7FBF;border-radius:6px;background:var(--sb-c-ffffff, #FFFFFF)`,
     `color:#4A7FBF;cursor:pointer;font-size:12px;font-family:${T.font};white-space:nowrap`,
   ].join(';')
   copyBtn.addEventListener('click', () => {
@@ -345,11 +345,11 @@ async function renderAccessManagement(content: HTMLElement): Promise<void> {
   emailInput.type = 'email'
   emailInput.placeholder = 'メールアドレスを入力'
   emailInput.style.cssText =
-    `flex:1;padding:10px 12px;border:1px solid #DDD;border-radius:6px;font-size:14px;font-family:${T.font};outline:none`
+    `flex:1;padding:10px 12px;border:1px solid var(--sb-c-dddddd, #DDDDDD);border-radius:6px;font-size:14px;font-family:${T.font};outline:none`
   const addBtn = document.createElement('button')
   addBtn.textContent = '追加'
   addBtn.style.cssText =
-    `padding:10px 20px;border:none;border-radius:6px;background:${T.primary};color:#FFF;cursor:pointer;font-size:14px;font-family:${T.font};white-space:nowrap`
+    `padding:10px 20px;border:none;border-radius:6px;background:${T.primary};color:#FFFFFF;cursor:pointer;font-size:14px;font-family:${T.font};white-space:nowrap`
   addRow.append(emailInput, addBtn)
   content.append(addRow)
 
@@ -390,7 +390,7 @@ async function renderAccessManagement(content: HTMLElement): Promise<void> {
     for (const entry of emails) {
       const row = el('div', {
         style:
-          'display:flex;justify-content:space-between;align-items:center;padding:12px 8px;border-bottom:1px solid #F2F2F2',
+          'display:flex;justify-content:space-between;align-items:center;padding:12px 8px;border-bottom:1px solid var(--sb-c-f2f2f2, #F2F2F2)',
       })
       const left = el('div', {}, [
         el('div', { text: entry.email, style: `font-size:14px;color:${T.text}` }),

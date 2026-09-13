@@ -188,7 +188,7 @@ export function mountHeaderExtras(
   saveStatus.className = 'sb-header-save-status save-status'
   saveStatus.setAttribute('data-header-save-status', 'true')
   const timeSpan = document.createElement('span')
-  timeSpan.style.cssText = 'font-size:10px;color:#b0b0b0'
+  timeSpan.style.cssText = 'font-size:10px;color:#B0B0B0'
   timeSpan.setAttribute('data-save-time', 'true')
   // 初期表示: 現在時刻を「読み込み時刻」として表示
   const initialTime = new Date()

@@ -235,7 +235,7 @@ function wirePageRowActions(row: HTMLElement, abTest: AbTest): void {
     text: '···',
     style: [
       `background:${T.surface};color:${T.text}`,
-      'border:1px solid #DDD;border-radius:4px;padding:4px 8px',
+      'border:1px solid var(--sb-c-dddddd, #DDDDDD);border-radius:4px;padding:4px 8px',
       `font-size:13px;cursor:pointer;font-family:${T.font}`,
       'font-weight:700',
     ].join(';'),
@@ -250,7 +250,7 @@ function wirePageRowActions(row: HTMLElement, abTest: AbTest): void {
   const gearBtn = el('button', {
     style: [
       `background:${T.surface};color:${T.sub}`,
-      'border:1px solid #DDD;border-radius:4px;padding:4px 6px',
+      'border:1px solid var(--sb-c-dddddd, #DDDDDD);border-radius:4px;padding:4px 6px',
       'cursor:pointer;display:flex;align-items:center',
     ].join(';'),
   })

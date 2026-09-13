@@ -79,49 +79,49 @@ function injectCss(): void {
   const s = document.createElement('style')
   s.id = CSS_ID
   s.textContent = `
-    .rx { padding:20px 24px; font-size:13px; color:#1f2937;
+    .rx { padding:20px 24px; font-size:13px; color:var(--sb-c-1f2937, #1F2937);
       font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,
         "Hiragino Sans","Hiragino Kaku Gothic ProN",sans-serif; }
     .rx h1 { font-size:20px; font-weight:700; margin:0 0 14px; }
-    .rx-tabs { display:flex; gap:4px; border-bottom:1px solid #e6e9f0; margin-bottom:16px; }
-    .rx-tab { border:0; background:transparent; font:inherit; font-size:13px; color:#6b7280;
+    .rx-tabs { display:flex; gap:4px; border-bottom:1px solid var(--sb-c-e6e9f0, #E6E9F0); margin-bottom:16px; }
+    .rx-tab { border:0; background:transparent; font:inherit; font-size:13px; color:var(--sb-c-6b7280, #6B7280);
       padding:9px 16px; cursor:pointer; border-bottom:2px solid transparent; }
     .rx-tab.on { color:var(--sb-accent, #2563EB); font-weight:700; border-bottom-color:var(--sb-accent, #2563EB); }
-    .rx-card { background:#fff; border:1px solid #e6e9f0; border-radius:10px;
+    .rx-card { background:var(--sb-c-ffffff, #FFFFFF); border:1px solid var(--sb-c-e6e9f0, #E6E9F0); border-radius:10px;
       padding:16px 18px; margin-bottom:16px; }
-    .rx-lead { font-size:12px; color:#4b5563; line-height:1.9; margin:0 0 10px; }
-    .rx-note { font-size:12px; color:#6b7280; line-height:1.9; background:#f7f9fc;
-      border:1px solid #eef1f6; border-radius:8px; padding:10px 12px; margin:0 0 12px; }
+    .rx-lead { font-size:12px; color:var(--sb-c-4b5563, #4B5563); line-height:1.9; margin:0 0 10px; }
+    .rx-note { font-size:12px; color:var(--sb-c-6b7280, #6B7280); line-height:1.9; background:#f7f9fc;
+      border:1px solid var(--sb-c-eef1f6, #EEF1F6); border-radius:8px; padding:10px 12px; margin:0 0 12px; }
     .rx-h2 { font-size:14px; font-weight:700; margin:0 0 10px; }
     .rx-form { display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; }
     .rx-field { display:flex; flex-direction:column; gap:4px; }
-    .rx-field label { font-size:11px; color:#6b7280; }
+    .rx-field label { font-size:11px; color:var(--sb-c-6b7280, #6B7280); }
     .rx-field select, .rx-field input {
-      border:1px solid #d5d5db; border-radius:6px; padding:7px 9px; font:inherit;
-      font-size:12px; background:#fff; color:#1f2937; min-width:150px;
+      border:1px solid var(--sb-c-d5d5db, #D5D5DB); border-radius:6px; padding:7px 9px; font:inherit;
+      font-size:12px; background:var(--sb-c-ffffff, #FFFFFF); color:var(--sb-c-1f2937, #1F2937); min-width:150px;
     }
-    .rx-btn { border:1px solid var(--sb-accent, #2563EB); background:var(--sb-accent, #2563EB); color:#fff; border-radius:6px;
+    .rx-btn { border:1px solid var(--sb-accent, #2563EB); background:var(--sb-accent, #2563EB); color:#FFFFFF; border-radius:6px;
       padding:8px 16px; font:inherit; font-size:12px; font-weight:600; cursor:pointer; }
     .rx-btn:hover { background:#1d4ed8; }
-    .rx-btn.ghost { background:#fff; color:var(--sb-accent, #2563EB); }
+    .rx-btn.ghost { background:var(--sb-c-ffffff, #FFFFFF); color:var(--sb-accent, #2563EB); }
     .rx-btn.ghost:hover { background:#f3f7ff; }
-    .rx-check { display:flex; align-items:center; gap:6px; font-size:12px; color:#374151;
+    .rx-check { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--sb-c-374151, #374151);
       margin:0 0 12px; cursor:pointer; }
     .rx-table { width:100%; border-collapse:collapse; font-size:12px; }
-    .rx-table th, .rx-table td { border-bottom:1px solid #eef1f6; padding:9px 10px;
+    .rx-table th, .rx-table td { border-bottom:1px solid var(--sb-c-eef1f6, #EEF1F6); padding:9px 10px;
       text-align:left; white-space:nowrap; }
-    .rx-table th { background:#f8fafc; color:#475467; font-weight:600; font-size:11px; }
+    .rx-table th { background:#f8fafc; color:var(--sb-c-475467, #475467); font-weight:600; font-size:11px; }
     .rx-table td.num { text-align:right; font-variant-numeric:tabular-nums; }
-    .rx-empty { color:#6b7280; font-size:12px; padding:18px; text-align:center; }
+    .rx-empty { color:var(--sb-c-6b7280, #6B7280); font-size:12px; padding:18px; text-align:center; }
     .rx-periods { display:flex; gap:4px; flex-wrap:wrap; }
-    .rx-period { border:1px solid #d5d5db; background:#fff; color:#555; border-radius:6px;
+    .rx-period { border:1px solid var(--sb-c-d5d5db, #D5D5DB); background:var(--sb-c-ffffff, #FFFFFF); color:var(--sb-c-555555, #555555); border-radius:6px;
       padding:5px 12px; font:inherit; font-size:11px; cursor:pointer; }
-    .rx-period.on { background:var(--sb-accent, #2563EB); border-color:var(--sb-accent, #2563EB); color:#fff; font-weight:700; }
+    .rx-period.on { background:var(--sb-accent, #2563EB); border-color:var(--sb-accent, #2563EB); color:#FFFFFF; font-weight:700; }
     .rx-ranks { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; margin-top:14px; }
     @media (max-width:1000px) { .rx-ranks { grid-template-columns:minmax(0,1fr); } }
-    .rx-rank h3 { font-size:12px; font-weight:700; margin:0 0 6px; color:#374151; }
+    .rx-rank h3 { font-size:12px; font-weight:700; margin:0 0 6px; color:var(--sb-c-374151, #374151); }
     .rx-rank-row { display:flex; gap:8px; align-items:center; padding:6px 0;
-      border-bottom:1px solid #f2f4f7; font-size:12px; }
+      border-bottom:1px solid var(--sb-c-f2f4f7, #F2F4F7); font-size:12px; }
     .rx-rank-row span:first-child { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .rx-rank-row b { font-variant-numeric:tabular-nums; }
     .rx-del { border:1px solid #feb2b2; background:#fff5f5; color:#e53e3e; border-radius:5px;
@@ -433,7 +433,7 @@ function buildRequests(): HTMLElement {
   const ranks = document.createElement('div')
   ranks.className = 'rx-ranks'
   const totalLine = document.createElement('div')
-  totalLine.style.cssText = 'font-size:12px;color:#6b7280;margin-top:10px'
+  totalLine.style.cssText = 'font-size:12px;color:var(--sb-c-6b7280, #6B7280);margin-top:10px'
 
   let current: (typeof PERIODS)[number] = PERIODS[0]
 

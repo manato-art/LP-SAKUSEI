@@ -19,7 +19,7 @@ function injectStyles(): void {
   s.textContent = `
     .sb-url-bar {
       display:flex; align-items:center; gap:6px; padding:0 8px;
-      background:#fff; border-bottom:1px solid #e5e5ea; flex-shrink:0;
+      background:var(--sb-c-ffffff, #FFFFFF); border-bottom:1px solid var(--sb-c-e5e5ea, #E5E5EA); flex-shrink:0;
       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
       font-size:13px; user-select:none; min-height:40px; height:40px;
       overflow:hidden; box-sizing:border-box;
@@ -40,23 +40,23 @@ function injectStyles(): void {
     /* 指示167: URL枠を可能な限り広くしてURLを枠内にピッタリ収める。
        余白/ギャップを詰めてフィールドの実効幅を最大化する。 */
     .sb-url-field {
-      flex:1; height:28px; border:1px solid #e5e5ea; border-radius:4px;
-      padding:0 8px; font-size:11px; color:#1a1a1a;
-      font-family:inherit; background:#f5f6f8; min-width:0;
+      flex:1; height:28px; border:1px solid var(--sb-c-e5e5ea, #E5E5EA); border-radius:4px;
+      padding:0 8px; font-size:11px; color:var(--sb-c-1a1a1a, #1A1A1A);
+      font-family:inherit; background:var(--sb-c-f5f6f8, #F5F6F8); min-width:0;
       overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
       display:flex; align-items:center; cursor:text;
     }
     .sb-url-copy-btn {
-      width:28px; height:28px; border:1px solid #e5e5ea; border-radius:4px;
-      background:#fff; cursor:pointer; display:flex; align-items:center;
-      justify-content:center; color:#666; flex-shrink:0;
+      width:28px; height:28px; border:1px solid var(--sb-c-e5e5ea, #E5E5EA); border-radius:4px;
+      background:var(--sb-c-ffffff, #FFFFFF); cursor:pointer; display:flex; align-items:center;
+      justify-content:center; color:var(--sb-c-666666, #666666); flex-shrink:0;
       transition:background .12s,border-color .12s,color .12s;
     }
     .sb-url-copy-btn:hover {
       background:rgba(0,145,255,.08); border-color:var(--sb-accent, #0091FF); color:var(--sb-accent, #0091FF);
     }
     .sb-url-sep {
-      width:1px; height:20px; background:#e5e5ea; flex-shrink:0;
+      width:1px; height:20px; background:var(--sb-c-e5e5ea, #E5E5EA); flex-shrink:0;
     }
   `
   document.head.append(s)

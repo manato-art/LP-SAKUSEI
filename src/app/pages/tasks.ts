@@ -115,11 +115,11 @@ function renderTaskRow(task: Task): HTMLElement {
   }
 
   const row = el('div', {
-    style: `display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #F2F2F2;font-family:${T.font}`,
+    style: `display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--sb-c-f2f2f2, #F2F2F2);font-family:${T.font}`,
   })
 
   const statusDot = el('span', {
-    style: `width:8px;height:8px;border-radius:50%;background:${statusColors[task.status] ?? '#CCC'};flex-shrink:0`,
+    style: `width:8px;height:8px;border-radius:50%;background:${statusColors[task.status] ?? 'var(--sb-c-cccccc, #CCCCCC)'};flex-shrink:0`,
   })
 
   const titleEl = el('span', {
@@ -129,7 +129,7 @@ function renderTaskRow(task: Task): HTMLElement {
 
   const statusBadge = el('span', {
     text: statusLabels[task.status] ?? task.status,
-    style: `font-size:11px;padding:2px 8px;border-radius:10px;background:${statusColors[task.status] ?? '#CCC'}22;color:${statusColors[task.status] ?? '#666'}`,
+    style: `font-size:11px;padding:2px 8px;border-radius:10px;background:${statusColors[task.status] ?? 'var(--sb-c-cccccc, #CCCCCC)'}22;color:${statusColors[task.status] ?? 'var(--sb-c-666666, #666666)'}`,
   })
 
   // ステータス切替

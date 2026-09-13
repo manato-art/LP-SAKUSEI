@@ -835,6 +835,8 @@ export interface State {
   mediaAssets: readonly MediaAsset[]
   /** 画面のテーマカラー（アクセント色）。`#RRGGBB` */
   themeAccent: string
+  /** 画面の表示モード（既定はライト＝今までと同じ見た目） */
+  themeMode: 'light' | 'dark'
   /**
    * Slack連携。認可が済むとここに入る。
    * アクセストークンはAPIのレスポンスには**含めない**（`routes/slack.ts`）。

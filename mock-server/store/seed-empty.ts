@@ -94,6 +94,8 @@ export function createEmptyState(): State {
     heatmapStats: [],
     mediaAssets: [],
     themeAccent: '#0091FF',
+    // 表示モード。既定はライト（空シードに無いと保存データから落ちる）
+    themeMode: 'light' as const,
     slack: null,
     integrations: { slackClientId: '', slackClientSecret: '', chatworkApiToken: '' },
     reportExclusions: [],

@@ -37,14 +37,14 @@ export function wireParamRow(row: HTMLElement, version: Version): void {
   const editor = document.createElement('div')
   editor.setAttribute('data-clone-param-editor', '')
   editor.style.cssText =
-    'display:flex;flex-direction:column;gap:8px;padding:12px 14px;background:#fff;' +
-    'border:1px solid #e5e5ea;border-radius:8px'
+    'display:flex;flex-direction:column;gap:8px;padding:12px 14px;background:var(--sb-c-ffffff, #FFFFFF);' +
+    'border:1px solid var(--sb-c-e5e5ea, #E5E5EA);border-radius:8px'
 
   const fields = document.createElement('div')
   fields.style.cssText = 'display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end'
   const field = (labelText: string, el: HTMLElement): HTMLElement => {
     const wrap = document.createElement('label')
-    wrap.style.cssText = 'display:flex;flex-direction:column;gap:3px;font-size:11px;color:#8a94a6'
+    wrap.style.cssText = 'display:flex;flex-direction:column;gap:3px;font-size:11px;color:#8A94A6'
     const lb = document.createElement('span')
     lb.textContent = labelText
     wrap.append(lb, el)
@@ -73,7 +73,7 @@ export function wireParamRow(row: HTMLElement, version: Version): void {
   fields.append(field('パラメータ名', nameInput), field('条件', matchSel), field('値', valInput))
 
   const preview = document.createElement('div')
-  preview.style.cssText = 'font-size:12px;color:#5b6577'
+  preview.style.cssText = 'font-size:12px;color:var(--sb-c-5b6577, #5B6577)'
   const renderPreview = (): void => {
     const n = nameInput.value.trim() || 'utm_creative'
     const v = valInput.value.trim()
@@ -81,7 +81,7 @@ export function wireParamRow(row: HTMLElement, version: Version): void {
       { exact: '', prefix: '（で始まる）', suffix: '（で終わる）', contains: '（を含む）' }[matchSel.value] ?? ''
     preview.innerHTML =
       v === ''
-        ? '<span style="color:#aaa">値を入れると、その広告リンクから来た人にこのVersionを表示します（未入力なら常に表示）</span>'
+        ? '<span style="color:#AAAAAA">値を入れると、その広告リンクから来た人にこのVersionを表示します（未入力なら常に表示）</span>'
         : `→ <b>?${escapeText(n)}=${escapeText(v)}</b>${note} で来た人にこのVersionを表示`
   }
   const saveRule = (): void => {

@@ -112,8 +112,8 @@ function appendMessageBubble(msg: { role: string; content: string }): void {
       `max-width:70%;padding:12px 16px;border-radius:12px;font-size:14px;line-height:1.7`,
       `white-space:pre-wrap;word-break:break-word`,
       isUser
-        ? `align-self:flex-end;background:var(--sb-accent, #0091FF);color:#FFF;border-bottom-right-radius:4px`
-        : `align-self:flex-start;background:#F0F0F0;color:${T.text};border-bottom-left-radius:4px`,
+        ? `align-self:flex-end;background:var(--sb-accent, #0091FF);color:#FFFFFF;border-bottom-right-radius:4px`
+        : `align-self:flex-start;background:var(--sb-c-f0f0f0, #F0F0F0);color:${T.text};border-bottom-left-radius:4px`,
     ].join(';'),
   })
   bubble.textContent = msg.content

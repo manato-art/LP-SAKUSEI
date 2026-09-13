@@ -44,7 +44,7 @@ import { injectQuillScrollFix, injectVersionFilterCss } from './editor-styles.ts
 /** エディタ土台の描画までの一瞬に出す読み込み表示（クリック直後の blank を埋める）。 */
 function editorLoadingPlaceholder(): HTMLElement {
   const spinner = el('div', {
-    style: `width:28px;height:28px;border:3px solid #E5E7EB;border-top-color:${T.primary};
+    style: `width:28px;height:28px;border:3px solid var(--sb-c-e5e7eb, #E5E7EB);border-top-color:${T.primary};
       border-radius:50%;animation:sbspin .8s linear infinite`,
   })
   // キーフレームは一度だけ注入する（重複させない）
@@ -188,7 +188,7 @@ export async function renderEditor(
     // editorWrapper が残り高さを自動で埋めるようにする
     const contentBox = navWrapper.parentElement
     if (contentBox !== null) {
-      contentBox.style.background = '#fff'
+      contentBox.style.background = 'var(--sb-c-ffffff, #FFFFFF)'
       contentBox.style.display = 'flex'
       contentBox.style.flexDirection = 'column'
     }
@@ -210,7 +210,7 @@ export async function renderEditor(
     editorWrapper.style.flex = '1 1 0px'
     editorWrapper.style.minHeight = '0'
     editorWrapper.style.padding = '0'
-    editorWrapper.style.background = '#fff'
+    editorWrapper.style.background = 'var(--sb-c-ffffff, #FFFFFF)'
   }
   // boostEditorWrapper も同じ flex パターン
   const boostWrapper = root.querySelector<HTMLElement>('[class*="_boostEditorWrapper_"]')
@@ -360,7 +360,7 @@ function mountQuill(root: HTMLElement): Quill {
     // iframe の採取CSS（width:100% / 角丸）を引き継ぐ。
     // 指示㊿②: Quillホストが唯一のスクロール領域。キャンバスのLP本文だけが動く。
     host.className = frame.className
-    host.style.background = '#fff'
+    host.style.background = 'var(--sb-c-ffffff, #FFFFFF)'
     host.style.overflow = 'auto'
     // ★ Quill は .ql-container { height:100% } を core CSS で持つ。
     // Vite の CSS injection 順（JS import → <style> 注入）が index.html の <link> より後なので
@@ -372,7 +372,7 @@ function mountQuill(root: HTMLElement): Quill {
     host.style.minHeight = '0'
     frame.replaceWith(host)
   } else {
-    host.style.cssText = 'width:100%;height:calc(100vh - 220px);background:#fff;overflow:auto'
+    host.style.cssText = 'width:100%;height:calc(100vh - 220px);background:var(--sb-c-ffffff, #FFFFFF);overflow:auto'
     root.append(host)
   }
   /**
@@ -441,7 +441,7 @@ function mountZoomControl(root: HTMLElement, quill: Quill): void {
     'height:24px',
     'border:none',
     'background:transparent',
-    'color:#666',
+    'color:var(--sb-c-666666, #666666)',
     'font-size:16px',
     'line-height:1',
     'cursor:pointer',
@@ -455,16 +455,16 @@ function mountZoomControl(root: HTMLElement, quill: Quill): void {
   const minus = document.createElement('button')
   minus.textContent = '−'
   minus.style.cssText = btnStyle
-  minus.addEventListener('mouseenter', () => { minus.style.background = '#e8e8e8' })
+  minus.addEventListener('mouseenter', () => { minus.style.background = 'var(--sb-c-e8e8e8, #E8E8E8)' })
   minus.addEventListener('mouseleave', () => { minus.style.background = 'transparent' })
 
   const label = document.createElement('span')
-  label.style.cssText = 'font-size:12px;color:#666;min-width:36px;text-align:center;user-select:none'
+  label.style.cssText = 'font-size:12px;color:var(--sb-c-666666, #666666);min-width:36px;text-align:center;user-select:none'
 
   const plus = document.createElement('button')
   plus.textContent = '+'
   plus.style.cssText = btnStyle
-  plus.addEventListener('mouseenter', () => { plus.style.background = '#e8e8e8' })
+  plus.addEventListener('mouseenter', () => { plus.style.background = 'var(--sb-c-e8e8e8, #E8E8E8)' })
   plus.addEventListener('mouseleave', () => { plus.style.background = 'transparent' })
 
   bar.append(minus, label, plus)
@@ -653,7 +653,7 @@ function relocateVersionDropdownToNav(root: HTMLElement): void {
     articlesTop.innerHTML = ''
     const vhdr = document.createElement('h3')
     vhdr.textContent = 'Version'
-    vhdr.style.cssText = 'font-size:13px;font-weight:600;color:#1a1a1a;margin:0'
+    vhdr.style.cssText = 'font-size:13px;font-weight:600;color:var(--sb-c-1a1a1a, #1A1A1A);margin:0'
     articlesTop.append(vhdr)
   }
 }
@@ -674,7 +674,7 @@ function addVersionPanelHeader(root: HTMLElement): void {
   const vhdr = document.createElement('h3')
   vhdr.setAttribute('data-version-panel-header', 'true')
   vhdr.textContent = 'Version'
-  vhdr.style.cssText = 'font-size:13px;font-weight:600;color:#1a1a1a;margin:0'
+  vhdr.style.cssText = 'font-size:13px;font-weight:600;color:var(--sb-c-1a1a1a, #1A1A1A);margin:0'
   articlesTop.append(vhdr)
 }
 

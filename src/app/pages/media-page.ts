@@ -557,58 +557,58 @@ function injectStyles(): void {
   const s = document.createElement('style')
   s.id = 'md-css'
   s.textContent = `
-    .md-page{display:flex;flex-direction:column;height:100%;min-height:0;font-size:13px;color:#333}
+    .md-page{display:flex;flex-direction:column;height:100%;min-height:0;font-size:13px;color:var(--sb-c-333333, #333333)}
     .md-tabs{display:flex;flex-direction:row;justify-content:center;gap:60px;padding:12px 0 14px;flex-shrink:0}
-    .md-tab{border:none;background:none;font-size:13px;color:#666;cursor:pointer;
+    .md-tab{border:none;background:none;font-size:13px;color:var(--sb-c-666666, #666666);cursor:pointer;
       padding:5px 16px;border-radius:4px}
-    .md-tab.on{background:#eef0f4;color:#111;font-weight:600}
+    .md-tab.on{background:var(--sb-c-eef0f4, #EEF0F4);color:var(--sb-c-111111, #111111);font-weight:600}
     .md-guide-slot{padding:0 20px;flex-shrink:0}
     .md-body{flex:1;min-height:0;display:grid;grid-template-columns:300px 1fr;gap:20px;
       padding:0 20px 20px}
-    .md-left{background:#f2f3f5;border-radius:4px;padding:14px;display:flex;flex-direction:column;min-height:0}
+    .md-left{background:var(--sb-c-f2f3f5, #F2F3F5);border-radius:4px;padding:14px;display:flex;flex-direction:column;min-height:0}
     .md-left-head{display:flex;flex-direction:row;align-items:center;gap:10px;margin-bottom:10px}
     .md-left-title{font-size:12px;font-weight:600;white-space:nowrap}
-    .md-search{flex:1;min-width:0;border:1px solid #ddd;border-radius:16px;padding:5px 12px;font-size:12px}
+    .md-search{flex:1;min-width:0;border:1px solid var(--sb-c-dddddd, #DDDDDD);border-radius:16px;padding:5px 12px;font-size:12px}
     .md-list{flex:1;overflow:auto;min-height:60px}
     .md-item{display:block;width:100%;text-align:left;border:none;background:none;
-      padding:7px 8px;font-size:12px;color:#333;cursor:pointer;border-radius:4px}
-    .md-item:hover{background:#e7e9ed}
-    .md-item.on{background:var(--sb-accent,#0091FF);color:var(--sb-accent-ink,#fff)}
-    .md-empty{font-size:12px;color:#999;padding:8px}
+      padding:7px 8px;font-size:12px;color:var(--sb-c-333333, #333333);cursor:pointer;border-radius:4px}
+    .md-item:hover{background:var(--sb-c-e7e9ed, #E7E9ED)}
+    .md-item.on{background:var(--sb-accent,#0091FF);color:var(--sb-accent-ink,#FFFFFF)}
+    .md-empty{font-size:12px;color:#999999;padding:8px}
     .md-add{border:none;background:none;color:var(--sb-accent,#0091FF);font-size:12px;
       cursor:pointer;text-align:left;padding:8px 4px}
     .md-csv{display:flex;flex-direction:column;gap:6px;margin-top:6px}
     .md-right{overflow:auto;min-height:0;padding-right:4px}
     .md-right-title{text-align:center;font-size:13px;font-weight:600;margin-bottom:16px}
-    .md-note{font-size:11px;color:#666;margin:10px 0 4px}
-    .md-label{font-size:11px;color:#666;margin:10px 0 4px}
-    .md-select,.md-input{width:100%;border:1px solid #ddd;border-radius:4px;padding:7px 9px;
-      font:inherit;font-size:13px;background:#fff;box-sizing:border-box}
-    .md-textarea{width:100%;min-height:110px;border:1px solid #ddd;border-radius:4px;
+    .md-note{font-size:11px;color:var(--sb-c-666666, #666666);margin:10px 0 4px}
+    .md-label{font-size:11px;color:var(--sb-c-666666, #666666);margin:10px 0 4px}
+    .md-select,.md-input{width:100%;border:1px solid var(--sb-c-dddddd, #DDDDDD);border-radius:4px;padding:7px 9px;
+      font:inherit;font-size:13px;background:var(--sb-c-ffffff, #FFFFFF);box-sizing:border-box}
+    .md-textarea{width:100%;min-height:110px;border:1px solid var(--sb-c-dddddd, #DDDDDD);border-radius:4px;
       padding:8px 10px;font:inherit;font-size:13px;box-sizing:border-box;resize:vertical}
     .md-row{margin-bottom:4px}
     .md-actions{display:flex;flex-direction:row;gap:10px;justify-content:center;margin:18px 0 8px}
     .md-save,.md-btn-primary{border:none;border-radius:4px;padding:7px 22px;
-      background:var(--sb-accent,#0091FF);color:var(--sb-accent-ink,#fff);font-size:12px;cursor:pointer}
+      background:var(--sb-accent,#0091FF);color:var(--sb-accent-ink,#FFFFFF);font-size:12px;cursor:pointer}
     .md-save{display:block;margin:16px auto 0}
-    .md-delete{border:1px solid #D0021B;background:#fff;color:#D0021B;border-radius:4px;
+    .md-delete{border:1px solid #D0021B;background:var(--sb-c-ffffff, #FFFFFF);color:#D0021B;border-radius:4px;
       padding:7px 22px;font-size:12px;cursor:pointer}
-    .md-btn-ghost{border:1px solid var(--sb-accent,#0091FF);background:#fff;
+    .md-btn-ghost{border:1px solid var(--sb-accent,#0091FF);background:var(--sb-c-ffffff, #FFFFFF);
       color:var(--sb-accent,#0091FF);border-radius:4px;padding:6px 12px;font-size:12px;cursor:pointer}
     .md-fields{margin-top:16px}
-    .md-field{border:1px solid #eee;border-radius:6px;padding:14px 16px;margin-bottom:14px}
+    .md-field{border:1px solid var(--sb-c-eeeeee, #EEEEEE);border-radius:6px;padding:14px 16px;margin-bottom:14px}
     .md-field-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
     .md-field-col{min-width:0}
-    .md-option-fixed{font-size:13px;color:#666;padding:7px 0}
+    .md-option-fixed{font-size:13px;color:var(--sb-c-666666, #666666);padding:7px 0}
     .md-option-row{display:flex;flex-direction:row;align-items:center;gap:6px;margin-bottom:5px}
-    .md-x{border:none;background:none;color:#999;cursor:pointer;font-size:13px;padding:0 4px}
+    .md-x{border:none;background:none;color:#999999;cursor:pointer;font-size:13px;padding:0 4px}
     .md-add-opt{border:none;background:none;color:var(--sb-accent,#0091FF);font-size:11px;
       cursor:pointer;padding:4px 0}
     .md-preview{border:1px dashed #b9d7f5;border-radius:4px;padding:10px 12px;margin-top:12px}
     .md-preview-title{color:var(--sb-accent,#0091FF);font-size:11px;margin-bottom:6px}
     .md-preview-name{font-size:12px;font-weight:700;margin-bottom:6px}
     .md-pills{display:flex;flex-direction:row;flex-wrap:wrap;gap:6px}
-    .md-pill{border:1px solid #ddd;border-radius:14px;padding:3px 12px;font-size:11px;color:#555}
+    .md-pill{border:1px solid var(--sb-c-dddddd, #DDDDDD);border-radius:14px;padding:3px 12px;font-size:11px;color:var(--sb-c-555555, #555555)}
     .md-pill.on{border-color:var(--sb-accent,#0091FF);color:var(--sb-accent,#0091FF);background:#f0f7ff}
     .md-product-image{display:block;max-width:180px;margin:8px 0;border-radius:4px}
   `

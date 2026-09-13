@@ -45,11 +45,11 @@ function wireDetailPanelCloseButton(panel: HTMLElement): void {
     'transform:translateY(-50%)',
     'z-index:10',
     'padding:8px 6px',
-    'border:1px solid #ccc',
+    'border:1px solid var(--sb-c-cccccc, #CCCCCC)',
     'border-right:none',
     'border-radius:4px 0 0 4px',
-    'background:#fff',
-    'color:#666',
+    'background:var(--sb-c-ffffff, #FFFFFF)',
+    'color:var(--sb-c-666666, #666666)',
     'font-size:11px',
     `font-family:${T.font}`,
     'cursor:pointer',
@@ -69,10 +69,10 @@ function wireDetailPanelCloseButton(panel: HTMLElement): void {
   }
 
   closeBtn.addEventListener('mouseenter', () => {
-    closeBtn.style.background = '#f0f0f0'
+    closeBtn.style.background = 'var(--sb-c-f0f0f0, #F0F0F0)'
   })
   closeBtn.addEventListener('mouseleave', () => {
-    closeBtn.style.background = '#fff'
+    closeBtn.style.background = 'var(--sb-c-ffffff, #FFFFFF)'
   })
   closeBtn.addEventListener('click', (e) => {
     e.stopPropagation()
@@ -132,12 +132,12 @@ export function expandDetailPanel(body: HTMLElement): void {
 function colorSectionHeaders(panel: HTMLElement): void {
   const headers = panel.querySelectorAll<HTMLElement>('.ej6u9q11')
   for (const header of headers) {
-    header.style.background = '#F5F7FA'
+    header.style.background = 'var(--sb-c-f5f7fa, #F5F7FA)'
     header.style.padding = '8px 12px'
     header.style.borderRadius = '0'
     header.style.borderBottom = '1px solid #E3E6EA'
     header.style.borderTop = '1px solid #E3E6EA'
-    header.style.color = '#555'
+    header.style.color = 'var(--sb-c-555555, #555555)'
     header.style.fontSize = '12px'
     header.style.fontWeight = '600'
   }
@@ -361,7 +361,7 @@ function openInlineEdit(
   const popover = el('div', {
     style: [
       'z-index:1200',
-      `background:${T.surface};border:1px solid #DDD;border-radius:8px`,
+      `background:${T.surface};border:1px solid var(--sb-c-dddddd, #DDDDDD);border-radius:8px`,
       'box-shadow:0 4px 16px rgba(0,0,0,.12);padding:12px 16px',
       `min-width:220px;font-family:${T.font}`,
     ].join(';'),
@@ -372,7 +372,7 @@ function openInlineEdit(
 
   if (field.type === 'select' && field.options !== undefined) {
     const sel = document.createElement('select')
-    sel.style.cssText = `width:100%;padding:6px 8px;font-size:13px;border:1px solid #CCC;border-radius:4px;font-family:${T.font}`
+    sel.style.cssText = `width:100%;padding:6px 8px;font-size:13px;border:1px solid var(--sb-c-cccccc, #CCCCCC);border-radius:4px;font-family:${T.font}`
     for (const opt of field.options) {
       const o = document.createElement('option')
       o.value = opt
@@ -385,13 +385,13 @@ function openInlineEdit(
     const inp = document.createElement('input')
     inp.type = field.inputType ?? 'text'
     inp.value = currentText === '-' ? '' : currentText
-    inp.style.cssText = `width:100%;padding:6px 8px;font-size:13px;border:1px solid #CCC;border-radius:4px;font-family:${T.font};box-sizing:border-box`
+    inp.style.cssText = `width:100%;padding:6px 8px;font-size:13px;border:1px solid var(--sb-c-cccccc, #CCCCCC);border-radius:4px;font-family:${T.font};box-sizing:border-box`
     inputEl = inp
   }
 
   const btnRow = el('div', { style: 'display:flex;gap:8px;margin-top:8px;justify-content:flex-end' })
   const cancelBtn = button('キャンセル')
-  cancelBtn.style.cssText += ';padding:4px 12px;font-size:12px;background:#F5F5F5;color:#333'
+  cancelBtn.style.cssText += ';padding:4px 12px;font-size:12px;background:var(--sb-c-f5f5f5, #F5F5F5);color:var(--sb-c-333333, #333333)'
   const saveBtn = button('保存')
   saveBtn.style.cssText += ';padding:4px 12px;font-size:12px'
 

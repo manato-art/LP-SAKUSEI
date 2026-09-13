@@ -91,7 +91,173 @@
       入っていないので、採取済みの実ファイルを**そのまま**参照する（複製を作らない・手書きしない）。
     -->
     <style>
-      body { margin: 0; background: #ECECEC; }
+      /* 画面の地・面・文字の色。ライトは今までと同じ値、ダークだけ差し替える（2026-09-13）。
+         各画面は色を直書きせず、ui.ts の T 経由でこの変数を見る。 */
+      :root {
+        --sb-bg: #ECECEC;
+        --sb-neutral: #F4F4F4;
+        --sb-surface: #FFFFFF;
+        --sb-text: #151515;
+        --sb-sub: #808080;
+        --sb-line: #DDDDDD;
+        --sb-warn-bg: #FFF7ED;
+        --sb-warn-line: #DD6B20;
+
+        /* 画面の部品に直書きされていた灰色系（自動変換・ライトは元の値のまま） */
+        --sb-c-111111: #111111;
+        --sb-c-1a1a1a: #1A1A1A;
+        --sb-c-1a1d22: #1A1D22;
+        --sb-c-1a2233: #1A2233;
+        --sb-c-1f2937: #1F2937;
+        --sb-c-222222: #222222;
+        --sb-c-2f3a4d: #2F3A4D;
+        --sb-c-333333: #333333;
+        --sb-c-333344: #333344;
+        --sb-c-374151: #374151;
+        --sb-c-3c424f: #3C424F;
+        --sb-c-444444: #444444;
+        --sb-c-444455: #444455;
+        --sb-c-475467: #475467;
+        --sb-c-4b5563: #4B5563;
+        --sb-c-555555: #555555;
+        --sb-c-5b6472: #5B6472;
+        --sb-c-5b6577: #5B6577;
+        --sb-c-666666: #666666;
+        --sb-c-6a6a72: #6A6A72;
+        --sb-c-6b7280: #6B7280;
+        --sb-c-777777: #777777;
+        --sb-c-8a8a8e: #8A8A8E;
+        --sb-c-b0b0b3: #B0B0B3;
+        --sb-c-c0c0c0: #C0C0C0;
+        --sb-c-cccccc: #CCCCCC;
+        --sb-c-d1d1d6: #D1D1D6;
+        --sb-c-d5d5db: #D5D5DB;
+        --sb-c-d5d7dc: #D5D7DC;
+        --sb-c-dcdce2: #DCDCE2;
+        --sb-c-dcdfe5: #DCDFE5;
+        --sb-c-dddddd: #DDDDDD;
+        --sb-c-e0e0e0: #E0E0E0;
+        --sb-c-e4e4e4: #E4E4E4;
+        --sb-c-e4f2ea: #E4F2EA;
+        --sb-c-e5e5e5: #E5E5E5;
+        --sb-c-e5e5ea: #E5E5EA;
+        --sb-c-e5e7eb: #E5E7EB;
+        --sb-c-e6e6e6: #E6E6E6;
+        --sb-c-e6e8ec: #E6E8EC;
+        --sb-c-e6e9f0: #E6E9F0;
+        --sb-c-e7e9ed: #E7E9ED;
+        --sb-c-e8e8e8: #E8E8E8;
+        --sb-c-ececec: #ECECEC;
+        --sb-c-eeeeee: #EEEEEE;
+        --sb-c-eef0f3: #EEF0F3;
+        --sb-c-eef0f4: #EEF0F4;
+        --sb-c-eef1f5: #EEF1F5;
+        --sb-c-eef1f6: #EEF1F6;
+        --sb-c-f0f0f0: #F0F0F0;
+        --sb-c-f0f0f5: #F0F0F5;
+        --sb-c-f0f1f4: #F0F1F4;
+        --sb-c-f2f2f2: #F2F2F2;
+        --sb-c-f2f2f4: #F2F2F4;
+        --sb-c-f2f2f7: #F2F2F7;
+        --sb-c-f2f3f5: #F2F3F5;
+        --sb-c-f2f4f7: #F2F4F7;
+        --sb-c-f4f5f7: #F4F5F7;
+        --sb-c-f5f5f5: #F5F5F5;
+        --sb-c-f5f6f8: #F5F6F8;
+        --sb-c-f5f7fa: #F5F7FA;
+        --sb-c-f6f6f8: #F6F6F8;
+        --sb-c-f7f7f7: #F7F7F7;
+        --sb-c-f7f8fa: #F7F8FA;
+        --sb-c-f8f8f8: #F8F8F8;
+        --sb-c-f8f9fb: #F8F9FB;
+        --sb-c-fafbfc: #FAFBFC;
+        --sb-c-fbfbfd: #FBFBFD;
+        --sb-c-ffffff: #FFFFFF;
+      }
+      html[data-theme="dark"] {
+        --sb-bg: #161616;
+        --sb-neutral: #1F1F1F;
+        --sb-surface: #242424;
+        --sb-text: #E8E8E8;
+        --sb-sub: #9B9B9B;
+        --sb-line: #3A3A3A;
+        --sb-warn-bg: #3A2A15;
+        --sb-warn-line: #DD6B20;
+        /* フォーム部品・スクロールバーもダークにする */
+        color-scheme: dark;
+
+        /* 同じ色をダーク用に反転したもの（src/shared/dark-color.ts と同じ規則） */
+        --sb-c-111111: rgb(230, 230, 230);
+        --sb-c-1a1a1a: rgb(229, 229, 229);
+        --sb-c-1a1d22: rgb(221, 224, 229);
+        --sb-c-1a2233: rgb(204, 212, 229);
+        --sb-c-1f2937: rgb(200, 210, 224);
+        --sb-c-222222: rgb(221, 221, 221);
+        --sb-c-2f3a4d: rgb(178, 189, 208);
+        --sb-c-333333: rgb(204, 204, 204);
+        --sb-c-333344: rgb(187, 187, 204);
+        --sb-c-374151: rgb(174, 184, 200);
+        --sb-c-3c424f: rgb(176, 182, 195);
+        --sb-c-444444: rgb(187, 187, 187);
+        --sb-c-444455: rgb(170, 170, 187);
+        --sb-c-475467: rgb(152, 165, 184);
+        --sb-c-4b5563: rgb(156, 166, 180);
+        --sb-c-555555: rgb(170, 170, 170);
+        --sb-c-5b6472: rgb(141, 150, 164);
+        --sb-c-5b6577: rgb(136, 146, 164);
+        --sb-c-666666: rgb(153, 153, 153);
+        --sb-c-6a6a72: rgb(141, 141, 149);
+        --sb-c-6b7280: rgb(127, 134, 148);
+        --sb-c-777777: rgb(136, 136, 136);
+        --sb-c-8a8a8e: rgb(113, 113, 117);
+        --sb-c-b0b0b3: rgb(76, 76, 79);
+        --sb-c-c0c0c0: rgb(63, 63, 63);
+        --sb-c-cccccc: rgb(51, 51, 51);
+        --sb-c-d1d1d6: rgb(41, 41, 46);
+        --sb-c-d5d5db: rgb(36, 36, 42);
+        --sb-c-d5d7dc: rgb(35, 37, 42);
+        --sb-c-dcdce2: rgb(29, 29, 35);
+        --sb-c-dcdfe5: rgb(26, 29, 35);
+        --sb-c-dddddd: rgb(34, 34, 34);
+        --sb-c-e0e0e0: rgb(31, 31, 31);
+        --sb-c-e4e4e4: rgb(27, 27, 27);
+        --sb-c-e4f2ea: rgb(15, 31, 22);
+        --sb-c-e5e5e5: rgb(26, 26, 26);
+        --sb-c-e5e5ea: rgb(21, 21, 26);
+        --sb-c-e5e7eb: rgb(20, 22, 26);
+        --sb-c-e6e6e6: rgb(25, 25, 25);
+        --sb-c-e6e8ec: rgb(20, 22, 26);
+        --sb-c-e6e9f0: rgb(17, 21, 29);
+        --sb-c-e7e9ed: rgb(20, 22, 26);
+        --sb-c-e8e8e8: rgb(23, 23, 23);
+        --sb-c-ececec: rgb(23, 23, 23);
+        --sb-c-eeeeee: rgb(23, 23, 23);
+        --sb-c-eef0f3: rgb(19, 22, 27);
+        --sb-c-eef0f4: rgb(18, 21, 28);
+        --sb-c-eef1f5: rgb(17, 22, 29);
+        --sb-c-eef1f6: rgb(16, 21, 30);
+        --sb-c-f0f0f0: rgb(23, 23, 23);
+        --sb-c-f0f0f5: rgb(18, 18, 28);
+        --sb-c-f0f1f4: rgb(19, 21, 26);
+        --sb-c-f2f2f2: rgb(23, 23, 23);
+        --sb-c-f2f2f4: rgb(21, 21, 25);
+        --sb-c-f2f2f7: rgb(17, 17, 28);
+        --sb-c-f2f3f5: rgb(20, 22, 26);
+        --sb-c-f2f4f7: rgb(17, 22, 28);
+        --sb-c-f4f5f7: rgb(19, 22, 27);
+        --sb-c-f5f5f5: rgb(23, 23, 23);
+        --sb-c-f5f6f8: rgb(19, 22, 27);
+        --sb-c-f5f7fa: rgb(15, 21, 31);
+        --sb-c-f6f6f8: rgb(20, 20, 26);
+        --sb-c-f7f7f7: rgb(23, 23, 23);
+        --sb-c-f7f8fa: rgb(18, 21, 28);
+        --sb-c-f8f8f8: rgb(23, 23, 23);
+        --sb-c-f8f9fb: rgb(17, 21, 29);
+        --sb-c-fafbfc: rgb(17, 23, 29);
+        --sb-c-fbfbfd: rgb(15, 15, 31);
+        --sb-c-ffffff: rgb(23, 23, 23);
+      }
+      body { margin: 0; background: var(--sb-bg); }
       /* 指示㉖: 実アプリは「未アップロードの画像」に赤枠を出す（.ql-editor img{border:2px solid red}）。
          クローンは画像を常にローカル(dataURL)で完結させ外部アップロードしないので、この警告枠は不要。
          マージ済みcssomの後に読み込まれる本ブロックで打ち消す（同詳細度なら後勝ち）。 */

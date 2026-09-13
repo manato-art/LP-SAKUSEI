@@ -25,12 +25,12 @@ export const TOOLBAR_SWATCHES: readonly string[] = [
 
 const CHROME_PICKER_HTML = `<div class="chrome-picker " style="width: 225px; background: rgb(255, 255, 255); border-radius: 2px; box-shadow: rgba(0, 0, 0, 0.3) 0px 0px 2px, rgba(0, 0, 0, 0.3) 0px 4px 8px; box-sizing: initial; font-family: Menlo;"><div style="width: 100%; padding-bottom: 55%; position: relative; border-radius: 2px 2px 0px 0px; overflow: hidden;"><div style="position: absolute; inset: 0px; background: rgb(255, 0, 0);"><style>
           .saturation-white {
-            background: -webkit-linear-gradient(to right, #fff, rgba(255,255,255,0));
-            background: linear-gradient(to right, #fff, rgba(255,255,255,0));
+            background: -webkit-linear-gradient(to right, var(--sb-c-ffffff, #FFFFFF), rgba(255,255,255,0));
+            background: linear-gradient(to right, var(--sb-c-ffffff, #FFFFFF), rgba(255,255,255,0));
           }
           .saturation-black {
-            background: -webkit-linear-gradient(to top, #000, rgba(0,0,0,0));
-            background: linear-gradient(to top, #000, rgba(0,0,0,0));
+            background: -webkit-linear-gradient(to top, #000000, rgba(0,0,0,0));
+            background: linear-gradient(to top, #000000, rgba(0,0,0,0));
           }
         </style><div class="saturation-white" style="position: absolute; inset: 0px;"><div class="saturation-black" style="position: absolute; inset: 0px;"></div><div style="position: absolute; top: 100%; left: 0%; cursor: default;"><div style="width: 12px; height: 12px; border-radius: 6px; box-shadow: rgb(255, 255, 255) 0px 0px 0px 1px inset; transform: translate(-6px, -6px);"></div></div></div></div></div><div style="padding: 16px 16px 12px;"><div class="flexbox-fix" style="display: flex;"><div style="width: 22px;"><div style="margin-top: 0px; width: 10px; height: 10px; border-radius: 8px; position: relative; overflow: hidden;"><div style="position: absolute; inset: 0px; border-radius: 8px; box-shadow: rgba(0, 0, 0, 0.1) 0px 0px 0px 1px inset; background: rgb(0, 0, 0); z-index: 2;"></div><div style="position: absolute; inset: 0px; background: url(&quot;data:image/png;base64,sample_token_b5921805/9hAAAAPUlEQVR4AeySywkAMAhDH52h+0/sample_token_cb7c5d12//sample_token_3c96bb24==&quot;) left center;"></div></div></div><div style="-webkit-box-flex: 1; flex: 1 1 0%;"><div style="height: 10px; position: relative; margin-bottom: 0px;"><div style="position: absolute; inset: 0px;"><div class="hue-horizontal" style="padding: 0px 2px; position: relative; height: 100%;"><style>
             .hue-horizontal {

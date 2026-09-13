@@ -82,7 +82,7 @@ export function table<Row>(
   const wrap = el('div', { style: 'overflow-x:auto' })
   const grid = `grid-template-columns:${columns.map((c) => c.width ?? 'minmax(90px,1fr)').join(' ')}`
   const head = el('div', {
-    style: `display:grid;${grid};gap:12px;padding:10px 8px;border-bottom:2px solid #EEE;font-size:12px;color:${T.sub}`,
+    style: `display:grid;${grid};gap:12px;padding:10px 8px;border-bottom:2px solid var(--sb-c-eeeeee, #EEEEEE);font-size:12px;color:${T.sub}`,
   })
   for (const col of columns) {
     head.append(el('div', { text: col.head, style: `text-align:${col.align ?? 'left'}` }))
@@ -90,7 +90,7 @@ export function table<Row>(
   wrap.append(head)
   for (const row of rows) {
     const tr = el('div', {
-      style: `display:grid;${grid};gap:12px;padding:12px 8px;border-bottom:1px solid #F2F2F2;font-size:13px;color:${T.text}`,
+      style: `display:grid;${grid};gap:12px;padding:12px 8px;border-bottom:1px solid var(--sb-c-f2f2f2, #F2F2F2);font-size:13px;color:${T.text}`,
     })
     for (const col of columns) {
       const cellStyle = `text-align:${col.align ?? 'left'};word-break:break-all`
@@ -126,9 +126,9 @@ export function textInput(placeholder: string, style?: string): HTMLInputElement
   const input = document.createElement('input')
   input.type = 'text'
   input.placeholder = placeholder
-  input.style.cssText = style ?? `padding:8px 12px;border:1px solid #DDD;border-radius:6px;font-size:13px;font-family:${T.font};outline:none;flex:1;min-width:0`
+  input.style.cssText = style ?? `padding:8px 12px;border:1px solid var(--sb-c-dddddd, #DDDDDD);border-radius:6px;font-size:13px;font-family:${T.font};outline:none;flex:1;min-width:0`
   input.addEventListener('focus', () => { input.style.borderColor = 'var(--sb-accent, #0091FF)' })
-  input.addEventListener('blur', () => { input.style.borderColor = '#DDD' })
+  input.addEventListener('blur', () => { input.style.borderColor = 'var(--sb-c-dddddd, #DDDDDD)' })
   return input
 }
 

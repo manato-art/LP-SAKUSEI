@@ -217,8 +217,8 @@ export function loadVersion(ctx: EditorContext, uid: string): void {
       'background:rgba(255,255,255,.7)',
     ].join(';')
     overlay.innerHTML = `<div style="text-align:center">
-      <div style="width:32px;height:32px;border:3px solid #e0e0e0;border-top-color:#4A90D9;border-radius:50%;animation:sbspin .7s linear infinite;margin:0 auto"></div>
-      <div style="margin-top:8px;font-size:13px;color:#666">バージョン切り替え中...</div>
+      <div style="width:32px;height:32px;border:3px solid var(--sb-c-e0e0e0, #E0E0E0);border-top-color:#4A90D9;border-radius:50%;animation:sbspin .7s linear infinite;margin:0 auto"></div>
+      <div style="margin-top:8px;font-size:13px;color:var(--sb-c-666666, #666666)">バージョン切り替え中...</div>
     </div>`
     if (getComputedStyle(contentWrapper).position === 'static') {
       contentWrapper.style.position = 'relative'
@@ -273,7 +273,7 @@ export function renderVersionList(ctx: EditorContext): void {
   if (archivedMode && shown.length === 0) {
     const empty = document.createElement('div')
     empty.dataset['articleUid'] = '__empty__'
-    empty.style.cssText = 'padding:24px 12px;color:#888;font-size:13px;line-height:1.8'
+    empty.style.cssText = 'padding:24px 12px;color:#888888;font-size:13px;line-height:1.8'
     empty.textContent = 'アーカイブされたVersionはありません。'
     if (addButton !== null) list.insertBefore(empty, addButton)
     else list.append(empty)
@@ -294,10 +294,10 @@ export function renderVersionList(ctx: EditorContext): void {
     loadMore.className = 'sb-vc-load-more'
     const plus = document.createElement('span')
     plus.textContent = '+'
-    plus.style.cssText = 'font-size:16px;font-weight:700;color:#999'
+    plus.style.cssText = 'font-size:16px;font-weight:700;color:#999999'
     const label = document.createElement('span')
     label.textContent = 'Versionを追加'
-    label.style.cssText = 'font-size:13px;color:#666'
+    label.style.cssText = 'font-size:13px;color:var(--sb-c-666666, #666666)'
     loadMore.append(plus, label)
     loadMore.addEventListener('click', async () => {
       try {
@@ -340,7 +340,7 @@ function applySelectionMode(ctx: EditorContext, list: HTMLElement): void {
     'display:flex;justify-content:space-between;align-items:center;padding:6px 10px;font-size:13px'
   selHeader.innerHTML =
     '<div data-clone-sel-cancel style="cursor:pointer;color:var(--sb-accent, #0091FF)">キャンセル</div>' +
-    '<div data-clone-sel-bulk style="cursor:pointer;color:#bbb;pointer-events:none">アーカイブする</div>'
+    '<div data-clone-sel-bulk style="cursor:pointer;color:#BBBBBB;pointer-events:none">アーカイブする</div>'
   top.prepend(selHeader)
 
   const bulk = selHeader.querySelector<HTMLElement>('[data-clone-sel-bulk]')

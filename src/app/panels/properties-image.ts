@@ -26,7 +26,7 @@ export function buildImageBody(
   const previewGroup = group('プレビュー')
   const previewBox = document.createElement('div')
   previewBox.style.cssText =
-    'width:100%;max-height:140px;border:1px solid #e5e5ea;border-radius:4px;overflow:hidden;background:#f5f6f8;display:flex;align-items:center;justify-content:center'
+    'width:100%;max-height:140px;border:1px solid var(--sb-c-e5e5ea, #E5E5EA);border-radius:4px;overflow:hidden;background:var(--sb-c-f5f6f8, #F5F6F8);display:flex;align-items:center;justify-content:center'
   const previewImg = document.createElement('img')
   previewImg.style.cssText = 'max-width:100%;max-height:136px;object-fit:contain'
   previewBox.append(previewImg)
@@ -36,7 +36,7 @@ export function buildImageBody(
   const srcRow = row('ソース')
   const srcField = document.createElement('div')
   srcField.className = 'sb-url-field'
-  srcField.style.cssText = 'flex:1;font-size:10px;color:#999;cursor:default;height:26px;line-height:26px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:1px solid #e5e5ea;border-radius:4px;padding:0 6px;background:#f5f6f8'
+  srcField.style.cssText = 'flex:1;font-size:10px;color:#999999;cursor:default;height:26px;line-height:26px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:1px solid var(--sb-c-e5e5ea, #E5E5EA);border-radius:4px;padding:0 6px;background:var(--sb-c-f5f6f8, #F5F6F8)'
   srcRow.append(srcField)
 
   // ── alt テキスト ──
@@ -134,7 +134,7 @@ export function buildImageBody(
   // ── 計測URL ──
   const trackGroup = group('計測URL')
   const trackDesc = document.createElement('div')
-  trackDesc.style.cssText = 'font-size:10px;color:#999;line-height:1.5;margin-bottom:2px'
+  trackDesc.style.cssText = 'font-size:10px;color:#999999;line-height:1.5;margin-bottom:2px'
   trackDesc.textContent = 'クリック時にリクエストを送信するURL'
 
   const trackList = document.createElement('div')

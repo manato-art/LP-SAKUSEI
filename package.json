@@ -22,7 +22,8 @@
     "coverage": "tsx tools/coverage/report.ts",
     "scrub": "tsx tools/scrub/index.ts && tsx tools/scrub/index.ts --in ~/squadbeyond-capture-quarantine/assets --out capture/assets",
     "build": "vite build",
-    "start": "SERVE_DIST=dist tsx mock-server/index.ts"
+    "start": "SERVE_DIST=dist tsx mock-server/index.ts",
+    "dark-css": "tsx tools/rehydrate/build-dark-css.ts"
   },
   "keywords": [],
   "author": "",

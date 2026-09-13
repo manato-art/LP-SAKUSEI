@@ -561,9 +561,12 @@ export const api = {
   chatworkRooms: () =>
     request<{ rooms: { id: number; name: string; type: string }[] }>('GET', '/chatwork/rooms'),
   /** 画面のテーマカラー */
-  themeColor: () => request<{ accent: string }>('GET', '/settings/theme'),
+  themeColor: () => request<{ accent: string; mode?: 'light' | 'dark' }>('GET', '/settings/theme'),
   saveThemeColor: (accent: string) =>
     request<{ accent: string }>('PUT', '/settings/theme', { accent }),
+  /** 表示モード（ライト／ダーク）だけを保存する */
+  saveThemeMode: (mode: 'light' | 'dark') =>
+    request<{ mode: 'light' | 'dark' }>('PUT', '/settings/theme', { mode }),
   /** レポート除外の一覧（除外アクセス数つき） */
   reportExclusions: () =>
     request<{ report_exclusions: ReportExclusionEntry[] }>('GET', '/report-exclusions'),

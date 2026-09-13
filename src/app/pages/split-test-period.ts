@@ -67,8 +67,8 @@ function buildPeriodEditor(
   const editor = document.createElement('div')
   editor.setAttribute('data-period-editor', kind)
   editor.style.cssText =
-    'display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 12px;background:#fff;' +
-    'border:1px solid #e5e5ea;border-radius:8px;font-size:13px;color:#333'
+    'display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 12px;background:var(--sb-c-ffffff, #FFFFFF);' +
+    'border:1px solid var(--sb-c-e5e5ea, #E5E5EA);border-radius:8px;font-size:13px;color:var(--sb-c-333333, #333333)'
 
   const mk = (attr: string, value: string): HTMLInputElement => {
     const i = document.createElement('input')
@@ -121,7 +121,7 @@ function buildPeriodEditor(
   del.type = 'button'
   del.textContent = '削除'
   del.style.cssText =
-    'margin-left:auto;padding:6px 12px;border:1px solid #f0b4b4;border-radius:6px;background:#fff;' +
+    'margin-left:auto;padding:6px 12px;border:1px solid #f0b4b4;border-radius:6px;background:var(--sb-c-ffffff, #FFFFFF);' +
     'color:#d64545;font-size:12px;cursor:pointer'
   del.addEventListener('click', () => {
     editor.remove()
@@ -151,14 +151,14 @@ function buildHourTimeline(
   const strip = document.createElement('div')
   strip.style.cssText =
     'display:grid;grid-template-columns:repeat(24,1fr);height:34px;border:1px solid #d6dae1;' +
-    'border-radius:8px;overflow:hidden;background:#fff'
+    'border-radius:8px;overflow:hidden;background:var(--sb-c-ffffff, #FFFFFF)'
 
   const cells: HTMLElement[] = []
   for (let h = 0; h < 24; h += 1) {
     const cell = document.createElement('div')
     cell.dataset['hour'] = String(h)
     cell.style.cssText =
-      'border-right:1px solid #eef0f3;cursor:pointer;transition:background .08s;' +
+      'border-right:1px solid var(--sb-c-eef0f3, #EEF0F3);cursor:pointer;transition:background .08s;' +
       (h % 6 === 0 ? 'border-left:1px solid #cfd4dc;' : '')
     cells.push(cell)
     strip.append(cell)
@@ -167,7 +167,7 @@ function buildHourTimeline(
   // 目盛り（0/6/12/18/24）
   const scale = document.createElement('div')
   scale.style.cssText =
-    'display:grid;grid-template-columns:repeat(24,1fr);font-size:10px;color:#8a94a6;margin-top:2px'
+    'display:grid;grid-template-columns:repeat(24,1fr);font-size:10px;color:#8A94A6;margin-top:2px'
   for (let h = 0; h < 24; h += 1) {
     const t = document.createElement('div')
     t.style.cssText = 'text-align:left;transform:translateX(-50%)'
@@ -178,7 +178,7 @@ function buildHourTimeline(
   const end24 = document.createElement('div')
   end24.style.cssText = 'position:relative;height:0'
   const end24Label = document.createElement('span')
-  end24Label.style.cssText = 'position:absolute;right:0;top:-14px;font-size:10px;color:#8a94a6'
+  end24Label.style.cssText = 'position:absolute;right:0;top:-14px;font-size:10px;color:#8A94A6'
   end24Label.textContent = '24'
   end24.append(end24Label)
 
@@ -205,7 +205,7 @@ function buildHourTimeline(
     const t = parseHour(to.value)
     const tMin = /^(\d{1,2}):(\d{2})$/.exec(to.value)
     if (f === null || t === null) {
-      cells.forEach((c) => (c.style.background = '#fff'))
+      cells.forEach((c) => (c.style.background = 'var(--sb-c-ffffff, #FFFFFF)'))
       return
     }
     // to は「その時刻まで」なので、分が00なら1時間手前までを塗る（例 09:00〜12:00 → 9,10,11）

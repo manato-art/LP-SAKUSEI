@@ -58,7 +58,7 @@ function injectResizeCss(): void {
       width: 12px;
       height: 12px;
       background: var(--sb-accent, #0091FF);
-      border: 2px solid #fff;
+      border: 2px solid var(--sb-c-ffffff, #FFFFFF);
       border-radius: 50%;
       box-sizing: border-box;
       pointer-events: auto;
@@ -73,7 +73,7 @@ function injectResizeCss(): void {
       bottom: 8px;
       right: 8px;
       background: rgba(0,145,255,0.85);
-      color: #fff;
+      color: #FFFFFF;
       font-size: 11px;
       padding: 2px 8px;
       border-radius: 3px;

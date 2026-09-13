@@ -171,7 +171,7 @@ function renderTree(body: HTMLElement, context: PageContext): void {
 
   if (filtered.length === 0) {
     const msg = document.createElement('div')
-    msg.style.cssText = 'padding:24px 16px;color:#999;font-size:13px;text-align:center'
+    msg.style.cssText = 'padding:24px 16px;color:#999999;font-size:13px;text-align:center'
     msg.textContent =
       activeTreeTab === 'お気に入り'
         ? 'お気に入りのフォルダがありません'
@@ -416,7 +416,7 @@ function toggleTreeSearch(tree: HTMLElement, context: PageContext): void {
   input.type = 'text'
   input.placeholder = 'フォルダを検索...'
   input.value = searchQuery
-  input.style.cssText = `width:100%;box-sizing:border-box;padding:6px 10px;border:1px solid #DDD;border-radius:4px;font-size:12px;outline:none;font-family:${T.font}`
+  input.style.cssText = `width:100%;box-sizing:border-box;padding:6px 10px;border:1px solid var(--sb-c-dddddd, #DDDDDD);border-radius:4px;font-size:12px;outline:none;font-family:${T.font}`
   input.addEventListener('input', () => {
     searchQuery = input.value.trim().toLowerCase()
     const bodyEl = tree.closest(FOLDERS_HOOK.body) as HTMLElement
@@ -426,7 +426,7 @@ function toggleTreeSearch(tree: HTMLElement, context: PageContext): void {
     input.style.borderColor = 'var(--sb-accent, #0091FF)'
   })
   input.addEventListener('blur', () => {
-    input.style.borderColor = '#DDD'
+    input.style.borderColor = 'var(--sb-c-dddddd, #DDDDDD)'
   })
 
   bar.append(input)
@@ -510,7 +510,7 @@ function togglePageSearch(main: HTMLElement, context: PageContext): void {
   const input = document.createElement('input')
   input.type = 'text'
   input.placeholder = 'ページを検索...'
-  input.style.cssText = `width:100%;box-sizing:border-box;padding:6px 10px;border:1px solid #DDD;border-radius:4px;font-size:12px;outline:none;font-family:${T.font}`
+  input.style.cssText = `width:100%;box-sizing:border-box;padding:6px 10px;border:1px solid var(--sb-c-dddddd, #DDDDDD);border-radius:4px;font-size:12px;outline:none;font-family:${T.font}`
   input.addEventListener('input', () => {
     pageSearchQuery = input.value.trim().toLowerCase()
     refilterPageRows(main, context)
@@ -740,7 +740,7 @@ function injectResizeHandleStyles(): void {
       height: 24px;
       border-radius: 4px;
       background: #4A90D9;
-      color: #fff;
+      color: #FFFFFF;
       font-size: 14px;
       line-height: 24px;
       text-align: center;

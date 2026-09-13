@@ -73,7 +73,7 @@ overlay.addEventListener('ep-show',function(){
   var panels=overlay.querySelectorAll('.ep-tab-panel');
   tabs.forEach(function(tab,i){
     tab.addEventListener('click',function(){
-      tabs.forEach(function(t){t.style.background='#f5f5f5';t.style.color='#888'});
+      tabs.forEach(function(t){t.style.background='var(--sb-c-f5f5f5, #F5F5F5)';t.style.color='#888'});
       tab.style.background='var(--sb-accent, #0091FF)';tab.style.color='#fff';
       panels.forEach(function(p){p.style.display='none'});
       if(panels[i])panels[i].style.display='block';

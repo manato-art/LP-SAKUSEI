@@ -59,8 +59,8 @@ function icon(key: string, size = 16): HTMLSpanElement {
 function makeSelect(options: readonly string[], current: string): HTMLSelectElement {
   const sel = document.createElement('select')
   sel.style.cssText = `
-    flex:1;padding:4px 6px;border:1px solid #ddd;border-radius:4px;
-    font-size:12px;font-family:${T.font};background:#fff;cursor:pointer;
+    flex:1;padding:4px 6px;border:1px solid var(--sb-c-dddddd, #DDDDDD);border-radius:4px;
+    font-size:12px;font-family:${T.font};background:var(--sb-c-ffffff, #FFFFFF);cursor:pointer;
     outline:none;min-width:0;
   `
   for (const opt of options) {
@@ -80,13 +80,13 @@ function injectStyles(): void {
   const style = document.createElement('style')
   style.id = 'sb-sidebar-toolbar-css'
   style.textContent = `
-    .sb-side-tb { font-family: ${T.font}; font-size: 12px; color: #333; }
+    .sb-side-tb { font-family: ${T.font}; font-size: 12px; color: var(--sb-c-333333, #333333); }
     .sb-side-tb * { box-sizing: border-box; }
 
     /* セクション区切り */
     .sb-side-tb-section {
       padding: 10px 12px;
-      border-bottom: 1px solid #eee;
+      border-bottom: 1px solid var(--sb-c-eeeeee, #EEEEEE);
     }
     .sb-side-tb-section:last-child { border-bottom: none; }
 
@@ -98,13 +98,13 @@ function injectStyles(): void {
     }
     .sb-side-tb-big-btn {
       display: flex; flex-direction: column; align-items: center; justify-content: center;
-      gap: 2px; padding: 8px 2px; border: 1px solid #ddd; border-radius: 6px;
-      background: #fff; cursor: pointer; transition: background .15s;
+      gap: 2px; padding: 8px 2px; border: 1px solid var(--sb-c-dddddd, #DDDDDD); border-radius: 6px;
+      background: var(--sb-c-ffffff, #FFFFFF); cursor: pointer; transition: background .15s;
       min-height: 52px;
     }
-    .sb-side-tb-big-btn:hover { background: #f5f5f5; }
+    .sb-side-tb-big-btn:hover { background: var(--sb-c-f5f5f5, #F5F5F5); }
     .sb-side-tb-big-btn.active { background: #e3f2fd; border-color: #90caf9; }
-    .sb-side-tb-big-btn span.label { font-size: 10px; color: #666; white-space: nowrap; }
+    .sb-side-tb-big-btn span.label { font-size: 10px; color: var(--sb-c-666666, #666666); white-space: nowrap; }
 
     /* ── フィールド行 ── */
     .sb-side-tb-field {
@@ -113,21 +113,21 @@ function injectStyles(): void {
     }
     .sb-side-tb-field:last-child { margin-bottom: 0; }
     .sb-side-tb-field-label {
-      font-size: 11px; color: #888; white-space: nowrap; min-width: 72px;
+      font-size: 11px; color: #888888; white-space: nowrap; min-width: 72px;
     }
     /* フォント用カスタムドロップダウンのトリガー（makeSelect と同じ見た目に合わせる） */
     .sb-side-tb-select {
-      flex: 1; padding: 4px 6px; border: 1px solid #ddd; border-radius: 4px;
-      font-size: 12px; background: #fff; cursor: pointer; outline: none; min-width: 0;
+      flex: 1; padding: 4px 6px; border: 1px solid var(--sb-c-dddddd, #DDDDDD); border-radius: 4px;
+      font-size: 12px; background: var(--sb-c-ffffff, #FFFFFF); cursor: pointer; outline: none; min-width: 0;
     }
 
     /* ── カラー表示 ── */
     .sb-side-tb-color-swatch {
       width: 22px; height: 22px; border-radius: 4px;
-      border: 1px solid #ccc; cursor: pointer; flex-shrink: 0;
+      border: 1px solid var(--sb-c-cccccc, #CCCCCC); cursor: pointer; flex-shrink: 0;
     }
     .sb-side-tb-color-input {
-      flex: 1; padding: 4px 6px; border: 1px solid #ddd; border-radius: 4px;
+      flex: 1; padding: 4px 6px; border: 1px solid var(--sb-c-dddddd, #DDDDDD); border-radius: 4px;
       font-size: 12px; font-family: monospace; outline: none;
       min-width: 0;
     }
@@ -138,12 +138,12 @@ function injectStyles(): void {
     }
     .sb-side-tb-align-btn {
       flex: 1; display: flex; align-items: center; justify-content: center;
-      padding: 8px; border: 1px solid #ddd; border-radius: 6px;
-      background: #fff; cursor: pointer; transition: background .15s;
-      color: #555;
+      padding: 8px; border: 1px solid var(--sb-c-dddddd, #DDDDDD); border-radius: 6px;
+      background: var(--sb-c-ffffff, #FFFFFF); cursor: pointer; transition: background .15s;
+      color: var(--sb-c-555555, #555555);
     }
-    .sb-side-tb-align-btn:hover { background: #f5f5f5; }
-    .sb-side-tb-align-btn.active { background: #2196F3; border-color: #2196F3; color: #fff; }
+    .sb-side-tb-align-btn:hover { background: var(--sb-c-f5f5f5, #F5F5F5); }
+    .sb-side-tb-align-btn.active { background: #2196F3; border-color: #2196F3; color: #FFFFFF; }
 
     /* ── その他の設定 ── */
     .sb-side-tb-accordion-header {
@@ -151,7 +151,7 @@ function injectStyles(): void {
       cursor: pointer; padding: 8px 0; user-select: none;
     }
     .sb-side-tb-accordion-header .arrow {
-      transition: transform .2s; font-size: 10px; color: #999;
+      transition: transform .2s; font-size: 10px; color: #999999;
     }
     .sb-side-tb-accordion-header.open .arrow { transform: rotate(180deg); }
     .sb-side-tb-accordion-body { display: none; padding-top: 6px; }
@@ -171,7 +171,7 @@ export function mountSidebarToolbar(quill: Quill, _editorRoot: HTMLElement): HTM
   panel.setAttribute('data-sidebar-toolbar', 'true')
   panel.style.cssText = `
     width:${PANEL_WIDTH}px;min-width:${PANEL_WIDTH}px;
-    background:#fff;border-right:1px solid #e0e0e0;
+    background:var(--sb-c-ffffff, #FFFFFF);border-right:1px solid var(--sb-c-e0e0e0, #E0E0E0);
     overflow-y:auto;overflow-x:hidden;
     height:100%;
   `
@@ -377,8 +377,8 @@ export function mountSidebarToolbar(quill: Quill, _editorRoot: HTMLElement): HTM
   clearBtn.type = 'button'
   clearBtn.style.cssText = `
     display:flex;align-items:center;gap:6px;
-    padding:8px 12px;border:1px solid #ddd;border-radius:6px;
-    background:#fff;cursor:pointer;font-size:12px;font-family:${T.font};
+    padding:8px 12px;border:1px solid var(--sb-c-dddddd, #DDDDDD);border-radius:6px;
+    background:var(--sb-c-ffffff, #FFFFFF);cursor:pointer;font-size:12px;font-family:${T.font};
     width:100%;
   `
   clearBtn.append(icon('clearFormat', 16))

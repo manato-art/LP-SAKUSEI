@@ -41,7 +41,7 @@ function injectCss(): void {
       padding: 4px 10px;
       font-size: 11px;
       font-family: ${T.font};
-      color: #fff;
+      color: #FFFFFF;
       background: rgba(0,0,0,0.7);
       border: none;
       border-radius: 4px;
@@ -64,7 +64,7 @@ function injectCss(): void {
       position: fixed;
       z-index: 1300;
       background: ${T.surface};
-      border: 1px solid #DDD;
+      border: 1px solid var(--sb-c-dddddd, #DDDDDD);
       border-radius: 8px;
       box-shadow: 0 4px 16px rgba(0,0,0,0.15);
       padding: 16px;
@@ -83,7 +83,7 @@ function injectCss(): void {
       display: block;
       margin-bottom: 4px;
       font-size: 12px;
-      color: #666;
+      color: var(--sb-c-666666, #666666);
     }
     .sb-img-link-popover input[type="url"],
     .sb-img-link-popover input[type="text"] {
@@ -300,7 +300,7 @@ function openLinkPopover(anchor: HTMLElement, img: HTMLImageElement, quill: Quil
   if (currentUrl !== '') {
     const removeBtn = el('button', {
       text: 'リンク解除',
-      style: `padding:7px 14px;border:1px solid #E5573F;border-radius:6px;background:#fff;color:#E5573F;font-size:13px;cursor:pointer;font-family:${T.font}`,
+      style: `padding:7px 14px;border:1px solid #E5573F;border-radius:6px;background:var(--sb-c-ffffff, #FFFFFF);color:#E5573F;font-size:13px;cursor:pointer;font-family:${T.font}`,
     })
     removeBtn.type = 'button'
     removeBtn.addEventListener('click', () => {
@@ -316,7 +316,7 @@ function openLinkPopover(anchor: HTMLElement, img: HTMLImageElement, quill: Quil
 
   const saveBtn = el('button', {
     text: '設定',
-    style: `padding:7px 18px;border:none;border-radius:6px;background:${T.primary};color:#fff;font-size:13px;cursor:pointer;font-family:${T.font}`,
+    style: `padding:7px 18px;border:none;border-radius:6px;background:${T.primary};color:#FFFFFF;font-size:13px;cursor:pointer;font-family:${T.font}`,
   })
   saveBtn.type = 'button'
   saveBtn.addEventListener('click', () => {
@@ -367,7 +367,7 @@ function openTrackingPopover(anchor: HTMLElement, img: HTMLImageElement, quill: 
   const title = el('h4', { text: '計測用URL' })
   const desc = el('div', {
     text: 'クリック時にリクエストを送信するURLを設定します。',
-    style: 'font-size:11px;color:#888;margin-bottom:12px;line-height:1.5',
+    style: 'font-size:11px;color:#888888;margin-bottom:12px;line-height:1.5',
   })
 
   const listWrap = document.createElement('div')
@@ -418,7 +418,7 @@ function openTrackingPopover(anchor: HTMLElement, img: HTMLImageElement, quill: 
   const footer = el('div', { class: 'sb-img-link-footer' })
   const saveBtn = el('button', {
     text: '設定',
-    style: `padding:7px 18px;border:none;border-radius:6px;background:${T.primary};color:#fff;font-size:13px;cursor:pointer;font-family:${T.font}`,
+    style: `padding:7px 18px;border:none;border-radius:6px;background:${T.primary};color:#FFFFFF;font-size:13px;cursor:pointer;font-family:${T.font}`,
   })
   saveBtn.type = 'button'
   saveBtn.addEventListener('click', () => {

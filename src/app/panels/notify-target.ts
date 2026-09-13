@@ -48,7 +48,7 @@ function secretInput(placeholder: string): HTMLInputElement {
 function guideBox(title: string, steps: readonly string[]): HTMLElement {
   const box = el('div', {
     style: [
-      'border:1px solid #E6E9F0;border-radius:8px;background:#F8FAFC;padding:12px 14px',
+      'border:1px solid var(--sb-c-e6e9f0, #E6E9F0);border-radius:8px;background:#F8FAFC;padding:12px 14px',
       `font-size:12px;color:${T.text};line-height:1.9`,
     ].join(';'),
   })
@@ -74,12 +74,12 @@ function redirectRow(redirectUri: string): HTMLElement {
   const uri = document.createElement('code')
   uri.textContent = redirectUri
   uri.style.cssText =
-    'font-size:11px;background:#fff;border:1px solid #E6E9F0;border-radius:5px;padding:4px 8px;word-break:break-all'
+    'font-size:11px;background:var(--sb-c-ffffff, #FFFFFF);border:1px solid var(--sb-c-e6e9f0, #E6E9F0);border-radius:5px;padding:4px 8px;word-break:break-all'
   const copy = el('button', {
     text: 'コピー',
     style: [
       `font-family:${T.font};font-size:11px;padding:4px 10px;border-radius:5px`,
-      'border:1px solid #DDD;background:#fff;color:#555;cursor:pointer;flex-shrink:0',
+      'border:1px solid var(--sb-c-dddddd, #DDDDDD);background:var(--sb-c-ffffff, #FFFFFF);color:var(--sb-c-555555, #555555);cursor:pointer;flex-shrink:0',
     ].join(';'),
   })
   copy.addEventListener('click', () => {
@@ -106,7 +106,7 @@ function credentialRow(
     text: '保存',
     style: [
       `font-family:${T.font};font-size:12px;padding:8px 18px;border-radius:6px;border:0`,
-      'background:var(--sb-accent, #0091FF);color:var(--sb-accent-ink, #fff);cursor:pointer',
+      'background:var(--sb-accent, #0091FF);color:var(--sb-accent-ink, #FFFFFF);cursor:pointer',
     ].join(';'),
   })
   button.addEventListener('click', () => {

@@ -116,10 +116,14 @@ describe('画面は色を直書きせずCSS変数を見る', () => {
  * これまでは「設定＞アカウント」の一番下まで行かないと変えられなかった。
  */
 describe('サイドバーから色を切り替えられる', () => {
-  it('サイドバーの下部にテーマカラーの項目があり、押すと色の選択が開く', () => {
+  it('サイドバーの下部にテーマの項目があり、押すと表示モードと色の選択が開く', () => {
     const shell = readFileSync('src/app/shell.ts', 'utf8')
-    expect(shell).toContain('テーマカラー')
+    expect(shell).toContain("'テーマ'")
     expect(shell).toContain('openThemeColorMenu')
+    const menu = readFileSync('src/app/panels/theme-color-menu.ts', 'utf8')
+    expect(menu).toContain('表示モード')
+    expect(menu).toContain('ライト')
+    expect(menu).toContain('ダーク')
   })
 
   it('色の並びは1か所にまとめ、設定画面とサイドバーで同じものを使う', () => {

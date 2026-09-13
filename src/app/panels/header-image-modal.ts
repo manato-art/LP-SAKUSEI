@@ -138,7 +138,7 @@ function setHeaderImage(headerBox: HTMLElement, dataUrl: string): void {
   img.src = dataUrl
   // stickyにしない（ミニマップと重なる・キャンバスが見づらい）
   headerBox.style.position = 'relative'
-  headerBox.style.background = '#fff'
+  headerBox.style.background = 'var(--sb-c-ffffff, #FFFFFF)'
   // headerBox自体の青い点線枠・パディングを消す
   headerBox.style.border = 'none'
   headerBox.style.padding = '0'
@@ -162,7 +162,7 @@ function setHeaderImage(headerBox: HTMLElement, dataUrl: string): void {
     remove.title = 'ヘッダー画像を削除'
     remove.style.cssText =
       'position:absolute;top:15px;right:15px;z-index:2;padding:8px 16px;border:none;border-radius:6px;' +
-      'background:#fff;color:var(--sb-accent, #0091FF);font-size:14px;line-height:1;cursor:pointer;' +
+      'background:var(--sb-c-ffffff, #FFFFFF);color:var(--sb-accent, #0091FF);font-size:14px;line-height:1;cursor:pointer;' +
       'box-shadow:0 1px 4px rgba(0,0,0,.2)'
     remove.addEventListener('click', (event) => {
       // 枠クリック＝モーダルを開く挙動へ伝播させない（削除だけ）

@@ -76,7 +76,7 @@ export function dashboardRange(days: number, now: Date = new Date()): {
 function paintActive(bar: HTMLElement, activeLabel: string): void {
   for (const b of bar.querySelectorAll('button')) {
     const isActive = b.textContent === activeLabel
-    ;(b as HTMLElement).style.background = isActive ? 'var(--sb-accent, #0091FF)' : '#F5F5F5'
+    ;(b as HTMLElement).style.background = isActive ? 'var(--sb-accent, #0091FF)' : T.neutral
     ;(b as HTMLElement).style.color = isActive ? '#FFF' : T.text
   }
 }
@@ -102,7 +102,7 @@ export async function renderDashboard(container: HTMLElement): Promise<void> {
   // 期間ピッカー
   const periodBar = el('div', { style: 'display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap' })
   for (const p of periods) {
-    const btn = smallBtn(p.label, '#F5F5F5', T.text)
+    const btn = smallBtn(p.label, T.neutral, T.text)
     btn.addEventListener('click', () => {
       activePeriod = p.label
       paintActive(periodBar, activePeriod)
@@ -116,7 +116,7 @@ export async function renderDashboard(container: HTMLElement): Promise<void> {
   // 全体 / 各ページ の切り替え。取り直さずに同じデータを見せ方だけ変える。
   const tabBar = el('div', { style: 'display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap' })
   for (const tab of TABS) {
-    const btn = smallBtn(tab, '#F5F5F5', T.text)
+    const btn = smallBtn(tab, T.neutral, T.text)
     btn.addEventListener('click', () => {
       activeTab = tab
       paintActive(tabBar, activeTab)
@@ -185,7 +185,7 @@ function renderTotals(wrap: HTMLElement, data: DashboardData): void {
   })
   for (const [label, value] of kpiCells(data.kpi)) {
     grid.append(
-      el('div', { style: 'border:1px solid #EEE;border-radius:8px;padding:14px 16px' }, [
+      el('div', { style: 'border:1px solid var(--sb-c-eeeeee, #EEEEEE);border-radius:8px;padding:14px 16px' }, [
         el('div', { text: label, style: `font-size:12px;color:${T.sub};margin-bottom:6px` }),
         el('div', {
           text: value,

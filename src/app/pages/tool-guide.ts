@@ -95,13 +95,13 @@ function injectStyles(): void {
       padding:10px 14px;margin-bottom:12px;flex-shrink:0}
     .tg-head{display:flex;flex-direction:row;align-items:center;gap:8px}
     .tg-icon{width:16px;height:16px;border-radius:50%;background:var(--sb-accent,#0091FF);
-      color:var(--sb-accent-ink,#fff);font-size:11px;font-weight:700;flex-shrink:0;
+      color:var(--sb-accent-ink,#FFFFFF);font-size:11px;font-weight:700;flex-shrink:0;
       display:flex;align-items:center;justify-content:center;font-style:italic}
-    .tg-summary{flex:1;font-size:12px;color:#334;line-height:1.6}
-    .tg-action{border:1px solid var(--sb-accent,#0091FF);background:#fff;
+    .tg-summary{flex:1;font-size:12px;color:var(--sb-c-333344, #333344);line-height:1.6}
+    .tg-action{border:1px solid var(--sb-accent,#0091FF);background:var(--sb-c-ffffff, #FFFFFF);
       color:var(--sb-accent,#0091FF);border-radius:4px;padding:4px 12px;font-size:11px;
       cursor:pointer;white-space:nowrap}
-    .tg-close{border:none;background:none;color:#9aa;font-size:15px;cursor:pointer;
+    .tg-close{border:none;background:none;color:#99AAAA;font-size:15px;cursor:pointer;
       padding:0 2px;line-height:1}
     .tg-steps{display:flex;flex-direction:row;flex-wrap:wrap;gap:16px;margin-top:8px;
       padding-left:24px}
@@ -110,8 +110,8 @@ function injectStyles(): void {
     .tg-num{width:16px;height:16px;border-radius:50%;border:1px solid var(--sb-accent,#0091FF);
       color:var(--sb-accent,#0091FF);font-size:10px;flex-shrink:0;
       display:flex;align-items:center;justify-content:center}
-    .tg-step.done .tg-num{background:var(--sb-accent,#0091FF);color:var(--sb-accent-ink,#fff)}
-    .tg-label{font-size:11.5px;color:#445}
+    .tg-step.done .tg-num{background:var(--sb-accent,#0091FF);color:var(--sb-accent-ink,#FFFFFF)}
+    .tg-label{font-size:11.5px;color:var(--sb-c-444455, #444455)}
   `
   document.head.append(s)
 }

@@ -81,7 +81,7 @@ export function buildAccentPicker(options: AccentPickerOptions = {}): HTMLElemen
   const customWrap = el('div', { style: 'display:flex;gap:8px;align-items:center' })
   const customInput = document.createElement('input')
   customInput.type = 'color'
-  customInput.style.cssText = `width:${dotSize + 4}px;height:${dotSize}px;padding:0;border:1px solid #DDD;border-radius:6px;background:#fff;cursor:pointer`
+  customInput.style.cssText = `width:${dotSize + 4}px;height:${dotSize}px;padding:0;border:1px solid var(--sb-c-dddddd, #DDDDDD);border-radius:6px;background:var(--sb-c-ffffff, #FFFFFF);cursor:pointer`
   customInput.title = '自由に色を選ぶ'
   customInput.addEventListener('change', () => choose(customInput.value))
 
@@ -89,7 +89,7 @@ export function buildAccentPicker(options: AccentPickerOptions = {}): HTMLElemen
     text: '既定に戻す',
     style: [
       `font-family:${T.font};font-size:12px;padding:7px 14px;border-radius:6px`,
-      'border:1px solid #DDD;background:#fff;color:#555;cursor:pointer',
+      'border:1px solid var(--sb-c-dddddd, #DDDDDD);background:var(--sb-c-ffffff, #FFFFFF);color:var(--sb-c-555555, #555555);cursor:pointer',
     ].join(';'),
   })
   reset.type = 'button'

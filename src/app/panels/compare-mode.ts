@@ -713,7 +713,7 @@ function wrapHtmlForPreview(bodyHtml: string): string {
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans",sans-serif;
-  font-size:14px;line-height:1.6;color:#333;background:#fff}
+  font-size:14px;line-height:1.6;color:var(--sb-c-333333, #333333);background:var(--sb-c-ffffff, #FFFFFF)}
 img,video{max-width:100%;height:auto;display:block}
 a{color:#1a73e8}
 </style>

@@ -58,10 +58,23 @@ settingsRouter.put('/settings/internal_notifications/:scope', (req, res) => {
 const HEX_COLOR = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i
 
 settingsRouter.get('/settings/theme', (_req, res) => {
-  res.json({ accent: getState().themeAccent })
+  const state = getState()
+  res.json({ accent: state.themeAccent, mode: state.themeMode })
 })
 
 settingsRouter.put('/settings/theme', (req, res) => {
+  const body = (req.body ?? {}) as Record<string, unknown>
+  // ライト／ダークだけを変える場合もある（色は送られてこない）
+  if (!('accent' in body) && 'mode' in body) {
+    const mode = body['mode']
+    if (mode !== 'light' && mode !== 'dark') {
+      res.status(422).json(errorEnvelope('validation_failed', '表示モードは light か dark を指定してください。'))
+      return
+    }
+    setState((s) => ({ ...s, themeMode: mode }))
+    res.json({ accent: getState().themeAccent, mode })
+    return
+  }
   const accent = requireString(req.body, 'accent')
   if (!accent.ok) {
     res.status(422).json(errorEnvelope('validation_failed', accent.message))
@@ -75,7 +88,7 @@ settingsRouter.put('/settings/theme', (req, res) => {
   }
   const value = accent.value.trim().toUpperCase()
   setState((s) => ({ ...s, themeAccent: value }))
-  res.json({ accent: value })
+  res.json({ accent: value, mode: getState().themeMode })
 })
 
 settingsRouter.get('/report-exclusions', (req, res) => {

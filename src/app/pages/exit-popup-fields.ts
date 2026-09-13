@@ -9,7 +9,7 @@ import { T, el } from '../ui.ts'
 /** ラベル付きチェックボックス行（[wrap, checkbox] を返す）。 */
 export function makeCheckboxRow(label: string, checked: boolean): [HTMLElement, HTMLInputElement] {
   const wrap = el('label', {
-    style: 'display:flex;align-items:center;justify-content:flex-start;gap:8px;cursor:pointer;font-size:13px;color:#444;margin-bottom:0',
+    style: 'display:flex;align-items:center;justify-content:flex-start;gap:8px;cursor:pointer;font-size:13px;color:var(--sb-c-444444, #444444);margin-bottom:0',
   })
   const cb = document.createElement('input')
   cb.type = 'checkbox'
@@ -106,7 +106,7 @@ export function makeSuffixField(
   input.type = 'number'
   input.value = String(value)
   input.min = '0'
-  input.style.cssText = 'flex:1;padding:8px 10px;border:1px solid #ddd;border-radius:4px;font-size:13px;box-sizing:border-box'
+  input.style.cssText = 'flex:1;padding:8px 10px;border:1px solid var(--sb-c-dddddd, #DDDDDD);border-radius:4px;font-size:13px;box-sizing:border-box'
   input.addEventListener('input', () => {
     const n = Number(input.value)
     if (Number.isFinite(n)) onChange(n)

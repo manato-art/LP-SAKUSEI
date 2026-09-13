@@ -43,7 +43,7 @@ export function openFolderMenu(anchor: HTMLElement, folder: Folder): void {
     text: `${folder.name} 設定`,
     style: [
       `padding:14px 16px;text-align:center;font-weight:600;color:${T.text}`,
-      'border-bottom:1px solid #F0F0F0;font-size:14px',
+      'border-bottom:1px solid var(--sb-c-f0f0f0, #F0F0F0);font-size:14px',
     ].join(';'),
   })
   menu.append(header)
@@ -227,12 +227,12 @@ function openRenameDialog(folder: Folder): void {
   const input = document.createElement('input')
   input.type = 'text'
   input.value = folder.name
-  input.style.cssText = `width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid #DDD;border-radius:6px;font-size:14px;font-family:${T.font};outline:none`
+  input.style.cssText = `width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--sb-c-dddddd, #DDDDDD);border-radius:6px;font-size:14px;font-family:${T.font};outline:none`
   input.addEventListener('focus', () => {
     input.style.borderColor = 'var(--sb-accent, #0091FF)'
   })
   input.addEventListener('blur', () => {
-    input.style.borderColor = '#DDD'
+    input.style.borderColor = 'var(--sb-c-dddddd, #DDDDDD)'
   })
 
   const buttons = el('div', {
@@ -241,13 +241,13 @@ function openRenameDialog(folder: Folder): void {
 
   const cancelBtn = el('button', {
     text: 'キャンセル',
-    style: `padding:8px 16px;border:1px solid #DDD;border-radius:6px;background:${T.surface};cursor:pointer;font-size:13px;font-family:${T.font}`,
+    style: `padding:8px 16px;border:1px solid var(--sb-c-dddddd, #DDDDDD);border-radius:6px;background:${T.surface};cursor:pointer;font-size:13px;font-family:${T.font}`,
   })
   cancelBtn.addEventListener('click', () => overlay.remove())
 
   const saveBtn = el('button', {
     text: '保存',
-    style: `padding:8px 16px;border:none;border-radius:6px;background:var(--sb-accent, #0091FF);color:#FFF;cursor:pointer;font-size:13px;font-family:${T.font}`,
+    style: `padding:8px 16px;border:none;border-radius:6px;background:var(--sb-accent, #0091FF);color:#FFFFFF;cursor:pointer;font-size:13px;font-family:${T.font}`,
   })
   saveBtn.addEventListener('click', () => {
     const newName = input.value.trim()
@@ -325,13 +325,13 @@ function confirmDeleteFolder(folder: Folder): void {
 
   const cancelBtn = el('button', {
     text: 'キャンセル',
-    style: `padding:8px 16px;border:1px solid #DDD;border-radius:6px;background:${T.surface};cursor:pointer;font-size:13px;font-family:${T.font}`,
+    style: `padding:8px 16px;border:1px solid var(--sb-c-dddddd, #DDDDDD);border-radius:6px;background:${T.surface};cursor:pointer;font-size:13px;font-family:${T.font}`,
   })
   cancelBtn.addEventListener('click', () => overlay.remove())
 
   const deleteBtn = el('button', {
     text: '削除する',
-    style: 'padding:8px 16px;border:none;border-radius:6px;background:#E53E3E;color:#FFF;cursor:pointer;font-size:13px',
+    style: 'padding:8px 16px;border:none;border-radius:6px;background:#E53E3E;color:#FFFFFF;cursor:pointer;font-size:13px',
   })
   deleteBtn.addEventListener('click', () => {
     deleteBtn.textContent = '削除中...'

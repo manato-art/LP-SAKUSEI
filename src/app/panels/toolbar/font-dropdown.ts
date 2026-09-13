@@ -50,7 +50,7 @@ export function makeFontDropdown(opts: FontDropdownOptions): FontDropdown {
   labelSpan.style.cssText = 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0'
   const caret = document.createElement('span')
   caret.textContent = '▾'
-  caret.style.cssText = 'flex-shrink:0;color:#999;font-size:9px;line-height:1'
+  caret.style.cssText = 'flex-shrink:0;color:#999999;font-size:9px;line-height:1'
   trigger.append(labelSpan, caret)
 
   let current = ''
@@ -77,14 +77,14 @@ export function makeFontDropdown(opts: FontDropdownOptions): FontDropdown {
     const menu = document.createElement('div')
     menu.setAttribute(MENU_ATTR, 'true')
     menu.style.cssText =
-      'position:fixed;z-index:9600;background:#fff;border:1px solid #ddd;border-radius:8px;' +
+      'position:fixed;z-index:9600;background:var(--sb-c-ffffff, #FFFFFF);border:1px solid var(--sb-c-dddddd, #DDDDDD);border-radius:8px;' +
       'box-shadow:0 6px 22px rgba(0,0,0,.18);padding:4px;max-height:60vh;overflow:auto;min-width:180px'
     for (const font of TOOLBAR_FONT_FAMILIES) {
       const item = document.createElement('div')
       item.textContent = fontLabelJa(font)
       const active = font === current
       item.style.cssText =
-        `padding:8px 12px;border-radius:6px;cursor:pointer;white-space:nowrap;color:#222;` +
+        `padding:8px 12px;border-radius:6px;cursor:pointer;white-space:nowrap;color:var(--sb-c-222222, #222222);` +
         `font-family:${cssFontFamilyValue(font)};font-size:16px;line-height:1.3;` +
         `background:${active ? '#eaf4ff' : 'transparent'}`
       item.addEventListener('mouseenter', () => {

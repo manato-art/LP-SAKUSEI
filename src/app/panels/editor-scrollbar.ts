@@ -61,13 +61,13 @@ export function mountEditorScrollbar(
     'width:10px',
     'top:0',
     `min-height:${MIN_THUMB_H}px`,
-    'background:#b0b0b3',
+    'background:var(--sb-c-b0b0b3, #B0B0B3)',
     'border-radius:5px',
     'transition:background .15s',
   ].join(';')
   track.append(thumb)
-  thumb.addEventListener('mouseenter', () => { thumb.style.background = '#8a8a8e' })
-  thumb.addEventListener('mouseleave', () => { if (!isDragging) thumb.style.background = '#b0b0b3' })
+  thumb.addEventListener('mouseenter', () => { thumb.style.background = 'var(--sb-c-8a8a8e, #8A8A8E)' })
+  thumb.addEventListener('mouseleave', () => { if (!isDragging) thumb.style.background = 'var(--sb-c-b0b0b3, #B0B0B3)' })
 
   canvasArea.append(track)
 
@@ -112,7 +112,7 @@ export function mountEditorScrollbar(
     isDragging = true
     dragStartY = e.clientY
     dragStartScrollTop = scrollContainer.scrollTop
-    thumb.style.background = '#8a8a8e'
+    thumb.style.background = 'var(--sb-c-8a8a8e, #8A8A8E)'
     document.body.style.userSelect = 'none'
   })
 
@@ -132,7 +132,7 @@ export function mountEditorScrollbar(
   document.addEventListener('mouseup', () => {
     if (!isDragging) return
     isDragging = false
-    thumb.style.background = '#b0b0b3'
+    thumb.style.background = 'var(--sb-c-b0b0b3, #B0B0B3)'
     document.body.style.userSelect = ''
   })
 

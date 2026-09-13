@@ -94,7 +94,7 @@ function showResults(root: HTMLElement, urls: readonly string[]): void {
     box = document.createElement('div')
     box.setAttribute('data-clone-param-results', '')
     box.style.cssText =
-      'margin:12px 16px;padding:12px;border:1px solid #ccc;border-radius:8px;background:#fff;' +
+      'margin:12px 16px;padding:12px;border:1px solid var(--sb-c-cccccc, #CCCCCC);border-radius:8px;background:var(--sb-c-ffffff, #FFFFFF);' +
       'max-height:220px;overflow:auto;font-size:12px;font-family:monospace'
     dialog.append(box)
   }
@@ -102,7 +102,7 @@ function showResults(root: HTMLElement, urls: readonly string[]): void {
   copyAll.type = 'button'
   copyAll.textContent = `${urls.length}件をコピー`
   copyAll.style.cssText =
-    'margin-bottom:8px;padding:6px 14px;border:1px solid #2B7CFF;border-radius:6px;background:#fff;color:#2B7CFF;cursor:pointer;font-family:sans-serif'
+    'margin-bottom:8px;padding:6px 14px;border:1px solid #2B7CFF;border-radius:6px;background:var(--sb-c-ffffff, #FFFFFF);color:#2B7CFF;cursor:pointer;font-family:sans-serif'
   copyAll.addEventListener('click', () => {
     void navigator.clipboard
       .writeText(urls.join('\n'))
@@ -114,7 +114,7 @@ function showResults(root: HTMLElement, urls: readonly string[]): void {
   for (const url of urls) {
     const line = document.createElement('div')
     line.textContent = url
-    line.style.cssText = 'padding:3px 0;border-top:1px solid #eee;word-break:break-all'
+    line.style.cssText = 'padding:3px 0;border-top:1px solid var(--sb-c-eeeeee, #EEEEEE);word-break:break-all'
     box.append(line)
   }
 }
