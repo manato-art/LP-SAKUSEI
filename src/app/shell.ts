@@ -6,6 +6,8 @@
 import { NAV_ACTIVE_CLASS, NAV_INACTIVE_CLASS } from './shell-nav.ts'
 import { toast } from './ui.ts'
 import { openThemeColorMenu } from './panels/theme-color-menu.ts'
+import { THEME_MODE_EVENT, setThemeMode, storedMode, type ThemeMode } from './theme-mode.ts'
+import { api } from './api.ts'
 import sidebarHtml from './templates/sidebar.html?raw'
 
 export interface Route {
@@ -163,6 +165,22 @@ function wireSidebar(nav: HTMLElement): void {
     })
   }
 }
+
+/** 月（＝押すとダークになる）。共通指示「UIは絵文字をやめSVGアイコンに」 */
+const MOON_ICON = [
+  '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">',
+  '<path d="M16.5 11.9A6.8 6.8 0 018.1 3.5a6.8 6.8 0 108.4 8.4z"',
+  ' stroke="#888" stroke-width="1.5" stroke-linejoin="round"/></svg>',
+].join('')
+
+/** 太陽（＝押すとライトになる） */
+const SUN_ICON = [
+  '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">',
+  '<circle cx="10" cy="10" r="3.6" stroke="#888" stroke-width="1.5"/>',
+  '<path d="M10 1.8v1.6M10 16.6v1.6M2.6 10H1M19 10h-1.6M4.76 4.76L3.63 3.63',
+  'M16.37 16.37l-1.13-1.13M4.76 15.24l-1.13 1.13M16.37 3.63l-1.13 1.13"',
+  ' stroke="#888" stroke-width="1.5" stroke-linecap="round"/></svg>',
+].join('')
 
 /** 折りたたみ/展開・ラベルの目印クラス（JSで付与するのでスタイルは採取クラスに依存しない） */
 const RAIL_CLASS = 'sb-rail'
@@ -406,6 +424,32 @@ function appendSettingsLink(nav: HTMLElement): void {
     location.hash = '/settings/account'
   })
 
+  // ── ライト／ダークの1クリック切り替え（2026-09-13 本人指示）──
+  // 押すと切り替わる。アイコンとラベルは「押したらどうなるか」を表す
+  // （ライトのときは月＝ダークにする、ダークのときは太陽＝ライトにする）。
+  const modeItem = createSidebarBottomItem(MOON_ICON, 'ダークモード')
+  const paintModeItem = (mode: ThemeMode): void => {
+    const isDark = mode === 'dark'
+    const icon = modeItem.firstElementChild
+    if (icon instanceof HTMLElement) icon.innerHTML = isDark ? SUN_ICON : MOON_ICON
+    const label = labelChildOf(modeItem)
+    if (label !== null) label.textContent = isDark ? 'ライトモード' : 'ダークモード'
+    modeItem.title = isDark ? 'ライトモードにする' : 'ダークモードにする'
+  }
+  paintModeItem(storedMode())
+  modeItem.addEventListener('click', (event) => {
+    event.stopPropagation()
+    const next: ThemeMode = storedMode() === 'dark' ? 'light' : 'dark'
+    void setThemeMode(next, (v) => api.saveThemeMode(v)).catch((error: Error) =>
+      toast(error.message, 'error'),
+    )
+  })
+  // テーマのパネル側から変えたときも、ここの見た目を合わせる
+  addEventListener(THEME_MODE_EVENT, (event) => {
+    const detail = (event as CustomEvent<ThemeMode>).detail
+    paintModeItem(detail === 'dark' ? 'dark' : 'light')
+  })
+
   // ── テーマカラー（どの画面からでもすぐ色を変えられるように・2026-09-13 本人指示）──
   const themeItem = createSidebarBottomItem(
     [
@@ -424,7 +468,7 @@ function appendSettingsLink(nav: HTMLElement): void {
     openThemeColorMenu(themeItem)
   })
 
-  bottomArea.append(themeItem, myPageItem, settingsItem)
+  bottomArea.append(modeItem, themeItem, myPageItem, settingsItem)
 
   // 指示128: position:sticky を壊さないよう position:relative は付けない
   rail.append(bottomArea)

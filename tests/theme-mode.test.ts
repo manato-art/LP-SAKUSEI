@@ -170,3 +170,30 @@ describe('ユーザーのLPそのものには、テーマの色を持ち込ま�
     expect(css).toContain('var(--lp-page-bg, #ffffff)')
   })
 })
+
+describe('サイドバーの1クリック切り替え（2026-09-13 本人指示）', () => {
+  const shell = readFileSync('src/app/shell.ts', 'utf8')
+
+  it('テーマの上に、押すだけで切り替わる項目がある', () => {
+    expect(shell).toContain('bottomArea.append(modeItem, themeItem')
+    expect(shell).toContain('setThemeMode(next')
+  })
+
+  it('アイコンは太陽と月（絵文字でなくSVG）', () => {
+    expect(shell).toContain('const MOON_ICON')
+    expect(shell).toContain('const SUN_ICON')
+    expect(shell).toMatch(/MOON_ICON = \[\s*\n\s*'<svg/)
+    expect(shell).toMatch(/SUN_ICON = \[\s*\n\s*'<svg/)
+  })
+
+  it('押したらどうなるかを出す（ライトのときは「ダークモード」＝月）', () => {
+    expect(shell).toContain("isDark ? SUN_ICON : MOON_ICON")
+    expect(shell).toContain("isDark ? 'ライトモード' : 'ダークモード'")
+  })
+
+  it('パネル側から変えたときも、サイドバーの見た目が追従する', () => {
+    expect(shell).toContain('THEME_MODE_EVENT')
+    const mode = readFileSync('src/app/theme-mode.ts', 'utf8')
+    expect(mode).toContain('dispatchEvent(new CustomEvent<ThemeMode>(THEME_MODE_EVENT')
+  })
+})

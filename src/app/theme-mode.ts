@@ -52,6 +52,9 @@ function ensureDarkStylesheet(): void {
   document.head.append(link)
 }
 
+/** モードが変わったことを知らせる合図（サイドバーの太陽/月アイコンが聞いている） */
+export const THEME_MODE_EVENT = 'sb-theme-mode'
+
 /** そのモードを画面に当てる */
 export function applyMode(mode: ThemeMode): void {
   if (mode === 'dark') {
@@ -63,6 +66,7 @@ export function applyMode(mode: ThemeMode): void {
     delete document.documentElement.dataset['theme']
     stopRuntimeDarkCss()
   }
+  dispatchEvent(new CustomEvent<ThemeMode>(THEME_MODE_EVENT, { detail: mode }))
 }
 
 /**
