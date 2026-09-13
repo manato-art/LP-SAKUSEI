@@ -168,6 +168,12 @@ function wireSidebar(nav: HTMLElement): void {
 const RAIL_CLASS = 'sb-rail'
 const RAIL_LABEL_CLASS = 'sb-rail-label'
 
+/**
+ * サイドバー項目の高さ（px）。折りたたみ時の見た目（アイコンの下にラベル）に合わせて固定し、
+ * 展開しても変えない＝ホバーで一覧が飛び跳ねないようにする（2026-09-13 本人指摘）。
+ */
+const RAIL_ITEM_HEIGHT = 45
+
 // ── 指示㊷: 不要項目の除去 ──
 
 /** 採取HTMLからイベント・セミナー / ランキング / 新UI OFF を削除する */
@@ -464,6 +470,10 @@ function injectRailStyles(): void {
   style.textContent = [
     // 指示㊴: 折りたたみ時もラベルを短縮表示する（実物と同じ）
     `.${RAIL_CLASS}{transition:width .18s ease;overflow:hidden;will-change:width}`,
+    // 2026-09-13: 項目の高さを折りたたみ/展開で変えない。
+    // 折りたたみは「アイコンの下にラベル」、展開は「横並び」と組み方が変わるため、
+    // 何もしないと 45px → 29px に縮み、ホバーのたびに一覧全体が飛び跳ねる。
+    `.${RAIL_CLASS} [data-testid="list-menu-item"]{min-height:${RAIL_ITEM_HEIGHT}px;box-sizing:border-box}`,
     `.${RAIL_CLASS} .${RAIL_LABEL_CLASS}{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;`,
     `opacity:.7;max-width:42px;font-size:11px;transition:opacity .16s ease,max-width .18s ease,font-size .16s ease}`,
     `@media (hover:hover){`,

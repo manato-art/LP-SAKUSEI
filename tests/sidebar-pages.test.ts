@@ -137,3 +137,25 @@ describe('シェルのサイドバー配線（NAV_TARGETS）が、登録する�
     expect(shellSrc).toMatch(pattern)
   })
 })
+
+/**
+ * サイドバーの項目の高さ（2026-09-13・本人指摘）。
+ *
+ * 折りたたみ時は「アイコンの下にラベル」、展開時は「横並び」と組み方が変わるため、
+ * 何もしないと項目が 45px → 29px に縮み、マウスを載せるたびに一覧全体が飛び跳ねる。
+ * 高さを固定して、開いても閉じても位置が動かないようにする。
+ */
+describe('サイドバーの項目の高さ', () => {
+  const shell = readFileSync('src/app/shell.ts', 'utf8')
+
+  it('項目の高さを固定している（展開しても縮まない）', () => {
+    expect(shell).toContain('const RAIL_ITEM_HEIGHT = 45')
+    expect(shell).toContain('[data-testid="list-menu-item"]{min-height:${RAIL_ITEM_HEIGHT}px')
+  })
+
+  it('展開時のCSSは並び方だけを変え、高さは指定しない', () => {
+    const hoverRule = /\.\$\{RAIL_CLASS\}:hover \[data-testid="list-menu-item"\]\{([^}]*)\}/.exec(shell)
+    expect(hoverRule).not.toBeNull()
+    expect(hoverRule?.[1]).not.toMatch(/height/)
+  })
+})
