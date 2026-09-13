@@ -8,6 +8,9 @@ import { toast } from './ui.ts'
 import { openThemeColorMenu } from './panels/theme-color-menu.ts'
 import { THEME_MODE_EVENT, setThemeMode, storedMode, type ThemeMode } from './theme-mode.ts'
 import { api } from './api.ts'
+import { ensureMobileCss } from './mobile/mobile-css.ts'
+import { mountBottomNav, showsBottomNav, unmountBottomNav } from './mobile/bottom-nav.ts'
+import { isMobileViewport } from './mobile/viewport.ts'
 import sidebarHtml from './templates/sidebar.html?raw'
 
 export interface Route {
@@ -35,6 +38,13 @@ const CONTENT_CLASS = 'sb-shell-content'
 
 let shellRoot: HTMLElement | null = null
 let contentRoot: HTMLElement | null = null
+
+/** 画面幅に合わせて、下部タブバーを出す／片付ける（スマホだけ出す） */
+function syncMobileChrome(): void {
+  ensureMobileCss()
+  if (isMobileViewport() && showsBottomNav(location.hash)) mountBottomNav()
+  else unmountBottomNav()
+}
 
 export function mountShell(): { content: HTMLElement } {
   const app = document.querySelector<HTMLElement>('#root')
@@ -72,8 +82,18 @@ export function mountShell(): { content: HTMLElement } {
     shellRoot = wrapper
     contentRoot = content
   }
+  syncMobileChrome()
   return { content: contentRoot as HTMLElement }
 }
+
+// 画面の回転や幅の変更でも、出し分けを合わせ直す
+addEventListener('resize', () => {
+  if (shellRoot !== null) syncMobileChrome()
+})
+// 画面が変わったら、下部タブバーの「今いる場所」を塗り直す
+addEventListener('hashchange', () => {
+  if (shellRoot !== null) syncMobileChrome()
+})
 
 /**
  * シェル（サイドバー）を撤去して #root を空にする。

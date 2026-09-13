@@ -7,6 +7,8 @@ import { initAccent } from './theme-color.ts'
 import { initThemeMode, isThemeMode } from './theme-mode.ts'
 import { renderReportExclusions } from './pages/report-exclusions.ts'
 import { renderFolders } from './pages/folders.ts'
+import { isMobileViewport } from './mobile/viewport.ts'
+import { renderMobileFolders, renderMobilePages } from './mobile/pages-mobile.ts'
 import { renderEditor } from './pages/editor.ts'
 import { renderBasicInfo } from './pages/basic-info.ts'
 import { renderExitPopup } from './pages/exit-popup.ts'
@@ -177,6 +179,13 @@ async function route(): Promise<void> {
       return
     }
     if (path === '/folders') {
+      // スマホは3ペインが入らないので、1画面ずつの作りに差し替える（2026-09-13）
+      if (isMobileViewport()) {
+        const folderUid = params.get('uid')
+        if (folderUid === null) await renderMobileFolders(content)
+        else await renderMobilePages(content, folderUid)
+        return
+      }
       await renderFolders(content, params, generation)
       return
     }
