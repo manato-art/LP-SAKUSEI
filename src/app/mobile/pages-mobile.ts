@@ -11,6 +11,7 @@ import { T, el, emptyState, toast } from '../ui.ts'
 import { AD_STATUS_LABELS, DELIVERY_DOMAIN_UNSET_NOTE, deliveryUrlFor } from '../pages/basic-info-form.ts'
 import { defaultRange, toRangeQuery } from '../pages/report-period.ts'
 import { cardDetailMetrics, cardMetrics } from './page-card.ts'
+import { openCreateFolder, openCreatePage } from '../pages/folders-create.ts'
 
 /** 配信ステータスの色（実物の配色に合わせる） */
 const STATUS_COLOR: Readonly<Record<string, string>> = {
@@ -71,6 +72,21 @@ function screen(container: HTMLElement): HTMLElement {
   return body
 }
 
+/** 「作る」ボタン（点線の枠。フォルダ一覧とページ一覧で同じ見た目にする） */
+function createButton(text: string, onClick: () => void): HTMLElement {
+  const btn = el('button', {
+    text,
+    class: 'sb-mobile-tap',
+    style: [
+      `border:1px dashed ${T.line};border-radius:12px;background:${T.surface}`,
+      `color:${T.sub};font-size:14px;font-family:${T.font};cursor:pointer;padding:14px`,
+    ].join(';'),
+  })
+  btn.type = 'button'
+  btn.addEventListener('click', onClick)
+  return btn
+}
+
 /** 一覧の中身を入れる箱（カード同士の間だけ空ける） */
 function listArea(): HTMLElement {
   return el('div', { style: 'display:flex;flex-direction:column;gap:10px;padding:12px' })
@@ -81,6 +97,13 @@ function listArea(): HTMLElement {
 export async function renderMobileFolders(container: HTMLElement): Promise<void> {
   const body = screen(container)
   body.append(backBar('ページ', null))
+  // フォルダが1つも無いと、ここから先へ進む道が無くなる（本人指摘「新規で作成できない」）。
+  // 空のときも出したいので、一覧より前に置く。
+  body.append(
+    el('div', { style: 'display:flex;flex-direction:column;padding:12px 12px 0' }, [
+      createButton('＋ 新規フォルダを作成', () => { openCreateFolder() }),
+    ]),
+  )
   const area = el('div', {
     style: 'display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px',
   })
@@ -130,19 +153,9 @@ export async function renderMobilePages(container: HTMLElement, folderUid: strin
   const area = listArea()
   body.append(area)
 
-  const newBtn = el('button', {
-    text: '＋ 新規ページを作成',
-    class: 'sb-mobile-tap',
-    style: [
-      `border:1px dashed ${T.line};border-radius:12px;background:${T.surface}`,
-      `color:${T.sub};font-size:14px;font-family:${T.font};cursor:pointer;padding:14px`,
-    ].join(';'),
-  })
-  newBtn.type = 'button'
-  newBtn.addEventListener('click', () => {
-    location.hash = `/folders?uid=${folderUid}&new=1`
-  })
-  area.append(newBtn)
+  // 以前は `?new=1` を書くだけだったが、それを読む場所がどこにも無く、押しても何も起きなかった。
+  // PCと同じ作成ダイアログをそのまま開く。
+  area.append(createButton('＋ 新規ページを作成', () => { void openCreatePage(detail.folder) }))
 
   if (detail.ab_tests.length === 0) {
     area.append(emptyState('このフォルダにページがありません。'))

@@ -485,3 +485,31 @@ describe('スマホのWidget編集画面（プレビューまわり）', () => {
     expect(css).toContain('[data-widget-note]{display:none !important}')
   })
 })
+
+/**
+ * 2026-09-14。本人指摘「新規で作成できない」（スマホのページ画面・フォルダ0件）。
+ * フォルダ一覧には作る導線が無く、フォルダの中の「＋ 新規ページを作成」は
+ * `#/folders?uid=…&new=1` を書くだけ＝`new` を読む場所がどこにも無く、何も起きなかった。
+ */
+describe('スマホからページを作る導線', () => {
+  const src = readFileSync('src/app/mobile/pages-mobile.ts', 'utf8')
+
+  it('フォルダ一覧から新しいフォルダを作れる', () => {
+    expect(src).toContain('＋ 新規フォルダを作成')
+    expect(src).toContain('openCreateFolder')
+  })
+
+  it('フォルダが1つも無いときも作成ボタンを出す（空の画面で行き止まりにしない）', () => {
+    const btn = src.indexOf('＋ 新規フォルダを作成')
+    const empty = src.indexOf("emptyState('フォルダがありません。')")
+    expect(btn).toBeGreaterThan(0)
+    expect(empty).toBeGreaterThan(0)
+    expect(btn).toBeLessThan(empty)
+  })
+
+  it('「新規ページを作成」は作成ダイアログを開く（誰も読まないURLを書いていた）', () => {
+    expect(src).toContain('openCreatePage')
+    // 誰も読まないハッシュを書くだけの配線に戻さない（コメントでの言及は許す）
+    expect(src).not.toContain('location.hash = `/folders?uid=${folderUid}&new=1`')
+  })
+})
