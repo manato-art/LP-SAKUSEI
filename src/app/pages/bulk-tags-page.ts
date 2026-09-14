@@ -6,6 +6,7 @@
  *  noindex / JavaScript HEAD-BODY / 削除）で構成する。保存はバックエンドの /bulk_tags へ。
  * 配信ページ(/lp)への差し込みは delivery.ts が bulkTagsForFolder で行う。
  */
+import { codeCopyButton } from '../panels/code-copy.ts'
 import { api, type BulkTag, type Folder } from '../api.ts'
 import { toast } from '../ui.ts'
 import { confirmCard } from '../dialog.ts'
@@ -188,7 +189,12 @@ function buildForm(
   js.append(h('div', 'bt-section-title', 'JavaScript設定'))
   const headTa = codeArea(tag.head_js, '<script> ... </script>')
   const bodyTa = codeArea(tag.body_js, '<script> ... </script>')
-  js.append(fieldBlock('HEAD', headTa), fieldBlock('BODY', bodyTa))
+  // コード全体をまとめてコピー（本人指示）。見出しの右端に置く
+  const headBlock = fieldBlock('HEAD', headTa)
+  const bodyBlock = fieldBlock('BODY', bodyTa)
+  headBlock.querySelector('.bt-label')?.append(codeCopyButton(headTa))
+  bodyBlock.querySelector('.bt-label')?.append(codeCopyButton(bodyTa))
+  js.append(headBlock, bodyBlock)
   form.append(js)
 
   // 保存 / 削除
@@ -351,7 +357,7 @@ function injectStyles(): void {
     .bt-form-inner { display:flex; flex-direction:column; gap:18px; background:var(--sb-c-ffffff, #FFFFFF); border:1px solid var(--sb-c-e6e8ec, #E6E8EC); border-radius:12px; padding:22px 24px; }
     .bt-empty { color:#8A94A6; font-size:13px; padding:24px; }
     .bt-field { display:flex; flex-direction:column; gap:5px; }
-    .bt-label { font-size:12.5px; font-weight:600; color:#48526b; }
+    .bt-label { font-size:12.5px; font-weight:600; color:#48526b; display:flex; align-items:center; justify-content:space-between; gap:10px; }
     .bt-hint { font-size:11px; color:#9AA3B2; }
     .bt-input { width:100%; box-sizing:border-box; padding:9px 12px; font-size:13.5px; border:1px solid #d6dae1; border-radius:8px; outline:none; }
     .bt-input:focus { border-color:var(--sb-accent, #0091FF); box-shadow:0 0 0 3px rgba(0,145,255,.12); }

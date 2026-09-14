@@ -11,6 +11,7 @@
 import { COLOR, FONT, MONO, type WidgetEditTarget } from './widget-editor-theme.ts'
 import { highlightHtml, highlightCss } from './syntax-highlight.ts'
 import { svgViewCode, svgViewSplit } from './widget-editor-icons.ts'
+import { codeCopyButton } from './code-copy.ts'
 import { applyCodeSelectionStyle } from './code-selection.ts'
 
 /** コードパネルの表示モード */
@@ -134,11 +135,14 @@ function createHighlightedCodePanel(
   panel.style.cssText =
     `flex:1;display:flex;flex-direction:column;background:${COLOR.codePanel};overflow:hidden;min-height:0`
 
-  // ラベル
+  // ラベル（右端に「まとめてコピー」）
   const label = document.createElement('div')
-  label.textContent = title
   label.style.cssText =
-    `padding:8px 12px;font:12px/1.4 ${MONO};color:${COLOR.labelText};flex-shrink:0`
+    `padding:8px 12px;font:12px/1.4 ${MONO};color:${COLOR.labelText};flex-shrink:0;` +
+    `display:flex;align-items:center;justify-content:space-between;gap:8px`
+  const labelText = document.createElement('span')
+  labelText.textContent = title
+  label.append(labelText)
 
   // コードエリア
   const codeWrap = document.createElement('div')
@@ -213,6 +217,9 @@ function createHighlightedCodePanel(
 
   editorBox.append(highlight, textarea)
   codeWrap.append(gutter, editorBox)
+  // コード全体をまとめてコピー（textarea が出来てから足す）
+  label.append(codeCopyButton(textarea, { dark: true }))
+
   panel.append(label, codeWrap)
   return panel
 }

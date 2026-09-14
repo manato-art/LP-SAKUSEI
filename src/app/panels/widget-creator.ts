@@ -3,6 +3,7 @@
  *
  * HTML/CSS を書いて名前を付けて保存し、そのままLPへ入れられるようにする。
  */
+import { codeCopyButton } from './code-copy.ts'
 import type Quill from 'quill'
 import { toast } from '../ui.ts'
 import { highlight } from './syntax-highlight.ts'
@@ -296,6 +297,9 @@ function createCodePanel(title: string, placeholder: string): HTMLDivElement {
   textarea.addEventListener('scroll', () => {
     pre.style.transform = `translate(-${textarea.scrollLeft}px,-${textarea.scrollTop}px)`
   })
+
+  // コード全体をまとめてコピー
+  btnGroup.append(codeCopyButton(textarea, { dark: true }))
 
   editorBox.append(pre, textarea)
   panel.append(header, editorBox)

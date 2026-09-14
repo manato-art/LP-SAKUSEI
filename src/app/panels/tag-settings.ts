@@ -15,6 +15,7 @@
  *  2. オーバーレイの中央寄せ。react-modal が実行時に付けるインラインstyleは採取物に残らないため、
  *     `display:flex` での中央寄せをこちらで補っている（唯一の寸法の推測箇所）。
  */
+import { codeCopyButton } from './code-copy.ts'
 import { toast } from '../ui.ts'
 import { ensureWhiteBase } from '../white-base.ts'
 
@@ -270,6 +271,16 @@ function wireScriptEditors(wrapper: HTMLElement, tags: readonly HtmlTag[]): Scri
 
     // 値は必ず value に入れる（innerHTML には決して入れない＝貼り付けたscriptを実行させない）
     textarea.value = tags.find((t) => t.document_property === property)?.body ?? ''
+
+    // 見出し行の右端に「まとめてコピー」（本人指示・長いscriptを選び直さずに済む）
+    const title = field.querySelector<HTMLElement>('[class*="_scriptModalFormTitle_"]')
+    if (title !== null && title.querySelector('[data-code-copy]') === null) {
+      title.style.display = 'flex'
+      title.style.alignItems = 'center'
+      title.style.justifyContent = 'space-between'
+      title.style.gap = '10px'
+      title.append(codeCopyButton(textarea))
+    }
 
     const paint = (): void => paintLineNumbers(gutter, textarea)
     paint()

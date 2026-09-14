@@ -13,6 +13,7 @@
  * 「widget」の単位: 実物のLPは Quill で編集されている（findings-live-observation.md）ので、
  * クローンでは**カーソルがある行ブロック**（Quill の block blot）を1 widget として扱う。
  */
+import { codeCopyButton } from './code-copy.ts'
 import type Quill from 'quill'
 import { modal, toast } from '../ui.ts'
 
@@ -157,9 +158,16 @@ function openHtmlEditor(widget: WidgetTarget, quill: Quill): void {
   area.style.cssText = `width:100%;min-height:320px;box-sizing:border-box;padding:12px;
     border:1px solid #DDD;border-radius:4px;font-family:monospace;font-size:12px;line-height:1.7;resize:vertical`
 
+  // コード全体をまとめてコピーできるようにする（本人指示・長いHTMLを選び直さなくて済む）
+  const bar = document.createElement('div')
+  bar.style.cssText = 'display:flex;justify-content:flex-end;margin-bottom:8px'
+  bar.append(codeCopyButton(area))
+  const body = document.createElement('div')
+  body.append(bar, area)
+
   modal(
     'HTML編集',
-    area,
+    body,
     () => {
       const html = area.value.trim()
       if (html === '') throw new Error('HTMLが空です')

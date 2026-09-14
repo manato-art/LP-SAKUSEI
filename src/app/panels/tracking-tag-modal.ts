@@ -12,6 +12,7 @@
  *   data-sb-tracking="true"）。実SquadBeyondの「計測機能付きリンク」も同じ目印を出すので、
  *   相手LPのリンクが計測機能付きになっていれば拾える。
  */
+import { codeCopyButton } from './code-copy.ts'
 import { toast } from '../ui.ts'
 
 const CSS_ID = 'sb-tracking-tag-css'
@@ -36,7 +37,8 @@ function injectStyles(): void {
     .sb-tt-title { font-size:15px; font-weight:700; margin:0 0 4px; }
     .sb-tt-lead { font-size:12px; color:var(--sb-c-666666, #666666); line-height:1.7; margin:0 0 14px; }
     .sb-tt-steps { font-size:12px; color:var(--sb-c-333333, #333333); line-height:1.9; margin:0 0 14px; padding-left:18px; }
-    .sb-tt-label { font-size:11px; font-weight:600; color:var(--sb-c-666666, #666666); margin:0 0 6px; }
+    .sb-tt-label { font-size:11px; font-weight:600; color:var(--sb-c-666666, #666666); margin:0 0 6px;
+      display:flex; align-items:center; justify-content:space-between; gap:10px; }
     .sb-tt-code {
       width:100%; height:190px; box-sizing:border-box; resize:vertical;
       border:1px solid var(--sb-c-e5e5ea, #E5E5EA); border-radius:5px; background:var(--sb-c-f7f8fa, #F7F8FA);
@@ -145,6 +147,7 @@ export function openTrackingTagModal(deliveryUrl: string): void {
   code.className = 'sb-tt-code'
   code.readOnly = true
   code.value = tag
+  label.append(codeCopyButton(code))
   code.addEventListener('focus', () => code.select())
 
   // ② CV計測タグ（サンクスページ用）
@@ -157,6 +160,7 @@ export function openTrackingTagModal(deliveryUrl: string): void {
   cvCode.className = 'sb-tt-code'
   cvCode.style.height = '120px'
   cvCode.readOnly = true
+  cvLabel.append(codeCopyButton(cvCode))
   cvCode.value = cvTag
   cvCode.addEventListener('focus', () => cvCode.select())
   const cvCopy = document.createElement('button')
@@ -181,6 +185,7 @@ export function openTrackingTagModal(deliveryUrl: string): void {
   keepCode.className = 'sb-tt-code'
   keepCode.style.height = '90px'
   keepCode.readOnly = true
+  keepLabel.append(codeCopyButton(keepCode))
   keepCode.value = keepTag
   keepCode.addEventListener('focus', () => keepCode.select())
   const keepCopy = document.createElement('button')

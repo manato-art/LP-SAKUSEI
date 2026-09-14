@@ -140,6 +140,7 @@ export function injectPopupCss(): void {
     /* 指示177: 透明テキスト方式なので、選択背景が不透明だと下の色付きコードが隠れる */
     .ep-html-textarea::selection { background:rgba(88,150,255,.34); color:transparent; }
     .ep-html-textarea::-moz-selection { background:rgba(88,150,255,.34); color:transparent; }
+    .ep-html-copy { display:flex; justify-content:flex-end; margin:0 0 8px; }
     .ep-html-editor-box { flex:1; position:relative; overflow:auto; min-height:0; background:#151515; }
     /* 指示177: inset:0 + overflow:hidden だと内容がコンテナ高さで切れ、スクロール先の行が消える */
     /* color は必須。ハイライトが取りこぼした語は span に包まれず素のまま出るので、

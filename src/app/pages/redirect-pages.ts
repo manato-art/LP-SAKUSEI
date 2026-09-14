@@ -10,6 +10,7 @@
  *     「中間ページ設定を保存する」で更新
  *   - 中間ページリンクのコピー / 中間ページの削除
  */
+import { codeCopyButton } from '../panels/code-copy.ts'
 import substrate from '../fragments/folders__UID__ab_tests__UID__redirect_pages__detail.html?raw'
 import { api, type RedirectPage, type RedirectPageTag } from '../api.ts'
 import { isStale } from '../main.ts'
@@ -288,10 +289,13 @@ function createTagCard(pageUid: string, tag: RedirectPageTag): HTMLElement {
 
   const bodyLabel = document.createElement('label')
   bodyLabel.textContent = 'JavaScript'
+  bodyLabel.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:10px'
   const bodyArea = document.createElement('textarea')
   bodyArea.name = 'body'
   bodyArea.placeholder = '<script></script>'
   bodyArea.className = TAG_CARD.textarea
+  // コード全体をまとめてコピー（本人指示）
+  bodyLabel.append(codeCopyButton(bodyArea))
   bodyArea.rows = 5
   bodyArea.value = tag.body
 

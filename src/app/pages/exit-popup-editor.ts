@@ -7,6 +7,7 @@
  * 依存は一方向にしてある: このファイルは exit-popup.ts を import しない。
  * 一覧の描き直しは `state.rerender()` を通す。
  */
+import { codeCopyButton } from '../panels/code-copy.ts'
 import { api, type ExitPopup } from '../api.ts'
 import { T, el, toast } from '../ui.ts'
 import { withTrackingParam, isTrackingLink } from '../../shared/link-html.ts'
@@ -655,6 +656,9 @@ function renderHtmlTab(body: HTMLElement, draft: ExitPopup): void {
     textarea.className = 'ep-html-textarea'
     textarea.spellcheck = false
     textarea.value = content
+    // コード全体をまとめてコピー（本人指示）。サブタブの右端に置く
+    const copyBar = el('div', { class: 'ep-html-copy' })
+    copyBar.append(codeCopyButton(textarea))
 
     const sync = (): void => {
       if (activeSubTab === 'html') draft.html = textarea.value
@@ -684,7 +688,7 @@ function renderHtmlTab(body: HTMLElement, draft: ExitPopup): void {
     editorBox.append(pre, textarea)
     inner.append(gutter, editorBox)
     wrap.append(inner)
-    editorArea.append(wrap)
+    editorArea.append(copyBar, wrap)
   }
 
   for (const sub of subTabs) {
