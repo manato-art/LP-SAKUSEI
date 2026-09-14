@@ -557,3 +557,36 @@ describe('スマホのVersion出し分け設定（切り替え）', () => {
     }
   })
 })
+
+/**
+ * 2026-09-14。本人指摘「レポート→ヒートマップ」。
+ * 実測(390×844): 採取した土台が「左=Version一覧(250px固定) / 右=ヒートマップの列」の横並びで、
+ * 右ペインの幅が40pxしか残らず、中の列(377px)が画面の外（x=300〜683）へ出てカードが重なっていた。
+ */
+describe('スマホのヒートマップ比較', () => {
+  const css = mobileCss()
+
+  it('左のVersion一覧と右のヒートマップを縦に積む', () => {
+    expect(css).toContain('[class*="_container_1juw6_"]{flex-direction:column !important')
+    for (const pane of ['[class*="_left_1juw6_"]', '[class*="_right_1juw6_"]']) {
+      const rule = css.slice(css.indexOf(pane))
+      expect(rule.slice(0, rule.indexOf('}')), pane).toContain('min-width:0')
+    }
+  })
+
+  it('左右の余白を作らない（外30px＋ペイン20pxで使える幅が290pxしか残らない）', () => {
+    // 列は375pxのスマホ枠＋枠線＝379px。余白があると必ず右へはみ出す
+    expect(css).toContain('[class*="_wrapper_1juw6_"]')
+    expect(css).toContain('padding-left:0 !important;padding-right:0 !important}')
+  })
+
+  it('土台の目印は採取物に実在する', () => {
+    const fragment = readFileSync(
+      'src/app/fragments/ab_tests__UID__articles__htmls__heatmaps__comparisons__default.html',
+      'utf8',
+    )
+    for (const cls of ['_container_1juw6_', '_left_1juw6_', '_right_1juw6_', '_heatmapList_14ri6_']) {
+      expect(fragment, cls).toContain(cls)
+    }
+  })
+})

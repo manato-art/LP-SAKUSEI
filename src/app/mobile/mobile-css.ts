@@ -215,6 +215,20 @@ export function mobileCss(): string {
     `html body [data-clone-param-editor] input,`,
     `html body [data-clone-param-editor] select{width:100% !important;min-width:0 !important}`,
 
+    // ── ヒートマップ比較（レポート→ヒートマップ・2026-09-14 本人指摘）──
+    // 採取した土台は「左=Version一覧(250px固定) / 右=ヒートマップの列」の横並び。
+    // 390pxでは右に40pxしか残らず、中の列(377px)が画面の外(x=300〜683)へ出てカードが重なっていた。
+    `html body [class*="_container_1juw6_"]{flex-direction:column !important;width:auto !important}`,
+    `html body [class*="_left_1juw6_"],html body [class*="_right_1juw6_"]{width:auto !important;`,
+    `min-width:0 !important}`,
+    `html body [class*="_heatmapList_14ri6_"]{width:auto !important;min-width:0 !important}`,
+    // 列そのもの（自前・377px）は横スクロールで見せる。縮めるとLPの写しが読めなくなる
+    `html body .hm-cols{width:auto !important;min-width:0 !important}`,
+    // 左右の余白（外30px＋ペイン20px）で使える幅が290pxしか残らず、列(379px)が右へはみ出す。
+    // このプロジェクトの決まりどおり、スマホでは左右の余白を作らない
+    `html body [class*="_wrapper_1juw6_"],html body [class*="_left_1juw6_"],`,
+    `html body [class*="_right_1juw6_"]{padding-left:0 !important;padding-right:0 !important}`,
+
     // ── レポート画面 ──
     // 「レポート / 広告データ取得日時 / ヒートマップ」の帯は横1列に収まりきらず、
     // 縮められた枠から文字がはみ出して重なっていた。縮めずに横スクロールさせる
