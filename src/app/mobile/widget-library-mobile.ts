@@ -25,15 +25,24 @@ export function applyMobileWidgetLibrary(root: HTMLElement): void {
   close()
 
   if (document.getElementById(TRIGGER_ID) === null) {
+    // 押して開けるものだと一目で分かる形にする（2026-09-14 本人指摘）。
+    // 左に一覧アイコン、右に「開く」向きの矢印。色はアクセント色で「触れる物」に見せる。
     const trigger = el('button', {
-      text: 'カテゴリー',
       class: 'sb-mobile-tap',
       style: [
-        `display:flex;align-items:center;gap:6px;margin:0 0 10px;padding:10px 14px`,
-        `border:1px solid ${T.line};border-radius:8px;background:${T.surface};color:${T.text}`,
-        `font-size:13px;font-family:${T.font};cursor:pointer;width:100%;justify-content:center`,
+        `display:flex;align-items:center;gap:8px;margin:0 0 10px;padding:12px 14px`,
+        `border:1px solid var(--sb-accent, #2563EB);border-radius:8px;background:${T.surface}`,
+        `color:var(--sb-accent, #2563EB);font-weight:600`,
+        `font-size:14px;font-family:${T.font};cursor:pointer;width:100%;justify-content:space-between`,
       ].join(';'),
     })
+    trigger.innerHTML =
+      '<span style="display:flex;align-items:center;gap:8px">' +
+      '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+      'stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>' +
+      'カテゴリーを選ぶ</span>' +
+      '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+      'stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>'
     trigger.id = TRIGGER_ID
     trigger.type = 'button'
     trigger.addEventListener('click', () => {

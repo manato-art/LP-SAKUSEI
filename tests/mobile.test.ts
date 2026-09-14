@@ -615,3 +615,35 @@ describe('スマホの履歴・リンク置換パネル', () => {
     }
   })
 })
+
+/**
+ * 2026-09-14。本人指摘3件。
+ *  - 一括タグ設定 / LP設定 を下へスクロールすると、中身が見出し（×・保存）に重なる
+ *  - Widgetライブラリの見出し「Widget」が真ん中に無い
+ *  - 「カテゴリー」が押して開けるものだと分からない
+ */
+describe('スマホの見出しとカテゴリー', () => {
+  const css = mobileCss()
+
+  it('モーダルの見出しは不透明にする（sticky なのに背景が無く、中身が透けて重なっていた）', () => {
+    // 採取CSSの背景色は `_lightTheme_11n4w_16` 付きのときだけ効く。クローンの外枠には付いていない
+    const base = readFileSync('src/app/white-base.ts', 'utf8')
+    const rule = base.slice(base.indexOf('._modalHeader_11n4w_20 {'))
+    expect(rule.slice(0, rule.indexOf('}'))).toContain('background')
+  })
+
+  it('Widgetライブラリの見出しは画面の真ん中に置く', () => {
+    // 見出しの列は［閉じる］［タイトル］［空］の3つ。両端を同じ幅にしないと中央がずれる
+    expect(css).toContain('[class*="css-155j396"]>*:first-child')
+    // 右の枠は中身が無いと display:none になるので、空のまま見せて場所を取らせる
+    expect(css).toContain('[class*="css-155j396"]>*:last-child{flex:1 1 0 !important;display:block !important}')
+  })
+
+  it('カテゴリーは押して開けると分かる形にする', () => {
+    const src = readFileSync('src/app/mobile/widget-library-mobile.ts', 'utf8')
+    expect(src).toContain('カテゴリーを選ぶ')
+    // 絵文字でなくSVG（プロジェクト共通の決まり）
+    expect(src).toContain('<svg')
+    expect(src).not.toContain("text: 'カテゴリー'")
+  })
+})

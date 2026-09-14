@@ -110,6 +110,13 @@ export function mobileCss(): string {
     `border-radius:0 !important}`,
     `html body .MuiDialogContent-root{width:auto !important;max-width:100% !important;`,
     `min-width:0 !important;overflow-x:auto !important;padding:12px !important}`,
+    // ダイアログの見出しは［左ボタン］［タイトル］［右ボタン］の3列。Widgetライブラリは
+    // 右が空なので、タイトルが右へずれて見える（2026-09-14 本人指摘「縦の真ん中がずれてる」）。
+    // 両端を同じ幅にして、タイトルを画面の真ん中に置く
+    // 右の枠は中身が無いと display:none にされるので、空のまま見せて場所だけ取らせる
+    `html body [class*="css-155j396"]>*:first-child,`,
+    `html body [class*="css-155j396"]>*:last-child{flex:1 1 0 !important;display:block !important}`,
+    `html body [class*="css-155j396"]>*:nth-child(2){flex:0 1 auto !important}`,
     // Widgetライブラリは「左にカテゴリー／右にカード」の横並び。390pxだとカテゴリーが
     // 250px取ってカード欄が100px程度しか残らない。カテゴリーは普段しまい、
     // 「カテゴリー」ボタンで左から重ねて出す（2026-09-14 本人指示）

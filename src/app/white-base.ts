@@ -47,8 +47,12 @@ const OVERRIDES = /* css */ `
   background: #fff !important;
   color: #333 !important;
 }
+/* 見出しは position:sticky（採取物）。採取CSSの背景色は _lightTheme_11n4w_16 付きの
+   ときだけ効き、クローンの外枠には付いていないので透けていた。下へスクロールすると
+   中身が「×・保存」に重なる（2026-09-14 本人指摘・PCでも同じ）。不透明にする。 */
 .ReactModal__Content._modal_11n4w_1 ._modalHeader_11n4w_20 {
   border-bottom: 1px solid #e5e5e5;
+  background: #fff;
 }
 .ReactModal__Content._modal_11n4w_1 ._title_11n4w_70 {
   color: #333 !important;
