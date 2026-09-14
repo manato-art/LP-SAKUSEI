@@ -131,9 +131,17 @@ export function mobileCss(): string {
     `html body [class*="_mediaSummary_"]{position:static !important;left:auto !important;`,
     `right:auto !important;top:auto !important;display:flex !important;justify-content:flex-end;`,
     `padding:6px 12px;width:auto !important}`,
-    // 絞り込みは縦に積む（横並びだと項目が潰れ、右に空箱ができる）
+    // 歯車（パラメータ）も同じく絶対配置で、ヒートマップの文字に重なっていた
+    `html body [class*="_parameterScope_"]{position:static !important;left:auto !important;`,
+    `right:auto !important;top:auto !important;display:flex !important;justify-content:flex-end;`,
+    `gap:8px;padding:4px 12px;width:auto !important}`,
+    // レポートの外枠はPC用に30px+16pxの余白を持つ。スマホは画面幅を使う
+    `html body [class*="_abTestReportWrapper_"]{padding:0 !important}`,
+    `html body .rv2{padding:10px !important}`,
+    // 絞り込みは縦に積む（横並びだと項目が潰れ、右に空箱ができる）。
+    // **flex-wrap:wrap のままだと縦並びの「列」の幅が中身基準になり、枠より広くなる**
     `html body .rv2-filters,html body .rv2-filter-fields{flex-direction:column !important;`,
-    `align-items:stretch !important}`,
+    `align-items:stretch !important;flex-wrap:nowrap !important}`,
     `html body .rv2-field{min-width:0 !important;width:auto !important}`,
     `html body .rv2-daterange input{width:auto !important;flex:1 1 auto;min-width:0}`,
     `html body .rv2-apply{align-self:stretch !important;justify-content:center;min-height:44px}`,

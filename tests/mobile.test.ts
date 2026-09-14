@@ -130,8 +130,18 @@ describe('LPエディタのスマホ版', () => {
     expect(css).toContain('[class*="_navContainer_"]>*{flex:0 0 auto')
   })
 
-  it('「広告データ取得日時」は絶対配置をやめて帯の下へ落とす（タブに重なっていた）', () => {
+  it('「広告データ取得日時」と歯車は絶対配置をやめて帯の下へ落とす（文字に重なっていた）', () => {
     expect(css).toContain('[class*="_mediaSummary_"]{position:static !important')
+    expect(css).toContain('[class*="_parameterScope_"]{position:static !important')
+  })
+
+  it('絞り込みは折り返さない（折り返すと列の幅が中身基準になり枠からはみ出す）', () => {
+    expect(css).toContain('flex-wrap:nowrap !important')
+  })
+
+  it('レポートの外枠はスマホで余白を詰める（PC用に30px+16px入っている）', () => {
+    expect(css).toContain('[class*="_abTestReportWrapper_"]{padding:0 !important')
+    expect(css).toContain('.rv2{padding:10px !important')
   })
 
   it('レポートの絞り込みは縦に積む（横並びだと項目が潰れて右に空箱ができる）', () => {
