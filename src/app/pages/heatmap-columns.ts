@@ -86,6 +86,8 @@ function injectStyles(): void {
       position:relative; overflow:hidden; background:var(--sb-c-ffffff, #FFFFFF);
       width:375px; height:667px; flex:0 0 667px;
     }
+    /* 「全ページ表示」を選んだときは枠の高さ固定を外し、LPの全高を出す（2026-09-15） */
+    .hm-cols.full .hm-col-body { height:auto; flex:0 0 auto; max-height:none; }
     .hm-canvas { position:relative; width:375px; height:667px; overflow:hidden; }
     .hm-canvas { position:relative; }
     .hm-lp { transform-origin:top left; }
@@ -490,7 +492,8 @@ export function renderHeatmapColumns(
   host.innerHTML = ''
   if (specs.length === 0) return
   const wrap = document.createElement('div')
-  wrap.className = 'hm-cols'
+  // 「全ページ表示」のときは枠の高さ固定を外す（以前は fullPage を受け取るだけで使っていなかった）
+  wrap.className = deps.fullPage ? 'hm-cols full' : 'hm-cols'
   for (const spec of specs) wrap.append(buildColumn(spec, deps))
   host.append(wrap)
 }

@@ -135,6 +135,8 @@ export interface ReportVersionRow extends ReportKpi {
   name: string
   status: string
   distribution_ratio: number
+  /** アーカイブ済みか（ヒートマップ／レポートの「アーカイブ」絞り込みで使う） */
+  archived?: boolean
 }
 
 export interface ReportDailyRow extends ReportKpi {

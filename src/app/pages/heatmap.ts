@@ -9,7 +9,6 @@
 import substrate from '../fragments/ab_tests__UID__articles__htmls__heatmaps__comparisons__default.html?raw'
 import { api, type ReportVersionRow } from '../api.ts'
 import { isStale } from '../main.ts'
-import { toast } from '../ui.ts'
 import {
   applyLightTheme,
   cloneNote,
@@ -108,7 +107,7 @@ export async function renderHeatmap(
       externalHtml: externalPage?.html ?? null,
       styleCss: lpSources?.styleCss ?? '',
       range: { startDate: range.startDate, endDate: range.endDate },
-      fullPage: root.querySelector('[class*="_selectHeightType_"] [class*="_active_"]') !== null,
+      fullPage: isFullPageSelected(root),
     })
   }
 
@@ -122,17 +121,19 @@ export async function renderHeatmap(
     }
   }
 
-  renderVersionList(root, listRows, (versionUid, metric, on) => {
+  // 並び替えのあとも同じ配線を使う（以前は渡し忘れていて、並び替えるとチェックが死んでいた）
+  const onToggle = (versionUid: string, metric: HeatmapMetric, on: boolean): void => {
     const key = `${versionUid}|${metric}`
     if (on) selection.add(key)
     else selection.delete(key)
     void ensureLpSources().then(rebuild)
-  })
+  }
+  renderVersionList(root, listRows, onToggle, selection)
   // 開いた直後は何もチェックされておらず右側が空になる。ユーザーからは
   // 「反映されていない／壊れている」に見えるので、実測データが一番多い行を既定で開く。
   openDefaultRow(root, listRows, stats.versions)
 
-  wireSortSelect(root, report.rows)
+  wireSortSelect(root, report.rows, onToggle, selection)
   wireHeightTypeTabs(root, rebuild)
   wireSortModal(root)
   showRange(root, range)
@@ -160,6 +161,8 @@ function renderVersionList(
   root: HTMLElement,
   rows: readonly ReportVersionRow[],
   onToggle?: ToggleColumn,
+  /** 今チェックされている `versionUid|metric`。並び替えても選択を保つために渡す */
+  selection?: ReadonlySet<string>,
 ): void {
   const list = root.querySelector<HTMLElement>('[class*="_articleList_"] ul[class*="_body_"]')
   const template = list?.querySelector<HTMLElement>('li[class*="_content_"]') ?? null
@@ -179,7 +182,7 @@ function renderVersionList(
     // 採取物は先頭行に active が付いた状態なので、まず全行から外す。
     // （付けたままだと、チェックを入れても2行目以降の色が変わらない）
     if (activeToken !== null) item.classList.remove(activeToken)
-    wireOverlayTabs(item, activeToken, row.entity_uid, onToggle)
+    wireOverlayTabs(item, activeToken, row.entity_uid, onToggle, selection)
     return item
   })
   list.replaceChildren(...items)
@@ -190,11 +193,15 @@ function renderVersionList(
  * 選択状態そのものは実物のUI状態なので配線する。
  * 表示するヒートマップのデータは無いので、右側は変わらない（注記で明示する）。
  */
+/** 採取CSSにある「選んだ」状態のクラス（DOM側は未チェックの初期状態しか採れていない） */
+const CHECKED_CLASS = '_checked_1vzzn_155'
+
 function wireOverlayTabs(
   item: HTMLElement,
   activeToken: string | null,
   versionUid: string,
   onToggle?: ToggleColumn,
+  selection?: ReadonlySet<string>,
 ): void {
   // 実物の並びは 離脱 / CLICK / CV の3つ。チェックした数だけ右に列が増える。
   const order: HeatmapMetric[] = ['exit', 'click', 'cv']
@@ -203,7 +210,22 @@ function wireOverlayTabs(
     const box = tab.querySelector<HTMLInputElement>('input[type="checkbox"]')
     if (box === null) return
     const metric = order[i]
+    // 並び替え・絞り込みで作り直したときに、選んでいた状態を戻す
+    // 採取DOMは未チェックの初期状態なので、DOMからは拾えない。採取CSSにある実クラス名を使う
+    // （`capture/clean/ab_tests__UID__articles__htmls__heatmaps__comparisons/default/cssom.css` の
+    //  `._tab_1vzzn_144._checked_1vzzn_155{border-top:3px solid rgb(208,83,83)}` ほか）
+    const checkedToken = findClassToken(tab, '_checked_') ?? CHECKED_CLASS
+    if (metric !== undefined && selection?.has(`${versionUid}|${metric}`) === true) {
+      box.checked = true
+      if (activeToken !== null) {
+        tab.classList.add(activeToken)
+        item.classList.add(activeToken)
+      }
+      tab.classList.add(checkedToken)
+    }
     box.addEventListener('change', () => {
+      // 採取物は「選んだ（_checked_）」と「今見ている（_active_）」を別の状態として持つ
+      tab.classList.toggle(checkedToken, box.checked)
       if (activeToken !== null) {
         tab.classList.toggle(activeToken, box.checked)
         // 行そのものも、どれか1つでもチェックされていれば選択中の見た目にする
@@ -247,26 +269,39 @@ function openDefaultRow(
 }
 
 /** 並び替え（PV / CLICK / CTR / CV / CVR） */
-function wireSortSelect(root: HTMLElement, rows: readonly ReportVersionRow[]): void {
+function wireSortSelect(
+  root: HTMLElement,
+  rows: readonly ReportVersionRow[],
+  onToggle: ToggleColumn,
+  selection: ReadonlySet<string>,
+): void {
   const selects = [...root.querySelectorAll<HTMLSelectElement>('[class*="_filters_"] select')]
   const sortSelect = selects[0]
   const filterSelect = selects[1]
-  if (sortSelect !== undefined) {
-    sortSelect.addEventListener('change', () => {
-      const sorted = sortVersions(rows, sortSelect.value as HeatmapSortKey)
-      if (sorted === null) {
-        toast('CTR の計算式が採取物から確認できていません', 'error')
-        return
-      }
-      renderVersionList(root, sorted)
-    })
+
+  /** 並び替えと絞り込みを両方かけて描き直す（どちらを触っても同じ道を通す） */
+  const apply = (): void => {
+    // 実物の既定は「アーカイブ無し」＝アーカイブ済みを除く（採取物の option の並び順）
+    const showArchived = filterSelect?.value === 'true'
+    const visible = showArchived ? rows : rows.filter((row) => row.archived !== true)
+    const sorted = sortVersions(visible, (sortSelect?.value ?? '') as HeatmapSortKey) ?? visible
+    renderVersionList(root, sorted, onToggle, selection)
   }
-  const filterHost = filterSelect?.parentElement ?? null
-  if (filterHost !== null) {
-    filterHost.append(
-      cloneNote('「アーカイブ有り/無し」はVersionにアーカイブ状態を持たせていないため未配線。'),
-    )
-  }
+
+  sortSelect?.addEventListener('change', apply)
+  filterSelect?.addEventListener('change', apply)
+  apply()
+}
+
+/** 「スクロール表示 / 全ページ表示」のどちらが選ばれているか（文字で判定する） */
+function isFullPageSelected(root: HTMLElement): boolean {
+  const group = root.querySelector<HTMLElement>('[class*="_selectHeightType_"]')
+  if (group === null) return false
+  const full = [...group.querySelectorAll<HTMLElement>('[class*="_item_"]')].find(
+    (item) => (item.textContent ?? '').trim() === '全ページ表示',
+  )
+  if (full === undefined) return false
+  return [...full.classList].some((name) => name.includes('_active_'))
 }
 
 /** 「スクロール表示 / 全ページ表示」の切替（実物のタブ状態） */

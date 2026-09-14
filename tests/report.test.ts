@@ -327,8 +327,14 @@ describe('ヒートマップ画面のVersion並び替え', () => {
     expect([...HEATMAP_SORT_KEYS]).toEqual(['pv', 'click', 'ctr', 'cv', 'cvr'])
   })
 
-  it('CTR は計算式が無いので並べ替えない（null を返す）', () => {
-    expect(sortVersions([row('A', { pv: 1 })], 'ctr')).toBeNull()
+  it('CTRでも並べ替える（列にCTRの数字を出しているのに並べ替えだけ拒むのは画面内の矛盾）', () => {
+    // 2026-09-15: 採取した実DOMの option も他の4つと同格だった
+    const sorted = sortVersions([row('A', { pv: 10, click: 1 }), row('B', { pv: 10, click: 5 })], 'ctr')
+    expect(sorted?.map((r) => r.name)).toEqual(['B', 'A'])
+  })
+
+  it('知らないキーは並べ替えない（null）', () => {
+    expect(sortVersions([row('A', { pv: 1 })], '' as never)).toBeNull()
   })
 
   it('元の配列を壊さない（イミュータブル）', () => {
@@ -490,5 +496,57 @@ describe('指標の計算式（採取物の記述に合わせる）', () => {
     const kpi = deriveKpi({ pv: 100, click: 20, cv: 5, ad_cost: 10000 })
     expect(kpi.cvr).toBeCloseTo(0.25)
     expect(kpi.ctvr).toBeCloseTo(0.05)
+  })
+})
+
+/**
+ * 2026-09-15。ヒートマップを採取物と突き合わせて見つかった配線の不具合。
+ */
+describe('ヒートマップの配線（採取物と突き合わせ）', () => {
+  const src = readFileSync('src/app/pages/heatmap.ts', 'utf8')
+  const dom = readFileSync(
+    'src/app/fragments/ab_tests__UID__articles__htmls__heatmaps__comparisons__default.html',
+    'utf8',
+  )
+
+  it('並び替えてもチェックの配線と選択状態を保つ', () => {
+    // 以前は renderVersionList(root, sorted) と第3引数を落としていたため、
+    // 並び替えたあとチェックしても列が増えず、選んでいた列も消えていた
+    expect(src).not.toContain('renderVersionList(root, sorted)')
+    expect(src).toContain('renderVersionList(root, sorted, onToggle')
+  })
+
+  it('「全ページ表示」が選ばれているかを見る（どちらが選択中かを見ていなかった）', () => {
+    expect(dom).toContain('全ページ表示')
+    expect(src).toContain("'全ページ表示'")
+    expect(src).not.toContain("root.querySelector('[class*=\"_selectHeightType_\"] [class*=\"_active_\"]') !== null")
+  })
+
+  it('アーカイブの絞り込みを配線する（Versionはアーカイブ状態を持っている）', () => {
+    expect(dom).toContain('アーカイブ無し')
+    expect(src).toContain('archived')
+    // 「持たせていないため未配線」という古い注記は残さない
+    expect(src).not.toContain('アーカイブ状態を持たせていないため未配線')
+  })
+
+  it('CTRでも並び替えられる（列見出しにはCTRの数字を出しているのに並べ替えは拒んでいた）', () => {
+    const sort = readFileSync('src/app/pages/heatmap-sort.ts', 'utf8')
+    expect(sort).not.toContain("if (key === 'ctr') return null")
+  })
+
+  it('「全ページ表示」を実際に使う（受け取るだけで捨てていた）', () => {
+    const cols = readFileSync('src/app/pages/heatmap-columns.ts', 'utf8')
+    expect(cols).toContain("deps.fullPage ? 'hm-cols full'")
+    expect(cols).toContain('.hm-cols.full .hm-col-body')
+  })
+
+  it('選択したVersionには採取物の `_checked_` を付ける', () => {
+    // 採取DOMは初期状態（どれも未チェック）なので、根拠は採取CSS側にある
+    const css = readFileSync(
+      'capture/clean/ab_tests__UID__articles__htmls__heatmaps__comparisons/default/cssom.css',
+      'utf8',
+    )
+    expect(css).toContain('_checked_1vzzn_155')
+    expect(src).toContain('_checked_')
   })
 })

@@ -33,6 +33,9 @@ function reportRows(uid: string, scope: 'version' | 'lp' | 'creative', query: un
       name: version.name,
       status: version.status,
       distribution_ratio: version.distribution_ratio,
+      // ヒートマップ／レポートの「アーカイブ」絞り込みに要る（2026-09-15）。
+      // 値は元から持っていて、レスポンスに載せていなかっただけ。
+      archived: version.archived,
       ...(metrics.length === 0 ? deriveKpi({ pv: 0, click: 0, cv: 0, ad_cost: 0 }) : aggregate(metrics)),
     }
   })
