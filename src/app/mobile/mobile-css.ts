@@ -187,6 +187,34 @@ export function mobileCss(): string {
     // 「Ctrl（Windows）/⌘（Mac）＋クリック」の注意書きは指では実行できず、枠から切れるだけ
     `html body [data-widget-note]{display:none !important}`,
 
+    // ── Version出し分け設定（「切り替え」タブ・2026-09-14 本人指摘）──
+    // 採取した土台は「表(444px)＋右に条件メニュー(78px)」の横並び。390pxでは枠(350px)に
+    // 収まらず、メニューが画面の外（x=464〜542）へ出て**条件を選べなかった**。
+    // 採取物なので直せるのはCSSだけ。縦に積み、条件の選択を一番上へ出す。
+    `html body [class*="css-5ai0ia"]{flex-direction:column !important;width:auto !important;`,
+    `margin:0 !important}`,
+    `html body [class*="css-5ai0ia"]>*{width:auto !important;min-width:0 !important}`,
+    // 条件（デバイス別／パラメーター別／時間別…）は一番上へ。縦7行だと表が下へ追いやられるので横に流す
+    `html body [class*="css-m7q6f4"]{order:-1;border-bottom:1px solid var(--sb-line)}`,
+    `html body [class*="css-19sre7e"]{position:static !important}`,
+    `html body [class*="css-m7q6f4"] [class*="css-19sre7e"]>div{display:flex !important;`,
+    `flex-direction:row !important;align-items:center;gap:12px;overflow-x:auto;`,
+    `scrollbar-width:none;padding:6px 12px}`,
+    `html body [class*="css-m7q6f4"] [class*="css-19sre7e"]>div::-webkit-scrollbar{display:none}`,
+    `html body [class*="css-m7q6f4"] [class*="css-19sre7e"]>div>*{flex:0 0 auto;`,
+    `white-space:nowrap;margin:0 !important}`,
+    // 表は縮めずに横へ流す（縮めるとVersion名と配信割合が潰れる）
+    `html body [class*="css-1rr4qq7"]{overflow-x:auto;width:auto !important;min-width:0 !important}`,
+    // 「流入元別」の行は高さ46px固定＋align-items:center。入力3つが折り返すと行の上下へ
+    // はみ出し、上の説明文に重なっていた（390pxで実測）。行を伸ばし、入力は縦に積む
+    `html body [class*="css-1rr4qq7"] [class*="css-1ygvyop"]{height:auto !important;`,
+    `align-items:flex-start !important}`,
+    `html body [class*="css-1rr4qq7"] [class*="css-1qivsvc"]{height:auto !important}`,
+    `html body [data-clone-param-editor]>div{flex-direction:column !important;`,
+    `align-items:stretch !important}`,
+    `html body [data-clone-param-editor] input,`,
+    `html body [data-clone-param-editor] select{width:100% !important;min-width:0 !important}`,
+
     // ── レポート画面 ──
     // 「レポート / 広告データ取得日時 / ヒートマップ」の帯は横1列に収まりきらず、
     // 縮められた枠から文字がはみ出して重なっていた。縮めずに横スクロールさせる

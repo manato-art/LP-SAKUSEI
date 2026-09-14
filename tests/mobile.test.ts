@@ -513,3 +513,47 @@ describe('スマホからページを作る導線', () => {
     expect(src).not.toContain('location.hash = `/folders?uid=${folderUid}&new=1`')
   })
 })
+
+/**
+ * 2026-09-14。本人指摘「切り替えのページ」（Version出し分け設定）。
+ * 実測(390×844): 表(444px)と右の条件メニュー(78px)を350pxの枠に横並びで入れる作りで、
+ * メニューが画面の外（x=464〜542）＝**条件（デバイス別／時間別…）を選べなかった**。
+ * 採取した土台なので、直せるのはCSSだけ（クラス名は6タブ共通で採取物に入っている）。
+ */
+describe('スマホのVersion出し分け設定（切り替え）', () => {
+  const css = mobileCss()
+
+  it('表と条件メニューを縦に積む（メニューが画面の外にいた）', () => {
+    expect(css).toContain('[class*="css-5ai0ia"]{flex-direction:column !important')
+    const rule = css.slice(css.indexOf('[class*="css-5ai0ia"]>*'))
+    expect(rule.slice(0, rule.indexOf('}'))).toContain('min-width:0')
+  })
+
+  it('条件の選択は一番上に出し、横に流す（縦7行だと表が画面の下へ追いやられる）', () => {
+    expect(css).toContain('[class*="css-m7q6f4"]{order:-1')
+    // PCでは画面に貼り付く作り。縦に積んだら普通に流す
+    expect(css).toContain('[class*="css-19sre7e"]{position:static !important}')
+    expect(css).toContain('overflow-x:auto')
+  })
+
+  it('表は縮めずに横へ流す（縮めるとVersion名と割合が潰れる）', () => {
+    expect(css).toContain('[class*="css-1rr4qq7"]{overflow-x:auto')
+  })
+
+  it('「流入元別」の入力3つは縦に積み、行の高さを伸ばす', () => {
+    // 行は46px固定＋align-items:center。入力が折り返すと上下へはみ出し、上の説明文に重なっていた
+    expect(css).toContain('[class*="css-1ygvyop"]{height:auto !important')
+    expect(css).toContain('align-items:flex-start !important')
+    expect(css).toContain('[data-clone-param-editor]>div{flex-direction:column !important')
+  })
+
+  it('土台の目印は採取物に実在する（emotionのハッシュ名は推測で書かない）', () => {
+    const fragment = readFileSync(
+      'src/app/fragments/ab_tests__UID__articles__split_test_settings__devices.html',
+      'utf8',
+    )
+    for (const cls of ['css-5ai0ia', 'css-m7q6f4', 'css-19sre7e', 'css-1rr4qq7']) {
+      expect(fragment, cls).toContain(cls)
+    }
+  })
+})
