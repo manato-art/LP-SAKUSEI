@@ -100,6 +100,24 @@ export function mobileCss(): string {
     // ヘッダー画像の枠も同じ68pxのはみ出しで右が切れていた
     `html body [class*="_articleHeaderPhoto_"]{margin-right:0 !important;width:auto !important;`,
     `max-width:100% !important;box-sizing:border-box !important}`,
+    // ── レポート画面 ──
+    // 「レポート / 広告データ取得日時 / ヒートマップ」の帯は横1列に収まりきらず、
+    // 縮められた枠から文字がはみ出して重なっていた。縮めずに横スクロールさせる
+    `html body [class*="_navContainer_"]{overflow-x:auto !important;flex-wrap:nowrap !important;`,
+    `scrollbar-width:none}`,
+    `html body [class*="_navContainer_"]::-webkit-scrollbar{display:none}`,
+    `html body [class*="_navContainer_"]>*{flex:0 0 auto !important}`,
+    // 「広告データ取得日時」は絶対配置で、PCではタブの右の空きに置かれている。
+    // 390pxではタブの上に重なるので、流し込みに戻して帯の下へ落とす
+    `html body [class*="_mediaSummary_"]{position:static !important;left:auto !important;`,
+    `right:auto !important;top:auto !important;display:flex !important;justify-content:flex-end;`,
+    `padding:6px 12px;width:auto !important}`,
+    // 絞り込みは縦に積む（横並びだと項目が潰れ、右に空箱ができる）
+    `html body .rv2-filters,html body .rv2-filter-fields{flex-direction:column !important;`,
+    `align-items:stretch !important}`,
+    `html body .rv2-field{min-width:0 !important;width:auto !important}`,
+    `html body .rv2-daterange input{width:auto !important;flex:1 1 auto;min-width:0}`,
+    `html body .rv2-apply{align-self:stretch !important;justify-content:center;min-height:44px}`,
     // 「設置済みWidget」の列はスマホでは出さない（画面の半分を取ってキャンバスが潰れる）。
     // Widget自体は下のツールバーの「Widget」から開ける
     `html body [data-widget-nav]{display:none !important}`,

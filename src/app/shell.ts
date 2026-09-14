@@ -9,7 +9,12 @@ import { openThemeColorMenu } from './panels/theme-color-menu.ts'
 import { THEME_MODE_EVENT, setThemeMode, storedMode, type ThemeMode } from './theme-mode.ts'
 import { api } from './api.ts'
 import { ensureMobileCss } from './mobile/mobile-css.ts'
-import { mountBottomNav, showsBottomNav, unmountBottomNav } from './mobile/bottom-nav.ts'
+import {
+  mountBottomNav,
+  scrollActiveTabIntoView,
+  showsBottomNav,
+  unmountBottomNav,
+} from './mobile/bottom-nav.ts'
 import { isMobileViewport } from './mobile/viewport.ts'
 import sidebarHtml from './templates/sidebar.html?raw'
 
@@ -44,6 +49,8 @@ function syncMobileChrome(): void {
   ensureMobileCss()
   if (isMobileViewport() && showsBottomNav(location.hash)) mountBottomNav()
   else unmountBottomNav()
+  // 画面が描かれたあとに、今いるタブを見える位置へ寄せる
+  if (isMobileViewport()) setTimeout(scrollActiveTabIntoView, 400)
 }
 
 export function mountShell(): { content: HTMLElement } {

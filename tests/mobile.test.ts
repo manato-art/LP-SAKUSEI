@@ -108,6 +108,21 @@ describe('LPエディタのスマホ版', () => {
     }
   })
 
+  it('レポートの帯（レポート／広告データ取得日時／ヒートマップ）は縮めず横スクロールにする', () => {
+    // 縮めると枠から文字がはみ出して重なる（2026-09-14 実機で発覚）
+    expect(css).toContain('[class*="_navContainer_"]{overflow-x:auto')
+    expect(css).toContain('[class*="_navContainer_"]>*{flex:0 0 auto')
+  })
+
+  it('「広告データ取得日時」は絶対配置をやめて帯の下へ落とす（タブに重なっていた）', () => {
+    expect(css).toContain('[class*="_mediaSummary_"]{position:static !important')
+  })
+
+  it('レポートの絞り込みは縦に積む（横並びだと項目が潰れて右に空箱ができる）', () => {
+    expect(css).toContain('.rv2-filters,html body .rv2-filter-fields{flex-direction:column')
+    expect(css).toContain('.rv2-apply{align-self:stretch')
+  })
+
   it('「設置済みWidget」の列は出さない（画面の半分を取ってキャンバスが潰れる）', () => {
     expect(css).toContain('[data-widget-nav]{display:none')
   })
@@ -170,6 +185,12 @@ describe('下部タブバー', () => {
     expect(showsBottomNav('#/ab_tests/abc/articles/exit_popups')).toBe(false)
     expect(showsBottomNav('#/ab_tests/abc/reports')).toBe(true)
     expect(showsBottomNav('#/folders')).toBe(true)
+  })
+
+  it('今いるタブを見える位置へ寄せる（横に長くて画面の外に出る）', () => {
+    const src = readFileSync('src/app/mobile/bottom-nav.ts', 'utf8')
+    expect(src).toContain('scrollActiveTabIntoView')
+    expect(readFileSync('src/app/shell.ts', 'utf8')).toContain('scrollActiveTabIntoView')
   })
 
   it('「その他」はタブでなくシートを開く（行き先を持たない）', () => {

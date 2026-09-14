@@ -177,6 +177,19 @@ function paintBottomNav(nav: HTMLElement): void {
   }
 }
 
+/**
+ * 上のタブ（基本情報 / Version / … / レポート）は横に長く、今いるタブが
+ * 画面の外にあると見えない。押せる位置まで寄せる（2026-09-14 実機で発覚）。
+ */
+export function scrollActiveTabIntoView(): void {
+  const active = document.querySelector<HTMLElement>('.topnav .topnav-tab.active, .topnav-tab.active')
+  if (active === null) return
+  const row = active.parentElement
+  if (row === null || row.scrollWidth <= row.clientWidth + 1) return
+  const target = active.offsetLeft - (row.clientWidth - active.offsetWidth) / 2
+  row.scrollTo({ left: Math.max(0, target), behavior: 'auto' })
+}
+
 /** スマホでなくなったら片付ける */
 export function unmountBottomNav(): void {
   closeSheet()
