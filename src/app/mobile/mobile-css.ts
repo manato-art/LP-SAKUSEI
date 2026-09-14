@@ -8,7 +8,11 @@
  *   - タップは44px、入力の文字は16px（iOSが勝手に拡大するのを防ぐ）
  *   - ホームバーのぶんの余白（safe-area）を空ける
  */
-import { PROPS_OPEN_CLASS, VERSIONS_OPEN_CLASS } from './sheet-classes.ts'
+import {
+  PROPS_OPEN_CLASS,
+  VERSIONS_OPEN_CLASS,
+  WIDGET_CATEGORY_OPEN_CLASS,
+} from './sheet-classes.ts'
 import { MOBILE_MAX_WIDTH } from './viewport.ts'
 
 const STYLE_ID = 'sb-mobile-css'
@@ -111,10 +115,17 @@ export function mobileCss(): string {
     `html body .MuiDialogContent-root{width:auto !important;max-width:100% !important;`,
     `min-width:0 !important;overflow-x:auto !important;padding:12px !important}`,
     // Widgetライブラリは「左にカテゴリー／右にカード」の横並び。390pxだとカテゴリーが
-    // 250px取ってカード欄が100px程度しか残らない。縦に積んで、カテゴリーは高さを抑える
+    // 250px取ってカード欄が100px程度しか残らない。カテゴリーは普段しまい、
+    // 「カテゴリー」ボタンで左から重ねて出す（2026-09-14 本人指示）
     `html body .MuiDialogContent-root>.MuiBox-root{flex-direction:column !important;gap:10px}`,
-    `html body .MuiDialogContent-root>.MuiBox-root>*:first-child{min-width:0 !important;`,
-    `width:100% !important;max-height:150px;overflow-y:auto}`,
+    `html body .MuiDialogContent-root>.MuiBox-root>*:first-child{position:fixed !important;`,
+    `left:0;top:0;bottom:0;width:78% !important;max-width:300px !important;min-width:0 !important;`,
+    `max-height:none !important;background:var(--sb-surface);z-index:9800;overflow-y:auto;`,
+    `box-shadow:2px 0 16px rgba(0,0,0,.25);padding:14px !important;`,
+    `transform:translateX(-100%);transition:transform .2s ease}`,
+    `html body.${WIDGET_CATEGORY_OPEN_CLASS} .MuiDialogContent-root>.MuiBox-root>*:first-child{`,
+    `transform:translateX(0)}`,
+    `html body.${WIDGET_CATEGORY_OPEN_CLASS} #sb-m-widget-cat-backdrop{display:block !important}`,
     // カード一覧は3列→1列（286pxのカードが3枚並ぶと画面に入らない）
     `html body .css-ojejk4{width:100% !important;min-width:0 !important}`,
     `html body .css-ojejk4>.MuiCard-root{flex:0 0 100% !important;max-width:100% !important}`,

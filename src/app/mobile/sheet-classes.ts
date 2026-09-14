@@ -10,3 +10,5 @@
 export const VERSIONS_OPEN_CLASS = 'sb-m-versions-open'
 /** プロパティを下から出しているときに body へ付ける */
 export const PROPS_OPEN_CLASS = 'sb-m-props-open'
+/** Widgetライブラリのカテゴリーを左から出しているときに body へ付ける */
+export const WIDGET_CATEGORY_OPEN_CLASS = 'sb-m-widget-cat-open'

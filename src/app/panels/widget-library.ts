@@ -16,6 +16,11 @@ import rawLibrary from '../fragments/ab_tests__UID__articles__widget-library.por
 import { toast } from '../ui.ts'
 import { stripSbPreviewCss } from '../../shared/sb-preview-css.ts'
 import { ensureWhiteBase } from '../white-base.ts'
+import { isMobileViewport } from '../mobile/viewport.ts'
+import {
+  applyMobileWidgetLibrary,
+  teardownMobileWidgetLibrary,
+} from '../mobile/widget-library-mobile.ts'
 import { bindBackdropClose, findByExactText, openPortal } from './portal.ts'
 import {
   deleteCreatedWidget,
@@ -92,6 +97,8 @@ function open(quill: Quill): void {
   ensureWhiteBase()
   const portal = openPortal(rawLibrary, HOOK.dialog, () => {
     isOpen = false
+    // スマホ用に足した「カテゴリー」ボタン・暗幕を残さない
+    teardownMobileWidgetLibrary()
   })
   if (portal === null) {
     toast('Widgetライブラリのマークアップが壊れています', 'error')
@@ -150,6 +157,8 @@ function injectWidgetGridCss(): void {
 function patchPortalLayout(root: HTMLElement, quill: Quill, close: () => void): void {
   /* ---- 0. カード一覧を3列表示にする（要望: 3つ横並び。実物は2列） ---- */
   injectWidgetGridCss()
+  // スマホはカテゴリーを左から出す引き出しにする（横に並べると場所が足りない）
+  if (isMobileViewport()) applyMobileWidgetLibrary(root)
 
   /* ---- 1. タイトル「Widgetライブラリ」→「Widget」 ---- */
   const titleEl = root.querySelector<HTMLElement>('.css-kzzyvh')

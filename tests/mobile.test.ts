@@ -119,9 +119,22 @@ describe('LPエディタのスマホ版', () => {
     expect(css).toContain('.css-ojejk4>.MuiCard-root{flex:0 0 100% !important')
   })
 
-  it('Widgetライブラリは縦に積む（左のカテゴリーが250px取ってカード欄が潰れる）', () => {
-    expect(css).toContain('.MuiDialogContent-root>.MuiBox-root{flex-direction:column !important')
-    expect(css).toContain('max-height:150px')
+  it('Widgetライブラリのカテゴリーは左から出す引き出しにする', () => {
+    // 2026-09-14 本人指示「カテゴリーはプルダウン式に。左側からメニューが出てくる感じ」
+    expect(css).toContain('.MuiDialogContent-root>.MuiBox-root>*:first-child{position:fixed !important')
+    expect(css).toContain('transform:translateX(-100%)')
+    expect(css).toContain('sb-m-widget-cat-open')
+    const src = readFileSync('src/app/mobile/widget-library-mobile.ts', 'utf8')
+    expect(src).toContain('sb-m-widget-cat')
+    expect(src).toContain('カテゴリー')
+    // 暗幕を押す・カテゴリーを選ぶで閉じる
+    expect(src).toContain('backdrop.addEventListener')
+    expect(src).toContain("category.addEventListener('click'")
+  })
+
+  it('ライブラリを閉じたら、足した部品と合図を残さない', () => {
+    const lib = readFileSync('src/app/panels/widget-library.ts', 'utf8')
+    expect(lib).toContain('teardownMobileWidgetLibrary()')
   })
 
   it('レポートの帯（レポート／広告データ取得日時／ヒートマップ）は縮めず横スクロールにする', () => {
