@@ -132,6 +132,14 @@ describe('LPエディタのスマホ版', () => {
     expect(src).toContain("category.addEventListener('click'")
   })
 
+  it('暗幕はモーダルの中に入れる（bodyだと引き出しの上に乗って触れなくなる）', () => {
+    const src = readFileSync('src/app/mobile/widget-library-mobile.ts', 'utf8')
+    // 2026-09-14 実機で発覚: body に付けると MUI の重なり順の外側に出て、
+    // 引き出しの手前に暗幕が来るため押せない
+    expect(src).toContain('root.append(backdrop)')
+    expect(src).not.toContain('document.body.append(backdrop)')
+  })
+
   it('ライブラリを閉じたら、足した部品と合図を残さない', () => {
     const lib = readFileSync('src/app/panels/widget-library.ts', 'utf8')
     expect(lib).toContain('teardownMobileWidgetLibrary()')

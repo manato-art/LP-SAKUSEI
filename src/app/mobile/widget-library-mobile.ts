@@ -48,7 +48,10 @@ export function applyMobileWidgetLibrary(root: HTMLElement): void {
     })
     backdrop.id = BACKDROP_ID
     backdrop.addEventListener('click', close)
-    document.body.append(backdrop)
+    // **body ではなくモーダルの中に入れる**。body に付けると、モーダル（MUIのDialogは
+    // 自前の重なり順を作る）より手前に来てしまい、引き出しの上に暗幕が乗って
+    // 触れなくなる（2026-09-14 実機で発覚）。同じ重なり順の中なら z-index で並ぶ。
+    root.append(backdrop)
   }
 
   // カテゴリーを選んだら引き出しを閉じる（選んだ結果をすぐ見たいので）
