@@ -251,8 +251,19 @@ describe('スマホのLPエディタ', () => {
   })
 
   it('ボタンを押しても本文の選択を外さない', () => {
-    expect(src).toContain("'mousedown', 'pointerdown', 'touchstart'")
-    expect(src).toContain('event.preventDefault()')
+    expect(src).toContain('keepSelectionOnPress')
+    expect(src).toContain("addEventListener('mousedown', (event) => event.preventDefault())")
+  })
+
+  it('touchstart / pointerdown は止めない（止めるとスマホでボタンが無反応になる）', () => {
+    // 2026-09-14 実機で発覚: touchstart を preventDefault すると click が発火しない
+    expect(src).not.toContain("'touchstart'")
+    expect(src.includes("addEventListener('pointerdown'")).toBe(false)
+  })
+
+  it('選択が外れてもいいよう、最後に選んでいた範囲を覚えておく', () => {
+    expect(src).toContain('lastRange')
+    expect(src).toContain('quill.getSelection() ?? lastRange')
   })
 
   it('Version一覧は、今いる「Version」タブをもう一度押すと開く', () => {

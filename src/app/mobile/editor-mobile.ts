@@ -40,7 +40,7 @@ function ensureCloseButton(): void {
   btn.id = CLOSE_ID
   btn.type = 'button'
   btn.setAttribute('aria-label', '閉じる')
-  btn.addEventListener('mousedown', (event) => event.preventDefault())
+  keepSelectionOnPress(btn)
   btn.addEventListener('click', () => openOnly(null))
   document.body.append(btn)
 }
@@ -64,10 +64,7 @@ function ensurePropsButton(): void {
   btn.type = 'button'
   btn.title = 'プロパティ'
   btn.setAttribute('aria-label', 'プロパティ')
-  // 押した瞬間に本文の選択が外れると、パネルが「選択してください」に戻ってしまう
-  for (const type of ['mousedown', 'pointerdown', 'touchstart'] as const) {
-    btn.addEventListener(type, (event) => event.preventDefault())
-  }
+  keepSelectionOnPress(btn)
   btn.innerHTML =
     '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
     'stroke-width="1.7" stroke-linecap="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/>' +
@@ -77,6 +74,20 @@ function ensurePropsButton(): void {
   })
   document.body.append(btn)
 }
+
+/**
+ * ボタンを押しても本文の選択を保つ。
+ *
+ * **`touchstart` / `pointerdown` で preventDefault してはいけない**。
+ * スマホでは後続の `click` が発火しなくなり、ボタンが無反応になる（2026-09-14 実機で発覚）。
+ * PCの `mousedown` だけ止め、スマホは「最後に選んでいた範囲」を覚えておいて戻す。
+ */
+function keepSelectionOnPress(btn: HTMLElement): void {
+  btn.addEventListener('mousedown', (event) => event.preventDefault())
+}
+
+/** 本文で最後に選んでいた範囲（スマホはボタンを押すと選択が外れるので覚えておく） */
+let lastRange: { index: number; length: number } | null = null
 
 /** 開いているエディタの Quill を掴む（描画側から渡さなくても取れる） */
 function findQuill(root: HTMLElement): Quill | null {
@@ -100,7 +111,8 @@ function expandSelection(root: HTMLElement, scope: 'line' | 'all'): void {
     quill.setSelection(0, quill.getLength(), 'user')
     return
   }
-  const range = quill.getSelection(true)
+  // ボタンを押した時点で選択が外れていることがあるので、覚えておいた範囲で補う
+  const range = quill.getSelection() ?? lastRange
   if (range === null) return
   const [line] = quill.getLine(range.index)
   if (line === null) return
@@ -133,10 +145,7 @@ function ensureRangeBar(root: HTMLElement): void {
       ].join(';'),
     })
     btn.type = 'button'
-    // 押した瞬間に選択が外れると広げられない
-    for (const type of ['mousedown', 'pointerdown', 'touchstart'] as const) {
-      btn.addEventListener(type, (event) => event.preventDefault())
-    }
+    keepSelectionOnPress(btn)
     btn.addEventListener('click', () => expandSelection(root, scope))
     bar.append(btn)
   }
@@ -145,6 +154,11 @@ function ensureRangeBar(root: HTMLElement): void {
 
 /** 本文の文字を選んだら、プロパティを自動で開く（選択が外れたら閉じる） */
 function watchSelection(root: HTMLElement): () => void {
+  const quill = findQuill(root)
+  const onQuillChange = (range: { index: number; length: number } | null): void => {
+    if (range !== null) lastRange = { index: range.index, length: range.length }
+  }
+  quill?.on('selection-change', onQuillChange)
   const onChange = (): void => {
     const selection = document.getSelection()
     if (selection === null || selection.rangeCount === 0) return
@@ -156,7 +170,10 @@ function watchSelection(root: HTMLElement): () => void {
     if (selection.toString().length > 0) openOnly(PROPS_OPEN_CLASS)
   }
   document.addEventListener('selectionchange', onChange)
-  return () => document.removeEventListener('selectionchange', onChange)
+  return () => {
+    document.removeEventListener('selectionchange', onChange)
+    quill?.off('selection-change', onQuillChange)
+  }
 }
 
 /** 上のタブの「Version」をもう一度押したら、Version一覧を開く */
@@ -194,6 +211,7 @@ export function applyMobileEditor(root: HTMLElement): void {
 export function teardownMobileEditor(): void {
   wired?.()
   wired = null
+  lastRange = null
   document.getElementById(CLOSE_ID)?.remove()
   document.getElementById(PROPS_BTN_ID)?.remove()
   document.getElementById(RANGE_BAR_ID)?.remove()
