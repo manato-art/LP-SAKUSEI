@@ -208,14 +208,17 @@ function openWidgetEditor(quill: Quill, target: WidgetEditTarget): void {
 
   /* ── ダークコンテナ（2ペイン） ── */
   const darkContainer = document.createElement('div')
+  darkContainer.dataset['widgetPanes'] = 'true'
   darkContainer.style.cssText =
     `flex:1;display:flex;background:${COLOR.container};overflow:hidden;min-height:0`
 
   // 左: ビジュアルエディタ
   const { pane: leftPane, contentDiv, setPreviewCss } = buildVisualEditor(target)
+  leftPane.dataset['widgetPane'] = 'visual'
 
   // 仕切り（本番実測: ~10px幅, cursor:col-resize, 中身は空＝ドットなし）
   const divider = document.createElement('div')
+  divider.dataset['widgetDivider'] = 'true'
   divider.style.cssText =
     `width:10px;background:${COLOR.container};cursor:col-resize;flex-shrink:0;` +
     `display:flex;align-items:center;justify-content:center`
@@ -247,6 +250,7 @@ function openWidgetEditor(quill: Quill, target: WidgetEditTarget): void {
     // プレビューの見た目だけを作り直す（textarea の中身＝保存するCSSはそのまま）
     onCssInput: setPreviewCss,
   })
+  rightPane.dataset['widgetPane'] = 'code'
   cssArea = rightPane.querySelector<HTMLTextAreaElement>('[data-code-css]')
 
   darkContainer.append(leftPane, divider, rightPane)
@@ -332,6 +336,8 @@ function buildHeader(
   target: WidgetEditTarget,
 ): HTMLElement {
   const header = document.createElement('div')
+  // スマホCSSの目印（PCでは属性が増えるだけ）。クラス名は採取物と衝突するので data 属性を使う
+  header.dataset['widgetHeader'] = 'true'
   header.style.cssText =
     `display:flex;align-items:center;padding:12px;border-bottom:1px solid #f4f4f4;flex-shrink:0`
 

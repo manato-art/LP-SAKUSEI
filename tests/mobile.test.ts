@@ -408,3 +408,80 @@ describe('全画面を実測して見つかったはみ出し・重なり', () =
     }
   })
 })
+
+/**
+ * 2026-09-14。本人指摘「ウィジェットの編集画面おかしい（スマホ版）」。
+ * 実測（390×844）: パネルは `left:calc(50% + 60px)`（PCレール分のずらし）で右へ48pxはみ出し、
+ * 中の2ペインは横並びのまま左が660px固定 → 右の「要素ごとのカード」が幅0＝触れなかった。
+ */
+describe('スマホのWidget編集画面', () => {
+  const css = mobileCss()
+  const editorSrc = readFileSync('src/app/panels/widget-editor.ts', 'utf8')
+  const visualSrc = readFileSync('src/app/panels/widget-visual-editor.ts', 'utf8')
+
+  it('全画面にする（PC前提の「中央から右へ60px」を打ち消す）', () => {
+    expect(css).toContain('[data-widget-editor]{left:0 !important;top:0 !important;transform:none !important;')
+    expect(css).toContain('width:100vw !important')
+    expect(css).toContain('height:100dvh !important')
+  })
+
+  it('開いている間は、下のツール列と丸ボタンを隠す（パネルより手前に出て操作を奪う）', () => {
+    expect(css).toContain(':has([data-widget-editor]) [class*="_sideToolbarWrapper_"]')
+    expect(css).toContain(':has([data-widget-editor]) #sb-m-props-btn{display:none !important}')
+  })
+
+  it('パネルは下のツール列より手前に出す（z-index）', () => {
+    const railZ = Number(/_sideToolbarWrapper_[^}]*z-index:(\d+)/.exec(css)?.[1] ?? '0')
+    const panelZ = Number(/\[data-widget-editor\]\{[^}]*z-index:(\d+)/.exec(css)?.[1] ?? '0')
+    expect(railZ).toBeGreaterThan(0)
+    expect(panelZ).toBeGreaterThan(railZ)
+  })
+
+  it('2ペインは上下に積む（横並びだと片方が幅0になる）', () => {
+    expect(css).toContain('[data-widget-panes]{flex-direction:column !important}')
+    expect(css).toContain('[data-widget-pane="visual"]')
+    expect(css).toContain('[data-widget-pane="code"]')
+    // 左ペインは flex:0 0 660px の固定幅。幅もmin-widthも外さないと画面を突き破る
+    for (const pane of ['[data-widget-pane="visual"]', '[data-widget-pane="code"]']) {
+      const rule = css.slice(css.indexOf(pane))
+      expect(rule.slice(0, rule.indexOf('}')), pane).toContain('min-width:0')
+    }
+    // 仕切り（col-resize）は指では掴めないので出さない
+    expect(css).toContain('[data-widget-divider]{display:none !important}')
+  })
+
+  it('ヘッダーは折り返さない（「閉じる」「Widget編集」が2行に割れていた）', () => {
+    expect(css).toContain('[data-widget-header]{flex-wrap:nowrap !important')
+    expect(css).toContain('[data-widget-header]>*{white-space:nowrap !important')
+  })
+
+  it('書式ツールバーは1行で横に流す（折り返すと64pxの枠で下の段が切れる）', () => {
+    expect(css).toContain('[data-widget-toolbar]{flex-wrap:nowrap !important;overflow-x:auto')
+  })
+
+  it('目印はTSとCSSで同じものを使う（ずれると何も当たらない）', () => {
+    for (const mark of ['widgetPanes', 'widgetHeader']) {
+      expect(editorSrc, mark).toContain(mark)
+    }
+    expect(editorSrc).toContain("dataset['widgetPane'] = 'visual'")
+    expect(editorSrc).toContain("dataset['widgetPane'] = 'code'")
+    expect(editorSrc).toContain('widgetDivider')
+    expect(visualSrc).toContain('widgetToolbar')
+  })
+})
+
+describe('スマホのWidget編集画面（プレビューまわり）', () => {
+  const css = mobileCss()
+  const visualSrc = readFileSync('src/app/panels/widget-visual-editor.ts', 'utf8')
+
+  it('プレビューは左端から始める（中央寄せだと左へはみ出した分に届かない）', () => {
+    // 幅620px（配信と同じ）は変えない。margin:0 auto のままだと横スクロールしても左半分が出せない
+    expect(visualSrc).toContain("dataset['widgetPreview'] = 'true'")
+    expect(css).toContain('[data-widget-preview]{margin:0 !important}')
+  })
+
+  it('「Ctrl＋クリック」の注意書きはスマホでは出さない（指では押せず、枠から切れる）', () => {
+    expect(visualSrc).toContain("dataset['widgetNote'] = 'true'")
+    expect(css).toContain('[data-widget-note]{display:none !important}')
+  })
+})

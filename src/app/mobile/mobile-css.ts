@@ -151,6 +151,42 @@ export function mobileCss(): string {
     `html body [class*="_redirectPagesWrapper_"]>*{width:auto !important;max-width:100% !important;`,
     `min-width:0 !important}`,
 
+    // ── Widget編集画面（LPエディタの中のモーダル・2026-09-14 本人指摘）──
+    // PC前提の作り: 画面中央から右へ60px（PCレール分）ずらし、中身は左右2ペイン。
+    // 390pxでは右へ48pxはみ出し、左ペインが660px固定のせいで右の「要素ごとのカード」が
+    // 幅0＝見えず触れなかった。スマホでは全画面＋上下2段にする。
+    // インラインstyleで書かれているが !important なしなので、こちらの !important が勝つ。
+    `html body [data-widget-editor]{left:0 !important;top:0 !important;transform:none !important;`,
+    `width:100vw !important;height:100dvh !important;max-width:none !important;`,
+    `box-sizing:border-box !important;padding-bottom:env(safe-area-inset-bottom,0px);`,
+    `border-radius:0 !important;z-index:9500 !important}`,
+    `html body [data-widget-backdrop]{z-index:9490 !important}`,
+    // 開いている間は、下のツール列（z-index:9400）と丸ボタン（9300）を隠す。
+    // どちらもパネルより手前に出て、パネルの操作を奪っていた
+    `html body:has([data-widget-editor]) [class*="_sideToolbarWrapper_"],`,
+    `html body:has([data-widget-editor]) #sb-m-props-btn{display:none !important}`,
+    // ヘッダーは折り返させない（幅が足りず「閉じる」「Widget編集」が2行に割れていた）
+    `html body [data-widget-header]{flex-wrap:nowrap !important;padding:10px 4px !important;gap:2px}`,
+    `html body [data-widget-header]>*{white-space:nowrap !important;flex-shrink:0 !important}`,
+    `html body [data-widget-header]>*:nth-child(2){font-size:13px !important}`,
+    // 2ペインは上下に積む。左は flex:0 0 660px の固定幅なので幅もmin-widthも外す
+    `html body [data-widget-panes]{flex-direction:column !important}`,
+    `html body [data-widget-pane="visual"]{flex:0 0 46% !important;width:auto !important;`,
+    `min-width:0 !important;min-height:0 !important}`,
+    `html body [data-widget-pane="code"]{flex:1 1 auto !important;width:auto !important;`,
+    `min-width:0 !important;min-height:0 !important}`,
+    // 仕切り（col-resize）は指では掴めない
+    `html body [data-widget-divider]{display:none !important}`,
+    // 書式ツールバーは1行で横に流す（折り返すと枠(64px)の外で下の段が切れる）
+    `html body [data-widget-toolbar]{flex-wrap:nowrap !important;overflow-x:auto;scrollbar-width:none}`,
+    `html body [data-widget-toolbar]::-webkit-scrollbar{display:none}`,
+    `html body [data-widget-toolbar]>*{flex:0 0 auto}`,
+    // プレビューは配信と同じ620px。中央寄せ(margin:0 auto)のままだと、狭い画面で左へはみ出した分に
+    // 横スクロールで届かない（左側の余白は掴めない）ので、左端から始めて右へ流す
+    `html body [data-widget-preview]{margin:0 !important}`,
+    // 「Ctrl（Windows）/⌘（Mac）＋クリック」の注意書きは指では実行できず、枠から切れるだけ
+    `html body [data-widget-note]{display:none !important}`,
+
     // ── レポート画面 ──
     // 「レポート / 広告データ取得日時 / ヒートマップ」の帯は横1列に収まりきらず、
     // 縮められた枠から文字がはみ出して重なっていた。縮めずに横スクロールさせる

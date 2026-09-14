@@ -45,6 +45,7 @@ export function buildVisualEditor(target: WidgetEditTarget): {
 
   // ── ツールバー（本番実測: 1行 flex-wrap, height:64px, 20項目, 1px×16pxセパレータ） ──
   const toolbar = document.createElement('div')
+  toolbar.dataset['widgetToolbar'] = 'true'
   toolbar.style.cssText =
     `background:#fff;border-bottom:1px solid #ddd;flex-shrink:0;height:64px;box-sizing:border-box;` +
     `display:flex;flex-wrap:wrap;gap:2px;padding:6px 10px;align-items:center`
@@ -394,6 +395,7 @@ export function buildVisualEditor(target: WidgetEditTarget): {
   // 以前は左ペインの可変幅で表示していたため、編集時の見た目とLPの見た目（画像幅など）がズレていた。
   // 620px = 配信SSRの body max-width（mock-server/routes/delivery.ts の DELIVERY_WIDTH）。
   // line-height:1.5 は配信LPの section.sb-widget-block と揃える（指示155・WYSIWYG）。
+  contentDiv.dataset['widgetPreview'] = 'true'
   contentDiv.style.cssText =
     `outline:none;min-height:100px;width:${WIDGET_PREVIEW_WIDTH}px;max-width:none;margin:0 auto;box-sizing:border-box;line-height:1.5`
   contentDiv.innerHTML = target.html
@@ -521,6 +523,7 @@ function buildSpacingBar(contentDiv: HTMLElement): HTMLElement {
 
   // 指示146の注意書き: ボタン等の動作確認方法をユーザーに明示する。
   const note = document.createElement('span')
+  note.dataset['widgetNote'] = 'true'
   note.textContent = 'ボタンの動作確認は Ctrl（Windows）/ ⌘（Mac）＋クリック'
   note.style.cssText = 'margin-left:auto;color:#999;font-size:11px;white-space:nowrap'
 
