@@ -312,10 +312,11 @@ describe('スマホのLPエディタ', () => {
     expect(src).not.toContain('else if (document.body.classList.contains(PROPS_OPEN_CLASS)) openOnly(null)')
   })
 
-  it('選択していなくても、丸ボタンからプロパティを開ける', () => {
-    // スマホはタップするとカーソルが立つだけで「選択」にならない
-    expect(src).toContain('sb-m-props-btn')
-    expect(css).toContain('#sb-m-props-btn')
+  it('キャンバスに浮かぶ丸ボタンは出さない（2026-09-14 本人指示「丸いツールマークいらない」）', () => {
+    // プロパティは文章を選ぶと自動で開く（selection-change）。丸ボタンは置かない
+    expect(src).not.toContain('sb-m-props-btn')
+    expect(css).not.toContain('sb-m-props-btn')
+    expect(src).toContain('openOnly(PROPS_OPEN_CLASS)')
   })
 
   it('ボタンを押しても本文の選択を外さない', () => {
@@ -425,9 +426,8 @@ describe('スマホのWidget編集画面', () => {
     expect(css).toContain('height:100dvh !important')
   })
 
-  it('開いている間は、下のツール列と丸ボタンを隠す（パネルより手前に出て操作を奪う）', () => {
-    expect(css).toContain(':has([data-widget-editor]) [class*="_sideToolbarWrapper_"]')
-    expect(css).toContain(':has([data-widget-editor]) #sb-m-props-btn{display:none !important}')
+  it('開いている間は、下のツール列を隠す（パネルより手前に出て操作を奪う）', () => {
+    expect(css).toContain(':has([data-widget-editor]) [class*="_sideToolbarWrapper_"]{display:none !important}')
   })
 
   it('パネルは下のツール列より手前に出す（z-index）', () => {
@@ -587,6 +587,31 @@ describe('スマホのヒートマップ比較', () => {
     )
     for (const cls of ['_container_1juw6_', '_left_1juw6_', '_right_1juw6_', '_heatmapList_14ri6_']) {
       expect(fragment, cls).toContain(cls)
+    }
+  })
+})
+
+/**
+ * 2026-09-14。本人指摘「履歴」（バージョン復元パネル）。
+ * 実測(390×844): パネルの入れ物を `position:fixed;top:120px;right:90px`（PCの右レール前提）で
+ * 置いていたため、280pxのパネルが x=-18〜270 に出て左が画面の外へ切れていた。
+ */
+describe('スマホの履歴・リンク置換パネル', () => {
+  const css = mobileCss()
+
+  it('画面の幅いっぱいに、下のツール列の上へ出す', () => {
+    expect(css).toContain('[data-clone-panel-host]{position:fixed !important;left:8px !important;')
+    expect(css).toContain('right:8px !important')
+    // PC前提の top:120px を打ち消して、下のツール列の上に置く
+    expect(css).toContain('bottom:calc(56px + env(safe-area-inset-bottom,0px)) !important')
+  })
+
+  it('中身はPCの位置指定（left/right/top）を捨てて、入れ物に合わせる', () => {
+    expect(css).toContain('[data-clone-panel-host] [class*="_bodyWrapper_x4j8w"]{position:static !important')
+    const rule = css.slice(css.indexOf('[data-clone-panel-host] [class*="_bodyWrapper_x4j8w"]'))
+    const body = rule.slice(0, rule.indexOf('}'))
+    for (const prop of ['left:auto', 'right:auto', 'top:auto', 'width:auto']) {
+      expect(body, prop).toContain(prop)
     }
   })
 })

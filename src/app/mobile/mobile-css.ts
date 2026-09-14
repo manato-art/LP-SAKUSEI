@@ -83,10 +83,6 @@ export function mobileCss(): string {
     `html body [class*="_sideToolbarTop_"]{display:flex !important;flex-direction:row !important;`,
     // 項目の間隔は採取CSSが4px入れてくる。8項目 × 44px ＝ 352px に収めるため消す
     `align-items:center;gap:0 !important;width:auto !important;padding:0 !important}`,
-    // プロパティを開く丸ボタン（下のツールバー46px＋余白の上）。シートが開いている間は隠す
-    `html body #sb-m-props-btn{bottom:calc(66px + env(safe-area-inset-bottom,0px))}`,
-    `html body.${VERSIONS_OPEN_CLASS} #sb-m-props-btn,`,
-    `html body.${PROPS_OPEN_CLASS} #sb-m-props-btn{display:none !important}`,
     // 「この段落を選ぶ」「全部を選ぶ」（プロパティを開いている間だけ・シートの上）
     `html body.${PROPS_OPEN_CLASS} #sb-m-range-bar{display:flex !important;bottom:calc(60vh + 8px)}`,
     // 開いているシートを閉じる「×」（シートの少し上に出す）
@@ -163,8 +159,7 @@ export function mobileCss(): string {
     `html body [data-widget-backdrop]{z-index:9490 !important}`,
     // 開いている間は、下のツール列（z-index:9400）と丸ボタン（9300）を隠す。
     // どちらもパネルより手前に出て、パネルの操作を奪っていた
-    `html body:has([data-widget-editor]) [class*="_sideToolbarWrapper_"],`,
-    `html body:has([data-widget-editor]) #sb-m-props-btn{display:none !important}`,
+    `html body:has([data-widget-editor]) [class*="_sideToolbarWrapper_"]{display:none !important}`,
     // ヘッダーは折り返させない（幅が足りず「閉じる」「Widget編集」が2行に割れていた）
     `html body [data-widget-header]{flex-wrap:nowrap !important;padding:10px 4px !important;gap:2px}`,
     `html body [data-widget-header]>*{white-space:nowrap !important;flex-shrink:0 !important}`,
@@ -228,6 +223,18 @@ export function mobileCss(): string {
     // このプロジェクトの決まりどおり、スマホでは左右の余白を作らない
     `html body [class*="_wrapper_1juw6_"],html body [class*="_left_1juw6_"],`,
     `html body [class*="_right_1juw6_"]{padding-left:0 !important;padding-right:0 !important}`,
+
+    // ── 履歴（バージョン復元）／リンク置換のパネル（2026-09-14 本人指摘）──
+    // 入れ物を `position:fixed;top:120px;right:90px`（PCの右レール前提）で置いているので、
+    // 390pxでは280pxのパネルが x=-18〜270 に出て左が画面の外で切れていた。
+    // スマホでは幅いっぱいにして、下のツール列の上へ出す。
+    `html body [data-clone-panel-host]{position:fixed !important;left:8px !important;`,
+    `right:8px !important;top:auto !important;width:auto !important;`,
+    `bottom:calc(56px + env(safe-area-inset-bottom,0px)) !important}`,
+    `html body [data-clone-panel-host] [class*="_bodyWrapper_x4j8w"]{position:static !important;`,
+    `left:auto !important;right:auto !important;top:auto !important;width:auto !important;`,
+    `max-height:60vh;overflow:auto}`,
+    `html body [data-clone-panel-host] [class*="_body_x4j8w"]{width:auto !important}`,
 
     // ── レポート画面 ──
     // 「レポート / 広告データ取得日時 / ヒートマップ」の帯は横1列に収まりきらず、
