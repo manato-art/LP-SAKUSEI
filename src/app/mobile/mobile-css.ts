@@ -79,6 +79,21 @@ export function mobileCss(): string {
     `html body [class*="_sideToolbarTop_"]{display:flex !important;flex-direction:row !important;`,
     // 項目の間隔は採取CSSが4px入れてくる。8項目 × 44px ＝ 352px に収めるため消す
     `align-items:center;gap:0 !important;width:auto !important;padding:0 !important}`,
+    // 開いているシートを閉じる「×」（シートの少し上に出す）
+    `html body.${VERSIONS_OPEN_CLASS} #sb-m-sheet-close,`,
+    `html body.${PROPS_OPEN_CLASS} #sb-m-sheet-close{display:flex !important;bottom:calc(60vh + 8px)}`,
+    // URLバー: PCは右のレール分(68px)はみ出させているが、スマホにレールは無い。
+    // そのままだと「配信」側のコピーボタンが画面の外に出て、overflow:hidden で触れない。
+    // 幅を戻し、プレビューと配信を縦に積んで両方のコピーボタンを出す
+    `html body .sb-url-bar{width:100% !important;margin-right:0 !important;height:auto !important;`,
+    `flex-direction:column !important;align-items:stretch !important;gap:6px;padding:6px 8px !important;`,
+    `overflow:visible !important}`,
+    `html body .sb-url-sep{display:none !important}`,
+    `html body .sb-url-field{height:34px !important}`,
+    `html body .sb-url-copy-btn{width:34px !important;height:34px !important}`,
+    // ヘッダー画像の枠も同じ68pxのはみ出しで右が切れていた
+    `html body [class*="_articleHeaderPhoto_"]{margin-right:0 !important;width:auto !important;`,
+    `max-width:100% !important;box-sizing:border-box !important}`,
     // 「設置済みWidget」の列はスマホでは出さない（画面の半分を取ってキャンバスが潰れる）。
     // Widget自体は下のツールバーの「Widget」から開ける
     `html body [data-widget-nav]{display:none !important}`,

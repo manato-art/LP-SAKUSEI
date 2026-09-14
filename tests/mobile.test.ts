@@ -117,6 +117,17 @@ describe('LPエディタのスマホ版', () => {
     expect(css).toContain('.sb-ct{overflow-x:auto')
   })
 
+  it('URLバーは幅を戻して縦に積む（配信側のコピーボタンが画面の外に出ていた）', () => {
+    expect(css).toContain('.sb-url-bar{width:100% !important;margin-right:0 !important')
+    expect(css).toContain('flex-direction:column !important')
+    // 触れないまま切り捨てる overflow:hidden を解除する
+    expect(css).toContain('overflow:visible !important')
+  })
+
+  it('ヘッダー画像の枠も右へのはみ出しを戻す（右が切れて中央がずれていた）', () => {
+    expect(css).toContain('[class*="_articleHeaderPhoto_"]{margin-right:0 !important')
+  })
+
   it('文字サイズ・色などの部品を指で押せる大きさにする', () => {
     expect(css).toContain('.sb-pr-input')
     expect(css).toContain('min-height:38px')
