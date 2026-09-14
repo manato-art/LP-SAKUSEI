@@ -146,6 +146,9 @@ function createHighlightedCodePanel(
 
   // 行番号ガター
   const gutter = document.createElement('div')
+  // スマホでは入力欄だけ16pxに拡大されるので、行番号・色付き表示も同じ大きさに
+  // 揃える必要がある（ずれるとカーソルが文字と合わなくなる）。CSSが掴むための目印。
+  gutter.dataset['codeFont'] = 'true'
   gutter.style.cssText =
     `width:40px;background:${COLOR.codePanel};border-right:1px solid ${COLOR.codeBorder};` +
     `overflow:hidden;flex-shrink:0;padding:4px 6px 4px 0;text-align:right;box-sizing:border-box;` +
@@ -160,6 +163,7 @@ function createHighlightedCodePanel(
 
   // ハイライト表示用 pre
   const highlight = document.createElement('pre')
+  highlight.dataset['codeFont'] = 'true'
   highlight.style.cssText =
     // 指示177: inset:0 で高さを固定し overflow:hidden にすると、内容がコンテナの高さで
     // 切り落とされ、スクロールした先の行がハイライト層に存在しなくなる（文字が出ない）。

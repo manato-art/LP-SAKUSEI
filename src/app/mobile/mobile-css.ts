@@ -95,7 +95,7 @@ export function mobileCss(): string {
     `flex-direction:column !important;align-items:stretch !important;gap:6px;padding:6px 8px !important;`,
     `overflow:visible !important}`,
     `html body .sb-url-sep{display:none !important}`,
-    `html body .sb-url-field{height:34px !important}`,
+    `html body .sb-url-bar .sb-url-field{height:34px !important}`,
     `html body .sb-url-copy-btn{width:34px !important;height:34px !important}`,
     // ヘッダー画像の枠も同じ68pxのはみ出しで右が切れていた
     `html body [class*="_articleHeaderPhoto_"]{margin-right:0 !important;width:auto !important;`,
@@ -149,6 +149,10 @@ export function mobileCss(): string {
     `html body [class*="_mediaName_"],html body [class*="_mediaName_"] *,`,
     `html body [class*="_connectionCount_"]{line-height:1.5 !important;height:auto !important;`,
     `min-height:0 !important}`,
+    // デバイス別の見出し3つ（スマートフォン／タブレット／デスクトップ）は1つ64pxしか無く、
+    // 12pxの6文字が入らずに「デスクトッ／プ」と1文字だけ落ちていた。表は横へ流せるので折り返さない
+    `html body [class*="css-1gb3ku2"]>*{width:auto !important;min-width:0 !important;`,
+    `white-space:nowrap !important}`,
     // 中間ページは「左に一覧／右に設定」の横並び。右が画面の外（190〜679px）だった
     `html body [class*="_redirectPagesWrapper_"]{flex-direction:column !important}`,
     `html body [class*="_redirectPagesWrapper_"]>*{width:auto !important;max-width:100% !important;`,
@@ -275,6 +279,84 @@ export function mobileCss(): string {
     `background-repeat:no-repeat;`,
     `background-size:28px 100%,28px 100%,16px 100%,16px 100%;`,
     `background-attachment:local,local,scroll,scroll}`,
+
+    // ── LP設定（記事設定）モーダル（2026-09-14 本人指摘「文字が入りきってない」）──
+    // 実物は1行に3つ（width:30%）・余白は4つ（22%）並べる作り。390pxでは枠が100px/73pxしか
+    // 残らず、(1)右から30pxに絶対配置された単位「px」が入力値と重なり、
+    // (2)「文字色」の見出しが1文字ずつ縦に割れていた。1行2つにして、見出しは折り返さない。
+    `html body [class*="_formGroup_qyxur_"]{width:50% !important}`,
+    `html body [class*="_paddingFormGroup_qyxur_"]{width:50% !important}`,
+    `html body [class*="_masterCssFormWrapper_qyxur_"] label,`,
+    `html body [class*="_formGroup_qyxur_"]>label{white-space:nowrap !important}`,
+    // 単位は枠の端へ寄せ、入力値はその手前で止める
+    `html body [class*="_formGroup_qyxur_"]::before,`,
+    `html body [class*="_paddingFormGroup_qyxur_"]::before{right:8px !important}`,
+    `html body [class*="_formGroup_qyxur_"] input,`,
+    `html body [class*="_paddingFormGroup_qyxur_"] input{padding-right:28px !important}`,
+
+    // ── ツール画面（2026-09-14・全画面の実測で見つけた「文字が入りきらない」箇所）──
+    // マジック置換: 操作列は5つ横並び（合計745px）で折り返さないため、タブと2つ目の検索欄と
+    // 「リセット」が画面の外（x=363〜744）にいて、タブは36pxに潰れて縦に割れていた
+    `html body .br-bar{flex-wrap:wrap !important}`,
+    `html body .br-bar>*{min-width:0 !important}`,
+    `html body .br-search{width:auto !important;flex:1 1 150px !important;min-width:0 !important}`,
+    `html body .br-tab{white-space:nowrap !important}`,
+    `html body .br-reset{margin-left:0 !important;white-space:nowrap !important}`,
+    // メディア: 2段組み（grid）で右の欄が26pxになり、説明文が1文字ずつ縦に割れていた
+    `html body .md-body{grid-template-columns:1fr !important}`,
+    `html body .md-left,html body .md-right{width:auto !important;min-width:0 !important}`,
+    // 審査: 絞り込みチップ5つが横1列で1つ63pxに潰れ、「すべて 0」が2行に割れていた
+    `html body .ins-chips{flex-wrap:wrap !important}`,
+    `html body .ins-chip{white-space:nowrap !important}`,
+
+    // 2段・3段組みの画面は縦に積む（横並びのままだと片側が数十pxに潰れ、
+    // 文字が1文字ずつ縦に割れたり、ペインごと画面の外へ出る）
+    `html body .br-panes{grid-template-columns:1fr !important;padding:0 0 14px !important}`,
+    `html body .cvt-body{grid-template-columns:1fr !important}`,
+    `html body .cvt-detail-col{padding:24px 12px !important}`,
+    // 審査の行: 操作ボタン3つ＋バッジで330pxを使い切り、ページ名の欄が幅0になって消えていた
+    `html body .ins-entry{flex-wrap:wrap !important}`,
+    `html body .ins-entry-main{flex:1 0 100% !important;min-width:0 !important}`,
+    // 離脱防止ポップの編集タブ6つ（基本/デザイン/表示/位置/出し分け/HTML）は横に流す
+    // 上のボタン列（プレビュー/下書きを確認/下書き反映/本番反映）は4つで幅が足りず、
+    // 「下書き反/映」と1文字だけ落ちていた。折り返しは列ごとにして、文字は割らない
+    `html body .ep-editor-btn-bar{flex-wrap:wrap !important;gap:8px;padding:10px 12px !important}`,
+    `html body .ep-editor-btn-bar button{white-space:nowrap !important}`,
+    `html body .ep-editor-tabs{overflow-x:auto;scrollbar-width:none}`,
+    `html body .ep-editor-tabs::-webkit-scrollbar{display:none}`,
+    `html body .ep-editor-tabs>*{flex:0 0 auto;white-space:nowrap;padding:10px 12px !important}`,
+    // 一括タグの設置範囲: 右のチェック欄に180px固定で、左の説明が70pxになっていた
+    `html body .bt-scope-row{flex-direction:column !important}`,
+    `html body .bt-scope-left{max-width:none !important}`,
+    `html body .bt-multi{min-width:0 !important}`,
+    // 除外条件の表は6列nowrap。枠の中で横に流す（ページごと横へずれるのを防ぐ）
+    `html body .rx-card{overflow-x:auto;margin-left:0 !important;margin-right:0 !important}`,
+    // 左右の余白（24〜28px）で使える幅が4分の3になる。スマホは詰める
+    `html body .bt-page{padding:12px 0 !important}`,
+    `html body .bt-form-inner{padding:14px 12px !important}`,
+    `html body .rx{padding:14px 0 !important}`,
+    `html body .tc{padding:14px 0 !important}`,
+    `html body .bi-page{padding:14px 0 !important}`,
+
+    // ── 浮いている部品（2026-09-14・パネルの総点検）──
+    // Versionの「…」メニューは採取物がPCの座標（left:288px）をインラインで持っているため、
+    // 390pxでは右へはみ出して読めない・押せない。画面の下に幅いっぱいで出す
+    `html body .MuiPopover-root .MuiPopover-paper{left:8px !important;right:8px !important;`,
+    `top:auto !important;bottom:calc(12px + env(safe-area-inset-bottom,0px)) !important;`,
+    `width:auto !important;max-width:none !important}`,
+    // コード欄: スマホは入力欄を16pxにするので、行番号と色付き表示も同じ大きさに揃える
+    // （揃えないとカーソルが文字とずれ、行番号も合わなくなる）
+    `html body [data-code-font]{font-size:16px !important}`,
+    // Widget作成画面: 右の列が280px固定で、左の入力欄が60pxに潰れていた
+    `html body [data-widget-creator-editor]{flex-direction:column !important;padding:0 12px 16px !important}`,
+    `html body [data-widget-creator-editor]>*{width:auto !important;min-width:0 !important}`,
+    `html body [data-widget-creator-meta]{flex-wrap:wrap !important;padding:14px 12px !important}`,
+    `html body [data-widget-creator-meta]>*{min-width:0 !important}`,
+    // 画像の「リンク／計測URL」ポップオーバーは min-width:340px＋余白で374px。幅いっぱいに置く
+    `html body .sb-img-link-popover{min-width:0 !important;left:8px !important;right:8px !important;`,
+    `width:auto !important;max-width:none !important}`,
+    // キャンバスの自前スクロールバー（14px）は指では掴めず、LP右端のタップを奪うだけ
+    `html body [data-clone-scrollbar]{display:none !important}`,
 
     // ── レポート画面 ──
     // 「レポート / 広告データ取得日時 / ヒートマップ」の帯は横1列に収まりきらず、

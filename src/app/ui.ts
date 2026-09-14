@@ -64,7 +64,10 @@ export function button(label: string, kind: 'primary' | 'ghost' = 'primary'): HT
 export function toast(message: string, kind: 'success' | 'error' = 'success'): void {
   const t = el('div', {
     text: message,
+    // width の指定が無いと、left:50% を起点にした残り幅（390px画面では195px）しか使えず、
+    // 少し長い文が4行の細長い塊になる（2026-09-14 実測）。画面幅いっぱいまで使わせる。
     style: `position:fixed;left:50%;top:24px;transform:translateX(-50%);z-index:9999;
+      width:max-content;max-width:calc(100vw - 24px);text-align:center;
       background:${kind === 'success' ? '#2FA84F' : '#D0021B'};color:#FFFFFF;font-family:${T.font};
       font-size:13px;padding:10px 20px;border-radius:4px;box-shadow:0 2px 12px rgba(0,0,0,.2)`,
   })

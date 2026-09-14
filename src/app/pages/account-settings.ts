@@ -4,6 +4,7 @@
  * 1画面にまとめる（実物は複数画面に分かれているが、採取していないので自作する）。
  */
 import { api } from '../api.ts'
+import { table } from './data-ui.ts'
 import { T, el, emptyState, toast } from '../ui.ts'
 import { buildThemeColorSection } from '../panels/theme-color-section.ts'
 import { jstDateKey } from '../jst.ts'
@@ -12,7 +13,8 @@ export async function renderAccountSettings(container: HTMLElement): Promise<voi
   container.style.cssText = `flex:1;min-width:0;background:${T.bg};min-height:100vh`
   container.innerHTML = ''
 
-  const body = el('div', { style: `padding:24px 28px;font-family:${T.font}` })
+  // クラスはスマホ用CSSの目印（左右の余白を外す・data-ui.ts の pageShell と同じ扱い）
+  const body = el('div', { class: 'sb-page-shell', style: `padding:24px 28px;font-family:${T.font}` })
   // ヘッダー行（タイトル + ログアウトボタン）
   const header = el('div', {
     style: 'display:flex;justify-content:space-between;align-items:center;margin-bottom:4px',
@@ -52,6 +54,7 @@ export async function renderAccountSettings(container: HTMLElement): Promise<voi
   // クラスはスマホで横スクロールにするための目印（mobile-css.ts）
   const tabBar = el('div', { class: 'sb-tabbar', style: 'display:flex;gap:0;margin-bottom:20px;border-bottom:2px solid var(--sb-c-eeeeee, #EEEEEE)' })
   const contentArea = el('div', {
+    class: 'sb-page-card',
     style: `background:${T.surface};border-radius:10px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,.06)`,
   })
 
@@ -258,28 +261,19 @@ async function renderMembers(content: HTMLElement): Promise<void> {
     'viewer': 'ゲスト',
   }
 
-  const grid = `grid-template-columns:1fr 1fr 100px`
-  const head = el('div', {
-    style: `display:grid;${grid};gap:12px;padding:10px 8px;border-bottom:2px solid var(--sb-c-eeeeee, #EEEEEE);font-size:12px;color:${T.sub}`,
-  })
-  head.append(
-    el('div', { text: '名前' }),
-    el('div', { text: 'メール' }),
-    el('div', { text: '権限' }),
+  // 共通の表部品を使う。スマホでは「1行＝1カード（列名 値）」に組み替わる（mobile-css.ts）。
+  // 手組みのgridのままだと、390pxで1列77pxになりメールが3行に割れていた（2026-09-14 実測）。
+  content.append(
+    table(
+      members,
+      [
+        { head: '名前', cell: (m) => m.name },
+        { head: 'メール', cell: (m) => m.email },
+        { head: '権限', cell: (m) => roleLabels[m.role] ?? m.role, width: '100px' },
+      ],
+      'チームメンバーがいません。',
+    ),
   )
-  content.append(head)
-
-  for (const member of members) {
-    const tr = el('div', {
-      style: `display:grid;${grid};gap:12px;padding:12px 8px;border-bottom:1px solid var(--sb-c-f2f2f2, #F2F2F2);font-size:13px;color:${T.text};align-items:center`,
-    })
-    tr.append(
-      el('div', { text: member.name }),
-      el('div', { text: member.email, style: 'word-break:break-all' }),
-      el('div', { text: roleLabels[member.role] ?? member.role }),
-    )
-    content.append(tr)
-  }
 }
 
 // ── アクセス管理タブ（メールゲート） ─────────────────────────

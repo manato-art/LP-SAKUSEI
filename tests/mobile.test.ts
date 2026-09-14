@@ -687,3 +687,161 @@ describe('スマホのURLバー・比較・横スクロールの合図', () => {
     expect(css).toContain('html body .sb-m-scrollable,')
   })
 })
+
+/**
+ * 2026-09-14。本人指摘「文字が入りきってないです」（LP設定＝記事設定）。
+ * 実測(390×844): 項目が1行3つ（width:30%）/ 4つ（22%）で、枠が100px・73pxしか無く
+ *  - 単位の「px」は枠の右から30pxに絶対配置 → 入力値と重なる（15px が「1|5px」に見える）
+ *  - 「文字色」の見出しが1文字ずつ縦に割れる（12px幅・54px高）
+ */
+describe('スマホのLP設定（記事設定）', () => {
+  const css = mobileCss()
+
+  it('項目は1行2つにする（3つ・4つだと枠が100px以下になる）', () => {
+    expect(css).toContain('[class*="_formGroup_qyxur_"]{width:50% !important}')
+    expect(css).toContain('[class*="_paddingFormGroup_qyxur_"]{width:50% !important}')
+  })
+
+  it('単位の「px」と入力値を重ねない', () => {
+    expect(css).toContain('[class*="_formGroup_qyxur_"]::before')
+    expect(css).toContain('right:8px !important')
+    // 入力値が「px」の下へ潜らないよう、右の余白を空ける
+    expect(css).toContain('padding-right:28px !important')
+  })
+
+  it('見出しは1文字ずつ縦に割らない', () => {
+    expect(css).toContain('white-space:nowrap !important')
+  })
+})
+
+describe('スマホで「1文字だけ次の行に落ちる」のを防ぐ', () => {
+  const css = mobileCss()
+
+  it('デバイスの見出し（スマートフォン／タブレット／デスクトップ）は折り返さない', () => {
+    // 64pxの枠に12pxの6文字は入らず「デスクトッ／プ」と割れていた（390pxで実測）。
+    // 表は横スクロールできるので、折り返さず自然な幅にする
+    expect(css).toContain('[class*="css-1gb3ku2"]')
+    const rule = css.slice(css.indexOf('[class*="css-1gb3ku2"]'))
+    expect(rule.slice(0, rule.indexOf('}'))).toContain('white-space:nowrap')
+  })
+})
+
+/**
+ * 2026-09-14。本人指示「LP設定以外にもこういう箇所がないかをスマホ版の時見てください」。
+ * 390×844で全画面に「文字が入りきらない」検査（切れ／1文字落ち／縦割れ）を回して見つけたもの。
+ */
+describe('スマホのツール画面（文字が入りきらない箇所）', () => {
+  const css = mobileCss()
+
+  it('マジック置換の操作列は折り返す（5つ横並びで745px必要・タブが画面の外にいた）', () => {
+    expect(css).toContain('.br-bar{flex-wrap:wrap !important}')
+    expect(css).toContain('.br-search{width:auto !important')
+    expect(css).toContain('.br-tab{white-space:nowrap !important}')
+  })
+
+  it('メディアの2段組みは縦に積む（右の欄が26pxになり説明文が1文字ずつ縦に割れていた）', () => {
+    expect(css).toContain('.md-body{grid-template-columns:1fr !important}')
+  })
+
+  it('審査の絞り込みチップは折り返す（5つで1つ63pxになり「すべて 0」が割れていた）', () => {
+    expect(css).toContain('.ins-chips{flex-wrap:wrap !important}')
+  })
+})
+
+/**
+ * 2026-09-14。全画面の総点検（サブエージェントのコード監査＋390pxでの実測）で見つかった、
+ * 「中身が画面の外に出る／文字が1文字ずつ縦に割れる」箇所。
+ */
+describe('スマホの2段組み・3段組み画面', () => {
+  const css = mobileCss()
+
+  it('マジック置換の3ペインは縦に積む（200+20+340pxで右のペインが画面の外）', () => {
+    expect(css).toContain('.br-panes{grid-template-columns:1fr !important')
+  })
+
+  it('CV計測連携の2段組みは縦に積む（右が110pxになり見出しが縦に割れる）', () => {
+    expect(css).toContain('.cvt-body{grid-template-columns:1fr !important}')
+  })
+
+  it('審査の行は折り返す（操作ボタン3つが場所を取り、ページ名が幅0で消える）', () => {
+    expect(css).toContain('.ins-entry{flex-wrap:wrap !important}')
+    expect(css).toContain('.ins-entry-main{flex:1 0 100% !important')
+  })
+
+  it('離脱防止ポップの編集タブ6つは横に流す（1つ55pxで文字が縦に割れる）', () => {
+    expect(css).toContain('.ep-editor-tabs{overflow-x:auto')
+    expect(css).toContain('.ep-editor-tabs>*{flex:0 0 auto')
+  })
+
+  it('ポップアップ編集の上のボタン列は文字を割らない（「下書き反/映」になっていた）', () => {
+    expect(css).toContain('.ep-editor-btn-bar{flex-wrap:wrap !important')
+    expect(css).toContain('.ep-editor-btn-bar button{white-space:nowrap !important}')
+  })
+
+  it('一括タグの設置範囲は縦に積む（右に180px固定で左が70pxになる）', () => {
+    expect(css).toContain('.bt-scope-row{flex-direction:column !important}')
+  })
+
+  it('レポート除外の表は横に流す（6列nowrapでページごと横にずれる）', () => {
+    expect(css).toContain('.rx-card{overflow-x:auto')
+  })
+
+  it('左右の余白は詰める（24〜28pxの余白で使える幅が4分の3になる）', () => {
+    for (const sel of ['.bt-page', '.rx{', '.tc{', '.bi-page']) {
+      expect(css, sel).toContain(sel)
+    }
+  })
+})
+
+describe('スマホの設定画面（チームメンバー）', () => {
+  const src = readFileSync('src/app/pages/account-settings.ts', 'utf8')
+
+  it('チームメンバーは共通の表部品を使う（手組みgridだと1列77pxでメールが3行に割れる）', () => {
+    expect(src).toContain("from './data-ui.ts'")
+    expect(src).toContain('table(')
+    // 手組みの3列gridに戻さない
+    expect(src).not.toContain('grid-template-columns:1fr 1fr 100px')
+  })
+
+  it('画面の枠はスマホ用の目印を持つ（左右24〜28pxの余白を外すため）', () => {
+    expect(src).toContain("class: 'sb-page-shell'")
+    expect(src).toContain("class: 'sb-page-card'")
+  })
+})
+
+/**
+ * 2026-09-14。パネル側の総点検で見つかったもの（オーバーレイ／浮いている部品）。
+ */
+describe('スマホのパネル・オーバーレイ', () => {
+  const css = mobileCss()
+
+  it('Versionの「…」メニューは画面内に出す（採取物がPCの座標 left:288px を持っている）', () => {
+    expect(css).toContain('.MuiPopover-paper{left:8px !important;right:8px !important')
+  })
+
+  it('コード欄は行番号・色付き表示も入力欄と同じ文字サイズにする（カーソルがずれる）', () => {
+    // スマホは入力欄を16pxに拡大する。透明な入力欄だけ大きいと、下の色付き文字とずれる
+    expect(css).toContain('[data-code-font]{font-size:16px !important}')
+    const src = readFileSync('src/app/panels/widget-code-panel.ts', 'utf8')
+    expect(src).toContain("dataset['codeFont'] = 'true'")
+  })
+
+  it('Widget作成画面は縦に積む（右の列が280px固定で左が60pxになる）', () => {
+    expect(css).toContain('[data-widget-creator-editor]{flex-direction:column !important')
+    expect(css).toContain('[data-widget-creator-meta]{flex-wrap:wrap !important')
+  })
+
+  it('トーストは画面幅いっぱいまで使う（left:50%起点で195pxしか使えていなかった）', () => {
+    const src = readFileSync('src/app/ui.ts', 'utf8')
+    expect(src).toContain('width:max-content;max-width:calc(100vw - 24px)')
+  })
+
+  it('URLバー用のCSSを画像のソース欄へ漏らさない', () => {
+    // .sb-url-field はプロパティの「ソース」欄でも使われており、高さだけ伸びて文字が上に寄る
+    expect(css).toContain('.sb-url-bar .sb-url-field{height:34px !important}')
+  })
+
+  it('キャンバスの自前スクロールバーはスマホでは出さない（指で掴めず右端のタップを奪う）', () => {
+    expect(css).toContain('[data-clone-scrollbar]{display:none !important}')
+  })
+})

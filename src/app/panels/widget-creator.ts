@@ -77,6 +77,8 @@ export function openWidgetCreator(
 
   /* ── メタ情報行 ── */
   const metaRow = document.createElement('div')
+  // スマホCSSの目印（PCでは属性が増えるだけ）
+  metaRow.dataset['widgetCreatorMeta'] = 'true'
   metaRow.style.cssText =
     'display:flex;align-items:flex-start;gap:16px;padding:20px 24px;flex-shrink:0'
 
@@ -126,6 +128,7 @@ export function openWidgetCreator(
 
   /* ── エディタ領域 ── */
   const editorArea = document.createElement('div')
+  editorArea.dataset['widgetCreatorEditor'] = 'true'
   editorArea.style.cssText =
     'flex:1;display:flex;gap:0;padding:0 24px 20px;min-height:300px'
 
