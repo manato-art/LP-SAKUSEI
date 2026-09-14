@@ -49,7 +49,8 @@ export async function renderAccountSettings(container: HTMLElement): Promise<voi
   const tabs = ['アカウント', '通知設定', 'チームメンバー', 'アクセス管理'] as const
   let activeTab: (typeof tabs)[number] = 'アカウント'
 
-  const tabBar = el('div', { style: 'display:flex;gap:0;margin-bottom:20px;border-bottom:2px solid var(--sb-c-eeeeee, #EEEEEE)' })
+  // クラスはスマホで横スクロールにするための目印（mobile-css.ts）
+  const tabBar = el('div', { class: 'sb-tabbar', style: 'display:flex;gap:0;margin-bottom:20px;border-bottom:2px solid var(--sb-c-eeeeee, #EEEEEE)' })
   const contentArea = el('div', {
     style: `background:${T.surface};border-radius:10px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,.06)`,
   })

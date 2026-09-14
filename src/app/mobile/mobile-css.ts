@@ -130,6 +130,27 @@ export function mobileCss(): string {
     `html body .css-ojejk4{width:100% !important;min-width:0 !important}`,
     `html body .css-ojejk4>.MuiCard-root{flex:0 0 100% !important;max-width:100% !important}`,
 
+    // ── 画面ごとの作り直し（全画面を実測して見つけたもの・2026-09-14）──
+    // 設定のタブ（アカウント/通知設定/チームメンバー/アクセス管理）は横に長く、
+    // 「アクセス管理」が画面の外（370〜493px）に出ていた
+    `html body .sb-tabbar{overflow-x:auto !important;scrollbar-width:none}`,
+    `html body .sb-tabbar::-webkit-scrollbar{display:none}`,
+    `html body .sb-tabbar>*{flex:0 0 auto}`,
+    // レポート除外の絞り込みは、項目が枠（304px）より広い362pxで画面外へ出ていた
+    `html body .rx-form{flex-direction:column !important;align-items:stretch !important}`,
+    `html body .rx-field{width:auto !important;min-width:0 !important}`,
+    `html body .rx-field select,html body .rx-field input{width:100% !important;min-width:0 !important}`,
+    `html body .rx-btn{width:100%}`,
+    // 広告媒体連携は、媒体名に line-height:100px（PCの100px行の中央に置く作り）が
+    // 効いていて、名前の枠が100pxに広がり「連携数」と重なっていた
+    `html body [class*="_mediaName_"],html body [class*="_mediaName_"] *,`,
+    `html body [class*="_connectionCount_"]{line-height:1.5 !important;height:auto !important;`,
+    `min-height:0 !important}`,
+    // 中間ページは「左に一覧／右に設定」の横並び。右が画面の外（190〜679px）だった
+    `html body [class*="_redirectPagesWrapper_"]{flex-direction:column !important}`,
+    `html body [class*="_redirectPagesWrapper_"]>*{width:auto !important;max-width:100% !important;`,
+    `min-width:0 !important}`,
+
     // ── レポート画面 ──
     // 「レポート / 広告データ取得日時 / ヒートマップ」の帯は横1列に収まりきらず、
     // 縮められた枠から文字がはみ出して重なっていた。縮めずに横スクロールさせる

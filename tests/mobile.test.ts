@@ -366,3 +366,45 @@ describe('スマホのLPエディタ', () => {
     }
   })
 })
+
+/**
+ * 2026-09-14。本人指示「いろんなページをしっかり見て、他にもそういった箇所がないか
+ * 確かめてください。何か画角的におかしいところとか」を受けて、390×844 で全16画面を
+ * 実測（画面の外に出た文字／重なった文字を数える）して見つかったもの。
+ */
+describe('全画面を実測して見つかったはみ出し・重なり', () => {
+  const css = mobileCss()
+
+  it('設定のタブは横スクロールできる（「アクセス管理」が画面の外に出ていた）', () => {
+    // 4つのタブで493pxあり、390pxの画面に収まらない。縮めると文字が潰れるので流す
+    expect(readFileSync('src/app/pages/account-settings.ts', 'utf8')).toContain("class: 'sb-tabbar'")
+    expect(css).toContain('.sb-tabbar{overflow-x:auto !important')
+    expect(css).toContain('.sb-tabbar>*{flex:0 0 auto}')
+  })
+
+  it('レポート除外の絞り込みは縦に積む（横並びだと枠から出る）', () => {
+    expect(css).toContain('.rx-form{flex-direction:column !important')
+    // 枠(304px)より広い362pxのままだったのは、幅指定と min-width の両方が要るため
+    expect(css).toContain('.rx-field{width:auto !important;min-width:0 !important}')
+    expect(css).toContain('html body .rx-field input{width:100% !important;min-width:0 !important}')
+  })
+
+  it('広告媒体連携の媒体名は行の高さを普通に戻す（PC用の100px行が「連携数」と重なる）', () => {
+    // 採取CSSの line-height:100px は「100pxの行の真ん中に名前を置く」PCの作り
+    expect(css).toContain('[class*="_mediaName_"]')
+    expect(css).toContain('[class*="_connectionCount_"]{line-height:1.5 !important')
+  })
+
+  it('中間ページの「左に一覧・右に設定」は縦に積む（右が画面の外にあった）', () => {
+    expect(css).toContain('[class*="_redirectPagesWrapper_"]{flex-direction:column !important}')
+    expect(css).toContain('[class*="_redirectPagesWrapper_"]>*{width:auto !important;max-width:100% !important;')
+  })
+
+  it('横並びを縦に積むときは min-width:0 を必ず添える（flexの子は既定で縮まない）', () => {
+    // min-width の既定は auto = 中身より小さくならない。width:100% だけでは画面を突き破る
+    for (const selector of ['.rx-field', '[class*="_redirectPagesWrapper_"]>*']) {
+      const rule = css.slice(css.indexOf(selector))
+      expect(rule.slice(0, rule.indexOf('}')), selector).toContain('min-width:0')
+    }
+  })
+})
