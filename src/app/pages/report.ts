@@ -19,6 +19,7 @@ import {
   wireBackLink,
   wireCapturedLinks,
   wireThemeToggle,
+  wireCapturedDropdowns,
 } from './report-dom.ts'
 import { recordHistory } from './folders-history.ts'
 import { defaultRange, toRangeQuery, type DateRange } from './report-period.ts'
@@ -80,6 +81,8 @@ export async function renderReport(
   setupBreadcrumb(root, folderName, ab_test.title, folder?.uid)
   applyLightTheme(root)
   wireThemeToggle(root)
+  // 「広告データ取得日時」「パラメーター設定」の小さな面を押して開けるようにする
+  wireCapturedDropdowns(root)
 
   const alert = root.querySelector<HTMLElement>('.MuiAlert-message')
   if (alert !== null) replaceBakedPageName(alert, ab_test.title)

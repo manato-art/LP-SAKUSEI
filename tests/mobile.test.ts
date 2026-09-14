@@ -914,3 +914,16 @@ describe('スマホのLP設定（詰め方と色の選び方）', () => {
     expect(body).toContain('border-radius')
   })
 })
+
+describe('スマホのレポートの小さな面（広告データ取得日時・パラメーター設定）', () => {
+  const css = mobileCss()
+
+  it('画面の中に出す（押した場所の右下だと x=358〜508 で画面の外）', () => {
+    expect(css).toContain('[data-clone-dropdown="true"] [class*="_bodyWrapper_x4j8w"]{position:fixed !important;')
+    expect(css).toContain('left:8px !important;right:8px !important')
+  })
+
+  it('離した位置に出すので吹き出しの矢印は消す', () => {
+    expect(css).toContain('[data-clone-dropdown="true"] [class*="_arrow_x4j8w"]{display:none !important}')
+  })
+})

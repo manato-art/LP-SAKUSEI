@@ -5,6 +5,7 @@
  * ここは「土台を差し込む」「リンクをクローンのルートに向ける」「テーマを切り替える」だけ。
  * CSSは書き足さない（採取済みの `capture/clean/<slug>/<state>/cssom.css` を読み込むだけ）。
  */
+import { PANEL_BODY_CLASS, PANEL_OPEN_CLASS } from '../panels/panel-group.ts'
 import { T, el } from '../ui.ts'
 import { overrideDarkBackgrounds } from '../white-base.ts'
 import { extractCapturedAbTestUid, stripShellFromFragment, toHashHref } from './report-substrate.ts'
@@ -165,4 +166,61 @@ export function cloneNote(message: string): HTMLElement {
     style: `font-family:${T.font};font-size:11px;line-height:1.8;color:${T.sub};
       padding:6px 12px;border-left:2px solid ${T.sub};margin:0`,
   })
+}
+
+/* ================================================================
+ *  採取ドロップダウン（「広告データ取得日時」「パラメーター設定」の歯車）
+ * ================================================================ */
+
+/** 採取物の目印。中身は `_bodyWrapper_x4j8w_8`、開いた合図は `_open_x4j8w_84`（panel-group と共用） */
+const DROPDOWN_SELECTOR = '[class*="_dropdown_x4j8w_"]'
+const DROPDOWN_TRIGGER = '[class*="_trigger_x4j8w_"]'
+const WIRED_MARK = 'cloneDropdown'
+
+let outsideCloseWired = false
+
+/** 外を押したら開いているものを閉じる（1回だけ仕込む） */
+function wireOutsideClose(): void {
+  if (outsideCloseWired) return
+  outsideCloseWired = true
+  document.addEventListener('click', () => {
+    for (const body of document.querySelectorAll<HTMLElement>(
+      `[data-clone-dropdown="true"] .${PANEL_BODY_CLASS}`,
+    )) {
+      body.classList.remove(PANEL_OPEN_CLASS)
+    }
+  })
+}
+
+/**
+ * 採取した小さな面（ドロップダウン）を押して開けるようにする（2026-09-15・本人指摘「設定部分が触れない」）。
+ *
+ * レポート／ヒートマップの「広告データ取得日時」と歯車（パラメーター設定）は、
+ * 採取物では `_dropdown_x4j8w_1` ＝ トリガー＋中身 の形で、**中身まで採れている**。
+ * クローンは中身を置いたまま配線していなかったので、押しても何も起きなかった。
+ *
+ * 開閉は採取CSSのクラス（`_open_x4j8w_84`）をそのまま使う＝見た目は手書きしない。
+ * 実物はホバーでも開くが、スマホにホバーは無いので「押して開閉」に寄せる。
+ */
+export function wireCapturedDropdowns(root: HTMLElement): void {
+  for (const dropdown of root.querySelectorAll<HTMLElement>(DROPDOWN_SELECTOR)) {
+    if (dropdown.dataset[WIRED_MARK] === 'true') continue
+    const trigger = dropdown.querySelector<HTMLElement>(DROPDOWN_TRIGGER)
+    const body = dropdown.querySelector<HTMLElement>(`.${PANEL_BODY_CLASS}`)
+    if (trigger === null || body === null) continue
+    dropdown.dataset[WIRED_MARK] = 'true'
+    trigger.style.cursor = 'pointer'
+    trigger.addEventListener('click', (event) => {
+      // 外側を閉じる listener に拾わせない
+      event.stopPropagation()
+      const willOpen = !body.classList.contains(PANEL_OPEN_CLASS)
+      for (const other of document.querySelectorAll<HTMLElement>(
+        `[data-clone-dropdown="true"] .${PANEL_BODY_CLASS}`,
+      )) {
+        other.classList.remove(PANEL_OPEN_CLASS)
+      }
+      body.classList.toggle(PANEL_OPEN_CLASS, willOpen)
+    })
+  }
+  wireOutsideClose()
 }

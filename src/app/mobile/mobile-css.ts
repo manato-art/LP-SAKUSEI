@@ -251,6 +251,15 @@ export function mobileCss(): string {
     // 入れ物を `position:fixed;top:120px;right:90px`（PCの右レール前提）で置いているので、
     // 390pxでは280pxのパネルが x=-18〜270 に出て左が画面の外で切れていた。
     // スマホでは幅いっぱいにして、下のツール列の上へ出す。
+    // レポート／ヒートマップの小さな面（広告データ取得日時・パラメーター設定）は
+    // 押した場所の右下に出る作りで、390pxでは画面の外（x=358〜508）へ出る。下から出す形にそろえる
+    `html body [data-clone-dropdown="true"] [class*="_bodyWrapper_x4j8w"]{position:fixed !important;`,
+    `left:8px !important;right:8px !important;top:auto !important;`,
+    `bottom:calc(56px + env(safe-area-inset-bottom,0px)) !important;width:auto !important;`,
+    `max-width:none !important;max-height:60vh;overflow:auto;z-index:9500}`,
+    // 吹き出しの矢印はトリガーを指すためのもの。離した位置に出すので消す
+    `html body [data-clone-dropdown="true"] [class*="_arrow_x4j8w"]{display:none !important}`,
+
     `html body [data-clone-panel-host]{position:fixed !important;left:8px !important;`,
     `right:8px !important;top:auto !important;width:auto !important;`,
     `bottom:calc(56px + env(safe-area-inset-bottom,0px)) !important}`,

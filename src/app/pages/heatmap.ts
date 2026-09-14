@@ -18,6 +18,7 @@ import {
   wireBackLink,
   wireCapturedLinks,
   wireThemeToggle,
+  wireCapturedDropdowns,
 } from './report-dom.ts'
 import { defaultRange, toRangeQuery, type DateRange } from './report-period.ts'
 import { sortVersions, type HeatmapSortKey } from './heatmap-sort.ts'
@@ -57,6 +58,8 @@ export async function renderHeatmap(
   setupBreadcrumb(root, folder?.name ?? '', ab_test.title, folder?.uid)
   applyLightTheme(root)
   wireThemeToggle(root)
+  // 「広告データ取得日時」「パラメーター設定」の小さな面を押して開けるようにする
+  wireCapturedDropdowns(root)
 
   // 実物は「Version × 指標(離脱/CLICK/CV)」でチェックした数だけ右に列が増える。
   // 選択状態をここで持ち、変わるたびに列を組み直す。

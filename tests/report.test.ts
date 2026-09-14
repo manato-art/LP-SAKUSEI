@@ -419,3 +419,40 @@ describe('モックAPI: レポート応答に日付別の行がある', () => {
     expect(res.status).toBe(404)
   })
 })
+
+/**
+ * 2026-09-15。本人指摘「設定部分が触れない」。
+ *
+ * レポート画面の「広告データ取得日時」と歯車（パラメーター設定）は、採取物では
+ * `_dropdown_x4j8w_1`（トリガー＋`_bodyWrapper_x4j8w_8`）の形をしていて、
+ * 押すと中身が開く部品。クローンは中身を置いたまま配線していなかったので無反応だった。
+ */
+describe('レポート画面の採取ドロップダウン', () => {
+  const dom = readFileSync('src/app/fragments/ab_tests__UID__reports__default.html', 'utf8')
+  const reportDom = readFileSync('src/app/pages/report-dom.ts', 'utf8')
+
+  it('採取物に「広告データ取得日時」の中身がある（推測で作らない）', () => {
+    expect(dom).toContain('広告データ取得日時')
+    expect(dom).toContain('beyondページ 広告データ取得日時')
+    expect(dom).toContain('※ 配信金額、クリエイティブ画像/テキストを取得しています')
+  })
+
+  it('歯車は「パラメーター設定」のトリガー', () => {
+    expect(dom).toContain('パラメーター設定')
+    expect(dom).toContain('_triggerDescription_wn8sv_8')
+  })
+
+  it('採取ドロップダウンを開閉する配線がある', () => {
+    expect(reportDom).toContain('export function wireCapturedDropdowns')
+    // 開閉は採取CSSのクラスをそのまま使う（手書きしない）
+    expect(reportDom).toContain('PANEL_OPEN_CLASS')
+    // 採取物のクラス名を目印にする（ハッシュ付きなので前方一致で掴む）
+    expect(reportDom).toContain('_trigger_x4j8w_')
+  })
+
+  it('レポートとヒートマップの両方で配線する', () => {
+    for (const file of ['src/app/pages/report.ts', 'src/app/pages/heatmap.ts']) {
+      expect(readFileSync(file, 'utf8'), file).toContain('wireCapturedDropdowns')
+    }
+  })
+})
