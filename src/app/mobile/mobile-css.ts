@@ -8,7 +8,7 @@
  *   - タップは44px、入力の文字は16px（iOSが勝手に拡大するのを防ぐ）
  *   - ホームバーのぶんの余白（safe-area）を空ける
  */
-import { PROPS_OPEN_CLASS, VERSIONS_OPEN_CLASS } from './editor-mobile.ts'
+import { PROPS_OPEN_CLASS, VERSIONS_OPEN_CLASS } from './sheet-classes.ts'
 import { MOBILE_MAX_WIDTH } from './viewport.ts'
 
 const STYLE_ID = 'sb-mobile-css'
@@ -83,6 +83,8 @@ export function mobileCss(): string {
     `html body #sb-m-props-btn{bottom:calc(66px + env(safe-area-inset-bottom,0px))}`,
     `html body.${VERSIONS_OPEN_CLASS} #sb-m-props-btn,`,
     `html body.${PROPS_OPEN_CLASS} #sb-m-props-btn{display:none !important}`,
+    // 「この段落を選ぶ」「全部を選ぶ」（プロパティを開いている間だけ・シートの上）
+    `html body.${PROPS_OPEN_CLASS} #sb-m-range-bar{display:flex !important;bottom:calc(60vh + 8px)}`,
     // 開いているシートを閉じる「×」（シートの少し上に出す）
     `html body.${VERSIONS_OPEN_CLASS} #sb-m-sheet-close,`,
     `html body.${PROPS_OPEN_CLASS} #sb-m-sheet-close{display:flex !important;bottom:calc(60vh + 8px)}`,

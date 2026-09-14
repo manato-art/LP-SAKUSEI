@@ -220,3 +220,70 @@ describe('スマホのページ画面', () => {
     expect(src).not.toContain('PCで')
   })
 })
+
+/**
+ * スマホのLPエディタ（2026-09-13 / 14・本人の実機での指摘を受けた形）。
+ *
+ * 画面の組み替えはCSSが持つので、ここは「どう操作して開くか」を配線側のコードで押さえる。
+ */
+describe('スマホのLPエディタ', () => {
+  const src = readFileSync('src/app/mobile/editor-mobile.ts', 'utf8')
+  const css = mobileCss()
+
+  it('上にVersion・プロパティの2ボタンを置かない（タブと重複していた）', () => {
+    expect(src).not.toContain("text: 'プロパティ'")
+    expect(src).not.toContain("text: 'Version'")
+  })
+
+  it('文字を選ぶとプロパティが自動で開く', () => {
+    expect(src).toContain('selectionchange')
+    expect(src).toContain('PROPS_OPEN_CLASS')
+  })
+
+  it('カーソルだけに戻しても勝手に閉じない（書式を変える前に消えてしまう）', () => {
+    expect(src).not.toContain('else if (document.body.classList.contains(PROPS_OPEN_CLASS)) openOnly(null)')
+  })
+
+  it('選択していなくても、丸ボタンからプロパティを開ける', () => {
+    // スマホはタップするとカーソルが立つだけで「選択」にならない
+    expect(src).toContain('sb-m-props-btn')
+    expect(css).toContain('#sb-m-props-btn')
+  })
+
+  it('ボタンを押しても本文の選択を外さない', () => {
+    expect(src).toContain("'mousedown', 'pointerdown', 'touchstart'")
+    expect(src).toContain('event.preventDefault()')
+  })
+
+  it('Version一覧は、今いる「Version」タブをもう一度押すと開く', () => {
+    expect(src).toContain("'.topnav-tab'")
+    expect(src).toContain('VERSIONS_OPEN_CLASS')
+  })
+
+  it('開いているシートを閉じる「×」がある', () => {
+    expect(src).toContain('sb-m-sheet-close')
+    expect(css).toContain('#sb-m-sheet-close')
+  })
+
+  it('単語だけしか選べないときのために、段落／全部へ広げられる', () => {
+    // ダブルタップは単語だけを選ぶ。端末によっては文章全体へ伸ばせない
+    expect(src).toContain('この段落を選ぶ')
+    expect(src).toContain('全部を選ぶ')
+    expect(src).toContain('getLine')
+    expect(src).toContain('setSelection')
+    expect(css).toContain('#sb-m-range-bar')
+  })
+
+  it('段落を選ぶときは行末の改行を含めない（書式が次の行へにじむ）', () => {
+    expect(src).toContain('line.length() > 1 ? line.length() - 1 : line.length()')
+  })
+
+  it('シートの合図はCSSと配線で同じものを使う（ずれると開かない）', () => {
+    const shared = readFileSync('src/app/mobile/sheet-classes.ts', 'utf8')
+    expect(shared).toContain('sb-m-versions-open')
+    expect(shared).toContain('sb-m-props-open')
+    for (const file of ['src/app/mobile/editor-mobile.ts', 'src/app/mobile/mobile-css.ts']) {
+      expect(readFileSync(file, 'utf8'), file).toContain("from './sheet-classes.ts'")
+    }
+  })
+})
