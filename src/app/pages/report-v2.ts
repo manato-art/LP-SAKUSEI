@@ -114,7 +114,10 @@ function buildFilters(deps: FilterDeps): HTMLElement {
 /** Version別の実績をCSVにして落とす */
 function downloadCsv(report: ReportResponse, title: string, range: DateRange): void {
   // 画面の表と同じ指標を落とす（CTVR・MCPAはモックに値があるのに抜けていた）
-  const header = ['名前', '配信金額', 'PV', 'CLICK', 'CTR', 'CV', 'CVR', 'CTVR', 'CPA', 'MCPA']
+  const header = [
+    '名前', '配信金額', 'PV', 'CLICK', 'CTR', 'CV', 'CVR', 'CTVR', 'CPA', 'MCPA',
+    'FVER', 'SVER', 'FSVER', 'OAR',
+  ]
   const lines = [header.join(',')]
   for (const r of report.rows) {
     lines.push(
@@ -129,6 +132,10 @@ function downloadCsv(report: ReportResponse, title: string, range: DateRange): v
         r.ctvr === null ? '' : (r.ctvr * 100).toFixed(2),
         r.cpa ?? '',
         r.mcpa ?? '',
+        r.fver === null ? '' : (r.fver * 100).toFixed(2),
+        r.sver === null ? '' : (r.sver * 100).toFixed(2),
+        r.fsver === null ? '' : (r.fsver * 100).toFixed(2),
+        r.oar === null ? '' : (r.oar * 100).toFixed(2),
       ].join(','),
     )
   }

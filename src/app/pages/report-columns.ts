@@ -5,9 +5,10 @@
  * 数値は `mock-server/store/metrics.ts` のKPI恒等式（企画書 §10-5）に従って出す。
  *
  * 【重要な食い違い】採取した表は13指標あるが、§10-5 の恒等式は
- * `CTR` `CTVR` `MCPA` `FVER` `SVER` `FSVER` `OAR` を**1つも定義していない**。
- * SquadBeyond独自指標で計算式が未確認のため、**ここでは定義を発明せず** `metric: null`
- * とし、常に「-」を表示する。定義が判明したら metrics.ts 側に恒等式を足して結線する。
+ * 2026-09-15: 実物を見て全13指標を出せるようにした。
+ *   CTR / CTVR / MCPA … 採取した列見出しの `aria-label` に計算式が書かれていた
+ *   FVER / SVER / FSVER / OAR … 計測タグが送るスクロールの記録から算出
+ *     （母数は「記録が届いた表示数」。記録が無ければ null ＝「-」）
  */
 import type { ReportKpi } from '../api.ts'
 
@@ -30,6 +31,10 @@ export type KpiKey =
   | 'media_ctr'
   | 'mcpa'
   | 'roas'
+  | 'fver'
+  | 'sver'
+  | 'fsver'
+  | 'oar'
 
 export interface ReportColumn {
   /** 採取ヘッダの表記（改名しない） */
@@ -58,10 +63,10 @@ export const REPORT_COLUMNS: readonly ReportColumn[] = [
   { label: 'CTVR', unit: '%', metric: 'ctvr', format: 'percent' },
   { label: 'CPA', unit: '円', metric: 'cpa', format: 'yen' },
   { label: 'MCPA', unit: '円', metric: 'mcpa', format: 'yen' },
-  { label: 'FVER', unit: '%', metric: null, format: 'percent' },
-  { label: 'SVER', unit: '%', metric: null, format: 'percent' },
-  { label: 'FSVER', unit: '%', metric: null, format: 'percent' },
-  { label: 'OAR', unit: '%', metric: null, format: 'percent' },
+  { label: 'FVER', unit: '%', metric: 'fver', format: 'percent' },
+  { label: 'SVER', unit: '%', metric: 'sver', format: 'percent' },
+  { label: 'FSVER', unit: '%', metric: 'fsver', format: 'percent' },
+  { label: 'OAR', unit: '%', metric: 'oar', format: 'percent' },
 ]
 
 /**
@@ -106,6 +111,14 @@ function readMetric(kpi: ReportKpi, key: KpiKey): number | null {
       return kpi.mcpa
     case 'roas':
       return kpi.roas
+    case 'fver':
+      return kpi.fver
+    case 'sver':
+      return kpi.sver
+    case 'fsver':
+      return kpi.fsver
+    case 'oar':
+      return kpi.oar
   }
 }
 

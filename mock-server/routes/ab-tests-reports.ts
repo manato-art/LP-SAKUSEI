@@ -5,7 +5,7 @@
  */
 import { Router } from 'express'
 import { getState } from '../store/store.ts'
-import { aggregate, deriveKpi, isWithin } from '../store/metrics.ts'
+import { deriveKpi, isWithin, sumPrimary } from '../store/metrics.ts'
 import { dailyKpiSeries } from '../store/report-aggregate.ts'
 import { errorEnvelope } from '../lib/envelope.ts'
 import { dateRangeParams } from '../lib/query.ts'
@@ -14,6 +14,78 @@ import { applyEmptyState } from '../lib/mock-state.ts'
 import { findAbTest, notFound } from './ab-tests-shared.ts'
 
 export const abTestsReportsRouter: Router = Router()
+
+/**
+ * スクロールの記録（ヒートマップ）から FVER / SVER / FSVER / OAR の一次値を出す（2026-09-15）。
+ *
+ *   fv_bands … 画面1枚ぶんが何バンドか（計測タグが送る）
+ *   fv_exit  … 先頭から fv_bands 個ぶんのバンドで離脱した数
+ *   sv_exit  … その次の fv_bands 個ぶんで離脱した数
+ *   offer_reach … 最初の計測リンクがあるバンドまで到達した数
+ *
+ * 記録がまだ無ければ 0 件のまま返す（deriveKpi 側で「-」になる）。
+ */
+function scrollCounts(
+  state: ReturnType<typeof getState>,
+  versionUid: string,
+  startDate: string,
+  endDate: string,
+): { hm_pv: number; fv_exit: number; sv_exit: number; offer_reach?: number } {
+  const stats = state.heatmapStats.filter(
+    (h) => h.version_uid === versionUid && isWithin(h.date, startDate, endDate),
+  )
+  let hmPv = 0
+  let fvExit = 0
+  let svExit = 0
+  let offerReach = 0
+  let hasOffer = false
+  for (const stat of stats) {
+    hmPv += stat.pv
+    const fv = stat.fv_bands ?? 0
+    if (fv > 0) {
+      for (let i = 0; i < fv && i < stat.exit.length; i += 1) fvExit += stat.exit[i] ?? 0
+      for (let i = fv; i < fv * 2 && i < stat.exit.length; i += 1) svExit += stat.exit[i] ?? 0
+    }
+    const offer = stat.offer_band
+    if (offer !== undefined) {
+      hasOffer = true
+      offerReach += stat.reach[offer] ?? 0
+    }
+  }
+  return hasOffer
+    ? { hm_pv: hmPv, fv_exit: fvExit, sv_exit: svExit, offer_reach: offerReach }
+    : { hm_pv: hmPv, fv_exit: fvExit, sv_exit: svExit }
+}
+
+/** beyondページ全体（全Version）のスクロール記録を足す */
+function scrollCountsForAbTest(
+  state: ReturnType<typeof getState>,
+  abTestUid: string,
+  startDate: string,
+  endDate: string,
+): { hm_pv: number; fv_exit: number; sv_exit: number; offer_reach?: number } {
+  const versionUids = new Set(
+    state.heatmapStats.filter((h) => h.ab_test_uid === abTestUid).map((h) => h.version_uid),
+  )
+  let hmPv = 0
+  let fvExit = 0
+  let svExit = 0
+  let offerReach = 0
+  let hasOffer = false
+  for (const uid of versionUids) {
+    const part = scrollCounts(state, uid, startDate, endDate)
+    hmPv += part.hm_pv
+    fvExit += part.fv_exit
+    svExit += part.sv_exit
+    if (part.offer_reach !== undefined) {
+      hasOffer = true
+      offerReach += part.offer_reach
+    }
+  }
+  return hasOffer
+    ? { hm_pv: hmPv, fv_exit: fvExit, sv_exit: svExit, offer_reach: offerReach }
+    : { hm_pv: hmPv, fv_exit: fvExit, sv_exit: svExit }
+}
 
 // ── レポート系（§10-3・派生KPIは §10-5 恒等式）──
 function reportRows(uid: string, scope: 'version' | 'lp' | 'creative', query: unknown) {
@@ -36,13 +108,22 @@ function reportRows(uid: string, scope: 'version' | 'lp' | 'creative', query: un
       // ヒートマップ／レポートの「アーカイブ」絞り込みに要る（2026-09-15）。
       // 値は元から持っていて、レスポンスに載せていなかっただけ。
       archived: version.archived,
-      ...(metrics.length === 0 ? deriveKpi({ pv: 0, click: 0, cv: 0, ad_cost: 0 }) : aggregate(metrics)),
+      ...(metrics.length === 0
+        ? deriveKpi({ pv: 0, click: 0, cv: 0, ad_cost: 0, ...scrollCounts(state, version.uid, startDate, endDate) })
+        : deriveKpi({
+            ...sumPrimary(metrics),
+            ...scrollCounts(state, version.uid, startDate, endDate),
+          })),
     }
   })
   const abTestMetrics = state.metrics.filter((m) => m.entity_uid === abTest.uid)
   return {
     rows,
-    totals: aggregate(abTestMetrics.filter((m) => isWithin(m.date, startDate, endDate))),
+    // 合計もスクロールの記録を含めて出す（このbeyondページの全Versionぶん）
+    totals: deriveKpi({
+      ...sumPrimary(abTestMetrics.filter((m) => isWithin(m.date, startDate, endDate))),
+      ...scrollCountsForAbTest(state, abTest.uid, startDate, endDate),
+    }),
     /** レポートタブ「デイリーレポート」表の日付別の行（§10-5・両端含む） */
     daily: dailyKpiSeries(abTestMetrics, startDate, endDate),
     period: { start_date: startDate, end_date: endDate },

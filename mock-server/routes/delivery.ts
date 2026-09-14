@@ -606,6 +606,10 @@ deliveryRouter.post('/lp/:uid/__track', (req, res) => {
       reach?: unknown
       dwell?: unknown
       exit_band?: unknown
+      /** 画面1枚ぶんが何バンドか（ファーストビューの範囲） */
+      fv?: unknown
+      /** 最初の計測リンクが何バンド目か */
+      offer?: unknown
       clicks?: unknown
     }
     const bands = typeof hb.bands === 'number' && hb.bands > 0 && hb.bands <= 100 ? hb.bands : 20
@@ -622,6 +626,13 @@ deliveryRouter.post('/lp/:uid/__track', (req, res) => {
       typeof hb.exit_band === 'number' && hb.exit_band >= 0 && hb.exit_band < bands
         ? Math.floor(hb.exit_band)
         : 0
+    // ファーストビューの幅と、最初の計測リンクの位置（2026-09-15・FVER/SVER/FSVER/OAR の材料）
+    const fvBands =
+      typeof hb.fv === 'number' && hb.fv >= 1 && hb.fv <= bands ? Math.floor(hb.fv) : undefined
+    const offerBand =
+      typeof hb.offer === 'number' && hb.offer >= 0 && hb.offer < bands
+        ? Math.floor(hb.offer)
+        : undefined
     const clicks = (Array.isArray(hb.clicks) ? hb.clicks : [])
       .slice(0, 300)
       .map((c) => c as { x?: unknown; y?: unknown })
@@ -656,6 +667,9 @@ deliveryRouter.post('/lp/:uid/__track', (req, res) => {
       const merged = {
         ...base,
         pv: base.pv + 1,
+        // ページの作りで決まる値。届いたら最後のもので上書きする
+        fv_bands: fvBands ?? base.fv_bands,
+        offer_band: offerBand ?? base.offer_band,
         reach: base.reach.map((v, i) => v + (reach[i] ?? 0)),
         exit: base.exit.map((v, i) => v + (i === exitBand ? 1 : 0)),
         dwell_ms: base.dwell_ms.map((v, i) => v + (dwell[i] ?? 0)),

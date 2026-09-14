@@ -91,16 +91,16 @@ describe('デイリーレポートの列は採取した実ヘッダと一致す�
     expect(DAILY_LABEL_COLUMN).toBe('合計')
   })
 
-  it('一次値が無い4指標だけが formula を持たない', () => {
-    // 2026-09-15: CTR / CTVR / MCPA は採取物の列見出し（aria-label）に式が書かれていたので結線した。
-    // 残る4本は「ファーストビュー離脱」などの一次値がモックに無く、まだ出せない。
-    expect(UNDEFINED_METRIC_LABELS).toEqual(['FVER', 'SVER', 'FSVER', 'OAR'])
+  it('13指標すべてに計算式がある（式が無い列はもう無い）', () => {
+    // 2026-09-15: CTR/CTVR/MCPA は採取物の aria-label の式どおりに、
+    // FVER/SVER/FSVER/OAR は計測タグのスクロール記録から出せるようにした。
+    expect(UNDEFINED_METRIC_LABELS).toEqual([])
     for (const label of UNDEFINED_METRIC_LABELS) {
       expect(REPORT_COLUMNS.find((c) => c.label === label)?.metric).toBeNull()
     }
   })
 
-  it('metrics.ts が定義する9指標が DerivedKpi のキーに割り当たっている', () => {
+  it('13指標が DerivedKpi のキーに割り当たっている', () => {
     expect(
       REPORT_COLUMNS.filter((c) => c.metric !== null).map((c) => `${c.label}=${c.metric as string}`),
     ).toEqual([
@@ -113,6 +113,10 @@ describe('デイリーレポートの列は採取した実ヘッダと一致す�
       'CTVR=ctvr',
       'CPA=cpa',
       'MCPA=mcpa',
+      'FVER=fver',
+      'SVER=sver',
+      'FSVER=fsver',
+      'OAR=oar',
     ])
   })
 })
@@ -548,5 +552,26 @@ describe('ヒートマップの配線（採取物と突き合わせ）', () => {
     )
     expect(css).toContain('_checked_1vzzn_155')
     expect(src).toContain('_checked_')
+  })
+})
+
+/**
+ * 2026-09-15。FVER / SVER / FSVER / OAR を実測から出すために、計測タグが送る情報を足した。
+ */
+describe('計測タグが送るスクロールの記録', () => {
+  const tag = readFileSync('src/shared/tracking-tag.ts', 'utf8')
+
+  it('「画面1枚ぶんが何バンドか」を送る（ファーストビューの範囲を決める材料）', () => {
+    expect(tag).toContain('fv:')
+  })
+
+  it('「最初の計測リンクが何バンド目か」を送る（オファー到達率の材料）', () => {
+    expect(tag).toContain('offer:')
+    // 計測リンク＝sb_tracking=true が付いたリンク（クリック計測と同じ判定）
+    expect(tag).toContain('sb_tracking=true')
+  })
+
+  it('離脱したバンドも送り続ける（今の集計を壊さない）', () => {
+    expect(tag).toContain('exit_band:')
   })
 })

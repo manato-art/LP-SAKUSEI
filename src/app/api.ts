@@ -127,6 +127,14 @@ export interface ReportKpi {
   media_ctr: number | null
   /** ad_cost / media_cv */
   mcpa: number | null
+  /** ファーストビュー離脱率（実測のスクロール記録から。記録が無ければ null） */
+  fver: number | null
+  /** セカンドビュー離脱率 */
+  sver: number | null
+  /** ファーストビュー＆セカンドビュー離脱率 */
+  fsver: number | null
+  /** オファー到達率（最初の計測リンクまで到達した率） */
+  oar: number | null
 }
 
 export interface ReportVersionRow extends ReportKpi {

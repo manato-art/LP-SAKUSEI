@@ -78,3 +78,53 @@ describe('MCPA の分母（2026-09-15・採取物の記述に合わせた）', (
     expect(deriveKpi({ pv: 10, click: 5, cv: 0, ad_cost: 5000 }).mcpa).toBe(1000)
   })
 })
+
+/**
+ * 2026-09-15。本人指示「実際にSBの画面を見て何が足りないのかを採取して実装する」。
+ *
+ * 実物のレポートには FVER / SVER / FSVER / OAR の4指標がある（採取した列見出しの
+ * aria-label: 「ファーストビュー離脱」「セカンドビュー離脱」
+ * 「ファーストビュー&セカンドビュー離脱」「オファー到達率 ※最初の広告リンクに到達した率」）。
+ *
+ * 数字は**計測タグが実際に送っているスクロールの記録**から出す:
+ *   hm_pv       … ヒートマップを送ってきた表示数（この4指標の母数）
+ *   fv_exit     … 最初の画面（ファーストビュー）の中で離脱した数
+ *   sv_exit     … 2画面目の中で離脱した数
+ *   offer_reach … 最初の計測リンクの位置まで到達した数
+ */
+describe('ファーストビュー離脱まわりの4指標', () => {
+  it('母数はヒートマップの表示数（スクロールを記録できた表示だけ）', () => {
+    const kpi = deriveKpi({
+      pv: 200,
+      click: 10,
+      cv: 1,
+      ad_cost: 0,
+      hm_pv: 100,
+      fv_exit: 30,
+      sv_exit: 20,
+      offer_reach: 40,
+    })
+    expect(kpi.fver).toBeCloseTo(0.3)
+    expect(kpi.sver).toBeCloseTo(0.2)
+    expect(kpi.oar).toBeCloseTo(0.4)
+  })
+
+  it('FSVER は「ファーストビュー＋セカンドビュー」の離脱', () => {
+    const kpi = deriveKpi({ pv: 0, click: 0, cv: 0, ad_cost: 0, hm_pv: 100, fv_exit: 30, sv_exit: 20 })
+    expect(kpi.fsver).toBeCloseTo(0.5)
+  })
+
+  it('スクロールの記録がまだ無ければ「-」（0を出して誤解させない）', () => {
+    const kpi = deriveKpi({ pv: 500, click: 10, cv: 1, ad_cost: 0 })
+    expect(kpi.fver).toBeNull()
+    expect(kpi.sver).toBeNull()
+    expect(kpi.fsver).toBeNull()
+    expect(kpi.oar).toBeNull()
+  })
+
+  it('最初の計測リンクが無いLPでは OAR だけ「-」', () => {
+    const kpi = deriveKpi({ pv: 100, click: 0, cv: 0, ad_cost: 0, hm_pv: 50, fv_exit: 10, sv_exit: 5 })
+    expect(kpi.oar).toBeNull()
+    expect(kpi.fver).toBeCloseTo(0.2)
+  })
+})

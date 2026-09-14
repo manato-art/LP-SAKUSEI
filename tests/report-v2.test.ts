@@ -142,3 +142,33 @@ describe('採取物に合わせた表示内容・絞り込み', () => {
     expect(chart).not.toContain('points.length < 2')
   })
 })
+
+describe('FVER / SVER / FSVER / OAR を画面に出す（見た目は変えない）', () => {
+  const tables = readFileSync('src/app/pages/report-v2-tables.ts', 'utf8')
+  const src = readFileSync('src/app/pages/report-v2.ts', 'utf8')
+  const api = readFileSync('src/app/api.ts', 'utf8')
+  const columns = readFileSync('src/app/pages/report-columns.ts', 'utf8')
+
+  it('APIの型に4指標がある', () => {
+    for (const key of ['fver', 'sver', 'fsver', 'oar']) {
+      expect(api, key).toContain(`${key}: number | null`)
+    }
+  })
+
+  it('13列の定義から「式が無い指標」が消える', () => {
+    expect(columns).toContain("metric: 'fver'")
+    expect(columns).toContain("metric: 'oar'")
+  })
+
+  it('表に4列を足す（列を足すだけ・配色や枠は触らない）', () => {
+    for (const label of ['FVER', 'SVER', 'FSVER', 'OAR']) {
+      expect(tables, label).toContain(`'${label}'`)
+    }
+  })
+
+  it('CSVにも4指標を含める', () => {
+    for (const label of ['FVER', 'SVER', 'FSVER', 'OAR']) {
+      expect(src, label).toContain(`'${label}'`)
+    }
+  })
+})

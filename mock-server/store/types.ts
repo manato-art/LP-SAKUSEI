@@ -654,6 +654,13 @@ export interface HeatmapStat {
   date: string
   bands: number
   pv: number
+  /**
+   * 画面1枚ぶん（ファーストビュー）が何バンドぶんか。FVER/SVER/FSVER の範囲を決める。
+   * ページの作りで決まる値なので、最後に届いたものを持つ（2026-09-15）。
+   */
+  fv_bands?: number
+  /** 最初の計測リンクが何バンド目か（OARの基準位置）。リンクが無ければ undefined。 */
+  offer_band?: number
   reach: number[]
   exit: number[]
   dwell_ms: number[]

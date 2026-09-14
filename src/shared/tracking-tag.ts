@@ -8,7 +8,9 @@
  * 収集するもの:
  *   pv      : 表示ごとに1
  *   click   : 「計測機能付きリンク」(`sb_tracking=true`)のクリック
- *   heatmap : ページを20バンドに割った 到達 / 滞在(ms) / 離脱位置 / クリック座標
+ *   heatmap : ページを20バンドに割った 到達 / 滞在(ms) / 離脱位置 / クリック座標 /
+ *             画面1枚ぶんの幅(fv) / 最初の計測リンクの位置(offer)
+ *             ＝ FVER・SVER・FSVER・OAR の材料（2026-09-15）
  *   vid     : pv / click に付ける訪問者の目印（Cookie _sb_tu、押したリンクに付いた squadbeyond_uid）。
  *             CVタグから届いた成果を、この表示・クリックのVersionに結びつける（2026-09-11）
  *             離脱時(pagehide/visibilitychange)に1回だけまとめて送る
@@ -84,10 +86,33 @@ export function buildTrackingScriptBody(endpoint: string, versionUid?: string): 
     clicks.push({x:Math.round((e.clientX/w)*1000)/1000,y:Math.round((e.pageY/h)*1000)/1000});
     if(clicks.length>300)clicks.shift();
   },true);
+  /* 画面1枚ぶん（ファーストビュー）が何バンドぶんかを返す。
+     FVER/SVER は「最初の画面／2画面目の中で離脱した割合」なので、この幅が要る。
+     ページが1画面に収まるときは全体＝ファーストビュー。 */
+  function fvBands(){
+    var full=docH()+window.innerHeight;
+    return Math.max(1,Math.min(B,Math.ceil((window.innerHeight/full)*B)));
+  }
+  /* 最初の「計測機能付きリンク」が何バンド目にあるか（オファー到達率の基準位置）。
+     クリック計測と同じ判定（sb_tracking=true）で拾う。無ければ -1。 */
+  function offerBand(){
+    var full=docH()+window.innerHeight,best=-1;
+    var list=document.querySelectorAll('a[href]');
+    for(var i=0;i<list.length;i++){
+      var h=list[i].getAttribute('href')||'';
+      if(!/[?&]sb_tracking=true(?:[&#]|$)/.test(h))continue;
+      var r=list[i].getBoundingClientRect();
+      var y=r.top+window.scrollY;
+      var b=Math.max(0,Math.min(B-1,Math.floor((y/full)*B)));
+      if(best<0||b<best)best=b;
+    }
+    return best;
+  }
   function flush(){
     if(sent)return; sent=true; tick();
     for(var i=0;i<=maxBand;i++)reach[i]=1;
-    post({event:'heatmap',bands:B,reach:reach,dwell:dwell,exit_band:curBand(),clicks:clicks});
+    post({event:'heatmap',bands:B,reach:reach,dwell:dwell,exit_band:curBand(),
+      fv:fvBands(),offer:offerBand(),clicks:clicks});
   }
   window.addEventListener('pagehide',flush);
   document.addEventListener('visibilitychange',function(){if(document.hidden)flush()});

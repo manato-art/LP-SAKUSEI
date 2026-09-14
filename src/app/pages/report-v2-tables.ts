@@ -234,7 +234,19 @@ export /**
  */
 type TotalsRow = Pick<
   ReportKpi,
-  'ad_cost' | 'pv' | 'click' | 'cv' | 'ctr' | 'cvr' | 'ctvr' | 'cpa' | 'mcpa'
+  | 'ad_cost'
+  | 'pv'
+  | 'click'
+  | 'cv'
+  | 'ctr'
+  | 'cvr'
+  | 'ctvr'
+  | 'cpa'
+  | 'mcpa'
+  | 'fver'
+  | 'sver'
+  | 'fsver'
+  | 'oar'
 >
 
 function sumRows(rows: readonly ReportVersionRow[]): TotalsRow {
@@ -256,6 +268,11 @@ function sumRows(rows: readonly ReportVersionRow[]): TotalsRow {
     ctvr: ratio(cv, pv),
     cpa: ratio(adCost, cv),
     mcpa: ratio(adCost, click),
+    // スクロールの記録は行に載っていないので、絞り込み中の合計では出さない（「-」）
+    fver: null,
+    sver: null,
+    fsver: null,
+    oar: null,
   }
 }
 
@@ -324,6 +341,11 @@ export function buildBranchOperation(deps: BranchDeps): HTMLElement {
       ['CTVR', true],
       ['CPA', true],
       ['MCPA', true],
+      // 2026-09-15: 実物にある4指標。計測タグのスクロール記録から出す
+      ['FVER', true],
+      ['SVER', true],
+      ['FSVER', true],
+      ['OAR', true],
       ['配信割合', true],
     ] as const) {
       const th = document.createElement('th')
@@ -351,6 +373,10 @@ export function buildBranchOperation(deps: BranchDeps): HTMLElement {
       pct(shownTotals.ctvr),
       yen(shownTotals.cpa),
       yen(shownTotals.mcpa),
+      pct(shownTotals.fver),
+      pct(shownTotals.sver),
+      pct(shownTotals.fsver),
+      pct(shownTotals.oar),
       '',
     ]) {
       const td = document.createElement('td')
@@ -363,7 +389,7 @@ export function buildBranchOperation(deps: BranchDeps): HTMLElement {
     if (rows.length === 0) {
       const empty = document.createElement('tr')
       const td = document.createElement('td')
-      td.colSpan = 11
+      td.colSpan = 15
       td.textContent = '表示できるレポートがありません'
       td.style.cssText = 'color:var(--sb-c-6b7280, #6B7280);text-align:center;padding:20px'
       empty.append(td)
@@ -384,6 +410,10 @@ export function buildBranchOperation(deps: BranchDeps): HTMLElement {
         pct(row.ctvr),
         yen(row.cpa),
         yen(row.mcpa),
+        pct(row.fver),
+        pct(row.sver),
+        pct(row.fsver),
+        pct(row.oar),
         `${row.distribution_ratio}%`,
       ]) {
         const td = document.createElement('td')

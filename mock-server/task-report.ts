@@ -6,7 +6,7 @@
  * 数字が無いときは「0件」と書かず、無いことをそのまま書く（数字を発明しない）。
  */
 import { getState } from './store/store.ts'
-import { aggregate, deriveKpi, isWithin, toDateKey } from './store/metrics.ts'
+import { aggregate, isWithin, toDateKey } from './store/metrics.ts'
 
 export type ReportSpan = 'yesterday' | 'last7days' | 'today'
 
@@ -49,7 +49,8 @@ export function buildTaskReport(taskName: string, span: ReportSpan, now = new Da
       const metrics = state.metrics.filter(
         (m) => m.entity_uid === abTest.uid && m.scope === 'ab_test' && isWithin(m.date, start, end),
       )
-      return { name: abTest.title, kpi: deriveKpi(aggregate(metrics)) }
+      // aggregate() は既に派生KPIまで出しているので、そのまま使う（二度掛けは無意味）
+      return { name: abTest.title, kpi: aggregate(metrics) }
     })
     .filter((r) => r.kpi.pv > 0)
     .sort((a, b) => b.kpi.cv - a.kpi.cv || b.kpi.pv - a.kpi.pv)

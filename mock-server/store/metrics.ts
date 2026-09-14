@@ -47,8 +47,24 @@ export interface DerivedKpi {
   ctvr: number | null
   /** 媒体のクリック率 = media_click / imp */
   media_ctr: number | null
-  /** 媒体CV基準のCPA = ad_cost / media_cv */
+  /** クリックあたりの費用 = ad_cost / click（採取物の列見出しの記述どおり） */
   mcpa: number | null
+  /** スクロールを記録できた表示数（FVER/SVER/FSVER/OAR の母数） */
+  hm_pv: number
+  /** 最初の画面で離脱した数 */
+  fv_exit: number
+  /** 2画面目で離脱した数 */
+  sv_exit: number
+  /** 最初の計測リンクまで到達した数（リンクが無いLPでは null） */
+  offer_reach: number | null
+  /** ファーストビュー離脱率 = 最初の画面で離脱した数 / スクロールを記録できた表示数 */
+  fver: number | null
+  /** セカンドビュー離脱率 */
+  sver: number | null
+  /** ファーストビュー＆セカンドビュー離脱率 */
+  fsver: number | null
+  /** オファー到達率（最初の計測リンクの位置まで到達した率） */
+  oar: number | null
 }
 
 /** 一次値（保存する値）。媒体側は未取得なら0。 */
@@ -61,6 +77,18 @@ export interface PrimaryKpi {
   media_click?: number
   media_cv?: number
   sales?: number
+  /**
+   * 計測タグのスクロール記録（ヒートマップ）から来る一次値。
+   * FVER / SVER / FSVER / OAR の材料で、母数は「スクロールを記録できた表示数」。
+   * レポートのPVとは母数が違う（記録が届く前に閉じた表示は入らない）ので別に持つ。
+   */
+  hm_pv?: number
+  /** 最初の画面（ファーストビュー）の中で離脱した数 */
+  fv_exit?: number
+  /** 2画面目の中で離脱した数 */
+  sv_exit?: number
+  /** 最初の計測リンクの位置まで到達した数（リンクが無いLPでは undefined） */
+  offer_reach?: number
 }
 
 function divide(numerator: number, denominator: number): number | null {
@@ -75,6 +103,7 @@ export function deriveKpi(primary: PrimaryKpi): DerivedKpi {
   const imp = primary.imp ?? 0
   const mediaClick = primary.media_click ?? 0
   const mediaCv = primary.media_cv ?? 0
+  const hmPv = primary.hm_pv ?? 0
   return {
     pv: primary.pv,
     click: primary.click,
@@ -94,6 +123,18 @@ export function deriveKpi(primary: PrimaryKpi): DerivedKpi {
     media_ctr: divide(mediaClick, imp),
     // 「クリックあたりの費用 = 配信金額 / CLICK」（採取物の列見出しの記述どおり）
     mcpa: divide(primary.ad_cost, primary.click),
+    hm_pv: hmPv,
+    fv_exit: primary.fv_exit ?? 0,
+    sv_exit: primary.sv_exit ?? 0,
+    offer_reach: primary.offer_reach ?? null,
+    // 実測のスクロール記録から出す4指標。記録がまだ無ければ null＝UIは「-」
+    fver: hmPv === 0 ? null : divide(primary.fv_exit ?? 0, hmPv),
+    sver: hmPv === 0 ? null : divide(primary.sv_exit ?? 0, hmPv),
+    fsver: hmPv === 0 ? null : divide((primary.fv_exit ?? 0) + (primary.sv_exit ?? 0), hmPv),
+    oar:
+      hmPv === 0 || primary.offer_reach === undefined
+        ? null
+        : divide(primary.offer_reach, hmPv),
   }
 }
 
@@ -103,8 +144,11 @@ export const ZERO_KPI: DerivedKpi = deriveKpi({ pv: 0, click: 0, cv: 0, ad_cost:
  * 合計行（企画書 §10-5「合計行は各列合算。roas/roi/cvr/cpaは合算後に再計算」）
  * 比率は合算後に再計算する（比率の平均を取らない）。
  */
+/** 合計を積むための入れ物（省略可の項目を必須にして、undefined を持ち回らない） */
+type SumAccumulator = Required<Omit<PrimaryKpi, 'offer_reach'>> & { offer_reach: number | null }
+
 export function sumKpi(rows: readonly DerivedKpi[]): DerivedKpi {
-  const totals = rows.reduce<Required<PrimaryKpi>>(
+  const totals = rows.reduce<SumAccumulator>(
     (acc, row) => ({
       pv: acc.pv + row.pv,
       click: acc.click + row.click,
@@ -114,15 +158,58 @@ export function sumKpi(rows: readonly DerivedKpi[]): DerivedKpi {
       media_click: acc.media_click + row.media_click,
       media_cv: acc.media_cv + row.media_cv,
       sales: acc.sales + row.sales,
+      // スクロール記録の一次値も足す（比率はこのあと deriveKpi で出し直す）
+      hm_pv: acc.hm_pv + row.hm_pv,
+      fv_exit: acc.fv_exit + row.fv_exit,
+      sv_exit: acc.sv_exit + row.sv_exit,
+      offer_reach:
+        row.offer_reach === null ? acc.offer_reach : (acc.offer_reach ?? 0) + row.offer_reach,
     }),
-    { pv: 0, click: 0, cv: 0, ad_cost: 0, imp: 0, media_click: 0, media_cv: 0, sales: 0 },
+    {
+      pv: 0,
+      click: 0,
+      cv: 0,
+      ad_cost: 0,
+      imp: 0,
+      media_click: 0,
+      media_cv: 0,
+      sales: 0,
+      hm_pv: 0,
+      fv_exit: 0,
+      sv_exit: 0,
+      offer_reach: null,
+    },
   )
-  return deriveKpi(totals)
+  return deriveKpi({
+    ...totals,
+    // 「リンクが無い」は null で表し、deriveKpi には undefined で渡す（= OAR は「-」）
+    offer_reach: totals.offer_reach ?? undefined,
+  })
 }
 
 /** 日次メトリクス配列を1つのKPIへ畳む */
 export function aggregate(metrics: readonly DailyMetric[]): DerivedKpi {
   return sumKpi(metrics.map((m) => deriveKpi(m)))
+}
+
+/**
+ * 日次メトリクスの一次値だけを足す（派生は出さない）。
+ * スクロールの記録など、別の場所から来る一次値と合わせてから
+ * 1回だけ `deriveKpi` に通したいときに使う（比率を二度計算しないため）。
+ */
+export function sumPrimary(metrics: readonly DailyMetric[]): PrimaryKpi {
+  const total = (pick: (m: DailyMetric) => number | undefined): number =>
+    metrics.reduce((sum, m) => sum + (pick(m) ?? 0), 0)
+  return {
+    pv: total((m) => m.pv),
+    click: total((m) => m.click),
+    cv: total((m) => m.cv),
+    ad_cost: total((m) => m.ad_cost),
+    imp: total((m) => m.imp),
+    media_click: total((m) => m.media_click),
+    media_cv: total((m) => m.media_cv),
+    sales: total((m) => m.sales),
+  }
 }
 
 /** YYYY-MM-DD */
