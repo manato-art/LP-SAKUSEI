@@ -58,6 +58,12 @@ export function applyMobileEditor(root: HTMLElement): void {
     })
     btn.type = 'button'
     btn.dataset['open'] = open
+    // 押した瞬間に本文の選択が外れると、プロパティが「選択してください」に戻ってしまう。
+    // 既定の動作（フォーカス移動）を止めて、選んだ文字を保ったままパネルを開く。
+    // プロパティパネル自身も同じ守り方をしている（properties-panel.ts）。
+    for (const type of ['mousedown', 'pointerdown', 'touchstart'] as const) {
+      btn.addEventListener(type, (event) => event.preventDefault())
+    }
     btn.addEventListener('click', () => toggle(open, other))
     bar.append(btn)
   }

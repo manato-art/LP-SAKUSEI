@@ -72,6 +72,36 @@ export function mobileCss(): string {
     `html body [class*="_sideToolbarWrapper_"]>*{flex:0 0 auto}`,
     `html body [class*="_sideToolbarTop_"]{display:flex !important;flex-direction:row !important;`,
     `align-items:center;gap:2px;width:auto !important;padding:0 !important}`,
+    // 「設置済みWidget」の列はスマホでは出さない（画面の半分を取ってキャンバスが潰れる）。
+    // Widget自体は下のツールバーの「Widget」から開ける
+    `html body [data-widget-nav]{display:none !important}`,
+    // 上のタブ・パンくずは横に長い。切り捨てずに横スクロールで全部触れるようにする
+    `html body .topnav,html body .header-row{overflow-x:auto !important;overflow-y:hidden}`,
+    // 書式ツールバー（文字サイズ・色など）: はみ出した分が切り捨てられていたので横スクロールに。
+    // 指が当たる大きさへ広げる
+    `html body .sb-ct{overflow-x:auto !important;overflow-y:hidden !important;flex-wrap:nowrap;`,
+    `min-height:48px;padding:6px 8px;position:sticky;top:0;z-index:50;`,
+    `-webkit-overflow-scrolling:touch;scrollbar-width:none}`,
+    `html body .sb-ct::-webkit-scrollbar{display:none}`,
+    `html body .sb-ct-btn{width:40px !important;height:40px !important}`,
+    `html body .sb-ct-size-btn{width:34px !important;height:38px !important;font-size:17px}`,
+    `html body .sb-ct-size-val{height:38px !important;min-width:42px;font-size:15px}`,
+    `html body .sb-ct-select{height:38px !important;font-size:14px;max-width:120px}`,
+    `html body .sb-ct-sep{margin:0 6px}`,
+    // 下のツールバーの項目: 文字が画面の外に切れていたので、幅と高さを決めて収める
+    `html body [class*="_sideToolbarIcon_"]{width:54px !important;min-width:54px;height:46px !important;`,
+    `padding:0 !important;margin:0 !important;display:flex !important;flex-direction:column !important;`,
+    `align-items:center !important;justify-content:center !important;gap:1px}`,
+    `html body [class*="_sideToolbarWrapper_"] .sb-side-label{font-size:9px !important;line-height:1.1}`,
+    // プロパティ（文字サイズ・色・書式）の部品を指で押せる大きさにする
+    `html body .sb-props-panel .sb-pr-input,html body .sb-props-panel .sb-pr-select,`,
+    `html body .sb-props-panel .sb-pr-color-hex{min-height:38px !important}`,
+    `html body .sb-props-panel .sb-pr-stepper-btn{height:19px !important;min-width:26px}`,
+    `html body .sb-props-panel .sb-pr-color-swatch{width:38px !important;height:38px !important}`,
+    `html body .sb-props-panel .sb-pr-action{min-height:38px !important}`,
+    // 書式（B/I/U/S）や配置の小さなボタンも押しやすく
+    `html body .sb-props-panel .sb-fmt-btns>*,html body .sb-props-panel .sb-align-btn{`,
+    `min-width:44px !important;min-height:38px !important}`,
     // キャンバスは画面幅いっぱい。下のツールバーに隠れないよう余白を空ける
     `html body [class*="_editorWrapper_"]{padding:0 !important}`,
     `html body .quillEditorContentWrapper .ql-editor{max-width:100% !important;border-radius:0 !important;`,

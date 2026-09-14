@@ -94,6 +94,22 @@ describe('LPエディタのスマホ版', () => {
     }
   })
 
+  it('「設置済みWidget」の列は出さない（画面の半分を取ってキャンバスが潰れる）', () => {
+    expect(css).toContain('[data-widget-nav]{display:none')
+  })
+
+  it('上のタブ・パンくず・書式ツールバーは切り捨てず横スクロールにする', () => {
+    expect(css).toContain('.topnav,html body .header-row{overflow-x:auto')
+    expect(css).toContain('.sb-ct{overflow-x:auto')
+  })
+
+  it('文字サイズ・色などの部品を指で押せる大きさにする', () => {
+    expect(css).toContain('.sb-pr-input')
+    expect(css).toContain('min-height:38px')
+    expect(css).toContain('.sb-fmt-btns>*')
+    expect(css).toContain('min-width:44px')
+  })
+
   it('キャンバスは画面幅いっぱいで、下のツールバーに隠れない余白を持つ', () => {
     expect(css).toContain('.ql-editor{max-width:100% !important')
     expect(css).toMatch(/padding:16px 14px 96px/)
