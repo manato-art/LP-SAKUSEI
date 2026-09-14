@@ -108,6 +108,22 @@ describe('LPエディタのスマホ版', () => {
     }
   })
 
+  it('モーダルは画面いっぱいにする（PC幅前提の1200pxで左右が画面の外へ出ていた）', () => {
+    expect(css).toContain('.MuiDialog-container>.MuiPaper-root{width:100% !important')
+    expect(css).toContain('.MuiDialogContent-root{width:auto !important')
+    // flexの子は min-width:auto のままだと中身より小さくならない
+    expect(css).toContain('min-width:0 !important')
+  })
+
+  it('Widgetのカード一覧は1列にする（3列だと画面に入らない）', () => {
+    expect(css).toContain('.css-ojejk4>.MuiCard-root{flex:0 0 100% !important')
+  })
+
+  it('Widgetライブラリは縦に積む（左のカテゴリーが250px取ってカード欄が潰れる）', () => {
+    expect(css).toContain('.MuiDialogContent-root>.MuiBox-root{flex-direction:column !important')
+    expect(css).toContain('max-height:150px')
+  })
+
   it('レポートの帯（レポート／広告データ取得日時／ヒートマップ）は縮めず横スクロールにする', () => {
     // 縮めると枠から文字がはみ出して重なる（2026-09-14 実機で発覚）
     expect(css).toContain('[class*="_navContainer_"]{overflow-x:auto')

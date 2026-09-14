@@ -100,6 +100,25 @@ export function mobileCss(): string {
     // ヘッダー画像の枠も同じ68pxのはみ出しで右が切れていた
     `html body [class*="_articleHeaderPhoto_"]{margin-right:0 !important;width:auto !important;`,
     `max-width:100% !important;box-sizing:border-box !important}`,
+    // ── モーダル（Widgetライブラリ・記事設定・タグ設定など）──
+    // 実物はPC幅前提で最大1200pxの紙を中央に置くため、390pxでは左右が画面の外へ出る。
+    // スマホでは画面いっぱいの1枚にする
+    // min-width:0 が要る。flexの子は既定（auto）だと中身より小さくならず、
+    // 幅100%を指定しても中身（PC幅の一覧）に引っ張られて1200pxのままになる
+    `html body .MuiDialog-container>.MuiPaper-root{width:100% !important;max-width:100% !important;`,
+    `min-width:0 !important;height:100% !important;max-height:100% !important;margin:0 !important;`,
+    `border-radius:0 !important}`,
+    `html body .MuiDialogContent-root{width:auto !important;max-width:100% !important;`,
+    `min-width:0 !important;overflow-x:auto !important;padding:12px !important}`,
+    // Widgetライブラリは「左にカテゴリー／右にカード」の横並び。390pxだとカテゴリーが
+    // 250px取ってカード欄が100px程度しか残らない。縦に積んで、カテゴリーは高さを抑える
+    `html body .MuiDialogContent-root>.MuiBox-root{flex-direction:column !important;gap:10px}`,
+    `html body .MuiDialogContent-root>.MuiBox-root>*:first-child{min-width:0 !important;`,
+    `width:100% !important;max-height:150px;overflow-y:auto}`,
+    // カード一覧は3列→1列（286pxのカードが3枚並ぶと画面に入らない）
+    `html body .css-ojejk4{width:100% !important;min-width:0 !important}`,
+    `html body .css-ojejk4>.MuiCard-root{flex:0 0 100% !important;max-width:100% !important}`,
+
     // ── レポート画面 ──
     // 「レポート / 広告データ取得日時 / ヒートマップ」の帯は横1列に収まりきらず、
     // 縮められた枠から文字がはみ出して重なっていた。縮めずに横スクロールさせる
