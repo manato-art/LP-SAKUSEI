@@ -845,3 +845,42 @@ describe('スマホのパネル・オーバーレイ', () => {
     expect(css).toContain('[data-clone-scrollbar]{display:none !important}')
   })
 })
+
+describe('スマホの広告媒体連携（Metaの広告アカウント一覧）', () => {
+  const src = readFileSync('src/app/pages/external-integration.ts', 'utf8')
+
+  it('一覧は共通の表の目印を持つ（630pxの表がoverflow:hiddenのカードで黙って切れていた）', () => {
+    expect(src).toContain('DATA_HEAD_CLASS')
+    expect(src).toContain('DATA_ROW_CLASS')
+  })
+
+  it('セルは列名を持つ（スマホでは列見出しが消えるので「列名 値」で出す）', () => {
+    expect(src).toContain("dataset['label']")
+  })
+})
+
+describe('スマホの広告媒体連携（媒体カード）', () => {
+  const css = mobileCss()
+
+  it('媒体カードは画面幅に収める（428px固定で「アカウント連携」が右で切れていた）', () => {
+    // width:auto にすると2列に折り返して媒体名がアイコンと重なる。1列で幅いっぱいにする
+    // 採取CSSの flex:0 1 50% に勝たないと2列のままになる
+    expect(css).toContain('[class*="_media_ifzcq_"]{flex:0 0 100% !important')
+    const rule = css.slice(css.indexOf('[class*="_media_ifzcq_"]'))
+    expect(rule.slice(0, rule.indexOf('}'))).toContain('max-width:100%')
+  })
+
+  it('媒体名は縮むようにする（200px固定でボタンが画面の外へ出ていた）', () => {
+    expect(css).toContain('[class*="_mediaName_ifzcq_"]{width:auto !important')
+  })
+
+  it('媒体のアイコンは潰さない（名前を縮めると隣のアイコンまで22pxになる）', () => {
+    expect(css).toContain('[class*="_icon_ifzcq_"]{flex:0 0 auto !important}')
+  })
+
+  it('土台の目印は採取物に実在する', () => {
+    const fragment = readFileSync('src/app/fragments/teams__ad_accounts__default.html', 'utf8')
+    expect(fragment).toContain('_media_ifzcq_')
+    expect(fragment).toContain('_mediaContainer_ifzcq_')
+  })
+})

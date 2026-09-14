@@ -146,6 +146,18 @@ export function mobileCss(): string {
     `html body .rx-btn{width:100%}`,
     // 広告媒体連携は、媒体名に line-height:100px（PCの100px行の中央に置く作り）が
     // 効いていて、名前の枠が100pxに広がり「連携数」と重なっていた
+    // 媒体カードは428px固定で、右端の「アカウント連携」が画面の外（x=398〜408）にいた。
+    // 横スクロールできる親の中なので気づきにくいが、押すのに横へずらす必要があった
+    // 採取CSSが flex:0 1 50% を持つので、width だけでは勝てない（2列のまま媒体名が潰れる）
+    `html body [class*="_media_ifzcq_"]{flex:0 0 100% !important;width:100% !important;`,
+    `max-width:100% !important;min-width:0 !important}`,
+    `html body [class*="_mediaContainer_ifzcq_"]{width:auto !important;min-width:0 !important}`,
+    // 媒体名は200px固定。アイコン36＋名前200＋ボタン102で枠(300px)を超え、
+    // ボタンが画面の外（x=408）へ出ていた。名前を縮むようにする
+    `html body [class*="_mediaName_ifzcq_"]{width:auto !important;min-width:0 !important;`,
+    `flex:1 1 auto !important}`,
+    // 名前を縮むようにすると、隣のアイコン(36px)まで一緒に潰れて22pxになる
+    `html body [class*="_icon_ifzcq_"]{flex:0 0 auto !important}`,
     `html body [class*="_mediaName_"],html body [class*="_mediaName_"] *,`,
     `html body [class*="_connectionCount_"]{line-height:1.5 !important;height:auto !important;`,
     `min-height:0 !important}`,

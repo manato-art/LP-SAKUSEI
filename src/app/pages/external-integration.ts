@@ -8,6 +8,7 @@
  *   - Meta モーダル（Meta(旧Facebook)連携）は採取物が無い（採取許可経路外）ので、
  *     ユーザー提供のスクリーンショットを仕様として組む＝広告アカウントID入力＋認証＋一覧表。
  */
+import { DATA_HEAD_CLASS, DATA_ROW_CLASS } from './data-ui.ts'
 import substrate from '../fragments/teams__ad_accounts__default.html?raw'
 import { api, type MetaAdAccount } from '../api.ts'
 import { isStale } from '../main.ts'
@@ -249,6 +250,10 @@ function buildAccountsTable(meta: { configured: boolean; accounts: MetaAdAccount
   const cols = ['ステータス', '登録日', 'アカウントID', 'アカウント名', 'beyondページ数', '削除']
   const grid = 'grid-template-columns:110px 120px 200px 1fr 130px 70px'
   const head = document.createElement('div')
+  // スマホでは「1行＝1カード（列名 値）」に組み替わる（mobile-css.ts）。
+  // 付けないと、630pxの表が overflow:hidden のカードの中で黙って切れ、
+  // 「アカウント名」以降と削除ボタンに届かなくなる（2026-09-14）。
+  head.className = DATA_HEAD_CLASS
   head.style.cssText = `display:grid;${grid};gap:12px;padding:18px 24px;color:var(--sb-c-666666, #666666);font-size:14px`
   for (const c of cols) {
     const cell = document.createElement('div')
@@ -265,12 +270,13 @@ function buildAccountsTable(meta: { configured: boolean; accounts: MetaAdAccount
     card.append(notice('連携できる広告アカウントが見つかりませんでした。'))
     return card
   }
-  for (const acc of meta.accounts) card.append(buildAccountRow(acc, grid))
+  for (const acc of meta.accounts) card.append(buildAccountRow(acc, grid, cols))
   return card
 }
 
-function buildAccountRow(acc: MetaAdAccount, grid: string): HTMLElement {
+function buildAccountRow(acc: MetaAdAccount, grid: string, cols: readonly string[]): HTMLElement {
   const row = document.createElement('div')
+  row.className = DATA_ROW_CLASS
   row.style.cssText = `display:grid;${grid};gap:12px;padding:20px 24px;border-top:1px solid var(--sb-c-eeeeee, #EEEEEE);align-items:center;font-size:14px;color:var(--sb-c-333333, #333333)`
 
   const status = document.createElement('span')
@@ -292,7 +298,10 @@ function buildAccountRow(acc: MetaAdAccount, grid: string): HTMLElement {
     toast(`${acc.name || acc.account_id} を一覧から外しました（クローン内のみ）`)
   })
 
-  row.append(status, date, id, name, pages, del)
+  // セル自身に列名を持たせる。スマホで列見出しが消えたときにCSSが「列名 値」で出す
+  const cells = [status, date, id, name, pages, del]
+  cells.forEach((c, i) => { c.dataset['label'] = cols[i] ?? '' })
+  row.append(...cells)
   return row
 }
 
