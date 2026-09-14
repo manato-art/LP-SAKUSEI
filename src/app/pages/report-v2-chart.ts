@@ -70,7 +70,9 @@ function drawChart(daily: readonly ReportDailyRow[], key: KpiKey): SVGSVGElement
   const points = daily
     .map((row) => ({ date: row.date, value: valueOf(row, key) }))
     .filter((p): p is { date: string; value: number } => p.value !== null)
-  if (points.length < 2) return null
+  // 2026-09-15: 既定の期間は「今日1日」なので、2点未満で諦めると初期表示が必ず空になる。
+  // 実物は1日でも点を打つ（採取物の recharts-area-dot が1日分で2系列ぶん出ている）。
+  if (points.length === 0) return null
 
   const W = 720
   const H = 200
@@ -217,9 +219,10 @@ export function buildCreativeReport(deps: ChartDeps): HTMLElement {
     const chart = drawChart(deps.daily, current)
     holder.append(
       chart ??
+        // 文言は採取物どおり（実物のクリエイティブ欄の空表示）
         emptyBox(
-          'データがありません',
-          '選択した期間のデータがまだありません。\n期間を広げるか、フィルターを変更して再度お試しください。',
+          '表示できるレポートがありません',
+          '選択した期間にデータがありません。期間を変えると表示されることがあります。',
         ),
     )
     for (const b of tabs.querySelectorAll('button')) {

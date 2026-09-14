@@ -99,14 +99,13 @@ function buildFilters(deps: FilterDeps): HTMLElement {
   fields.className = 'rv2-filter-fields'
   fields.append(
     field('配信期間', rangeBox),
-    // 以下は実物にある絞り込み。当システムは Version 単位でしか持たないので、
-    // 選択肢を発明せず「全て」だけを出す（推測で埋めない）。
-    field('バージョン', fixedSelect(['全て'])),
-    field('アーカイブ', fixedSelect(['全て'])),
-    field('デバイス', fixedSelect(['全て'])),
-    field('広告主', fixedSelect(['全て'])),
-    field('キャンペーン', fixedSelect(['全て'])),
-    field('クリエイティブ', fixedSelect(['全て'])),
+    // 2026-09-15: 採取した実DOMに合わせた。実物のデイリーレポートの絞り込みは
+    // Version（既定「指定なし」）／アーカイブ（既定「アーカイブ済みを除く」）／端末（既定「全端末」）の3つだけ。
+    // 「広告主」「キャンペーン」「クリエイティブ」は実物のレポート画面に存在しない語だったので外した。
+    // 選択肢はまだ発明しない（当システムはVersion単位でしか持たない）。表記と既定値だけ実物にそろえる。
+    field('Version', fixedSelect(['指定なし'])),
+    field('アーカイブ', fixedSelect(['アーカイブ済みを除く'])),
+    field('端末', fixedSelect(['全端末'])),
   )
   card.append(fields, apply)
   return card
@@ -114,7 +113,8 @@ function buildFilters(deps: FilterDeps): HTMLElement {
 
 /** Version別の実績をCSVにして落とす */
 function downloadCsv(report: ReportResponse, title: string, range: DateRange): void {
-  const header = ['名前', '配信金額', 'PV', 'CLICK', 'CTR', 'CV', 'CVR', 'CPA']
+  // 画面の表と同じ指標を落とす（CTVR・MCPAはモックに値があるのに抜けていた）
+  const header = ['名前', '配信金額', 'PV', 'CLICK', 'CTR', 'CV', 'CVR', 'CTVR', 'CPA', 'MCPA']
   const lines = [header.join(',')]
   for (const r of report.rows) {
     lines.push(
@@ -126,7 +126,9 @@ function downloadCsv(report: ReportResponse, title: string, range: DateRange): v
         r.ctr === null ? '' : (r.ctr * 100).toFixed(2),
         r.cv,
         r.cvr === null ? '' : (r.cvr * 100).toFixed(2),
+        r.ctvr === null ? '' : (r.ctvr * 100).toFixed(2),
         r.cpa ?? '',
+        r.mcpa ?? '',
       ].join(','),
     )
   }
@@ -173,7 +175,7 @@ export async function buildReportBody(deps: ReportBodyDeps): Promise<HTMLElement
     buildKpiCards({ totals: deps.report.totals, daily: deps.report.daily, previous }),
     buildCreativeReport({ daily: deps.report.daily, range: deps.range, onDownloadCsv: csv }),
     buildReportList({ rows: deps.report.rows, range: deps.range }),
-    buildBranchOperation({ rows: deps.report.rows, onDownloadCsv: csv }),
+    buildBranchOperation({ rows: deps.report.rows, totals: deps.report.totals, onDownloadCsv: csv }),
   )
   return root
 }

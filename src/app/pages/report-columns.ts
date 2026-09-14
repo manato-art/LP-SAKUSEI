@@ -52,19 +52,26 @@ export const REPORT_COLUMNS: readonly ReportColumn[] = [
   { label: '配信金額', unit: '円', metric: 'ad_cost', format: 'yen' },
   { label: 'PV', unit: '', metric: 'pv', format: 'integer' },
   { label: 'CLICK', unit: '', metric: 'click', format: 'integer' },
-  { label: 'CTR', unit: '%', metric: null, format: 'percent' },
+  { label: 'CTR', unit: '%', metric: 'ctr', format: 'percent' },
   { label: 'CV', unit: '', metric: 'cv', format: 'integer' },
   { label: 'CVR', unit: '%', metric: 'cvr', format: 'percent' },
-  { label: 'CTVR', unit: '%', metric: null, format: 'percent' },
+  { label: 'CTVR', unit: '%', metric: 'ctvr', format: 'percent' },
   { label: 'CPA', unit: '円', metric: 'cpa', format: 'yen' },
-  { label: 'MCPA', unit: '円', metric: null, format: 'yen' },
+  { label: 'MCPA', unit: '円', metric: 'mcpa', format: 'yen' },
   { label: 'FVER', unit: '%', metric: null, format: 'percent' },
   { label: 'SVER', unit: '%', metric: null, format: 'percent' },
   { label: 'FSVER', unit: '%', metric: null, format: 'percent' },
   { label: 'OAR', unit: '%', metric: null, format: 'percent' },
 ]
 
-/** 計算式が採取物にも企画書にも無い指標（＝常に「-」。報告対象） */
+/**
+ * 計算式が採取物にも企画書にも無い指標（＝常に「-」。報告対象）。
+ *
+ * 2026-09-15: CTR / CTVR / MCPA はここから外した。採取した実DOMの列見出しの
+ * `aria-label` に式が書かれている（「CV / PV」＝CTVR、
+ * 「クリックあたりの費用 = 配信金額 / CLICK」＝MCPA、「クリック率」＝CTR）。
+ * 残る FVER / SVER / FSVER / OAR は、離脱・到達の一次値がモックに無いので未対応。
+ */
 export const UNDEFINED_METRIC_LABELS: readonly string[] = REPORT_COLUMNS.filter(
   (column) => column.metric === null,
 ).map((column) => column.label)

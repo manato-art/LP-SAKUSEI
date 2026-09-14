@@ -91,23 +91,28 @@ describe('デイリーレポートの列は採取した実ヘッダと一致す�
     expect(DAILY_LABEL_COLUMN).toBe('合計')
   })
 
-  it('metrics.ts の恒等式に無い7指標は formula を持たない', () => {
-    expect(UNDEFINED_METRIC_LABELS).toEqual(['CTR', 'CTVR', 'MCPA', 'FVER', 'SVER', 'FSVER', 'OAR'])
+  it('一次値が無い4指標だけが formula を持たない', () => {
+    // 2026-09-15: CTR / CTVR / MCPA は採取物の列見出し（aria-label）に式が書かれていたので結線した。
+    // 残る4本は「ファーストビュー離脱」などの一次値がモックに無く、まだ出せない。
+    expect(UNDEFINED_METRIC_LABELS).toEqual(['FVER', 'SVER', 'FSVER', 'OAR'])
     for (const label of UNDEFINED_METRIC_LABELS) {
       expect(REPORT_COLUMNS.find((c) => c.label === label)?.metric).toBeNull()
     }
   })
 
-  it('metrics.ts が定義する6指標だけが DerivedKpi のキーに割り当たっている', () => {
+  it('metrics.ts が定義する9指標が DerivedKpi のキーに割り当たっている', () => {
     expect(
       REPORT_COLUMNS.filter((c) => c.metric !== null).map((c) => `${c.label}=${c.metric as string}`),
     ).toEqual([
       '配信金額=ad_cost',
       'PV=pv',
       'CLICK=click',
+      'CTR=ctr',
       'CV=cv',
       'CVR=cvr',
+      'CTVR=ctvr',
       'CPA=cpa',
+      'MCPA=mcpa',
     ])
   })
 })
@@ -454,5 +459,36 @@ describe('レポート画面の採取ドロップダウン', () => {
     for (const file of ['src/app/pages/report.ts', 'src/app/pages/heatmap.ts']) {
       expect(readFileSync(file, 'utf8'), file).toContain('wireCapturedDropdowns')
     }
+  })
+})
+
+/**
+ * 2026-09-15。本人指示「実際のページを参照した上で修正」。
+ * 採取した実DOMの列見出しには **計算式そのものが aria-label に書かれている**。
+ * 推測で決めていた定義を、その記述に合わせる。
+ */
+describe('指標の計算式（採取物の記述に合わせる）', () => {
+  const dom = readFileSync('src/app/fragments/ab_tests__UID__reports__default.html', 'utf8')
+
+  it('採取物に計算式が書いてある（この事実が根拠）', () => {
+    expect(dom).toContain('aria-label="クリックあたりの費用 = 配信金額 / CLICK"')
+    expect(dom).toContain('aria-label="コンバージョン率 = CV / CLICK"')
+    expect(dom).toContain('aria-label="CV / PV"')
+  })
+
+  it('MCPA = 配信金額 / CLICK（媒体CVで割っていたのは誤り）', () => {
+    const kpi = deriveKpi({ pv: 100, click: 20, cv: 5, ad_cost: 10000, media_cv: 2 })
+    expect(kpi.mcpa).toBe(500)
+  })
+
+  it('CLICKが0なら MCPA は「-」（0除算）', () => {
+    const kpi = deriveKpi({ pv: 10, click: 0, cv: 0, ad_cost: 1000 })
+    expect(kpi.mcpa).toBeNull()
+  })
+
+  it('CVR = CV / CLICK ／ CTVR = CV / PV（こちらは元から合っている）', () => {
+    const kpi = deriveKpi({ pv: 100, click: 20, cv: 5, ad_cost: 10000 })
+    expect(kpi.cvr).toBeCloseTo(0.25)
+    expect(kpi.ctvr).toBeCloseTo(0.05)
   })
 })

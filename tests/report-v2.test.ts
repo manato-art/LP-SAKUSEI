@@ -46,8 +46,12 @@ describe('レポート本体は指定デザインの構成になっている', (
     }
   })
 
-  it('選択肢を発明しない（採取物に無い絞り込みは「全て」だけ）', () => {
-    expect(src).toContain("fixedSelect(['全て'])")
+  it('選択肢を発明しない（実物の既定値だけを出し、中身は増やさない）', () => {
+    // 2026-09-15: 「全て」から実物の既定値（指定なし／アーカイブ済みを除く／全端末）へ。
+    // 選択肢そのものはまだ増やさない＝推測で埋めない方針は変えていない。
+    expect(src).toContain("fixedSelect(['指定なし'])")
+    expect(src).toContain("fixedSelect(['アーカイブ済みを除く'])")
+    expect(src).toContain("fixedSelect(['全端末'])")
   })
 
   it('CSVはBOM付きで出す（Excelで文字化けさせない）', () => {
@@ -83,5 +87,58 @@ describe('KPIカード', () => {
     const emoji = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u
     expect(emoji.test(src)).toBe(false)
     expect(src).toContain('<svg')
+  })
+})
+
+/**
+ * 2026-09-15。本人指示「表示内容だったり絞り込みが実際のSBと異なっている部分があるので、
+ * 実際のページを参照した上で修正」。採取した実DOMを正として直したもの。
+ */
+describe('採取物に合わせた表示内容・絞り込み', () => {
+  const src = readFileSync('src/app/pages/report-v2.ts', 'utf8')
+  const tables = readFileSync('src/app/pages/report-v2-tables.ts', 'utf8')
+  const chart = readFileSync('src/app/pages/report-v2-chart.ts', 'utf8')
+  const dom = readFileSync('src/app/fragments/ab_tests__UID__reports__default.html', 'utf8')
+
+  it('絞り込みの名前と既定値を実物に合わせる（Version／アーカイブ済みを除く／全端末）', () => {
+    // 採取物の既定値
+    expect(dom).toContain('アーカイブ済みを除く')
+    expect(dom).toContain('全端末')
+    expect(src).toContain("field('Version'")
+    expect(src).toContain('アーカイブ済みを除く')
+    expect(src).toContain('全端末')
+  })
+
+  it('実物に無い絞り込み（広告主・キャンペーン・クリエイティブ）は出さない', () => {
+    // 採取物のレポート画面にこの3語は1つも無い
+    for (const label of ['広告主', 'キャンペーン']) {
+      expect(dom.includes(`>${label}<`), `採取物に ${label} は無いはず`).toBe(false)
+      expect(src).not.toContain(`field('${label}'`)
+    }
+  })
+
+  it('Branch Operation に CTVR と MCPA を出す（モックに値がある）', () => {
+    expect(tables).toContain("'CTVR'")
+    expect(tables).toContain("'MCPA'")
+  })
+
+  it('表の先頭に合計行を出す（実物は合計が先頭行）', () => {
+    expect(dom).toContain('合計')
+    expect(tables).toContain('合計')
+  })
+
+  it('0件の文言は実物にそろえる', () => {
+    expect(dom).toContain('表示できるレポートがありません')
+    expect(tables).toContain('表示できるレポートがありません')
+    expect(chart).toContain('表示できるレポートがありません')
+  })
+
+  it('CSVにも CTVR / MCPA を含める', () => {
+    expect(src).toContain("'CTVR'")
+    expect(src).toContain("'MCPA'")
+  })
+
+  it('1日だけ選んでもグラフに点を打つ（既定は今日1日）', () => {
+    expect(chart).not.toContain('points.length < 2')
   })
 })

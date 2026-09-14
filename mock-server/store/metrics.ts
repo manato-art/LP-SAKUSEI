@@ -8,12 +8,15 @@
  *     roas = sales / ad_cost / roi = gross_profit / ad_cost
  *     cvr = cv / click / cpa = ad_cost / cv
  *     ctr = click / pv / ctvr = cv / pv
- *     media_ctr = media_click / imp / mcpa = ad_cost / media_cv
+ *     media_ctr = media_click / imp / mcpa = ad_cost / click
  * - ゼロ除算は null（UI側で「-」表示・§10-5）
  *
- * 【定義の出所】ctr / ctvr / media_ctr / mcpa は採取物にも企画書にも計算式が無く、
- * SquadBeyond の正確な定義は復元できなかった。広告運用の標準的な解釈で定義している
- * （実物とズレていたらこの4本を直せば全画面に反映される）。
+ * 【定義の出所】採取した実DOMの列見出しは `aria-label` に**計算式そのもの**を持っている
+ * （`src/app/fragments/ab_tests__UID__reports__default.html`）:
+ *     「コンバージョン率 = CV / CLICK」「CV / PV」（＝CTVR）
+ *     「クリックあたりの費用 = 配信金額 / CLICK」（＝MCPA・2026-09-15に確認して修正）
+ * ctr（「クリック率」）と media_ctr は式が書かれていないので、広告運用の標準的な解釈
+ * （click / pv、media_click / imp）のまま。実物とズレていたらここを直せば全画面に反映される。
  */
 import { jstNow } from '../lib/jst.ts'
 import type { DailyMetric } from './types.ts'
@@ -89,7 +92,8 @@ export function deriveKpi(primary: PrimaryKpi): DerivedKpi {
     ctr: divide(primary.click, primary.pv),
     ctvr: divide(primary.cv, primary.pv),
     media_ctr: divide(mediaClick, imp),
-    mcpa: divide(primary.ad_cost, mediaCv),
+    // 「クリックあたりの費用 = 配信金額 / CLICK」（採取物の列見出しの記述どおり）
+    mcpa: divide(primary.ad_cost, primary.click),
   }
 }
 

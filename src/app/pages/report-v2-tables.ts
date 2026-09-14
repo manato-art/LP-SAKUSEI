@@ -4,7 +4,7 @@
  * 実物と同じく、レポート一覧は見出しが2段（配信実績 / 成果）に分かれる。
  * 並び替えとページ送りはこの画面の中だけで完結させる（再取得しない）。
  */
-import type { ReportVersionRow } from '../api.ts'
+import type { ReportKpi, ReportVersionRow } from '../api.ts'
 import type { DateRange } from './report-period.ts'
 
 const yen = (v: number | null): string =>
@@ -197,7 +197,7 @@ export function buildReportList(deps: ReportListDeps): HTMLElement {
     const info = document.createElement('span')
     info.textContent =
       sorted.length === 0
-        ? '表示できる行がありません'
+        ? '表示できるレポートがありません'
         : `全 ${sorted.length} 件中 ${from + 1} 〜 ${from + shown.length} 件を表示`
     const pager = document.createElement('div')
     pager.className = 'rv2-pager'
@@ -228,8 +228,41 @@ export function buildReportList(deps: ReportListDeps): HTMLElement {
   return card
 }
 
-export interface BranchDeps {
+export /**
+ * 絞り込んだ行の合計を出す。比率・単価は足し算できないので、必ず素の値から出し直す
+ * （足した比率を足すと必ず狂う）。
+ */
+type TotalsRow = Pick<
+  ReportKpi,
+  'ad_cost' | 'pv' | 'click' | 'cv' | 'ctr' | 'cvr' | 'ctvr' | 'cpa' | 'mcpa'
+>
+
+function sumRows(rows: readonly ReportVersionRow[]): TotalsRow {
+  const sum = (pick: (r: ReportVersionRow) => number): number =>
+    rows.reduce((total, row) => total + pick(row), 0)
+  const pv = sum((r) => r.pv)
+  const click = sum((r) => r.click)
+  const cv = sum((r) => r.cv)
+  const adCost = sum((r) => r.ad_cost)
+  const ratio = (numerator: number, denominator: number): number | null =>
+    denominator === 0 ? null : numerator / denominator
+  return {
+    ad_cost: adCost,
+    pv,
+    click,
+    cv,
+    ctr: ratio(click, pv),
+    cvr: ratio(cv, click),
+    ctvr: ratio(cv, pv),
+    cpa: ratio(adCost, cv),
+    mcpa: ratio(adCost, click),
+  }
+}
+
+interface BranchDeps {
   rows: readonly ReportVersionRow[]
+  /** 期間の合計。実物は表の**先頭行**に「合計」を置く（2026-09-15に採取物で確認） */
+  totals: TotalsRow
   onDownloadCsv: () => void
 }
 
@@ -278,6 +311,8 @@ export function buildBranchOperation(deps: BranchDeps): HTMLElement {
     table.className = 'rv2-table'
     const thead = document.createElement('thead')
     const tr = document.createElement('tr')
+    // 2026-09-15: 採取した実DOMの13指標に寄せて CTVR / MCPA を足した（モックに値がある）。
+    // 残る FVER / SVER / FSVER / OAR は一次値（離脱・到達）がモックに無いのでまだ出せない。
     for (const [label, num] of [
       ['名前', false],
       ['配信金額', true],
@@ -286,7 +321,9 @@ export function buildBranchOperation(deps: BranchDeps): HTMLElement {
       ['CTR', true],
       ['CV', true],
       ['CVR', true],
+      ['CTVR', true],
       ['CPA', true],
+      ['MCPA', true],
       ['配信割合', true],
     ] as const) {
       const th = document.createElement('th')
@@ -296,11 +333,38 @@ export function buildBranchOperation(deps: BranchDeps): HTMLElement {
     }
     thead.append(tr)
     const tbody = document.createElement('tbody')
+
+    // 合計行（実物と同じく先頭）。絞り込んでいるときは、絞り込んだぶんの合計を出す
+    const shownTotals = q === '' ? deps.totals : sumRows(rows)
+    const totalTr = document.createElement('tr')
+    totalTr.className = 'rv2-total'
+    const totalLabel = document.createElement('td')
+    totalLabel.textContent = '合計'
+    totalTr.append(totalLabel)
+    for (const text of [
+      yen(shownTotals.ad_cost),
+      int(shownTotals.pv),
+      int(shownTotals.click),
+      pct(shownTotals.ctr),
+      int(shownTotals.cv),
+      pct(shownTotals.cvr),
+      pct(shownTotals.ctvr),
+      yen(shownTotals.cpa),
+      yen(shownTotals.mcpa),
+      '',
+    ]) {
+      const td = document.createElement('td')
+      td.className = 'num'
+      td.textContent = text
+      totalTr.append(td)
+    }
+    tbody.append(totalTr)
+
     if (rows.length === 0) {
       const empty = document.createElement('tr')
       const td = document.createElement('td')
-      td.colSpan = 9
-      td.textContent = '該当する行がありません'
+      td.colSpan = 11
+      td.textContent = '表示できるレポートがありません'
       td.style.cssText = 'color:var(--sb-c-6b7280, #6B7280);text-align:center;padding:20px'
       empty.append(td)
       tbody.append(empty)
@@ -317,7 +381,9 @@ export function buildBranchOperation(deps: BranchDeps): HTMLElement {
         pct(row.ctr),
         int(row.cv),
         pct(row.cvr),
+        pct(row.ctvr),
         yen(row.cpa),
+        yen(row.mcpa),
         `${row.distribution_ratio}%`,
       ]) {
         const td = document.createElement('td')

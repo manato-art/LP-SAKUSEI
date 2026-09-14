@@ -51,20 +51,30 @@ describe('13列のKPIが一次値から全部出る', () => {
     expect(kpi.ctvr).toBeCloseTo(20 / 1000) // cv / pv
     expect(kpi.cvr).toBeCloseTo(20 / 200) // cv / click
     expect(kpi.cpa).toBeCloseTo(100_000 / 20) // ad_cost / cv
-    expect(kpi.mcpa).toBeCloseTo(100_000 / 25) // ad_cost / media_cv
+    // 2026-09-15: 採取物の列見出しに「クリックあたりの費用 = 配信金額 / CLICK」とある
+    expect(kpi.mcpa).toBeCloseTo(100_000 / 200) // ad_cost / click
     expect(kpi.media_ctr).toBeCloseTo(1500 / 50_000) // media_click / imp
     expect(kpi.roas).toBeCloseTo(240_000 / 100_000) // sales / ad_cost
   })
 
-  it('媒体データが未取得なら媒体依存の指標だけが「-」（null）になる', () => {
+  it('媒体データが未取得でも、LP側だけで出せる指標は出る', () => {
     const noMedia = deriveKpi({ pv: 1000, click: 200, cv: 20, sales: 240_000, ad_cost: 0 })
     // LP側だけで出せるものは出る
     expect(noMedia.ctr).not.toBeNull()
     expect(noMedia.ctvr).not.toBeNull()
     expect(noMedia.cvr).not.toBeNull()
-    // 媒体（配信金額・IMP・媒体CV）が要るものはゼロ除算で null＝UIは「-」
-    expect(noMedia.mcpa).toBeNull()
+    // MCPA は 配信金額 / CLICK なので、CLICKがあれば出る（配信金額0なら0円）。
+    // 2026-09-15に採取物の記述へ合わせた＝もう媒体CVには依存しない
+    expect(noMedia.mcpa).toBe(0)
+    // 媒体（IMP・売上）が要るものはゼロ除算で null＝UIは「-」
     expect(noMedia.media_ctr).toBeNull()
     expect(noMedia.roas).toBeNull()
+  })
+})
+
+describe('MCPA の分母（2026-09-15・採取物の記述に合わせた）', () => {
+  it('CLICKが0のときだけ「-」になる', () => {
+    expect(deriveKpi({ pv: 10, click: 0, cv: 0, ad_cost: 5000 }).mcpa).toBeNull()
+    expect(deriveKpi({ pv: 10, click: 5, cv: 0, ad_cost: 5000 }).mcpa).toBe(1000)
   })
 })
