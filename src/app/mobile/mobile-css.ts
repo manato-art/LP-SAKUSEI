@@ -79,6 +79,10 @@ export function mobileCss(): string {
     `html body [class*="_sideToolbarTop_"]{display:flex !important;flex-direction:row !important;`,
     // 項目の間隔は採取CSSが4px入れてくる。8項目 × 44px ＝ 352px に収めるため消す
     `align-items:center;gap:0 !important;width:auto !important;padding:0 !important}`,
+    // プロパティを開く丸ボタン（下のツールバー46px＋余白の上）。シートが開いている間は隠す
+    `html body #sb-m-props-btn{bottom:calc(66px + env(safe-area-inset-bottom,0px))}`,
+    `html body.${VERSIONS_OPEN_CLASS} #sb-m-props-btn,`,
+    `html body.${PROPS_OPEN_CLASS} #sb-m-props-btn{display:none !important}`,
     // 開いているシートを閉じる「×」（シートの少し上に出す）
     `html body.${VERSIONS_OPEN_CLASS} #sb-m-sheet-close,`,
     `html body.${PROPS_OPEN_CLASS} #sb-m-sheet-close{display:flex !important;bottom:calc(60vh + 8px)}`,
