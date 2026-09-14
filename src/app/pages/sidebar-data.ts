@@ -19,6 +19,9 @@ import {
 } from '../quick-domain-note.ts'
 import { jstParts } from '../jst.ts'
 import {
+  DATA_HEAD_CLASS,
+  DATA_ROW_CLASS,
+  DATA_TABLE_CLASS,
   getJson,
   int,
   pageShell,
@@ -213,9 +216,10 @@ export async function renderDomains(container: HTMLElement): Promise<void> {
     return
   }
 
-  const domainList = el('div', { style: '' })
+  const domainList = el('div', { class: DATA_TABLE_CLASS })
   const grid = `grid-template-columns:1fr 120px 100px 60px`
   const head = el('div', {
+    class: DATA_HEAD_CLASS,
     style: `display:grid;${grid};gap:12px;padding:10px 8px;border-bottom:2px solid var(--sb-c-eeeeee, #EEEEEE);font-size:12px;color:${T.sub}`,
   })
   head.append(
@@ -228,16 +232,25 @@ export async function renderDomains(container: HTMLElement): Promise<void> {
 
   for (const row of rows) {
     const tr = el('div', {
+      class: DATA_ROW_CLASS,
       style: `display:grid;${grid};gap:12px;padding:12px 8px;border-bottom:1px solid var(--sb-c-f2f2f2, #F2F2F2);font-size:13px;color:${T.text};align-items:center`,
     })
     const statusLabel = row.status === 'active' ? 'アクティブ' : row.status === 'pending' ? '確認中' : (row.status ?? '-')
     const sslLabel = row.ssl === true ? 'ON' : 'OFF'
-    tr.append(
-      el('div', { text: row.host ?? '-', style: 'word-break:break-all' }),
-      el('div', { text: row.kind === 'quick' ? 'クイック' : '独自' }),
-      el('div', { text: statusLabel, style: `color:${row.status === 'active' ? '#38A169' : '#DD6B20'}` }),
-      el('div', { text: sslLabel }),
-    )
+    const cells: readonly (readonly [string, HTMLElement])[] = [
+      ['ドメイン', el('div', { text: row.host ?? '-', style: 'word-break:break-all' })],
+      ['種別', el('div', { text: row.kind === 'quick' ? 'クイック' : '独自' })],
+      [
+        'ステータス',
+        el('div', { text: statusLabel, style: `color:${row.status === 'active' ? '#38A169' : '#DD6B20'}` }),
+      ],
+      ['SSL', el('div', { text: sslLabel })],
+    ]
+    for (const [label, cell] of cells) {
+      // スマホでは列名が消えるので、セル自身に持たせる（CSSが「列名 値」で出す）
+      cell.dataset['label'] = label
+      tr.append(cell)
+    }
     // 削除ボタンは実装しない（実物もOwnerのみ・配信停止後のみ）
     domainList.append(tr)
   }

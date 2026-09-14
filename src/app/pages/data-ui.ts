@@ -38,21 +38,29 @@ export async function postJson<T>(path: string, body: unknown): Promise<T | null
 export function pageShell(container: HTMLElement, title: string, note: string): HTMLElement {
   container.style.cssText = `flex:1;min-width:0;background:${T.bg};min-height:100vh`
   container.innerHTML = ''
-  const body = el('div', { style: `padding:24px 28px;font-family:${T.font}` })
+  // クラスはスマホ用CSS（mobile-css.ts）が余白・角丸を外すための目印
+  const body = el('div', { class: 'sb-page-shell', style: `padding:24px 28px;font-family:${T.font}` })
   body.append(
-    el('div', { text: title, style: `font-size:20px;font-weight:700;color:${T.text};margin-bottom:4px` }),
+    el('div', { class: 'sb-page-title', text: title, style: `font-size:20px;font-weight:700;color:${T.text};margin-bottom:4px` }),
     el('div', {
+      class: 'sb-page-note',
       text: note,
       style: `font-size:12px;color:${T.sub};margin-bottom:20px;line-height:1.7`,
     }),
   )
   const content = el('div', {
+    class: 'sb-page-card',
     style: `background:${T.surface};border-radius:10px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,.06)`,
   })
   body.append(content)
   container.append(body)
   return content
 }
+
+/** 表の目印クラス。スマホでは1行＝1カードに組み替える（mobile-css.ts） */
+export const DATA_TABLE_CLASS = 'sb-data-table'
+export const DATA_HEAD_CLASS = 'sb-data-head'
+export const DATA_ROW_CLASS = 'sb-data-row'
 
 export interface Column<Row> {
   head: string
@@ -79,9 +87,10 @@ export function table<Row>(
   opts?: { keepHeaderWhenEmpty?: boolean },
 ): HTMLElement {
   if (rows.length === 0 && opts?.keepHeaderWhenEmpty !== true) return emptyState(empty)
-  const wrap = el('div', { style: 'overflow-x:auto' })
+  const wrap = el('div', { class: DATA_TABLE_CLASS, style: 'overflow-x:auto' })
   const grid = `grid-template-columns:${columns.map((c) => c.width ?? 'minmax(90px,1fr)').join(' ')}`
   const head = el('div', {
+    class: DATA_HEAD_CLASS,
     style: `display:grid;${grid};gap:12px;padding:10px 8px;border-bottom:2px solid var(--sb-c-eeeeee, #EEEEEE);font-size:12px;color:${T.sub}`,
   })
   for (const col of columns) {
@@ -90,21 +99,23 @@ export function table<Row>(
   wrap.append(head)
   for (const row of rows) {
     const tr = el('div', {
+      class: DATA_ROW_CLASS,
       style: `display:grid;${grid};gap:12px;padding:12px 8px;border-bottom:1px solid var(--sb-c-f2f2f2, #F2F2F2);font-size:13px;color:${T.text}`,
     })
     for (const col of columns) {
       const cellStyle = `text-align:${col.align ?? 'left'};word-break:break-all`
       const href = col.href?.(row) ?? null
-      if (href === null) {
-        tr.append(el('div', { text: col.cell(row), style: cellStyle }))
-        continue
-      }
-      const link = el('a', {
-        text: col.cell(row),
-        style: `${cellStyle};color:var(--sb-accent, #0091FF);text-decoration:none`,
-      })
-      link.href = href
-      tr.append(link)
+      const cell =
+        href === null
+          ? el('div', { text: col.cell(row), style: cellStyle })
+          : el('a', {
+              text: col.cell(row),
+              style: `${cellStyle};color:var(--sb-accent, #0091FF);text-decoration:none`,
+            })
+      if (cell instanceof HTMLAnchorElement) cell.href = href ?? ''
+      // スマホでは列名が消えるので、セル自身に持たせておく（CSSが `列名 値` で出す）
+      cell.dataset['label'] = col.head
+      tr.append(cell)
     }
     wrap.append(tr)
   }

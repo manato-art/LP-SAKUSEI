@@ -58,6 +58,46 @@ describe('スマホの決まりごと', () => {
   it('ホームバーのぶんの余白を空ける', () => {
     expect(css).toContain('env(safe-area-inset-bottom')
   })
+
+  it('表は1行＝1カードにして、列名をセルの中に出す', () => {
+    expect(css).toContain('.sb-data-head{display:none')
+    expect(css).toContain('.sb-data-row{display:block')
+    expect(css).toContain('content:attr(data-label)')
+  })
+
+  it('数値タイルは2列（1列だと延々と縦に伸びる）', () => {
+    expect(css).toContain('.sb-kpi-grid{grid-template-columns:1fr 1fr')
+  })
+
+  it('画面の枠は左右の余白と角丸を外す', () => {
+    expect(css).toContain('.sb-page-card{border-radius:0')
+  })
+})
+
+describe('LPエディタのスマホ版', () => {
+  const css = mobileCss()
+
+  it('Version一覧とプロパティはしまい、合図が付いたときだけ下から出す', () => {
+    expect(css).toContain('[class*="_abTestArticlesWrapper_"],html body .sb-props-panel{display:none')
+    expect(css).toContain('sb-m-versions-open')
+    expect(css).toContain('sb-m-props-open')
+  })
+
+  it('編集ツールは画面の下に横並びで固定する', () => {
+    expect(css).toContain('[class*="_sideToolbarWrapper_"]{position:fixed')
+    expect(css).toContain('flex-direction:row')
+  })
+
+  it('エディタのCSSは後から注入されるので、詳細度を上げて勝たせる', () => {
+    for (const rule of ['_abTestArticlesWrapper_', '_sideToolbarWrapper_', '_editorWrapper_']) {
+      expect(css, rule).toContain(`html body [class*="${rule}"]`)
+    }
+  })
+
+  it('キャンバスは画面幅いっぱいで、下のツールバーに隠れない余白を持つ', () => {
+    expect(css).toContain('.ql-editor{max-width:100% !important')
+    expect(css).toMatch(/padding:16px 14px 96px/)
+  })
 })
 
 describe('下部タブバー', () => {

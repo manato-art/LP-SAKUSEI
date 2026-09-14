@@ -181,6 +181,8 @@ function kpiCells(k: Kpi): [string, string][] {
 function renderTotals(wrap: HTMLElement, data: DashboardData): void {
   const grid = el('div', {
     // 金額は桁が伸びるので、幅を広めに取って**数字の途中で折り返させない**
+    // クラスはスマホで2列に組み替えるための目印（mobile-css.ts）
+    class: 'sb-kpi-grid',
     style: 'display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin-bottom:20px',
   })
   for (const [label, value] of kpiCells(data.kpi)) {

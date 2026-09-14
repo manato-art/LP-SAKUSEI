@@ -32,6 +32,7 @@ import {
 } from '../master-style.ts'
 import { createAutosave } from './autosave.ts'
 import { DELIVERY_DOMAIN_UNSET_NOTE, deliveryUrlFor } from './basic-info-form.ts'
+import { isMobileViewport } from '../mobile/viewport.ts'
 import type { EditorContext } from './editor-context.ts'
 import { HOOK } from './editor-hooks.ts'
 import { buildFullHtml } from './editor-html.ts'
@@ -321,7 +322,10 @@ export function wireSideToolbar(ctx: EditorContext): void {
   // 属性セレクタ([class*=])より高特異度のため、CSSの!importantでも負ける場面がある。
   // インラインスタイルで直接上書きする（インラインstyleは最高特異度）。
   const sideWrapper = ctx.root.querySelector<HTMLElement>('[class*="_sideToolbarWrapper_"]')
-  if (sideWrapper !== null) {
+  // スマホはレールを画面の下へ横並びで固定する（mobile-css.ts）。
+  // ここでインラインの !important を当てると、インラインが最強なのでCSS側が効かなくなる。
+  const railIsVertical = !isMobileViewport()
+  if (sideWrapper !== null && railIsVertical) {
     sideWrapper.style.setProperty('margin-top', '0', 'important')
     sideWrapper.style.setProperty('margin-bottom', '0', 'important')
     sideWrapper.style.setProperty('padding', '8px 0 0', 'important')
@@ -334,7 +338,7 @@ export function wireSideToolbar(ctx: EditorContext): void {
     sideWrapper.style.setProperty('overflow', 'visible', 'important')
   }
   const sideTop = ctx.root.querySelector<HTMLElement>('[class*="_sideToolbarTop_"]')
-  if (sideTop !== null) {
+  if (sideTop !== null && railIsVertical) {
     sideTop.style.setProperty('display', 'flex', 'important')
     sideTop.style.setProperty('flex-direction', 'column', 'important')
     sideTop.style.setProperty('align-items', 'center', 'important')
@@ -352,7 +356,7 @@ export function wireSideToolbar(ctx: EditorContext): void {
     ctx.root.querySelector<HTMLElement>('.quillEditorContentWrapper .ql-container') ??
     ctx.root.querySelector<HTMLElement>('.ql-container')
   const alignRailToCanvas = (): void => {
-    if (sideWrapper === null) return
+    if (sideWrapper === null || !railIsVertical) return
     const canvas = findCanvas()
     const cell = sideWrapper.parentElement
     if (canvas === null || cell === null) return

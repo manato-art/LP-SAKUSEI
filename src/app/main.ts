@@ -8,6 +8,7 @@ import { initThemeMode, isThemeMode } from './theme-mode.ts'
 import { renderReportExclusions } from './pages/report-exclusions.ts'
 import { renderFolders } from './pages/folders.ts'
 import { isMobileViewport } from './mobile/viewport.ts'
+import { applyMobileEditor, teardownMobileEditor } from './mobile/editor-mobile.ts'
 import { renderMobileFolders, renderMobilePages } from './mobile/pages-mobile.ts'
 import { renderEditor } from './pages/editor.ts'
 import { renderBasicInfo } from './pages/basic-info.ts'
@@ -56,6 +57,8 @@ export function isStale(generation: number): boolean {
 async function route(): Promise<void> {
   renderGeneration += 1
   const generation = renderGeneration
+  // 画面が変わったら、エディタ用に開いていたパネルの合図を消す
+  teardownMobileEditor()
   const raw = location.hash.replace(/^#/, '') || '/folders'
   const [path, query] = raw.split('?')
   const params = new URLSearchParams(query ?? '')
@@ -82,6 +85,8 @@ async function route(): Promise<void> {
     const editorMatch = /^\/ab_tests\/([^/]+)\/articles$/.exec(path ?? '')
     if (editorMatch !== null) {
       await renderEditor(content, editorMatch[1] as string, generation)
+      // スマホはキャンバスが潰れるので、Version一覧とプロパティをしまってボタンで出す
+      if (isMobileViewport()) applyMobileEditor(content)
       return
     }
     /**
