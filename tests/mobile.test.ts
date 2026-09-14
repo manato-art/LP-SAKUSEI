@@ -647,3 +647,43 @@ describe('スマホの見出しとカテゴリー', () => {
     expect(src).not.toContain("text: 'カテゴリー'")
   })
 })
+
+/**
+ * 2026-09-14。本人指摘3件。
+ *  - URLバーの「プレビュー」と「配信」で枠の位置と大きさが違う
+ *  - 「比較する」を押しても何も出ない
+ *  - 横スクロールできる場所がそうと分からない
+ */
+describe('スマホのURLバー・比較・横スクロールの合図', () => {
+  const css = mobileCss()
+
+  it('プレビューと配信のURL枠を同じ位置・同じ大きさに揃える', () => {
+    // 見出しの幅が「プレビュー」51px / 「配信」20px で、枠の始まりがずれていた（実測）
+    expect(css).toContain('.sb-url-label{min-width:52px !important')
+  })
+
+  it('「比較する」は画面いっぱいに出す（PCの右レール基準だと画面の外に置かれる）', () => {
+    // openComparePanel は右レールの左端を基準に right を決める。スマホのレールは
+    // 画面下いっぱい＝left:0 なので right が画面幅を超え、パネルが見えなかった
+    expect(css).toContain('.sb-cmp-panel{top:0 !important;right:0 !important;left:0 !important')
+    expect(css).toContain('height:100dvh !important')
+    expect(css).toContain('.sb-cmp-resize{display:none !important}')
+    // 下のツール列(9400)より手前に出す
+    const rule = css.slice(css.indexOf('.sb-cmp-panel{'))
+    const z = /z-index:(\d+)/.exec(rule.slice(0, rule.indexOf('}')))
+    expect(Number(z?.[1] ?? 0)).toBeGreaterThan(9400)
+  })
+
+  it('横スクロールできる場所には、端に影を出して続きがあると分かるようにする', () => {
+    expect(css).toContain('.sb-m-scrollable')
+    expect(css).toContain('background-attachment:local,local,scroll,scroll')
+  })
+
+  it('横スクロールの合図は、横に流している場所すべてに付ける', () => {
+    // 個別に書き忘れないよう、横スクロールさせる規則と同じ場所へまとめて当てる
+    for (const sel of ['.sb-tabbar', '[class*="_navContainer_"]', '[data-widget-toolbar]']) {
+      expect(css, sel).toContain(sel)
+    }
+    expect(css).toContain('html body .sb-m-scrollable,')
+  })
+})

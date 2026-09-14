@@ -243,6 +243,39 @@ export function mobileCss(): string {
     `max-height:60vh;overflow:auto}`,
     `html body [data-clone-panel-host] [class*="_body_x4j8w"]{width:auto !important}`,
 
+    // URLバーの見出しは「プレビュー」51px /「配信」20px で幅が違い、枠の始まりと大きさが
+    // 揃っていなかった（2026-09-14 本人指摘）。広いほう（プレビュー）に合わせる
+    `html body .sb-url-label{min-width:52px !important;display:inline-block}`,
+
+    // ── 「比較する」パネル（2026-09-14 本人指摘「押しても何も表示されません」）──
+    // openComparePanel は右レールの左端を基準に right を決めるが、スマホのレールは
+    // 画面下いっぱい（left:0）なので right が画面幅を超え、パネルが画面の外に置かれていた。
+    // インラインの top/right/width/height を打ち消して全画面にする（下のツール列より手前）。
+    `html body .sb-cmp-panel{top:0 !important;right:0 !important;left:0 !important;`,
+    `bottom:0 !important;width:auto !important;height:100dvh !important;max-width:none !important;`,
+    `border-radius:0 !important;z-index:9500 !important}`,
+    // 角をつまんで大きさを変える操作は指では使えない
+    `html body .sb-cmp-resize{display:none !important}`,
+
+    // ── 横スクロールできる場所の合図（2026-09-14 本人指摘）──
+    // 端に「続きがある」影を出す。地の色と同じ覆いを local に、影を scroll に置くと、
+    // 端まで動かしたときだけ影が消える（＝続きがある間だけ出る）
+    `html body .sb-m-scrollable,`,
+    `html body .sb-tabbar,`,
+    `html body [class*="_navContainer_"],`,
+    `html body [data-widget-toolbar],`,
+    `html body .hm-cols,`,
+    `html body [class*="css-1rr4qq7"],`,
+    `html body [class*="css-m7q6f4"] [class*="css-19sre7e"]>div{`,
+    `background-image:linear-gradient(to right,var(--sb-surface),transparent),`,
+    `linear-gradient(to left,var(--sb-surface),transparent),`,
+    `linear-gradient(to right,rgba(0,0,0,.24),transparent),`,
+    `linear-gradient(to left,rgba(0,0,0,.24),transparent);`,
+    `background-position:left center,right center,left center,right center;`,
+    `background-repeat:no-repeat;`,
+    `background-size:28px 100%,28px 100%,16px 100%,16px 100%;`,
+    `background-attachment:local,local,scroll,scroll}`,
+
     // ── レポート画面 ──
     // 「レポート / 広告データ取得日時 / ヒートマップ」の帯は横1列に収まりきらず、
     // 縮められた枠から文字がはみ出して重なっていた。縮めずに横スクロールさせる
