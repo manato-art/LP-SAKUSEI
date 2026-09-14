@@ -65,13 +65,20 @@ export function mobileCss(): string {
     `box-shadow:0 -6px 24px rgba(0,0,0,.25);overflow-y:auto;`,
     `padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}`,
     // 編集ツール（アイコンレール）は画面の下に横並びで固定する
-    `html body [class*="_sideToolbarWrapper_"]{position:fixed !important;left:0;right:0;bottom:0;top:auto !important;`,
+    // left/right/bottom も !important にする。付けないと採取CSSに負けて `bottom` が効かず、
+    // レールが本来の位置のまま画面の下へはみ出し、アイコンの下のラベルが切れる（実機で発覚）
+    `html body [class*="_sideToolbarWrapper_"]{position:fixed !important;`,
+    `left:0 !important;right:0 !important;bottom:0 !important;top:auto !important;`,
     `width:auto !important;height:auto !important;display:flex !important;flex-direction:row !important;`,
-    `align-items:center;gap:4px;overflow-x:auto;z-index:9400;background:var(--sb-surface);`,
-    `border-top:1px solid var(--sb-line);padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px))}`,
+    // 採取CSSが margin:-20px を持っている（PCはコードがインラインで打ち消していた）。
+    // 消さないとレールが20px下へずれ、アイコンの下のラベルが画面の外で切れる（実機で発覚）
+    `margin:0 !important;`,
+    `align-items:center;gap:0;overflow-x:auto;z-index:9400;background:var(--sb-surface);`,
+    `border-top:1px solid var(--sb-line);padding:4px 4px calc(4px + env(safe-area-inset-bottom,0px))}`,
     `html body [class*="_sideToolbarWrapper_"]>*{flex:0 0 auto}`,
     `html body [class*="_sideToolbarTop_"]{display:flex !important;flex-direction:row !important;`,
-    `align-items:center;gap:2px;width:auto !important;padding:0 !important}`,
+    // 項目の間隔は採取CSSが4px入れてくる。8項目 × 44px ＝ 352px に収めるため消す
+    `align-items:center;gap:0 !important;width:auto !important;padding:0 !important}`,
     // 「設置済みWidget」の列はスマホでは出さない（画面の半分を取ってキャンバスが潰れる）。
     // Widget自体は下のツールバーの「Widget」から開ける
     `html body [data-widget-nav]{display:none !important}`,
@@ -89,7 +96,8 @@ export function mobileCss(): string {
     `html body .sb-ct-select{height:38px !important;font-size:14px;max-width:120px}`,
     `html body .sb-ct-sep{margin:0 6px}`,
     // 下のツールバーの項目: 文字が画面の外に切れていたので、幅と高さを決めて収める
-    `html body [class*="_sideToolbarIcon_"]{width:54px !important;min-width:54px;height:46px !important;`,
+    // 8項目 × 44px ＋ 左右の余白8px ＝ 360px。狭いスマホ（360px）でも横スクロールなしで収まる
+    `html body [class*="_sideToolbarIcon_"]{width:44px !important;min-width:44px;height:46px !important;`,
     `padding:0 !important;margin:0 !important;display:flex !important;flex-direction:column !important;`,
     `align-items:center !important;justify-content:center !important;gap:1px}`,
     `html body [class*="_sideToolbarWrapper_"] .sb-side-label{font-size:9px !important;line-height:1.1}`,

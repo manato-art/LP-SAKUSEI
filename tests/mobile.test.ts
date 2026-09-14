@@ -88,6 +88,20 @@ describe('LPエディタのスマホ版', () => {
     expect(css).toContain('flex-direction:row')
   })
 
+  it('採取CSSの負のマージンを消す（消さないと下へずれてラベルが画面の外で切れる）', () => {
+    expect(css).toContain('margin:0 !important')
+    expect(css).toContain('bottom:0 !important')
+  })
+
+  it('編集ツールは8項目が横スクロールなしで収まる幅（狭い端末360pxでも）', () => {
+    const m = /_sideToolbarIcon_"\]\{width:(\d+)px/.exec(css)
+    expect(m).not.toBeNull()
+    const width = Number(m?.[1])
+    expect(width * 8 + 8).toBeLessThanOrEqual(360)
+    // 指が当たる大きさ（44px）は下回らない
+    expect(width).toBeGreaterThanOrEqual(44)
+  })
+
   it('エディタのCSSは後から注入されるので、詳細度を上げて勝たせる', () => {
     for (const rule of ['_abTestArticlesWrapper_', '_sideToolbarWrapper_', '_editorWrapper_']) {
       expect(css, rule).toContain(`html body [class*="${rule}"]`)
