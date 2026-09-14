@@ -698,15 +698,16 @@ describe('スマホのLP設定（記事設定）', () => {
   const css = mobileCss()
 
   it('項目は1行2つにする（3つ・4つだと枠が100px以下になる）', () => {
-    expect(css).toContain('[class*="_formGroup_qyxur_"]{width:50% !important}')
-    expect(css).toContain('[class*="_paddingFormGroup_qyxur_"]{width:50% !important}')
+    expect(css).toContain('[class*="_paddingFormGroup_qyxur_"]{width:50% !important;')
+    expect(css).toContain('[class*="_formGroup_qyxur_"],')
   })
 
   it('単位の「px」と入力値を重ねない', () => {
     expect(css).toContain('[class*="_formGroup_qyxur_"]::before')
     expect(css).toContain('right:8px !important')
     // 入力値が「px」の下へ潜らないよう、右の余白を空ける
-    expect(css).toContain('padding-right:28px !important')
+    // 「px」が付く欄だけに掛ける（全部に掛けると文字色の16進欄で値が見えなくなる）
+    expect(css).toContain('[class*="_pixcelForm_qyxur_"] input{padding-right:28px !important}')
   })
 
   it('見出しは1文字ずつ縦に割らない', () => {
@@ -882,5 +883,34 @@ describe('スマホの広告媒体連携（媒体カード）', () => {
     const fragment = readFileSync('src/app/fragments/teams__ad_accounts__default.html', 'utf8')
     expect(fragment).toContain('_media_ifzcq_')
     expect(fragment).toContain('_mediaContainer_ifzcq_')
+  })
+})
+
+/**
+ * 2026-09-14。本人指摘「ここ3行にできる、はず」「カラーパッドがわかりずらい」（LP設定）。
+ */
+describe('スマホのLP設定（詰め方と色の選び方）', () => {
+  const css = mobileCss()
+
+  it('項目を1行2つにするには box-sizing も直す（content-box＋左右10pxの余白で50%に収まらない）', () => {
+    // 実測: 50%＝167px に padding 20px が足されて187px。2つで374px＞334pxとなり1つずつ縦に並んでいた
+    expect(css).toContain('[class*="_formGroup_qyxur_"],')
+    expect(css).toContain('box-sizing:border-box !important')
+  })
+
+  it('入りきらない値は「…」で示す（フォント名が途中で断ち切られていた）', () => {
+    expect(css).toContain('[class*="_formGroup_qyxur_"] input{text-overflow:ellipsis}')
+  })
+
+  it('文字色の行は幅いっぱいにする（半分だと見出しが2行に割れ、16進の値も切れる）', () => {
+    expect(css).toContain('[class*="_fontColorForm_qyxur_"]{width:100% !important}')
+  })
+
+  it('色見本は指で押せる大きさにして、押せると分かる形にする', () => {
+    expect(css).toContain('input[type="color"]')
+    const rule = css.slice(css.indexOf('input[type="color"]'))
+    const body = rule.slice(0, rule.indexOf('}'))
+    expect(body).toContain('height:38px')
+    expect(body).toContain('border-radius')
   })
 })

@@ -296,15 +296,31 @@ export function mobileCss(): string {
     // 実物は1行に3つ（width:30%）・余白は4つ（22%）並べる作り。390pxでは枠が100px/73pxしか
     // 残らず、(1)右から30pxに絶対配置された単位「px」が入力値と重なり、
     // (2)「文字色」の見出しが1文字ずつ縦に割れていた。1行2つにして、見出しは折り返さない。
-    `html body [class*="_formGroup_qyxur_"]{width:50% !important}`,
-    `html body [class*="_paddingFormGroup_qyxur_"]{width:50% !important}`,
+    // width:50% だけでは1行1つのまま。box-sizing が content-box で左右に10pxの余白が
+    // 足されるため、50%(167px)+20px が2つで374px となり枠(334px)に収まらない（実測）
+    `html body [class*="_formGroup_qyxur_"],`,
+    `html body [class*="_paddingFormGroup_qyxur_"]{width:50% !important;`,
+    `box-sizing:border-box !important}`,
     `html body [class*="_masterCssFormWrapper_qyxur_"] label,`,
     `html body [class*="_formGroup_qyxur_"]>label{white-space:nowrap !important}`,
     // 単位は枠の端へ寄せ、入力値はその手前で止める
     `html body [class*="_formGroup_qyxur_"]::before,`,
     `html body [class*="_paddingFormGroup_qyxur_"]::before{right:8px !important}`,
-    `html body [class*="_formGroup_qyxur_"] input,`,
-    `html body [class*="_paddingFormGroup_qyxur_"] input{padding-right:28px !important}`,
+    // 右の余白は「px」が付く欄だけ（_pixcelForm_）。全部に掛けると、幅65pxしかない
+    // 文字色の16進欄で値が右へ押し出されて見えなくなる（実測で発覚）
+    `html body [class*="_pixcelForm_qyxur_"] input{padding-right:28px !important}`,
+    // 入りきらない値（フォント名など）は途中で断ち切らず「…」で示す
+    `html body [class*="_formGroup_qyxur_"] input{text-overflow:ellipsis}`,
+    // 文字色は「見出し＋#＋16進6桁＋色見本」を1つの行に入れるので、半分の幅(167px)では
+    // 見出しが2行に割れ、16進の値も切れる。この行だけ幅いっぱいにする
+    `html body [class*="_fontColorForm_qyxur_"]{width:100% !important}`,
+    `html body [class*="_fontColorForm_qyxur_"] input[type="text"]{flex:1 1 auto !important;`,
+    `min-width:0 !important;padding-right:12px !important}`,
+    // 色見本（input type=color）は28pxで、押せるものだと分かりにくく指でも狙いにくい
+    `html body [class*="_formGroup_qyxur_"] input[type="color"]{width:48px !important;`,
+    `height:38px !important;margin-left:8px !important;padding:0 !important;`,
+    `border:1px solid var(--sb-line) !important;border-radius:6px !important;`,
+    `box-shadow:0 1px 2px rgba(0,0,0,.12)}`,
 
     // ── ツール画面（2026-09-14・全画面の実測で見つけた「文字が入りきらない」箇所）──
     // マジック置換: 操作列は5つ横並び（合計745px）で折り返さないため、タブと2つ目の検索欄と
