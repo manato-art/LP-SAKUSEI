@@ -17,6 +17,15 @@ export const DATE_PRESET_VALUES = [
 
 export type DatePreset = (typeof DATE_PRESET_VALUES)[number]
 
+/** 採取した実 `<select>` の表示文字（2026-09-15に採取物から写した） */
+export const DATE_PRESET_LABELS: Readonly<Record<DatePreset, string>> = {
+  today: '今日',
+  yesterday: '昨日',
+  seven_days: '7日間',
+  last_three_days: '過去3日間',
+  last_seven_days: '過去7日間',
+}
+
 import { jstDateKey } from '../jst.ts'
 
 export interface DateRange {

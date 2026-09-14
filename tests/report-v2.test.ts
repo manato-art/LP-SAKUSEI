@@ -172,3 +172,51 @@ describe('FVER / SVER / FSVER / OAR を画面に出す（見た目は変えな�
     }
   })
 })
+
+/**
+ * 2026-09-15。本人指示「実物を見て足りないものを実装する（UIは変えない）」。
+ * 採取した実DOMにあってクローンに無かったものを足したぶん。
+ */
+describe('実物にあって足りなかったもの', () => {
+  const src = readFileSync('src/app/pages/report-v2.ts', 'utf8')
+  const tables = readFileSync('src/app/pages/report-v2-tables.ts', 'utf8')
+  const dom = readFileSync('src/app/fragments/ab_tests__UID__reports__default.html', 'utf8')
+
+  it('デイリーレポート（日付ごとの表）がある', () => {
+    expect(dom).toContain('デイリーレポート')
+    expect(src).toContain('buildDailyTable')
+    // 13指標を1か所の定義から出す（列の定義を二重に持たない）
+    expect(tables).toContain('REPORT_COLUMNS')
+  })
+
+  it('日付ごとの行の先頭は日付、合計行が先頭にある', () => {
+    expect(tables).toContain('DAILY_LABEL_COLUMN')
+  })
+
+  it('期間プリセット（今日/昨日/7日間/過去3日間/過去7日間）がある', () => {
+    for (const label of ['今日', '昨日', '7日間', '過去3日間', '過去7日間']) {
+      expect(dom, label).toContain(`>${label}<`)
+    }
+    expect(src).toContain('DATE_PRESET_VALUES')
+  })
+
+  it('ポップアップの未設定枠がある（実物の文言とリンク先）', () => {
+    expect(dom).toContain('ポップアップを設定するとレポートが表示されます')
+    expect(src).toContain('ポップアップを設定するとレポートが表示されます')
+    expect(src).toContain('exit_popups')
+  })
+
+  it('Branch Operation の見出しに「配信除外設定」と「配信割合について」がある', () => {
+    expect(dom).toContain('配信除外設定')
+    expect(dom).toContain('配信割合について')
+    expect(tables).toContain('配信除外設定')
+    expect(tables).toContain('配信割合について')
+  })
+
+  it('列見出しに実物の説明（aria-label）を付ける', () => {
+    expect(dom).toContain('aria-label="オファー到達率 ※最初の広告リンクに到達した率"')
+    const columns = readFileSync('src/app/pages/report-columns.ts', 'utf8')
+    expect(columns).toContain('オファー到達率 ※最初の広告リンクに到達した率')
+    expect(tables).toContain('aria-label')
+  })
+})

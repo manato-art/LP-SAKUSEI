@@ -457,6 +457,14 @@ describe('レポート画面の採取ドロップダウン', () => {
     expect(dom).toContain('_triggerDescription_wn8sv_8')
   })
 
+  it('名札だけの面（歯車の「パラメーター設定」）はホバーで出す＝押した結果として出さない', () => {
+    // 2026-09-15 本人指摘: 実物は押すとパラメーター設定の画面が開く。名札はホバーの吹き出し。
+    expect(reportDom).toContain('_triggerDescription_')
+    expect(reportDom).toContain('mouseenter')
+    // 開く先が採取できていないことを、黙って握りつぶさず伝える
+    expect(reportDom).toContain('まだ採取していない')
+  })
+
   it('採取ドロップダウンを開閉する配線がある', () => {
     expect(reportDom).toContain('export function wireCapturedDropdowns')
     // 開閉は採取CSSのクラスをそのまま使う（手書きしない）

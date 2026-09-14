@@ -6,7 +6,7 @@
  * CSSは書き足さない（採取済みの `capture/clean/<slug>/<state>/cssom.css` を読み込むだけ）。
  */
 import { PANEL_BODY_CLASS, PANEL_OPEN_CLASS } from '../panels/panel-group.ts'
-import { T, el } from '../ui.ts'
+import { T, el, toast } from '../ui.ts'
 import { overrideDarkBackgrounds } from '../white-base.ts'
 import { extractCapturedAbTestUid, stripShellFromFragment, toHashHref } from './report-substrate.ts'
 import { buildThemeSwap, extractThemeTokens, swapClassName, type ThemeSwap } from './report-theme.ts'
@@ -179,6 +179,27 @@ const WIRED_MARK = 'cloneDropdown'
 
 let outsideCloseWired = false
 
+/** 中身が名札（`_triggerDescription_`）だけか＝ツールチップとして出す面か */
+function isNameLabelOnly(body: HTMLElement): boolean {
+  return body.querySelector('[class*="_triggerDescription_"]') !== null
+}
+
+/**
+ * 名札はホバーで出す（実物と同じ）。指では触れないので、押したときは
+ * 「その先の画面はまだ採取していない」と正直に伝える。推測で画面は作らない。
+ */
+function wireNameLabel(dropdown: HTMLElement, trigger: HTMLElement, body: HTMLElement): void {
+  const show = (on: boolean): void => { body.classList.toggle(PANEL_OPEN_CLASS, on) }
+  dropdown.addEventListener('mouseenter', () => show(true))
+  dropdown.addEventListener('mouseleave', () => show(false))
+  const name = (body.textContent ?? '').trim()
+  trigger.addEventListener('click', (event) => {
+    event.stopPropagation()
+    show(false)
+    toast(`「${name}」の画面は実物をまだ採取していないため開けません`, 'error')
+  })
+}
+
 /** 外を押したら開いているものを閉じる（1回だけ仕込む） */
 function wireOutsideClose(): void {
   if (outsideCloseWired) return
@@ -210,6 +231,16 @@ export function wireCapturedDropdowns(root: HTMLElement): void {
     if (trigger === null || body === null) continue
     dropdown.dataset[WIRED_MARK] = 'true'
     trigger.style.cursor = 'pointer'
+
+    /**
+     * 中身が「名札だけ」の面は**ツールチップ**（実物はホバーで出る）。
+     * 押したときの動きは別にある（歯車ならパラメーター設定の画面が開く）ので、
+     * 名札を押した結果として出すのは間違い（2026-09-15 本人指摘）。
+     */
+    if (isNameLabelOnly(body)) {
+      wireNameLabel(dropdown, trigger, body)
+      continue
+    }
     trigger.addEventListener('click', (event) => {
       // 外側を閉じる listener に拾わせない
       event.stopPropagation()

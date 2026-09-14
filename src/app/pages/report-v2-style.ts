@@ -82,6 +82,8 @@ export function injectReportStyles(): void {
       padding:12px 14px; border-bottom:1px solid var(--rv2-rule);
     }
     .rv2-title { font-size:14px; font-weight:700; }
+    /* 実物の見出しにある小さな添え字（「配信割合について」）。既存の色・文字サイズに合わせる */
+    .rv2-subscript { font-size:11px; color:#98a2b3; margin-left:8px; }
     .rv2-hint {
       width:14px; height:14px; border-radius:50%; border:1px solid #c9ced8; color:#98a2b3;
       font-size:9px; display:inline-flex; align-items:center; justify-content:center; cursor:help;

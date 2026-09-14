@@ -39,6 +39,8 @@ export type KpiKey =
 export interface ReportColumn {
   /** 採取ヘッダの表記（改名しない） */
   label: string
+  /** 採取ヘッダの説明（実物の aria-label をそのまま写す。2026-09-15）。無い画面では省略可 */
+  title?: string
   /** 採取ヘッダの単位表記（空文字は単位なし） */
   unit: '' | '%' | '円'
   /** 対応する DerivedKpi のキー。恒等式に無い指標は null */
@@ -54,19 +56,19 @@ export const EMPTY_CELL = '-'
 
 /** 採取した13列（この順序と表記は実物と一致していること＝テストで機械保証） */
 export const REPORT_COLUMNS: readonly ReportColumn[] = [
-  { label: '配信金額', unit: '円', metric: 'ad_cost', format: 'yen' },
-  { label: 'PV', unit: '', metric: 'pv', format: 'integer' },
-  { label: 'CLICK', unit: '', metric: 'click', format: 'integer' },
-  { label: 'CTR', unit: '%', metric: 'ctr', format: 'percent' },
-  { label: 'CV', unit: '', metric: 'cv', format: 'integer' },
-  { label: 'CVR', unit: '%', metric: 'cvr', format: 'percent' },
-  { label: 'CTVR', unit: '%', metric: 'ctvr', format: 'percent' },
-  { label: 'CPA', unit: '円', metric: 'cpa', format: 'yen' },
-  { label: 'MCPA', unit: '円', metric: 'mcpa', format: 'yen' },
-  { label: 'FVER', unit: '%', metric: 'fver', format: 'percent' },
-  { label: 'SVER', unit: '%', metric: 'sver', format: 'percent' },
-  { label: 'FSVER', unit: '%', metric: 'fsver', format: 'percent' },
-  { label: 'OAR', unit: '%', metric: 'oar', format: 'percent' },
+  { label: '配信金額', title: '配信金額', unit: '円', metric: 'ad_cost', format: 'yen' },
+  { label: 'PV', title: 'PV数', unit: '', metric: 'pv', format: 'integer' },
+  { label: 'CLICK', title: '計測機能付きリンククリック数', unit: '', metric: 'click', format: 'integer' },
+  { label: 'CTR', title: 'クリック率', unit: '%', metric: 'ctr', format: 'percent' },
+  { label: 'CV', title: 'CV数', unit: '', metric: 'cv', format: 'integer' },
+  { label: 'CVR', title: 'コンバージョン率 = CV / CLICK', unit: '%', metric: 'cvr', format: 'percent' },
+  { label: 'CTVR', title: 'CV / PV', unit: '%', metric: 'ctvr', format: 'percent' },
+  { label: 'CPA', title: 'CV1件あたりの費用 = 配信金額 / CV', unit: '円', metric: 'cpa', format: 'yen' },
+  { label: 'MCPA', title: 'クリックあたりの費用 = 配信金額 / CLICK', unit: '円', metric: 'mcpa', format: 'yen' },
+  { label: 'FVER', title: 'ファーストビュー離脱', unit: '%', metric: 'fver', format: 'percent' },
+  { label: 'SVER', title: 'セカンドビュー離脱', unit: '%', metric: 'sver', format: 'percent' },
+  { label: 'FSVER', title: 'ファーストビュー&セカンドビュー離脱', unit: '%', metric: 'fsver', format: 'percent' },
+  { label: 'OAR', title: 'オファー到達率 ※最初の広告リンクに到達した率', unit: '%', metric: 'oar', format: 'percent' },
 ]
 
 /**

@@ -4,7 +4,8 @@
  * 実物と同じく、レポート一覧は見出しが2段（配信実績 / 成果）に分かれる。
  * 並び替えとページ送りはこの画面の中だけで完結させる（再取得しない）。
  */
-import type { ReportKpi, ReportVersionRow } from '../api.ts'
+import { DAILY_LABEL_COLUMN, REPORT_COLUMNS, formatCell } from './report-columns.ts'
+import type { ReportDailyRow, ReportKpi, ReportVersionRow } from '../api.ts'
 import type { DateRange } from './report-period.ts'
 
 const yen = (v: number | null): string =>
@@ -298,6 +299,21 @@ export function buildBranchOperation(deps: BranchDeps): HTMLElement {
   hint.textContent = 'i'
   hint.title = '配信先ごとの実績。名前で絞り込める。'
 
+  // 実物の見出しにある2つ（2026-09-15に採取物で確認して追加）
+  const exclude = document.createElement('a')
+  exclude.className = 'rv2-btn'
+  exclude.textContent = '配信除外設定'
+  exclude.href = '#/report-exclusions'
+  exclude.style.textDecoration = 'none'
+  const ratioHelp = document.createElement('span')
+  ratioHelp.className = 'rv2-hint'
+  ratioHelp.textContent = 'i'
+  ratioHelp.title =
+    '配信割合について：Versionごとに何％の人へ配信するかの設定。合計100％になるように配る。'
+  const ratioLabel = document.createElement('span')
+  ratioLabel.className = 'rv2-subscript'
+  ratioLabel.textContent = '配信割合について'
+
   const search = document.createElement('div')
   search.className = 'rv2-search'
   search.innerHTML =
@@ -315,8 +331,8 @@ export function buildBranchOperation(deps: BranchDeps): HTMLElement {
   csv.className = 'rv2-btn primary'
   csv.textContent = 'CSVダウンロード'
   csv.addEventListener('click', deps.onDownloadCsv)
-  right.append(csv)
-  head.append(title, hint, search, right)
+  right.append(exclude, csv)
+  head.append(title, hint, ratioLabel, ratioHelp, search, right)
 
   const scroll = document.createElement('div')
   scroll.className = 'rv2-scroll'
@@ -429,6 +445,91 @@ export function buildBranchOperation(deps: BranchDeps): HTMLElement {
   input.addEventListener('input', render)
   render()
 
+  card.append(head, scroll)
+  return card
+}
+
+/* ================================================================
+ *  デイリーレポート（日付ごとの表）
+ *  2026-09-15: 実物にあってクローンに無かったので足した。
+ *  列は `report-columns.ts` の13列定義をそのまま使う（定義を二重に持たない）。
+ *  見た目は既存の `.rv2-card` / `.rv2-table` のまま＝配色・枠は変えない。
+ * ================================================================ */
+
+interface DailyTableDeps {
+  daily: readonly ReportDailyRow[]
+  totals: ReportKpi
+}
+
+export function buildDailyTable(deps: DailyTableDeps): HTMLElement {
+  const card = document.createElement('section')
+  card.className = 'rv2-card'
+
+  const head = document.createElement('div')
+  head.className = 'rv2-head'
+  const title = document.createElement('span')
+  title.className = 'rv2-title'
+  title.textContent = 'デイリーレポート'
+  const hint = document.createElement('span')
+  hint.className = 'rv2-hint'
+  hint.textContent = 'i'
+  hint.title = '選んだ期間の日ごとの実績。先頭は期間の合計。'
+  head.append(title, hint)
+
+  const scroll = document.createElement('div')
+  scroll.className = 'rv2-scroll'
+  const table = document.createElement('table')
+  table.className = 'rv2-table'
+
+  const thead = document.createElement('thead')
+  const headRow = document.createElement('tr')
+  const first = document.createElement('th')
+  first.textContent = '日付'
+  headRow.append(first)
+  for (const column of REPORT_COLUMNS) {
+    const th = document.createElement('th')
+    th.className = 'num'
+    th.textContent = column.unit === '' ? column.label : `${column.label} ${column.unit}`
+    // 実物は列見出しに説明が付く（aria-label）。文字は増やさず、読み上げと title だけに載せる
+    if (column.title !== undefined) {
+      th.setAttribute('aria-label', column.title)
+      th.title = column.title
+    }
+    headRow.append(th)
+  }
+  thead.append(headRow)
+
+  const tbody = document.createElement('tbody')
+  /** 1行ぶん（先頭ラベル＋13指標） */
+  const line = (label: string, kpi: ReportKpi, className?: string): HTMLTableRowElement => {
+    const tr = document.createElement('tr')
+    if (className !== undefined) tr.className = className
+    const head = document.createElement('td')
+    head.textContent = label
+    tr.append(head)
+    for (const column of REPORT_COLUMNS) {
+      const td = document.createElement('td')
+      td.className = 'num'
+      td.textContent = formatCell(kpi, column)
+      tr.append(td)
+    }
+    return tr
+  }
+  // 実物は合計が先頭行
+  tbody.append(line(DAILY_LABEL_COLUMN, deps.totals, 'rv2-total'))
+  if (deps.daily.length === 0) {
+    const empty = document.createElement('tr')
+    const td = document.createElement('td')
+    td.colSpan = REPORT_COLUMNS.length + 1
+    td.textContent = '表示できるレポートがありません'
+    td.style.cssText = 'color:var(--sb-c-6b7280, #6B7280);text-align:center;padding:20px'
+    empty.append(td)
+    tbody.append(empty)
+  }
+  for (const row of deps.daily) tbody.append(line(row.date, row))
+
+  table.append(thead, tbody)
+  scroll.append(table)
   card.append(head, scroll)
   return card
 }

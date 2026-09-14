@@ -9,11 +9,17 @@
  */
 import { api, type ReportKpi, type ReportResponse } from '../api.ts'
 import { toast } from '../ui.ts'
-import { toRangeQuery, type DateRange } from './report-period.ts'
+import {
+  DATE_PRESET_LABELS,
+  DATE_PRESET_VALUES,
+  resolvePreset,
+  toRangeQuery,
+  type DateRange,
+} from './report-period.ts'
 import { injectReportStyles } from './report-v2-style.ts'
 import { buildKpiCards } from './report-v2-kpi.ts'
 import { buildCreativeReport } from './report-v2-chart.ts'
-import { buildBranchOperation, buildReportList } from './report-v2-tables.ts'
+import { buildBranchOperation, buildDailyTable, buildReportList } from './report-v2-tables.ts'
 
 /** 同じ日数だけ手前にずらした期間（増減の比較対象） */
 export function previousRange(range: DateRange): DateRange {
@@ -94,10 +100,38 @@ function buildFilters(deps: FilterDeps): HTMLElement {
     deps.onApply(a <= b ? { startDate: a, endDate: b } : { startDate: b, endDate: a })
   })
 
+  // 期間プリセット（実物の「日付」セレクト。今日/昨日/7日間/過去3日間/過去7日間）
+  const preset = document.createElement('select')
+  preset.className = 'rv2-select'
+  for (const [value, label] of [
+    ['', '日付'],
+    ...DATE_PRESET_VALUES.map((v) => [v, DATE_PRESET_LABELS[v]] as const),
+  ] as readonly (readonly [string, string])[]) {
+    const option = document.createElement('option')
+    option.value = value
+    option.textContent = label
+    preset.append(option)
+  }
+  preset.addEventListener('change', () => {
+    if (preset.value === '') return
+    const range = resolvePreset(preset.value)
+    if (range === null) {
+      // 「7日間」だけは数え方が採取物から判別できない（今日を含むか不明）。黙って何もしない
+      // のではなく、そう伝える（推測で埋めない）。
+      toast('「7日間」の数え方が実物から確認できていません。日付で指定してください', 'error')
+      preset.value = ''
+      return
+    }
+    start.value = range.startDate
+    end.value = range.endDate
+    deps.onApply(range)
+  })
+
   // 項目はこの中だけで折り返させる。ボタンを兄弟に置くことで右端に固定される。
   const fields = document.createElement('div')
   fields.className = 'rv2-filter-fields'
   fields.append(
+    field('日付', preset),
     field('配信期間', rangeBox),
     // 2026-09-15: 採取した実DOMに合わせた。実物のデイリーレポートの絞り込みは
     // Version（既定「指定なし」）／アーカイブ（既定「アーカイブ済みを除く」）／端末（既定「全端末」）の3つだけ。
@@ -108,6 +142,36 @@ function buildFilters(deps: FilterDeps): HTMLElement {
     field('端末', fixedSelect(['全端末'])),
   )
   card.append(fields, apply)
+  return card
+}
+
+/**
+ * ポップアップの未設定枠（実物のレポート最下部）。
+ * 文言とリンク先は採取物のとおり（`ポップアップを設定するとレポートが表示されます` ＋ `設定する`）。
+ */
+function buildPopupPlaceholder(abTestUid: string): HTMLElement {
+  const card = document.createElement('section')
+  card.className = 'rv2-card'
+  const head = document.createElement('div')
+  head.className = 'rv2-head'
+  const title = document.createElement('span')
+  title.className = 'rv2-title'
+  title.textContent = 'ポップアップ'
+  head.append(title)
+
+  const body = document.createElement('div')
+  body.style.cssText = 'display:flex;align-items:center;gap:14px;padding:18px 4px;flex-wrap:wrap'
+  const text = document.createElement('span')
+  text.textContent = 'ポップアップを設定するとレポートが表示されます'
+  text.style.cssText = 'color:var(--sb-c-6b7280, #6B7280);font-size:13px'
+  const link = document.createElement('a')
+  link.className = 'rv2-btn primary'
+  link.textContent = '設定する'
+  link.href = `#/ab_tests/${abTestUid}/articles/exit_popups`
+  link.style.textDecoration = 'none'
+  body.append(text, link)
+
+  card.append(head, body)
   return card
 }
 
@@ -182,7 +246,9 @@ export async function buildReportBody(deps: ReportBodyDeps): Promise<HTMLElement
     buildKpiCards({ totals: deps.report.totals, daily: deps.report.daily, previous }),
     buildCreativeReport({ daily: deps.report.daily, range: deps.range, onDownloadCsv: csv }),
     buildReportList({ rows: deps.report.rows, range: deps.range }),
+    buildDailyTable({ daily: deps.report.daily, totals: deps.report.totals }),
     buildBranchOperation({ rows: deps.report.rows, totals: deps.report.totals, onDownloadCsv: csv }),
+    buildPopupPlaceholder(deps.abTestUid),
   )
   return root
 }
