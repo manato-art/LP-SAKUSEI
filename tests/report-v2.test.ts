@@ -220,3 +220,37 @@ describe('実物にあって足りなかったもの', () => {
     expect(tables).toContain('aria-label')
   })
 })
+
+describe('クリエイティブレポートの絞り込み（実物に合わせる）', () => {
+  const chart = readFileSync('src/app/pages/report-v2-chart.ts', 'utf8')
+  const dom = readFileSync('src/app/fragments/ab_tests__UID__reports__default.html', 'utf8')
+
+  it('広告ステータス（配信中 / 停止中 / ALL・既定はALL）がある', () => {
+    expect(dom).toContain('>配信中<')
+    expect(dom).toContain('>停止中<')
+    expect(dom).toContain('>ALL<')
+    for (const label of ['配信中', '停止中', 'ALL']) {
+      expect(chart, label).toContain(`'${label}'`)
+    }
+  })
+
+  it('「平均 / 合計」の切替がある', () => {
+    expect(dom).toContain('>平均<')
+    expect(dom).toContain('>合計<')
+    expect(chart).toContain("'平均'")
+    expect(chart).toContain("'合計'")
+  })
+
+  it('日付チップ（期間内の日を1日ずつ選ぶ）がある', () => {
+    expect(chart).toContain('rv2-datechip')
+  })
+
+  it('列選択（9指標のチェック＋保存）がある', () => {
+    // 採取物のチェックボックス名がそのまま9指標
+    for (const name of ['adSpending', 'pv', 'click', 'ctr', 'cv', 'cvr', 'ctvr', 'cpa', 'mcpa']) {
+      expect(dom, name).toContain(`name="${name}"`)
+    }
+    expect(chart).toContain('COLUMN_CHOICES')
+    expect(chart).toContain('保存')
+  })
+})

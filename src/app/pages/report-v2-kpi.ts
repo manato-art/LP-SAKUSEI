@@ -7,7 +7,8 @@
  */
 import type { ReportDailyRow, ReportKpi } from '../api.ts'
 
-export type KpiKey = 'ad_cost' | 'pv' | 'click' | 'ctr' | 'cv' | 'cvr' | 'cpa'
+// 2026-09-15: 実物のクリエイティブ欄の列選択が9指標なので CTVR / MCPA も扱えるようにした
+export type KpiKey = 'ad_cost' | 'pv' | 'click' | 'ctr' | 'cv' | 'cvr' | 'cpa' | 'ctvr' | 'mcpa'
 
 interface KpiDef {
   key: KpiKey
@@ -101,6 +102,10 @@ function valueOf(kpi: ReportKpi, key: KpiKey): number | null {
       return kpi.cvr
     case 'cpa':
       return kpi.cpa
+    case 'ctvr':
+      return kpi.ctvr
+    case 'mcpa':
+      return kpi.mcpa
   }
 }
 

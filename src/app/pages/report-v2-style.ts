@@ -84,6 +84,27 @@ export function injectReportStyles(): void {
     .rv2-title { font-size:14px; font-weight:700; }
     /* 実物の見出しにある小さな添え字（「配信割合について」）。既存の色・文字サイズに合わせる */
     .rv2-subscript { font-size:11px; color:#98a2b3; margin-left:8px; }
+    /* クリエイティブ欄の絞り込み（2026-09-15）。既存のカード内に収める見た目にする */
+    .rv2-creative-filters {
+      display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:10px 0 2px;
+    }
+    .rv2-chipgroup { display:flex; gap:4px; }
+    .rv2-chip {
+      border:1px solid var(--rv2-rule); background:var(--sb-c-ffffff, #FFFFFF); color:#5b6577;
+      border-radius:14px; padding:4px 12px; font-size:12px; cursor:pointer; font-family:inherit;
+    }
+    .rv2-chip.on { border-color:var(--sb-accent, #0091FF); color:var(--sb-accent, #0091FF); }
+    .rv2-datechips { flex-wrap:wrap; }
+    .rv2-columnchoice { position:relative; }
+    .rv2-columnchoice form { display:none; }
+    .rv2-columnchoice.open form {
+      display:flex; flex-direction:column; gap:6px; position:absolute; right:0; top:calc(100% + 6px);
+      background:var(--sb-c-ffffff, #FFFFFF); border:1px solid var(--rv2-rule); border-radius:8px;
+      padding:12px; z-index:20; box-shadow:0 6px 20px rgba(0,0,0,.12); min-width:170px;
+    }
+    .rv2-columnchoice form label {
+      display:flex; align-items:center; gap:8px; font-size:12px; color:#5b6577; cursor:pointer;
+    }
     .rv2-hint {
       width:14px; height:14px; border-radius:50%; border:1px solid #c9ced8; color:#98a2b3;
       font-size:9px; display:inline-flex; align-items:center; justify-content:center; cursor:help;

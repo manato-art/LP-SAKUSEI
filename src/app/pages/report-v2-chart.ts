@@ -5,11 +5,28 @@
  * 実物は Recharts だが、採取した静止SVGを置くだけだと期間を変えても動かないので、
  * ここは**実データから毎回描き直す**ようにしている。
  */
+import { toast } from '../ui.ts'
 import type { ReportDailyRow } from '../api.ts'
 import type { DateRange } from './report-period.ts'
 import type { KpiKey } from './report-v2-kpi.ts'
 
 /** グラフのタブ（実物のクリエイティブレポートと同じ並び） */
+/**
+ * 列選択（実物のクリエイティブ欄にある9指標のチェックボックス＋保存）。
+ * 名前は採取物の `name` 属性そのまま。既定で入っている5つも採取物どおり。
+ */
+export const COLUMN_CHOICES: readonly { name: string; label: string; key: KpiKey; on: boolean }[] = [
+  { name: 'adSpending', label: '配信金額', key: 'ad_cost', on: true },
+  { name: 'pv', label: 'PV', key: 'pv', on: false },
+  { name: 'click', label: 'CLICK', key: 'click', on: false },
+  { name: 'ctr', label: 'CTR', key: 'ctr', on: true },
+  { name: 'cv', label: 'CV', key: 'cv', on: true },
+  { name: 'cvr', label: 'CVR', key: 'cvr', on: true },
+  { name: 'ctvr', label: 'CTVR', key: 'ctvr', on: false },
+  { name: 'cpa', label: 'CPA', key: 'cpa', on: true },
+  { name: 'mcpa', label: 'MCPA', key: 'mcpa', on: false },
+]
+
 const CHART_TABS: readonly { key: KpiKey; label: string }[] = [
   { key: 'ad_cost', label: '配信金額' },
   { key: 'cv', label: 'CV' },
@@ -38,6 +55,10 @@ function valueOf(row: ReportDailyRow, key: KpiKey): number | null {
       return row.cvr
     case 'cpa':
       return row.cpa
+    case 'ctvr':
+      return row.ctvr
+    case 'mcpa':
+      return row.mcpa
   }
 }
 
@@ -185,6 +206,9 @@ export function buildCreativeReport(deps: ChartDeps): HTMLElement {
   hint.textContent = 'i'
   hint.title = '選んだ指標の日別推移。期間はページ上部のフィルターで変える。'
 
+  const choiceHost = document.createElement('div')
+  choiceHost.className = 'rv2-columnchoice'
+
   const tabs = document.createElement('div')
   tabs.className = 'rv2-tabs'
   const right = document.createElement('div')
@@ -194,8 +218,65 @@ export function buildCreativeReport(deps: ChartDeps): HTMLElement {
   csv.className = 'rv2-btn primary'
   csv.textContent = 'CSVダウンロード'
   csv.addEventListener('click', deps.onDownloadCsv)
-  right.append(csv)
+  right.append(choiceHost, csv)
   head.append(title, hint, tabs, right)
+
+  /* ── 実物の絞り込み（2026-09-15に採取物を見て追加。見た目は既存の部品に合わせる） ── */
+  const filters = document.createElement('div')
+  filters.className = 'rv2-creative-filters'
+
+  // Parameter検索（実物と同じ placeholder）
+  const paramSearch = document.createElement('input')
+  paramSearch.type = 'search'
+  paramSearch.className = 'rv2-input'
+  paramSearch.placeholder = 'Parameter検索'
+  paramSearch.title = 'パラメーター別の実績はまだ集計していないため、いまは絞り込めません'
+  paramSearch.disabled = true
+
+  // 広告ステータス（配信中 / 停止中 / ALL・既定はALL）
+  let adStatus: '配信中' | '停止中' | 'ALL' = 'ALL'
+  const statuses = document.createElement('div')
+  statuses.className = 'rv2-chipgroup'
+  for (const label of ['配信中', '停止中', 'ALL'] as const) {
+    const chip = document.createElement('button')
+    chip.type = 'button'
+    chip.className = `rv2-chip${label === adStatus ? ' on' : ''}`
+    chip.textContent = label
+    chip.addEventListener('click', () => {
+      adStatus = label
+      for (const other of statuses.querySelectorAll('button')) {
+        other.classList.toggle('on', other.textContent === label)
+      }
+      render()
+    })
+    statuses.append(chip)
+  }
+
+  // 平均 / 合計（実物は「平均」が選択側に見える配色）
+  let aggregation: '平均' | '合計' = '平均'
+  const aggs = document.createElement('div')
+  aggs.className = 'rv2-chipgroup'
+  for (const label of ['平均', '合計'] as const) {
+    const chip = document.createElement('button')
+    chip.type = 'button'
+    chip.className = `rv2-chip${label === aggregation ? ' on' : ''}`
+    chip.textContent = label
+    chip.addEventListener('click', () => {
+      aggregation = label
+      for (const other of aggs.querySelectorAll('button')) {
+        other.classList.toggle('on', other.textContent === label)
+      }
+      render()
+    })
+    aggs.append(chip)
+  }
+
+  // 日付チップ（期間内の日を1日ずつ選ぶ）。もう一度押すと解除
+  let pickedDate: string | null = null
+  const dates = document.createElement('div')
+  dates.className = 'rv2-chipgroup rv2-datechips'
+
+  filters.append(paramSearch, statuses, aggs, dates)
 
   const row = document.createElement('div')
   row.className = 'rv2-chart-row'
@@ -207,6 +288,31 @@ export function buildCreativeReport(deps: ChartDeps): HTMLElement {
   row.append(left)
 
   let current: KpiKey = 'ad_cost'
+
+  /** 絞り込みを通した日別の行（広告ステータスは行側に無いので、選ばれた日だけ絞る） */
+  const visibleDaily = (): readonly ReportDailyRow[] => {
+    const rows = pickedDate === null ? deps.daily : deps.daily.filter((d) => d.date === pickedDate)
+    return rows
+  }
+
+  const renderDateChips = (): void => {
+    dates.innerHTML = ''
+    for (const day of deps.daily) {
+      const chip = document.createElement('button')
+      chip.type = 'button'
+      chip.className = `rv2-chip rv2-datechip${pickedDate === day.date ? ' on' : ''}`
+      // 実物は「31日」のように日だけを出す
+      chip.textContent = `${Number(day.date.slice(8, 10))}日`
+      chip.title = day.date
+      chip.addEventListener('click', () => {
+        pickedDate = pickedDate === day.date ? null : day.date
+        renderDateChips()
+        render()
+      })
+      dates.append(chip)
+    }
+  }
+
   const render = (): void => {
     const def = CHART_TABS.find((t) => t.key === current)
     legend.innerHTML = ''
@@ -216,7 +322,7 @@ export function buildCreativeReport(deps: ChartDeps): HTMLElement {
     legend.append(dot, name)
 
     holder.innerHTML = ''
-    const chart = drawChart(deps.daily, current)
+    const chart = drawChart(visibleDaily(), current)
     holder.append(
       chart ??
         // 文言は採取物どおり（実物のクリエイティブ欄の空表示）
@@ -230,18 +336,70 @@ export function buildCreativeReport(deps: ChartDeps): HTMLElement {
     }
   }
 
-  for (const t of CHART_TABS) {
-    const b = document.createElement('button')
-    b.type = 'button'
-    b.className = 'rv2-tab'
-    b.dataset['key'] = t.key
-    b.textContent = t.label
-    b.addEventListener('click', () => {
-      current = t.key
-      render()
-    })
-    tabs.append(b)
+  /** 表示する指標タブ（列選択で選ばれたぶんだけ出す） */
+  const chosen = new Set(COLUMN_CHOICES.filter((c) => c.on).map((c) => c.key))
+  const renderTabs = (): void => {
+    tabs.innerHTML = ''
+    for (const choice of COLUMN_CHOICES) {
+      if (!chosen.has(choice.key)) continue
+      const b = document.createElement('button')
+      b.type = 'button'
+      b.className = 'rv2-tab'
+      b.dataset['key'] = choice.key
+      b.textContent = choice.label
+      b.addEventListener('click', () => {
+        current = choice.key
+        render()
+      })
+      tabs.append(b)
+    }
+    if (!chosen.has(current)) {
+      const first = [...chosen][0]
+      if (first !== undefined) current = first
+    }
   }
+
+  // 列選択（採取物と同じ9指標のチェック＋「保存」）
+  // 先に作っておく（右上のボタン列へ入れるため）
+  const choiceBox = choiceHost
+  const choiceForm = document.createElement('form')
+  for (const choice of COLUMN_CHOICES) {
+    const label = document.createElement('label')
+    const box = document.createElement('input')
+    box.type = 'checkbox'
+    box.name = choice.name
+    box.checked = chosen.has(choice.key)
+    const text = document.createElement('span')
+    text.textContent = choice.label
+    label.append(box, text)
+    choiceForm.append(label)
+  }
+  const save = document.createElement('button')
+  save.type = 'submit'
+  save.className = 'rv2-btn primary'
+  save.textContent = '保存'
+  choiceForm.append(save)
+  choiceForm.addEventListener('submit', (event) => {
+    event.preventDefault()
+    chosen.clear()
+    for (const choice of COLUMN_CHOICES) {
+      const box = choiceForm.querySelector<HTMLInputElement>(`input[name="${choice.name}"]`)
+      if (box?.checked === true) chosen.add(choice.key)
+    }
+    if (chosen.size === 0) {
+      toast('少なくとも1つは選んでください', 'error')
+      chosen.add('ad_cost')
+    }
+    renderTabs()
+    render()
+    choiceBox.classList.remove('open')
+  })
+  const choiceToggle = document.createElement('button')
+  choiceToggle.type = 'button'
+  choiceToggle.className = 'rv2-btn'
+  choiceToggle.textContent = '列を選ぶ'
+  choiceToggle.addEventListener('click', () => choiceBox.classList.toggle('open'))
+  choiceBox.append(choiceToggle, choiceForm)
 
   // 右側は実物と同じく「別軸の比較枠」。比較対象は未設定なので空表示にする。
   const side = emptyBox(
@@ -250,7 +408,9 @@ export function buildCreativeReport(deps: ChartDeps): HTMLElement {
   )
   row.append(side)
 
-  card.append(head, row)
+  card.append(head, filters, row)
+  renderTabs()
+  renderDateChips()
   render()
   return card
 }
