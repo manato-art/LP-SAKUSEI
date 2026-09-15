@@ -1002,3 +1002,25 @@ describe('スマホのレポートの表', () => {
     expect(style).toContain('.rv2-metrics-toggle { display:none; }')
   })
 })
+
+/**
+ * レポート／ヒートマップの帯（2026-09-15・本人指摘「スマホ版は？」）。
+ * 「広告データ取得日時」と歯車を1つずつ別の行に落としていたので、
+ * 中身が始まるまでに帯だけで131px使っていた。同じ行に並べて99pxにした。
+ */
+describe('スマホのレポートの帯', () => {
+  const css = mobileCss()
+
+  it('「広告データ取得日時」と歯車を同じ行に並べる', () => {
+    expect(css).toContain('html body [class*="_navWrapper_8ygjt_"]{display:flex !important;')
+    expect(css).toContain('flex-wrap:wrap !important;')
+    // 2つとも「行を専有しない」置き方にする
+    expect(css).toContain('html body [class*="_mediaSummary_"]{position:static !important;')
+    expect(css).toContain('html body [class*="_parameterScope_"]{position:static !important;')
+    expect(css.includes('display:inline-flex !important;align-items:center;')).toBe(true)
+  })
+
+  it('タブの列は1行を丸ごと使う（小さい2つと同じ行に詰めない）', () => {
+    expect(css).toContain('>[class*="_navContainer_"]{flex:1 1 100% !important}')
+  })
+})

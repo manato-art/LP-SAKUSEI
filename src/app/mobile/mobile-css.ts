@@ -402,15 +402,19 @@ export function mobileCss(): string {
     `scrollbar-width:none}`,
     `html body [class*="_navContainer_"]::-webkit-scrollbar{display:none}`,
     `html body [class*="_navContainer_"]>*{flex:0 0 auto !important}`,
-    // 「広告データ取得日時」は絶対配置で、PCではタブの右の空きに置かれている。
-    // 390pxではタブの上に重なるので、流し込みに戻して帯の下へ落とす
+    // 「広告データ取得日時」と歯車（パラメータ設定）は絶対配置で、PCではタブの右の
+    // 空きに置かれている。375pxではタブの上に重なるので流し込みに戻す。
+    // **2つを同じ行に並べる**（1つずつ別の行に落とすと、中身が始まるまでに
+    //   帯だけで131px使ってしまう。2026-09-15 本人指摘「スマホ版は？」）
+    `html body [class*="_navWrapper_8ygjt_"]{display:flex !important;flex-wrap:wrap !important;`,
+    `align-items:center;justify-content:flex-end;row-gap:0 !important}`,
+    `html body [class*="_navWrapper_8ygjt_"]>[class*="_navContainer_"]{flex:1 1 100% !important}`,
     `html body [class*="_mediaSummary_"]{position:static !important;left:auto !important;`,
-    `right:auto !important;top:auto !important;display:flex !important;justify-content:flex-end;`,
-    `padding:6px 12px;width:auto !important}`,
-    // 歯車（パラメータ）も同じく絶対配置で、ヒートマップの文字に重なっていた
+    `right:auto !important;top:auto !important;display:inline-flex !important;align-items:center;`,
+    `padding:4px 4px 4px 12px;width:auto !important;flex:0 0 auto !important}`,
     `html body [class*="_parameterScope_"]{position:static !important;left:auto !important;`,
-    `right:auto !important;top:auto !important;display:flex !important;justify-content:flex-end;`,
-    `gap:8px;padding:4px 12px;width:auto !important}`,
+    `right:auto !important;top:auto !important;display:inline-flex !important;align-items:center;`,
+    `gap:8px;padding:4px 12px 4px 4px;width:auto !important;flex:0 0 auto !important}`,
     // レポートの外枠はPC用に30px+16pxの余白を持つ。スマホは画面幅を使う
     `html body [class*="_abTestReportWrapper_"]{padding:0 !important}`,
     `html body .rv2{padding:10px !important}`,
