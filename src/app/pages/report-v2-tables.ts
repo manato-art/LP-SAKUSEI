@@ -7,6 +7,12 @@
 import { DAILY_LABEL_COLUMN, REPORT_COLUMNS, formatCell } from './report-columns.ts'
 import type { ReportDailyRow, ReportKpi, ReportVersionRow } from '../api.ts'
 import type { DateRange } from './report-period.ts'
+import {
+  BRANCH_FILTER_DEFAULT,
+  filterBranchRows,
+  type BranchFilter,
+  type DeviceFilter,
+} from './report-branch-filters.ts'
 
 const yen = (v: number | null): string =>
   v === null ? '-' : `¥ ${Math.round(v).toLocaleString('ja-JP')}`
@@ -349,15 +355,94 @@ export function buildBranchOperation(deps: BranchDeps): HTMLElement {
   ratioLabel.className = 'rv2-subscript'
   ratioLabel.textContent = '配信割合について'
 
-  const search = document.createElement('div')
-  search.className = 'rv2-search'
-  search.innerHTML =
-    '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#98a2b3" ' +
-    'stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>'
-  const input = document.createElement('input')
-  input.type = 'search'
-  input.placeholder = '名前で検索…'
-  search.append(input)
+  /* ── 絞り込み（実物は見出しの「フィルター」で開く面。採取物に合わせて5つ）── */
+  const filter: BranchFilter = { ...BRANCH_FILTER_DEFAULT }
+  const panel = document.createElement('div')
+  panel.className = 'rv2-branch-filter'
+
+  const field = (label: string, control: HTMLElement): HTMLElement => {
+    const box = document.createElement('label')
+    box.className = 'rv2-branch-field'
+    const text = document.createElement('span')
+    text.textContent = label
+    box.append(text, control)
+    return box
+  }
+  const select = (
+    options: readonly (readonly [string, string])[],
+    onChange: (value: string) => void,
+  ): HTMLSelectElement => {
+    const el = document.createElement('select')
+    el.className = 'rv2-select'
+    for (const [value, label] of options) {
+      const option = document.createElement('option')
+      option.value = value
+      option.textContent = label
+      el.append(option)
+    }
+    el.addEventListener('change', () => {
+      onChange(el.value)
+      render()
+    })
+    return el
+  }
+  const searchInput = (placeholder: string, onInput: (value: string) => void): HTMLInputElement => {
+    const el = document.createElement('input')
+    el.type = 'search'
+    el.className = 'rv2-input'
+    el.placeholder = placeholder
+    el.addEventListener('input', () => {
+      onInput(el.value.trim())
+      render()
+    })
+    return el
+  }
+
+  panel.append(
+    // 値は実物のまま（全ステータス＝all）。中身はクローンが持つVersionの状態。
+    field(
+      '広告ステータス',
+      select(
+        [['all', '全ステータス'], ['公開中', '公開中'], ['停止', '停止'], ['準備中', '準備中']],
+        (v) => {
+          filter.status = v as BranchFilter['status']
+        },
+      ),
+    ),
+    field(
+      'アーカイブ',
+      select([['except_archived', 'アーカイブ済みを除く'], ['all', 'アーカイブ済みを含む']], (v) => {
+        filter.archive = v as BranchFilter['archive']
+      }),
+    ),
+    field(
+      '端末',
+      select(
+        [['0', '全端末'], ['sp', 'スマートフォン'], ['tablet', 'タブレット'], ['pc', 'PC']],
+        (v) => {
+          filter.device = v as DeviceFilter
+        },
+      ),
+    ),
+    field(
+      'version/sb_article_uid検索',
+      searchInput('version/sb_article_uid検索', (v) => {
+        filter.versionQuery = v
+      }),
+    ),
+    field(
+      'parameter検索',
+      searchInput('parameter検索', (v) => {
+        filter.paramQuery = v
+      }),
+    ),
+  )
+
+  const filterToggle = document.createElement('button')
+  filterToggle.type = 'button'
+  filterToggle.className = 'rv2-btn'
+  filterToggle.textContent = 'フィルター'
+  filterToggle.addEventListener('click', () => panel.classList.toggle('open'))
 
   const right = document.createElement('div')
   right.className = 'rv2-head-right'
@@ -367,14 +452,19 @@ export function buildBranchOperation(deps: BranchDeps): HTMLElement {
   csv.textContent = 'CSVダウンロード'
   csv.addEventListener('click', deps.onDownloadCsv)
   right.append(exclude, csv)
-  head.append(title, hint, ratioLabel, ratioHelp, search, right)
+  head.append(title, hint, ratioLabel, ratioHelp, filterToggle, right)
 
   const scroll = document.createElement('div')
   scroll.className = 'rv2-scroll'
 
   const render = (): void => {
-    const q = input.value.trim()
-    const rows = q === '' ? deps.rows : deps.rows.filter((r) => r.name.includes(q))
+    const rows = filterBranchRows(deps.rows, filter)
+    const narrowed =
+      filter.status !== 'all' ||
+      filter.archive !== 'except_archived' ||
+      filter.device !== '0' ||
+      filter.versionQuery !== '' ||
+      filter.paramQuery !== ''
     const table = document.createElement('table')
     table.className = 'rv2-table'
     const thead = document.createElement('thead')
@@ -408,7 +498,7 @@ export function buildBranchOperation(deps: BranchDeps): HTMLElement {
     const tbody = document.createElement('tbody')
 
     // 合計行（実物と同じく先頭）。絞り込んでいるときは、絞り込んだぶんの合計を出す
-    const shownTotals = q === '' ? deps.totals : sumRows(rows)
+    const shownTotals = narrowed ? sumRows(rows) : deps.totals
     const totalTr = document.createElement('tr')
     totalTr.className = 'rv2-total'
     const totalLabel = document.createElement('td')
@@ -454,10 +544,9 @@ export function buildBranchOperation(deps: BranchDeps): HTMLElement {
     table.append(thead, tbody)
     scroll.replaceChildren(table)
   }
-  input.addEventListener('input', render)
   render()
 
-  card.append(head, scroll)
+  card.append(head, panel, scroll)
   return card
 }
 

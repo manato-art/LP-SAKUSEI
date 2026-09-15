@@ -150,6 +150,8 @@ export interface ReportVersionRow extends ReportKpi {
    * 実物の Branch Operation は Version の行の下にこれがぶら下がる。
    */
   children?: ReportVersionRow[]
+  /** 端末の出し分け設定（Branch Operation の「端末」で絞るのに使う） */
+  device_targets?: { sp: boolean; tablet: boolean; pc: boolean }
 }
 
 export interface ReportDailyRow extends ReportKpi {

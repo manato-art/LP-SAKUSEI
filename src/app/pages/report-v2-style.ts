@@ -186,6 +186,17 @@ export function injectReportStyles(): void {
       padding:10px; cursor:pointer;
     }
     .rv2-readmore:hover { text-decoration:underline; }
+    /* Branch Operation の「フィルター」で開く面（実物と同じ5つ） */
+    .rv2-branch-filter {
+      display:none; flex-wrap:wrap; gap:12px; padding:12px 14px;
+      border-bottom:1px solid var(--rv2-rule); background:#fbfcfe;
+    }
+    .rv2-branch-filter.open { display:flex; }
+    .rv2-branch-field { display:flex; flex-direction:column; gap:4px; font-size:10px; color:var(--rv2-sub); }
+    .rv2-branch-field select, .rv2-branch-field input {
+      font:inherit; font-size:12px; color:var(--rv2-ink); background:#fff;
+      border:1px solid var(--rv2-rule); border-radius:6px; padding:6px 8px; min-width:170px;
+    }
     .rv2-sort { cursor:pointer; user-select:none; }
     .rv2-sort:hover { color:var(--rv2-accent); }
     .rv2-sort span { color:#98a2b3; margin-left:3px; font-size:9px; }

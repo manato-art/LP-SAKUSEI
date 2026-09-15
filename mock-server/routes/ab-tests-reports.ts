@@ -176,6 +176,8 @@ function reportRows(uid: string, scope: 'version' | 'lp' | 'creative', query: un
       // ヒートマップ／レポートの「アーカイブ」絞り込みに要る（2026-09-15）。
       // 値は元から持っていて、レスポンスに載せていなかっただけ。
       archived: version.archived,
+      // Branch Operation の「端末」で絞るのに要る（値は元から持っていた）
+      device_targets: version.device_targets,
       ...(metrics.length === 0
         ? deriveKpi({ pv: 0, click: 0, cv: 0, ad_cost: 0, ...scrollCounts(state, version.uid, startDate, endDate) })
         : deriveKpi({
