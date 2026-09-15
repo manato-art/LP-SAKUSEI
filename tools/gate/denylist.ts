@@ -178,6 +178,9 @@ export const SELF_EXCLUDE: readonly string[] = [
   'tests/scrub.test.ts',
   // 金額検出パターン自体を試すテスト。合成の金額を意図的に持つ。
   'tests/gate-scope.test.ts',
+  // 広告費CSVの読み取りを試すテスト。「¥12,345」のような書き方を読めることが要件なので、
+  // 合成の金額を意図的に持つ（実データではない）。
+  'tests/ad-cost-import.test.ts',
   // ホスト置換の挙動を試すテスト。合成の外部ホストを入力として意図的に持つ。
   'tests/scrub-host-only.test.ts',
   // DOM本文の金額置換を試すテスト。合成の金額を入力として意図的に持つ。

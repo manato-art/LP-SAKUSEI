@@ -363,6 +363,62 @@ abTestsRouter.put('/ab_tests/:uid/meta_link', (req, res) => {
 })
 
 /**
+ * 広告費の取り込み（CSVから貼り付け・2026-09-15）。
+ *
+ * ⚠️ これは**実物のSquadBeyondには無い**、このシステムだけの入口（本人の依頼）。
+ * 実物は広告アカウントを繋いで自動で取り込むが、Meta以外の媒体には繋げられないため、
+ * 各媒体の管理画面から落とした日別の実績を入れられるようにした。
+ *
+ * Meta連携と同じく setMediaMetrics で**上書き**する（同じ日を入れ直しても二重計上しない）。
+ * LP側の実測（pv/click/cv）には触らない。
+ */
+abTestsRouter.post('/ab_tests/:uid/ad_costs', (req, res) => {
+  const abTest = findAbTest(getState(), req.params.uid)
+  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
+
+  const body = req.body as { rows?: unknown }
+  const incoming = Array.isArray(body.rows) ? body.rows : []
+  if (incoming.length === 0) {
+    return res.status(422).json(errorEnvelope('validation_failed', '取り込む行がありません。'))
+  }
+
+  const num = (value: unknown): number =>
+    typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : 0
+  const rows: { date: string; ad_cost: number; imp: number; media_click: number; media_cv: number }[] = []
+  for (const raw of incoming) {
+    const row = raw as Record<string, unknown>
+    const date = typeof row['date'] === 'string' ? row['date'] : ''
+    // 日付は YYYY-MM-DD だけ。形が違うものを黙って捨てると、入ったつもりで数字が合わなくなる。
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return res
+        .status(422)
+        .json(errorEnvelope('validation_failed', `日付は YYYY-MM-DD で指定してください（${date}）。`))
+    }
+    rows.push({
+      date,
+      ad_cost: num(row['ad_cost']),
+      imp: num(row['imp']),
+      media_click: num(row['media_click']),
+      media_cv: num(row['media_cv']),
+    })
+  }
+
+  setState((s) => {
+    let metrics = s.metrics
+    for (const row of rows) {
+      metrics = setMediaMetrics({ ...s, metrics }, abTest.uid, 'ab_test', row.date, {
+        ad_cost: row.ad_cost,
+        imp: row.imp,
+        media_click: row.media_click,
+        media_cv: row.media_cv,
+      })
+    }
+    return { ...s, metrics }
+  })
+  res.json({ ok: true, days: rows.length })
+})
+
+/**
  * 媒体実績の取り込み。Metaが返すのは日別の絶対値なので setMediaMetrics で**上書き**する
  * （再実行しても二重計上にならない）。LP側の実測（pv/click/cv）には触らない。
  */

@@ -387,6 +387,14 @@ export const api = {
     request<{ folder: Folder }>('PATCH', `/folders/${uid}/favorite`, { is_favorite: isFavorite }),
 
   abTests: () => request<{ ab_tests: AbTest[] }>('GET', '/ab_tests?per_page=200'),
+  /**
+   * 広告費の取り込み（このシステムだけの入口）。
+   * 媒体が返すのは日別の絶対値なので、同じ日は上書きされる（二重計上しない）。
+   */
+  importAdCosts: (
+    abTestUid: string,
+    rows: readonly { date: string; ad_cost: number; imp: number; media_click: number; media_cv: number }[],
+  ) => request<{ ok: true; days: number }>('POST', `/ab_tests/${abTestUid}/ad_costs`, { rows }),
   createAbTest: (input: {
     title: string
     folder_id: number | null

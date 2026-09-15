@@ -12,6 +12,7 @@ import { DATA_HEAD_CLASS, DATA_ROW_CLASS } from './data-ui.ts'
 import substrate from '../fragments/teams__ad_accounts__default.html?raw'
 import { api, type MetaAdAccount } from '../api.ts'
 import { isStale } from '../main.ts'
+import { mountAdCostImport } from './ad-cost-import.ts'
 import { toast } from '../ui.ts'
 import { stripShellFromFragment } from './report-substrate.ts'
 import { bindBackdropClose } from '../panels/portal.ts'
@@ -57,6 +58,9 @@ export async function renderExternalIntegration(
   if (generation !== undefined && isStale(generation)) return
 
   wireMediaGrid(root, { configured, accounts })
+
+  // 採取した画面の下に、広告費の取り込みを足す（実物のUIには手を入れない）
+  await mountAdCostImport(content)
 }
 
 function wireMediaGrid(
