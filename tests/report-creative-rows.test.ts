@@ -12,6 +12,7 @@ import {
   creativeParameterRows,
   sortCreativeRows,
 } from '../src/app/pages/report-creative-rows.ts'
+import { chartX } from '../src/app/pages/report-v2-chart.ts'
 import type { ReportVersionRow } from '../src/app/api.ts'
 
 /** 必要な項目だけ持つ行を作る（KPIの残りは0で埋める） */
@@ -85,5 +86,23 @@ describe('列ごとの並べ替え（A-Z / Z-A）', () => {
 describe('もっと表示', () => {
   it('はじめは決まった件数だけ出す', () => {
     expect(CREATIVE_PAGE_SIZE).toBeGreaterThan(0)
+  })
+})
+
+/**
+ * 1日ぶんしかデータが無いとき、折れ線の点のx座標が 0/0 で NaN になり、
+ * polygon / polyline / text が「Expected number」でブラウザに弾かれていた
+ * （既定の期間は「今日1日」なので、開くたびにコンソールへエラーが出ていた）。
+ */
+describe('折れ線の点の置き場所', () => {
+  it('2点以上なら左端から右端へ等間隔', () => {
+    expect(chartX(0, 3, 66, 600)).toBe(66)
+    expect(chartX(1, 3, 66, 600)).toBe(366)
+    expect(chartX(2, 3, 66, 600)).toBe(666)
+  })
+
+  it('1点しか無いときは真ん中に置く（0で割らない）', () => {
+    expect(chartX(0, 1, 66, 600)).toBe(366)
+    expect(Number.isNaN(chartX(0, 1, 66, 600))).toBe(false)
   })
 })

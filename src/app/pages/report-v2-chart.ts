@@ -43,6 +43,19 @@ const CHART_TABS: readonly { key: KpiKey; label: string }[] = [
   { key: 'cvr', label: 'CVR' },
 ]
 
+/**
+ * 折れ線の点のx座標。
+ *
+ * 点が1つだけのときは `i / (count - 1)` が 0/0 ＝ NaN になり、
+ * polygon / polyline / text が「Expected number」でブラウザに弾かれていた
+ * （既定の期間は「今日1日」なので、開くたびにコンソールへエラーが出ていた）。
+ * 1点のときは枠の真ん中に置く。
+ */
+export function chartX(index: number, count: number, padLeft: number, innerWidth: number): number {
+  if (count <= 1) return padLeft + innerWidth / 2
+  return padLeft + (index / (count - 1)) * innerWidth
+}
+
 function svgEl<K extends keyof SVGElementTagNameMap>(name: K): SVGElementTagNameMap[K] {
   return document.createElementNS('http://www.w3.org/2000/svg', name)
 }
@@ -115,7 +128,7 @@ function drawChart(daily: readonly ReportDailyRow[], key: KpiKey): SVGSVGElement
   const max = Math.max(...points.map((p) => p.value))
   const step = niceStep(max / 3)
   const top = Math.max(step, Math.ceil(max / step) * step)
-  const x = (i: number): number => padL + (i / (points.length - 1)) * innerW
+  const x = (i: number): number => chartX(i, points.length, padL, innerW)
   const y = (v: number): number => padT + innerH - (v / top) * innerH
 
   const svg = svgEl('svg')
@@ -145,9 +158,12 @@ function drawChart(daily: readonly ReportDailyRow[], key: KpiKey): SVGSVGElement
 
   const line = points.map((p, i) => `${x(i).toFixed(1)},${y(p.value).toFixed(1)}`).join(' ')
   const area = svgEl('polygon')
+  // 面の左右の足。1点のときは線の位置に合わせる（両端まで広げると三角形になる）
+  const footLeft = points.length <= 1 ? x(0) : padL
+  const footRight = points.length <= 1 ? x(0) : padL + innerW
   area.setAttribute(
     'points',
-    `${padL},${padT + innerH} ${line} ${(padL + innerW).toFixed(1)},${padT + innerH}`,
+    `${footLeft.toFixed(1)},${padT + innerH} ${line} ${footRight.toFixed(1)},${padT + innerH}`,
   )
   area.setAttribute('fill', 'rgba(37,99,235,.10)')
   const poly = svgEl('polyline')
