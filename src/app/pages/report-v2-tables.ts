@@ -7,6 +7,7 @@
 import { DAILY_LABEL_COLUMN, REPORT_COLUMNS, formatCell } from './report-columns.ts'
 import type { ReportDailyRow, ReportKpi, ReportVersionRow } from '../api.ts'
 import type { DateRange } from './report-period.ts'
+import { markSecondaryCells, metricsToggle } from './report-v2-mobile-table.ts'
 import {
   BRANCH_FILTER_DEFAULT,
   filterBranchRows,
@@ -172,21 +173,23 @@ export function buildReportList(deps: ReportListDeps): HTMLElement {
     const tbody = document.createElement('tbody')
     for (const row of shown) {
       const tr = document.createElement('tr')
-      const period = document.createElement('td')
-      period.textContent = `${deps.range.startDate} 〜 ${deps.range.endDate}`
-      const ver = document.createElement('td')
-      ver.textContent = row.name
-      const arch = document.createElement('td')
-      arch.textContent = '-'
-      const dev = document.createElement('td')
-      // 出し分けはVersion側の設定。レポートは端末別に分けていないので「全て」。
-      dev.textContent = '全て'
-      tr.append(period, ver, arch, dev)
-      for (const c of [...PERF_COLS, ...RESULT_COLS]) {
+      // スマホでは列見出しが消えるので、セル自身が列名（data-label）を持つ
+      const cell = (label: string, text: string, num = false): HTMLElement => {
         const td = document.createElement('td')
-        td.className = 'num'
-        td.textContent = c.cell(row)
-        tr.append(td)
+        if (num) td.className = 'num'
+        td.dataset['label'] = label
+        td.textContent = text
+        return td
+      }
+      tr.append(
+        cell('配信期間', `${deps.range.startDate} 〜 ${deps.range.endDate}`),
+        cell('バージョン', row.name),
+        cell('アーカイブ', '-'),
+        // 出し分けはVersion側の設定。レポートは端末別に分けていないので「全て」。
+        cell('デバイス', '全て'),
+      )
+      for (const c of [...PERF_COLS, ...RESULT_COLS]) {
+        tr.append(cell(c.label, c.cell(row), true))
       }
       const last = document.createElement('td')
       const btn = document.createElement('button')
@@ -199,6 +202,8 @@ export function buildReportList(deps: ReportListDeps): HTMLElement {
       tbody.append(tr)
     }
     table.append(thead, tbody)
+    // スマホは1行＝1カードになるので、既定で出す指標を絞る（PCは全列のまま）
+    markSecondaryCells(table)
     scroll.replaceChildren(table)
 
     const info = document.createElement('span')
@@ -230,6 +235,7 @@ export function buildReportList(deps: ReportListDeps): HTMLElement {
     state.page = 1
     render()
   })
+  head.append(metricsToggle(() => scroll.querySelector('table')))
   render()
   card.append(head, scroll, foot)
   return card
@@ -291,6 +297,29 @@ interface BranchDeps {
 }
 
 /**
+ * Branch Operation の列。見出しとセルで同じものを使う。
+ * スマホでは表を1行＝1カードにするので、セルにも列名（data-label）が要る。
+ */
+const BRANCH_COLUMNS: readonly { label: string; num: boolean }[] = [
+  { label: '名前', num: false },
+  { label: '配信金額', num: true },
+  { label: 'PV', num: true },
+  { label: 'CLICK', num: true },
+  { label: 'CTR', num: true },
+  { label: 'CV', num: true },
+  { label: 'CVR', num: true },
+  { label: 'CTVR', num: true },
+  { label: 'CPA', num: true },
+  { label: 'MCPA', num: true },
+  // 2026-09-15: 実物にある4指標。計測タグのスクロール記録から出す
+  { label: 'FVER', num: true },
+  { label: 'SVER', num: true },
+  { label: 'FSVER', num: true },
+  { label: 'OAR', num: true },
+  { label: '配信割合', num: true },
+]
+
+/**
  * Branch Operation の1行。
  * `nested` は広告パラメータの行（Versionの下にぶら下がる）。
  * 配信割合はVersionに対する設定なので、パラメータの行では出さない。
@@ -298,10 +327,8 @@ interface BranchDeps {
 function branchLine(row: ReportVersionRow, nested: boolean): HTMLElement {
   const line = document.createElement('tr')
   if (nested) line.className = 'rv2-sub'
-  const name = document.createElement('td')
-  name.textContent = row.name
-  line.append(name)
-  for (const text of [
+  const values = [
+    row.name,
     yen(row.ad_cost),
     int(row.pv),
     int(row.click),
@@ -316,12 +343,15 @@ function branchLine(row: ReportVersionRow, nested: boolean): HTMLElement {
     pct(row.fsver),
     pct(row.oar),
     nested ? '' : `${row.distribution_ratio}%`,
-  ]) {
+  ]
+  BRANCH_COLUMNS.forEach((column, index) => {
     const td = document.createElement('td')
-    td.className = 'num'
-    td.textContent = text
+    if (index > 0) td.className = 'num'
+    // スマホでは列見出しが消えるので、セル自身が列名を持つ
+    td.dataset['label'] = column.label
+    td.textContent = values[index] ?? ''
     line.append(td)
-  }
+  })
   return line
 }
 
@@ -471,24 +501,7 @@ export function buildBranchOperation(deps: BranchDeps): HTMLElement {
     const tr = document.createElement('tr')
     // 2026-09-15: 採取した実DOMの13指標に寄せて CTVR / MCPA を足した（モックに値がある）。
     // 残る FVER / SVER / FSVER / OAR は一次値（離脱・到達）がモックに無いのでまだ出せない。
-    for (const [label, num] of [
-      ['名前', false],
-      ['配信金額', true],
-      ['PV', true],
-      ['CLICK', true],
-      ['CTR', true],
-      ['CV', true],
-      ['CVR', true],
-      ['CTVR', true],
-      ['CPA', true],
-      ['MCPA', true],
-      // 2026-09-15: 実物にある4指標。計測タグのスクロール記録から出す
-      ['FVER', true],
-      ['SVER', true],
-      ['FSVER', true],
-      ['OAR', true],
-      ['配信割合', true],
-    ] as const) {
+    for (const { label, num } of BRANCH_COLUMNS) {
       const th = document.createElement('th')
       if (num) th.className = 'num'
       th.textContent = label
@@ -502,9 +515,10 @@ export function buildBranchOperation(deps: BranchDeps): HTMLElement {
     const totalTr = document.createElement('tr')
     totalTr.className = 'rv2-total'
     const totalLabel = document.createElement('td')
+    totalLabel.dataset['label'] = '名前'
     totalLabel.textContent = '合計'
     totalTr.append(totalLabel)
-    for (const text of [
+    const totalValues = [
       yen(shownTotals.ad_cost),
       int(shownTotals.pv),
       int(shownTotals.click),
@@ -519,12 +533,14 @@ export function buildBranchOperation(deps: BranchDeps): HTMLElement {
       pct(shownTotals.fsver),
       pct(shownTotals.oar),
       '',
-    ]) {
+    ]
+    totalValues.forEach((text, index) => {
       const td = document.createElement('td')
       td.className = 'num'
+      td.dataset['label'] = BRANCH_COLUMNS[index + 1]?.label ?? ''
       td.textContent = text
       totalTr.append(td)
-    }
+    })
     tbody.append(totalTr)
 
     if (rows.length === 0) {
@@ -542,8 +558,11 @@ export function buildBranchOperation(deps: BranchDeps): HTMLElement {
       for (const child of row.children ?? []) tbody.append(branchLine(child, true))
     }
     table.append(thead, tbody)
+    // スマホは1行＝1カードになるので、既定で出す指標を絞る（PCは全列のまま）
+    markSecondaryCells(table)
     scroll.replaceChildren(table)
   }
+  right.prepend(metricsToggle(() => scroll.querySelector('table')))
   render()
 
   card.append(head, panel, scroll)
@@ -606,11 +625,14 @@ export function buildDailyTable(deps: DailyTableDeps): HTMLElement {
     const tr = document.createElement('tr')
     if (className !== undefined) tr.className = className
     const head = document.createElement('td')
+    // スマホでは列見出しが消えるので、セル自身が列名（data-label）を持つ
+    head.dataset['label'] = '日付'
     head.textContent = label
     tr.append(head)
     for (const column of REPORT_COLUMNS) {
       const td = document.createElement('td')
       td.className = 'num'
+      td.dataset['label'] = column.unit === '' ? column.label : `${column.label} ${column.unit}`
       td.textContent = formatCell(kpi, column)
       tr.append(td)
     }
@@ -630,7 +652,10 @@ export function buildDailyTable(deps: DailyTableDeps): HTMLElement {
   for (const row of deps.daily) tbody.append(line(row.date, row))
 
   table.append(thead, tbody)
+  // スマホは1行＝1カードになるので、既定で出す指標を絞る（PCは全列のまま）
+  markSecondaryCells(table)
   scroll.append(table)
+  head.append(metricsToggle(() => table))
   card.append(head, scroll)
   return card
 }

@@ -202,7 +202,10 @@ export function injectReportStyles(): void {
     .rv2-funnel-picker { margin-bottom:12px; }
     .rv2-funnel-range { font-size:11px; color:var(--rv2-sub); font-variant-numeric:tabular-nums; }
     .rv2-funnel-body { display:grid; grid-template-columns:auto auto 1fr; gap:0 16px; align-items:start; }
-    .rv2-funnel-col { display:flex; flex-direction:column; min-width:0; }
+    /* 段ごとの行をグリッドへ直接流す（列ごとに縦へ積まない）。
+       スマホでは display:contents を外すだけで段ごとにまとまる。 */
+    .rv2-funnel-headgroup, .rv2-funnel-row { display:contents; }
+    .rv2-funnel-scales { grid-column:3; }
     .rv2-funnel-head { font-size:11px; color:var(--rv2-sub); padding:0 0 8px; }
     .rv2-funnel-cell { height:34px; display:flex; align-items:center; font-size:12px; color:var(--rv2-ink);
       white-space:nowrap; font-variant-numeric:tabular-nums; }
@@ -226,6 +229,8 @@ export function injectReportStyles(): void {
     .rv2-funnel-compare { padding-bottom:18px; }
     .rv2-funnel-compare-name { font-size:12px; font-weight:600; color:var(--rv2-ink); padding-bottom:8px; }
     .rv2-funnel-empty { font-size:12px; color:var(--rv2-sub); padding:16px 0; }
+    /* 「すべての指標」の切替はスマホだけの仕組み（PCは全列そのまま出している） */
+    .rv2-metrics-toggle { display:none; }
     .rv2-sort { cursor:pointer; user-select:none; }
     .rv2-sort:hover { color:var(--rv2-accent); }
     .rv2-sort span { color:#98a2b3; margin-left:3px; font-size:9px; }

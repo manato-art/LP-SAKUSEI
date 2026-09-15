@@ -21,27 +21,30 @@ export interface FunnelDeps {
 const pct = (v: number | null): string => (v === null ? '-' : `${(v * 100).toFixed(2)}%`)
 const int = (v: number): string => v.toLocaleString('ja-JP')
 
-/** 1本ぶんの「経路 / PV数・割合 / 棒」を組む */
+/**
+ * 1本ぶんの「経路 / PV数・割合 / 棒」を組む。
+ *
+ * 3列のグリッドに**段ごとの行**を流し込む（列ごとに縦に積むのではなく）。
+ * こうしておくと、スマホで `display:contents` を外すだけで
+ * 「段名・数値・棒」が段ごとにまとまる。列ごとに積むと、スマホでは
+ * 経路が3つ続いたあとに数値が3つ続く、という読めない並びになる（実機で踏んだ）。
+ */
 function buildStageColumns(stages: readonly FunnelStage[]): HTMLElement {
   const body = document.createElement('div')
   body.className = 'rv2-funnel-body'
 
-  const channel = document.createElement('div')
-  channel.className = 'rv2-funnel-col'
-  const channelHead = document.createElement('div')
-  channelHead.className = 'rv2-funnel-head'
-  channelHead.textContent = '経路'
-  channel.append(channelHead)
-
-  const pv = document.createElement('div')
-  pv.className = 'rv2-funnel-col'
-  const pvHead = document.createElement('div')
-  pvHead.className = 'rv2-funnel-head'
-  pvHead.textContent = 'PV数/割合'
-  pv.append(pvHead)
-
-  const graph = document.createElement('div')
-  graph.className = 'rv2-funnel-col rv2-funnel-graph'
+  const headGroup = document.createElement('div')
+  headGroup.className = 'rv2-funnel-headgroup'
+  for (const label of ['経路', 'PV数/割合']) {
+    const head = document.createElement('div')
+    head.className = 'rv2-funnel-head'
+    head.textContent = label
+    headGroup.append(head)
+  }
+  // 見出しと凡例は同じ行に置く。縦に積むと、この列だけ1行ぶん下がって
+  // 左の「経路」「PV数/割合」と棒の高さが揃わない。
+  const graphHeadRow = document.createElement('div')
+  graphHeadRow.className = 'rv2-funnel-head rv2-funnel-headrow'
   const graphHead = document.createElement('span')
   graphHead.textContent = 'ファネル分析'
   const legends = document.createElement('span')
@@ -55,23 +58,21 @@ function buildStageColumns(stages: readonly FunnelStage[]): HTMLElement {
     legend.textContent = label
     legends.append(legend)
   }
-  // 見出しと凡例は同じ行に置く。縦に積むと、この列だけ1行ぶん下がって
-  // 左の「経路」「PV数/割合」と棒の高さが揃わない。
-  const graphHeadRow = document.createElement('div')
-  graphHeadRow.className = 'rv2-funnel-head rv2-funnel-headrow'
   graphHeadRow.append(graphHead, legends)
-  graph.append(graphHeadRow)
+  headGroup.append(graphHeadRow)
+  body.append(headGroup)
 
   for (const stage of stages) {
+    const row = document.createElement('div')
+    row.className = 'rv2-funnel-row'
+
     const name = document.createElement('div')
-    name.className = 'rv2-funnel-cell'
+    name.className = 'rv2-funnel-cell rv2-funnel-name'
     name.textContent = stage.name
-    channel.append(name)
 
     const count = document.createElement('div')
-    count.className = 'rv2-funnel-cell'
+    count.className = 'rv2-funnel-cell rv2-funnel-count'
     count.textContent = `${int(stage.count)} / ${pct(stage.share)}`
-    pv.append(count)
 
     const bars = document.createElement('div')
     bars.className = 'rv2-funnel-cell rv2-funnel-bars'
@@ -88,7 +89,9 @@ function buildStageColumns(stages: readonly FunnelStage[]): HTMLElement {
       track.append(bar)
       bars.append(track)
     }
-    graph.append(bars)
+
+    row.append(name, count, bars)
+    body.append(row)
   }
 
   // 目盛（採取物どおり 0 / 20 / 40 / 60 / 80 / 100(%)）
@@ -99,9 +102,7 @@ function buildStageColumns(stages: readonly FunnelStage[]): HTMLElement {
     tick.textContent = label
     scales.append(tick)
   }
-  graph.append(scales)
-
-  body.append(channel, pv, graph)
+  body.append(scales)
   return body
 }
 

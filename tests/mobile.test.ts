@@ -961,3 +961,44 @@ describe('スマホのレポート設定（表示するパラメータ）', () =
     expect(css.slice(at).includes('}')).toBe(true)
   })
 })
+
+/**
+ * スマホのレポート画面（2026-09-15・本人指示「スマホ版でも見やすくしてください」）。
+ * 15列の表を横スクロールに任せると4列しか見えず、残りは読めなかった。
+ */
+describe('スマホのレポートの表', () => {
+  const css = mobileCss()
+
+  it('1行＝1カードにする（列見出しは消し、セルが列名を持つ）', () => {
+    expect(css).toContain('html body .rv2-card .rv2-table thead{display:none !important}')
+    expect(css).toContain('tbody td::before{content:attr(data-label)')
+  })
+
+  it('1列目（名前・日付）はカードの見出しにする', () => {
+    expect(css).toContain('tbody td:first-child{display:block !important;font-weight:700')
+  })
+
+  it('既定は主要な指標だけ。切替で残りも出す', () => {
+    expect(css).toContain('tbody td[data-more]{display:none !important}')
+    expect(css).toContain('.rv2-table.show-all tbody td[data-more]{display:flex !important}')
+    expect(css).toContain('html body .rv2-metrics-toggle{display:inline-flex !important')
+  })
+
+  it('広告の行は左の線で親のVersionとの関係を示す（字下げは折り返しで読みにくい）', () => {
+    expect(css).toContain('tbody tr.rv2-sub{border-left:3px solid var(--sb-accent)')
+  })
+
+  it('ボタンの文字は折り返さない', () => {
+    expect(css).toContain('white-space:nowrap !important')
+  })
+
+  it('ファネルは段ごとにまとめる', () => {
+    expect(css).toContain('html body .rv2-funnel-body{display:block !important}')
+    expect(css).toContain('html body .rv2-funnel-row{display:block !important')
+  })
+
+  it('PCでは切替ボタンを出さない（全列そのまま）', () => {
+    const style = readFileSync('src/app/pages/report-v2-style.ts', 'utf8')
+    expect(style).toContain('.rv2-metrics-toggle { display:none; }')
+  })
+})

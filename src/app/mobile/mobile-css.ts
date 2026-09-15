@@ -421,6 +421,73 @@ export function mobileCss(): string {
     `html body .rv2-field{min-width:0 !important;width:auto !important}`,
     `html body .rv2-daterange input{width:auto !important;flex:1 1 auto;min-width:0}`,
     `html body .rv2-apply{align-self:stretch !important;justify-content:center;min-height:44px}`,
+
+    // ── レポートの表: 1行＝1カードにする ──
+    // 15列を375pxに詰めると4列しか見えず、残りは横スクロールの向こう側で読めない。
+    // 列見出しは消して、セルが持つ列名（data-label）と値を左右に並べる。
+    `html body .rv2-card .rv2-scroll{overflow-x:visible !important}`,
+    `html body .rv2-card .rv2-table{display:block !important;width:100% !important}`,
+    `html body .rv2-card .rv2-table thead{display:none !important}`,
+    `html body .rv2-card .rv2-table tbody{display:block !important}`,
+    `html body .rv2-card .rv2-table tbody tr{display:block !important;padding:8px 12px;`,
+    `border-bottom:1px solid var(--sb-line) !important}`,
+    `html body .rv2-card .rv2-table tbody td{display:flex !important;align-items:baseline;`,
+    `justify-content:space-between;gap:12px;width:auto !important;`,
+    `padding:4px 0 !important;border:0 !important;text-align:left !important;white-space:normal !important}`,
+    `html body .rv2-card .rv2-table tbody td::before{content:attr(data-label);color:var(--sb-sub);`,
+    `font-size:11px;flex-shrink:0}`,
+    // 1列目（名前・日付）はカードの見出しにする。列名は出さない
+    `html body .rv2-card .rv2-table tbody td:first-child{display:block !important;font-weight:700;`,
+    `padding:2px 0 8px !important;overflow-wrap:anywhere}`,
+    `html body .rv2-card .rv2-table tbody td:first-child::before{content:none}`,
+    // 中身が無いセル（操作ボタン用の空き列・パラメータ行の配信割合）は行を作らない
+    `html body .rv2-card .rv2-table tbody td:empty{display:none !important}`,
+    // 既定は主要な指標だけ（15列ぜんぶ縦に並べるとカード1枚が14行になる）。
+    // 「すべての指標」で残りも出す
+    `html body .rv2-metrics-toggle{display:inline-flex !important;align-items:center;min-height:38px}`,
+    `html body .rv2-card .rv2-table tbody td[data-more]{display:none !important}`,
+    `html body .rv2-card .rv2-table.show-all tbody td[data-more]{display:flex !important}`,
+    // 合計の行はカードごと目立たせる
+    `html body .rv2-card .rv2-table tbody tr.rv2-total{background:#f7f9fc}`,
+    // Version の下にぶら下がる広告の行は、字下げでなく左の線で親との関係を示す
+    // （字下げだと名前が長い広告パラメータで折り返して読みにくい）
+    `html body .rv2-card .rv2-table tbody tr.rv2-sub{border-left:3px solid var(--sb-accent);`,
+    `padding-left:12px;background:#fcfdff}`,
+    `html body .rv2-card .rv2-table tbody tr.rv2-sub td:first-child{padding-left:0 !important;`,
+    `font-weight:600;font-size:12px}`,
+    // 見出しの並び（タイトル・注記・ボタン）は縦積みにして、ボタンを押しやすくする
+    `html body .rv2-card .rv2-head{flex-wrap:wrap !important;gap:8px !important}`,
+    `html body .rv2-card .rv2-head-right{margin-left:auto;flex-wrap:wrap !important;gap:8px !important}`,
+    // ボタンの文字は折り返さない（「すべての指標」が「すべての指／標」に割れていた）。
+    // 折り返すのはボタンとボタンの間だけにする
+    `html body .rv2-card .rv2-btn{min-height:38px;white-space:nowrap !important}`,
+    // Branch Operation の絞り込みは1列に積む（横並びだと入力が潰れる）
+    `html body .rv2-branch-filter{flex-direction:column !important}`,
+    `html body .rv2-branch-field{width:100%}`,
+    `html body .rv2-branch-field select,html body .rv2-branch-field input{width:100% !important;`,
+    `min-width:0 !important;min-height:38px}`,
+    // クリエイティブの広告パラメータ行: 長い名前で値が押し出されないようにする
+    `html body .rv2-creative-param-name{min-width:0;flex:1 1 auto}`,
+    // 右の「比較枠」は中身が無いときに画面1枚ぶん取ってしまう。スマホでは薄くする
+    `html body .rv2-chart-row{flex-direction:column !important}`,
+    `html body .rv2-chart-row .rv2-empty{padding:18px 12px !important}`,
+    // ヒートマップの見出し（期間・スクロール表示/全ページ表示・ソート）は横1列だと
+    // 期間の枠が101pxまで潰れて「2026/09/15 ~」が途中で折り返す。折り返して1行ずつにする
+    `html body [class*="_header_187ph_"]{flex-wrap:wrap !important;gap:8px;padding:8px 12px !important}`,
+    `html body [class*="_header_187ph_"] [class*="_left_187ph_"]{flex:1 1 100% !important}`,
+    `html body [class*="_datesWrapper_187ph_"]{white-space:nowrap}`,
+
+    // ファネル: 段ごとにまとめる（3列のままだと棒が細くなり、列ごとに積むと
+    // 経路が3つ続いたあとに数値が3つ続く、という読めない並びになる）
+    `html body .rv2-funnel-body{display:block !important}`,
+    `html body .rv2-funnel-headgroup{display:none !important}`,
+    `html body .rv2-funnel-scales{display:none !important}`,
+    `html body .rv2-funnel-row{display:block !important;padding:8px 0;`,
+    `border-bottom:1px solid var(--sb-line)}`,
+    `html body .rv2-funnel-row .rv2-funnel-cell{height:auto !important}`,
+    `html body .rv2-funnel-name{font-weight:700}`,
+    `html body .rv2-funnel-count{color:var(--sb-sub);padding-bottom:4px}`,
+    `html body .rv2-funnel-bars{padding:2px 0 0 !important}`,
     // 「設置済みWidget」の列はスマホでは出さない（画面の半分を取ってキャンバスが潰れる）。
     // Widget自体は下のツールバーの「Widget」から開ける
     `html body [data-widget-nav]{display:none !important}`,
