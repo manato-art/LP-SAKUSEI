@@ -49,3 +49,32 @@ describe('DOM本文の金額・数値を架空値へ置き換える', () => {
     expect(scrubDomNumbers('<td>12</td>')).toBe('<td>12</td>')
   })
 })
+
+/**
+ * 広告のIDは本文にそのまま出る（`utm_campaign=120251863095430695`）。
+ * 実在の広告アカウントの識別子なので土台には持ち込まない。
+ * 桁数は見た目に効くので保つ。
+ */
+describe('本文に出てくる長い数字のID', () => {
+  it('12桁以上の数字を架空値へ置き換える（桁数は保つ）', () => {
+    const out = scrubDomNumbers('<span>utm_campaign=120251863095430695</span>')
+    expect(out).not.toContain('120251863095430695')
+    expect(out).toMatch(/^<span>utm_campaign=\d{18}<\/span>$/)
+  })
+
+  it('同じIDは常に同じ架空値になる（表の中で食い違わない）', () => {
+    const a = scrubDomNumbers('<td>120251863095430695</td>')
+    const b = scrubDomNumbers('<div>120251863095430695</div>')
+    expect(a.replace(/td/g, 'X')).toBe(b.replace(/div/g, 'X'))
+  })
+
+  it('PVや日付のような短い数字は触らない', () => {
+    expect(scrubDomNumbers('<span>PV: 47</span>')).toBe('<span>PV: 47</span>')
+    expect(scrubDomNumbers('<span>2026-09-08</span>')).toBe('<span>2026-09-08</span>')
+  })
+
+  it('属性の中の長い数字は触らない（識別に使われる）', () => {
+    const input = '<div data-id="120251863095430695">x</div>'
+    expect(scrubDomNumbers(input)).toBe(input)
+  })
+})

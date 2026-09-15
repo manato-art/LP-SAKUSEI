@@ -135,6 +135,14 @@ export const REWRITE_PATTERNS: readonly { name: string; pattern: RegExp; to: str
     pattern: /(\/assets\/[A-Za-z0-9_-]+-)[a-f0-9]{32,}(\.(?:js|css|mjs))/gi,
     to: '$1SCRUBBED$2',
   },
+  {
+    // ヒートマップ画面は、計測しているLPを丸ごと `<iframe srcdoc="...">` に抱えている。
+    // 中身は顧客が作った広告原稿・キャッチコピー・画像で、アプリのUIではない。
+    // 土台に要るのは「そこにiframeがある」という構造だけなので、中身は差し替える。
+    name: '埋め込みLP本文(srcdoc)',
+    pattern: /\ssrcdoc="[^"]*"/g,
+    to: ' srcdoc="&lt;!DOCTYPE html&gt;&lt;html&gt;&lt;body&gt;&lt;/body&gt;&lt;/html&gt;"',
+  },
 ]
 
 /**

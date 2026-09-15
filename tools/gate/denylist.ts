@@ -170,6 +170,10 @@ export const SELF_EXCLUDE: readonly string[] = [
   // 本物の実IDは .gate-names.local に登録して実名スキャンで捕まえる（そちらは全ファイルが対象）。
   'tests/gate-url-ids.test.ts',
   'tests/scrub-url-ids.test.ts',
+  // 「どのファイルから実IDを拾うか」を試すテスト。合成IDを意図的に書いている。
+  'tests/scrub-collect.test.ts',
+  'tests/scrub-scan-targets.test.ts',
+  'tests/scrub-word-boundary.test.ts',
   // 匿名化そのものを試すテスト。合成の金額・外部SaaSタグを入力として意図的に持つ。
   'tests/scrub.test.ts',
   // 金額検出パターン自体を試すテスト。合成の金額を意図的に持つ。

@@ -11,6 +11,8 @@
  * - `0` や `0.00%`（新規空アカウントの見た目そのもの。変えると空状態が壊れる）
  * - タグの属性値（`data-*` や `title` はレイアウトや識別に使われる）
  * - 3桁以下の数（順位・件数・日付の一部と区別できない）
+ *
+ * 逆に触るもの: 12桁以上の数字（広告のID）。本文にそのまま出るので実アカウントが割れる。
  */
 
 /** 決定論的な擬似乱数（同じ入力からは必ず同じ出力）。 */
@@ -51,6 +53,11 @@ function withSameGrouping(original: string, replacement: string): string {
 
 const MONEY = /([¥￥])\s?(\d{1,3}(?:,\d{3})+|\d{4,})/g
 const PERCENT = /(\d+\.\d{1,2})%/g
+/**
+ * 本文にそのまま出る長い数字＝広告のID（`utm_campaign=120251863095430695` など）。
+ * 12桁以上に限るのは、PV・順位・日付の数字と区別するため。
+ */
+const LONG_ID = /\d{12,}/g
 /** タグの中（属性）は触らない。タグとタグの間のテキストだけを対象にする。 */
 const TEXT_BETWEEN_TAGS = /(>)([^<]+)(<)/g
 
@@ -61,6 +68,7 @@ function scrubTextRun(text: string): string {
       if (Number(bare) === 0) return whole
       return `${mark}${withSameGrouping(digits, fakeDigits(digits, 'money'))}`
     })
+    .replace(LONG_ID, (whole) => fakeDigits(whole, 'id'))
     .replace(PERCENT, (whole, value: string) => {
       if (Number(value) === 0) return whole
       const [intPart = '0', decimals = '00'] = value.split('.')

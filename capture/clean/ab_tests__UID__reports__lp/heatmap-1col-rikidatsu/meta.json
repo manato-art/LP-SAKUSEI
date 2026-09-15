@@ -1,0 +1,11 @@
+{
+  "url": "https://sample09.example.test/ab_tests/UID_7644/reports/lp?tab=heatmap",
+  "pathname": "/ab_tests/UID_7644/reports/lp",
+  "title": "Squad beyond",
+  "capturedAt": "2026-09-08T05:48:00.205Z",
+  "viewport": {
+    "w": 1920,
+    "h": 873
+  },
+  "domBytes": 241602
+}

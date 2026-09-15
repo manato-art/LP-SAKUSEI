@@ -274,19 +274,43 @@ function escapeForRegExp(text: string): string {
 }
 
 /**
+ * 「語の境界を無視して置き換えてよいキー」か。
+ *
+ * 16文字以上で大小の英字が混じる不透明なID（uid/token）だけを対象にする。
+ * この形の文字列が偶然ほかの語の一部として現れることは実質ありえないので、
+ * `sb_bp_<uid>` や `%2F<uid>%3F` のように前後が語文字でも安全に潰せる。
+ * 逆に、数字だけのIDや短いIDまで部分一致させると、
+ * 無関係な数値（座標・ハッシュ）を壊してしまうので対象外にする。
+ */
+function isOpaqueIdentifierKey(key: string, category: ScrubCategory): boolean {
+  if (category !== 'uid' && category !== 'token') return false
+  if (key.length < 16) return false
+  if (!/^[A-Za-z0-9_-]+$/.test(key)) return false
+  return /[a-z]/.test(key) && /[A-Z]/.test(key)
+}
+
+/**
  * 辞書を適用する。長い literal から順に置換して部分一致の取りこぼしを防ぐ。
  *
- * ASCIIのキーは**語の境界でだけ**置換する。
+ * ASCIIのキーは原則**語の境界でだけ**置換する。
  * 短い実名が無関係な識別子の一部に一致して壊すため
  * （実際に実ブランド名が FontAwesome の `.fa-bullhorn` の中に一致し、
  *  `.fサンプル施策861horn` という無効なセレクタになっていた）。
  * 日本語のキーは語の区切りが無いので境界を要求しない。
+ *
+ * 例外は不透明なID。境界を要求したせいで
+ * `localStorage.setItem("sb_bp_<uid>")` と `request_url=...%2Farticles%2F<uid>%3F...`
+ * の2か所で実IDがそのまま土台に残っていた（2026-09-15・ヒートマップ採取で発覚）。
  */
 export function applyDictionary(text: string, map: ScrubMap): string {
   const keys = Object.keys(map).sort((a, b) => b.length - a.length)
   return keys.reduce((acc, key) => {
-    const replacement = map[key]?.replacement ?? key
+    const entry = map[key]
+    const replacement = entry?.replacement ?? key
     if (!isAsciiKey(key)) return acc.split(key).join(replacement)
+    if (entry !== undefined && isOpaqueIdentifierKey(key, entry.category)) {
+      return acc.split(key).join(replacement)
+    }
     // 英数字・ハイフン・アンダースコアが前後に続くときは「語の一部」なので置換しない
     const pattern = new RegExp(`(?<![\\w-])${escapeForRegExp(key)}(?![\\w-])`, 'g')
     return acc.replace(pattern, replacement)
