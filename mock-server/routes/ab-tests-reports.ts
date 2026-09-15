@@ -155,6 +155,65 @@ function parameterRows(
     .sort((a, b) => b.pv - a.pv || a.name.localeCompare(b.name))
 }
 
+/**
+ * レポート画面いちばん上の絞り込み（Version / アーカイブ / 端末）。
+ * 採取物の既定は 指定なし / アーカイブ済みを除く / 全端末。
+ */
+interface TopFilter {
+  /** Versionのuid。'' ＝指定なし */
+  version: string
+  archive: 'except_archived' | 'all'
+  /** '0' ＝全端末 */
+  device: '0' | 'sp' | 'tablet' | 'pc'
+}
+
+function topFilterOf(query: unknown): TopFilter {
+  const q = (query ?? {}) as Record<string, unknown>
+  const str = (key: string): string => (typeof q[key] === 'string' ? (q[key] as string) : '')
+  const device = str('device')
+  return {
+    version: str('version'),
+    archive: str('archive') === 'all' ? 'all' : 'except_archived',
+    device: device === 'sp' || device === 'tablet' || device === 'pc' ? device : '0',
+  }
+}
+
+function keepVersion(
+  version: { uid: string; archived?: boolean; device_targets?: { sp: boolean; tablet: boolean; pc: boolean } },
+  filter: TopFilter,
+): boolean {
+  if (filter.version !== '' && version.uid !== filter.version) return false
+  if (filter.archive === 'except_archived' && version.archived === true) return false
+  if (filter.device === '0') return true
+  // 端末の設定が無いVersionは「全端末に出す」扱い
+  // （持っていないことを「出さない」と読むと、設定していないだけの行が消える）
+  const targets = version.device_targets
+  return targets === undefined || targets[filter.device]
+}
+
+/** 絞り込んだVersionぶんのスクロール記録を足す */
+function sumScrollCounts(
+  state: ReturnType<typeof getState>,
+  versionUids: readonly string[],
+  startDate: string,
+  endDate: string,
+): { hm_pv: number; fv_exit: number; sv_exit: number; offer_reach?: number } {
+  const sum = { hm_pv: 0, fv_exit: 0, sv_exit: 0 }
+  let offerReach = 0
+  let hasOffer = false
+  for (const uid of versionUids) {
+    const part = scrollCounts(state, uid, startDate, endDate)
+    sum.hm_pv += part.hm_pv
+    sum.fv_exit += part.fv_exit
+    sum.sv_exit += part.sv_exit
+    if (part.offer_reach !== undefined) {
+      hasOffer = true
+      offerReach += part.offer_reach
+    }
+  }
+  return hasOffer ? { ...sum, offer_reach: offerReach } : sum
+}
+
 // ── レポート系（§10-3・派生KPIは §10-5 恒等式）──
 function reportRows(uid: string, scope: 'version' | 'lp' | 'creative', query: unknown) {
   const state = getState()
@@ -162,7 +221,9 @@ function reportRows(uid: string, scope: 'version' | 'lp' | 'creative', query: un
   if (abTest === undefined) return null
   const { startDate, endDate } = dateRangeParams(query as Record<string, unknown>)
   const articleIds = state.articles.filter((a) => a.ab_test_id === abTest.id).map((a) => a.id)
-  const versions = state.versions.filter((v) => articleIds.includes(v.article_id))
+  const all = state.versions.filter((v) => articleIds.includes(v.article_id))
+  const filter = topFilterOf(query)
+  const versions = all.filter((version) => keepVersion(version, filter))
   const rows = versions.map((version) => {
     const metrics = state.metrics.filter(
       (m) => m.entity_uid === version.uid && isWithin(m.date, startDate, endDate),
@@ -189,15 +250,31 @@ function reportRows(uid: string, scope: 'version' | 'lp' | 'creative', query: un
     }
   })
   const abTestMetrics = state.metrics.filter((m) => m.entity_uid === abTest.uid)
+  // 絞り込んで行が減ったときは、合計も日別も「残ったVersionのぶん」にする。
+  // 表に出ていないVersionの数字が合計に入っていると、行を足しても合計に合わない。
+  // 1本も減っていないときは今までどおりページ全体（外部LPのようにVersionに
+  // 紐づかない計測もあるので、Versionを足し上げた数字では足りない）。
+  const narrowed = versions.length !== all.length || filter.version !== ''
+  const versionUids = new Set(versions.map((v) => v.uid))
+  const pickedMetrics = narrowed
+    ? state.metrics.filter((m) => m.scope === 'version' && versionUids.has(m.entity_uid))
+    : abTestMetrics
   return {
     rows,
-    // 合計もスクロールの記録を含めて出す（このbeyondページの全Versionぶん）
+    /**
+     * 画面上の「Version」プルダウンに出す一覧。
+     * 絞り込みで行が減っても選択肢は減らさないので、絞り込み前の全Versionを返す。
+     */
+    version_options: all.map((version) => ({ uid: version.uid, name: version.name })),
+    // 合計もスクロールの記録を含めて出す
     totals: deriveKpi({
-      ...sumPrimary(abTestMetrics.filter((m) => isWithin(m.date, startDate, endDate))),
-      ...scrollCountsForAbTest(state, abTest.uid, startDate, endDate),
+      ...sumPrimary(pickedMetrics.filter((m) => isWithin(m.date, startDate, endDate))),
+      ...(narrowed
+        ? sumScrollCounts(state, [...versionUids], startDate, endDate)
+        : scrollCountsForAbTest(state, abTest.uid, startDate, endDate)),
     }),
     /** レポートタブ「デイリーレポート」表の日付別の行（§10-5・両端含む） */
-    daily: dailyKpiSeries(abTestMetrics, startDate, endDate),
+    daily: dailyKpiSeries(pickedMetrics, startDate, endDate),
     period: { start_date: startDate, end_date: endDate },
   }
 }

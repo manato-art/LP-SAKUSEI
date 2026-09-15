@@ -447,6 +447,12 @@ export function mobileCss(): string {
     `html body .rv2-metrics-toggle{display:inline-flex !important;align-items:center;min-height:38px}`,
     `html body .rv2-card .rv2-table tbody td[data-more]{display:none !important}`,
     `html body .rv2-card .rv2-table.show-all tbody td[data-more]{display:flex !important}`,
+    // 指標の説明（PCはカーソル、スマホは押したとき）。カードのセル側に出す
+    `html body .rv2-card .rv2-table tbody td[data-tip]{position:relative;cursor:help}`,
+    `html body .rv2-card .rv2-table tbody td[data-tip].rv2-tip-open::after{content:attr(data-tip);`,
+    `position:absolute;top:calc(100% + 2px);left:0;right:0;z-index:30;`,
+    `background:#1f2937;color:#fff;font-size:11px;line-height:1.6;padding:7px 9px;border-radius:6px;`,
+    `box-shadow:0 6px 18px rgba(16,24,40,.18);pointer-events:none;text-align:left}`,
     // 合計の行はカードごと目立たせる
     `html body .rv2-card .rv2-table tbody tr.rv2-total{background:#f7f9fc}`,
     // Version の下にぶら下がる広告の行は、字下げでなく左の線で親との関係を示す

@@ -45,20 +45,49 @@ function field(label: string, control: HTMLElement): HTMLElement {
   return wrap
 }
 
-/** 値が固定の絞り込み（採取物に選択肢が無いものは「全て」だけ出す） */
-function fixedSelect(options: readonly string[]): HTMLSelectElement {
+/**
+ * 絞り込みのプルダウン。
+ * 2026-09-15 の本人指摘「プルダウン押しても選択肢ない」まで、既定値1つしか
+ * 入れていなかった（押しても何も選べなかった）。実際に持っている値を出す。
+ */
+function optionSelect(
+  options: readonly (readonly [string, string])[],
+  value: string,
+  onChange: (value: string) => void,
+): HTMLSelectElement {
   const sel = document.createElement('select')
-  for (const o of options) {
+  sel.className = 'rv2-select'
+  for (const [optionValue, label] of options) {
     const opt = document.createElement('option')
-    opt.textContent = o
+    opt.value = optionValue
+    opt.textContent = label
     sel.append(opt)
   }
+  sel.value = value
+  sel.addEventListener('change', () => onChange(sel.value))
   return sel
+}
+
+/** 画面上の絞り込み（期間以外）。ハッシュに載せて、サーバーで絞ったものを取り直す。 */
+export interface ReportFilter {
+  /** Versionのuid。'' ＝指定なし */
+  version: string
+  archive: 'except_archived' | 'all'
+  device: '0' | 'sp' | 'tablet' | 'pc'
+}
+
+export const REPORT_FILTER_DEFAULT: ReportFilter = {
+  version: '',
+  archive: 'except_archived',
+  device: '0',
 }
 
 interface FilterDeps {
   range: DateRange
   onApply: (range: DateRange) => void
+  filter: ReportFilter
+  versionOptions: readonly { uid: string; name: string }[]
+  onFilterChange: (filter: ReportFilter) => void
 }
 
 function buildFilters(deps: FilterDeps): HTMLElement {
@@ -138,9 +167,33 @@ function buildFilters(deps: FilterDeps): HTMLElement {
     // Version（既定「指定なし」）／アーカイブ（既定「アーカイブ済みを除く」）／端末（既定「全端末」）の3つだけ。
     // 「広告主」「キャンペーン」「クリエイティブ」は実物のレポート画面に存在しない語だったので外した。
     // 選択肢はまだ発明しない（当システムはVersion単位でしか持たない）。表記と既定値だけ実物にそろえる。
-    field('Version', fixedSelect(['指定なし'])),
-    field('アーカイブ', fixedSelect(['アーカイブ済みを除く'])),
-    field('端末', fixedSelect(['全端末'])),
+    // 2026-09-15: 選択肢を入れた。値はこのシステムが実際に持っているもの
+    // （Versionの一覧・アーカイブ済みか・端末の出し分け設定）。表記は実物のまま。
+    field(
+      'Version',
+      optionSelect(
+        [['', '指定なし'], ...deps.versionOptions.map((v) => [v.uid, v.name] as const)],
+        deps.filter.version,
+        (value) => deps.onFilterChange({ ...deps.filter, version: value }),
+      ),
+    ),
+    field(
+      'アーカイブ',
+      optionSelect(
+        [['except_archived', 'アーカイブ済みを除く'], ['all', 'アーカイブ済みを含む']],
+        deps.filter.archive,
+        (value) =>
+          deps.onFilterChange({ ...deps.filter, archive: value as ReportFilter['archive'] }),
+      ),
+    ),
+    field(
+      '端末',
+      optionSelect(
+        [['0', '全端末'], ['sp', 'スマートフォン'], ['tablet', 'タブレット'], ['pc', 'PC']],
+        deps.filter.device,
+        (value) => deps.onFilterChange({ ...deps.filter, device: value as ReportFilter['device'] }),
+      ),
+    ),
   )
   card.append(fields, apply)
   return card
@@ -221,6 +274,8 @@ export interface ReportBodyDeps {
   range: DateRange
   report: ReportResponse
   onRangeChange: (range: DateRange) => void
+  filter: ReportFilter
+  onFilterChange: (filter: ReportFilter) => void
 }
 
 /**
@@ -243,7 +298,13 @@ export async function buildReportBody(deps: ReportBodyDeps): Promise<HTMLElement
   const csv = (): void => downloadCsv(deps.report, deps.title, deps.range)
 
   root.append(
-    buildFilters({ range: deps.range, onApply: deps.onRangeChange }),
+    buildFilters({
+      range: deps.range,
+      onApply: deps.onRangeChange,
+      filter: deps.filter,
+      versionOptions: deps.report.version_options ?? [],
+      onFilterChange: deps.onFilterChange,
+    }),
     buildKpiCards({ totals: deps.report.totals, daily: deps.report.daily, previous }),
     buildCreativeReport({
       daily: deps.report.daily,

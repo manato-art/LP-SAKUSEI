@@ -229,6 +229,21 @@ export function injectReportStyles(): void {
     .rv2-funnel-compare { padding-bottom:18px; }
     .rv2-funnel-compare-name { font-size:12px; font-weight:600; color:var(--rv2-ink); padding-bottom:8px; }
     .rv2-funnel-empty { font-size:12px; color:var(--rv2-sub); padding:16px 0; }
+    /* 指標の見出しの説明。カーソルを当てたらすぐ出す
+       （ブラウザ標準の title は出るまで1秒ほどかかって気づかれない） */
+    .rv2-table thead th[data-tip] { position:relative; cursor:help; }
+    .rv2-table thead th[data-tip]::after {
+      content:attr(data-tip); position:absolute; top:calc(100% + 4px); right:0; z-index:30;
+      display:none; width:max-content; max-width:230px; white-space:normal; text-align:left;
+      background:#1f2937; color:#fff; font-size:11px; font-weight:400; line-height:1.6;
+      padding:7px 9px; border-radius:6px; box-shadow:0 6px 18px rgba(16,24,40,.18);
+      pointer-events:none;
+    }
+    .rv2-table thead th[data-tip]:first-child::after { right:auto; left:0; }
+    .rv2-table thead th[data-tip]:hover::after,
+    .rv2-table thead th[data-tip].rv2-tip-open::after { display:block; }
+    .rv2-table thead th[data-tip]:focus-visible { outline:2px solid var(--rv2-accent); outline-offset:-2px; }
+
     /* 「すべての指標」の切替はスマホだけの仕組み（PCは全列そのまま出している） */
     .rv2-metrics-toggle { display:none; }
     .rv2-sort { cursor:pointer; user-select:none; }

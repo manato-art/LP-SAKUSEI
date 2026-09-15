@@ -163,6 +163,8 @@ export interface ReportResponse {
   totals: ReportKpi
   daily: ReportDailyRow[]
   period: { start_date: string; end_date: string }
+  /** 画面上の「Version」プルダウンに出す一覧（絞り込みで減らさない） */
+  version_options?: { uid: string; name: string }[]
 }
 
 /**

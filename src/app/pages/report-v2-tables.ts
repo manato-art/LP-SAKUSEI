@@ -8,6 +8,7 @@ import { DAILY_LABEL_COLUMN, REPORT_COLUMNS, formatCell } from './report-columns
 import type { ReportDailyRow, ReportKpi, ReportVersionRow } from '../api.ts'
 import type { DateRange } from './report-period.ts'
 import { markSecondaryCells, metricsToggle } from './report-v2-mobile-table.ts'
+import { applyMetricTips } from './report-metric-tips.ts'
 import {
   BRANCH_FILTER_DEFAULT,
   filterBranchRows,
@@ -202,6 +203,8 @@ export function buildReportList(deps: ReportListDeps): HTMLElement {
       tbody.append(tr)
     }
     table.append(thead, tbody)
+    // 見出しにカーソルを当てたら説明が出るようにする（略語だけでは分からない）
+    applyMetricTips(table)
     // スマホは1行＝1カードになるので、既定で出す指標を絞る（PCは全列のまま）
     markSecondaryCells(table)
     scroll.replaceChildren(table)
@@ -558,6 +561,8 @@ export function buildBranchOperation(deps: BranchDeps): HTMLElement {
       for (const child of row.children ?? []) tbody.append(branchLine(child, true))
     }
     table.append(thead, tbody)
+    // 見出しにカーソルを当てたら説明が出るようにする（略語だけでは分からない）
+    applyMetricTips(table)
     // スマホは1行＝1カードになるので、既定で出す指標を絞る（PCは全列のまま）
     markSecondaryCells(table)
     scroll.replaceChildren(table)
@@ -652,6 +657,8 @@ export function buildDailyTable(deps: DailyTableDeps): HTMLElement {
   for (const row of deps.daily) tbody.append(line(row.date, row))
 
   table.append(thead, tbody)
+  // 見出しにカーソルを当てたら説明が出るようにする（略語だけでは分からない）
+  applyMetricTips(table)
   // スマホは1行＝1カードになるので、既定で出す指標を絞る（PCは全列のまま）
   markSecondaryCells(table)
   scroll.append(table)

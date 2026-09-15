@@ -46,12 +46,16 @@ describe('レポート本体は指定デザインの構成になっている', (
     }
   })
 
-  it('選択肢を発明しない（実物の既定値だけを出し、中身は増やさない）', () => {
-    // 2026-09-15: 「全て」から実物の既定値（指定なし／アーカイブ済みを除く／全端末）へ。
-    // 選択肢そのものはまだ増やさない＝推測で埋めない方針は変えていない。
-    expect(src).toContain("fixedSelect(['指定なし'])")
-    expect(src).toContain("fixedSelect(['アーカイブ済みを除く'])")
-    expect(src).toContain("fixedSelect(['全端末'])")
+  it('絞り込みの選択肢は実際に持っている値から出す（既定の表記は採取物のまま）', () => {
+    // 2026-09-15: 既定値1つしか入れていなかったので「押しても選択肢が無い」状態だった。
+    // Versionは一覧から、アーカイブと端末はこのシステムが持つ値から出す。
+    // 表記（指定なし／アーカイブ済みを除く／全端末）は採取物のまま変えない。
+    expect(src).toContain("['', '指定なし']")
+    expect(src).toContain("['except_archived', 'アーカイブ済みを除く']")
+    expect(src).toContain("['0', '全端末']")
+    expect(src).toContain('deps.versionOptions.map')
+    // 選ぶとサーバーで絞り直す（画面の中だけで隠すのではない）
+    expect(src).toContain('deps.onFilterChange(')
   })
 
   it('CSVはBOM付きで出す（Excelで文字化けさせない）', () => {
@@ -104,7 +108,7 @@ describe('採取物に合わせた表示内容・絞り込み', () => {
     // 採取物の既定値
     expect(dom).toContain('アーカイブ済みを除く')
     expect(dom).toContain('全端末')
-    expect(src).toContain("field('Version'")
+    expect(src).toMatch(/field\(\s*'Version'/)
     expect(src).toContain('アーカイブ済みを除く')
     expect(src).toContain('全端末')
   })

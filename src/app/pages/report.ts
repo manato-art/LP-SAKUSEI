@@ -23,7 +23,7 @@ import {
 } from './report-dom.ts'
 import { recordHistory } from './folders-history.ts'
 import { defaultRange, toRangeQuery, type DateRange } from './report-period.ts'
-import { buildReportBody } from './report-v2.ts'
+import { buildReportBody, REPORT_FILTER_DEFAULT, type ReportFilter } from './report-v2.ts'
 import { wireAbTestTabs, setupHorizTabs, setupBreadcrumb } from './tab-nav.ts'
 import { mountMetaSummary } from './report-meta.ts'
 
@@ -35,8 +35,28 @@ export function rangeFromParams(params: URLSearchParams): DateRange {
   return start <= end ? { startDate: start, endDate: end } : { startDate: end, endDate: start }
 }
 
-function gotoRange(abTestUid: string, range: DateRange): void {
-  location.hash = `/ab_tests/${abTestUid}/reports?${toRangeQuery(range)}`
+/** ハッシュのクエリから絞り込み（Version / アーカイブ / 端末）を読む */
+export function filterFromParams(params: URLSearchParams): ReportFilter {
+  const device = params.get('device') ?? ''
+  return {
+    version: params.get('version') ?? '',
+    archive: params.get('archive') === 'all' ? 'all' : 'except_archived',
+    device: device === 'sp' || device === 'tablet' || device === 'pc' ? device : '0',
+  }
+}
+
+/** 絞り込みをクエリ文字列にする（既定値は載せない＝URLを短く保つ） */
+export function filterToQuery(filter: ReportFilter): string {
+  const parts: string[] = []
+  if (filter.version !== '') parts.push(`version=${encodeURIComponent(filter.version)}`)
+  if (filter.archive !== REPORT_FILTER_DEFAULT.archive) parts.push(`archive=${filter.archive}`)
+  if (filter.device !== REPORT_FILTER_DEFAULT.device) parts.push(`device=${filter.device}`)
+  return parts.join('&')
+}
+
+function reportHash(abTestUid: string, range: DateRange, filter: ReportFilter): string {
+  const query = [toRangeQuery(range), filterToQuery(filter)].filter((p) => p !== '').join('&')
+  return `/ab_tests/${abTestUid}/reports?${query}`
 }
 
 export async function renderReport(
@@ -50,9 +70,11 @@ export async function renderReport(
   container.innerHTML = ''
 
   const range = rangeFromParams(params)
+  const filter = filterFromParams(params)
+  const query = [toRangeQuery(range), filterToQuery(filter)].filter((p) => p !== '').join('&')
   const [{ ab_test }, report, { folders }] = await Promise.all([
     api.abTest(abTestUid),
-    api.report(abTestUid, toRangeQuery(range)),
+    api.report(abTestUid, query),
     api.folders(),
   ])
   const folder = folders.find((f) => f.id === ab_test.folder_id) ?? null
@@ -102,7 +124,13 @@ export async function renderReport(
         title: ab_test.title,
         range,
         report,
-        onRangeChange: (next) => gotoRange(abTestUid, next),
+        onRangeChange: (next) => {
+          location.hash = reportHash(abTestUid, next, filter)
+        },
+        filter,
+        onFilterChange: (next) => {
+          location.hash = reportHash(abTestUid, range, next)
+        },
       }),
     )
   }
