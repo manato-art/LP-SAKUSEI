@@ -46,6 +46,18 @@ function archivesNewestFirst(): string[] {
 }
 
 /**
+ * 中まで見て埋める「設定のかたまり」。
+ *
+ * 最上位のキーしか見ないと、既にある `integrations` は丸ごとそのまま残り、
+ * あとから足したキーだけが `undefined` になる。読み出し側が「空文字なら未設定」で
+ * 見ていると、`undefined` はそれに当たらず**入っていることにされる**（本番でそうなった）。
+ *
+ * ここに書けるのは、決まった名前の値だけを持つ設定のかたまりに限る。
+ * 配列や、利用者が作った物の入れ物を混ぜてはいけない（既定値で上書きしてしまう）。
+ */
+const NESTED_SETTINGS_KEYS: readonly string[] = ['integrations']
+
+/**
  * 永続化データにスキーマ進化で追加されたフィールドが欠けている場合、
  * 空シードのデフォルト値で補完する（マイグレーション）。
  * これにより古い state.json でも新しいコードで安全に読める。
@@ -54,7 +66,16 @@ function migrateState(raw: Record<string, unknown>): State {
   const defaults = createEmptyState() as unknown as Record<string, unknown>
   const migrated = { ...defaults }
   for (const key of Object.keys(defaults)) {
-    migrated[key] = key in raw ? raw[key] : defaults[key]
+    const saved = key in raw ? raw[key] : defaults[key]
+    if (NESTED_SETTINGS_KEYS.includes(key)) {
+      // 保存されている値を優先しつつ、足りないキーだけ既定値で埋める
+      migrated[key] = {
+        ...(defaults[key] as Record<string, unknown>),
+        ...((saved ?? {}) as Record<string, unknown>),
+      }
+      continue
+    }
+    migrated[key] = saved
   }
   return migrated as unknown as State
 }

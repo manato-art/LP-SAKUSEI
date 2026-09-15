@@ -40,8 +40,12 @@ export class LineError extends Error {
  * 空なら未設定として扱う。
  */
 export function lineToken(): string | null {
+  // `?? ''` まで付けるのは、古い保存データにこのキーごと無いことがあるため。
+  // undefined をそのまま返すと「入っている」と誤判定される（tests/persistence-nested-settings）。
   const token =
-    process.env['LINE_CHANNEL_ACCESS_TOKEN'] ?? getState().integrations.lineChannelAccessToken
+    process.env['LINE_CHANNEL_ACCESS_TOKEN'] ??
+    getState().integrations.lineChannelAccessToken ??
+    ''
   return token === '' ? null : token
 }
 

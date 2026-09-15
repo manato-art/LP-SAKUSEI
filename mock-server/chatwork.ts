@@ -33,7 +33,8 @@ export class ChatworkError extends Error {
  * 空なら未設定として扱う。
  */
 export function chatworkToken(): string | null {
-  const token = process.env['CHATWORK_API_TOKEN'] ?? getState().integrations.chatworkApiToken
+  // `?? ''` の理由は line.ts と同じ（保存データにキーごと無いことがある）
+  const token = process.env['CHATWORK_API_TOKEN'] ?? getState().integrations.chatworkApiToken ?? ''
   return token === '' ? null : token
 }
 
