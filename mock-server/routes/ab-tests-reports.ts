@@ -278,6 +278,51 @@ export function parameterScopesOf(state: State, abTestUid: string): ParameterSco
   })
 }
 
+/**
+ * クリエイティブレポートの「列を選ぶ」→「保存」。
+ * 名前は採取したチェックボックスの name そのまま（`_columnChoiceBody_1fhbq_117` の form）。
+ */
+const CREATIVE_COLUMN_NAMES = [
+  'adSpending',
+  'pv',
+  'click',
+  'ctr',
+  'cv',
+  'cvr',
+  'ctvr',
+  'cpa',
+  'mcpa',
+] as const
+
+abTestsReportsRouter.get('/creative_report_user_columns', (_req, res) => {
+  res.json({
+    creative_report_user_columns: getState().creativeReportColumns.map((name) => ({ name })),
+  })
+})
+
+abTestsReportsRouter.put('/creative_report_user_columns', (req, res) => {
+  const body = req.body as { creative_report_user_columns?: unknown }
+  const raw = Array.isArray(body.creative_report_user_columns)
+    ? body.creative_report_user_columns
+    : []
+  // 採取した9つ以外は作らない。重複も潰す。
+  const names = [
+    ...new Set(
+      raw
+        .filter((n): n is string => typeof n === 'string')
+        .filter((n) => (CREATIVE_COLUMN_NAMES as readonly string[]).includes(n)),
+    ),
+  ]
+  // 列が1つも無い表は画面が成立しない（実物のフォームも全部外せない）
+  if (names.length === 0) {
+    return res
+      .status(422)
+      .json(errorEnvelope('validation_failed', '列は1つ以上選んでください。'))
+  }
+  setState((s) => ({ ...s, creativeReportColumns: names }))
+  res.json({ creative_report_user_columns: names.map((name) => ({ name })) })
+})
+
 abTestsReportsRouter.get('/ab_tests/:uid/parameter_scopes', (req, res) => {
   const state = getState()
   const abTest = findAbTest(state, req.params.uid)

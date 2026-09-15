@@ -158,6 +158,34 @@ export function injectReportStyles(): void {
        名前を字下げして、親のVersionの内訳だと分かるようにする。 */
     .rv2-table tbody tr.rv2-sub td:first-child { padding-left:28px; color:var(--rv2-sub); }
     .rv2-table tbody tr.rv2-sub td { background:#fcfdff; }
+    /* 列のチップ（配信金額 / CV / CPA / CTR / CVR）と、その中の「並び替え」。
+       実物は列そのものがドロップダウンを抱えている（採取物の _column_1fhbq_39）。 */
+    .rv2-colchip { position:relative; display:inline-flex; }
+    .rv2-sortmenu {
+      display:none; position:absolute; top:calc(100% + 6px); left:0; z-index:20; min-width:150px;
+      background:#fff; border:1px solid var(--rv2-rule); border-radius:8px; padding:6px;
+      box-shadow:0 6px 18px rgba(16,24,40,.12);
+    }
+    .rv2-colchip.open .rv2-sortmenu { display:block; }
+    .rv2-sortmenu-title { font-size:11px; color:var(--rv2-sub); padding:4px 8px 6px; }
+    .rv2-sortmenu-item {
+      display:block; width:100%; text-align:left; border:0; background:transparent; cursor:pointer;
+      font:inherit; font-size:12px; color:var(--rv2-ink); padding:7px 8px; border-radius:6px;
+    }
+    .rv2-sortmenu-item:hover { background:#f2f6ff; }
+    /* 広告パラメータの一覧（チャートの下）と「もっと表示」 */
+    .rv2-creative-params { display:flex; flex-direction:column; border-top:1px solid var(--rv2-rule); }
+    .rv2-creative-param {
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+      padding:9px 14px; font-size:12px; border-bottom:1px solid var(--rv2-rule);
+    }
+    .rv2-creative-param-name { color:var(--rv2-ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .rv2-creative-param-value { color:var(--rv2-ink); font-variant-numeric:tabular-nums; flex-shrink:0; }
+    .rv2-readmore {
+      border:0; background:transparent; color:var(--rv2-accent); font:inherit; font-size:12px;
+      padding:10px; cursor:pointer;
+    }
+    .rv2-readmore:hover { text-decoration:underline; }
     .rv2-sort { cursor:pointer; user-select:none; }
     .rv2-sort:hover { color:var(--rv2-accent); }
     .rv2-sort span { color:#98a2b3; margin-left:3px; font-size:9px; }

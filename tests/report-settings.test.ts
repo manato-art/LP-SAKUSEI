@@ -79,15 +79,17 @@ describe('表示するパラメータ', () => {
   it('ヒートマップをOFFにしたパラメータは、ヒートマップの一覧から消える', async () => {
     const uid = await createAbTest()
     const track = async (params: string[]): Promise<void> => {
-      await fetch(`${server.baseUrl}/lp/${uid}/__track`, {
+      const res = await fetch(`${server.baseUrl}/lp/${uid}/__track`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ event: 'heatmap', bands: 4, reach: [1, 0, 0, 0], params }),
       })
+      // 本文を読み切る（読まずに次を投げると接続待ちで詰まる）
+      await res.text()
     }
     await track(['utm_source=fb', 'utm_term=abc'])
 
-    const range = 'start_date=2000-01-01&end_date=2099-12-31'
+    const range = 'start_date=2026-01-01&end_date=2026-12-31'
     const before = await getJson<{ parameters: { param: string }[] }>(
       `${server.api}/ab_tests/${uid}/heatmaps/stats?${range}`,
     )

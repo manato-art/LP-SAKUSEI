@@ -101,6 +101,8 @@ export function createEmptyState(): State {
     reportExclusions: [],
     // レポート設定「表示するパラメータ」。触るまで行は作らない（既定は6つ全部ON）
     parameterScopes: [],
+    // クリエイティブレポートの列。採取した初期状態（チェックが付いていた5つ）
+    creativeReportColumns: ['adSpending', 'ctr', 'cv', 'cvr', 'cpa'],
     requestLogs: [],
     htmlParts: [],
     metrics: [],

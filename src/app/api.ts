@@ -518,6 +518,19 @@ export const api = {
   heatmaps: (abTestUid: string) =>
     request<{ heatmaps: HeatmapEntry[] }>('GET', `/ab_tests/${abTestUid}/heatmaps/comparisons`),
   /** ヒートマップの実測集計（計測タグ由来）。ラインの4モードぶんをVersionごとに返す。 */
+  /** クリエイティブレポートの列（「列を選ぶ」→「保存」） */
+  creativeColumns: () =>
+    request<{ creative_report_user_columns: { name: string }[] }>(
+      'GET',
+      '/creative_report_user_columns',
+    ),
+  saveCreativeColumns: (names: readonly string[]) =>
+    request<{ creative_report_user_columns: { name: string }[] }>(
+      'PUT',
+      '/creative_report_user_columns',
+      { creative_report_user_columns: names },
+    ),
+
   /** レポート設定「表示するパラメータ」（歯車から開くモーダル） */
   parameterScopes: (abTestUid: string) =>
     request<{ parameter_scopes: ParameterScope[] }>(

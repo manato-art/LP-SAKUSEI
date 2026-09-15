@@ -16,14 +16,17 @@ interface StatsResponse {
   parameters: { version_uid: string; param: string; pv: number }[]
 }
 
-const RANGE = 'start_date=2000-01-01&end_date=2099-12-31'
+// 期間は1年に絞る。100年ぶんを頼むと日別の行を36,500本作って1リクエスト1秒かかる
+const RANGE = 'start_date=2026-01-01&end_date=2026-12-31'
 
 async function track(uid: string, payload: Record<string, unknown>): Promise<void> {
-  await fetch(`${server.baseUrl}/lp/${uid}/__track`, {
+  const res = await fetch(`${server.baseUrl}/lp/${uid}/__track`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   })
+  // 本文を読み切る。読まずに次を投げると接続が空くのを待って1回ごとに秒単位で詰まる
+  await res.text()
 }
 
 async function createAbTest(): Promise<string> {

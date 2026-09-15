@@ -244,7 +244,12 @@ export async function buildReportBody(deps: ReportBodyDeps): Promise<HTMLElement
   root.append(
     buildFilters({ range: deps.range, onApply: deps.onRangeChange }),
     buildKpiCards({ totals: deps.report.totals, daily: deps.report.daily, previous }),
-    buildCreativeReport({ daily: deps.report.daily, range: deps.range, onDownloadCsv: csv }),
+    buildCreativeReport({
+      daily: deps.report.daily,
+      range: deps.range,
+      rows: deps.report.rows,
+      onDownloadCsv: csv,
+    }),
     buildReportList({ rows: deps.report.rows, range: deps.range }),
     buildDailyTable({ daily: deps.report.daily, totals: deps.report.totals }),
     buildBranchOperation({ rows: deps.report.rows, totals: deps.report.totals, onDownloadCsv: csv }),

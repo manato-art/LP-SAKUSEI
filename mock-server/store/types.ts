@@ -891,6 +891,11 @@ export interface State {
    * 行が無いページは既定（6つ全部ON・メモ空）とみなす。
    */
   parameterScopes: readonly ParameterScope[]
+  /**
+   * クリエイティブレポートで出す列（「列を選ぶ」→「保存」）。
+   * 実物の `GET /api/v1/creative_report_user_columns` に対応。名前は採取したチェックボックスの name。
+   */
+  creativeReportColumns: readonly string[]
   /** 配信リクエストの記録（直近ぶんだけ保持する） */
   requestLogs: readonly RequestLogEntry[]
   /** 訪問者の目印ごとの「見た・押した」記録（CVをVersion別に数えるため。1日分だけ持つ・store/visitor-touches.ts） */
