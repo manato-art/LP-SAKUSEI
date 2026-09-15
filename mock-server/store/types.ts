@@ -784,6 +784,16 @@ export interface NotificationSetting {
   ad_alert: boolean
 }
 
+/** 異常のお知らせの設定 */
+export interface AlertSettingState {
+  enabled: boolean
+  /** この時間ずっとCVが0なら「止まった」とみなす */
+  cv_silent_hours: number
+  /** その日のCPAの上限（円）。0 ＝ 見ない */
+  cpa_limit: number
+  notify: { service: 'slack' | 'chatwork'; destination_id: string } | null
+}
+
 export interface HtmlPart {
   id: number
   uid: string
@@ -901,6 +911,13 @@ export interface State {
   /** 訪問者の目印ごとの「見た・押した」記録（CVをVersion別に数えるため。1日分だけ持つ・store/visitor-touches.ts） */
   visitorTouches: readonly VisitorTouch[]
   notificationSettings: readonly NotificationSetting[]
+  /**
+   * 異常のお知らせ（このシステムだけの機能）。
+   * 条件に当たったらSlack/チャットワークへ1通送る。
+   */
+  alertSetting: AlertSettingState
+  /** すでに送った合図（`<pageUid>|<kind>|<YYYY-MM-DD HH>`）。同じ時間帯に二度送らない */
+  alertSentSlots: readonly string[]
   htmlParts: readonly HtmlPart[]
   seminars: readonly Seminar[]
   introductions: readonly Introduction[]

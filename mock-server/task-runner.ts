@@ -8,6 +8,7 @@
  * 同じ分では二度と送らない。見張りが多少ずれて2回回っても1通に収まる。
  */
 import { jstNow, type JstNow } from './lib/jst.ts'
+import { findAlerts } from './alerts.ts'
 import { sendNotification } from './notify.ts'
 import { buildTaskReport } from './task-report.ts'
 import { getState, setState } from './store/store.ts'
@@ -59,6 +60,49 @@ function recordRun(uid: string, slot: string, error: string | null): void {
   }))
 }
 
+/** すでに送った合図は増え続けるので、上限を超えたら古いものから捨てる */
+const MAX_SENT_SLOTS = 500
+
+/**
+ * 異常のお知らせ。見張りのたびに条件を確かめ、当たったものを送る。
+ * 送りすぎないよう、同じページの同じ理由は1時間に1回まで（合図で数える）。
+ */
+export async function runAlerts(now: JstNow = jstNow()): Promise<number> {
+  const state = getState()
+  const alerts = findAlerts({
+    now: Math.floor(Date.now() / 1000),
+    today: now.date,
+    setting: state.alertSetting,
+    pages: state.abTests.map((t) => ({ uid: t.uid, title: t.title, ad_status: t.ad_status })),
+    conversions: state.conversions.map((c) => ({
+      ab_test_uid: c.ab_test_uid,
+      occurred_at: c.occurred_at,
+    })),
+    metrics: state.metrics
+      .filter((m) => m.scope === 'ab_test')
+      .map((m) => ({ entity_uid: m.entity_uid, date: m.date, ad_cost: m.ad_cost, cv: m.cv })),
+    sentSlots: state.alertSentSlots,
+  })
+  if (alerts.length === 0) return 0
+
+  const notify = state.alertSetting.notify
+  if (notify === null) return 0
+
+  // 先に「送った」と記録してから送る（送信に時間がかかっても二重に送らない）
+  setState((s) => ({
+    ...s,
+    alertSentSlots: [...s.alertSentSlots, ...alerts.map((a) => a.slot)].slice(-MAX_SENT_SLOTS),
+  }))
+  for (const alert of alerts) {
+    try {
+      await sendNotification(notify.service, notify.destination_id, alert.message)
+    } catch {
+      /* 1通失敗しても残りは送る（送れなかったことは画面では追えない＝次の時間帯に再送される） */
+    }
+  }
+  return alerts.length
+}
+
 /** 1回ぶんの見張り。動かすべきタスクを順に実行する。 */
 export async function tick(now: JstNow = jstNow()): Promise<number> {
   const due = getState().tasks.filter((t) => isDue(t, now))
@@ -91,6 +135,9 @@ export function startTaskRunner(): void {
   timer = setInterval(() => {
     void tick().catch(() => {
       /* 1回失敗しても見張り自体は止めない */
+    })
+    void runAlerts().catch(() => {
+      /* 同上 */
     })
   }, 30_000)
   timer.unref?.()

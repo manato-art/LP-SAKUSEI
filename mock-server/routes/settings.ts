@@ -50,6 +50,78 @@ settingsRouter.put('/settings/internal_notifications/:scope', (req, res) => {
   res.json({ settings: getState().notificationSettings.find((s) => s.scope === scope) ?? null })
 })
 
+/* ── 異常のお知らせ（このシステムだけの機能） ── */
+
+/** CVが止まったとみなす時間の範囲。0だと鳴りっぱなしになるので1時間から。 */
+const SILENT_HOURS_MIN = 1
+const SILENT_HOURS_MAX = 72
+
+settingsRouter.get('/settings/alerts', (_req, res) => {
+  res.json({ settings: getState().alertSetting })
+})
+
+settingsRouter.put('/settings/alerts', (req, res) => {
+  const body = (req.body ?? {}) as Record<string, unknown>
+  const current = getState().alertSetting
+  const next = { ...current }
+
+  if (typeof body['enabled'] === 'boolean') next.enabled = body['enabled']
+
+  if (body['cv_silent_hours'] !== undefined) {
+    const hours = body['cv_silent_hours']
+    if (
+      typeof hours !== 'number' ||
+      !Number.isInteger(hours) ||
+      hours < SILENT_HOURS_MIN ||
+      hours > SILENT_HOURS_MAX
+    ) {
+      return res
+        .status(422)
+        .json(
+          errorEnvelope(
+            'validation_failed',
+            `CVが止まったとみなす時間は${SILENT_HOURS_MIN}〜${SILENT_HOURS_MAX}の整数で指定してください。`,
+          ),
+        )
+    }
+    next.cv_silent_hours = hours
+  }
+
+  if (body['cpa_limit'] !== undefined) {
+    const limit = body['cpa_limit']
+    if (typeof limit !== 'number' || !Number.isFinite(limit) || limit < 0) {
+      return res
+        .status(422)
+        .json(errorEnvelope('validation_failed', 'CPAの上限は0以上で指定してください（0＝見ない）。'))
+    }
+    next.cpa_limit = limit
+  }
+
+  if (body['notify'] !== undefined) {
+    const notify = body['notify']
+    if (notify === null) {
+      next.notify = null
+    } else {
+      const value = notify as Record<string, unknown>
+      const service = value['service']
+      const destination = value['destination_id']
+      if (
+        (service !== 'slack' && service !== 'chatwork') ||
+        typeof destination !== 'string' ||
+        destination.trim() === ''
+      ) {
+        return res
+          .status(422)
+          .json(errorEnvelope('validation_failed', '送り先は slack か chatwork と送信先IDで指定してください。'))
+      }
+      next.notify = { service, destination_id: destination.trim() }
+    }
+  }
+
+  setState((state) => ({ ...state, alertSetting: next }))
+  res.json({ settings: getState().alertSetting })
+})
+
 /**
  * 画面のテーマカラー。アカウントに紐づけて保存し、別のブラウザでも同じ色にする。
  * 受け取るのは `#RGB` / `#RRGGBB` だけ。任意の文字列をCSSへ流すと

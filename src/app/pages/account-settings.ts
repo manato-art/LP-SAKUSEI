@@ -8,6 +8,7 @@ import { table } from './data-ui.ts'
 import { T, el, emptyState, toast } from '../ui.ts'
 import { buildThemeColorSection } from '../panels/theme-color-section.ts'
 import { jstDateKey } from '../jst.ts'
+import { mountAlertSettings } from './alert-settings-section.ts'
 
 export async function renderAccountSettings(
   container: HTMLElement,
@@ -247,6 +248,9 @@ async function renderNotifications(content: HTMLElement): Promise<void> {
     row.append(left, switchEl)
     content.append(row)
   }
+
+  // 異常のお知らせ（このシステムだけの機能）。通知の設定はここに集めている。
+  await mountAlertSettings(content)
 }
 
 async function renderMembers(content: HTMLElement): Promise<void> {

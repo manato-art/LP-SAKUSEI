@@ -213,6 +213,19 @@ export interface ParameterScope {
   description: string
 }
 
+/**
+ * 異常のお知らせの設定。
+ * CVが止まった／CPAが上限を超えた を見張って、Slack・チャットワークへ1通送る。
+ */
+export interface AlertSettings {
+  enabled: boolean
+  /** この時間ずっとCVが0なら「止まった」とみなす */
+  cv_silent_hours: number
+  /** その日のCPAの上限（円）。0 ＝ 見ない */
+  cpa_limit: number
+  notify: { service: 'slack' | 'chatwork'; destination_id: string } | null
+}
+
 /** ファネルの段1つぶん（＝ステップ）。数字はそのステップのVersionの合計。 */
 export interface FunnelStepRow extends ReportKpi {
   uid: string
@@ -536,6 +549,11 @@ export const api = {
   heatmaps: (abTestUid: string) =>
     request<{ heatmaps: HeatmapEntry[] }>('GET', `/ab_tests/${abTestUid}/heatmaps/comparisons`),
   /** ヒートマップの実測集計（計測タグ由来）。ラインの4モードぶんをVersionごとに返す。 */
+  /** 異常のお知らせの設定（このシステムだけの機能） */
+  alertSettings: () => request<{ settings: AlertSettings }>('GET', '/settings/alerts'),
+  updateAlertSettings: (patch: Partial<AlertSettings>) =>
+    request<{ settings: AlertSettings }>('PUT', '/settings/alerts', patch),
+
   /**
    * ファネルの段（＝ステップ）と実測。
    * ステップを作っていないページでは1件（先頭のステップ）だけ返る。
