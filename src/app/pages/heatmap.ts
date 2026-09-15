@@ -29,11 +29,13 @@ export async function renderHeatmap(
   container: HTMLElement,
   abTestUid: string,
   generation?: number,
+  /** 期間を変えたときに、同じ画面をその期間で描き直すために受け取る（2026-09-15） */
+  requestedRange?: DateRange,
 ): Promise<void> {
   container.style.cssText = 'flex:1;min-width:0'
   container.innerHTML = ''
 
-  const range: DateRange = defaultRange()
+  const range: DateRange = requestedRange ?? defaultRange()
   const [{ ab_test }, report, { heatmaps }, { folders }, stats, externalPage] = await Promise.all([
     api.abTest(abTestUid),
     api.report(abTestUid, toRangeQuery(range)),
@@ -84,6 +86,9 @@ export async function renderHeatmap(
     : null
   const listRows = externalRow === null ? report.rows : [...report.rows, externalRow]
 
+  /** ソートモーダルで選ばれた並び順（採取物の9択の文字） */
+  let columnOrder = ''
+
   const rebuild = (): void => {
     const specs: ColumnSpec[] = []
     for (const key of selection) {
@@ -101,7 +106,7 @@ export async function renderHeatmap(
         cv: row.cv,
       })
     }
-    renderHeatmapColumns(columnHost, specs, {
+    renderHeatmapColumns(columnHost, sortColumnSpecs(specs, columnOrder), {
       stats: stats.versions,
       totals: { pv: report.totals.pv, ctr: report.totals.ctr, cv: report.totals.cv },
       externalHtml: externalPage?.html ?? null,
@@ -135,8 +140,14 @@ export async function renderHeatmap(
 
   wireSortSelect(root, report.rows, onToggle, selection)
   wireHeightTypeTabs(root, rebuild)
-  wireSortModal(root)
-  showRange(root, range)
+  wireSortModal(root, (label) => {
+    columnOrder = label
+    rebuild()
+  })
+  wireRangeInputs(root, range, (next) => {
+    // 期間を変えたら、その期間で取り直す（ハッシュは同じなので自前で描き直す）
+    void renderHeatmap(container, abTestUid, generation, next)
+  })
   noteHeatmapArea(root, heatmaps.length)
   rebuild()
 }
@@ -321,28 +332,74 @@ function wireHeightTypeTabs(root: HTMLElement, onChange?: () => void): void {
   }
 }
 
-/** ソートモーダルのラジオ。実物は name が無いので、選択の排他はこちらで面倒を見る */
-function wireSortModal(root: HTMLElement): void {
+/**
+ * ソートモーダルのラジオ（実物の9択）。実物は name が無いので排他はこちらで面倒を見る。
+ * 2026-09-15: 選んだ順を実際に列の並びへ反映するようにした（以前は排他だけで何も起きなかった）。
+ */
+function wireSortModal(root: HTMLElement, onChange: (label: string) => void): void {
   const modal = root.querySelector<HTMLElement>('[class*="_sortModal_"]')
   if (modal === null) return
   const radios = [...modal.querySelectorAll<HTMLInputElement>('input[type="radio"]')]
   for (const radio of radios) {
     radio.addEventListener('change', () => {
       for (const other of radios) other.checked = other === radio
+      // ラベルは採取物の文字（「PVの多い順」など）。親のテキストから読む
+      const label = (radio.closest('label')?.textContent ?? radio.parentElement?.textContent ?? '')
+        .trim()
+      onChange(label)
     })
   }
   modal.append(
-    cloneNote('並び順はヒートマップの表示順。表示できるヒートマップが無いので見た目は変わらない。'),
+    cloneNote('「手動」（ドラッグで並べ替え）はまだできません。他の並び順は列に効きます。'),
   )
 }
 
-/** 期間の表示（実物は読み取り専用でカレンダーをポータルに開く。採取物が無いので表示のみ） */
-function showRange(root: HTMLElement, range: DateRange): void {
+/**
+ * ソートモーダルで選んだ順に列を並べ替える（採取物の9択の文字で判断する）。
+ * 「手動」と、判断できない文字はそのままの順で返す。
+ */
+export function sortColumnSpecs<T extends { versionName: string; pv: number; cv: number; ctr: number | null }>(
+  specs: readonly T[],
+  label: string,
+): readonly T[] {
+  const by = (pick: (s: T) => number, asc: boolean): T[] =>
+    [...specs].sort((a, b) => (asc ? pick(a) - pick(b) : pick(b) - pick(a)))
+  if (label.includes('PVの多い順')) return by((s) => s.pv, false)
+  if (label.includes('PVの少ない順')) return by((s) => s.pv, true)
+  if (label.includes('CVの多い順')) return by((s) => s.cv, false)
+  if (label.includes('CVの少ない順')) return by((s) => s.cv, true)
+  if (label.includes('CTRの高い順')) return by((s) => s.ctr ?? -1, false)
+  if (label.includes('CTRの低い順')) return by((s) => s.ctr ?? -1, true)
+  if (label.includes('Versionの新しい順')) return [...specs].reverse()
+  if (label.includes('Versionの古い順')) return [...specs]
+  return specs
+}
+
+/**
+ * 期間の入力。実物はカレンダー（litepicker）をポータルに開くが、その状態は採取していない。
+ * 発明せずに、同じ2つの入力をブラウザ標準の日付入力にして変えられるようにする（2026-09-15）。
+ */
+function wireRangeInputs(
+  root: HTMLElement,
+  range: DateRange,
+  onChange: (next: DateRange) => void,
+): void {
   const inputs = [...root.querySelectorAll<HTMLInputElement>('input[type="text"][readonly]')]
   const start = inputs[0]
   const end = inputs[1]
-  if (start !== undefined) start.value = range.startDate
-  if (end !== undefined) end.value = range.endDate
+  if (start === undefined || end === undefined) return
+  for (const [input, value] of [[start, range.startDate], [end, range.endDate]] as const) {
+    input.type = 'date'
+    input.readOnly = false
+    input.value = value
+    input.style.cursor = 'pointer'
+    input.addEventListener('change', () => {
+      const a = start.value
+      const b = end.value
+      if (a === '' || b === '') return
+      onChange(a <= b ? { startDate: a, endDate: b } : { startDate: b, endDate: a })
+    })
+  }
 }
 
 function noteHeatmapArea(root: HTMLElement, count: number): void {

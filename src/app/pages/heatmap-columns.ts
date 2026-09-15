@@ -32,8 +32,28 @@ export const METRIC_HUE: Readonly<Record<HeatmapMetric, number>> = {
   cv: 275,
 }
 
-/** ラインのモード（実物の select の value と表記をそのまま使う） */
+/**
+ * ラインのモード。
+ *
+ * ⚠️ この5つの表記（ライン非表示 / 到達率 / …）は**採取物に無い**（クローン独自）。
+ * 実物の指標切替UIが何なのかは採取できていないので、「実物どおり」とは書かない。
+ * 左のチェック（離脱 / CLICK / CV）で選んだ指標に合わせた既定値を出し、
+ * そのうえで細かく見たいときに切り替えられるようにしている。
+ */
 export type LineMode = 'none' | 'arrival' | 'exit' | 'attention' | 'elementClick'
+
+/** 左のチェック（離脱 / CLICK / CV）に対する既定のライン */
+export function defaultModeFor(metric: HeatmapMetric): LineMode {
+  switch (metric) {
+    case 'exit':
+      return 'exit'
+    case 'click':
+      return 'elementClick'
+    case 'cv':
+      // CVは「画面のどこで起きたか」を記録していないので、面は描かない
+      return 'none'
+  }
+}
 
 export const LINE_MODES: readonly { value: LineMode; label: string }[] = [
   { value: 'none', label: 'ライン非表示' },
@@ -250,6 +270,8 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
   met.append(metName, metStats)
   const note = document.createElement('div')
   note.className = 'hm-col-note'
+  // ⚠️「全パラメータ合算」はクローン独自の説明（採取物に無い）。
+  // パラメーター別の集計をまだ持っていないので、合算であることを明示している。
   note.textContent = isShared ? '全パラメータ合算・外部LP（Version区別なし）' : '全パラメータ合算'
 
   const ctrl = document.createElement('div')
@@ -283,7 +305,8 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
     o.textContent = m.label
     lineSelect.append(o)
   }
-  lineSelect.value = 'arrival'
+  // 左で選んだ指標に合わせた既定にする（以前は常に「到達率」で、3つとも同じ絵になっていた）
+  lineSelect.value = defaultModeFor(spec.metric)
   ctrl.append(dev, rangeEl, lineSelect)
   head.append(ver, met, note, ctrl)
 
@@ -362,6 +385,12 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
 
   const drawOverlay = (): void => {
     overlay.innerHTML = ''
+    note.textContent = isShared ? '全パラメータ合算・外部LP（Version区別なし）' : '全パラメータ合算'
+    if (spec.metric === 'cv') {
+      // CVは「ページのどこで起きたか」を記録していない（計測タグはCVの座標を送らない）。
+      // 0を描くと「誰も反応しなかった」に見えるので、そうと分かる文言を出す。
+      note.textContent = 'CVは画面のどこで起きたかを記録していません（面は出ません）'
+    }
     // 熱の層は canvas 側（LPと一緒にスクロールする）に置くので、別途消す。
     // 消さずに描き足すと、行を押すたびに層が積み重なって濃くなる。
     for (const old of canvas.querySelectorAll('.hm-heat')) old.remove()

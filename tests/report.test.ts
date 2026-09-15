@@ -583,3 +583,56 @@ describe('計測タグが送るスクロールの記録', () => {
     expect(tag).toContain('exit_band:')
   })
 })
+
+describe('ヒートマップの列は選んだ指標で中身が変わる', () => {
+  const cols = readFileSync('src/app/pages/heatmap-columns.ts', 'utf8')
+
+  it('離脱 / CLICK を選ぶと、その指標の面を描く（3つとも同じ絵にしない）', () => {
+    // 以前は列ごとのセレクトだけで決まり、左で選んだ指標（spec.metric）を捨てていた
+    expect(cols).toContain('defaultModeFor')
+    expect(cols).toContain("case 'exit'")
+    expect(cols).toContain("case 'click'")
+  })
+
+  it('CVは縦位置の記録が無いことを正直に出す（0を描いて誤解させない）', () => {
+    expect(cols).toContain('CVは画面のどこで起きたかを記録していません')
+  })
+
+  it('指標ごとの色は実測どおり（離脱=赤 / CLICK=青 / CV=緑）', () => {
+    // 採取CSS: _tab_._checked_ = rgb(208,83,83) / :nth-of-type(2) = rgb(0,134,255) /
+    //           :last-of-type = rgb(6,214,160)
+    const css = readFileSync(
+      'capture/clean/ab_tests__UID__articles__htmls__heatmaps__comparisons/default/cssom.css',
+      'utf8',
+    )
+    expect(css).toContain('rgb(208, 83, 83)')
+    expect(cols).toContain('METRIC_HUE')
+  })
+
+  it('採取物に無い表記を「実物どおり」と書かない', () => {
+    expect(cols).not.toContain('実物の select の value と表記をそのまま使う')
+  })
+})
+
+describe('ヒートマップのソートモーダルと期間', () => {
+  const src = readFileSync('src/app/pages/heatmap.ts', 'utf8')
+  const dom = readFileSync(
+    'src/app/fragments/ab_tests__UID__articles__htmls__heatmaps__comparisons__default.html',
+    'utf8',
+  )
+
+  it('採取物の9択がそのまま並ぶ', () => {
+    for (const label of ['手動', 'Versionの新しい順', 'PVの多い順', 'CVの少ない順']) {
+      expect(dom, label).toContain(label)
+    }
+  })
+
+  it('選んだ並び順で列を並べ替える（以前はラジオの排他だけで何も起きなかった）', () => {
+    expect(src).toContain('sortColumnSpecs')
+    expect(src).not.toContain('表示できるヒートマップが無いので見た目は変わらない')
+  })
+
+  it('期間を変えられる（読み取り専用の表示だけだった）', () => {
+    expect(src).toContain('wireRangeInputs')
+  })
+})
