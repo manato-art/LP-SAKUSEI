@@ -9,7 +9,9 @@ import { makeUid } from '../store/ids.ts'
 import { optionalBoolean, optionalString, requireString } from '../lib/validate.ts'
 import { dateRangeParams, str } from '../lib/query.ts'
 import { isIpLike, matchesExclusion } from '../store/exclusions.ts'
+import { notifyList, type AlertNotify } from '../alerts.ts'
 import type {
+  AlertSettingState,
   ExclusionCondition,
   ExclusionKind,
   ExclusionMatch,
@@ -56,8 +58,14 @@ settingsRouter.put('/settings/internal_notifications/:scope', (req, res) => {
 const SILENT_HOURS_MIN = 1
 const SILENT_HOURS_MAX = 72
 
+/** 送り先は必ず配列で返す（古い形で保存されていても画面が迷わない） */
+function alertSettingForClient(): AlertSettingState {
+  const setting = getState().alertSetting
+  return { ...setting, notify: notifyList(setting.notify) }
+}
+
 settingsRouter.get('/settings/alerts', (_req, res) => {
-  res.json({ settings: getState().alertSetting })
+  res.json({ settings: alertSettingForClient() })
 })
 
 settingsRouter.put('/settings/alerts', (req, res) => {
@@ -98,28 +106,39 @@ settingsRouter.put('/settings/alerts', (req, res) => {
   }
 
   if (body['notify'] !== undefined) {
-    const notify = body['notify']
-    if (notify === null) {
-      next.notify = null
-    } else {
-      const value = notify as Record<string, unknown>
+    const raw = body['notify']
+    // null と1件のオブジェクトも受ける（古い画面／古い保存から来ることがある）
+    const items = raw === null ? [] : Array.isArray(raw) ? raw : [raw]
+    const parsed: AlertNotify[] = []
+    for (const item of items) {
+      const value = (item ?? {}) as Record<string, unknown>
       const service = value['service']
       const destination = value['destination_id']
-      if (
-        (service !== 'slack' && service !== 'chatwork') ||
-        typeof destination !== 'string' ||
-        destination.trim() === ''
-      ) {
+      if (service !== 'slack' && service !== 'chatwork' && service !== 'line') {
         return res
           .status(422)
-          .json(errorEnvelope('validation_failed', '送り先は slack か chatwork と送信先IDで指定してください。'))
+          .json(
+            errorEnvelope(
+              'validation_failed',
+              '送り先は slack・chatwork・line のどれかで指定してください。',
+            ),
+          )
       }
-      next.notify = { service, destination_id: destination.trim() }
+      const id = typeof destination === 'string' ? destination.trim() : ''
+      // LINEだけ空でよい（＝公式アカウントと友だちの全員へ送る）
+      if (id === '' && service !== 'line') {
+        return res
+          .status(422)
+          .json(errorEnvelope('validation_failed', '送り先のIDを指定してください。'))
+      }
+      parsed.push({ service, destination_id: id })
     }
+    // 同じ送り先が2件あると同じ知らせが2通届く
+    next.notify = notifyList(parsed)
   }
 
   setState((state) => ({ ...state, alertSetting: next }))
-  res.json({ settings: getState().alertSetting })
+  res.json({ settings: alertSettingForClient() })
 })
 
 /**

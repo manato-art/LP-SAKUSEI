@@ -8,7 +8,7 @@
  * 同じ分では二度と送らない。見張りが多少ずれて2回回っても1通に収まる。
  */
 import { jstNow, type JstNow } from './lib/jst.ts'
-import { findAlerts } from './alerts.ts'
+import { findAlerts, notifyList } from './alerts.ts'
 import { sendNotification } from './notify.ts'
 import { buildTaskReport } from './task-report.ts'
 import { getState, setState } from './store/store.ts'
@@ -85,8 +85,8 @@ export async function runAlerts(now: JstNow = jstNow()): Promise<number> {
   })
   if (alerts.length === 0) return 0
 
-  const notify = state.alertSetting.notify
-  if (notify === null) return 0
+  const destinations = notifyList(state.alertSetting.notify)
+  if (destinations.length === 0) return 0
 
   // 先に「送った」と記録してから送る（送信に時間がかかっても二重に送らない）
   setState((s) => ({
@@ -94,10 +94,14 @@ export async function runAlerts(now: JstNow = jstNow()): Promise<number> {
     alertSentSlots: [...s.alertSentSlots, ...alerts.map((a) => a.slot)].slice(-MAX_SENT_SLOTS),
   }))
   for (const alert of alerts) {
-    try {
-      await sendNotification(notify.service, notify.destination_id, alert.message)
-    } catch {
-      /* 1通失敗しても残りは送る（送れなかったことは画面では追えない＝次の時間帯に再送される） */
+    // 決めた送り先すべてへ同じ知らせを配る。
+    // 1つへ送れなくても残りは送る（届かなかったことは画面では追えない＝次の時間帯に再送される）。
+    for (const to of destinations) {
+      try {
+        await sendNotification(to.service, to.destination_id, alert.message)
+      } catch {
+        /* 続ける */
+      }
     }
   }
   return alerts.length

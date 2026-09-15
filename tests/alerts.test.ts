@@ -218,7 +218,7 @@ describe('見張りから呼ぶ', () => {
         enabled: true,
         cv_silent_hours: 6,
         cpa_limit: 0,
-        notify: { service: 'slack', destination_id: 'C1' },
+        notify: [{ service: 'slack', destination_id: 'C1' }],
       },
       alertSentSlots: [],
     }))

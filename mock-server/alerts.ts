@@ -17,10 +17,39 @@ const RECENT_DAYS = 7
 
 export type AlertKind = 'cv_stopped' | 'cpa_over'
 
-/** 送り先。決めていなければ null（送れないのに判定だけしても意味がない）。 */
+/** 送り先。LINEだけ destination_id が空でよい（＝友だち全員へ）。 */
 export interface AlertNotify {
-  service: 'slack' | 'chatwork'
+  service: 'slack' | 'chatwork' | 'line'
   destination_id: string
+}
+
+/**
+ * 保存されている送り先を配列にして返す。
+ *
+ * この機能が出た日（2026-09-15）は送り先が1件だけで、`null` か1件のオブジェクトだった。
+ * その形のまま残っている状態を読めないと、設定していたのに鳴らなくなる。
+ * 読む側は必ずここを通す（型は配列でも、実際の中身は古い形のことがある）。
+ */
+export function notifyList(raw: unknown): AlertNotify[] {
+  const one = (value: unknown): AlertNotify | null => {
+    if (value === null || typeof value !== 'object') return null
+    const { service, destination_id: id } = value as Record<string, unknown>
+    if (service !== 'slack' && service !== 'chatwork' && service !== 'line') return null
+    return { service, destination_id: typeof id === 'string' ? id : '' }
+  }
+  const items = Array.isArray(raw) ? raw : [raw]
+  const out: AlertNotify[] = []
+  const seen = new Set<string>()
+  for (const item of items) {
+    const parsed = one(item)
+    if (parsed === null) continue
+    // 同じ送り先が2件あると同じ知らせが2通届く
+    const key = `${parsed.service}|${parsed.destination_id}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(parsed)
+  }
+  return out
 }
 
 export interface AlertSetting {
@@ -29,7 +58,8 @@ export interface AlertSetting {
   cv_silent_hours: number
   /** その日のCPAの上限（円）。0 ＝ 見ない */
   cpa_limit: number
-  notify: AlertNotify | null
+  /** 送り先（何件でも）。古い形（1件 or null）も `notifyList()` で読める。 */
+  notify: readonly AlertNotify[] | AlertNotify | null
 }
 
 export interface AlertInput {
@@ -69,7 +99,8 @@ function isDelivering(adStatus: string): boolean {
 
 export function findAlerts(input: AlertInput): Alert[] {
   const { setting } = input
-  if (!setting.enabled || setting.notify === null) return []
+  // 送り先が無いなら判定もしない（記録だけ進むと、決めた直後に鳴らなくなる）
+  if (!setting.enabled || notifyList(setting.notify).length === 0) return []
 
   const out: Alert[] = []
   const sent = new Set(input.sentSlots)

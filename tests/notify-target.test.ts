@@ -138,13 +138,25 @@ describe('画面は状態ごとに出し分ける', () => {
   })
 })
 
-describe('通知先はSlackとチャットワークから選べる', () => {
+describe('通知先はSlack・チャットワーク・LINEから選べる', () => {
   const src = readFileSync('src/app/panels/notify-target.ts', 'utf8')
 
-  it('3つの選択肢を出す', () => {
+  it('4つの選択肢を出す', () => {
     expect(src).toContain("['none', '通知しない']")
     expect(src).toContain("['slack', 'Slack']")
     expect(src).toContain("['chatwork', 'チャットワーク']")
+    expect(src).toContain("['line', 'LINE']")
+  })
+
+  it('LINEは公式アカウントの手順を出す（LINE Notifyは2025-03-31で終了している）', () => {
+    expect(src).toContain('LINE_CHANNEL_ACCESS_TOKEN')
+    expect(src).toContain('チャネルアクセストークン（長期）')
+    expect(src).toContain('Messaging API')
+    expect(src, 'LINE Notifyへは繋がない').not.toContain('notify-api.line.me')
+  })
+
+  it('LINEは送り先を手で入れる（一覧を取る道が無い）', () => {
+    expect(src).toContain('空なら友だち全員へ')
   })
 
   it('チャットワークはトークンの取得手順を出す（OAuthではない）', () => {
@@ -167,8 +179,8 @@ describe('通知先はSlackとチャットワークから選べる', () => {
     expect(src).toContain('そちらが優先されます')
   })
 
-  it('送り先が未選択なら通知先として扱わない', () => {
-    expect(src).toContain("destination.value === ''")
+  it('送り先が未選択なら通知先として扱わない（LINEだけは空でよい＝友だち全員へ）', () => {
+    expect(src).toContain("if (chosen !== 'line' && id === '') return null")
   })
 })
 

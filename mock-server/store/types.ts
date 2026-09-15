@@ -450,9 +450,9 @@ export interface TaskSchedule {
   weekdays: readonly number[]
 }
 
-/** どこへ送るか。未設定なら通知しない */
+/** どこへ送るか。未設定なら通知しない。LINEだけ destination_id が空でよい（＝友だち全員へ） */
 export interface TaskNotify {
-  service: 'slack' | 'chatwork'
+  service: 'slack' | 'chatwork' | 'line'
   destination_id: string
 }
 
@@ -791,7 +791,12 @@ export interface AlertSettingState {
   cv_silent_hours: number
   /** その日のCPAの上限（円）。0 ＝ 見ない */
   cpa_limit: number
-  notify: { service: 'slack' | 'chatwork'; destination_id: string } | null
+  /**
+   * 送り先。何件でも持てる（チャットワークとLINEの両方、など）。空＝送らない。
+   * この機能が出た日の形（1件のオブジェクト or null）で残っている状態もあるので、
+   * 読むときは必ず `alerts.ts` の `notifyList()` を通す。
+   */
+  notify: readonly { service: 'slack' | 'chatwork' | 'line'; destination_id: string }[]
 }
 
 export interface HtmlPart {
@@ -893,6 +898,8 @@ export interface State {
     slackClientId: string
     slackClientSecret: string
     chatworkApiToken: string
+    /** LINE公式アカウントのチャネルアクセストークン（LINE Notifyは2025-03-31で終了） */
+    lineChannelAccessToken: string
   }
   reportExclusions: readonly ReportExclusion[]
   /**
@@ -913,7 +920,7 @@ export interface State {
   notificationSettings: readonly NotificationSetting[]
   /**
    * 異常のお知らせ（このシステムだけの機能）。
-   * 条件に当たったらSlack/チャットワークへ1通送る。
+   * 条件に当たったらSlack/チャットワーク/LINEへ1通送る。
    */
   alertSetting: AlertSettingState
   /** すでに送った合図（`<pageUid>|<kind>|<YYYY-MM-DD HH>`）。同じ時間帯に二度送らない */

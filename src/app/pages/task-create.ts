@@ -24,7 +24,12 @@ import {
 
 const CSS_ID = 'sb-task-create-css'
 
-function injectCss(): void {
+/**
+ * フォームの見た目（`.tc-*`）を1回だけ入れる。
+ * 通知先の部品（panels/notify-target.ts）がこのクラスを使うので、
+ * タスク画面の外でその部品を出す画面からも呼ぶ。
+ */
+export function ensureTaskFormCss(): void {
   if (document.getElementById(CSS_ID) !== null) return
   const s = document.createElement('style')
   s.id = CSS_ID
@@ -131,7 +136,7 @@ export interface TaskCreateDeps {
 
 /** 1段目: テンプレート選択 */
 export function renderTemplatePicker(host: HTMLElement, deps: TaskCreateDeps): void {
-  injectCss()
+  ensureTaskFormCss()
   const root = el('div', { class: 'tc' })
   root.append(backLink('タスク一覧に戻る', deps.onDone))
   root.append(
@@ -169,7 +174,7 @@ export function renderTaskForm(
   template: TaskTemplate,
   deps: TaskCreateDeps,
 ): void {
-  injectCss()
+  ensureTaskFormCss()
   const root = el('div', { class: 'tc' })
   root.append(backLink('テンプレート選択に戻る', () => renderTemplatePicker(host, deps)))
   root.append(el('h1', { text: '新しいタスク' }))

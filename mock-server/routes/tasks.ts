@@ -69,10 +69,11 @@ tasksRouter.post('/tasks', (req, res) => {
   const notifyRaw = (body['notify'] ?? null) as Record<string, unknown> | null
   const service = notifyRaw?.['service']
   const destinationId = notifyRaw?.['destination_id']
+  // LINEだけ送り先IDが空でよい（＝公式アカウントと友だちの全員へ送る）
   const notify: TaskNotify | null =
-    (service === 'slack' || service === 'chatwork') &&
+    (service === 'slack' || service === 'chatwork' || service === 'line') &&
     typeof destinationId === 'string' &&
-    destinationId !== ''
+    (destinationId !== '' || service === 'line')
       ? { service, destination_id: destinationId }
       : null
   // 定期なのに送り先が無いと、動いても誰にも届かない

@@ -84,6 +84,12 @@ export const EXTERNAL_HOST_ALLOWLIST: readonly RegExp[] = [
   /^https?:\/\/api\.chatwork\.com$/,
   // 上のAPI仕様を確認した先。コード内はコメントのリンクだけで、発信はしない。
   /^https?:\/\/developer\.chatwork\.com$/,
+  // LINE通知連携（2026-09-15・本人の依頼「チャットワークとLINEにも飛ばしたい」）。
+  // 公式アカウントの Messaging API。チャネルアクセストークンを入れたときだけ発信する。
+  // ※LINE Notify（notify-api.line.me）は2025-03-31で終了しているので使っていない。
+  /^https?:\/\/api\.line\.me$/,
+  // 上のAPI仕様を確認した先＋画面に出す手順の案内先。発信はしない。
+  /^https?:\/\/developers\.line\.biz$/,
 
   /* ── 配信するLP／エディタが実行時に読むアセット ──────────────────────
    * LPビルダーとしての機能そのもの。読み込まないとウィジェットが動かない・

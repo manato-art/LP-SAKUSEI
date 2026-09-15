@@ -97,7 +97,12 @@ export function createEmptyState(): State {
     // 表示モード。既定はライト（空シードに無いと保存データから落ちる）
     themeMode: 'light' as const,
     slack: null,
-    integrations: { slackClientId: '', slackClientSecret: '', chatworkApiToken: '' },
+    integrations: {
+      slackClientId: '',
+      slackClientSecret: '',
+      chatworkApiToken: '',
+      lineChannelAccessToken: '',
+    },
     reportExclusions: [],
     // レポート設定「表示するパラメータ」。触るまで行は作らない（既定は6つ全部ON）
     parameterScopes: [],
@@ -113,7 +118,7 @@ export function createEmptyState(): State {
       enabled: false,
       cv_silent_hours: 6,
       cpa_limit: 0,
-      notify: null,
+      notify: [],
     },
     alertSentSlots: [],
     notificationSettings: [

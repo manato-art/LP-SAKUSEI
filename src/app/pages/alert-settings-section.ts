@@ -7,10 +7,16 @@
  * 見張るのは2つだけ:
  *  - CVが止まった（決めた時間ずっと0件。**もともと来ていたページだけ**）
  *  - その日のCPAが上限を超えた
- * どちらもSlack・チャットワークへ1通送る。送り先を決めるまでは鳴らさない。
+ * どちらもSlack・チャットワーク・LINEへ1通送る。送り先を決めるまでは鳴らさない。
+ *
+ * 送り先は**何件でも**持てる（「チャットワークとLINEにも飛ばしたい」＝1つでは足りない）。
+ * 1行ぶんの中身はタスク画面と同じ部品を使い回す（設定手順・テスト送信もそのまま使える）。
  */
 import { T, el, toast } from '../ui.ts'
 import { api, type AlertSettings } from '../api.ts'
+import { buildNotifyTarget, type NotifyDestination } from '../panels/notify-target.ts'
+import { savedTargets } from './alert-targets.ts'
+import { ensureTaskFormCss } from './task-create.ts'
 
 const LABEL_STYLE = `font-size:14px;font-weight:500;color:${T.text}`
 const NOTE_STYLE = `font-size:12px;color:${T.sub};margin-top:2px;line-height:1.7`
@@ -68,6 +74,9 @@ export async function mountAlertSettings(content: HTMLElement): Promise<void> {
     return
   }
 
+  // 送り先の部品はタスク画面のクラス（.tc-*）で描かれているので、その見た目を先に入れる
+  ensureTaskFormCss()
+
   const section = el('div', { style: 'margin-top:28px' })
   section.append(
     el('div', {
@@ -77,7 +86,7 @@ export async function mountAlertSettings(content: HTMLElement): Promise<void> {
     el('div', {
       text:
         '※このシステムだけの機能です（実物にはありません）。' +
-        'CVが止まったこと・CPAが跳ねたことを見張って、Slackまたはチャットワークへ1通送ります。' +
+        'CVが止まったこと・CPAが跳ねたことを見張って、Slack・チャットワーク・LINEへ1通送ります。' +
         '送り先を決めるまでは鳴りません。',
       style: `font-size:12px;color:${T.sub};line-height:1.8;margin-bottom:8px`,
     }),
@@ -126,34 +135,59 @@ export async function mountAlertSettings(content: HTMLElement): Promise<void> {
     ),
   )
 
-  // 送り先
-  const service = document.createElement('select')
-  service.style.cssText = `padding:7px 10px;border:1px solid var(--sb-c-dddddd, #DDDDDD);border-radius:6px;font-size:13px;font-family:${T.font}`
-  for (const [value, label] of [
-    ['slack', 'Slack'],
-    ['chatwork', 'チャットワーク'],
-  ] as const) {
-    const option = document.createElement('option')
-    option.value = value
-    option.textContent = label
-    service.append(option)
+  // 送り先（何件でも）
+  const list = el('div', { style: 'display:flex;flex-direction:column;gap:14px' })
+  const rows: { host: HTMLElement; target: () => NotifyDestination | null }[] = []
+
+  /** 今ならんでいる送り先をまとめて保存する。決まりきっていない行は入れない。 */
+  const saveTargets = (): void => {
+    const notify = rows
+      .map((r) => r.target())
+      .filter((t): t is NotifyDestination => t !== null)
+      .map((t) => ({ service: t.service, destination_id: t.id }))
+    save({ notify })
   }
-  service.value = settings.notify?.service ?? 'slack'
-  const destination = document.createElement('input')
-  destination.type = 'text'
-  destination.placeholder = 'チャンネルID / ルームID'
-  destination.value = settings.notify?.destination_id ?? ''
-  destination.style.cssText = `width:200px;max-width:100%;padding:7px 10px;border:1px solid var(--sb-c-dddddd, #DDDDDD);border-radius:6px;font-size:13px;font-family:${T.font}`
-  const applyNotify = (): void => {
-    const id = destination.value.trim()
-    // 空にしたら「送らない」。半端な設定で鳴らないより、はっきり止める。
-    save({ notify: id === '' ? null : { service: service.value as 'slack' | 'chatwork', destination_id: id } })
+
+  const addRow = (initial: NotifyDestination | null): void => {
+    const host = el('div', {
+      style: 'display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap',
+    })
+    // 「通知しない」は出さない。送らないなら行ごと消すほうが分かりやすい。
+    const built = buildNotifyTarget({ initial, allowNone: false, onChange: saveTargets })
+    const targetEl = built.el
+    targetEl.style.flex = '1 1 260px'
+    targetEl.style.minWidth = '0'
+    const remove = el('button', { class: 'tc-link', text: '消す' })
+    remove.style.marginTop = '9px'
+    const entry = { host, target: built.target }
+    remove.addEventListener('click', () => {
+      rows.splice(rows.indexOf(entry), 1)
+      host.remove()
+      saveTargets()
+    })
+    host.append(targetEl, remove)
+    rows.push(entry)
+    list.append(host)
   }
-  service.addEventListener('change', applyNotify)
-  destination.addEventListener('change', applyNotify)
-  const notifyBox = el('div', { style: 'display:flex;gap:8px;flex-wrap:wrap' })
-  notifyBox.append(service, destination)
-  section.append(row('送り先', '外部連携でつないだSlack・チャットワークへ送ります。空にすると送りません。', notifyBox))
+
+  for (const saved of savedTargets(settings.notify)) addRow(saved)
+
+  const addButton = el('button', { class: 'tc-link', text: '＋ 送り先を追加' })
+  addButton.addEventListener('click', () => addRow(null))
+
+  const notifyBlock = el('div', { style: 'padding:16px 0' })
+  notifyBlock.append(
+    el('div', { text: '送り先', style: LABEL_STYLE }),
+    el('div', {
+      text:
+        'Slack・チャットワーク・LINEへ送れます。いくつでも足せます（チャットワークとLINEの両方、など）。' +
+        'まだ繋いでいないサービスを選ぶと、その場に手順が出ます。',
+      style: `${NOTE_STYLE};margin-bottom:12px`,
+    }),
+    list,
+    addButton,
+  )
+  section.append(notifyBlock)
 
   content.append(section)
 }

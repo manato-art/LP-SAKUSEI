@@ -223,8 +223,12 @@ export interface AlertSettings {
   cv_silent_hours: number
   /** その日のCPAの上限（円）。0 ＝ 見ない */
   cpa_limit: number
-  notify: { service: 'slack' | 'chatwork'; destination_id: string } | null
+  /** 送り先（何件でも）。空＝送らない。LINEだけ destination_id が空でよい＝友だち全員へ。 */
+  notify: { service: NotifyServiceName; destination_id: string }[]
 }
+
+/** 送り先に選べるサービス。LINE Notifyは2025-03-31に終了しているので公式アカウント（Messaging API）。 */
+export type NotifyServiceName = 'slack' | 'chatwork' | 'line'
 
 /** ファネルの段1つぶん（＝ステップ）。数字はそのステップのVersionの合計。 */
 export interface FunnelStepRow extends ReportKpi {
@@ -644,15 +648,16 @@ export const api = {
     slack_client_id?: string
     slack_client_secret?: string
     chatwork_api_token?: string
+    line_channel_access_token?: string
   }) => request<void>('PUT', '/integrations', patch),
   /** 入れた資格情報を消す */
-  clearIntegration: (service: 'slack' | 'chatwork') =>
+  clearIntegration: (service: NotifyServiceName) =>
     request<void>('DELETE', `/integrations/${service}`),
   /** タスクをその場で1回実行して通知を送る */
   runTaskNow: (input: {
     name: string
     span: string
-    target: { service: 'slack' | 'chatwork'; id: string }
+    target: { service: NotifyServiceName; id: string }
   }) =>
     request<{ ok: boolean }>('POST', '/notify/run', {
       name: input.name,
@@ -661,13 +666,15 @@ export const api = {
       destination_id: input.target.id,
     }),
   /** 通知を試し送りする */
-  testNotify: (target: { service: 'slack' | 'chatwork'; id: string }) =>
+  testNotify: (target: { service: NotifyServiceName; id: string }) =>
     request<{ ok: boolean }>('POST', '/notify/test', {
       service: target.service,
       destination_id: target.id,
     }),
   /** チャットワーク連携の状態（トークンが入っているか） */
   chatworkStatus: () => request<{ configured: boolean }>('GET', '/chatwork/status'),
+  /** LINE連携の状態（チャネルアクセストークンが入っているか） */
+  lineStatus: () => request<{ configured: boolean }>('GET', '/line/status'),
   /** 送り先に選べる部屋 */
   chatworkRooms: () =>
     request<{ rooms: { id: number; name: string; type: string }[] }>('GET', '/chatwork/rooms'),
@@ -721,7 +728,7 @@ export const api = {
     description?: string
     schedule?: { kind: string; hour: string; minute: string; weekdays: readonly number[] }
     span?: string
-    notify?: { service: 'slack' | 'chatwork'; destination_id: string } | null
+    notify?: { service: NotifyServiceName; destination_id: string } | null
   }) => request<{ task: Task }>('POST', '/tasks', input),
   /** タスク更新 */
   updateTask: (uid: string, patch: { status?: string; title?: string }) =>

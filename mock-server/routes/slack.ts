@@ -17,7 +17,8 @@ import { errorEnvelope } from '../lib/envelope.ts'
 import { isAdminAuthenticated, render404Page } from '../lib/admin-auth.ts'
 import { SERVE_DIST } from '../config.ts'
 import { ChatworkError, chatworkToken, listRooms } from '../chatwork.ts'
-import { NotifyError, sendNotification } from '../notify.ts'
+import { allowsEmptyDestination, NotifyError, sendNotification } from '../notify.ts'
+import { lineToken } from '../line.ts'
 import { buildTaskReport } from '../task-report.ts'
 import {
   SlackError,
@@ -90,6 +91,11 @@ slackRouter.get('/chatwork/status', (_req, res) => {
   res.json({ configured: chatworkToken() !== null })
 })
 
+/** LINEの状態（チャネルアクセストークンが入っているか） */
+slackRouter.get('/line/status', (_req, res) => {
+  res.json({ configured: lineToken() !== null })
+})
+
 /** 送り先に選べる部屋 */
 slackRouter.get('/chatwork/rooms', (_req, res) => {
   const token = chatworkToken()
@@ -136,6 +142,11 @@ slackRouter.get('/integrations', (_req, res) => {
       from_env: byEnv('CHATWORK_API_TOKEN'),
       has_saved: saved.chatworkApiToken !== '',
     },
+    line: {
+      configured: lineToken() !== null,
+      from_env: byEnv('LINE_CHANNEL_ACCESS_TOKEN'),
+      has_saved: saved.lineChannelAccessToken !== '',
+    },
   })
 })
 
@@ -149,6 +160,7 @@ slackRouter.put('/integrations', (req, res) => {
   const slackId = read('slack_client_id')
   const slackSecret = read('slack_client_secret')
   const chatwork = read('chatwork_api_token')
+  const line = read('line_channel_access_token')
 
   // Slackは2つ揃って初めて意味がある。片方だけ入れられても認可へ飛べない。
   if ((slackId === null) !== (slackSecret === null)) {
@@ -176,15 +188,24 @@ slackRouter.put('/integrations', (req, res) => {
     }
     next.chatworkApiToken = chatwork
   }
+  if (line !== null) {
+    if (line === '') {
+      res
+        .status(422)
+        .json(errorEnvelope('validation_failed', 'チャネルアクセストークンを入れてください。'))
+      return
+    }
+    next.lineChannelAccessToken = line
+  }
 
   setState((s) => ({ ...s, integrations: next }))
   res.status(204).end()
 })
 
-/** 入れた資格情報を消す（`service` は slack / chatwork） */
+/** 入れた資格情報を消す（`service` は slack / chatwork / line） */
 slackRouter.delete('/integrations/:service', (req, res) => {
   const service = req.params.service
-  if (service !== 'slack' && service !== 'chatwork') {
+  if (service !== 'slack' && service !== 'chatwork' && service !== 'line') {
     res.status(404).json(errorEnvelope('not_found', '対象が見つかりません。'))
     return
   }
@@ -193,7 +214,9 @@ slackRouter.delete('/integrations/:service', (req, res) => {
     integrations:
       service === 'slack'
         ? { ...s.integrations, slackClientId: '', slackClientSecret: '' }
-        : { ...s.integrations, chatworkApiToken: '' },
+        : service === 'chatwork'
+          ? { ...s.integrations, chatworkApiToken: '' }
+          : { ...s.integrations, lineChannelAccessToken: '' },
     // Slackの資格情報を消したら、それで取ったトークンも無効になる
     slack: service === 'slack' ? null : s.slack,
   }))
@@ -322,11 +345,12 @@ slackRouter.post('/notify/test', (req, res) => {
   const body = req.body as Record<string, unknown>
   const service = body['service']
   const destinationId = typeof body['destination_id'] === 'string' ? body['destination_id'] : ''
-  if (service !== 'slack' && service !== 'chatwork') {
+  if (service !== 'slack' && service !== 'chatwork' && service !== 'line') {
     res.status(422).json(errorEnvelope('validation_failed', '通知先を選んでください。'))
     return
   }
-  if (destinationId === '') {
+  // LINEだけ送り先を空にできる（＝公式アカウントと友だちの全員へ送る）
+  if (destinationId === '' && !allowsEmptyDestination(service)) {
     res.status(422).json(errorEnvelope('validation_failed', '送り先を選んでください。'))
     return
   }
@@ -360,11 +384,12 @@ slackRouter.post('/notify/run', (req, res) => {
   const destinationId = typeof body['destination_id'] === 'string' ? body['destination_id'] : ''
   const name = typeof body['name'] === 'string' && body['name'] !== '' ? body['name'] : 'タスク'
   const span = body['span']
-  if (service !== 'slack' && service !== 'chatwork') {
+  if (service !== 'slack' && service !== 'chatwork' && service !== 'line') {
     res.status(422).json(errorEnvelope('validation_failed', '通知先を選んでください。'))
     return
   }
-  if (destinationId === '') {
+  // LINEだけ送り先を空にできる（＝公式アカウントと友だちの全員へ送る）
+  if (destinationId === '' && !allowsEmptyDestination(service)) {
     res.status(422).json(errorEnvelope('validation_failed', '送り先を選んでください。'))
     return
   }

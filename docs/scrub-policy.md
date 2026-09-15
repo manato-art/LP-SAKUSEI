@@ -117,6 +117,8 @@ LPビルダーである以上サンプルに価格が出るのは当たり前な
 | `slack.com` | Slack通知連携。OAuth と `chat.postMessage` |
 | `api.chatwork.com` | Chatwork通知連携 |
 | `developer.chatwork.com` | 上のAPI仕様を確認した先。コード内はコメントのリンクだけで発信しない |
+| `api.line.me` | LINE通知連携（2026-09-15・本人の依頼）。公式アカウントの Messaging API。トークンを入れたときだけ発信する。LINE Notify は2025-03-31で終了しているので使っていない |
+| `developers.line.biz` | 上のAPI仕様を確認した先＋画面に出す手順の案内先。発信しない |
 
 ### 3. 配信するLP／エディタが実行時に読むアセット
 

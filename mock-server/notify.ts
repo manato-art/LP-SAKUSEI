@@ -1,13 +1,21 @@
 /**
  * タスクの実行結果を通知する。
  *
- * 送り先は Slack か チャットワーク。どちらも「その場のトークンで1回投げる」だけで、
+ * 送り先は Slack・チャットワーク・LINE。どれも「その場のトークンで1回投げる」だけで、
  * 送れなかったら理由を返す（黙って握りつぶさない）。
+ *
+ * LINEだけ送り先IDを空にできる（＝公式アカウントと友だちの全員へ）。詳しくは line.ts。
  */
 import { chatworkToken, postMessage as postChatwork } from './chatwork.ts'
+import { lineToken, postLine } from './line.ts'
 import { getState } from './store/store.ts'
 
-export type NotifyService = 'slack' | 'chatwork'
+export type NotifyService = 'slack' | 'chatwork' | 'line'
+
+/** 送り先IDを決めなくても送れるか（LINEは空＝友だち全員へ） */
+export function allowsEmptyDestination(service: NotifyService): boolean {
+  return service === 'line'
+}
 
 export class NotifyError extends Error {
   constructor(
@@ -43,6 +51,21 @@ async function postSlack(channelId: string, text: string): Promise<void> {
   }
 }
 
+/**
+ * サービスごとの言い分（LineError / ChatworkError）を NotifyError に包み直す。
+ *
+ * 画面は NotifyError しか見ていないので、包まないと「通知を送れませんでした」だけになり、
+ * トークンが悪いのか宛先が悪いのか送信上限なのかが分からなくなる。
+ */
+function asNotifyError(error: unknown): NotifyError {
+  if (error instanceof NotifyError) return error
+  const code = (error as { code?: unknown })?.code
+  return new NotifyError(
+    error instanceof Error ? error.message : '通知を送れませんでした。',
+    typeof code === 'string' ? code : 'send_failed',
+  )
+}
+
 /** 選ばれた送り先へ1通送る */
 export async function sendNotification(
   service: NotifyService,
@@ -53,6 +76,18 @@ export async function sendNotification(
     await postSlack(destinationId, text)
     return
   }
+  if (service === 'line') {
+    const token = lineToken()
+    if (token === null) {
+      throw new NotifyError('LINEのチャネルアクセストークンが設定されていません。', 'not_configured')
+    }
+    try {
+      await postLine(token, destinationId, text)
+    } catch (error) {
+      throw asNotifyError(error)
+    }
+    return
+  }
   const token = chatworkToken()
   if (token === null) {
     throw new NotifyError('チャットワークのAPIトークンが設定されていません。', 'not_configured')
@@ -61,5 +96,9 @@ export async function sendNotification(
   if (!Number.isFinite(roomId)) {
     throw new NotifyError('送り先の部屋が正しくありません。', 'bad_destination')
   }
-  await postChatwork(token, roomId, text)
+  try {
+    await postChatwork(token, roomId, text)
+  } catch (error) {
+    throw asNotifyError(error)
+  }
 }
