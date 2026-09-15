@@ -71,7 +71,7 @@ export interface AlertInput {
   pages: readonly { uid: string; title: string; ad_status: string }[]
   conversions: readonly { ab_test_uid: string; occurred_at: number }[]
   metrics: readonly { entity_uid: string; date: string; ad_cost: number; cv: number }[]
-  /** すでに送った合図（`<pageUid>|<kind>|<YYYY-MM-DD HH>`） */
+  /** すでに送った合図（`<pageUid>|<kind>|<YYYY-MM-DD>`） */
   sentSlots: readonly string[]
 }
 
@@ -80,16 +80,22 @@ export interface Alert {
   kind: AlertKind
   /** 送る本文 */
   message: string
-  /** 同じ時間帯に二度送らないための合図 */
+  /** 同じ日に二度送らないための合図 */
   slot: string
 }
 
 const yen = (n: number): string => `${Math.round(n).toLocaleString('ja-JP')}円`
 
-/** 時間帯の合図。1時間に1回までにする（分ごとに送ると鳴りやまない）。 */
+/**
+ * 合図。**同じページの同じ理由は1日1回まで**にする（2026-09-15に1時間に1回から変更）。
+ *
+ * 1時間に1回だと、CVが丸1日止まっているページ1つで24通使う。
+ * LINE公式アカウントの無料枠は月200通しかなく、数日で使い切ると**その月は届かなくなる**。
+ * 止まっていることは1日1回知れば足りるので、合図に**時刻を入れない**。
+ */
 function slotOf(now: number, pageUid: string, kind: AlertKind): string {
   const t = jstNow(new Date(now * 1000))
-  return `${pageUid}|${kind}|${t.date} ${t.hour}`
+  return `${pageUid}|${kind}|${t.date}`
 }
 
 /** 配信中のページだけ見る（止めているページのCVが来ないのは異常ではない） */

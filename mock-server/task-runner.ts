@@ -66,7 +66,7 @@ const MAX_SENT_SLOTS = 500
 
 /**
  * 異常のお知らせ。見張りのたびに条件を確かめ、当たったものを送る。
- * 送りすぎないよう、同じページの同じ理由は1時間に1回まで（合図で数える）。
+ * 送りすぎないよう、同じページの同じ理由は1日1回まで（合図で数える）。
  */
 export async function runAlerts(now: JstNow = jstNow()): Promise<number> {
   const state = getState()
@@ -96,7 +96,7 @@ export async function runAlerts(now: JstNow = jstNow()): Promise<number> {
   }))
   for (const alert of alerts) {
     // 決めた送り先すべてへ同じ知らせを配る。
-    // 1つへ送れなくても残りは送る（届かなかったことは画面では追えない＝次の時間帯に再送される）。
+    // 1つへ送れなくても残りは送る（届かなかったことは画面では追えない＝翌日に再送される）。
     for (const to of destinations) {
       try {
         await sendNotification(to.service, to.destination_id, alert.message)

@@ -931,7 +931,7 @@ export interface State {
    * 条件に当たったらSlack/チャットワーク/LINEへ1通送る。
    */
   alertSetting: AlertSettingState
-  /** すでに送った合図（`<pageUid>|<kind>|<YYYY-MM-DD HH>`）。同じ時間帯に二度送らない */
+  /** すでに送った合図（`<pageUid>|<kind>|<YYYY-MM-DD>`）。同じ日に二度送らない */
   alertSentSlots: readonly string[]
   htmlParts: readonly HtmlPart[]
   seminars: readonly Seminar[]

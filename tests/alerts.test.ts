@@ -122,8 +122,15 @@ describe('CPAが上がりすぎた', () => {
   })
 })
 
+/**
+ * 同じページの同じ理由は**1日1回まで**（2026-09-15に1時間に1回から変更・本人の指示）。
+ *
+ * 1時間に1回だと、CVが丸1日止まっているページ1つで24通使う。
+ * LINE公式アカウントの無料枠は月200通なので、数日で使い切って**その月は届かなくなる**。
+ * 止まっていることは1日1回知れば足りる。
+ */
 describe('送りすぎない', () => {
-  it('同じページの同じ理由は、同じ時間帯に二度送らない', () => {
+  it('同じページの同じ理由は、同じ日に二度送らない', () => {
     const base = input({ conversions: [{ ab_test_uid: 'AB1', occurred_at: NOW - 8 * HOUR }] })
     const first = findAlerts(base)
     expect(first).toHaveLength(1)
@@ -131,11 +138,28 @@ describe('送りすぎない', () => {
     expect(again).toEqual([])
   })
 
-  it('時間帯が変われば送る', () => {
+  it('1時間たっても、同じ日のうちは送らない', () => {
     const base = input({ conversions: [{ ab_test_uid: 'AB1', occurred_at: NOW - 8 * HOUR }] })
     const first = findAlerts(base)
     const later = findAlerts({ ...base, now: NOW + HOUR, sentSlots: [first[0]?.slot ?? ''] })
-    expect(later).toHaveLength(1)
+    expect(later, '1日1通に収める').toEqual([])
+  })
+
+  it('日付が変われば送る', () => {
+    const base = input({ conversions: [{ ab_test_uid: 'AB1', occurred_at: NOW - 8 * HOUR }] })
+    const first = findAlerts(base)
+    const nextDay = findAlerts({
+      ...base,
+      now: NOW + 24 * HOUR,
+      today: '2026-09-16',
+      sentSlots: [first[0]?.slot ?? ''],
+    })
+    expect(nextDay).toHaveLength(1)
+  })
+
+  it('合図に時刻を含めない（含めると時間ごとに鳴る）', () => {
+    const base = input({ conversions: [{ ab_test_uid: 'AB1', occurred_at: NOW - 8 * HOUR }] })
+    expect(findAlerts(base)[0]?.slot).toBe('AB1|cv_stopped|2026-09-15')
   })
 })
 
