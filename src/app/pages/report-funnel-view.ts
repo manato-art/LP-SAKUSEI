@@ -8,7 +8,15 @@
  */
 import type { ReportKpi, ReportVersionRow } from '../api.ts'
 import type { DateRange } from './report-period.ts'
-import { FUNNEL_DATE_PRESETS, funnelStages, type FunnelStage } from './report-funnel.ts'
+import {
+  FUNNEL_DATE_PRESETS,
+  funnelStages,
+  hasRealFunnel,
+  stepStages,
+  type FunnelStage,
+} from './report-funnel.ts'
+import { api, type FunnelStepRow } from '../api.ts'
+import { toRangeQuery } from './report-period.ts'
 
 export interface FunnelDeps {
   totals: ReportKpi
@@ -16,6 +24,8 @@ export interface FunnelDeps {
   range: DateRange
   /** 日付プリセットを選んだとき（上部フィルターと同じ道を通す） */
   onPreset: (value: string) => void
+  /** ファネルの段を引くページ */
+  abTestUid: string
 }
 
 const pct = (v: number | null): string => (v === null ? '-' : `${(v * 100).toFixed(2)}%`)
@@ -184,12 +194,22 @@ export function buildFunnelReport(deps: FunnelDeps): HTMLElement {
   const kpiOf = (uid: string): ReportKpi =>
     uid === '' ? deps.totals : (deps.rows.find((r) => r.entity_uid === uid) ?? deps.totals)
 
+  /**
+   * ステップの実測。2つ以上あればこれを段にする。
+   * 取れるまでは 表示→クリック→成果 を出しておく（開いた直後に空にしない）。
+   */
+  let steps: FunnelStepRow[] = []
+
   const render = (): void => {
     holder.innerHTML = ''
     picker.hidden = mode === '比較'
     if (mode === '詳細') {
       const kpi = kpiOf(versionUid)
-      holder.append(picker, buildStageColumns(funnelStages(kpi)), buildSummary(kpi))
+      // ステップが2つ以上ある＝本当のファネルがあるページでは、段をステップにする。
+      // Versionを選んでいるときはそのVersionの中の話なので、今までどおりの3段を出す。
+      const stages =
+        versionUid === '' && hasRealFunnel(steps) ? stepStages(steps) : funnelStages(kpi)
+      holder.append(picker, buildStageColumns(stages), buildSummary(kpi))
     } else {
       holder.append(picker)
       if (deps.rows.length === 0) {
@@ -227,5 +247,15 @@ export function buildFunnelReport(deps: FunnelDeps): HTMLElement {
 
   card.append(head, holder)
   render()
+  // ステップを取れたら段を差し替える（取れなくても画面は出したまま）
+  void api
+    .funnelSteps(deps.abTestUid, toRangeQuery(deps.range))
+    .then((out) => {
+      steps = out.steps
+      if (hasRealFunnel(steps)) render()
+    })
+    .catch(() => {
+      /* 取れなければ 表示→クリック→成果 のまま */
+    })
   return card
 }

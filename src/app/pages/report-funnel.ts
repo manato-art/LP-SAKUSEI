@@ -7,9 +7,10 @@
  *
  * ⚠️ 採取時、実物の一覧は**空**だった（その口座にファネルのステップが無かった）ので、
  * 行1本ぶんのマークアップは採れていない。
- * このシステムはまだ「ステップ」（複数ページのファネル）を持っていないので、
- * 実測で持っている **表示 → クリック → 成果** の1本を段として出す。
- * ステップを持ったら、ここの段をステップに差し替える。
+ *
+ * 2026-09-15: ステップ（複数ページのファネル）を持てるようになったので、
+ * **ステップが2つ以上あればそれを段として出す**。1つだけのページは、段が1本では
+ * ファネルにならないので、今までどおり 表示 → クリック → 成果 を出す。
  */
 import type { ReportKpi } from '../api.ts'
 
@@ -54,4 +55,31 @@ export function funnelStages(kpi: ReportKpi): FunnelStage[] {
       exitShare: base === 0 ? null : dropped / base,
     }
   })
+}
+
+/**
+ * ステップから段を作る。
+ *
+ * 「離脱」は次の段へ進まなかったぶん。最初の段（表示数）を100%とする。
+ * 次のステップのPVが多い（別経路から直接来た）ことがあるので、負にならないよう0で止める。
+ */
+export function stepStages(
+  steps: readonly { name: string; pv: number }[],
+): FunnelStage[] {
+  const base = steps[0]?.pv ?? 0
+  return steps.map((step, index) => {
+    const next = steps[index + 1]
+    const dropped = next === undefined ? 0 : Math.max(0, step.pv - next.pv)
+    return {
+      name: step.name,
+      count: step.pv,
+      share: base === 0 ? null : step.pv / base,
+      exitShare: base === 0 ? null : dropped / base,
+    }
+  })
+}
+
+/** ステップが2つ以上あるか（1本では段にならないので、そのときは表示→クリック→成果を出す） */
+export function hasRealFunnel(steps: readonly unknown[]): boolean {
+  return steps.length >= 2
 }

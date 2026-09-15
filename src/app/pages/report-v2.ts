@@ -317,6 +317,7 @@ export async function buildReportBody(deps: ReportBodyDeps): Promise<HTMLElement
     buildBranchOperation({ rows: deps.report.rows, totals: deps.report.totals, onDownloadCsv: csv }),
     // 実物はBranch Operationの下にファネル、その下にポップアップが並ぶ
     buildFunnelReport({
+      abTestUid: deps.abTestUid,
       totals: deps.report.totals,
       rows: deps.report.rows,
       range: deps.range,

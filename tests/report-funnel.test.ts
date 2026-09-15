@@ -11,7 +11,12 @@
  */
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { FUNNEL_DATE_PRESETS, funnelStages } from '../src/app/pages/report-funnel.ts'
+import {
+  FUNNEL_DATE_PRESETS,
+  funnelStages,
+  hasRealFunnel,
+  stepStages,
+} from '../src/app/pages/report-funnel.ts'
 import type { ReportKpi } from '../src/app/api.ts'
 
 function kpi(patch: Partial<ReportKpi> = {}): ReportKpi {
@@ -104,5 +109,39 @@ describe('ファネル節の画面', () => {
 
   it('凡例は見出しと同じ行に置く（縦に積むと棒の高さが左の列とずれる）', () => {
     expect(view).toContain('rv2-funnel-headrow')
+  })
+})
+
+/**
+ * ステップを段として出す（2026-09-15）。
+ * ステップが2つ以上あるページでは、表示→クリック→成果の代用ではなく実際のステップを出す。
+ */
+describe('ステップから作る段', () => {
+  it('ステップの数だけ段を作り、最初のステップを100%とする', () => {
+    const stages = stepStages([
+      { name: 'ステップ1', pv: 100 },
+      { name: '申込ページ', pv: 30 },
+    ])
+    expect(stages.map((s) => s.name)).toEqual(['ステップ1', '申込ページ'])
+    expect(stages.map((s) => s.share)).toEqual([1, 0.3])
+    expect(stages.map((s) => s.exitShare)).toEqual([0.7, 0])
+  })
+
+  it('次のステップのほうが多くても割合が負にならない', () => {
+    const stages = stepStages([
+      { name: 'A', pv: 10 },
+      { name: 'B', pv: 25 },
+    ])
+    expect(stages[0]?.exitShare).toBe(0)
+  })
+
+  it('最初のステップが0なら割合は出さない', () => {
+    const stages = stepStages([{ name: 'A', pv: 0 }, { name: 'B', pv: 0 }])
+    expect(stages.map((s) => s.share)).toEqual([null, null])
+  })
+
+  it('ステップが1つだけならファネルとして扱わない', () => {
+    expect(hasRealFunnel([{}])).toBe(false)
+    expect(hasRealFunnel([{}, {}])).toBe(true)
   })
 })

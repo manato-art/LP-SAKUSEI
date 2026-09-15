@@ -262,8 +262,19 @@ function findAbTest(state: State, uid: string): AbTest | undefined {
   return state.abTests.find((t) => t.uid === uid)
 }
 
-function firstArticle(state: State, abTest: AbTest): Article | undefined {
-  return state.articles.filter((a) => a.ab_test_id === abTest.id)[0]
+/**
+ * URLで指されたステップ（記事）を返す。
+ *
+ * 実物の「Versionリンク」は `…/ab/<pageUid>?step_uid=<stepUid>` の形で、
+ * ステップはURLのパラメータで指す。LPの中のボタンにこのリンクを置くと次のステップへ進む。
+ *
+ * そのページのステップでなければ**先頭**を出す。
+ * 知らないIDで行き止まりにしない／他のページのステップを覗けないようにする、の両方のため。
+ */
+function articleForStep(state: State, abTest: AbTest, stepUid: unknown): Article | undefined {
+  const own = state.articles.filter((a) => a.ab_test_id === abTest.id)
+  if (typeof stepUid !== 'string' || stepUid === '') return own[0]
+  return own.find((a) => a.uid === stepUid) ?? own[0]
 }
 
 deliveryRouter.get('/lp/:uid', (req, res) => {
@@ -275,7 +286,8 @@ deliveryRouter.get('/lp/:uid', (req, res) => {
     return renderNotice(res, req.params.uid)
   }
 
-  const article = firstArticle(state, abTest)
+  // どのステップを出すかはURLの step_uid で決まる（実物のVersionリンクと同じ形）
+  const article = articleForStep(state, abTest, req.query['step_uid'])
   if (article === undefined) return renderNotice(res, req.params.uid)
 
   const versions = state.versions.filter((v) => v.article_id === article.id)

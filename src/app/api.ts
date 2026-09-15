@@ -213,6 +213,12 @@ export interface ParameterScope {
   description: string
 }
 
+/** ファネルの段1つぶん（＝ステップ）。数字はそのステップのVersionの合計。 */
+export interface FunnelStepRow extends ReportKpi {
+  uid: string
+  name: string
+}
+
 /** 左のVersion一覧に出す広告パラメータ1件（`utm_source=fb`） */
 export interface HeatmapParameter {
   version_uid: string
@@ -530,6 +536,13 @@ export const api = {
   heatmaps: (abTestUid: string) =>
     request<{ heatmaps: HeatmapEntry[] }>('GET', `/ab_tests/${abTestUid}/heatmaps/comparisons`),
   /** ヒートマップの実測集計（計測タグ由来）。ラインの4モードぶんをVersionごとに返す。 */
+  /**
+   * ファネルの段（＝ステップ）と実測。
+   * ステップを作っていないページでは1件（先頭のステップ）だけ返る。
+   */
+  funnelSteps: (abTestUid: string, query: string) =>
+    request<{ steps: FunnelStepRow[] }>('GET', `/ab_tests/${abTestUid}/funnel_steps?${query}`),
+
   /** クリエイティブレポートの列（「列を選ぶ」→「保存」） */
   creativeColumns: () =>
     request<{ creative_report_user_columns: { name: string }[] }>(

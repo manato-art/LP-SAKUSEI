@@ -76,6 +76,9 @@ export function mountVersionLinkPopup(root: HTMLElement, deps: VersionLinkDeps):
     popup.setAttribute(VERSION_LINK_HOOK.hideAttr, 'true')
   }
 
+  // 2026-09-15: ステップ一覧を描き直すとこのトリガー（ステップの節）は入れ替わるので、
+  // 開け閉ては `toggleVersionLinkPopup` から呼べるようにしてある。
+  // ここでの配線は、一覧を描く前に押したときのための保険。
   trigger.addEventListener('click', (event) => {
     event.stopPropagation()
     if (isOpen()) close()
@@ -96,6 +99,27 @@ export function mountVersionLinkPopup(root: HTMLElement, deps: VersionLinkDeps):
   })
   // 入力欄クリックで全選択（実物と同じ体験）
   input?.addEventListener('click', () => input.select())
+}
+
+/**
+ * Versionリンクの吹き出しを開け閉てする。
+ *
+ * 下部バーのステップ一覧を描き直すと、採取物のトリガー（ステップの節）ごと入れ替わる。
+ * いま開いているステップをもう一度押したときに、ここから開ける。
+ */
+export function toggleVersionLinkPopup(root: HTMLElement, deps: VersionLinkDeps): void {
+  const popup = root.querySelector<HTMLElement>(VERSION_LINK_HOOK.popup)
+  if (popup === null) return
+  const open = popup.getAttribute(VERSION_LINK_HOOK.hideAttr) === 'false'
+  if (open) {
+    popup.setAttribute(VERSION_LINK_HOOK.hideAttr, 'true')
+    return
+  }
+  const input = popup.querySelector<HTMLInputElement>(VERSION_LINK_HOOK.input)
+  if (input !== null) {
+    input.value = buildVersionLinkUrl(location.origin, deps.abTestUid, deps.getCurrentUid())
+  }
+  popup.setAttribute(VERSION_LINK_HOOK.hideAttr, 'false')
 }
 
 async function copyToClipboard(text: string): Promise<void> {

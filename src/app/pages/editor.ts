@@ -25,7 +25,7 @@ import { recordHistory } from './folders-history.ts'
 import { mountVersionListDropdown } from '../panels/version-actions.ts'
 import { mountHeaderImageModal } from '../panels/header-image-modal.ts'
 import { mountEditorScrollbar } from '../panels/editor-scrollbar.ts'
-import { mountVersionLinkPopup } from '../panels/version-link-popup.ts'
+import { mountVersionLinkPopup, toggleVersionLinkPopup } from '../panels/version-link-popup.ts'
 import { mountStepAddModal } from '../panels/step-add-modal.ts'
 import { renderStepList as renderStepListView } from './editor-step-list.ts'
 import { registerMediaBlots } from '../panels/media-blots.ts'
@@ -529,7 +529,15 @@ function renderStepList(ctx: EditorContext): void {
     steps: ctx.articles,
     activeIndex: ctx.stepIndex,
     onSelect: (index) => {
-      if (index === ctx.stepIndex) return
+      // いま開いているステップをもう一度押したら Versionリンクの吹き出し
+      // （採取物でもこの節がトリガーだった）。別のステップならそこへ移る。
+      if (index === ctx.stepIndex) {
+        toggleVersionLinkPopup(ctx.root, {
+          abTestUid: ctx.abTestUid,
+          getCurrentUid: () => ctx.currentUid,
+        })
+        return
+      }
       void loadStep(ctx, index)
     },
   })

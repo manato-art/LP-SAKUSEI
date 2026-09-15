@@ -402,6 +402,40 @@ abTestsReportsRouter.put('/creative_report_user_columns', (req, res) => {
   res.json({ creative_report_user_columns: names.map((name) => ({ name })) })
 })
 
+/**
+ * ファネルの段（＝ステップ）と、その実測（2026-09-15）。
+ *
+ * ステップは記事（article）。段ごとの数字は、そのステップに属するVersionの実測を足したもの。
+ * 別の記録は持たない（Versionから記事は辿れるので、二重に数える置き場所を作らない）。
+ */
+abTestsReportsRouter.get('/ab_tests/:uid/funnel_steps', (req, res) => {
+  const state = getState()
+  const abTest = findAbTest(state, req.params.uid)
+  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
+  const { startDate, endDate } = dateRangeParams(req.query)
+
+  const articles = state.articles.filter((a) => a.ab_test_id === abTest.id)
+  const steps = articles.map((article, index) => {
+    const versionUids = state.versions
+      .filter((v) => v.article_id === article.id)
+      .map((v) => v.uid)
+    const metrics = state.metrics.filter(
+      (m) =>
+        m.scope === 'version' &&
+        versionUids.includes(m.entity_uid) &&
+        isWithin(m.date, startDate, endDate),
+    )
+    const name = article.memo.trim()
+    return {
+      uid: article.uid,
+      // 名前を付けずに作れるので、空なら何番目かで出す（空欄のまま並べると区別できない）
+      name: name === '' ? `ステップ${index + 1}` : name,
+      ...deriveKpi(sumPrimary(metrics)),
+    }
+  })
+  res.json({ steps, period: { start_date: startDate, end_date: endDate } })
+})
+
 abTestsReportsRouter.get('/ab_tests/:uid/parameter_scopes', (req, res) => {
   const state = getState()
   const abTest = findAbTest(state, req.params.uid)
