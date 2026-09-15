@@ -653,6 +653,13 @@ export interface HeatmapStat {
   version_uid: string
   date: string
   bands: number
+  /**
+   * 着地URLの広告パラメータ1つ（`utm_source=fb`）。
+   * 空文字＝そのパラメータで絞らない合算（画面の「全パラメータ合算」）。
+   * パラメータ付きの表示は「合算の行」と「パラメータごとの行」の両方に積む。
+   * 既存の保存データには無いので、読むときは `?? ''` で合算として扱う（2026-09-15）。
+   */
+  param?: string
   pv: number
   /**
    * 画面1枚ぶん（ファーストビュー）が何バンドぶんか。FVER/SVER/FSVER の範囲を決める。

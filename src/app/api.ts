@@ -165,6 +165,8 @@ export interface ReportResponse {
 export interface HeatmapVersionStat {
   version_uid: string
   version_name: string | null
+  /** どの広告パラメータで絞った集計か。空文字＝全パラメータ合算 */
+  param: string
   bands: number
   pv: number
   /** 到達率（そのバンドまで到達した割合） */
@@ -182,6 +184,15 @@ export interface HeatmapVersionStat {
 export interface HeatmapStatsResponse {
   period: { start_date: string; end_date: string }
   versions: HeatmapVersionStat[]
+  /** そのVersionに実際に来た広告パラメータ（PVの多い順）。左のVersion一覧に並べる */
+  parameters: HeatmapParameter[]
+}
+
+/** 左のVersion一覧に出す広告パラメータ1件（`utm_source=fb`） */
+export interface HeatmapParameter {
+  version_uid: string
+  param: string
+  pv: number
 }
 
 export interface HeatmapEntry {

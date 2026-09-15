@@ -522,10 +522,13 @@ describe('ヒートマップの配線（採取物と突き合わせ）', () => {
   )
 
   it('並び替えてもチェックの配線と選択状態を保つ', () => {
-    // 以前は renderVersionList(root, sorted) と第3引数を落としていたため、
-    // 並び替えたあとチェックしても列が増えず、選んでいた列も消えていた
-    expect(src).not.toContain('renderVersionList(root, sorted)')
-    expect(src).toContain('renderVersionList(root, sorted, onToggle')
+    // 以前は並び替えのときだけ renderVersionList を直接呼び、配線と選択を落としていた
+    // （チェックしても列が増えず、選んでいた列も消えた）。
+    // 今は描画口が drawList 1つだけ＝並び替えも同じ道を通る。
+    expect(src).toContain('const drawList = (')
+    expect(src).toContain('wireSortSelect(root, listRows, drawList)')
+    // renderVersionList を呼ぶのは drawList だけ
+    expect(src.split('renderVersionList(root').length - 1).toBe(1)
   })
 
   it('「全ページ表示」が選ばれているかを見る（どちらが選択中かを見ていなかった）', () => {

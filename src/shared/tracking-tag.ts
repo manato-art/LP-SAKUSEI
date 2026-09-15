@@ -9,7 +9,8 @@
  *   pv      : 表示ごとに1
  *   click   : 「計測機能付きリンク」(`sb_tracking=true`)のクリック
  *   heatmap : ページを20バンドに割った 到達 / 滞在(ms) / 離脱位置 / クリック座標 /
- *             画面1枚ぶんの幅(fv) / 最初の計測リンクの位置(offer)
+ *             画面1枚ぶんの幅(fv) / 最初の計測リンクの位置(offer) /
+ *             着地URLの広告パラメータ(params・utm_* のみ)
  *             ＝ FVER・SVER・FSVER・OAR の材料（2026-09-15）
  *   vid     : pv / click に付ける訪問者の目印（Cookie _sb_tu、押したリンクに付いた squadbeyond_uid）。
  *             CVタグから届いた成果を、この表示・クリックのVersionに結びつける（2026-09-11）
@@ -48,6 +49,22 @@ export function buildTrackingScriptBody(endpoint: string, versionUid?: string): 
       fetch(U,{method:'POST',mode:'cors',headers:{'Content-Type':'text/plain'},body:s,keepalive:true});
     }catch(e){}
   }
+  /* 着地URLの広告パラメータ。ヒートマップを広告ごとに見るための絞り込みに使う。
+     拾うのは utm_ で始まるものだけ: 他のクエリにはメールアドレスやトークンが紛れ得るし、
+     実物のヒートマップに並ぶのも utm_* だけだった（採取物で確認）。
+     あとで replaceState でURLが書き換わるので、着地した時点で取っておく。 */
+  var PRM=(function(){
+    try{
+      var out=[];
+      new URLSearchParams(location.search).forEach(function(v,k){
+        if(out.length>=20)return;
+        if(!/^utm_[A-Za-z0-9_]{1,24}$/.test(k))return;
+        if(v==='')return;
+        out.push(k+'='+String(v).slice(0,120));
+      });
+      return out;
+    }catch(e){return []}
+  })();
   /* ヒートマップの背景に実LPを敷くため、どのページで測っているかを1度だけ知らせる。
      クエリとハッシュは落とす（広告パラメータや個人情報が紛れ得るので保存しない）。
      背景に使うのは見た目だけなので origin+pathname で足りる。 */
@@ -112,7 +129,7 @@ export function buildTrackingScriptBody(endpoint: string, versionUid?: string): 
     if(sent)return; sent=true; tick();
     for(var i=0;i<=maxBand;i++)reach[i]=1;
     post({event:'heatmap',bands:B,reach:reach,dwell:dwell,exit_band:curBand(),
-      fv:fvBands(),offer:offerBand(),clicks:clicks});
+      fv:fvBands(),offer:offerBand(),params:PRM,clicks:clicks});
   }
   window.addEventListener('pagehide',flush);
   document.addEventListener('visibilitychange',function(){if(document.hidden)flush()});

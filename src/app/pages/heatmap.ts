@@ -7,7 +7,7 @@
  * 左＝Version一覧（PV付き・並び替え）、右＝ヒートマップの並び（採取時も空）。
  */
 import substrate from '../fragments/ab_tests__UID__articles__htmls__heatmaps__comparisons__default.html?raw'
-import { api, type ReportVersionRow } from '../api.ts'
+import { api, type HeatmapParameter, type HeatmapVersionStat, type ReportVersionRow } from '../api.ts'
 import { isStale } from '../main.ts'
 import {
   applyLightTheme,
@@ -22,6 +22,7 @@ import {
 import { defaultRange, toRangeQuery, type DateRange } from './report-period.ts'
 import { sortVersions, type HeatmapSortKey } from './heatmap-sort.ts'
 import { renderHeatmapColumns, type ColumnSpec, type HeatmapMetric } from './heatmap-columns.ts'
+import { columnKeyOf, expandColumnKeys, paramsForVersion } from './heatmap-params.ts'
 import { fetchHeatmapLpSources, type HeatmapLpSources } from './heatmap-lp-sources.ts'
 import { wireAbTestTabs, setupHorizTabs, setupBreadcrumb } from './tab-nav.ts'
 
@@ -65,6 +66,15 @@ export async function renderHeatmap(
   // 実物は「Version × 指標(離脱/CLICK/CV)」でチェックした数だけ右に列が増える。
   // 選択状態をここで持ち、変わるたびに列を組み直す。
   const selection = new Set<string>()
+  /** 広告パラメータのチェック（`versionUid|utm_source=fb`）。選ぶとそのVersionの列が広告ごとに分かれる */
+  const paramSelection = new Set<string>()
+  /** 広告パラメータごとの集計。空文字＝合算（最初の1回で取れている） */
+  const statsByParam = new Map<string, readonly HeatmapVersionStat[]>([['', stats.versions]])
+  /** カードの「複製」を押した回数（列の鍵 → 回数） */
+  const duplicates = new Map<string, number>()
+  /** 左のチェックボックス。カードの「非表示にする」から外すために覚えておく */
+  const metricBoxes = new Map<string, HTMLInputElement>()
+  const paramBoxes = new Map<string, HTMLInputElement>()
   /** LPの材料（本文・Version の CSS・記事設定）。最初にチェックされたときに取る */
   let lpSources: HeatmapLpSources | null = null
   const columnHost = ensureColumnHost(root)
@@ -91,16 +101,16 @@ export async function renderHeatmap(
 
   const rebuild = (): void => {
     const specs: ColumnSpec[] = []
-    for (const key of selection) {
-      const [versionUid, metric] = key.split('|') as [string, HeatmapMetric]
-      const row = listRows.find((r) => r.entity_uid === versionUid)
+    for (const key of expandColumnKeys(selection, paramSelection, duplicates)) {
+      const row = listRows.find((r) => r.entity_uid === key.versionUid)
       if (row === undefined) continue
       specs.push({
-        versionUid,
+        versionUid: key.versionUid,
         versionName: row.name,
-        metric,
-        html: lpSources?.versions.get(versionUid)?.html ?? '',
-        css: lpSources?.versions.get(versionUid)?.css ?? '',
+        metric: key.metric,
+        param: key.param,
+        html: lpSources?.versions.get(key.versionUid)?.html ?? '',
+        css: lpSources?.versions.get(key.versionUid)?.css ?? '',
         pv: row.pv,
         ctr: row.ctr,
         cv: row.cv,
@@ -108,11 +118,41 @@ export async function renderHeatmap(
     }
     renderHeatmapColumns(columnHost, sortColumnSpecs(specs, columnOrder), {
       stats: stats.versions,
+      statsByParam,
       totals: { pv: report.totals.pv, ctr: report.totals.ctr, cv: report.totals.cv },
       externalHtml: externalPage?.html ?? null,
       styleCss: lpSources?.styleCss ?? '',
       range: { startDate: range.startDate, endDate: range.endDate },
       fullPage: isFullPageSelected(root),
+      onDuplicate: (target) => {
+        const key = columnKeyOf({
+          versionUid: target.versionUid,
+          metric: target.metric,
+          param: target.param ?? '',
+        })
+        duplicates.set(key, (duplicates.get(key) ?? 0) + 1)
+        rebuild()
+      },
+      onHide: (target) => {
+        const param = target.param ?? ''
+        const key = columnKeyOf({ versionUid: target.versionUid, metric: target.metric, param })
+        const copies = duplicates.get(key) ?? 0
+        // 複製したぶんが残っていれば、まず1枚だけ閉じる
+        if (copies > 0) {
+          duplicates.set(key, copies - 1)
+          rebuild()
+          return
+        }
+        // 最後の1枚は、左のチェックを外して閉じる（画面と一覧の状態を揃える）。
+        // 広告で絞っている列はその広告だけ、絞っていない列は指標そのものを外す。
+        const box =
+          param === ''
+            ? metricBoxes.get(`${target.versionUid}|${target.metric}`)
+            : paramBoxes.get(`${target.versionUid}|${param}`)
+        if (box === undefined) return
+        box.checked = false
+        box.dispatchEvent(new Event('change'))
+      },
     })
   }
 
@@ -133,12 +173,54 @@ export async function renderHeatmap(
     else selection.delete(key)
     void ensureLpSources().then(rebuild)
   }
-  renderVersionList(root, listRows, onToggle, selection)
+  /**
+   * 広告パラメータのチェック。絞り込んだ集計はまだ手元に無いので、必要になってから取りに行く。
+   * 先に全部取ると、広告が多いページで無駄に重くなる。
+   */
+  const onParamToggle = (versionUid: string, param: string, on: boolean): void => {
+    const key = `${versionUid}|${param}`
+    if (on) paramSelection.add(key)
+    else paramSelection.delete(key)
+    if (!on || statsByParam.has(param)) {
+      rebuild()
+      return
+    }
+    void api
+      .heatmapStats(abTestUid, `${toRangeQuery(range)}&param=${encodeURIComponent(param)}`)
+      .then((filtered) => {
+        statsByParam.set(param, filtered.versions)
+        rebuild()
+      })
+      .catch(() => {
+        // 取れなければ合算のまま出す（列が消えるより、数字が合算であるほうが分かる）
+        rebuild()
+      })
+  }
+
+  /**
+   * 左の一覧を描く。並び替え・絞り込みでも同じ道を通す。
+   * 描き直すとチェックボックスの実体が入れ替わるので、覚え直す。
+   */
+  const drawList = (rowsToDraw: readonly ReportVersionRow[]): void => {
+    // 先に空にする。描いたあとに空にすると、描くときに預かったものまで捨ててしまう。
+    metricBoxes.clear()
+    paramBoxes.clear()
+    renderVersionList(root, rowsToDraw, onToggle, selection, {
+      parameters: stats.parameters,
+      selected: paramSelection,
+      onToggle: onParamToggle,
+      register: (key, box) => paramBoxes.set(key, box),
+    })
+    registerMetricBoxes(root, rowsToDraw, metricBoxes)
+  }
+
+  drawList(listRows)
   // 開いた直後は何もチェックされておらず右側が空になる。ユーザーからは
   // 「反映されていない／壊れている」に見えるので、実測データが一番多い行を既定で開く。
   openDefaultRow(root, listRows, stats.versions)
 
-  wireSortSelect(root, report.rows, onToggle, selection)
+  // 並び替え・絞り込みでも外部LPの行を残す（report.rows を渡すと消えていた）
+  wireSortSelect(root, listRows, drawList)
   wireHeightTypeTabs(root, rebuild)
   wireSortModal(root, (label) => {
     columnOrder = label
@@ -168,12 +250,23 @@ function ensureColumnHost(root: HTMLElement): HTMLElement {
 /** 左のVersion一覧。採取済みの1件をテンプレートに、Version数だけ複製する */
 type ToggleColumn = (versionUid: string, metric: HeatmapMetric, on: boolean) => void
 
+/** 左の行に並べる広告パラメータの配線 */
+interface ParamListDeps {
+  parameters: readonly HeatmapParameter[]
+  /** 今チェックされている `versionUid|utm_source=fb` */
+  selected: ReadonlySet<string>
+  onToggle: (versionUid: string, param: string, on: boolean) => void
+  /** カードの「非表示にする」から外せるように、作ったチェックボックスを預ける */
+  register?: (key: string, box: HTMLInputElement) => void
+}
+
 function renderVersionList(
   root: HTMLElement,
   rows: readonly ReportVersionRow[],
   onToggle?: ToggleColumn,
   /** 今チェックされている `versionUid|metric`。並び替えても選択を保つために渡す */
   selection?: ReadonlySet<string>,
+  params?: ParamListDeps,
 ): void {
   const list = root.querySelector<HTMLElement>('[class*="_articleList_"] ul[class*="_body_"]')
   const template = list?.querySelector<HTMLElement>('li[class*="_content_"]') ?? null
@@ -194,6 +287,7 @@ function renderVersionList(
     // （付けたままだと、チェックを入れても2行目以降の色が変わらない）
     if (activeToken !== null) item.classList.remove(activeToken)
     wireOverlayTabs(item, activeToken, row.entity_uid, onToggle, selection)
+    if (params !== undefined) renderParamOptions(item, row.entity_uid, params)
     return item
   })
   list.replaceChildren(...items)
@@ -204,6 +298,83 @@ function renderVersionList(
  * 選択状態そのものは実物のUI状態なので配線する。
  * 表示するヒートマップのデータは無いので、右側は変わらない（注記で明示する）。
  */
+/**
+ * 行の下に「来た広告パラメータ」を並べる（実物の `_paramsOption_` と `_viewMore_`）。
+ *
+ * 採取物の器（`_params_`）には「パラメーターなし」しか入っていない。
+ * 実際に広告パラメータが来ているVersionでは、実物と同じ形の
+ * `<label><input type="checkbox"><span>utm_source=fb</span></label>` を並べ、
+ * 末尾に「元に戻す」（全部外して合算に戻す）を置く。
+ */
+function renderParamOptions(item: HTMLElement, versionUid: string, deps: ParamListDeps): void {
+  const host = item.querySelector<HTMLElement>('[class*="_params_"]')
+  if (host === null) return
+  const list = paramsForVersion(deps.parameters, versionUid)
+  // 1件も来ていないVersionは採取物のまま（「パラメーターなし」）
+  if (list.length === 0) return
+
+  const optionClass = findClassToken(host, '_paramsOption_') ?? '_paramsOption_1vzzn_199'
+  const viewMoreClass = findClassToken(host, '_viewMore_') ?? '_viewMore_1vzzn_219'
+  const ul = document.createElement('ul')
+  ul.className = '_unstyled_1ahjy_1'
+  for (const entry of list) {
+    const li = document.createElement('li')
+    li.className = optionClass
+    const label = document.createElement('label')
+    const box = document.createElement('input')
+    box.type = 'checkbox'
+    box.checked = deps.selected.has(`${versionUid}|${entry.param}`)
+    const text = document.createElement('span')
+    text.textContent = entry.param
+    // 実物と同じく、長い値は枠の中で横に流れる（採取CSS: `white-space:nowrap; overflow:scroll`）。
+    // 全部読むのに横スクロールが要るので、PVと一緒に title で添えておく。
+    const hint = `${entry.param}（PV: ${entry.pv.toLocaleString('ja-JP')}）`
+    label.title = hint
+    text.title = hint
+    box.addEventListener('change', () => deps.onToggle(versionUid, entry.param, box.checked))
+    deps.register?.(`${versionUid}|${entry.param}`, box)
+    label.append(box, text)
+    li.append(label)
+    ul.append(li)
+  }
+  const reset = document.createElement('div')
+  reset.className = viewMoreClass
+  const resetText = document.createElement('span')
+  resetText.textContent = '元に戻す'
+  reset.append(resetText)
+  reset.addEventListener('click', () => {
+    for (const box of ul.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')) {
+      if (!box.checked) continue
+      box.checked = false
+      box.dispatchEvent(new Event('change'))
+    }
+  })
+  host.replaceChildren(ul, reset)
+}
+
+/**
+ * 左の「離脱 / CLICK / CV」チェックを覚えておく。
+ * カードの「非表示にする」を押したときに、ここから外して画面と一覧を揃える。
+ * 行の並びは listRows と同じ順なので、添字で結びつけられる。
+ */
+function registerMetricBoxes(
+  root: HTMLElement,
+  rows: readonly ReportVersionRow[],
+  into: Map<string, HTMLInputElement>,
+): void {
+  const order: HeatmapMetric[] = ['exit', 'click', 'cv']
+  const items = [...root.querySelectorAll<HTMLElement>('[class*="_articleList_"] ul[class*="_body_"] > li')]
+  items.forEach((item, index) => {
+    const row = rows[index]
+    if (row === undefined) return
+    const boxes = [...item.querySelectorAll<HTMLInputElement>('[class*="_tab_"] input[type="checkbox"]')]
+    boxes.forEach((box, i) => {
+      const metric = order[i]
+      if (metric !== undefined) into.set(`${row.entity_uid}|${metric}`, box)
+    })
+  })
+}
+
 /** 採取CSSにある「選んだ」状態のクラス（DOM側は未チェックの初期状態しか採れていない） */
 const CHECKED_CLASS = '_checked_1vzzn_155'
 
@@ -239,10 +410,12 @@ function wireOverlayTabs(
       tab.classList.toggle(checkedToken, box.checked)
       if (activeToken !== null) {
         tab.classList.toggle(activeToken, box.checked)
-        // 行そのものも、どれか1つでもチェックされていれば選択中の見た目にする
-        const anyChecked = [...item.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')].some(
-          (b) => b.checked,
-        )
+        // 行そのものも、どれか1つでもチェックされていれば選択中の見た目にする。
+        // 数えるのは指標のタブだけ（下に広告パラメータのチェックが並ぶので、
+        // 行全体から拾うと「広告を選んだだけ」で行が選択中に見えてしまう）。
+        const anyChecked = [
+          ...item.querySelectorAll<HTMLInputElement>('[class*="_tab_"] input[type="checkbox"]'),
+        ].some((b) => b.checked)
         item.classList.toggle(activeToken, anyChecked)
       }
       if (metric !== undefined) onToggle?.(versionUid, metric, box.checked)
@@ -273,7 +446,8 @@ function openDefaultRow(
     }
   })
   const items = [...root.querySelectorAll<HTMLElement>('[class*="_articleList_"] ul[class*="_body_"] > li')]
-  const box = items[bestIndex]?.querySelector<HTMLInputElement>('input[type="checkbox"]')
+  // 開くのは指標のタブ（広告パラメータのチェックではない）
+  const box = items[bestIndex]?.querySelector<HTMLInputElement>('[class*="_tab_"] input[type="checkbox"]')
   if (box === undefined || box === null || box.checked) return
   box.checked = true
   box.dispatchEvent(new Event('change', { bubbles: true }))
@@ -283,8 +457,7 @@ function openDefaultRow(
 function wireSortSelect(
   root: HTMLElement,
   rows: readonly ReportVersionRow[],
-  onToggle: ToggleColumn,
-  selection: ReadonlySet<string>,
+  draw: (rows: readonly ReportVersionRow[]) => void,
 ): void {
   const selects = [...root.querySelectorAll<HTMLSelectElement>('[class*="_filters_"] select')]
   const sortSelect = selects[0]
@@ -296,7 +469,7 @@ function wireSortSelect(
     const showArchived = filterSelect?.value === 'true'
     const visible = showArchived ? rows : rows.filter((row) => row.archived !== true)
     const sorted = sortVersions(visible, (sortSelect?.value ?? '') as HeatmapSortKey) ?? visible
-    renderVersionList(root, sorted, onToggle, selection)
+    draw(sorted)
   }
 
   sortSelect?.addEventListener('change', apply)

@@ -610,6 +610,8 @@ deliveryRouter.post('/lp/:uid/__track', (req, res) => {
       fv?: unknown
       /** 最初の計測リンクが何バンド目か */
       offer?: unknown
+      /** 着地URLの広告パラメータ（`utm_source=fb` の形） */
+      params?: unknown
       clicks?: unknown
     }
     const bands = typeof hb.bands === 'number' && hb.bands > 0 && hb.bands <= 100 ? hb.bands : 20
@@ -633,6 +635,17 @@ deliveryRouter.post('/lp/:uid/__track', (req, res) => {
       typeof hb.offer === 'number' && hb.offer >= 0 && hb.offer < bands
         ? Math.floor(hb.offer)
         : undefined
+    // 広告パラメータ。計測タグ側でも絞っているが、送り口は誰でも叩けるので
+    // サーバーでも同じ条件で選び直す（`utm_` で始まる key=value だけ・長さと本数に上限）。
+    const params = [
+      ...new Set(
+        (Array.isArray(hb.params) ? hb.params : [])
+          .filter((p): p is string => typeof p === 'string')
+          .map((p) => p.slice(0, 160))
+          .filter((p) => /^utm_[A-Za-z0-9_]{1,24}=.+$/.test(p)),
+      ),
+    ].slice(0, 20)
+
     const clicks = (Array.isArray(hb.clicks) ? hb.clicks : [])
       .slice(0, 300)
       .map((c) => c as { x?: unknown; y?: unknown })
@@ -640,50 +653,54 @@ deliveryRouter.post('/lp/:uid/__track', (req, res) => {
       .map((c) => ({ x: c.x as number, y: c.y as number }))
 
     setState((s) => {
-      // 分割数(bands)も一致条件に入れる。分割数を変えたときに、
-      // 古い配列へ新しい長さの値を足し込んで数字を壊さないため。
-      const idx = s.heatmapStats.findIndex(
-        (h) =>
-          h.ab_test_uid === abTest.uid &&
-          h.version_uid === versionUid &&
-          h.date === date &&
-          h.bands === bands,
-      )
-      const base =
-        idx === -1
-          ? {
-              ab_test_uid: abTest.uid,
-              version_uid: versionUid,
-              date,
-              bands,
-              pv: 0,
-              reach: new Array<number>(bands).fill(0),
-              exit: new Array<number>(bands).fill(0),
-              dwell_ms: new Array<number>(bands).fill(0),
-              dwell_n: new Array<number>(bands).fill(0),
-              clicks: [] as { x: number; y: number }[],
-            }
-          : s.heatmapStats[idx]!
-      const merged = {
-        ...base,
-        pv: base.pv + 1,
-        // ページの作りで決まる値。届いたら最後のもので上書きする
-        fv_bands: fvBands ?? base.fv_bands,
-        offer_band: offerBand ?? base.offer_band,
-        reach: base.reach.map((v, i) => v + (reach[i] ?? 0)),
-        exit: base.exit.map((v, i) => v + (i === exitBand ? 1 : 0)),
-        dwell_ms: base.dwell_ms.map((v, i) => v + (dwell[i] ?? 0)),
-        dwell_n: base.dwell_n.map((v, i) => v + ((dwell[i] ?? 0) > 0 ? 1 : 0)),
-        // クリックは増え続けるので上限を設ける（古いものから捨てる）
-        clicks: [...base.clicks, ...clicks].slice(-5000),
-      }
-      return {
-        ...s,
-        heatmapStats:
+      // 合算（param='')と、広告パラメータごとの行の両方に積む。
+      // こうすると「utm_source=fb で来た人だけのヒートマップ」が引ける。
+      // 1回の表示は合算では必ず1PV。パラメータの行では、そのパラメータが付いていた表示だけを数える。
+      let stats = s.heatmapStats
+      for (const param of ['', ...params]) {
+        // 分割数(bands)も一致条件に入れる。分割数を変えたときに、
+        // 古い配列へ新しい長さの値を足し込んで数字を壊さないため。
+        const idx = stats.findIndex(
+          (h) =>
+            h.ab_test_uid === abTest.uid &&
+            h.version_uid === versionUid &&
+            h.date === date &&
+            h.bands === bands &&
+            (h.param ?? '') === param,
+        )
+        const base =
           idx === -1
-            ? [...s.heatmapStats, merged]
-            : s.heatmapStats.map((h, i) => (i === idx ? merged : h)),
+            ? {
+                ab_test_uid: abTest.uid,
+                version_uid: versionUid,
+                date,
+                bands,
+                param,
+                pv: 0,
+                reach: new Array<number>(bands).fill(0),
+                exit: new Array<number>(bands).fill(0),
+                dwell_ms: new Array<number>(bands).fill(0),
+                dwell_n: new Array<number>(bands).fill(0),
+                clicks: [] as { x: number; y: number }[],
+              }
+            : stats[idx]!
+        const merged = {
+          ...base,
+          param,
+          pv: base.pv + 1,
+          // ページの作りで決まる値。届いたら最後のもので上書きする
+          fv_bands: fvBands ?? base.fv_bands,
+          offer_band: offerBand ?? base.offer_band,
+          reach: base.reach.map((v, i) => v + (reach[i] ?? 0)),
+          exit: base.exit.map((v, i) => v + (i === exitBand ? 1 : 0)),
+          dwell_ms: base.dwell_ms.map((v, i) => v + (dwell[i] ?? 0)),
+          dwell_n: base.dwell_n.map((v, i) => v + ((dwell[i] ?? 0) > 0 ? 1 : 0)),
+          // クリックは増え続けるので上限を設ける（古いものから捨てる）
+          clicks: [...base.clicks, ...clicks].slice(-5000),
+        }
+        stats = idx === -1 ? [...stats, merged] : stats.map((h, i) => (i === idx ? merged : h))
       }
+      return { ...s, heatmapStats: stats }
     })
     res.json({ ok: true })
     return

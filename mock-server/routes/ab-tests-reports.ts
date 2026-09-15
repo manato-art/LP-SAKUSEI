@@ -179,9 +179,13 @@ abTestsReportsRouter.get('/ab_tests/:uid/heatmaps/stats', (req, res) => {
   if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
   const { startDate, endDate } = dateRangeParams(req.query)
 
-  const rows = state.heatmapStats.filter(
+  // 広告パラメータでの絞り込み。指定が無ければ合算（param='')を見る。
+  // 実物の画面では、左のVersion一覧で utm_* にチェックを入れるとその広告だけのヒートマップになる。
+  const wanted = typeof req.query['param'] === 'string' ? req.query['param'] : ''
+  const inRange = state.heatmapStats.filter(
     (h) => h.ab_test_uid === abTest.uid && isWithin(h.date, startDate, endDate),
   )
+  const rows = inRange.filter((h) => (h.param ?? '') === wanted)
   // Version ごとに日別を合算する
   const byVersion = new Map<string, typeof rows>()
   for (const row of rows) {
@@ -228,6 +232,8 @@ abTestsReportsRouter.get('/ab_tests/:uid/heatmaps/stats', (req, res) => {
     return {
       version_uid: versionUid,
       version_name: version?.name ?? null,
+      /** どの広告パラメータで絞った集計か。空＝全パラメータ合算 */
+      param: wanted,
       bands,
       pv: sum.pv,
       arrival: sum.reach.map((n) => ratio(n)),
@@ -241,7 +247,22 @@ abTestsReportsRouter.get('/ab_tests/:uid/heatmaps/stats', (req, res) => {
     }
   })
 
-  res.json({ period: { start_date: startDate, end_date: endDate }, versions })
+  // 左のVersion一覧に並べる「来た広告パラメータ」。PVの多い順に出す。
+  // 絞り込みの選択肢なので、絞り込んだあとも一覧は変わらない（合算の行から数える）。
+  const paramPv = new Map<string, number>()
+  for (const h of inRange) {
+    const param = h.param ?? ''
+    if (param === '') continue
+    paramPv.set(`${h.version_uid}\u0000${param}`, (paramPv.get(`${h.version_uid}\u0000${param}`) ?? 0) + h.pv)
+  }
+  const parameters = [...paramPv.entries()]
+    .map(([key, pv]) => {
+      const [versionUid = '', param = ''] = key.split('\u0000')
+      return { version_uid: versionUid, param, pv }
+    })
+    .sort((a, b) => b.pv - a.pv || a.param.localeCompare(b.param))
+
+  res.json({ period: { start_date: startDate, end_date: endDate }, versions, parameters })
 })
 
 /**

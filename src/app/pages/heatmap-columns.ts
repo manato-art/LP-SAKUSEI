@@ -14,6 +14,7 @@
  */
 import type { HeatmapVersionStat } from '../api.ts'
 import { buildHeatmapLpDocument } from './heatmap-lp-document.ts'
+import { ALL_PARAMS_LABEL } from './heatmap-params.ts'
 
 /** 列の指標（左のチェックボックスに対応）。実物は指標ごとに配色が違う。 */
 export type HeatmapMetric = 'exit' | 'click' | 'cv'
@@ -35,8 +36,9 @@ export const METRIC_HUE: Readonly<Record<HeatmapMetric, number>> = {
 /**
  * ラインのモード。
  *
- * ⚠️ この5つの表記（ライン非表示 / 到達率 / …）は**採取物に無い**（クローン独自）。
- * 実物の指標切替UIが何なのかは採取できていないので、「実物どおり」とは書かない。
+ * 実物と同じ5つ。2026-09-15 に実画面を採取して確認できた
+ * （`capture/clean/ab_tests__UID__reports__lp/heatmap-3col/dom.html` の
+ *  `<select><option value="none">ライン非表示</option>…` ＝ value も表記も一致）。
  * 左のチェック（離脱 / CLICK / CV）で選んだ指標に合わせた既定値を出し、
  * そのうえで細かく見たいときに切り替えられるようにしている。
  */
@@ -89,6 +91,15 @@ function injectStyles(): void {
     .hm-col-metric { font-size:12px; color:var(--sb-c-444444, #444444); display:flex; gap:8px; align-items:baseline; flex-wrap:wrap; }
     .hm-col-metric b { font-size:13px; color:var(--sb-c-1a1a1a, #1A1A1A); }
     .hm-col-note { font-size:11px; color:#8A8A90; }
+    /* カードの操作（熟読箇所の表示切替・複製・非表示）。SP/PC切替と同じ見た目に揃える */
+    .hm-col-tools { display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
+    .hm-col-tools .hm-tool {
+      border:1px solid var(--sb-c-d5d5db, #D5D5DB); background:var(--sb-c-ffffff, #FFFFFF);
+      color:var(--sb-c-555555, #555555); border-radius:4px; font-size:11px; line-height:1;
+      padding:5px 8px; cursor:pointer; font-family:inherit;
+    }
+    /* 「熟読箇所を非表示にする」を押した列。色の面だけ消して、LPと線は残す */
+    .hm-col.no-heat .hm-heat { display:none; }
     .hm-col-ctrl { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:6px; }
     .hm-dev { display:flex; gap:4px; }
     .hm-dev button {
@@ -199,6 +210,8 @@ export interface ColumnSpec {
   versionUid: string
   versionName: string
   metric: HeatmapMetric
+  /** 絞り込んでいる広告パラメータ（`utm_source=fb`）。空なら全パラメータ合算 */
+  param?: string
   /** LPの本文HTML（プレビュー用） */
   html: string
   /** Version の CSS（公開LPと同じ見た目で敷くため） */
@@ -211,6 +224,11 @@ export interface ColumnSpec {
 
 export interface ColumnDeps {
   stats: readonly HeatmapVersionStat[]
+  /**
+   * 広告パラメータごとの集計（キー＝`utm_source=fb`・空文字＝合算）。
+   * 列が絞り込まれているときだけ使う。渡されなければ `stats` を見る。
+   */
+  statsByParam?: ReadonlyMap<string, readonly HeatmapVersionStat[]>
   /**
    * LP全体（ab_testスコープ）の指標。外部LPの計測はVersionに紐づかないので、
    * Version単位の数字を出すと常に0になる。version無しの集計を使う列ではこちらを出す。
@@ -227,11 +245,54 @@ export interface ColumnDeps {
   range: { startDate: string; endDate: string }
   /** 全ページ表示（true）か スクロール表示（false） */
   fullPage: boolean
+  /** カードの「複製」（実物の `_dupContainer_`「このヒートマップを複製します」） */
+  onDuplicate?: (spec: ColumnSpec) => void
+  /** カードの「非表示にする」（実物の `_optionsContainer_` の2つめ） */
+  onHide?: (spec: ColumnSpec) => void
 }
 
 /** LPを見せる枠の幅（スマホ／PC） */
 const SP_WIDTH = 375
 const PC_WIDTH = 980
+
+/** カード見出しに出す数字。測っていないものは null＝画面では「-」 */
+export interface ColumnHeaderStats {
+  pv: number
+  ctr: number | null
+  cv: number | null
+}
+
+/**
+ * カード見出しの PV / CTR / CV を決める。
+ *
+ * ・普通の列        : そのVersionのレポートの数字
+ * ・外部LPの列      : LP全体の数字（外部LPの計測はVersionに紐づかず、Version単位だと常に0）
+ * ・広告で絞った列  : その広告で計測したPVだけ。CTR・CVは広告別に測っていないので出さない
+ *   （Version全体の数字を出すと「19PVの中のfb」なのか「fbが19PV」なのか読めない）
+ */
+export function columnHeaderStats(
+  spec: { param?: string; pv: number; ctr: number | null; cv: number },
+  deps: {
+    isShared: boolean
+    totals: { pv: number; ctr: number | null; cv: number }
+    stat: { pv: number } | null
+  },
+): ColumnHeaderStats {
+  if (spec.param !== undefined && spec.param !== '') {
+    return { pv: deps.stat?.pv ?? 0, ctr: null, cv: null }
+  }
+  if (deps.isShared) return { ...deps.totals }
+  return { pv: spec.pv, ctr: spec.ctr, cv: spec.cv }
+}
+
+/** カード右上の小さな操作ボタン（見た目はSP/PC切替と揃える） */
+function toolButton(label: string): HTMLButtonElement {
+  const b = document.createElement('button')
+  b.type = 'button'
+  b.className = 'hm-tool'
+  b.textContent = label
+  return b
+}
 
 /** 1列ぶんを組み立てる */
 function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
@@ -239,8 +300,10 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
   // Version別の内訳を持たないため）。その場合データは version_uid='' で入るので、
   // Version一致が無ければ version無しの集計にフォールバックする。
   // これが無いと、タグを貼っても列が永久に「まだありません」のままになる。
-  const exact = deps.stats.find((s) => s.version_uid === spec.versionUid) ?? null
-  const shared = deps.stats.find((s) => s.version_uid === '') ?? null
+  // 広告パラメータで絞った列は、その広告ぶんの集計を見る（無ければ合算）
+  const pool = deps.statsByParam?.get(spec.param ?? '') ?? deps.stats
+  const exact = pool.find((s) => s.version_uid === spec.versionUid) ?? null
+  const shared = pool.find((s) => s.version_uid === '') ?? null
   const stat = exact ?? shared
   // 「外部LPの数字を見ている列か」は、行き着いた集計が version無しかどうかで決める。
   // 外部LPの行（entity_uid='')を直接選んだ場合も exact 一致するので、
@@ -251,6 +314,7 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
   col.className = 'hm-col'
   col.dataset['versionUid'] = spec.versionUid
   col.dataset['metric'] = spec.metric
+  col.dataset['param'] = spec.param ?? ''
 
   const head = document.createElement('div')
   head.className = 'hm-col-head'
@@ -262,17 +326,17 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
   const metName = document.createElement('b')
   metName.textContent = METRIC_LABEL[spec.metric]
   const metStats = document.createElement('span')
-  // 外部LP（version無し）の列は、Version単位ではなくLP全体の数字を出す。
-  // そうしないとタグが動いていてもヘッダーが常に PV: 0 になり誤解を招く。
-  const shown = isShared ? deps.totals : { pv: spec.pv, ctr: spec.ctr, cv: spec.cv }
+  const shown = columnHeaderStats(spec, { isShared, totals: deps.totals, stat })
   metStats.textContent =
-    `PV: ${shown.pv}  CTR: ${shown.ctr === null ? '-' : `${(shown.ctr * 100).toFixed(2)}%`}  CV: ${shown.cv}`
+    `PV: ${shown.pv}  CTR: ${shown.ctr === null ? '-' : `${(shown.ctr * 100).toFixed(2)}%`}  CV: ${shown.cv ?? '-'}`
   met.append(metName, metStats)
   const note = document.createElement('div')
   note.className = 'hm-col-note'
-  // ⚠️「全パラメータ合算」はクローン独自の説明（採取物に無い）。
-  // パラメーター別の集計をまだ持っていないので、合算であることを明示している。
-  note.textContent = isShared ? '全パラメータ合算・外部LP（Version区別なし）' : '全パラメータ合算'
+  // このカードが何を合算しているかを名乗る場所（実物の `_noParam_`）。
+  // 広告パラメータで絞っていればその広告名、絞っていなければ「全パラメータ合算」。
+  const scope = spec.param === undefined || spec.param === '' ? ALL_PARAMS_LABEL : spec.param
+  const scopeNote = isShared ? `${scope}・外部LP（Version区別なし）` : scope
+  note.textContent = scopeNote
 
   const ctrl = document.createElement('div')
   ctrl.className = 'hm-col-ctrl'
@@ -309,6 +373,31 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
   lineSelect.value = defaultModeFor(spec.metric)
   ctrl.append(dev, rangeEl, lineSelect)
   head.append(ver, met, note, ctrl)
+
+  // 実物のカードにある3つの操作（採取物: `_dupContainer_` / `_optionsContainer_`）。
+  //  ・複製      : 同じ設定のカードをもう1枚増やす
+  //  ・熟読箇所  : 色の面（滞在時間の濃淡）だけを消して、LPと線を素で見る
+  //  ・非表示    : そのカードを閉じる（左のチェックも外す）
+  const tools = document.createElement('div')
+  tools.className = 'hm-col-tools'
+  const heatToggle = toolButton('熟読箇所を非表示にする')
+  heatToggle.addEventListener('click', () => {
+    const hidden = col.classList.toggle('no-heat')
+    heatToggle.textContent = hidden ? '熟読箇所を表示する' : '熟読箇所を非表示にする'
+  })
+  tools.append(heatToggle)
+  if (deps.onDuplicate !== undefined) {
+    const dup = toolButton('複製')
+    dup.title = 'このヒートマップを複製します'
+    dup.addEventListener('click', () => deps.onDuplicate?.(spec))
+    tools.append(dup)
+  }
+  if (deps.onHide !== undefined) {
+    const hide = toolButton('非表示にする')
+    hide.addEventListener('click', () => deps.onHide?.(spec))
+    tools.append(hide)
+  }
+  head.append(tools)
 
   const body = document.createElement('div')
   body.className = 'hm-col-body'
@@ -385,7 +474,8 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
 
   const drawOverlay = (): void => {
     overlay.innerHTML = ''
-    note.textContent = isShared ? '全パラメータ合算・外部LP（Version区別なし）' : '全パラメータ合算'
+    // 何を合算しているかの表示は、描き直すたびに戻す（下でCV用の文言に差し替わるため）
+    note.textContent = scopeNote
     if (spec.metric === 'cv') {
       // CVは「ページのどこで起きたか」を記録していない（計測タグはCVの座標を送らない）。
       // 0を描くと「誰も反応しなかった」に見えるので、そうと分かる文言を出す。

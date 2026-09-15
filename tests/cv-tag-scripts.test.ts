@@ -38,6 +38,8 @@ function fakeBrowser(options: { href: string; cookie?: string; storage?: Map<str
       cookie: options.cookie ?? '',
       hidden: false,
       documentElement: { scrollHeight: 2000 },
+      /** 離脱時の集計はリンクを走査する。このニセ環境にリンクは無い。 */
+      querySelectorAll: () => [],
       addEventListener: on,
     },
     navigator: {
@@ -69,6 +71,10 @@ function fakeBrowser(options: { href: string; cookie?: string; storage?: Map<str
     sent,
     storage,
     run: (script: string) => runInNewContext(script, context),
+    /** 離脱など、window のイベントを起こす */
+    fire: (type: string) => {
+      for (const fn of listeners.get(type) ?? []) fn({})
+    },
     /** 計測リンクなどを押す */
     click: (href: string) => {
       const anchor = { getAttribute: (name: string) => (name === 'href' ? href : null) }
@@ -96,6 +102,28 @@ describe('計測スクリプト（LP本体）', () => {
     browser.run(buildTrackingScriptBody(endpoint, 'VERSION_0001'))
     browser.click('https://shop.example.test/item?sb_tracking=true&squadbeyond_uid=LINK-UID-1&sb_article_uid=ART1')
     expect(browser.sent[1]?.body).toEqual({ version: 'VERSION_0001', event: 'click', vid: 'LINK-UID-1' })
+  })
+
+  /**
+   * ヒートマップを広告パラメータで絞り込めるようにするため、着地URLの `utm_*` を一緒に送る。
+   * 拾うのは `utm_` で始まるものだけ。他のクエリにはメールアドレスやトークンが紛れ得る。
+   */
+  it('離脱時のヒートマップに、着地URLの utm_* を付けて送る', () => {
+    const browser = fakeBrowser({
+      href: 'https://lp.example.test/lp/AB1?utm_source=fb&utm_campaign=120251&email=a@b.test&sb_tracking=true',
+    })
+    browser.run(buildTrackingScriptBody(endpoint, 'VERSION_0001'))
+    browser.fire('pagehide')
+    const heatmap = browser.sent.map((b) => b.body).find((b) => b['event'] === 'heatmap')
+    expect(heatmap?.['params']).toEqual(['utm_source=fb', 'utm_campaign=120251'])
+  })
+
+  it('広告パラメータが無いLPでは空で送る（「パラメーターなし」になる）', () => {
+    const browser = fakeBrowser({ href: 'https://lp.example.test/lp/AB1' })
+    browser.run(buildTrackingScriptBody(endpoint, 'VERSION_0001'))
+    browser.fire('pagehide')
+    const heatmap = browser.sent.map((b) => b.body).find((b) => b['event'] === 'heatmap')
+    expect(heatmap?.['params']).toEqual([])
   })
 
   it('リンクに目印が無ければ、Cookie の目印を送る', () => {
