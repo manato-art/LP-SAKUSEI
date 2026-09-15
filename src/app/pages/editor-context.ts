@@ -16,8 +16,11 @@ export interface EditorContext {
   /** beyondページ（＝基本情報タブ）へのリンクを組み立てるのに要る */
   folderUid: string
   articleUid: string
-  /** beyondページのファネルステップ（記事）一覧。`< >` で行き来する（指示⑮） */
-  articles: { uid: string }[]
+  /**
+   * beyondページのファネルステップ（記事）一覧。下部バーの一覧から行き来する。
+   * `memo` が実物の「ステップ名」。
+   */
+  articles: { uid: string; memo?: string }[]
   /** いま開いているステップの index（articles 内） */
   stepIndex: number
   versions: Version[]

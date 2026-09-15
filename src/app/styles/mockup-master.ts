@@ -373,9 +373,11 @@ const MOCKUP_CSS = `
     overflow: hidden !important;
   }
 
-  /* 基板の不要要素を隠す */
+  /* 基板の不要要素を隠す。
+     下部バーの _lightTheme_ は Versionリンクの吹き出し。**ステップ一覧は除く**
+     （一覧も同じクラスを持っているので、まとめて隠すとステップが1つも見えない） */
   [class*="_editorWrapper_"] > [class*="_dropdown_"],
-  [class*="_funnelStepWrapper_"] > [class*="_lightTheme_"],
+  [class*="_funnelStepWrapper_"] > [class*="_lightTheme_"]:not([class*="_funneSteplListWrapper_"]),
   [class*="_navArticleItems_"],
   [class*="_actionItems_"],
   [class*="_currentAbTest_"],
@@ -386,6 +388,15 @@ const MOCKUP_CSS = `
   [class*="_navArticleWrapper_"] {
     padding-top: 0 !important;
     border-bottom: none !important;
+  }
+
+  /* ステップ一覧は下部バーの余りを使う。
+     下部バーはキャンバス幅ぶんしか無いので、ステップが増えると入りきらない。
+     はみ出したぶんは横スクロールで触れる（実物も overflow:scroll）。
+     **スクロールバーは消さない**――消すと横に動かせることに気づけない（過去の指摘） */
+  [class*="_funneSteplListWrapper_"] {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
   }
 
   /* アイコンレール内のアイコンスタイル */

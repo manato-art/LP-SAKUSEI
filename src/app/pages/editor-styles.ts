@@ -170,8 +170,10 @@ export function injectCardSeamStyles(): void {
       border-top: 1px solid #e5e5ea !important;
       overflow: hidden !important;
     }
-    /* funnelStepWrapper内の溢れドロップダウンを非表示 */
-    [class*="_funnelStepWrapper_"] > [class*="_lightTheme_"] {
+    /* funnelStepWrapper内の溢れドロップダウン（Versionリンクの吹き出し）を非表示。
+       **ステップ一覧は除く**（一覧も _lightTheme_ を持っているので、
+       まとめて隠すとステップが1つも見えなくなる。2026-09-15に踏んだ） */
+    [class*="_funnelStepWrapper_"] > [class*="_lightTheme_"]:not([class*="_funneSteplListWrapper_"]) {
       display: none !important;
     }
   `

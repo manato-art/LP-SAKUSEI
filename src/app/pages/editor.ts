@@ -27,6 +27,7 @@ import { mountHeaderImageModal } from '../panels/header-image-modal.ts'
 import { mountEditorScrollbar } from '../panels/editor-scrollbar.ts'
 import { mountVersionLinkPopup } from '../panels/version-link-popup.ts'
 import { mountStepAddModal } from '../panels/step-add-modal.ts'
+import { renderStepList as renderStepListView } from './editor-step-list.ts'
 import { registerMediaBlots } from '../panels/media-blots.ts'
 import { wireMediaDrop } from '../panels/media-insert.ts'
 import { wireImageResize } from '../panels/image-resize.ts'
@@ -336,6 +337,8 @@ export async function renderEditor(
   wireAbTestTabs(root, abTestUid, folder?.uid ?? '')
   wireTopRightIcons(root, abTestUid, folder?.uid ?? '')
   loadVersion(ctx, ctx.currentUid)
+  // 下部バーのステップ一覧（開いた直後から出す）
+  renderStepList(ctx)
   // キャンバスのみズームできる − 100% + コントロール（下部バーの < > 位置に配置）
   mountZoomControl(root, quill)
   // 記事設定（Version設定）を編集画面の本文にも反映する（保存後は「更新」または再読込で最新化）。
@@ -508,12 +511,28 @@ async function loadStep(ctx: EditorContext, index: number): Promise<void> {
     ctx.versions = [...versions]
     ctx.currentUid = versions[0]?.uid ?? ''
     renderVersionList(ctx)
+    renderStepList(ctx)
     if (ctx.currentUid !== '') loadVersion(ctx, ctx.currentUid)
     void applyMasterStyleToEditor(ctx)
     toast(`ステップ ${index + 1}/${ctx.articles.length}`)
   } catch (error) {
     toast((error as Error).message, 'error')
   }
+}
+
+/**
+ * 下部バーのステップ一覧を描き直す。
+ * 押すとそのステップへ移る（採取物の一覧が持っている動き）。
+ */
+function renderStepList(ctx: EditorContext): void {
+  renderStepListView(ctx.root, {
+    steps: ctx.articles,
+    activeIndex: ctx.stepIndex,
+    onSelect: (index) => {
+      if (index === ctx.stepIndex) return
+      void loadStep(ctx, index)
+    },
+  })
 }
 
 /** 下部バーの `< / >` を非表示にする（ズームコントロールに置き換えるため） */
