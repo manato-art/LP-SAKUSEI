@@ -197,6 +197,35 @@ export function injectReportStyles(): void {
       font:inherit; font-size:12px; color:var(--rv2-ink); background:#fff;
       border:1px solid var(--rv2-rule); border-radius:6px; padding:6px 8px; min-width:170px;
     }
+    /* ファネル節（採取物 _reportWrapper_1rrna_96 と同じ組み立て） */
+    .rv2-funnel { padding:12px 14px 16px; }
+    .rv2-funnel-picker { margin-bottom:12px; }
+    .rv2-funnel-range { font-size:11px; color:var(--rv2-sub); font-variant-numeric:tabular-nums; }
+    .rv2-funnel-body { display:grid; grid-template-columns:auto auto 1fr; gap:0 16px; align-items:start; }
+    .rv2-funnel-col { display:flex; flex-direction:column; min-width:0; }
+    .rv2-funnel-head { font-size:11px; color:var(--rv2-sub); padding:0 0 8px; }
+    .rv2-funnel-cell { height:34px; display:flex; align-items:center; font-size:12px; color:var(--rv2-ink);
+      white-space:nowrap; font-variant-numeric:tabular-nums; }
+    .rv2-funnel-headrow { display:flex; align-items:center; gap:14px; }
+    .rv2-funnel-legends { display:inline-flex; gap:12px; }
+    .rv2-funnel-legend { font-size:11px; color:var(--rv2-sub); display:inline-flex; align-items:center; gap:5px; }
+    .rv2-funnel-legend::before { content:''; width:9px; height:9px; border-radius:2px; display:inline-block; }
+    .rv2-funnel-legend.pv::before { background:var(--rv2-accent); }
+    .rv2-funnel-legend.exit::before { background:#f0960a; }
+    .rv2-funnel-bars { flex-direction:column; gap:3px; align-items:stretch; height:34px; justify-content:center; }
+    .rv2-funnel-track { background:#eef2f7; border-radius:3px; height:9px; overflow:hidden; }
+    .rv2-funnel-bar { height:100%; border-radius:3px; }
+    .rv2-funnel-bar.pv { background:var(--rv2-accent); }
+    .rv2-funnel-bar.exit { background:#f0960a; }
+    .rv2-funnel-scales { display:flex; justify-content:space-between; font-size:10px;
+      color:var(--rv2-sub); padding-top:6px; }
+    .rv2-funnel-summary { display:flex; gap:20px; padding-top:14px; margin-top:12px;
+      border-top:1px solid var(--rv2-rule); }
+    .rv2-funnel-summary-item { display:flex; align-items:baseline; gap:8px; font-size:11px; color:var(--rv2-sub); }
+    .rv2-funnel-summary-item b { font-size:14px; color:var(--rv2-ink); font-variant-numeric:tabular-nums; }
+    .rv2-funnel-compare { padding-bottom:18px; }
+    .rv2-funnel-compare-name { font-size:12px; font-weight:600; color:var(--rv2-ink); padding-bottom:8px; }
+    .rv2-funnel-empty { font-size:12px; color:var(--rv2-sub); padding:16px 0; }
     .rv2-sort { cursor:pointer; user-select:none; }
     .rv2-sort:hover { color:var(--rv2-accent); }
     .rv2-sort span { color:#98a2b3; margin-left:3px; font-size:9px; }

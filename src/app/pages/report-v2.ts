@@ -20,6 +20,7 @@ import { injectReportStyles } from './report-v2-style.ts'
 import { buildKpiCards } from './report-v2-kpi.ts'
 import { buildCreativeReport } from './report-v2-chart.ts'
 import { buildBranchOperation, buildDailyTable, buildReportList } from './report-v2-tables.ts'
+import { buildFunnelReport } from './report-funnel-view.ts'
 
 /** 同じ日数だけ手前にずらした期間（増減の比較対象） */
 export function previousRange(range: DateRange): DateRange {
@@ -253,6 +254,16 @@ export async function buildReportBody(deps: ReportBodyDeps): Promise<HTMLElement
     buildReportList({ rows: deps.report.rows, range: deps.range }),
     buildDailyTable({ daily: deps.report.daily, totals: deps.report.totals }),
     buildBranchOperation({ rows: deps.report.rows, totals: deps.report.totals, onDownloadCsv: csv }),
+    // 実物はBranch Operationの下にファネル、その下にポップアップが並ぶ
+    buildFunnelReport({
+      totals: deps.report.totals,
+      rows: deps.report.rows,
+      range: deps.range,
+      onPreset: (value) => {
+        const next = resolvePreset(value)
+        if (next !== null) deps.onRangeChange(next)
+      },
+    }),
     buildPopupPlaceholder(deps.abTestUid),
   )
   return root
