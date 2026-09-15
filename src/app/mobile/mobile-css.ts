@@ -456,6 +456,39 @@ export function mobileCss(): string {
     `html body [class*="_editorWrapper_"]{padding:0 !important}`,
     `html body .quillEditorContentWrapper .ql-editor{max-width:100% !important;border-radius:0 !important;`,
     `padding:16px 14px 96px !important}`,
+
+    // ── レポート設定「表示するパラメータ」: 表を1行＝1カードにする ──
+    // 4列を375pxに詰めると、見出しも行の名前も1文字ずつ縦に割れて読めなくなる。
+    // どの列かはセルの data-label（採取した thead から取っている）で出す。
+    `html body [class*="_scopeTable_"]{display:block !important;width:100% !important}`,
+    `html body [class*="_scopeTable_"] thead{display:none !important}`,
+    `html body [class*="_scopeTable_"] tbody{display:block !important}`,
+    `html body [class*="_scopeTable_"] tbody tr{display:block !important;`,
+    `border:1px solid var(--sb-line) !important;border-radius:10px;margin:0 0 10px !important;`,
+    `padding:8px 12px !important;background:var(--sb-surface) !important}`,
+    // 採取CSSはセルに幅180px・高さ76pxを置いている（PCの表のため）。
+    // カードにするときはどちらも外さないと、名前の右に灰色の空きが残って行も間延びする。
+    `html body [class*="_scopeTable_"] tbody td{display:flex !important;align-items:center;`,
+    `justify-content:space-between;gap:12px;width:100% !important;max-width:none !important;`,
+    `min-width:0;height:auto !important;box-sizing:border-box;`,
+    `padding:7px 0 !important;border:0 !important;text-align:left !important;`,
+    `background:transparent !important}`,
+    `html body [class*="_scopeTable_"] tbody td::before{content:attr(data-label);`,
+    `color:var(--sb-sub);font-size:12px;flex-shrink:0}`,
+    // 行の名前（utm_source など）はカードの見出しにする
+    // 採取CSSの max-width:180px も外す（外さないと名前の右に灰色の空きが残る）
+    `html body [class*="_scopeTable_"] tbody td[class*="_nameCell_"]{display:block !important;`,
+    `width:100% !important;max-width:none !important;height:auto !important;`,
+    `font-weight:700;padding:4px 0 8px !important;border-bottom:1px solid var(--sb-line) !important;`,
+    `margin-bottom:4px}`,
+    `html body [class*="_scopeTable_"] tbody td[class*="_nameCell_"]::before{content:none}`,
+    // メモは幅いっぱいの入力にする（横に並べると1行も入らない）
+    `html body [class*="_scopeTable_"] tbody td[class*="_memoCell_"]{display:block !important;`,
+    `width:100% !important;height:auto !important;padding:4px 0 8px !important}`,
+    `html body [class*="_scopeTable_"] tbody td[class*="_memoCell_"]::before{display:block;padding-bottom:4px}`,
+    `html body [class*="_scopeTable_"] tbody td[class*="_memoCell_"] textarea{width:100% !important}`,
+    // トグルは右端に寄せる（中央寄せのままだと列名と重なって見える）
+    `html body [class*="_scopeTable_"] tbody td [class*="_toggleSwitchWrapper_"]>*{margin:0 !important}`,
     `}`,
   ].join('')
 }

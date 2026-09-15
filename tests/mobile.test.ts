@@ -927,3 +927,37 @@ describe('スマホのレポートの小さな面（広告データ取得日時�
     expect(css).toContain('[data-clone-dropdown="true"] [class*="_arrow_x4j8w"]{display:none !important}')
   })
 })
+
+/**
+ * レポート設定（歯車→「表示するパラメータ」）のスマホ版。
+ * 4列の表を375pxに詰めると、見出しも行の名前も1文字ずつ縦に割れて読めなかった。
+ * 1行＝1カードに組み替える。採取CSSが置いている幅180px・高さ76pxを外さないと、
+ * 名前の右に灰色の空きが残って行も間延びする（実機で踏んだ）。
+ */
+describe('スマホのレポート設定（表示するパラメータ）', () => {
+  const css = mobileCss()
+
+  it('表を1行＝1カードにする', () => {
+    expect(css).toContain('html body [class*="_scopeTable_"] thead{display:none !important}')
+    expect(css).toContain('html body [class*="_scopeTable_"] tbody tr{display:block !important;')
+  })
+
+  it('どの列かはセルの data-label で出す', () => {
+    expect(css).toContain('tbody td::before{content:attr(data-label)')
+    const panel = readFileSync('src/app/panels/report-settings-modal.ts', 'utf8')
+    // 文言は採取した thead から取る（手で持たない）
+    expect(panel).toContain("root.querySelectorAll<HTMLElement>('thead th')")
+    expect(panel).toContain("cell.setAttribute('data-label', label)")
+  })
+
+  it('採取CSSの固定幅・固定高さを外す', () => {
+    expect(css).toContain('max-width:none !important')
+    expect(css).toContain('height:auto !important')
+  })
+
+  it('PCには掛からない（@media の中にある）', () => {
+    const at = css.indexOf('_scopeTable_')
+    expect(at).toBeGreaterThan(css.indexOf('@media'))
+    expect(css.slice(at).includes('}')).toBe(true)
+  })
+})

@@ -45,6 +45,24 @@ function readToggle(toggle: HTMLElement): boolean {
   return toggle.firstElementChild?.classList.contains(CHECKED_CLASS) === true
 }
 
+/**
+ * スマホでは表を「1行＝1カード」にする（列を横に並べると1文字ずつ縦に割れる）。
+ * どの列かはセルに書いておき、見出しは採取した thead から取る（文言を手で持たない）。
+ * 実際の並べ替えは mobile-css.ts の `_scopeTable_` の規則が行う。
+ */
+function labelCellsForMobile(root: HTMLElement, rows: readonly HTMLElement[]): void {
+  const heads = [...root.querySelectorAll<HTMLElement>('thead th')].map((th) =>
+    (th.textContent ?? '').trim(),
+  )
+  for (const row of rows) {
+    ;[...row.children].forEach((cell, i) => {
+      const label = heads[i]
+      if (label === undefined || label === '') return
+      cell.setAttribute('data-label', label)
+    })
+  }
+}
+
 export function openReportSettingsModal(abTestUid: string): void {
   if (isOpen) return
   const portal = openPortal(rawModal, HOOK.overlay, () => {
@@ -59,6 +77,7 @@ export function openReportSettingsModal(abTestUid: string): void {
   portal.root.querySelector<HTMLElement>(HOOK.close)?.addEventListener('click', () => portal.close())
 
   const rows = [...portal.root.querySelectorAll<HTMLElement>(HOOK.row)]
+  labelCellsForMobile(portal.root, rows)
   /** 1行送る。返ってきた値で塗り直さない（押した手応えを優先し、失敗だけ知らせる） */
   const save = (patch: Partial<ParameterScope> & { name: string }): void => {
     void api.saveParameterScopes(abTestUid, [patch]).catch(() => {
