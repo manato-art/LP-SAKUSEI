@@ -82,7 +82,7 @@ export async function renderReport(
   applyLightTheme(root)
   wireThemeToggle(root)
   // 「広告データ取得日時」「パラメーター設定」の小さな面を押して開けるようにする
-  wireCapturedDropdowns(root)
+  wireCapturedDropdowns(root, abTestUid)
 
   const alert = root.querySelector<HTMLElement>('.MuiAlert-message')
   if (alert !== null) replaceBakedPageName(alert, ab_test.title)

@@ -4,7 +4,7 @@
  * パスは分ける前と同じ。ab-tests.ts が `use()` で合流させる。
  */
 import { Router } from 'express'
-import { getState } from '../store/store.ts'
+import { getState, setState } from '../store/store.ts'
 import { deriveKpi, isWithin, sumPrimary } from '../store/metrics.ts'
 import { dailyKpiSeries } from '../store/report-aggregate.ts'
 import { errorEnvelope } from '../lib/envelope.ts'
@@ -12,6 +12,7 @@ import { dateRangeParams } from '../lib/query.ts'
 import { ExternalPageError, fetchExternalPage } from '../external-page.ts'
 import { applyEmptyState } from '../lib/mock-state.ts'
 import { findAbTest, notFound } from './ab-tests-shared.ts'
+import type { ParameterScope, State } from '../store/types.ts'
 
 export const abTestsReportsRouter: Router = Router()
 
@@ -173,6 +174,91 @@ abTestsReportsRouter.get('/ab_tests/:uid/heatmaps/comparisons', (req, res) => {
  *   elementClick クリック数 = そのバンドに落ちたクリック数
  * 期間指定は日別集計を合算する。データが無ければ空配列（数字を作らない）。
  */
+/**
+ * レポート設定「表示するパラメータ」（歯車から開くモーダル）。
+ *
+ * 採取物（capture/clean/ab_tests__UID__reports/report-settings-modal）の表そのまま。
+ * 行は6つ固定で、列は クリエイティブ / Branch Operation / ヒートマップ / メモ。
+ * 採取した画面には保存ボタンが1つも無いので、触った時点で保存する作りにしている。
+ */
+const PARAMETER_SCOPE_NAMES = [
+  'utm_medium',
+  'utm_source',
+  'utm_term',
+  'utm_content',
+  'utm_id',
+  'utm_campaign',
+] as const
+
+/** 既定は全部ON・メモ空（採取した初期状態）。保存済みの行があればそれを返す。 */
+export function parameterScopesOf(state: State, abTestUid: string): ParameterScope[] {
+  return PARAMETER_SCOPE_NAMES.map((name) => {
+    const saved = state.parameterScopes.find(
+      (row) => row.ab_test_uid === abTestUid && row.name === name,
+    )
+    return (
+      saved ?? {
+        ab_test_uid: abTestUid,
+        name,
+        creative: true,
+        branch_operation: true,
+        heatmap: true,
+        description: '',
+      }
+    )
+  })
+}
+
+abTestsReportsRouter.get('/ab_tests/:uid/parameter_scopes', (req, res) => {
+  const state = getState()
+  const abTest = findAbTest(state, req.params.uid)
+  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
+  res.json({ parameter_scopes: parameterScopesOf(state, abTest.uid) })
+})
+
+abTestsReportsRouter.put('/ab_tests/:uid/parameter_scopes', (req, res) => {
+  const abTest = findAbTest(getState(), req.params.uid)
+  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
+  const body = req.body as { parameter_scopes?: unknown }
+  const incoming = Array.isArray(body.parameter_scopes) ? body.parameter_scopes : []
+
+  setState((s) => {
+    let rows = parameterScopesOf(s, abTest.uid)
+    for (const raw of incoming) {
+      const patch = raw as Partial<ParameterScope> & { name?: unknown }
+      // 行は採取した6つだけ。知らない名前は作らない（画面に無いものを増やさない）
+      if (typeof patch.name !== 'string') continue
+      const name = patch.name
+      if (!(PARAMETER_SCOPE_NAMES as readonly string[]).includes(name)) continue
+      rows = rows.map((row) =>
+        row.name === name
+          ? {
+              ...row,
+              creative: typeof patch.creative === 'boolean' ? patch.creative : row.creative,
+              branch_operation:
+                typeof patch.branch_operation === 'boolean'
+                  ? patch.branch_operation
+                  : row.branch_operation,
+              heatmap: typeof patch.heatmap === 'boolean' ? patch.heatmap : row.heatmap,
+              description:
+                typeof patch.description === 'string'
+                  ? patch.description.slice(0, 1000)
+                  : row.description,
+            }
+          : row,
+      )
+    }
+    return {
+      ...s,
+      parameterScopes: [
+        ...s.parameterScopes.filter((row) => row.ab_test_uid !== abTest.uid),
+        ...rows,
+      ],
+    }
+  })
+  res.json({ parameter_scopes: parameterScopesOf(getState(), abTest.uid) })
+})
+
 abTestsReportsRouter.get('/ab_tests/:uid/heatmaps/stats', (req, res) => {
   const state = getState()
   const abTest = findAbTest(state, req.params.uid)
@@ -255,11 +341,18 @@ abTestsReportsRouter.get('/ab_tests/:uid/heatmaps/stats', (req, res) => {
     if (param === '') continue
     paramPv.set(`${h.version_uid}\u0000${param}`, (paramPv.get(`${h.version_uid}\u0000${param}`) ?? 0) + h.pv)
   }
+  // レポート設定「表示するパラメータ」でヒートマップをOFFにした名前は一覧に出さない
+  const shownNames = new Set(
+    parameterScopesOf(state, abTest.uid)
+      .filter((row) => row.heatmap)
+      .map((row) => row.name),
+  )
   const parameters = [...paramPv.entries()]
     .map(([key, pv]) => {
       const [versionUid = '', param = ''] = key.split('\u0000')
       return { version_uid: versionUid, param, pv }
     })
+    .filter(({ param }) => shownNames.has(param.slice(0, param.indexOf('='))))
     .sort((a, b) => b.pv - a.pv || a.param.localeCompare(b.param))
 
   res.json({ period: { start_date: startDate, end_date: endDate }, versions, parameters })

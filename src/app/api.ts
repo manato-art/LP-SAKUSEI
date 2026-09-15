@@ -188,6 +188,22 @@ export interface HeatmapStatsResponse {
   parameters: HeatmapParameter[]
 }
 
+/**
+ * レポート設定「表示するパラメータ」の1行。
+ * 採取物（capture/clean/ab_tests__UID__reports/report-settings-modal）の表と同じ列。
+ */
+export interface ParameterScope {
+  name: string
+  /** クリエイティブレポートに出す */
+  creative: boolean
+  /** Branch Operation に出す */
+  branch_operation: boolean
+  /** ヒートマップに出す */
+  heatmap: boolean
+  /** メモ */
+  description: string
+}
+
 /** 左のVersion一覧に出す広告パラメータ1件（`utm_source=fb`） */
 export interface HeatmapParameter {
   version_uid: string
@@ -497,6 +513,19 @@ export const api = {
   heatmaps: (abTestUid: string) =>
     request<{ heatmaps: HeatmapEntry[] }>('GET', `/ab_tests/${abTestUid}/heatmaps/comparisons`),
   /** ヒートマップの実測集計（計測タグ由来）。ラインの4モードぶんをVersionごとに返す。 */
+  /** レポート設定「表示するパラメータ」（歯車から開くモーダル） */
+  parameterScopes: (abTestUid: string) =>
+    request<{ parameter_scopes: ParameterScope[] }>(
+      'GET',
+      `/ab_tests/${abTestUid}/parameter_scopes`,
+    ),
+  saveParameterScopes: (abTestUid: string, rows: readonly Partial<ParameterScope>[]) =>
+    request<{ parameter_scopes: ParameterScope[] }>(
+      'PUT',
+      `/ab_tests/${abTestUid}/parameter_scopes`,
+      { parameter_scopes: rows },
+    ),
+
   heatmapStats: (abTestUid: string, query: string) =>
     request<HeatmapStatsResponse>('GET', `/ab_tests/${abTestUid}/heatmaps/stats?${query}`),
   /**

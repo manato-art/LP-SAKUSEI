@@ -675,6 +675,20 @@ export interface HeatmapStat {
   clicks: { x: number; y: number }[]
 }
 
+/**
+ * 「表示するパラメータ」1行。
+ * 採取物（capture/clean/ab_tests__UID__reports/report-settings-modal）の表と同じで、
+ * 列は クリエイティブ / Branch Operation / ヒートマップ / メモ。
+ */
+export interface ParameterScope {
+  ab_test_uid: string
+  name: string
+  creative: boolean
+  branch_operation: boolean
+  heatmap: boolean
+  description: string
+}
+
 export interface MediaAsset {
   id: number
   uid: string
@@ -867,6 +881,12 @@ export interface State {
     chatworkApiToken: string
   }
   reportExclusions: readonly ReportExclusion[]
+  /**
+   * レポート設定「表示するパラメータ」（歯車から開くモーダル）。
+   * beyondページごとに、どの広告パラメータをどのレポートに出すかを持つ。
+   * 行が無いページは既定（6つ全部ON・メモ空）とみなす。
+   */
+  parameterScopes: readonly ParameterScope[]
   /** 配信リクエストの記録（直近ぶんだけ保持する） */
   requestLogs: readonly RequestLogEntry[]
   /** 訪問者の目印ごとの「見た・押した」記録（CVをVersion別に数えるため。1日分だけ持つ・store/visitor-touches.ts） */

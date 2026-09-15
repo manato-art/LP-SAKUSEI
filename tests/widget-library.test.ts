@@ -25,6 +25,19 @@ describe('Widgetライブラリの土台（採取マークアップ）', () => {
     expect(fragment).toContain('>プレビュー<')
   })
 
+  /**
+   * この断片は `npm run rehydrate` の出力**ではない**。
+   * 元になった `capture/clean/widget-library/baked/dom.html` は
+   * カテゴリ別の grid.html.gz に置き換わったときに消しており、
+   * 25枚の実プレビューはこのファイルにしか残っていない。
+   * rehydrate を回すと採取物から作り直されて 1MB → 70KB に痩せる（＝プレビューが消える）。
+   * 気付かずコミットしないよう、ここで大きさと中身を固定する。
+   */
+  it('25枚の実プレビュー（srcdoc）を保つ＝rehydrateで痩せていない', () => {
+    expect([...fragment.matchAll(/srcdoc=/g)].length).toBeGreaterThanOrEqual(25)
+    expect(fragment.length).toBeGreaterThan(900_000)
+  })
+
   it('実ユーザーの独自Widget名・本番JS痕跡が混ざっていない', () => {
     expect(fragment).not.toContain('フェムケア')
     expect(fragment).not.toContain('<script')

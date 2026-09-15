@@ -10,6 +10,7 @@ import { T, el, toast } from '../ui.ts'
 import { overrideDarkBackgrounds } from '../white-base.ts'
 import { extractCapturedAbTestUid, stripShellFromFragment, toHashHref } from './report-substrate.ts'
 import { buildThemeSwap, extractThemeTokens, swapClassName, type ThemeSwap } from './report-theme.ts'
+import { openReportSettingsModal } from '../panels/report-settings-modal.ts'
 
 /**
  * 採取したページ断片を差し込む。断片はページ全体（サイドバー込み）なので、
@@ -185,10 +186,18 @@ function isNameLabelOnly(body: HTMLElement): boolean {
 }
 
 /**
- * 名札はホバーで出す（実物と同じ）。指では触れないので、押したときは
- * 「その先の画面はまだ採取していない」と正直に伝える。推測で画面は作らない。
+ * 名札はホバーで出す（実物と同じ）。押したときは、その名札が指している画面を開く。
+ *
+ * 歯車（「パラメーター設定」）は実物どおり**レポート設定のモーダル**が開く
+ * （2026-09-15 に実画面を採取 → capture/clean/ab_tests__UID__reports/report-settings-modal）。
+ * まだ採取していない画面は、推測で作らずに正直に伝える。
  */
-function wireNameLabel(dropdown: HTMLElement, trigger: HTMLElement, body: HTMLElement): void {
+function wireNameLabel(
+  dropdown: HTMLElement,
+  trigger: HTMLElement,
+  body: HTMLElement,
+  abTestUid?: string,
+): void {
   const show = (on: boolean): void => { body.classList.toggle(PANEL_OPEN_CLASS, on) }
   dropdown.addEventListener('mouseenter', () => show(true))
   dropdown.addEventListener('mouseleave', () => show(false))
@@ -196,9 +205,16 @@ function wireNameLabel(dropdown: HTMLElement, trigger: HTMLElement, body: HTMLEl
   trigger.addEventListener('click', (event) => {
     event.stopPropagation()
     show(false)
+    if (name === PARAMETER_SETTINGS_LABEL && abTestUid !== undefined && abTestUid !== '') {
+      openReportSettingsModal(abTestUid)
+      return
+    }
     toast(`「${name}」の画面は実物をまだ採取していないため開けません`, 'error')
   })
 }
+
+/** 歯車の名札。押すとレポート設定のモーダルが開く */
+const PARAMETER_SETTINGS_LABEL = 'パラメーター設定'
 
 /** 外を押したら開いているものを閉じる（1回だけ仕込む） */
 function wireOutsideClose(): void {
@@ -223,7 +239,7 @@ function wireOutsideClose(): void {
  * 開閉は採取CSSのクラス（`_open_x4j8w_84`）をそのまま使う＝見た目は手書きしない。
  * 実物はホバーでも開くが、スマホにホバーは無いので「押して開閉」に寄せる。
  */
-export function wireCapturedDropdowns(root: HTMLElement): void {
+export function wireCapturedDropdowns(root: HTMLElement, abTestUid?: string): void {
   for (const dropdown of root.querySelectorAll<HTMLElement>(DROPDOWN_SELECTOR)) {
     if (dropdown.dataset[WIRED_MARK] === 'true') continue
     const trigger = dropdown.querySelector<HTMLElement>(DROPDOWN_TRIGGER)
@@ -238,7 +254,7 @@ export function wireCapturedDropdowns(root: HTMLElement): void {
      * 名札を押した結果として出すのは間違い（2026-09-15 本人指摘）。
      */
     if (isNameLabelOnly(body)) {
-      wireNameLabel(dropdown, trigger, body)
+      wireNameLabel(dropdown, trigger, body, abTestUid)
       continue
     }
     trigger.addEventListener('click', (event) => {

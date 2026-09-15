@@ -99,6 +99,8 @@ export function createEmptyState(): State {
     slack: null,
     integrations: { slackClientId: '', slackClientSecret: '', chatworkApiToken: '' },
     reportExclusions: [],
+    // レポート設定「表示するパラメータ」。触るまで行は作らない（既定は6つ全部ON）
+    parameterScopes: [],
     requestLogs: [],
     htmlParts: [],
     metrics: [],
