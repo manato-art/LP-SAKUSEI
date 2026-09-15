@@ -306,7 +306,10 @@ export function setupHorizTabs(
     // ── 4. navWrapper をタブバー追加に対応させる（全ページ共通） ──
     // 採取 CSS の固定 height ではタブバー分が足りず見切れる → auto に
     navWrapper.style.height = 'auto'
-    navWrapper.style.paddingTop = '8px'
+    // 上に隙間を作らない。以前は 8px 入れていたが、エディタ系の画面だけ別のCSSが
+    // `padding-top:0 !important` で打ち消していたため、レポート／切り替え／中間ページ
+    // だけ上端が8pxずれていた（2026-09-15 本人指摘）。
+    navWrapper.style.paddingTop = '0'
     navWrapper.style.background = 'var(--sb-c-ffffff, #FFFFFF)'
     navWrapper.style.position = 'sticky'
     navWrapper.style.top = '0'
