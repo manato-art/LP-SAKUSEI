@@ -93,6 +93,8 @@ describe('計測スクリプト（LP本体）', () => {
       version: 'VERSION_0001',
       event: 'pv',
       u: 'https://lp.example.test/lp/AB1',
+      // 着地URLの広告パラメータ。Branch Operation の広告ごとの行の材料になる
+      params: ['utm_source=news'],
       vid: 'VISITOR-1',
     })
   })
@@ -101,7 +103,12 @@ describe('計測スクリプト（LP本体）', () => {
     const browser = fakeBrowser({ href: 'https://lp.example.test/lp/AB1', cookie: '_sb_tu=VISITOR-1' })
     browser.run(buildTrackingScriptBody(endpoint, 'VERSION_0001'))
     browser.click('https://shop.example.test/item?sb_tracking=true&squadbeyond_uid=LINK-UID-1&sb_article_uid=ART1')
-    expect(browser.sent[1]?.body).toEqual({ version: 'VERSION_0001', event: 'click', vid: 'LINK-UID-1' })
+    expect(browser.sent[1]?.body).toEqual({
+      version: 'VERSION_0001',
+      event: 'click',
+      params: [],
+      vid: 'LINK-UID-1',
+    })
   })
 
   /**
@@ -130,7 +137,7 @@ describe('計測スクリプト（LP本体）', () => {
     const browser = fakeBrowser({ href: 'https://lp.example.test/lp/AB1', cookie: '_sb_tu=VISITOR-2' })
     browser.run(buildTrackingScriptBody(endpoint))
     browser.click('https://shop.example.test/item?sb_tracking=true')
-    expect(browser.sent[1]?.body).toEqual({ event: 'click', vid: 'VISITOR-2' })
+    expect(browser.sent[1]?.body).toEqual({ event: 'click', params: [], vid: 'VISITOR-2' })
   })
 })
 

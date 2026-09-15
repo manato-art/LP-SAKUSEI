@@ -284,6 +284,41 @@ interface BranchDeps {
   onDownloadCsv: () => void
 }
 
+/**
+ * Branch Operation の1行。
+ * `nested` は広告パラメータの行（Versionの下にぶら下がる）。
+ * 配信割合はVersionに対する設定なので、パラメータの行では出さない。
+ */
+function branchLine(row: ReportVersionRow, nested: boolean): HTMLElement {
+  const line = document.createElement('tr')
+  if (nested) line.className = 'rv2-sub'
+  const name = document.createElement('td')
+  name.textContent = row.name
+  line.append(name)
+  for (const text of [
+    yen(row.ad_cost),
+    int(row.pv),
+    int(row.click),
+    pct(row.ctr),
+    int(row.cv),
+    pct(row.cvr),
+    pct(row.ctvr),
+    yen(row.cpa),
+    yen(row.mcpa),
+    pct(row.fver),
+    pct(row.sver),
+    pct(row.fsver),
+    pct(row.oar),
+    nested ? '' : `${row.distribution_ratio}%`,
+  ]) {
+    const td = document.createElement('td')
+    td.className = 'num'
+    td.textContent = text
+    line.append(td)
+  }
+  return line
+}
+
 /** 「Branch Operation」= 検索つきの一覧 */
 export function buildBranchOperation(deps: BranchDeps): HTMLElement {
   const card = document.createElement('section')
@@ -412,32 +447,9 @@ export function buildBranchOperation(deps: BranchDeps): HTMLElement {
       tbody.append(empty)
     }
     for (const row of rows) {
-      const line = document.createElement('tr')
-      const name = document.createElement('td')
-      name.textContent = row.name
-      line.append(name)
-      for (const text of [
-        yen(row.ad_cost),
-        int(row.pv),
-        int(row.click),
-        pct(row.ctr),
-        int(row.cv),
-        pct(row.cvr),
-        pct(row.ctvr),
-        yen(row.cpa),
-        yen(row.mcpa),
-        pct(row.fver),
-        pct(row.sver),
-        pct(row.fsver),
-        pct(row.oar),
-        `${row.distribution_ratio}%`,
-      ]) {
-        const td = document.createElement('td')
-        td.className = 'num'
-        td.textContent = text
-        line.append(td)
-      }
-      tbody.append(line)
+      tbody.append(branchLine(row, false))
+      // 実物は Version の行の下に、来た広告パラメータの行がPVの多い順でぶら下がる
+      for (const child of row.children ?? []) tbody.append(branchLine(child, true))
     }
     table.append(thead, tbody)
     scroll.replaceChildren(table)

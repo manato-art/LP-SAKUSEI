@@ -145,6 +145,11 @@ export interface ReportVersionRow extends ReportKpi {
   distribution_ratio: number
   /** アーカイブ済みか（ヒートマップ／レポートの「アーカイブ」絞り込みで使う） */
   archived?: boolean
+  /**
+   * そのVersionに来た広告パラメータごとの行（PVの多い順）。
+   * 実物の Branch Operation は Version の行の下にこれがぶら下がる。
+   */
+  children?: ReportVersionRow[]
 }
 
 export interface ReportDailyRow extends ReportKpi {

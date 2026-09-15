@@ -154,6 +154,10 @@ export function injectReportStyles(): void {
     .rv2-table thead th.group { text-align:center; }
     .rv2-table td.num, .rv2-table th.num { text-align:right; font-variant-numeric:tabular-nums; }
     .rv2-table tbody tr:hover { background:#f9fbff; }
+    /* Version の下にぶら下がる広告パラメータの行（実物の Branch Operation と同じ並び）。
+       名前を字下げして、親のVersionの内訳だと分かるようにする。 */
+    .rv2-table tbody tr.rv2-sub td:first-child { padding-left:28px; color:var(--rv2-sub); }
+    .rv2-table tbody tr.rv2-sub td { background:#fcfdff; }
     .rv2-sort { cursor:pointer; user-select:none; }
     .rv2-sort:hover { color:var(--rv2-accent); }
     .rv2-sort span { color:#98a2b3; margin-left:3px; font-size:9px; }

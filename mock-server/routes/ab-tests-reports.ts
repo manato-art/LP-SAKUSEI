@@ -26,14 +26,25 @@ export const abTestsReportsRouter: Router = Router()
  *
  * 記録がまだ無ければ 0 件のまま返す（deriveKpi 側で「-」になる）。
  */
+/**
+ * スクロールの記録を数える（FVER/SVER/FSVER/OAR の材料）。
+ *
+ * `param` を渡すとその広告で来た表示だけを数える。既定は合算（`param=''`）。
+ * **合算と広告ごとの行は同じ表示を二重に持っている**ので、必ずどちらか一方だけを見る
+ * （混ぜると広告が多く付いた表示ほど重く数えられて率が狂う。2026-09-15に踏んだ）。
+ */
 function scrollCounts(
   state: ReturnType<typeof getState>,
   versionUid: string,
   startDate: string,
   endDate: string,
+  param = '',
 ): { hm_pv: number; fv_exit: number; sv_exit: number; offer_reach?: number } {
   const stats = state.heatmapStats.filter(
-    (h) => h.version_uid === versionUid && isWithin(h.date, startDate, endDate),
+    (h) =>
+      h.version_uid === versionUid &&
+      (h.param ?? '') === param &&
+      isWithin(h.date, startDate, endDate),
   )
   let hmPv = 0
   let fvExit = 0
@@ -66,7 +77,9 @@ function scrollCountsForAbTest(
   endDate: string,
 ): { hm_pv: number; fv_exit: number; sv_exit: number; offer_reach?: number } {
   const versionUids = new Set(
-    state.heatmapStats.filter((h) => h.ab_test_uid === abTestUid).map((h) => h.version_uid),
+    state.heatmapStats
+      .filter((h) => h.ab_test_uid === abTestUid && (h.param ?? '') === '')
+      .map((h) => h.version_uid),
   )
   let hmPv = 0
   let fvExit = 0
@@ -86,6 +99,60 @@ function scrollCountsForAbTest(
   return hasOffer
     ? { hm_pv: hmPv, fv_exit: fvExit, sv_exit: svExit, offer_reach: offerReach }
     : { hm_pv: hmPv, fv_exit: fvExit, sv_exit: svExit }
+}
+
+/**
+ * Version の下にぶら下がる広告パラメータの行（実物の Branch Operation）。
+ *
+ * 材料は `scope:'parameter'` の日次メトリクス（entity_uid は `<versionUid>|utm_source=fb`）。
+ * レポート設定で Branch Operation をOFFにした名前は出さない。並びはPVの多い順。
+ */
+function parameterRows(
+  state: State,
+  abTestUid: string,
+  versionUid: string,
+  startDate: string,
+  endDate: string,
+) {
+  const shown = new Set(
+    parameterScopesOf(state, abTestUid)
+      .filter((row) => row.branch_operation)
+      .map((row) => row.name),
+  )
+  const prefix = `${versionUid}|`
+  const byParam = new Map<string, typeof state.metrics>()
+  const keep = (param: string): boolean => shown.has(param.slice(0, param.indexOf('=')))
+  for (const metric of state.metrics) {
+    if (metric.scope !== 'parameter') continue
+    if (!metric.entity_uid.startsWith(prefix)) continue
+    if (!isWithin(metric.date, startDate, endDate)) continue
+    const param = metric.entity_uid.slice(prefix.length)
+    if (!keep(param)) continue
+    byParam.set(param, [...(byParam.get(param) ?? []), metric])
+  }
+  // 表示・クリックが記録されていなくても、スクロールの記録だけ来ている広告がある
+  // （計測タグは離脱時にまとめて送るので、順番によってはこちらが先に入る）。
+  for (const stat of state.heatmapStats) {
+    const param = stat.param ?? ''
+    if (param === '' || stat.version_uid !== versionUid) continue
+    if (!isWithin(stat.date, startDate, endDate)) continue
+    if (!keep(param) || byParam.has(param)) continue
+    byParam.set(param, [])
+  }
+  return [...byParam.entries()]
+    .map(([param, metrics]) => ({
+      scope: 'parameter' as const,
+      entity_uid: `${versionUid}|${param}`,
+      name: param,
+      status: '',
+      distribution_ratio: 0,
+      archived: false,
+      ...deriveKpi({
+        ...sumPrimary(metrics),
+        ...scrollCounts(state, versionUid, startDate, endDate, param),
+      }),
+    }))
+    .sort((a, b) => b.pv - a.pv || a.name.localeCompare(b.name))
 }
 
 // ── レポート系（§10-3・派生KPIは §10-5 恒等式）──
@@ -115,6 +182,8 @@ function reportRows(uid: string, scope: 'version' | 'lp' | 'creative', query: un
             ...sumPrimary(metrics),
             ...scrollCounts(state, version.uid, startDate, endDate),
           })),
+      /** そのVersionに来た広告パラメータごとの行（実物はVersionの下にぶら下がる） */
+      children: parameterRows(state, abTest.uid, version.uid, startDate, endDate),
     }
   })
   const abTestMetrics = state.metrics.filter((m) => m.entity_uid === abTest.uid)

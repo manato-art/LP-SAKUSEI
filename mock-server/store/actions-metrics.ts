@@ -100,7 +100,7 @@ export function recordConversion(
 export function setMediaMetrics(
   state: State,
   entityUid: string,
-  scope: 'ab_test' | 'version',
+  scope: 'ab_test' | 'version' | 'parameter',
   date: string,
   media: { ad_cost: number; imp: number; media_click: number; media_cv: number },
 ): State['metrics'] {
@@ -141,7 +141,7 @@ export function setMediaMetrics(
 export function bumpMetric(
   state: State,
   entityUid: string,
-  scope: 'ab_test' | 'version',
+  scope: 'ab_test' | 'version' | 'parameter',
   date: string,
   delta: Partial<{
     pv: number

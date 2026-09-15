@@ -635,16 +635,7 @@ deliveryRouter.post('/lp/:uid/__track', (req, res) => {
       typeof hb.offer === 'number' && hb.offer >= 0 && hb.offer < bands
         ? Math.floor(hb.offer)
         : undefined
-    // 広告パラメータ。計測タグ側でも絞っているが、送り口は誰でも叩けるので
-    // サーバーでも同じ条件で選び直す（`utm_` で始まる key=value だけ・長さと本数に上限）。
-    const params = [
-      ...new Set(
-        (Array.isArray(hb.params) ? hb.params : [])
-          .filter((p): p is string => typeof p === 'string')
-          .map((p) => p.slice(0, 160))
-          .filter((p) => /^utm_[A-Za-z0-9_]{1,24}=.+$/.test(p)),
-      ),
-    ].slice(0, 20)
+    const params = adParamsOf(hb.params)
 
     const clicks = (Array.isArray(hb.clicks) ? hb.clicks : [])
       .slice(0, 300)
@@ -713,10 +704,20 @@ deliveryRouter.post('/lp/:uid/__track', (req, res) => {
   // 自前配信（このサーバー自身のホスト）は Version のHTMLを背景に使うので対象外。
   const reportedUrl = externalUrlFrom(body.u, req.get('host') ?? '')
 
+  // 実物の Branch Operation は Version の下に広告ごとの行がぶら下がる。
+  // その材料として、表示とクリックを「Version×広告パラメータ」でも数える。
+  const adParams = adParamsOf((body as { params?: unknown }).params)
+
   setState((s) => {
     let next: State = { ...s, metrics: bumpMetric(s, abTest.uid, 'ab_test', date, delta) }
     if (versionUid !== '') {
       next = { ...next, metrics: bumpMetric(next, versionUid, 'version', date, delta) }
+      for (const param of adParams) {
+        next = {
+          ...next,
+          metrics: bumpMetric(next, `${versionUid}|${param}`, 'parameter', date, delta),
+        }
+      }
     }
     // 目印があれば「見た・押した」記録を残す（CVタグから成果が届いたとき、どのVersionの成果かを照らし合わせる）
     if (vid !== null) {
@@ -743,6 +744,23 @@ deliveryRouter.post('/lp/:uid/__track', (req, res) => {
   })
   res.json({ ok: true })
 })
+
+/**
+ * 着地URLの広告パラメータを選び直す。
+ *
+ * 計測タグ側でも `utm_` だけに絞っているが、送り口は誰でも叩けるので
+ * サーバーでも同じ条件で選ぶ（`utm_` で始まる key=value だけ・長さと本数に上限）。
+ */
+function adParamsOf(raw: unknown): string[] {
+  return [
+    ...new Set(
+      (Array.isArray(raw) ? raw : [])
+        .filter((p): p is string => typeof p === 'string')
+        .map((p) => p.slice(0, 160))
+        .filter((p) => /^utm_[A-Za-z0-9_]{1,24}=.+$/.test(p)),
+    ),
+  ].slice(0, 20)
+}
 
 /**
  * プレビューページ（サーバー側・実パス `/preview/:versionUid`）。

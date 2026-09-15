@@ -358,7 +358,11 @@ export interface DailyMetric {
   media_cv?: number
 }
 
-export type ReportScope = 'ab_test' | 'version' | 'lp' | 'creative'
+/**
+ * `parameter` は「Version×広告パラメータ」の集計（entity_uid は `<versionUid>|utm_source=fb`）。
+ * 実物の Branch Operation は Version の行の下にこの行がぶら下がる。
+ */
+export type ReportScope = 'ab_test' | 'version' | 'lp' | 'creative' | 'parameter'
 
 export interface Conversion {
   id: number
