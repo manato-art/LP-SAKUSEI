@@ -230,7 +230,6 @@ export interface AlertSettings {
 /** 定期レポートに載せるもの（サーバー側は mock-server/report-items.ts） */
 export interface ReportItemsInput {
   basics: boolean
-  score: boolean
   versions: boolean
   heatmap: boolean
   compare: boolean

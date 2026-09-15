@@ -13,7 +13,6 @@ import type { ReportItemsInput } from '../api.ts'
 /** 並び順と説明。上から読んで意味が通る順にする。 */
 const ITEMS: readonly { key: keyof ReportItemsInput; label: string; note: string }[] = [
   { key: 'basics', label: '主要数値', note: 'PV / CLICK / CTR / CV / CVR' },
-  { key: 'score', label: '総合スコア', note: 'CVR・CTR・FV通過率を他ページと比べた0〜100点' },
   { key: 'versions', label: 'Versionの内訳', note: 'ページの下に各案。CVRがいちばん高い案に★' },
   { key: 'heatmap', label: 'ヒートマップの要点', note: 'FV通過率・いちばん離脱が多い位置・オファー到達' },
   { key: 'compare', label: '前の期間との比較', note: '昨日のレポートなら前日比、直近7日なら前週比' },

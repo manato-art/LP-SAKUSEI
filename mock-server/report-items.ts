@@ -8,8 +8,6 @@
 export interface ReportItems {
   /** 主要数値（PV / CLICK / CTR / CV / CVR） */
   basics: boolean
-  /** 総合スコア（report-score.ts） */
-  score: boolean
   /** ページの下にVersionの内訳 */
   versions: boolean
   /** ヒートマップの要点（FV通過・いちばん離脱が多い位置・オファー到達） */
@@ -22,7 +20,6 @@ export interface ReportItems {
 
 export const DEFAULT_REPORT_ITEMS: ReportItems = {
   basics: true,
-  score: true,
   versions: true,
   heatmap: true,
   compare: true,

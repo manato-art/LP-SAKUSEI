@@ -6,8 +6,11 @@
  * 数字が無いときは「0件」と書かず、無いことをそのまま書く（数字を発明しない）。
  *
  * 2026-09-15、本人の依頼で中身を増やした:
- *  「どの記事がどのくらいのスコアで、詳細はどんな感じか」＋ヒートマップを1通で。
+ *  ページごとの詳細＋Versionの内訳＋ヒートマップの要点を1通で。
  * 何を載せるかはタスクごとの設定（report-items.ts）で決める。
+ *
+ * 総合スコア（0〜100の点数）も一度入れたが、本人の判断で外した。
+ * 相対評価なのでページが2つだと必ず0点と100点になり、数字のわりに読み取れることが少なかった。
  *
  * 指標の定義はここで作らない。CVR/CTR/CPA/FV離脱率などは `store/metrics.ts` の
  * `deriveKpi`、スクロールの数え方は `store/scroll-counts.ts` に一本化してある。
@@ -15,7 +18,6 @@
 import { getState } from './store/store.ts'
 import { deriveKpi, isWithin, sumPrimary, toDateKey } from './store/metrics.ts'
 import { exitPeak, scrollCountsForAbTest } from './store/scroll-counts.ts'
-import { SCORE_WEIGHTS, MIN_PV_FOR_SCORE, scoreAll } from './report-score.ts'
 import { DEFAULT_REPORT_ITEMS, type ReportItems } from './report-items.ts'
 import type { DerivedKpi } from './store/metrics.ts'
 import type { State } from './store/types.ts'
@@ -152,17 +154,8 @@ export function buildTaskReport(
     return lines.join('\n')
   }
 
-  const scores = scoreAll(
-    rows.map((r) => ({
-      pv: r.kpi.pv,
-      cvr: r.kpi.cvr,
-      ctr: r.kpi.ctr,
-      fv_pass: r.kpi.fver === null ? null : 1 - r.kpi.fver,
-    })),
-  )
-  const scored = rows.map((row, i) => ({ ...row, score: items.score ? scores[i] ?? null : null }))
-  // 点が出ているものを上に。点が無いものどうしはCVの多い順
-  scored.sort((a, b) => (b.score ?? -1) - (a.score ?? -1) || b.kpi.cv - a.kpi.cv || b.kpi.pv - a.kpi.pv)
+  // CVの多い順。同じならPVの多い順
+  const ordered = [...rows].sort((a, b) => b.kpi.cv - a.kpi.cv || b.kpi.pv - a.kpi.pv)
 
   /* ── 合計 ── */
   const sum = (pick: (k: DerivedKpi) => number): number => rows.reduce((t, r) => t + pick(r.kpi), 0)
@@ -192,8 +185,8 @@ export function buildTaskReport(
   lines.push('', 'ページ別:')
 
   /* ── ページごと ── */
-  scored.forEach((row, i) => {
-    lines.push(`${i + 1}. ${row.name}${row.score === null ? '' : `  ${row.score}点`}`)
+  ordered.forEach((row, i) => {
+    lines.push(`${i + 1}. ${row.name}`)
     if (items.basics) lines.push(`　 ${basicsLine(row.kpi)}`)
     if (items.compare) {
       lines.push(
@@ -226,13 +219,5 @@ export function buildTaskReport(
     }
   })
 
-  if (items.score) {
-    lines.push(
-      '',
-      `※点数は、CVR・CTR・FV通過率をその日の他ページと比べて0〜100にしたものです` +
-        `（CVR ${SCORE_WEIGHTS.cvr * 100}% / CTR ${SCORE_WEIGHTS.ctr * 100}% / FV通過 ${SCORE_WEIGHTS.fv_pass * 100}%）。` +
-        `PVが${num(MIN_PV_FOR_SCORE)}件に満たないページと、比べる相手が1つしか無いときは出しません。`,
-    )
-  }
   return lines.join('\n')
 }

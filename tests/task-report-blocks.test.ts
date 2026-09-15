@@ -92,24 +92,16 @@ const items = (patch: Partial<ReportItems> = {}): ReportItems => ({ ...DEFAULT_R
 beforeEach(seed)
 
 describe('レポート本文', () => {
-  it('ページを点の高い順に並べる', () => {
+  it('CVの多い順に並べる', () => {
     const body = buildTaskReport('毎朝のレポート', 'yesterday', NOW, items())
     expect(body.indexOf('本命LP')).toBeLessThan(body.indexOf('検証用LP'))
     expect(body).toContain('[毎朝のレポート]')
     expect(body).toContain(YESTERDAY)
   })
 
-  it('点と、点の出し方の断り書きを載せる', () => {
+  it('点数は出さない（本人の判断で外した。相対評価で読み取れることが少なかった）', () => {
     const body = buildTaskReport('朝', 'yesterday', NOW, items())
-    expect(body).toMatch(/本命LP\s+\d+点/)
-    expect(body, '作り物であることを本文に書く').toContain('CVR')
-    expect(body).toContain('点')
-  })
-
-  it('点をしまえる', () => {
-    const body = buildTaskReport('朝', 'yesterday', NOW, items({ score: false }))
     expect(body).not.toMatch(/\d+点/)
-    expect(body, '数字そのものは残る').toContain('本命LP')
   })
 
   it('Versionの内訳を出す。いちばんCVRが高い案に印を付ける', () => {
