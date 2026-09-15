@@ -9,7 +9,11 @@ import { T, el, emptyState, toast } from '../ui.ts'
 import { buildThemeColorSection } from '../panels/theme-color-section.ts'
 import { jstDateKey } from '../jst.ts'
 
-export async function renderAccountSettings(container: HTMLElement): Promise<void> {
+export async function renderAccountSettings(
+  container: HTMLElement,
+  /** 最初に開くタブ。CV速報の「通知設定」からは通知のタブを開く */
+  initialTab?: '通知設定',
+): Promise<void> {
   container.style.cssText = `flex:1;min-width:0;background:${T.bg};min-height:100vh`
   container.innerHTML = ''
 
@@ -49,7 +53,7 @@ export async function renderAccountSettings(container: HTMLElement): Promise<voi
 
   // タブ
   const tabs = ['アカウント', '通知設定', 'チームメンバー', 'アクセス管理'] as const
-  let activeTab: (typeof tabs)[number] = 'アカウント'
+  let activeTab: (typeof tabs)[number] = initialTab ?? 'アカウント'
 
   // クラスはスマホで横スクロールにするための目印（mobile-css.ts）
   const tabBar = el('div', { class: 'sb-tabbar', style: 'display:flex;gap:0;margin-bottom:20px;border-bottom:2px solid var(--sb-c-eeeeee, #EEEEEE)' })

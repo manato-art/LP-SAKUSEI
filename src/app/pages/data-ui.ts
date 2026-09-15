@@ -103,7 +103,10 @@ export function table<Row>(
       style: `display:grid;${grid};gap:12px;padding:12px 8px;border-bottom:1px solid var(--sb-c-f2f2f2, #F2F2F2);font-size:13px;color:${T.text}`,
     })
     for (const col of columns) {
-      const cellStyle = `text-align:${col.align ?? 'left'};word-break:break-all`
+      // `word-break:break-all` は必ず文字単位で折るので、日時が
+      // 「2026/09/15 1 / 9:21:24」のように数字の途中で割れていた。
+      // `overflow-wrap:anywhere` なら、まず空白で折り、収まらないときだけ文字単位で折る。
+      const cellStyle = `text-align:${col.align ?? 'left'};overflow-wrap:anywhere`
       const href = col.href?.(row) ?? null
       const cell =
         href === null

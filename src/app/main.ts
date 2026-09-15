@@ -240,6 +240,11 @@ async function route(): Promise<void> {
       renderSeminarPage(content)
       return
     }
+    // 通知の設定（実物の /settings/internal_notifications/member・CV速報の「通知設定」から来る）
+    if (path === '/settings/internal_notifications/member' || path === '/settings/internal_notifications/team') {
+      await renderAccountSettings(content, '通知設定')
+      return
+    }
     if (sidebarPage === 'account_settings') {
       await renderAccountSettings(content)
       return
