@@ -20,6 +20,7 @@ import { ChatworkError, chatworkToken, listRooms } from '../chatwork.ts'
 import { allowsEmptyDestination, NotifyError, sendNotification } from '../notify.ts'
 import { lineToken } from '../line.ts'
 import { buildTaskReport } from '../task-report.ts'
+import { normalizeReportItems } from '../report-items.ts'
 import {
   SlackError,
   authorizeUrl,
@@ -358,7 +359,7 @@ slackRouter.post('/notify/test', (req, res) => {
     '[通知テスト]',
     'この内容が届いていれば、タスクの通知先として使えます。',
     '',
-    buildTaskReport('通知テスト', 'today'),
+    buildTaskReport('通知テスト', 'today', new Date(), normalizeReportItems(body['report_items'])),
   ].join('\n')
 
   void sendNotification(service, destinationId, text).then(
@@ -397,7 +398,8 @@ slackRouter.post('/notify/run', (req, res) => {
     res.status(422).json(errorEnvelope('validation_failed', 'レポート内容が正しくありません。'))
     return
   }
-  void sendNotification(service, destinationId, buildTaskReport(name, span)).then(
+  const reportItems = normalizeReportItems(body['report_items'])
+  void sendNotification(service, destinationId, buildTaskReport(name, span, new Date(), reportItems)).then(
     () => res.json({ ok: true }),
     (error: unknown) => {
       const known = error instanceof NotifyError

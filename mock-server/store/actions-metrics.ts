@@ -9,6 +9,7 @@ import { makeUid } from './ids.ts'
 import { toDateKey } from './metrics.ts'
 import type { Conversion, State, Task, TaskNotify, TaskReportSpan, TaskSchedule } from './types.ts'
 import { nowTs, freshUid } from './actions-shared.ts'
+import { DEFAULT_REPORT_ITEMS, type ReportItems } from '../report-items.ts'
 
 // ── タスク ───────────────────────────────────────────────
 export function createTask(
@@ -20,6 +21,7 @@ export function createTask(
     description?: string
     schedule?: TaskSchedule
     span?: TaskReportSpan
+    report_items?: ReportItems
     notify?: TaskNotify | null
   },
 ): { state: State; task: Task } {
@@ -37,6 +39,7 @@ export function createTask(
     // 既定は単発。指定が無いタスクを勝手に定期実行しない。
     schedule: input.schedule ?? { kind: 'once', hour: '09', minute: '00', weekdays: [] },
     span: input.span ?? 'today',
+    report_items: input.report_items ?? { ...DEFAULT_REPORT_ITEMS },
     notify: input.notify ?? null,
     last_run_slot: null,
     last_run_status: null,

@@ -1,4 +1,5 @@
 /** タスク / 審査（企画書 §10-3）。新規アカウントでは0件。作成すると一覧に出る（§10-9）。 */
+import { normalizeReportItems } from '../report-items.ts'
 import { Router } from 'express'
 import type {
   TaskNotify,
@@ -84,10 +85,14 @@ tasksRouter.post('/tasks', (req, res) => {
     return
   }
 
+  // レポートに載せる項目。指定が無ければ既定（全部）
+  const reportItems = normalizeReportItems(body['report_items'])
+
   let created = null
   setState((state) => {
     const out = createTask(state, {
       title: title.value,
+      report_items: reportItems,
       assignee_member_id: optionalNumber(req.body, 'assignee_member_id') ?? null,
       due_at: optionalString(req.body, 'due_at') || null,
       description: optionalString(req.body, 'description'),

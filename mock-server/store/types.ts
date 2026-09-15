@@ -450,6 +450,8 @@ export interface TaskSchedule {
   weekdays: readonly number[]
 }
 
+import type { ReportItems } from '../report-items.ts'
+
 /** どこへ送るか。未設定なら通知しない。LINEだけ destination_id が空でよい（＝友だち全員へ） */
 export interface TaskNotify {
   service: 'slack' | 'chatwork' | 'line'
@@ -469,6 +471,12 @@ export interface Task {
   description: string
   schedule: TaskSchedule
   span: TaskReportSpan
+  /**
+   * レポートに何を載せるか（report-items.ts）。
+   * この機能より前に作ったタスクには**無い**ので、読むときは必ず
+   * `normalizeReportItems()` を通す（保存データの移行は最上位のキーしか見ない）。
+   */
+  report_items?: ReportItems
   notify: TaskNotify | null
   /**
    * 最後に実行した分（`YYYY-MM-DD HH:MM` のJST）。

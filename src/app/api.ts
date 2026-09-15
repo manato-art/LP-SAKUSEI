@@ -227,6 +227,16 @@ export interface AlertSettings {
   notify: { service: NotifyServiceName; destination_id: string }[]
 }
 
+/** 定期レポートに載せるもの（サーバー側は mock-server/report-items.ts） */
+export interface ReportItemsInput {
+  basics: boolean
+  score: boolean
+  versions: boolean
+  heatmap: boolean
+  compare: boolean
+  cost: boolean
+}
+
 /** 送り先に選べるサービス。LINE Notifyは2025-03-31に終了しているので公式アカウント（Messaging API）。 */
 export type NotifyServiceName = 'slack' | 'chatwork' | 'line'
 
@@ -658,12 +668,14 @@ export const api = {
     name: string
     span: string
     target: { service: NotifyServiceName; id: string }
+    report_items?: ReportItemsInput
   }) =>
     request<{ ok: boolean }>('POST', '/notify/run', {
       name: input.name,
       span: input.span,
       service: input.target.service,
       destination_id: input.target.id,
+      report_items: input.report_items,
     }),
   /** 通知を試し送りする */
   testNotify: (target: { service: NotifyServiceName; id: string }) =>
@@ -728,6 +740,7 @@ export const api = {
     description?: string
     schedule?: { kind: string; hour: string; minute: string; weekdays: readonly number[] }
     span?: string
+    report_items?: ReportItemsInput
     notify?: { service: NotifyServiceName; destination_id: string } | null
   }) => request<{ task: Task }>('POST', '/tasks', input),
   /** タスク更新 */

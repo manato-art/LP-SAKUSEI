@@ -11,6 +11,7 @@ import { jstNow, type JstNow } from './lib/jst.ts'
 import { findAlerts, notifyList } from './alerts.ts'
 import { sendNotification } from './notify.ts'
 import { buildTaskReport } from './task-report.ts'
+import { normalizeReportItems } from './report-items.ts'
 import { getState, setState } from './store/store.ts'
 import type { Task } from './store/types.ts'
 
@@ -121,7 +122,7 @@ export async function tick(now: JstNow = jstNow()): Promise<number> {
       await sendNotification(
         task.notify.service,
         task.notify.destination_id,
-        buildTaskReport(task.title, task.span),
+        buildTaskReport(task.title, task.span, new Date(), normalizeReportItems(task.report_items)),
       )
     } catch (error) {
       recordRun(task.uid, slot, (error as Error).message)

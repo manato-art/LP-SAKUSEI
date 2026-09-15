@@ -10,6 +10,7 @@
 import { api } from '../api.ts'
 import { T, el, toast } from '../ui.ts'
 import { buildNotifyTarget } from '../panels/notify-target.ts'
+import { buildReportItemsField } from '../panels/report-items-field.ts'
 import {
   MINUTES,
   REPORT_SPANS,
@@ -230,6 +231,9 @@ export function renderTaskForm(
   // 通知先。未設定なら取得手順、設定済みなら送り先の選択が出る
   const notifyField = buildNotifyTarget()
 
+  // レポートに載せるもの。減らせば短い通知に、全部入れれば1通で状況が分かる
+  const itemsField = buildReportItemsField()
+
   const desc = document.createElement('input')
   desc.type = 'text'
   desc.className = 'tc-input'
@@ -271,6 +275,7 @@ export function renderTaskForm(
           weekdays: [...chosenDays],
         },
         span: span.value,
+        report_items: itemsField.value(),
         notify: target === null ? null : { service: target.service, destination_id: target.id },
       })
       .then(
@@ -282,7 +287,12 @@ export function renderTaskForm(
          */
         if (scheduleKind === 'once' && target !== null) {
           try {
-            await api.runTaskNow({ name: title, span: span.value, target })
+            await api.runTaskNow({
+              name: title,
+              span: span.value,
+              target,
+              report_items: itemsField.value(),
+            })
             toast('タスクを作成し、通知を送りました')
           } catch (error) {
             // タスク自体は作れているので、送れなかったことだけを伝える
@@ -310,6 +320,7 @@ export function renderTaskForm(
     labelled('スケジュール', true, scheduleRow),
     labelled('実行結果の通知', false, notifyField.el),
     labelled('レポート内容', true, span),
+    labelled('レポートに載せるもの', false, itemsField.el),
     labelled('説明', false, desc),
     submit,
   )
