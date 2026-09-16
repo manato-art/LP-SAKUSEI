@@ -11,6 +11,7 @@
  * ズレると「どちらの数字を信じればいいのか」が分からない画面になるので、
  * 内訳をクライアント側で作り直さないこと。
  */
+import { buildBotNote } from './bot-note-el.ts'
 import { T, el, emptyState } from '../ui.ts'
 import { jstDateKey, jstParts } from '../jst.ts'
 import {
@@ -43,6 +44,8 @@ interface DashboardData {
   kpi: Kpi
   by_ab_test: PageBreakdown[]
   series: DashboardSeries[]
+  /** 期間内に除いたボットの件数（全ページぶん。数字には入れていない） */
+  bot_hits?: number
 }
 
 type DashboardTab = '全体' | '各ページ'
@@ -155,6 +158,8 @@ function renderDashboardBody(
     return
   }
 
+  // 数字にボットが入っていないことと、除いた件数（2026-09-16・本人の依頼）
+  wrap.append(buildBotNote(data.bot_hits ?? 0))
   if (tab === '各ページ') renderByPage(wrap, data)
   else renderTotals(wrap, data)
 

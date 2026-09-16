@@ -31,6 +31,8 @@ import { masterStyleIframeCss } from '../../src/app/master-style.ts'
 import { withAutoplayVideos } from '../../src/app/lp-video.ts'
 import { buildAnimCss, buildAnimRuntimeScript } from '../../src/app/anim/anim-presets.ts'
 import { buildCvScriptBody, buildKeepUidScriptBody, buildTrackingScriptBody } from '../../src/shared/tracking-tag.ts'
+import { isBotAccess } from '../lib/bot-detect.ts'
+import { recordBotHit } from '../store/bot-hits.ts'
 import { attributeConversion, recordTouch, toVisitorId } from '../store/visitor-touches.ts'
 import { buildVisitorContext, pickDeliveryVersion } from './delivery-targeting.ts'
 import { canonicalHost, isServableOnHost } from '../lib/delivery-host.ts'
@@ -538,6 +540,8 @@ deliveryRouter.post('/lp/:uid/__track', (req, res) => {
     u?: unknown
     /** 訪問者の目印（LPのリンクに付く squadbeyond_uid）。CVをVersion別に数える照らし合わせに使う */
     vid?: unknown
+    /** 計測タグが自動操作中（navigator.webdriver）のとき 1 */
+    wd?: unknown
   }
   const versionUid = typeof body.version === 'string' ? body.version : ''
   const vid = toVisitorId(body.vid)
@@ -558,6 +562,13 @@ deliveryRouter.post('/lp/:uid/__track', (req, res) => {
     params: queryPairsOf(body.u, req),
     excluded: false,
     exclude_token: excludeTokenFromCookie(req.get('cookie')),
+  }
+  // ボット（検索エンジンの巡回・リンクのプレビュー・自動操作のブラウザ）は何も数えない（2026-09-16）。
+  // 件数だけ表示のときに残す（画面の「ボットは含めていません（◯件）」の根拠）。
+  if (isBotAccess(req.get('user-agent') ?? '', body)) {
+    if (body.event === 'pv') setState((st) => ({ ...st, botHits: recordBotHit(st.botHits, abTest.uid, date) }))
+    res.json({ ok: true, bot: true })
+    return
   }
   const isExcluded = shouldExclude(visitor, getState().reportExclusions)
   if (body.event === 'pv') {

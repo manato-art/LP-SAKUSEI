@@ -165,6 +165,8 @@ export interface ReportResponse {
   period: { start_date: string; end_date: string }
   /** 画面上の「Version」プルダウンに出す一覧（絞り込みで減らさない） */
   version_options?: { uid: string; name: string }[]
+  /** 期間内に除いたボットの件数（数字には入れていない） */
+  bot_hits?: number
 }
 
 /**

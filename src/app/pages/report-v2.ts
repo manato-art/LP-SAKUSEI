@@ -7,6 +7,7 @@
  * 構成（指定画像どおり）:
  *   フィルター行 → KPIカード7枚 → クリエイティブレポート → レポート一覧 → Branch Operation
  */
+import { buildBotNote } from './bot-note-el.ts'
 import { api, type ReportKpi, type ReportResponse } from '../api.ts'
 import { toast } from '../ui.ts'
 import {
@@ -305,6 +306,8 @@ export async function buildReportBody(deps: ReportBodyDeps): Promise<HTMLElement
       versionOptions: deps.report.version_options ?? [],
       onFilterChange: deps.onFilterChange,
     }),
+    // 数字にボットが入っていないことと、除いた件数（2026-09-16・本人の依頼）
+    buildBotNote(deps.report.bot_hits ?? 0),
     buildKpiCards({ totals: deps.report.totals, daily: deps.report.daily, previous }),
     buildCreativeReport({
       daily: deps.report.daily,

@@ -19,6 +19,8 @@ import { getState } from './store/store.ts'
 import { deriveKpi, isWithin, sumPrimary, toDateKey } from './store/metrics.ts'
 import { exitPeak, scrollCountsForAbTest } from './store/scroll-counts.ts'
 import { DEFAULT_REPORT_ITEMS, type ReportItems } from './report-items.ts'
+import { botHitCount } from './store/bot-hits.ts'
+import { botNoteText } from '../src/shared/bot-note.ts'
 import type { DerivedKpi } from './store/metrics.ts'
 import type { State } from './store/types.ts'
 
@@ -182,6 +184,9 @@ export function buildTaskReport(
             (missing === 0 ? '' : `（${missing}ページは広告費が未取込のため除く）`),
     )
   }
+  lines.push(
+    `　${botNoteText(botHitCount(state.botHits, { start: range.start, end: range.end }))}`,
+  )
   lines.push('', 'ページ別:')
 
   /* ── ページごと ── */

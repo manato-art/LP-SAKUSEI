@@ -451,6 +451,7 @@ export interface TaskSchedule {
 }
 
 import type { ReportItems } from '../report-items.ts'
+import type { BotHit } from './bot-hits.ts'
 
 /** どこへ送るか。未設定なら通知しない。LINEだけ destination_id が空でよい（＝友だち全員へ） */
 export interface TaskNotify {
@@ -923,6 +924,11 @@ export interface State {
   creativeReportColumns: readonly string[]
   /** 配信リクエストの記録（直近ぶんだけ保持する） */
   requestLogs: readonly RequestLogEntry[]
+  /**
+   * 除いたボットの件数（ページ×日・store/bot-hits.ts・2026-09-16）。
+   * 画面の「ボットは含めていません（◯件）」の根拠。数字そのものには一切入れていない。
+   */
+  botHits: readonly BotHit[]
   /** 訪問者の目印ごとの「見た・押した」記録（CVをVersion別に数えるため。1日分だけ持つ・store/visitor-touches.ts） */
   visitorTouches: readonly VisitorTouch[]
   notificationSettings: readonly NotificationSetting[]

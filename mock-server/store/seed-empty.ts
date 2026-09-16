@@ -109,6 +109,7 @@ export function createEmptyState(): State {
     // クリエイティブレポートの列。採取した初期状態（チェックが付いていた5つ）
     creativeReportColumns: ['adSpending', 'ctr', 'cv', 'cvr', 'cpa'],
     requestLogs: [],
+    botHits: [],
     htmlParts: [],
     metrics: [],
 

@@ -12,6 +12,7 @@
  *             画面1枚ぶんの幅(fv) / 最初の計測リンクの位置(offer) /
  *             着地URLの広告パラメータ(params・utm_* のみ)
  *             ＝ FVER・SVER・FSVER・OAR の材料（2026-09-15）
+ *   wd      : 自動操作中のブラウザ（navigator.webdriver）のときだけ 1。サーバーはボットとして数えない（2026-09-16）
  *   vid     : pv / click に付ける訪問者の目印（Cookie _sb_tu、押したリンクに付いた squadbeyond_uid）。
  *             CVタグから届いた成果を、この表示・クリックのVersionに結びつける（2026-09-11）
  *             離脱時(pagehide/visibilitychange)に1回だけまとめて送る
@@ -41,6 +42,8 @@ export function buildTrackingScriptBody(endpoint: string, versionUid?: string): 
   /* 訪問者の目印（SquadBeyond 本体と同じ Cookie _sb_tu）。CVタグの成果を、この表示・クリックに結びつける */
   var VID=cookie('_sb_tu');
   function post(obj){
+    /* 自動操作中のブラウザ（Selenium・Puppeteer・Playwright）はサーバーで数えない。人のときは何も付けない */
+    if(navigator.webdriver===true)obj.wd=1;
     var s=JSON.stringify(V===null?obj:Object.assign({version:V},obj));
     try{
       if(navigator.sendBeacon&&navigator.sendBeacon(U,new Blob([s],{type:'text/plain'})))return;
@@ -161,7 +164,10 @@ export function buildCvScriptBody(endpoint: string): string {
   if(!uid)return;
   // 売上も計上する場合: window.__sbCvAmount = 12800 をこのタグより前に置く
   var amt=(typeof window.__sbCvAmount==='number')?window.__sbCvAmount:0;
-  var s=JSON.stringify({event:'cv',amount:amt,vid:uid});
+  var o={event:'cv',amount:amt,vid:uid};
+  /* 自動操作中のブラウザ（動作確認など）の成果は数えない。人のときは何も付けない */
+  if(navigator.webdriver===true)o.wd=1;
+  var s=JSON.stringify(o);
   try{
     if(navigator.sendBeacon&&navigator.sendBeacon(U,new Blob([s],{type:'text/plain'})))return;
   }catch(e){}

@@ -2,6 +2,7 @@
  * ダッシュボード（企画書 §9-2・§10-3）。
  * 新規アカウント（空）では KPI は全て0、series は日付だけ並ぶ空グラフになる（§1-4）。
  */
+import { botHitCount } from '../store/bot-hits.ts'
 import { Router } from 'express'
 import { aggregate, dateRange, deriveKpi, isWithin, parseDateKey } from '../store/metrics.ts'
 import { getState } from '../store/store.ts'
@@ -81,6 +82,8 @@ dashboardRouter.get('/teams/dashboard', (req, res) => {
     new_ab_tests: newAbTests,
     new_versions: newVersions,
     period: { start_date: startDate, end_date: endDate },
+    /** 期間内に除いたボットの件数（全ページぶん。数字には入れていない） */
+    bot_hits: empty ? 0 : botHitCount(state.botHits, { start: startDate, end: endDate }),
   })
 })
 

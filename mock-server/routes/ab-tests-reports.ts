@@ -13,6 +13,7 @@ import { ExternalPageError, fetchExternalPage } from '../external-page.ts'
 import { applyEmptyState } from '../lib/mock-state.ts'
 import { findAbTest, notFound } from './ab-tests-shared.ts'
 import { scrollCounts, scrollCountsForAbTest } from '../store/scroll-counts.ts'
+import { botHitCount } from '../store/bot-hits.ts'
 import type { ParameterScope, State } from '../store/types.ts'
 
 export const abTestsReportsRouter: Router = Router()
@@ -192,6 +193,8 @@ function reportRows(uid: string, scope: 'version' | 'lp' | 'creative', query: un
     /** レポートタブ「デイリーレポート」表の日付別の行（§10-5・両端含む） */
     daily: dailyKpiSeries(pickedMetrics, startDate, endDate),
     period: { start_date: startDate, end_date: endDate },
+    /** 期間内に除いたボットの件数（数字には入れていない。画面の断り書きに添える） */
+    bot_hits: botHitCount(state.botHits, { abTestUids: [abTest.uid], start: startDate, end: endDate }),
   }
 }
 
