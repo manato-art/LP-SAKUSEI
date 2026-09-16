@@ -12,6 +12,7 @@
  *             画面1枚ぶんの幅(fv) / 最初の計測リンクの位置(offer) /
  *             着地URLの広告パラメータ(params・utm_* のみ)
  *             ＝ FVER・SVER・FSVER・OAR の材料（2026-09-15）
+ *   load    : ヒートマップに添える、読み込み完了までの時間 { ms, done }（表示が遅い人の割合・2026-09-16）
  *   wd      : 自動操作中のブラウザ（navigator.webdriver）のときだけ 1。サーバーはボットとして数えない（2026-09-16）
  *   vid     : pv / click に付ける訪問者の目印（Cookie _sb_tu、押したリンクに付いた squadbeyond_uid）。
  *             CVタグから届いた成果を、この表示・クリックのVersionに結びつける（2026-09-11）
@@ -128,11 +129,27 @@ export function buildTrackingScriptBody(endpoint: string, versionUid?: string): 
     }
     return best;
   }
+  /* 読み込み完了までの時間（表示の遅さ）。終わっていなければ、帰るまでの時間を done:0 で返す。
+     遅くて帰った人ほど「終わった記録」を残さないので、捨てずに送る。測れなければ null。 */
+  function loadInfo(){
+    try{
+      if(typeof performance==='undefined')return null;
+      var n=performance.getEntriesByType&&performance.getEntriesByType('navigation')[0];
+      if(n&&n.loadEventEnd>0)return {ms:Math.round(n.loadEventEnd),done:1};
+      var t=performance.timing;
+      if(t&&t.loadEventEnd>0&&t.navigationStart>0)return {ms:t.loadEventEnd-t.navigationStart,done:1};
+      if(typeof performance.now==='function')return {ms:Math.round(performance.now()),done:0};
+    }catch(e){}
+    return null;
+  }
   function flush(){
     if(sent)return; sent=true; tick();
     for(var i=0;i<=maxBand;i++)reach[i]=1;
-    post({event:'heatmap',bands:B,reach:reach,dwell:dwell,exit_band:curBand(),
-      fv:fvBands(),offer:offerBand(),params:PRM,clicks:clicks});
+    var body={event:'heatmap',bands:B,reach:reach,dwell:dwell,exit_band:curBand(),
+      fv:fvBands(),offer:offerBand(),params:PRM,clicks:clicks};
+    var ld=loadInfo();
+    if(ld)body.load=ld;
+    post(body);
   }
   window.addEventListener('pagehide',flush);
   document.addEventListener('visibilitychange',function(){if(document.hidden)flush()});

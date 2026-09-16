@@ -21,7 +21,7 @@ const yen = (v: number | null): string =>
 const int = (v: number | null): string => (v === null ? '-' : Math.round(v).toLocaleString('ja-JP'))
 const pct = (v: number | null): string => (v === null ? '-' : `${(v * 100).toFixed(2)}%`)
 
-type SortKey = 'name' | 'ad_cost' | 'pv' | 'click' | 'ctr' | 'cv' | 'cvr' | 'cpa'
+type SortKey = 'name' | 'ad_cost' | 'pv' | 'click' | 'ctr' | 'cv' | 'cvr' | 'cpa' | 'slow'
 
 function sortValue(row: ReportVersionRow, key: SortKey): number | string {
   switch (key) {
@@ -41,6 +41,8 @@ function sortValue(row: ReportVersionRow, key: SortKey): number | string {
       return row.cvr ?? -1
     case 'cpa':
       return row.cpa ?? -1
+    case 'slow':
+      return row.speed?.slow_share ?? -1
   }
 }
 
@@ -61,6 +63,19 @@ const RESULT_COLS: readonly Col[] = [
   { key: 'cv', label: 'CV', num: true, cell: (r) => int(r.cv) },
   { key: 'cvr', label: 'CVR', num: true, cell: (r) => pct(r.cvr) },
   { key: 'cpa', label: 'CPA', num: true, cell: (r) => yen(r.cpa) },
+]
+
+/**
+ * 表示が遅い人の割合（2026-09-16・本人の依頼）。人数を添えるのは、数人で割った率を信じないため。
+ * 記録が無ければ「-」（0%と言わない）。
+ */
+const speedCell = (speed: ReportVersionRow['speed']): string =>
+  speed === undefined || speed.slow_share === null
+    ? '-'
+    : `${pct(speed.slow_share)}（${speed.samples.toLocaleString('ja-JP')}人）`
+
+const SPEED_COLS: readonly Col[] = [
+  { key: 'slow', label: '3秒以上', num: true, cell: (r) => speedCell(r.speed) },
 ]
 
 function sortableTh(col: { key: SortKey; label: string; num: boolean }, state: {
@@ -163,12 +178,16 @@ export function buildReportList(deps: ReportListDeps): HTMLElement {
     res.className = 'group'
     res.colSpan = RESULT_COLS.length
     res.textContent = '成果'
+    const speed = document.createElement('th')
+    speed.className = 'group'
+    speed.colSpan = SPEED_COLS.length
+    speed.textContent = '表示速度'
     const menu = document.createElement('th')
     menu.rowSpan = 2
-    r1.append(perf, res, menu)
+    r1.append(perf, res, speed, menu)
 
     const r2 = document.createElement('tr')
-    for (const c of [...PERF_COLS, ...RESULT_COLS]) r2.append(sortableTh(c, state, onSort))
+    for (const c of [...PERF_COLS, ...RESULT_COLS, ...SPEED_COLS]) r2.append(sortableTh(c, state, onSort))
     thead.append(r1, r2)
 
     const tbody = document.createElement('tbody')
@@ -189,7 +208,7 @@ export function buildReportList(deps: ReportListDeps): HTMLElement {
         // 出し分けはVersion側の設定。レポートは端末別に分けていないので「全て」。
         cell('デバイス', '全て'),
       )
-      for (const c of [...PERF_COLS, ...RESULT_COLS]) {
+      for (const c of [...PERF_COLS, ...RESULT_COLS, ...SPEED_COLS]) {
         tr.append(cell(c.label, c.cell(row), true))
       }
       const last = document.createElement('td')

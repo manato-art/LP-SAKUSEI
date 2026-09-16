@@ -152,6 +152,8 @@ export interface ReportVersionRow extends ReportKpi {
   children?: ReportVersionRow[]
   /** 端末の出し分け設定（Branch Operation の「端末」で絞るのに使う） */
   device_targets?: { sp: boolean; tablet: boolean; pc: boolean }
+  /** 読み込みに3秒以上かかった人の割合と、測れた人数（記録が無ければ slow_share は null） */
+  speed?: { slow_share: number | null; samples: number }
 }
 
 export interface ReportDailyRow extends ReportKpi {

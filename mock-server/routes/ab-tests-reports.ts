@@ -14,6 +14,7 @@ import { applyEmptyState } from '../lib/mock-state.ts'
 import { findAbTest, notFound } from './ab-tests-shared.ts'
 import { scrollCounts, scrollCountsForAbTest } from '../store/scroll-counts.ts'
 import { botHitCount } from '../store/bot-hits.ts'
+import { speedSummary } from '../store/page-speed.ts'
 import type { ParameterScope, State } from '../store/types.ts'
 
 export const abTestsReportsRouter: Router = Router()
@@ -164,6 +165,8 @@ function reportRows(uid: string, scope: 'version' | 'lp' | 'creative', query: un
           })),
       /** そのVersionに来た広告パラメータごとの行（実物はVersionの下にぶら下がる） */
       children: parameterRows(state, abTest.uid, version.uid, startDate, endDate),
+      /** 読み込みに3秒以上かかった人の割合と人数（store/page-speed.ts・2026-09-16） */
+      speed: speedSummary(state.pageSpeedStats, { versionUids: [version.uid], start: startDate, end: endDate }),
     }
   })
   const abTestMetrics = state.metrics.filter((m) => m.entity_uid === abTest.uid)

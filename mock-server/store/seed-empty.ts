@@ -110,6 +110,7 @@ export function createEmptyState(): State {
     creativeReportColumns: ['adSpending', 'ctr', 'cv', 'cvr', 'cpa'],
     requestLogs: [],
     botHits: [],
+    pageSpeedStats: [],
     htmlParts: [],
     metrics: [],
 
