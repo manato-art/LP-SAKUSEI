@@ -227,6 +227,8 @@ export interface AlertSettings {
   cv_silent_hours: number
   /** その日のCPAの上限（円）。0 ＝ 見ない */
   cpa_limit: number
+  /** LPの計測リンクの飛び先が開けなくなったら知らせる */
+  link_check: boolean
   /** 送り先（何件でも）。空＝送らない。LINEだけ destination_id が空でよい＝友だち全員へ。 */
   notify: { service: NotifyServiceName; destination_id: string }[]
 }

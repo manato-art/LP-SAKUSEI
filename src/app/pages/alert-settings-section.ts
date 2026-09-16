@@ -136,6 +136,23 @@ export async function mountAlertSettings(content: HTMLElement): Promise<void> {
     ),
   )
 
+  // リンク切れ（2026-09-16）
+  const linkCheck = document.createElement('input')
+  linkCheck.type = 'checkbox'
+  linkCheck.checked = settings.link_check
+  linkCheck.style.cssText = 'width:18px;height:18px;cursor:pointer'
+  linkCheck.addEventListener('change', () => save({ link_check: linkCheck.checked }))
+  section.append(
+    row(
+      'リンクが開けなくなったら知らせる',
+      '配信中のページの計測リンク（カート・申込フォーム・ASPなど）を10分おきに確かめます。' +
+        '開けなかったら1分後にもう一度確かめ、2回続けて開けなければ知らせます。' +
+        'ボット対策で門前払いされた（403など）だけのときは知らせません。' +
+        '確かめるときはボットと名乗り、中身を読まない方法（HEAD）で見るので、ASPのクリック数には数えられにくくしています。',
+      linkCheck,
+    ),
+  )
+
   // 送り先（何件でも）
   const list = el('div', { style: 'display:flex;flex-direction:column;gap:14px' })
   const rows: { host: HTMLElement; target: () => NotifyDestination | null }[] = []

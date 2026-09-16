@@ -63,6 +63,32 @@ describe('古い保存データの読み戻し', () => {
   })
 })
 
+describe('異常のお知らせの設定も中まで埋める（2026-09-16・リンクの見張りを足したため）', () => {
+  it('link_check が無い保存データは「入」で埋まり、保存済みの送り先や数値は消えない', async () => {
+    const old = createEmptyState() as unknown as Record<string, unknown>
+    old['alertSetting'] = {
+      enabled: true,
+      cv_silent_hours: 12,
+      cpa_limit: 8000,
+      notify: [{ service: 'line', destination_id: '' }],
+    }
+    writeFileSync(join(dataDir, 'state.json'), JSON.stringify(old))
+    vi.stubEnv('DATA_DIR', dataDir)
+    vi.resetModules()
+    const { loadPersistedState } = await import('../mock-server/store/persistence.ts')
+    const loaded = loadPersistedState()
+    if (loaded === null) throw new Error('保存データを読み戻せませんでした')
+
+    expect(loaded.alertSetting).toEqual({
+      enabled: true,
+      cv_silent_hours: 12,
+      cpa_limit: 8000,
+      link_check: true,
+      notify: [{ service: 'line', destination_id: '' }],
+    })
+  })
+})
+
 describe('トークンの読み出しは「無い」を「入っている」と読まない', () => {
   const keepLine = process.env['LINE_CHANNEL_ACCESS_TOKEN']
   const keepChatwork = process.env['CHATWORK_API_TOKEN']

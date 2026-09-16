@@ -111,6 +111,7 @@ export function createEmptyState(): State {
     requestLogs: [],
     botHits: [],
     pageSpeedStats: [],
+    linkChecks: [],
     htmlParts: [],
     metrics: [],
 
@@ -120,6 +121,7 @@ export function createEmptyState(): State {
       enabled: false,
       cv_silent_hours: 6,
       cpa_limit: 0,
+      link_check: true,
       notify: [],
     },
     alertSentSlots: [],

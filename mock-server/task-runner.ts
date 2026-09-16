@@ -10,6 +10,7 @@
 import { jstNow, type JstNow } from './lib/jst.ts'
 import { findAlerts, notifyList } from './alerts.ts'
 import { sendNotification } from './notify.ts'
+import { runLinkChecks } from './link-check-runner.ts'
 import { buildTaskReport } from './task-report.ts'
 import { normalizeReportItems } from './report-items.ts'
 import { getState, setState } from './store/store.ts'
@@ -142,6 +143,9 @@ export function startTaskRunner(): void {
       /* 1回失敗しても見張り自体は止めない */
     })
     void runAlerts().catch(() => {
+      /* 同上 */
+    })
+    void runLinkChecks().catch(() => {
       /* 同上 */
     })
   }, 30_000)

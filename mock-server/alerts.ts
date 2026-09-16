@@ -15,7 +15,8 @@ const HOUR_SECONDS = 3600
 /** 「もともとCVが来ていたページか」を見る窓（日） */
 const RECENT_DAYS = 7
 
-export type AlertKind = 'cv_stopped' | 'cpa_over'
+/** 知らせの種類。link_broken はリンクの見張り（link-check.ts）が出す */
+export type AlertKind = 'cv_stopped' | 'cpa_over' | 'link_broken'
 
 /** 送り先。LINEだけ destination_id が空でよい（＝友だち全員へ）。 */
 export interface AlertNotify {
@@ -58,6 +59,8 @@ export interface AlertSetting {
   cv_silent_hours: number
   /** その日のCPAの上限（円）。0 ＝ 見ない */
   cpa_limit: number
+  /** リンク切れの見張り（link-check.ts）。この判定では使わない */
+  link_check?: boolean
   /** 送り先（何件でも）。古い形（1件 or null）も `notifyList()` で読める。 */
   notify: readonly AlertNotify[] | AlertNotify | null
 }
@@ -93,14 +96,21 @@ const yen = (n: number): string => `${Math.round(n).toLocaleString('ja-JP')}円`
  * LINE公式アカウントの無料枠は月200通しかなく、数日で使い切ると**その月は届かなくなる**。
  * 止まっていることは1日1回知れば足りるので、合図に**時刻を入れない**。
  */
-function slotOf(now: number, pageUid: string, kind: AlertKind): string {
+export function slotOf(now: number, pageUid: string, kind: AlertKind): string {
   const t = jstNow(new Date(now * 1000))
   return `${pageUid}|${kind}|${t.date}`
 }
 
-/** 配信中のページだけ見る（止めているページのCVが来ないのは異常ではない） */
-function isDelivering(adStatus: string): boolean {
-  return adStatus === 'delivered'
+/**
+ * 見張ってよいページか（2026-09-16に修正）。
+ *
+ * 以前は「配信ステータスが配信中」だけを見ていたが、本番では**全ページが「準備中」のまま配信**されていて
+ * 一度も鳴らなかった（SquadBeyondでも配信ステータスは配信に影響しないラベル）。
+ * ラベルで決めるのは、明示的に止めたと分かるもの（停止中・終了）を外すことだけにする。
+ * 実際に動いているかは、各判定がCV・配信金額・PVで見る（CVが来ていたページだけ「止まった」と言う、など）。
+ */
+export function isWatchable(page: { ad_status: string }): boolean {
+  return page.ad_status !== 'stopping' && page.ad_status !== 'finished'
 }
 
 export function findAlerts(input: AlertInput): Alert[] {
@@ -114,7 +124,7 @@ export function findAlerts(input: AlertInput): Alert[] {
   const recentSeconds = RECENT_DAYS * 24 * HOUR_SECONDS
 
   for (const page of input.pages) {
-    if (!isDelivering(page.ad_status)) continue
+    if (!isWatchable(page)) continue
     const mine = input.conversions.filter((c) => c.ab_test_uid === page.uid)
 
     /* ── CVが止まった ── */

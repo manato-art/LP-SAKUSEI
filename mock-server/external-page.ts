@@ -116,7 +116,11 @@ async function assertPublicHost(hostname: string): Promise<void> {
 }
 
 /** URLとして妥当で、http/https で、公開ホスト宛であることを確かめる。 */
-async function assertFetchable(url: URL): Promise<void> {
+/**
+ * 取りに行ってよい宛先か（http/https で、私有・ループバック・メタデータのアドレスを含まない）。
+ * リンクの見張り（link-check.ts）も転送のたびにこれを通す。
+ */
+export async function assertFetchable(url: URL): Promise<void> {
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
     throw new ExternalPageError('http / https のURLだけ取得できます。', 'bad_scheme')
   }

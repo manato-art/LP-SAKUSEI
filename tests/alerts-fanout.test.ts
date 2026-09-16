@@ -73,7 +73,7 @@ function seedStoppedPage(notify: AlertNotify[]): void {
         status: 'counted',
       },
     ],
-    alertSetting: { enabled: true, cv_silent_hours: 6, cpa_limit: 0, notify },
+    alertSetting: { enabled: true, cv_silent_hours: 6, cpa_limit: 0, link_check: false, notify },
     alertSentSlots: [],
   }))
 }

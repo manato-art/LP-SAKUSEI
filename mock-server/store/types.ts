@@ -453,6 +453,7 @@ export interface TaskSchedule {
 import type { ReportItems } from '../report-items.ts'
 import type { BotHit } from './bot-hits.ts'
 import type { PageSpeedStat } from './page-speed.ts'
+import type { LinkCheck } from '../link-check.ts'
 
 /** どこへ送るか。未設定なら通知しない。LINEだけ destination_id が空でよい（＝友だち全員へ） */
 export interface TaskNotify {
@@ -801,6 +802,8 @@ export interface AlertSettingState {
   cv_silent_hours: number
   /** その日のCPAの上限（円）。0 ＝ 見ない */
   cpa_limit: number
+  /** LPの計測リンクの飛び先が開けなくなったら知らせる（link-check.ts・2026-09-16） */
+  link_check: boolean
   /**
    * 送り先。何件でも持てる（チャットワークとLINEの両方、など）。空＝送らない。
    * この機能が出た日の形（1件のオブジェクト or null）で残っている状態もあるので、
@@ -925,6 +928,8 @@ export interface State {
   creativeReportColumns: readonly string[]
   /** 配信リクエストの記録（直近ぶんだけ保持する） */
   requestLogs: readonly RequestLogEntry[]
+  /** リンク切れの見張りの記録（リンクごとの続けて開けなかった回数と次に確かめる時刻・link-check.ts） */
+  linkChecks: readonly LinkCheck[]
   /**
    * 表示の遅さ（ページ×Version×日の読み込み時間の分布・store/page-speed.ts・2026-09-16）。
    * レポートの「3秒以上」の材料。

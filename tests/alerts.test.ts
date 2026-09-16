@@ -163,6 +163,28 @@ describe('送りすぎない', () => {
   })
 })
 
+/**
+ * どのページを見張るか（2026-09-16に修正）。
+ *
+ * 以前は「配信ステータスが配信中」のページだけを見ていた。ところが本番では**全ページが「準備中」のまま**
+ * 配信されていて（SquadBeyondでも配信ステータスは配信に影響しないラベル）、一度も鳴らない状態だった。
+ * ラベルではなく実際の動きで見る。明示的に「停止中」「終了」にしたページだけは見ない。
+ */
+describe('見張るページ', () => {
+  const stopped = { conversions: [{ ab_test_uid: 'AB1', occurred_at: NOW - 8 * HOUR }] }
+
+  it('配信ステータスが「準備中」のままでも、CVが来ていたページは見張る', () => {
+    const alerts = findAlerts(input({ ...stopped, pages: [{ uid: 'AB1', title: '本命LP', ad_status: 'prepared' }] }))
+    expect(alerts.map((a) => a.kind)).toEqual(['cv_stopped'])
+  })
+
+  it('「終了」にしたページは見ない', () => {
+    const alerts = findAlerts(input({ ...stopped, pages: [{ uid: 'AB1', title: '本命LP', ad_status: 'finished' }] }))
+    expect(alerts).toEqual([])
+  })
+
+})
+
 describe('止めているとき', () => {
   it('お知らせを切っていれば何も出さない', () => {
     const alerts = findAlerts(
@@ -242,6 +264,7 @@ describe('見張りから呼ぶ', () => {
         enabled: true,
         cv_silent_hours: 6,
         cpa_limit: 0,
+        link_check: false,
         notify: [{ service: 'slack', destination_id: 'C1' }],
       },
       alertSentSlots: [],

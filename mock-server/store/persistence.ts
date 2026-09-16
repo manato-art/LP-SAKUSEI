@@ -55,7 +55,7 @@ function archivesNewestFirst(): string[] {
  * ここに書けるのは、決まった名前の値だけを持つ設定のかたまりに限る。
  * 配列や、利用者が作った物の入れ物を混ぜてはいけない（既定値で上書きしてしまう）。
  */
-const NESTED_SETTINGS_KEYS: readonly string[] = ['integrations']
+const NESTED_SETTINGS_KEYS: readonly string[] = ['integrations', 'alertSetting']
 
 /**
  * 永続化データにスキーマ進化で追加されたフィールドが欠けている場合、

@@ -61,7 +61,12 @@ const SILENT_HOURS_MAX = 72
 /** 送り先は必ず配列で返す（古い形で保存されていても画面が迷わない） */
 function alertSettingForClient(): AlertSettingState {
   const setting = getState().alertSetting
-  return { ...setting, notify: notifyList(setting.notify) }
+  return {
+    ...setting,
+    notify: notifyList(setting.notify),
+    // この設定が無かった頃の状態でも「入」として返す（見張り側も false のときだけ止める）
+    link_check: setting.link_check !== false,
+  }
 }
 
 settingsRouter.get('/settings/alerts', (_req, res) => {
@@ -74,6 +79,7 @@ settingsRouter.put('/settings/alerts', (req, res) => {
   const next = { ...current }
 
   if (typeof body['enabled'] === 'boolean') next.enabled = body['enabled']
+  if (typeof body['link_check'] === 'boolean') next.link_check = body['link_check']
 
   if (body['cv_silent_hours'] !== undefined) {
     const hours = body['cv_silent_hours']

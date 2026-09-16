@@ -17,6 +17,7 @@ interface Res {
     enabled: boolean
     cv_silent_hours: number
     cpa_limit: number
+    link_check: boolean
     notify: { service: string; destination_id: string }[]
   }
 }
@@ -154,5 +155,27 @@ describe('古い形の設定も読める', () => {
     expect(res.status).toBe(200)
     const got = await getJson<Res>(URL_PATH())
     expect(got.settings.notify).toEqual([{ service: 'chatwork', destination_id: '999' }])
+  })
+})
+
+describe('リンク切れの見張り（2026-09-16）', () => {
+  it('はじめは入（お知らせ自体を入れたら一緒に動く）', async () => {
+    const res = await getJson<Res>(URL_PATH())
+    expect(res.settings.link_check).toBe(true)
+  })
+
+  it('切にできて、保存すると残る', async () => {
+    await sendJson('PUT', URL_PATH(), { link_check: false })
+    const res = await getJson<Res>(URL_PATH())
+    expect(res.settings.link_check).toBe(false)
+  })
+
+  it('この設定が無かった頃の保存データでも「入」として返す', async () => {
+    setState((s) => {
+      const { link_check: _drop, ...rest } = s.alertSetting
+      return { ...s, alertSetting: rest as typeof s.alertSetting }
+    })
+    const res = await getJson<Res>(URL_PATH())
+    expect(res.settings.link_check).toBe(true)
   })
 })
