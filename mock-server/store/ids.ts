@@ -44,6 +44,7 @@ export const UID_KINDS = {
   htmlPart: 'HTMLPART',
   seminar: 'SEMINAR',
   introduction: 'INTRO',
+  scheduledSwitch: 'SWITCH',
 } as const
 
 export type UidKind = keyof typeof UID_KINDS

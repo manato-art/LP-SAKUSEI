@@ -9,6 +9,7 @@
  *
  *   confirmCard … はい/いいえ。消す操作は赤で出す（danger）
  *   promptCard  … 1行の入力を受け取る
+ *   formCard    … 中身（入力欄や一覧）を呼び出し側が組み立てる。決定に失敗したら開いたまま理由を出す
  *
  * どちらも Esc と背景クリックで取り消し、Enter で決定。
  * キーボードの移動はカードの中だけを回る（後ろの画面へ抜けない）。
@@ -189,6 +190,72 @@ export function chooseCard(options: ChooseOptions): Promise<string | null> {
       },
     })
     show(overlay, buttons[0] ?? cancel)
+  })
+}
+
+export interface FormCardOptions {
+  title: string
+  /** 本文（入力欄や一覧など、呼び出し側が組み立てる） */
+  body: HTMLElement
+  submitLabel: string
+  cancelLabel?: string
+  /** 決定。問題があれば理由を返す（カードは開いたまま出す）。null なら閉じる */
+  onSubmit: () => Promise<string | null>
+}
+
+/** 中身を呼び出し側が組み立てるカード。決定して閉じたら true、取り消しなら false。 */
+export function formCard(options: FormCardOptions): Promise<boolean> {
+  return new Promise((resolve) => {
+    const { overlay, card, footer, close } = buildShell(() => resolve(false))
+    card.append(header(options.title, false))
+
+    const body = div('sbd-body sbd-body-form')
+    const error = div('sbd-error')
+    error.hidden = true
+    body.append(options.body, error)
+    card.append(body, footer)
+
+    const cancel = ghostButton(options.cancelLabel ?? 'キャンセル')
+    const submit = actionButton(options.submitLabel, false)
+    footer.append(cancel, submit)
+
+    let busy = false
+    const done = (): void => {
+      if (busy) return
+      busy = true
+      submit.disabled = true
+      void options.onSubmit().then(
+        (message) => {
+          busy = false
+          submit.disabled = false
+          if (message !== null) {
+            error.textContent = message
+            error.hidden = false
+            return
+          }
+          close(() => resolve(true))
+        },
+        (failure: unknown) => {
+          busy = false
+          submit.disabled = false
+          error.textContent = failure instanceof Error ? failure.message : '保存できませんでした'
+          error.hidden = false
+        },
+      )
+    }
+    cancel.addEventListener('click', () => close(() => resolve(false)))
+    submit.addEventListener('click', done)
+
+    const focusables = [
+      ...options.body.querySelectorAll<HTMLElement>('input, select, button, textarea'),
+      cancel,
+      submit,
+    ]
+    wireKeys(overlay, focusables, {
+      onEscape: () => close(() => resolve(false)),
+      onEnter: done,
+    })
+    show(overlay, focusables[0] ?? submit)
   })
 }
 

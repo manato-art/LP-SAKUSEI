@@ -9,6 +9,7 @@
  *
  * 依存は一方向にしてある: このファイルは editor.ts を import しない。
  */
+import { openScheduledSwitchPanel } from '../panels/scheduled-switch-panel.ts'
 import { api, type Version } from '../api.ts'
 import { toast } from '../ui.ts'
 import { setVersionListMode } from '../panels/version-actions.ts'
@@ -263,7 +264,8 @@ export function renderVersionList(ctx: EditorContext): void {
   const addButton = list.querySelector<HTMLElement>(HOOK.addVersion)
   for (const card of list.querySelectorAll<HTMLElement>(HOOK.versionRow)) card.remove()
   // 前回の「さらに読み込む」を除去（再描画のたびに作り直す）
-  list.querySelector('.sb-vc-load-more')?.remove()
+  // 「Versionを追加」と「日時を決めて切り替える」の両方を消す（1つだけ消すと再描画のたびに増える）
+  for (const node of list.querySelectorAll('.sb-vc-load-more')) node.remove()
 
   const archivedMode = ctx.listMode === 'archived'
   const shown = ctx.versions.filter((v) => (archivedMode ? v.archived === true : v.archived !== true))
@@ -311,6 +313,24 @@ export function renderVersionList(ctx: EditorContext): void {
       }
     })
     list.append(loadMore)
+
+    // 日時を決めて配信割合を切り替える予約（2026-09-16・このシステムだけの機能）
+    const schedule = document.createElement('div')
+    schedule.className = 'sb-vc-load-more sb-vc-schedule'
+    const clock = document.createElement('span')
+    clock.style.cssText = 'display:inline-flex;color:#999999'
+    clock.innerHTML =
+      '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+      'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/>' +
+      '<path d="M12 7v5l3 2"/></svg>'
+    const scheduleLabel = document.createElement('span')
+    scheduleLabel.textContent = '日時を決めて切り替える'
+    scheduleLabel.style.cssText = 'font-size:13px;color:var(--sb-c-666666, #666666)'
+    schedule.append(clock, scheduleLabel)
+    schedule.addEventListener('click', () => {
+      void openScheduledSwitchPanel({ articleUid: ctx.articleUid, versions: ctx.versions })
+    })
+    list.append(schedule)
   }
   applySelectionMode(ctx, list)
 }

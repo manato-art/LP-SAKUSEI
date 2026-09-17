@@ -112,6 +112,7 @@ export function createEmptyState(): State {
     botHits: [],
     pageSpeedStats: [],
     linkChecks: [],
+    scheduledSwitches: [],
     htmlParts: [],
     metrics: [],
 

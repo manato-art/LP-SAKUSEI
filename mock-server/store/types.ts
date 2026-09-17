@@ -454,6 +454,7 @@ import type { ReportItems } from '../report-items.ts'
 import type { BotHit } from './bot-hits.ts'
 import type { PageSpeedStat } from './page-speed.ts'
 import type { LinkCheck } from '../link-check.ts'
+import type { ScheduledSwitch } from './scheduled-switches.ts'
 
 /** どこへ送るか。未設定なら通知しない。LINEだけ destination_id が空でよい（＝友だち全員へ） */
 export interface TaskNotify {
@@ -928,6 +929,8 @@ export interface State {
   creativeReportColumns: readonly string[]
   /** 配信リクエストの記録（直近ぶんだけ保持する） */
   requestLogs: readonly RequestLogEntry[]
+  /** 配信の切り替え予約（決めた日時に配信割合を切り替える・store/scheduled-switches.ts・2026-09-16） */
+  scheduledSwitches: readonly ScheduledSwitch[]
   /** リンク切れの見張りの記録（リンクごとの続けて開けなかった回数と次に確かめる時刻・link-check.ts） */
   linkChecks: readonly LinkCheck[]
   /**

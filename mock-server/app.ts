@@ -3,6 +3,7 @@
  * 3系統（api / workers / report）を localhost の同一モックにパスプレフィックスで集約する。
  * 本番ドメインはコード中に一切登場させない（§3-2・§13-F）。
  */
+import { scheduledSwitchesRouter } from './routes/scheduled-switches.ts'
 import express, { type Express, type NextFunction, type Request, type Response } from 'express'
 import { join, resolve, sep } from 'node:path'
 import { PREFIX, SERVE_DIST } from './config.ts'
@@ -127,6 +128,8 @@ export function createApp(): Express {
     // 中間ページタグ設定（名前付きのタグを1件ずつ）
     redirectPageTagsRouter,
     versionsRouter,
+    // 配信の切り替え予約（決めた日時に配信割合を切り替える）
+    scheduledSwitchesRouter,
     conversionsRouter,
     tasksRouter,
     teamsRouter,

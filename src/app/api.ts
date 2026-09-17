@@ -233,6 +233,18 @@ export interface AlertSettings {
   notify: { service: NotifyServiceName; destination_id: string }[]
 }
 
+/** 配信の切り替え予約（サーバー側は mock-server/store/scheduled-switches.ts） */
+export interface ScheduledSwitch {
+  uid: string
+  article_uid: string
+  /** 日本時間 'YYYY-MM-DDTHH:MM' */
+  run_at: string
+  ratios: { version_uid: string; ratio: number; name: string }[]
+  status: 'pending' | 'done' | 'failed' | 'canceled'
+  note: string
+  done_at: string | null
+}
+
 /** 定期レポートに載せるもの（サーバー側は mock-server/report-items.ts） */
 export interface ReportItemsInput {
   basics: boolean
@@ -480,6 +492,15 @@ export const api = {
       'GET',
       `/articles/${articleUid}/versions`,
     ),
+  /** 配信の切り替え予約（これからのもの＋最近の結果） */
+  scheduledSwitches: (articleUid: string) =>
+    request<{ switches: ScheduledSwitch[] }>('GET', `/articles/${articleUid}/scheduled_switches`),
+  createScheduledSwitch: (
+    articleUid: string,
+    input: { run_at: string; ratios: { version_uid: string; ratio: number }[] },
+  ) =>
+    request<{ switch: ScheduledSwitch }>('POST', `/articles/${articleUid}/scheduled_switches`, input),
+  cancelScheduledSwitch: (uid: string) => request<void>('DELETE', `/scheduled_switches/${uid}`),
   addVersion: (articleUid: string) =>
     request<{ version: Version }>('POST', `/articles/${articleUid}/versions`),
   saveVersion: (uid: string, patch: { html?: string; css?: string; name?: string }) =>
