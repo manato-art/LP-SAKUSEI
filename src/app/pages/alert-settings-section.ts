@@ -17,6 +17,7 @@ import { T, el, toast } from '../ui.ts'
 import { api, type AlertSettings } from '../api.ts'
 import { buildNotifyTarget, type NotifyDestination } from '../panels/notify-target.ts'
 import { savedTargets } from './alert-targets.ts'
+import { buildAlertTestBlock } from './alert-test-block.ts'
 import { ensureTaskFormCss } from './task-create.ts'
 
 const LABEL_STYLE = `font-size:14px;font-weight:500;color:${T.text}`
@@ -93,6 +94,8 @@ export async function mountAlertSettings(content: HTMLElement): Promise<void> {
     }),
   )
 
+  const testBlock = buildAlertTestBlock()
+
   /** 変えたらすぐ保存する（保存ボタンを押し忘れて鳴らない、を避ける） */
   const save = (patch: Partial<AlertSettings>): void => {
     void api
@@ -100,6 +103,8 @@ export async function mountAlertSettings(content: HTMLElement): Promise<void> {
       .then((out) => {
         settings = out.settings
         toast('異常のお知らせの設定を保存しました')
+        // 入切や送り先が変わると「いま見張っている対象」も変わる
+        testBlock.refresh()
       })
       .catch((error: unknown) => {
         toast(error instanceof Error ? error.message : '保存に失敗しました', 'error')
@@ -206,6 +211,9 @@ export async function mountAlertSettings(content: HTMLElement): Promise<void> {
     addButton,
   )
   section.append(notifyBlock)
+
+  // テスト（見本を送る・いま見張っている対象）
+  section.append(testBlock.el)
 
   content.append(section)
 }

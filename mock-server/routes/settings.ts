@@ -10,6 +10,8 @@ import { optionalBoolean, optionalString, requireString } from '../lib/validate.
 import { dateRangeParams, str } from '../lib/query.ts'
 import { isIpLike, matchesExclusion } from '../store/exclusions.ts'
 import { notifyList, type AlertNotify } from '../alerts.ts'
+import { alertCoverage, buildAlertSamples } from '../alert-test.ts'
+import { sendNotification } from '../notify.ts'
 import type {
   AlertSettingState,
   ExclusionCondition,
@@ -68,6 +70,39 @@ function alertSettingForClient(): AlertSettingState {
     link_check: setting.link_check !== false,
   }
 }
+
+/**
+ * お知らせのテスト（2026-09-17・本人の依頼）。見本を1通、決めた送り先すべてへ送る。
+ * テストなので、お知らせが切でも送る。「送った」記録（1日1通の合図）は増やさない（本物の知らせを止めない）。
+ */
+settingsRouter.post('/settings/alerts/test', (_req, res) => {
+  const setting = getState().alertSetting
+  const destinations = notifyList(setting.notify)
+  if (destinations.length === 0) {
+    res.status(422).json(errorEnvelope('validation_failed', '先に送り先を決めてください。'))
+    return
+  }
+  const text = buildAlertSamples(setting, Date.now())
+  void (async () => {
+    let sent = 0
+    const failures: { service: string; message: string }[] = []
+    for (const to of destinations) {
+      try {
+        await sendNotification(to.service, to.destination_id, text)
+        sent += 1
+      } catch (error) {
+        // 届かない原因（トークン・宛先・友だち追加など）が分かるよう、理由をそのまま返す
+        failures.push({ service: to.service, message: error instanceof Error ? error.message : '送れませんでした' })
+      }
+    }
+    res.json({ sent, failures })
+  })()
+})
+
+/** いま見張っている対象（読むだけ・何も送らない） */
+settingsRouter.get('/settings/alerts/coverage', (_req, res) => {
+  res.json(alertCoverage(getState(), Date.now()))
+})
 
 settingsRouter.get('/settings/alerts', (_req, res) => {
   res.json({ settings: alertSettingForClient() })

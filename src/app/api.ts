@@ -233,6 +233,18 @@ export interface AlertSettings {
   notify: { service: NotifyServiceName; destination_id: string }[]
 }
 
+/** いま見張っている対象（サーバー側は mock-server/alert-test.ts） */
+export interface AlertCoverage {
+  enabled: boolean
+  destinations: number
+  cv_pages: string[]
+  cpa_limit: number
+  link_check: boolean
+  link_pages: number
+  link_count: number
+  pending_switches: number
+}
+
 /** 配信の切り替え予約（サーバー側は mock-server/store/scheduled-switches.ts） */
 export interface ScheduledSwitch {
   uid: string
@@ -591,6 +603,11 @@ export const api = {
   /** ヒートマップの実測集計（計測タグ由来）。ラインの4モードぶんをVersionごとに返す。 */
   /** 異常のお知らせの設定（このシステムだけの機能） */
   alertSettings: () => request<{ settings: AlertSettings }>('GET', '/settings/alerts'),
+  /** お知らせの見本を送る（テスト。お知らせが切でも送る） */
+  alertTest: () =>
+    request<{ sent: number; failures: { service: string; message: string }[] }>('POST', '/settings/alerts/test', {}),
+  /** いま見張っている対象 */
+  alertCoverage: () => request<AlertCoverage>('GET', '/settings/alerts/coverage'),
   updateAlertSettings: (patch: Partial<AlertSettings>) =>
     request<{ settings: AlertSettings }>('PUT', '/settings/alerts', patch),
 

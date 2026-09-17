@@ -12,7 +12,8 @@ import { sendNotification } from './notify.ts'
 import { applySwitch, dueSwitches, type SwitchChange } from './store/scheduled-switches.ts'
 import { getState, setState } from './store/store.ts'
 
-function message(pageTitle: string, runAt: string, outcome: 'done' | 'failed', changes: SwitchChange[], note: string): string {
+/** 知らせの本文。見本（alert-test.ts）も同じものを使う */
+export function switchMessage(pageTitle: string, runAt: string, outcome: 'done' | 'failed', changes: SwitchChange[], note: string): string {
   const when = runAt.replace('T', ' ')
   if (outcome === 'failed') {
     return [`【予約した時刻に切り替えられませんでした】${pageTitle}`, `${when} の予約`, note].join('\n')
@@ -46,7 +47,7 @@ export async function runScheduledSwitches(now: Date = new Date()): Promise<numb
     const article = state.articles.find((a) => a.uid === sw.article_uid)
     const page = state.abTests.find((p) => p.id === article?.ab_test_id)
     const note = state.scheduledSwitches.find((x) => x.uid === sw.uid)?.note ?? ''
-    messages.push(message(page?.title ?? '（ページ名不明）', sw.run_at, applied.outcome, applied.changes, note))
+    messages.push(switchMessage(page?.title ?? '（ページ名不明）', sw.run_at, applied.outcome, applied.changes, note))
   }
 
   const setting = getState().alertSetting

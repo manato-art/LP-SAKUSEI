@@ -12,8 +12,8 @@
 import { jstNow } from './lib/jst.ts'
 
 const HOUR_SECONDS = 3600
-/** 「もともとCVが来ていたページか」を見る窓（日） */
-const RECENT_DAYS = 7
+/** 「もともとCVが来ていたページか」を見る窓（日）。見張り対象の表示（alert-test.ts）も同じ値を使う */
+export const RECENT_DAYS = 7
 
 /** 知らせの種類。link_broken はリンクの見張り（link-check.ts）が出す */
 export type AlertKind = 'cv_stopped' | 'cpa_over' | 'link_broken'
