@@ -31,7 +31,8 @@ import {
 } from './widget-library-storage.ts'
 import { insertWidget, openWidgetCreator } from './widget-creator.ts'
 import { openNocodePanel } from './nocode/nocode-panel.ts'
-import { cancelSamplePick, takeSamplePick } from './nocode/nocode-flow.ts'
+import { startBuilderWithSample } from './nocode/template-tab.ts'
+import { cancelSamplePick, isSamplePickArmed, takeSamplePick } from './nocode/nocode-flow.ts'
 import { newUid, rekeyUid } from './nocode/templates/kit.ts'
 import { placeholderLinkCount } from './link-placeholder.ts'
 
@@ -585,6 +586,7 @@ function wireCards(root: HTMLElement, quill: Quill, close: () => void): void {
       event.stopPropagation()
       openLargePreview(card, title)
     })
+    if (preview !== undefined) addUseAsScreens(card, preview, title, root, quill, close)
     add?.addEventListener('click', (event) => {
       event.stopPropagation()
       const raw = widgetBodyHtml(card)
@@ -607,6 +609,47 @@ function wireCards(root: HTMLElement, quill: Quill, close: () => void): void {
     // 指示157: カード左下の★（採取物のブックマークSVG）をお気に入りトグルに配線する。
     wireFavoriteToggle(card, title)
   }
+}
+
+/**
+ * カードに「画面を作って使う」を足す（2026-09-23・本人の決定）。
+ *
+ * 本人の依頼「見本からでも型からでも、部品を積んで作るときと同じ『画面と部品』が欲しい」。
+ * 押すと、その見本を部品にして「ノーコードで作る」→「部品を積んで作る」を開く。
+ * 設問①②③で進む見本は、設問ごとの部品にして画面①②③に分ける（sample-to-screens.ts）。
+ * 見た目は「プレビュー」のボタンを写して作る（採取したカードの見た目に合わせる）。
+ */
+function addUseAsScreens(card: HTMLElement, preview: HTMLElement, title: string, root: HTMLElement, quill: Quill, close: () => void): void {
+  const button = preview.cloneNode(true) as HTMLElement
+  let named = false
+  for (const node of Array.from(button.childNodes)) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      node.textContent = '画面を作って使う'
+      named = true
+    }
+  }
+  if (!named) button.prepend(document.createTextNode('画面を作って使う'))
+  button.title = 'この見本を部品にして、画面①②…を作る画面を開きます（LPにはまだ入りません）'
+  button.addEventListener('click', (event) => {
+    event.stopPropagation()
+    // 部品にする見本を選んでいる途中は、いつもの「追加」で受け取る（ここで作り直すと、その手が止まる）
+    if (isSamplePickArmed()) {
+      toast('いまは部品にする見本を選んでいます。使いたい見本の「追加」を押してください', 'error')
+      return
+    }
+    const raw = widgetBodyHtml(card)
+    const bodyHtml = raw === null ? null : rekeyUid(raw, newUid())
+    if (bodyHtml === null || bodyHtml.trim() === '') {
+      toast(`「${title}」は部品にできません。ほかの見本を選んでください`, 'error')
+      return
+    }
+    void startBuilderWithSample({ title, html: bodyHtml }).then((ok) => {
+      if (!ok) return
+      openNocodePanel(root, quill, close, { tabId: 'builder' })
+      toast(`「${title}」を部品にしました。画面と部品で続けて作れます`)
+    })
+  })
+  preview.parentElement?.insertBefore(button, preview)
 }
 
 /** カードのブックマークSVGをお気に入りトグルにする。登録状態で色/不透明度を切り替える。 */

@@ -7,6 +7,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import {
+  addSampleParts,
   addScreenFor,
   cssPathFrom,
   editorScreenCss,
@@ -199,5 +200,44 @@ describe('Widget編集で見本の設問①②…を切り替える（入れた�
     const css = editorStepCss([':nth-child(1)>:nth-child(1)', ':nth-child(1)>:nth-child(2)'], 1)
     expect(css).toContain('[data-widget-preview]>:nth-child(1)>:nth-child(1){display:none !important}')
     expect(css).toContain('[data-widget-preview]>:nth-child(1)>:nth-child(2){display:block !important}')
+  })
+})
+
+/**
+ * 本人の決定（2026-09-23）「見本の設問①②③は、画面①②③としてタブに並べる」。
+ * 分かれた見本は、いまの画面と、右に足した画面へ1つずつ入れる（tests/nocode-sample-split.test.ts で分ける）。
+ */
+describe('見本を部品として入れる', () => {
+  const data: TemplateData = {
+    screens: [
+      { id: 's1', name: '画面①', blocks: [{ type: 'heading', text: 'A' }] },
+      { id: 's2', name: '画面②', blocks: [] },
+    ],
+  }
+  const limits = { max: 20, blockMax: 30 }
+
+  it('分かれていない見本は、いまの画面のいちばん下に入る', () => {
+    const out = addSampleParts(data, 'screens', 1, 'ある見本', ['<p>x</p>'], limits)
+    const screens = out?.['screens'] as readonly Record<string, unknown>[]
+    expect(screens).toHaveLength(2)
+    expect(screens[1]?.['blocks']).toEqual([{ type: 'sample', title: 'ある見本', html: '<p>x</p>' }])
+  })
+
+  it('分かれた見本は、いまの画面と、右に足した画面へ1つずつ。移る先はその画面のidになる', () => {
+    const out = addSampleParts(data, 'screens', 0, 'アンケート', ['<a data-nc-go="@1">はい</a>', '<a data-nc-go="@0">もどる</a>'], limits)
+    const screens = out?.['screens'] as readonly Record<string, unknown>[]
+    expect(screens).toHaveLength(3)
+    expect(screens[2]).toMatchObject({ id: 's3', name: '画面③' })
+    expect((screens[0]?.['blocks'] as readonly Record<string, unknown>[])[1]).toEqual({
+      type: 'sample',
+      title: 'アンケート',
+      html: '<a data-nc-go="s3">はい</a>',
+    })
+    expect((screens[2]?.['blocks'] as readonly Record<string, unknown>[])[0]).toMatchObject({ html: '<a data-nc-go="s1">もどる</a>' })
+  })
+
+  it('画面が足りないときは何もしない（呼ぶ側が、分けずに1つの部品として入れる）', () => {
+    expect(addSampleParts(data, 'screens', 0, 'アンケート', ['<p>1</p>', '<p>2</p>'], { max: 2, blockMax: 30 })).toBeNull()
+    expect(addSampleParts(data, 'screens', 5, 'アンケート', ['<p>1</p>'], limits)).toBeNull()
   })
 })

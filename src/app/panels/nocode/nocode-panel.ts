@@ -38,7 +38,7 @@ export interface NocodeTab {
 /** 作り方のタブ（左から並ぶ順） */
 const TABS: readonly NocodeTab[] = [TEMPLATE_TAB, BUILDER_TAB]
 
-export function openNocodePanel(libraryRoot: HTMLElement, quill: Quill, closeLibrary: () => void): void {
+export function openNocodePanel(libraryRoot: HTMLElement, quill: Quill, closeLibrary: () => void, start?: { tabId: string }): void {
   libraryRoot.querySelector('[data-nocode-panel]')?.remove()
   // 見本を選んでいる途中で開き直した（前の受け取り口と案内は下ろす。残すと次の「追加」が消えた画面に渡される）
   cancelSamplePick()
@@ -111,6 +111,6 @@ export function openNocodePanel(libraryRoot: HTMLElement, quill: Quill, closeLib
   const paper = libraryRoot.querySelector<HTMLElement>('.MuiDialog-paper')
   if (paper !== null) paper.style.position = 'relative'
   ;(paper ?? libraryRoot).append(panel)
-  const first = TABS[0]
+  const first = TABS.find((tab) => tab.id === start?.tabId) ?? TABS[0]
   if (first !== undefined) show(first)
 }

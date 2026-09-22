@@ -8,6 +8,7 @@
  */
 import { addAt, getAt, removeAt, setAt, type Path } from './form-state.ts'
 import { goTargetsIn } from './sample-model.ts'
+import { applyScreenIds } from './sample-to-screens.ts'
 import { SCREEN_ID } from './templates/builder-blocks.ts'
 import { items, str, type ItemData, type TemplateData } from './templates/types.ts'
 
@@ -125,6 +126,37 @@ export function moveBlockToScreen(
   if (block === undefined || target === undefined || items(target, 'blocks').length >= blockMax) return data
   const removed = removeAt(data, [screensKey, fromScreen, 'blocks'], blockIndex, 0)
   return addAt(removed, [screensKey, toScreen, 'blocks'], block, blockMax)
+}
+
+/**
+ * 見本を部品として入れる（本人の決定「見本の設問①②③は、画面①②③としてタブに並べる」）。
+ * parts が2つ以上＝設問ごとに分かれた見本は、いまの画面と、右に足した画面へ1つずつ置き、
+ * 中の移る先（`@0`…）をその画面のidに直す。画面が足りないときは null（呼ぶ側が分けずに入れる）。
+ */
+export function addSampleParts(
+  data: TemplateData,
+  screensKey: string,
+  screenIndex: number,
+  title: string,
+  parts: readonly string[],
+  limits: { max: number; blockMax: number },
+): TemplateData | null {
+  const current = items(data, screensKey)[screenIndex]
+  if (current === undefined || parts.length === 0) return null
+  let next = data
+  const ids = [str(current, 'id')]
+  for (let i = 1; i < parts.length; i += 1) {
+    const added = withNewScreen(next, screensKey, limits.max)
+    if (added === null) return null
+    next = added.data
+    ids.push(added.id)
+  }
+  parts.forEach((part, i) => {
+    const index = i === 0 ? screenIndex : items(next, screensKey).findIndex((screen) => str(screen, 'id') === ids[i])
+    if (index < 0) return
+    next = addAt(next, [screensKey, index, 'blocks'], { type: 'sample', title, html: applyScreenIds(part, ids) }, limits.blockMax)
+  })
+  return next
 }
 
 /** 出す画面の「＋新しい画面」: いちばん右に画面を足し、その部品を移す。画面がいっぱい・部品が無いときは null */

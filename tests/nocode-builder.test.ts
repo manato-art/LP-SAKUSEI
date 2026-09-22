@@ -246,3 +246,24 @@ describe('見本の部品（ライブラリの見本を部品として積む）'
     expect(() => new Function(SCREENS_SCRIPT)).not.toThrow()
   })
 })
+
+/**
+ * 本人の決定（2026-09-23）「見本の設問①②③は画面①②③としてタブに並べる」。
+ * 分けた部品にはどれにも見本のCSS・スクリプトが入っているので、そのまま出すと
+ * 見本のスクリプトが画面の数だけ動く（押すと二重に進む）。同じ中身は最初の1つだけ出す。
+ */
+describe('分けた見本の部品', () => {
+  const SAMPLE = '<style>.q{color:red}</style><script>window.q=(window.q||0)+1</script><div class="q">問い</div>'
+
+  it('同じCSS・同じスクリプトは1回だけ出す（中身の違う部品はそのまま）', () => {
+    const html = render([
+      screen('s1', '画面①', [{ type: 'sample', title: 'アンケート', html: SAMPLE }]),
+      screen('s2', '画面②', [{ type: 'sample', title: 'アンケート', html: SAMPLE.replace('問い', '問い2') }]),
+      screen('s3', '画面③', [{ type: 'sample', title: 'ほかの見本', html: '<style>.r{color:blue}</style><p>別</p>' }]),
+    ])
+    expect(html.split('<style>.q{color:red}</style>')).toHaveLength(2)
+    expect(html.split('window.q=(window.q||0)+1')).toHaveLength(2)
+    expect(html).toContain('問い2')
+    expect(html).toContain('.r{color:blue}')
+  })
+})

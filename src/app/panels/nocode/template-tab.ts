@@ -10,7 +10,7 @@
  * - 入力中の中身はタブを切り替えても残す（ページを読み込み直すまで）
  * - 登録したあとは、このあと入れる分のWidgetの名前（CSSのクラス）を付け直す（同じLPで色がまざらないように）
  */
-import { promptCard } from '../../dialog.ts'
+import { confirmCard, promptCard } from '../../dialog.ts'
 import { LP_BASE_CSS } from '../../lp-base-css.ts'
 import { el, toast } from '../../ui.ts'
 import { WIDGET_RESET_CSS } from '../../../shared/sb-preview-css.ts'
@@ -22,6 +22,8 @@ import { showLibraryHint } from './library-hint.ts'
 import { ensureNocodeFormCss } from './nocode-form-css.ts'
 import { armSamplePick, cancelSamplePick } from './nocode-flow.ts'
 import { PREVIEW_STEP_CSS } from './sample-dom.ts'
+import { applyScreenIds, splitSampleScreens } from './sample-to-screens.ts'
+import { screenLabel } from './screens-state.ts'
 import { buildTemplateForm } from './template-form.ts'
 import { BUILDER_TEMPLATE } from './templates/builder.ts'
 import { TEMPLATES } from './templates/index.ts'
@@ -270,7 +272,7 @@ function makeTemplateTab(options: {
   templates: readonly NocodeTemplate[]
   /** 型が1つだけのとき、入力の上に出す説明 */
   intro?: string
-}): NocodeTab {
+}): NocodeTab & { readonly draft: DraftStore } {
   let draft: Draft | null = null
   const store: DraftStore = {
     get: () => draft,
@@ -281,6 +283,7 @@ function makeTemplateTab(options: {
   return {
     id: options.id,
     label: options.label,
+    draft: store,
     render: (host, ctx) => {
       ensureNocodeFormCss()
       const root = el('div')
@@ -318,3 +321,35 @@ export const BUILDER_TAB = makeTemplateTab({
   intro:
     '見出し・文章・画像・ボタンなどを、上から順に積んで作ります。「見本」を選ぶと、いつもの見本も部品として使えます。画面①②…を作ると、ボタンや画像を押したときに、その画面へすぐ切り替えられます。',
 })
+
+/**
+ * 見本のカードの「画面を作って使う」から、その見本を部品にして「部品を積んで作る」を始める
+ * （本人の依頼「見本からでも型からでも、部品を積んで作るときと同じ『画面と部品』が欲しい」）。
+ * 設問①②③で進む見本は、設問ごとの部品にして画面①②③に分ける。
+ * 作りかけの中身があるときは、消してよいか確かめる（やめたら false）。
+ */
+export async function startBuilderWithSample(sample: { title: string; html: string }): Promise<boolean> {
+  const current = BUILDER_TAB.draft.get()
+  if (current !== null) {
+    const ok = await confirmCard({
+      title: '作りかけのWidgetを置き換えますか？',
+      message: '「部品を積んで作る」に作りかけの中身があります。この見本から作り直すと、その中身は消えます。',
+      submitLabel: '作り直す',
+      danger: true,
+    })
+    if (!ok) return false
+  }
+  const parts = splitSampleScreens(sample.html)
+  const ids = parts.map((_, index) => `s${index + 1}`)
+  const screens = parts.map((part, index) => ({
+    id: ids[index] ?? `s${index + 1}`,
+    name: screenLabel(index + 1),
+    blocks: [{ type: 'sample', title: sample.title, html: applyScreenIds(part, ids) }],
+  }))
+  BUILDER_TAB.draft.set({
+    templateId: BUILDER_TEMPLATE.id,
+    data: { ...BUILDER_TEMPLATE.defaults(new Date()), screens },
+    uid: newUid(),
+  })
+  return true
+}

@@ -24,6 +24,11 @@ export function takeSamplePick(): SamplePick | null {
   return receive
 }
 
+/** いま「部品にする見本」を選んでもらっている途中か（一覧のほかのボタンを出し分けるのに使う） */
+export function isSamplePickArmed(): boolean {
+  return pending !== null
+}
+
 /** 選ぶのをやめた・一覧を閉じた */
 export function cancelSamplePick(): void {
   pending = null

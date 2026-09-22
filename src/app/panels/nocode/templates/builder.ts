@@ -203,11 +203,13 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
 
     let counter = 0
     const blockCss: string[] = []
+    // 同じ見本を分けた部品の <style>・<script> は1回だけ出す（見本のスクリプトが画面の数だけ動かないように）
+    const seenAssets = new Set<string>()
     const screenHtml = screens
       .map((screen, index) => {
         const blocks = items(screen, 'blocks').map((item) => {
           counter += 1
-          const part = renderBlock(item, counter, s, ids)
+          const part = renderBlock(item, counter, s, ids, seenAssets)
           blockCss.push(part.css)
           return part.html
         })

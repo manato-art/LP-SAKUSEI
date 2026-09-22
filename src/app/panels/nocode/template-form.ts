@@ -17,7 +17,9 @@ import { node, scalarControl, type ControlEnv, type Scalar, type ScalarField } f
 import { addAt, duplicateAt, getAt, moveAt, removeAt, setAt, type Path } from './form-state.ts'
 import { sampleEditor } from './form-sample.ts'
 import { chipRow, type Chip } from './press-chips.ts'
+import { splitSampleScreens } from './sample-to-screens.ts'
 import {
+  addSampleParts,
   addScreenFor,
   goChoices,
   incomingCount,
@@ -363,7 +365,19 @@ export function buildTemplateForm(options: {
         // 見本は、先に見本の一覧で選んでもらい、選んだら部品として入れる（やめたら何も足さない）
         if (type.type === 'sample' && options.pickSample !== undefined) {
           void options.pickSample().then((sample) => {
-            if (sample !== null) restructure(addAt(data, listPath, { ...type.newItem(), title: sample.title, html: sample.html }, field.blockMax), focusNew)
+            if (sample === null) return
+            // 設問①②③で進む見本は、設問ごとの部品にして画面①②③へ分ける（本人の決定）
+            const parts = splitSampleScreens(sample.html)
+            const split =
+              parts.length < 2
+                ? null
+                : addSampleParts(data, field.key, screenIndex, sample.title, parts, { max: field.max, blockMax: field.blockMax })
+            if (split !== null) {
+              restructure(split, focusNew)
+              toast(`「${sample.title}」の設問を、画面ごとの部品に分けました（${parts.length}画面）`)
+              return
+            }
+            restructure(addAt(data, listPath, { ...type.newItem(), title: sample.title, html: sample.html }, field.blockMax), focusNew)
           })
           return
         }

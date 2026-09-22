@@ -301,8 +301,29 @@ function choiceButtonCss(sel: string, color: string): string {
   )
 }
 
-/** 1つの部品のHTMLと、その部品だけのCSS（i は Widget 全体で通しの番号） */
-export function renderBlock(item: ItemData, i: number, s: string, screenIds: ReadonlySet<string>): { html: string; css: string } {
+/** 見本の中の <style>・<script>（同じ見本を分けた部品には、どれにも同じものが入っている） */
+const SAMPLE_ASSET = /<(style|script)\b[^>]*>[\s\S]*?<\/\1\s*>/gi
+
+/**
+ * 見本を設問ごとに画面①②③へ分けると、どの部品にも同じ <style>・<script> が入る。
+ * そのまま出すと見本のスクリプトが画面の数だけ動き、押すと二重に進む → 同じ中身は最初の1つだけ残す。
+ */
+function dedupeSampleAssets(html: string, seen: Set<string>): string {
+  return html.replace(SAMPLE_ASSET, (block) => {
+    if (seen.has(block)) return ''
+    seen.add(block)
+    return block
+  })
+}
+
+/** 1つの部品のHTMLと、その部品だけのCSS（i は Widget 全体で通しの番号。seen は見本の重なりを消すのに使う） */
+export function renderBlock(
+  item: ItemData,
+  i: number,
+  s: string,
+  screenIds: ReadonlySet<string>,
+  seen: Set<string> = new Set<string>(),
+): { html: string; css: string } {
   const cls = `nc-b-${i}`
   const align = pick(item, 'align', ALIGNS, 'left')
   const target = goTarget(item, screenIds)
@@ -412,7 +433,7 @@ export function renderBlock(item: ItemData, i: number, s: string, screenIds: Rea
     }
     case 'sample':
       // ライブラリの見本（採取した見本のHTML。style・script ごとそのまま）。中身は入力の画面で直してある
-      return { html: `<div class="nc-b nc-b-sample ${cls}">${str(item, 'html')}</div>`, css: '' }
+      return { html: `<div class="nc-b nc-b-sample ${cls}">${dedupeSampleAssets(str(item, 'html'), seen)}</div>`, css: '' }
     default:
       return { html: '', css: '' }
   }
