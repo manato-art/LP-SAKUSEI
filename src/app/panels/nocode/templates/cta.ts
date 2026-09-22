@@ -13,9 +13,47 @@ const RADIUS: Readonly<Record<(typeof SHAPES)[number], string>> = { soft: '12px'
 const MOTIONS = ['press', 'none'] as const
 const WIDTHS = ['full', 'auto'] as const
 
-const ARROW =
-  '<svg class="nc-cta__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" ' +
+/**
+ * 押せるボタンの見た目（「ボタン」の型と「部品を積んで作る」のボタンで共通）。
+ * 下の濃い縁で厚みを出し、押すと沈む。press を渡すと、ときどき自分から沈む（動きを減らす設定の人には止める）。
+ * sel はボタンそのもののセレクター（Widgetのクラスから始まる）。
+ */
+export function pressButtonCss(
+  sel: string,
+  options: { color: string; radius: string; full: boolean; press?: { name: string } },
+): string {
+  const { color, radius, full, press } = options
+  const edge = shade(color, -0.28)
+  const ink = inkOn(color)
+  // 明るい地に白い文字を載せるときは、文字の縁で読みやすくする（ui-forge contrast-discipline）
+  const inkShadow = ink === '#FFFFFF' && contrastWithWhite(color) < 4.5 ? 'text-shadow:0 1px 2px rgba(0,0,0,.28);' : ''
+  const rest = `0 6px 0 ${edge},0 12px 22px rgba(0,0,0,.14)`
+  const sunk = `0 2px 0 ${edge},0 5px 12px rgba(0,0,0,.12)`
+  return (
+    `${sel}{display:${full ? 'flex' : 'inline-flex'};width:${full ? '100%' : 'auto'};max-width:520px;` +
+    `margin:0 auto;align-items:center;justify-content:center;gap:10px;min-height:62px;padding:16px 28px;` +
+    `border-radius:${radius};background:${color};color:${ink};${inkShadow}font-size:19px;font-weight:800;` +
+    `line-height:1.35;text-decoration:none;box-shadow:${rest};transition:transform .15s ease,box-shadow .15s ease;` +
+    `-webkit-tap-highlight-color:transparent}` +
+    `${sel}:active{transform:translateY(5px);box-shadow:0 1px 0 ${edge},0 4px 10px rgba(0,0,0,.12)}` +
+    `${sel}:focus-visible{outline:3px solid ${shade(color, -0.4)};outline-offset:4px}` +
+    (press === undefined
+      ? ''
+      : `${sel}{animation:${press.name} 2.8s cubic-bezier(.34,1.56,.64,1) infinite}` +
+        `${sel}:hover{animation-play-state:paused}` +
+        `${sel}:active{animation:none}` +
+        `@keyframes ${press.name}{0%,40%,100%{transform:translateY(0);box-shadow:${rest}}` +
+        `54%,70%{transform:translateY(4px);box-shadow:${sunk}}}` +
+        `@media (prefers-reduced-motion:reduce){${sel}{animation:none}}`)
+  )
+}
+
+/** ボタンの右の矢印（固定のSVG） */
+export const ARROW_SVG =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" ' +
   'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 5 16 12 9 19"/></svg>'
+
+const ARROW = ARROW_SVG.replace('<svg ', '<svg class="nc-cta__arrow" ')
 
 export const CTA_TEMPLATE: NocodeTemplate = {
   id: 'cta',
@@ -80,38 +118,21 @@ export const CTA_TEMPLATE: NocodeTemplate = {
   render: (data, uid) => {
     const s = `.${uid}`
     const color = safeColor(str(data, 'color'), '#E5573F')
-    const edge = shade(color, -0.28)
-    const ink = inkOn(color)
-    // 明るい地に白い文字を載せるときは、文字の縁で読みやすくする（ui-forge contrast-discipline）
-    const inkShadow = ink === '#FFFFFF' && contrastWithWhite(color) < 4.5 ? 'text-shadow:0 1px 2px rgba(0,0,0,.28);' : ''
-    const radius = RADIUS[pick(data, 'shape', SHAPES, 'soft')]
-    const isFull = pick(data, 'width', WIDTHS, 'full') === 'full'
     const isPress = pick(data, 'motion', MOTIONS, 'press') === 'press'
-    const rest = `0 6px 0 ${edge},0 12px 22px rgba(0,0,0,.14)`
-    const sunk = `0 2px 0 ${edge},0 5px 12px rgba(0,0,0,.12)`
 
     const css =
       baseCss(s) +
       `${s}{padding:24px 16px;text-align:center}` +
       `${s} .nc-cta__micro{margin:0 0 10px;font-size:16px;font-weight:800;line-height:1.5;color:${shade(color, -0.35)};text-wrap:balance}` +
-      `${s} .nc-cta__btn{display:${isFull ? 'flex' : 'inline-flex'};width:${isFull ? '100%' : 'auto'};max-width:520px;` +
-      `margin:0 auto;align-items:center;justify-content:center;gap:10px;min-height:62px;padding:16px 28px;` +
-      `border-radius:${radius};background:${color};color:${ink};${inkShadow}font-size:19px;font-weight:800;` +
-      `line-height:1.35;text-decoration:none;box-shadow:${rest};transition:transform .15s ease,box-shadow .15s ease;` +
-      `-webkit-tap-highlight-color:transparent}` +
-      `${s} .nc-cta__btn:active{transform:translateY(5px);box-shadow:0 1px 0 ${edge},0 4px 10px rgba(0,0,0,.12)}` +
-      `${s} .nc-cta__btn:focus-visible{outline:3px solid ${shade(color, -0.4)};outline-offset:4px}` +
       `${s} .nc-cta__label{min-width:0}` +
       `${s} .nc-cta__arrow{flex:0 0 auto;width:18px;height:18px}` +
       `${s} .nc-cta__sub{margin:12px 0 0;font-size:12.5px;line-height:1.6;color:#5B6572}` +
-      (isPress
-        ? `${s} .nc-cta__btn{animation:${uid}-press 2.8s cubic-bezier(.34,1.56,.64,1) infinite}` +
-          `${s} .nc-cta__btn:hover{animation-play-state:paused}` +
-          `${s} .nc-cta__btn:active{animation:none}` +
-          `@keyframes ${uid}-press{0%,40%,100%{transform:translateY(0);box-shadow:${rest}}` +
-          `54%,70%{transform:translateY(4px);box-shadow:${sunk}}}` +
-          `@media (prefers-reduced-motion:reduce){${s} .nc-cta__btn{animation:none}}`
-        : '')
+      pressButtonCss(`${s} .nc-cta__btn`, {
+        color,
+        radius: RADIUS[pick(data, 'shape', SHAPES, 'soft')],
+        full: pick(data, 'width', WIDTHS, 'full') === 'full',
+        press: isPress ? { name: `${uid}-press` } : undefined,
+      })
 
     const micro = str(data, 'micro').trim()
     const sub = str(data, 'sub').trim()

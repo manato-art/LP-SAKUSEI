@@ -1,7 +1,8 @@
 /**
- * 「ノーコードで作る」の「型から作る」タブ（2026-09-22・本人の依頼。ノーコードでWidgetを作る③）。
+ * 「ノーコードで作る」の「型から作る」「部品を積んで作る」タブ（2026-09-22・本人の依頼。ノーコードでWidgetを作る③④）。
  *
  * 型を選ぶ → 入力欄に書く（右でその場で見え方を確かめる）→「LPに入れる」か「作成したWidgetに登録」。
+ * 「部品を積んで作る」は型が1つだけ（部品の並び）なので、選ぶ画面は出さずに入力から始める。
  * 入れたあとは普通のWidgetなので、LPの中でクリックすれば見たまま編集（①②）でさらに直せる。
  *
  * - 見え方は配信と同じ土台（幅620px・LP_BASE_CSS・WIDGET_RESET_CSS）で、別の窓（iframe）に出す。
@@ -18,9 +19,10 @@ import { saveCreatedWidget } from '../widget-library-storage.ts'
 import type { NocodeContext, NocodeTab } from './nocode-panel.ts'
 import { ensureNocodeFormCss } from './nocode-form-css.ts'
 import { buildTemplateForm } from './template-form.ts'
-import { TEMPLATES, templateById } from './templates/index.ts'
+import { BUILDER_TEMPLATE } from './templates/builder.ts'
+import { TEMPLATES } from './templates/index.ts'
 import { newUid } from './templates/kit.ts'
-import { str, type NocodeTemplate, type TemplateData } from './templates/types.ts'
+import { items, str, type NocodeTemplate, type TemplateData } from './templates/types.ts'
 
 interface Draft {
   readonly templateId: string
@@ -28,8 +30,11 @@ interface Draft {
   readonly uid: string
 }
 
-/** 入力中の中身（タブを切り替えても消えない。ページを読み込み直すまで） */
-let draft: Draft | null = null
+/** 入力中の中身の置き場（タブごと。タブを切り替えても消えない。ページを読み込み直すまで） */
+interface DraftStore {
+  get: () => Draft | null
+  set: (draft: Draft | null) => void
+}
 
 /** 打つたびに見え方を描き直すと重いので、手が止まってから描く */
 const PREVIEW_DELAY_MS = 250
@@ -44,9 +49,10 @@ function previewDoc(html: string): string {
   )
 }
 
-/** 登録するときの名前の初期値（「ボタン（今すぐ申し込む）」） */
+/** 登録するときの名前の初期値（「ボタン（今すぐ申し込む）」。積んだものは最初の見出し） */
 function suggestName(template: NocodeTemplate, data: TemplateData): string {
-  const hint = (str(data, 'title').trim() || str(data, 'label').trim()).slice(0, 20)
+  const firstHeading = items(data, 'blocks').find((block) => block['type'] === 'heading')
+  const hint = (str(data, 'title').trim() || str(data, 'label').trim() || str(firstHeading ?? {}, 'text').trim()).slice(0, 20)
   return hint === '' || hint === template.name ? template.name : `${template.name}（${hint}）`
 }
 
@@ -59,11 +65,11 @@ function button(text: string, variant: 'primary' | 'normal' | 'quiet'): HTMLButt
   return b
 }
 
-function renderPicker(root: HTMLElement, onPick: (template: NocodeTemplate) => void): void {
+function renderPicker(root: HTMLElement, templates: readonly NocodeTemplate[], onPick: (template: NocodeTemplate) => void): void {
   root.className = ''
   root.removeAttribute('data-nc-view')
   const grid = el('div', { class: 'ncf-picker' })
-  for (const template of TEMPLATES) {
+  for (const template of templates) {
     const pick = el('button', { class: 'ncf-pick' }, [
       el('span', { class: 'ncf-pick__icon', html: template.icon }),
       el('span', {}, [
@@ -84,15 +90,26 @@ function renderPicker(root: HTMLElement, onPick: (template: NocodeTemplate) => v
   )
 }
 
-function renderForm(root: HTMLElement, ctx: NocodeContext, template: NocodeTemplate, onBack: () => void): void {
-  const start = draft
+function renderForm(
+  root: HTMLElement,
+  ctx: NocodeContext,
+  store: DraftStore,
+  template: NocodeTemplate,
+  top: { onBack?: () => void; intro?: string },
+): void {
+  const start = store.get()
   if (start === null) return
   root.className = 'ncf-edit-root'
   root.dataset['ncView'] = 'form'
 
-  const back = button('← 型を選び直す', 'quiet')
-  back.addEventListener('click', onBack)
-  const top = el('div', { class: 'ncf-top' }, [back, el('span', { class: 'ncf-top__name', text: template.name })])
+  const topBar = el('div', { class: 'ncf-top' })
+  if (top.onBack !== undefined) {
+    const back = button('← 型を選び直す', 'quiet')
+    back.addEventListener('click', top.onBack)
+    topBar.append(back, el('span', { class: 'ncf-top__name', text: template.name }))
+  } else if (top.intro !== undefined) {
+    topBar.append(el('span', { class: 'ncf-top__intro', text: top.intro }))
+  }
 
   // スマホは「入力」と「見え方」を切り替える（横に並べる幅が無い）。PCでは出さない
   const seg = el('div', { class: 'ncf-seg' })
@@ -114,8 +131,9 @@ function renderForm(root: HTMLElement, ctx: NocodeContext, template: NocodeTempl
   frame.setAttribute('sandbox', 'allow-scripts')
   let timer = 0
   const paintPreview = (): void => {
-    if (draft === null) return
-    frame.srcdoc = previewDoc(template.render(draft.data, draft.uid))
+    const current = store.get()
+    if (current === null) return
+    frame.srcdoc = previewDoc(template.render(current.data, current.uid))
   }
   const error = el('span', { class: 'ncf-error' })
   error.setAttribute('role', 'alert')
@@ -124,8 +142,9 @@ function renderForm(root: HTMLElement, ctx: NocodeContext, template: NocodeTempl
     fields: template.fields,
     data: start.data,
     onChange: (data) => {
-      if (draft === null) return
-      draft = { ...draft, data }
+      const current = store.get()
+      if (current === null) return
+      store.set({ ...current, data })
       error.textContent = ''
       window.clearTimeout(timer)
       timer = window.setTimeout(paintPreview, PREVIEW_DELAY_MS)
@@ -142,7 +161,7 @@ function renderForm(root: HTMLElement, ctx: NocodeContext, template: NocodeTempl
 
   /** 入れる前の確かめ。だめなら理由を出して、入力の画面に戻す */
   const ready = (): Draft | null => {
-    const current = draft
+    const current = store.get()
     if (current === null) return null
     const problem = template.validate(current.data, new Date())
     if (problem === null) return current
@@ -170,7 +189,8 @@ function renderForm(root: HTMLElement, ctx: NocodeContext, template: NocodeTempl
         return
       }
       // このあと入れる分は別の名前にする（登録した分と同じLPに並んでも、色がまざらない）
-      if (draft !== null) draft = { ...draft, uid: newUid() }
+      const latest = store.get()
+      if (latest !== null) store.set({ ...latest, uid: newUid() })
       toast(`「${name}」を作成したWidgetに登録しました`)
     })
   })
@@ -180,7 +200,7 @@ function renderForm(root: HTMLElement, ctx: NocodeContext, template: NocodeTempl
     const current = ready()
     if (current === null) return
     const html = template.render(current.data, current.uid)
-    draft = null
+    store.set(null)
     ctx.closeLibrary()
     // ライブラリが閉じてから本文へ入れる（Widgetライブラリの「追加」と同じ手順）
     requestAnimationFrame(() => {
@@ -190,31 +210,64 @@ function renderForm(root: HTMLElement, ctx: NocodeContext, template: NocodeTempl
   })
 
   const foot = el('div', { class: 'ncf-foot' }, [error, register, insert])
-  root.replaceChildren(top, seg, edit, foot)
+  root.replaceChildren(topBar, seg, edit, foot)
   paintPreview()
 }
 
-export const TEMPLATE_TAB: NocodeTab = {
-  id: 'template',
-  label: '型から作る',
-  render: (host, ctx) => {
-    ensureNocodeFormCss()
-    const root = el('div')
-    root.dataset['ncTab'] = 'template'
-    host.append(root)
-    // 入力の画面は高さいっぱいを使う（入力欄だけがスクロールし、見え方は動かない）
-    root.style.height = '100%'
+/**
+ * 作り方のタブを作る。型が2つ以上なら「型を選ぶ」画面から、1つだけなら入力から始める。
+ * 入力中の中身はタブごとに持つ（別のタブの型とまざらない）。
+ */
+function makeTemplateTab(options: {
+  id: string
+  label: string
+  templates: readonly NocodeTemplate[]
+  /** 型が1つだけのとき、入力の上に出す説明 */
+  intro?: string
+}): NocodeTab {
+  let draft: Draft | null = null
+  const store: DraftStore = {
+    get: () => draft,
+    set: (next) => {
+      draft = next
+    },
+  }
+  return {
+    id: options.id,
+    label: options.label,
+    render: (host, ctx) => {
+      ensureNocodeFormCss()
+      const root = el('div')
+      root.dataset['ncTab'] = options.id
+      host.append(root)
+      // 入力の画面は高さいっぱいを使う（入力欄だけがスクロールし、見え方は動かない）
+      root.style.height = '100%'
 
-    const showPicker = (): void =>
-      renderPicker(root, (template) => {
+      const open = (template: NocodeTemplate, top: { onBack?: () => void; intro?: string }): void => {
         if (draft === null || draft.templateId !== template.id) {
           draft = { templateId: template.id, data: template.defaults(new Date()), uid: newUid() }
         }
-        renderForm(root, ctx, template, showPicker)
-      })
+        renderForm(root, ctx, store, template, top)
+      }
 
-    const resumed = draft === null ? undefined : templateById(draft.templateId)
-    if (resumed === undefined) showPicker()
-    else renderForm(root, ctx, resumed, showPicker)
-  },
+      const only = options.templates.length === 1 ? options.templates[0] : undefined
+      if (only !== undefined) {
+        open(only, { intro: options.intro })
+        return
+      }
+      const showPicker = (): void => renderPicker(root, options.templates, (template) => open(template, { onBack: showPicker }))
+      const resumed = options.templates.find((t) => t.id === draft?.templateId)
+      if (resumed === undefined) showPicker()
+      else open(resumed, { onBack: showPicker })
+    },
+  }
 }
+
+export const TEMPLATE_TAB = makeTemplateTab({ id: 'template', label: '型から作る', templates: TEMPLATES })
+
+export const BUILDER_TAB = makeTemplateTab({
+  id: 'builder',
+  label: '部品を積んで作る',
+  templates: [BUILDER_TEMPLATE],
+  intro: '見出し・文章・画像・ボタンなどを、上から順に積んで作ります。下の「部品を足す」から選んでください。',
+})

@@ -42,6 +42,25 @@ export type Field =
       readonly fields: readonly Field[]
       readonly newItem: () => ItemData
     })
+  /** 種類の違う部品を積む並び（「部品を積んで作る」）。1件ごとに type で入力欄が変わる */
+  | (FieldBase & {
+      readonly kind: 'blocks'
+      readonly min: number
+      readonly max: number
+      readonly types: readonly BlockType[]
+    })
+
+/** 積める部品の種類（見出し・文章・画像…） */
+export interface BlockType {
+  readonly type: string
+  readonly label: string
+  /** 「部品を足す」のボタンのアイコン（固定のSVG） */
+  readonly icon: string
+  /** この部品の入力欄（並びは入れない） */
+  readonly fields: readonly Field[]
+  /** 足したときの中身（type を含める） */
+  readonly newItem: () => ItemData
+}
 
 export interface NocodeTemplate {
   readonly id: string

@@ -13,6 +13,9 @@ import { pickLpImage } from './lp-image.ts'
 import { COLOR_NAMES, items, type Field, type TemplateData } from './templates/types.ts'
 
 type ListField = Extract<Field, { kind: 'list' }>
+type BlocksField = Extract<Field, { kind: 'blocks' }>
+/** 1つの値を入れる入力（並びではないもの） */
+type ScalarField = Exclude<Field, ListField | BlocksField>
 type Scalar = string | boolean | number
 /** 値の置き場所（いちばん外か、並びの中の1件か） */
 type Slot = { readonly list?: string; readonly index?: number; readonly key: string }
@@ -76,7 +79,7 @@ export function buildTemplateForm(options: {
     }
   }
 
-  const scalarControl = (field: Exclude<Field, ListField>, slot: Slot, id: string): HTMLElement => {
+  const scalarControl = (field: ScalarField, slot: Slot, id: string): HTMLElement => {
     const value = read(slot)
     switch (field.kind) {
       case 'text':
@@ -258,7 +261,7 @@ export function buildTemplateForm(options: {
   }
 
   /** 1つの入力欄（名前・入力・説明）。出し分けと名前の付け直しを登録する */
-  const fieldEl = (field: Exclude<Field, ListField>, slot: Slot): HTMLElement => {
+  const fieldEl = (field: ScalarField, slot: Slot): HTMLElement => {
     const wrap = node('div', 'ncf-field')
     const id = nextId()
     const control = scalarControl(field, slot, id)
@@ -320,7 +323,7 @@ export function buildTemplateForm(options: {
       )
       item.append(itemHead)
       for (const sub of field.fields) {
-        if (sub.kind === 'list') continue // 並びの中の並びは作らない
+        if (sub.kind === 'list' || sub.kind === 'blocks') continue // 並びの中の並びは作らない
         item.append(fieldEl(sub, { list: field.key, index, key: sub.key }))
       }
       box.append(item)
@@ -333,13 +336,70 @@ export function buildTemplateForm(options: {
     return wrap
   }
 
+  /**
+   * 種類の違う部品を積む並び（「部品を積んで作る」）。1件ごとに部品の名前と上へ・下へ・消す、
+   * いちばん下に部品の種類ごとの「足す」ボタン。
+   */
+  const blocksEl = (field: BlocksField): HTMLElement => {
+    const wrap = node('div', 'ncf-field')
+    wrap.dataset['ncfList'] = field.key
+    const list = items(data, field.key)
+    const head = node('div', 'ncf-listhead')
+    head.append(node('span', 'ncf-label', field.label), node('span', 'ncf-count', `${list.length} / ${field.max}`))
+    const box = node('div', 'ncf-list')
+    list.forEach((item, index) => {
+      const type = field.types.find((t) => t.type === item['type'])
+      if (type === undefined) return
+      const itemEl = node('div', 'ncf-item')
+      const itemHead = node('div', 'ncf-item__head')
+      const name = node('span', 'ncf-item__name')
+      const icon = node('span', 'ncf-item__icon')
+      icon.innerHTML = type.icon
+      name.append(icon, node('span', '', type.label))
+      const remove = node('button', 'ncf-icon-btn ncf-item__remove', '消す')
+      remove.type = 'button'
+      remove.disabled = list.length <= field.min
+      remove.title = remove.disabled ? `部品は${field.min}つより少なくはできません` : `この${type.label}を消す`
+      remove.addEventListener('click', () => restructure(removeItem(data, field.key, index, field.min)))
+      itemHead.append(
+        name,
+        iconButton(ICON_UP, '上へ', () => restructure(moveItem(data, field.key, index, -1)), index > 0),
+        iconButton(ICON_DOWN, '下へ', () => restructure(moveItem(data, field.key, index, 1)), index < list.length - 1),
+        remove,
+      )
+      itemEl.append(itemHead)
+      for (const sub of type.fields) {
+        if (sub.kind === 'list' || sub.kind === 'blocks') continue
+        itemEl.append(fieldEl(sub, { list: field.key, index, key: sub.key }))
+      }
+      box.append(itemEl)
+    })
+    const full = list.length >= field.max
+    const adder = node('div', 'ncf-adder')
+    adder.append(node('span', 'ncf-adder__label', full ? `部品は${field.max}こまでです` : '部品を足す（いちばん下に入ります）'))
+    const buttons = node('div', 'ncf-adder__grid')
+    for (const type of field.types) {
+      const b = node('button', 'ncf-adder__btn')
+      b.type = 'button'
+      b.disabled = full
+      const icon = node('span', 'ncf-adder__icon')
+      icon.innerHTML = type.icon
+      b.append(icon, node('span', '', type.label))
+      b.addEventListener('click', () => restructure(addItem(data, field.key, type.newItem(), field.max), field.key))
+      buttons.append(b)
+    }
+    adder.append(buttons)
+    wrap.append(head, box, adder)
+    return wrap
+  }
+
   const build = (): void => {
     const scroller = root.closest<HTMLElement>('.ncf-form')
     const scrollTop = scroller?.scrollTop ?? 0
     refreshers = []
     root.replaceChildren(
       ...options.fields.map((field) =>
-        field.kind === 'list' ? listEl(field) : fieldEl(field, { key: field.key }),
+        field.kind === 'list' ? listEl(field) : field.kind === 'blocks' ? blocksEl(field) : fieldEl(field, { key: field.key }),
       ),
     )
     for (const refresh of refreshers) refresh()

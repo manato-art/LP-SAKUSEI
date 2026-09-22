@@ -147,6 +147,18 @@ function labelAllWidgets(editor: HTMLElement): void {
  */
 const CANVAS_SCOPE = '.ql-editor .sb-widget-block'
 
+/**
+ * 編集キャンバスの箇条書きの飾り（採取した編集画面のCSSの `.ql-editor ul > li::before{content:"•"}` と、
+ * Quill の `.ql-editor li{list-style-type:none;padding-left:1.5em}`）が、Widget の中の ul/li にも効いて
+ * 「・✓ 送料無料」のように余計な点が出ていた（2026-09-22 実測。配信は .ql-editor の外なので出ない）。
+ * Widget の中だけ、ブラウザ本来の箇条書きに戻す。
+ * 強さは編集画面のCSS（採取物の `.ql-editor ul li:not(.ql-direction-rtl)`）と同じにし、あとに置いて勝つ。
+ * Widget 自身の指定はさらにあとに並ぶので、同じ強さなら Widget が勝つ（li に余白や印を付けている Widget はそのまま）。
+ */
+const CANVAS_LIST_RESET =
+  `${CANVAS_SCOPE} :is(ul,ol) li{list-style-type:revert;padding-left:revert;position:revert}` +
+  `${CANVAS_SCOPE} li::before{content:none}`
+
 function refreshWidgetCanvasCss(editor: HTMLElement): void {
   let imports = ''
   let rules = ''
@@ -162,7 +174,7 @@ function refreshWidgetCanvasCss(editor: HTMLElement): void {
   // 配信と同じ「Widget の見た目に要る土台」を Widget 自身の指定より前に置く（同じ強さなら Widget が勝つ）。
   // @import は先頭にしか書けないので、さらにその前へまとめる。
   const hasWidget = editor.querySelector('section.sb-widget-block') !== null
-  const next = hasWidget ? imports + widgetResetCss(CANVAS_SCOPE) + rules : ''
+  const next = hasWidget ? imports + widgetResetCss(CANVAS_SCOPE) + CANVAS_LIST_RESET + rules : ''
   let head = document.getElementById('sb-widget-canvas-scope') as HTMLStyleElement | null
   if (head === null) {
     head = document.createElement('style')

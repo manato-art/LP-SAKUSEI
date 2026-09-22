@@ -7,11 +7,12 @@
  * 作り方ごとにタブを分ける。タブはこのファイルの TABS に足していく。
  *   見本から作る … 見本を選ぶ→編集画面で文字・色・画像を変える→「Widgetとして登録」
  *   型から作る   … 型を選ぶ→入力欄に書く→「LPに入れる」（template-tab.ts）
+ *   部品を積んで作る … 見出し・文章・画像・ボタンなどを上から順に積む（templates/builder.ts）
  */
 import type Quill from 'quill'
 import { T, el } from '../../ui.ts'
 import { armEditAfterInsert, disarmEditAfterInsert } from './nocode-flow.ts'
-import { TEMPLATE_TAB } from './template-tab.ts'
+import { BUILDER_TAB, TEMPLATE_TAB } from './template-tab.ts'
 
 export interface NocodeContext {
   libraryRoot: HTMLElement
@@ -127,7 +128,7 @@ const SAMPLE_TAB: NocodeTab = {
 }
 
 /** 作り方のタブ（左から並ぶ順） */
-const TABS: readonly NocodeTab[] = [SAMPLE_TAB, TEMPLATE_TAB]
+const TABS: readonly NocodeTab[] = [SAMPLE_TAB, TEMPLATE_TAB, BUILDER_TAB]
 
 export function openNocodePanel(libraryRoot: HTMLElement, quill: Quill, closeLibrary: () => void): void {
   libraryRoot.querySelector('[data-nocode-panel]')?.remove()

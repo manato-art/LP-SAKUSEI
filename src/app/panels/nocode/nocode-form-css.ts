@@ -83,6 +83,20 @@ textarea.ncf-input{resize:vertical;min-height:64px}
 .ncf-add{display:block;width:100%;margin-top:10px;border:1px dashed var(--sb-line,#DDD);border-radius:6px;background:transparent;
   color:var(--sb-accent,#0091FF);font-size:13px;font-weight:600;padding:10px 14px;cursor:pointer}
 .ncf-add:disabled{color:var(--sb-sub,#808080);cursor:default}
+.ncf-item__name{display:flex;align-items:center;gap:6px}
+.ncf-item__icon{display:inline-flex;width:18px;height:18px;color:var(--sb-accent,#0091FF)}
+.ncf-item__icon svg{width:18px;height:18px}
+.ncf-adder{margin-top:12px}
+.ncf-adder__label{display:block;font-size:12px;color:var(--sb-sub,#808080);margin:0 0 8px}
+.ncf-adder__grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.ncf-adder__btn{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px;border:1px solid var(--sb-line,#DDD);
+  border-radius:8px;background:var(--sb-surface,#FFF);color:var(--sb-text,#151515);font-size:12px;font-weight:600;cursor:pointer}
+.ncf-adder__btn:hover:not(:disabled){background:var(--sb-neutral,#F4F4F4);border-color:var(--sb-accent,#0091FF)}
+.ncf-adder__btn:disabled{opacity:.4;cursor:default}
+.ncf-adder__btn:focus-visible{outline:2px solid var(--sb-accent,#0091FF);outline-offset:2px}
+.ncf-adder__icon{display:block;width:22px;height:22px;color:var(--sb-accent,#0091FF)}
+.ncf-adder__icon svg{width:22px;height:22px;display:block}
+.ncf-top__intro{font-size:13px;line-height:1.7;color:var(--sb-sub,#808080)}
 `
 
 export function ensureNocodeFormCss(): void {
