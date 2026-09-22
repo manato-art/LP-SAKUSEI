@@ -15,6 +15,7 @@ import {
   fontLabelJa,
 } from './toolbar/text-format.ts'
 import { openColorPicker } from './toolbar/color-picker.ts'
+import { attachItemToolbar } from './nocode/item-toolbar.ts'
 import {
   svgToolAlign,
   svgToolBgColor,
@@ -400,6 +401,8 @@ export function buildVisualEditor(target: WidgetEditTarget): {
     `outline:none;min-height:100px;width:${WIDGET_PREVIEW_WIDTH}px;max-width:none;margin:0 auto;box-sizing:border-box;line-height:1.5`
   contentDiv.innerHTML = target.html
   editorBody.append(contentDiv)
+  // よくある質問・口コミのように並んでいる部品に「複製・上へ・下へ・消す」を出す（ノーコードでWidgetを作る②）
+  attachItemToolbar(editorBody, contentDiv)
 
   // 画像/動画はクリックで操作パネル（差し替え＋サイズ変更）を出す。
   // グレーの「画像」枠も data URI の <img> なので同様に効く。
