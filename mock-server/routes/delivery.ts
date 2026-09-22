@@ -338,6 +338,7 @@ deliveryRouter.get('/lp/:uid', (req, res) => {
   const versionHtml = affilicodeOn ? appendAffilicodeParams(versionBody, article.uid, visitorId) : versionBody
   // Widget に紛れ込んだ SquadBeyond のプレビュー用CSSが、ページの背景・余白・高さを上書きしないようにする。
   // 保存データは書き換えず、ここで取り除く。Widget の見た目に要る指定は Widget の中だけに効かせて置く。
+  // Widget の外枠に保存された編集画面だけの属性（data-widget-name・contenteditable 等）も、ここで外す。
   const lp = neutralizeWidgetStyles(versionHtml)
 
   // 離脱防止ポップアップ（指示80）: 有効なポップアップのHTML/JS/CSSをLP末尾に挿入
