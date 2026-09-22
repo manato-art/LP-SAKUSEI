@@ -1,286 +1,119 @@
 /**
  * 「部品を積んで作る」（2026-09-22・本人の依頼。ノーコードでWidgetを作る④）。
  *
- * 見出し・文章・画像・ボタン・余白・区切り線・箇条書き・画像と文章 を上から順に積んで、自由にWidgetを作る。
- * Widget全体の背景の色・上下の余白・印の色も選べる。
+ * 画面①・画面②…を作り、画面ごとに部品（builder-blocks.ts）を上から順に積む。
+ * 部品の「押したとき」で「画面へ移る」を選ぶと、押した瞬間にその画面へ切り替わる
+ * （本人の依頼「アンケートでボタンを押したら transfer①→② のように瞬時に移行」）。
+ * Widget全体の背景の色・上下の余白・箇条書きの印の色・切り替わり方も選べる。
  *
- * - 部品ごとの色などは、その部品だけのクラス（nc-b-1, nc-b-2…）に書く。Widget編集の②で並べ替えても複製しても、
- *   クラスは部品と一緒に動くので見た目が崩れない
- * - 本文サイズの色文字は暗い色だけを候補にする（ui-forge contrast-discipline）
- * - ボタンは「ボタン」の型と同じ見た目（pressButtonCss）
- * - 書き出しの安全さは「型から作る」と同じ（kit.ts。文字はエスケープ・リンクは使えるものだけ・画像は選んだファイルだけ）
+ * ⚠️ 切り替えのスクリプト（countdown.ts と同じ決まり）
+ *  - 入力は一切入れない。移る先は data-nc-go、画面は data-nc-screen から読む
+ *  - 「動かし始めた」目印は要素のプロパティに持つ（Widget編集で動いた状態が保存されても、LPで止まらない）
+ *  - 編集中の本文（.ql-editor）の中では動かさない
+ *  - 最初の画面以外は HTML の hidden で隠しておく（スクリプトが無くても最初の画面は出る）
  */
-import { ARROW_SVG, pressButtonCss } from './cta.ts'
-import { baseCss, esc, linkAttrs, safeColor, safeImage, shade, textHtml, wrapWidget } from './kit.ts'
-import { ACCENT_PRESETS, bool, items, pick, str, type BlockType, type ItemData, type NocodeTemplate } from './types.ts'
+import { SCREEN_ID, BLOCK_TYPES, actionOf, blockLabel, goTarget, renderBlock } from './builder-blocks.ts'
+import { baseCss, esc, safeColor, safeImage, safeVideo, shade, wrapWidget } from './kit.ts'
+import { ACCENT_PRESETS, items, pick, str, type ItemData, type NocodeTemplate } from './types.ts'
 
-/** 文字の色の候補（本文にも使えるよう、暗い色だけ） */
-const TEXT_PRESETS: readonly string[] = ['#1F2A37', '#B83A26', '#A8264F', '#155BB0', '#0B7A3E', '#8A6414']
+export { BLOCK_TYPES } from './builder-blocks.ts'
+
 /** 背景の色の候補（白と、淡い地） */
 const BACKGROUND_PRESETS: readonly string[] = ['#FFFFFF', '#F7F8FA', '#FFF8E7', '#FDF1EE', '#EEF6FF', '#EEF8F1']
-
-const ALIGNS = ['left', 'center'] as const
-const ALIGN_OPTIONS = [
-  { value: 'left', label: '左に寄せる' },
-  { value: 'center', label: '真ん中' },
-]
 const PADDING: Readonly<Record<string, number>> = { s: 24, m: 40, l: 56 }
 const SPACER: Readonly<Record<string, number>> = { s: 16, m: 32, l: 56 }
+const TRANSITIONS = ['none', 'fade', 'slide'] as const
 
 const svg = (body: string): string =>
   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`
 
-const CHECK_MARK =
-  '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7" fill="none" stroke="currentColor" ' +
-  'stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>'
-
-export const BLOCK_TYPES: readonly BlockType[] = [
-  {
-    type: 'heading',
-    label: '見出し',
-    icon: svg('<path d="M6 5v14M18 5v14M6 12h12"/>'),
-    fields: [
-      { kind: 'text', key: 'text', label: '文字', placeholder: 'はじめての方へ' },
-      {
-        kind: 'select',
-        key: 'size',
-        label: '大きさ',
-        options: [
-          { value: 'l', label: '大' },
-          { value: 'm', label: '中' },
-          { value: 's', label: '小' },
-        ],
-      },
-      { kind: 'select', key: 'align', label: '寄せ', options: ALIGN_OPTIONS },
-      { kind: 'color', key: 'color', label: '文字の色', presets: TEXT_PRESETS },
-    ],
-    newItem: () => ({ type: 'heading', text: '', size: 'm', align: 'center', color: '#1F2A37' }),
-  },
-  {
-    type: 'text',
-    label: '文章',
-    icon: svg('<path d="M4 6h16M4 10h16M4 14h16M4 18h10"/>'),
-    fields: [
-      { kind: 'textarea', key: 'text', label: '文章', rows: 4 },
-      {
-        kind: 'select',
-        key: 'size',
-        label: '文字の大きさ',
-        options: [
-          { value: 'm', label: '標準' },
-          { value: 's', label: '小さめ（注意書きなど）' },
-        ],
-      },
-      { kind: 'select', key: 'align', label: '寄せ', options: ALIGN_OPTIONS },
-    ],
-    newItem: () => ({ type: 'text', text: '', size: 'm', align: 'left' }),
-  },
-  {
-    type: 'image',
-    label: '画像',
-    icon: svg('<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/>'),
-    fields: [
-      { kind: 'image', key: 'image', label: '画像' },
-      { kind: 'text', key: 'alt', label: '画像の説明（読み上げ用）' },
-      {
-        kind: 'select',
-        key: 'width',
-        label: '幅',
-        options: [
-          { value: '100', label: '横いっぱい' },
-          { value: '80', label: '少し小さく（8割）' },
-          { value: '60', label: '小さく（6割）' },
-        ],
-      },
-      { kind: 'toggle', key: 'round', label: '角を丸くする' },
-      { kind: 'url', key: 'url', label: '押したときに開くページ（任意）', placeholder: 'https://' },
-    ],
-    newItem: () => ({ type: 'image', image: '', alt: '', width: '100', round: false, url: '' }),
-  },
-  {
-    type: 'button',
-    label: 'ボタン',
-    icon: svg('<rect x="3" y="8" width="18" height="8" rx="4"/><path d="M13 12h4"/>'),
-    fields: [
-      { kind: 'text', key: 'label', label: 'ボタンの文字', placeholder: '今すぐ申し込む', maxLength: 40 },
-      { kind: 'url', key: 'url', label: '押したときに開くページ', placeholder: 'https://' },
-      { kind: 'toggle', key: 'track', label: 'クリック数をレポートで数える' },
-      { kind: 'color', key: 'color', label: 'ボタンの色', presets: ACCENT_PRESETS },
-    ],
-    newItem: () => ({ type: 'button', label: '', url: '', track: true, color: '#E5573F' }),
-  },
-  {
-    type: 'list',
-    label: '箇条書き',
-    icon: svg('<path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/>'),
-    fields: [
-      { kind: 'textarea', key: 'text', label: '1行に1つ書きます', rows: 4 },
-      {
-        kind: 'select',
-        key: 'marker',
-        label: '頭の印',
-        options: [
-          { value: 'check', label: 'チェック' },
-          { value: 'dot', label: '点' },
-          { value: 'number', label: '番号（1. 2. 3.）' },
-        ],
-      },
-    ],
-    newItem: () => ({ type: 'list', text: '', marker: 'check' }),
-  },
-  {
-    type: 'imageText',
-    label: '画像と文章',
-    icon: svg('<rect x="3" y="6" width="8" height="12" rx="1.5"/><path d="M14 8h7M14 12h7M14 16h5"/>'),
-    fields: [
-      { kind: 'image', key: 'image', label: '画像' },
-      { kind: 'text', key: 'heading', label: '見出し（任意）' },
-      { kind: 'textarea', key: 'text', label: '文章', rows: 3 },
-      {
-        kind: 'select',
-        key: 'side',
-        label: '画像を置く側',
-        options: [
-          { value: 'left', label: '左' },
-          { value: 'right', label: '右' },
-        ],
-      },
-    ],
-    newItem: () => ({ type: 'imageText', image: '', heading: '', text: '', side: 'left' }),
-  },
-  {
-    type: 'spacer',
-    label: '余白',
-    icon: svg('<path d="M12 4v16M8 8l4-4 4 4M8 16l4 4 4-4"/>'),
-    fields: [
-      {
-        kind: 'select',
-        key: 'size',
-        label: '高さ',
-        options: [
-          { value: 's', label: '小' },
-          { value: 'm', label: '中' },
-          { value: 'l', label: '大' },
-        ],
-      },
-    ],
-    newItem: () => ({ type: 'spacer', size: 'm' }),
-  },
-  {
-    type: 'divider',
-    label: '区切り線',
-    icon: svg('<path d="M3 12h18"/>'),
-    fields: [
-      {
-        kind: 'select',
-        key: 'style',
-        label: '線',
-        options: [
-          { value: 'solid', label: '細い線' },
-          { value: 'dotted', label: '点線' },
-        ],
-      },
-    ],
-    newItem: () => ({ type: 'divider', style: 'solid' }),
-  },
-]
-
-/** 1つの部品のHTMLと、その部品だけのCSS */
-function block(item: ItemData, i: number, s: string): { html: string; css: string } {
-  const cls = `nc-b-${i}`
-  const align = pick(item, 'align', ALIGNS, 'left')
-  switch (str(item, 'type')) {
-    case 'heading': {
-      const size = pick(item, 'size', ['l', 'm', 's'] as const, 'm')
-      return {
-        html: `<h2 class="nc-b nc-b-heading nc-b-heading--${size} nc-b--${align} ${cls}">${esc(str(item, 'text').trim())}</h2>`,
-        css: `${s} .${cls}{color:${safeColor(str(item, 'color'), '#1F2A37')}}`,
-      }
-    }
-    case 'text': {
-      const size = pick(item, 'size', ['m', 's'] as const, 'm')
-      return { html: `<p class="nc-b nc-b-text nc-b-text--${size} nc-b--${align} ${cls}">${textHtml(str(item, 'text'))}</p>`, css: '' }
-    }
-    case 'image': {
-      const image = safeImage(str(item, 'image'))
-      const width = pick(item, 'width', ['100', '80', '60'] as const, '100')
-      const round = bool(item, 'round') ? ' nc-b-image--round' : ''
-      const picture = image === '' ? '' : `<img src="${image}" alt="${esc(str(item, 'alt').trim())}">`
-      const url = str(item, 'url').trim()
-      const inner = picture !== '' && url !== '' ? `<a class="nc-b-image__link"${linkAttrs(url, { track: true, newTab: false })}>${picture}</a>` : picture
-      return { html: `<figure class="nc-b nc-b-image nc-b-image--w${width}${round} ${cls}">${inner}</figure>`, css: '' }
-    }
-    case 'button': {
-      const color = safeColor(str(item, 'color'), '#E5573F')
-      const link = linkAttrs(str(item, 'url'), { track: bool(item, 'track'), newTab: false })
-      return {
-        html:
-          `<div class="nc-b nc-b-button ${cls}"><a class="nc-b-button__a"${link}>` +
-          `<span class="nc-b-button__label">${esc(str(item, 'label').trim())}</span>${ARROW_SVG}</a></div>`,
-        css: pressButtonCss(`${s} .${cls} .nc-b-button__a`, { color, radius: '12px', full: true }),
-      }
-    }
-    case 'list': {
-      const marker = pick(item, 'marker', ['check', 'dot', 'number'] as const, 'check')
-      const lines = str(item, 'text')
-        .split(/\r?\n/)
-        .map((line) => line.trim())
-        .filter((line) => line !== '')
-      const tag = marker === 'number' ? 'ol' : 'ul'
-      const mark = (n: number): string =>
-        marker === 'check' ? CHECK_MARK : marker === 'number' ? `${n}.` : '<span class="nc-b-list__dot"></span>'
-      const lis = lines
-        .map(
-          (line, n) =>
-            `<li class="nc-b-list__item"><span class="nc-b-list__mark" aria-hidden="true">${mark(n + 1)}</span>` +
-            `<span class="nc-b-list__text">${esc(line)}</span></li>`,
-        )
-        .join('')
-      return { html: `<${tag} class="nc-b nc-b-list nc-b-list--${marker} ${cls}">${lis}</${tag}>`, css: '' }
-    }
-    case 'imageText': {
-      const image = safeImage(str(item, 'image'))
-      const side = pick(item, 'side', ['left', 'right'] as const, 'left')
-      const heading = str(item, 'heading').trim()
-      return {
-        html:
-          `<div class="nc-b nc-b-imageText nc-b-imageText--${side} ${cls}">` +
-          `<div class="nc-b-imageText__img">${image === '' ? '' : `<img src="${image}" alt="">`}</div>` +
-          `<div class="nc-b-imageText__body">` +
-          (heading === '' ? '' : `<h3 class="nc-b-imageText__heading">${esc(heading)}</h3>`) +
-          `<p class="nc-b-imageText__text">${textHtml(str(item, 'text'))}</p></div></div>`,
-        css: '',
-      }
-    }
-    case 'spacer': {
-      const size = pick(item, 'size', ['s', 'm', 'l'] as const, 'm')
-      return { html: `<div class="nc-b nc-b-spacer nc-b-spacer--${size} ${cls}" aria-hidden="true"></div>`, css: '' }
-    }
-    case 'divider': {
-      const style = pick(item, 'style', ['solid', 'dotted'] as const, 'solid')
-      return { html: `<hr class="nc-b nc-b-divider nc-b-divider--${style} ${cls}">`, css: '' }
-    }
-    default:
-      return { html: '', css: '' }
-  }
+/** 固定の文（入力の文字は入らない）。ES5 */
+export const SCREENS_SCRIPT = `(function(){
+var roots=document.querySelectorAll('[data-nc-screens]');
+for(var i=0;i<roots.length;i++)start(roots[i]);
+function start(root){
+if(root.__ncScreens)return;
+if(root.closest&&root.closest('.ql-editor'))return;
+root.__ncScreens=true;
+var screens=[];
+for(var k=0;k<root.children.length;k++)if(root.children[k].hasAttribute('data-nc-screen'))screens.push(root.children[k]);
+if(!screens.length)return;
+var effect=root.getAttribute('data-nc-transition')||'none';
+var reduce=!!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+function videos(screen,on){
+var list=screen.querySelectorAll('video');
+for(var v=0;v<list.length;v++){try{if(on){if(list[v].hasAttribute('autoplay'))list[v].play();}else{list[v].pause();}}catch(e){}}
 }
+function show(id,moved){
+var next=null;
+for(var j=0;j<screens.length;j++)if(screens[j].getAttribute('data-nc-screen')===id)next=screens[j];
+if(!next)return;
+for(var n=0;n<screens.length;n++){var on=screens[n]===next;screens[n].hidden=!on;videos(screens[n],on);}
+if(!moved)return;
+if(effect!=='none'&&!reduce&&next.animate){
+next.animate(effect==='slide'?[{opacity:0,transform:'translateX(24px)'},{opacity:1,transform:'none'}]:[{opacity:0},{opacity:1}],{duration:240,easing:'ease-out'});
+}
+if(root.getBoundingClientRect().top<0)root.scrollIntoView({block:'start',behavior:reduce?'auto':'smooth'});
+}
+function go(e){
+var t=e.target&&e.target.closest?e.target.closest('[data-nc-go]'):null;
+if(!t||!root.contains(t))return null;
+return t;
+}
+root.addEventListener('click',function(e){
+var t=go(e);
+if(!t)return;
+e.preventDefault();
+show(t.getAttribute('data-nc-go'),true);
+});
+root.addEventListener('keydown',function(e){
+if(e.key!=='Enter'&&e.key!==' ')return;
+var t=go(e);
+if(!t||t.tagName==='A'||t.tagName==='BUTTON')return;
+e.preventDefault();
+show(t.getAttribute('data-nc-go'),true);
+});
+show(root.getAttribute('data-nc-start')||screens[0].getAttribute('data-nc-screen'),false);
+}
+})();`
 
-/** 見本の中身（そのまま入れられる例） */
-const DEFAULT_BLOCKS: readonly ItemData[] = [
-  { type: 'heading', text: 'はじめての方へ', size: 'l', align: 'center', color: '#1F2A37' },
-  { type: 'text', text: 'ご購入の前に知っておいてほしいことを、ここにまとめました。', size: 'm', align: 'center' },
-  { type: 'list', text: '全国どこでも送料無料\n届いてから30日は返品できます\nチャットでいつでも相談できます', marker: 'check' },
-  { type: 'spacer', size: 's' },
-  { type: 'button', label: '詳しく見る', url: '', track: true, color: '#E5573F' },
+/** 見本の中身（そのまま入れられる例。1画面目で答えを選ぶと2画面目へ移る） */
+const DEFAULT_SCREENS: readonly ItemData[] = [
+  {
+    id: 's1',
+    name: '画面①',
+    blocks: [
+      { type: 'heading', text: 'いちばん気になるのは？', size: 'l', align: 'center', color: '#1F2A37' },
+      { type: 'text', text: '当てはまるものを1つ選んでください。', size: 'm', align: 'center' },
+      { type: 'button', label: '毎日の時間が足りない', look: 'choice', color: '#E5573F', action: 'screen', target: 's2', url: '', track: true },
+      { type: 'button', label: '続けられるか不安', look: 'choice', color: '#E5573F', action: 'screen', target: 's2', url: '', track: true },
+      { type: 'button', label: '費用が気になる', look: 'choice', color: '#E5573F', action: 'screen', target: 's2', url: '', track: true },
+    ],
+  },
+  {
+    id: 's2',
+    name: '画面②',
+    blocks: [
+      { type: 'heading', text: 'ご回答ありがとうございます', size: 'm', align: 'center', color: '#1F2A37' },
+      { type: 'list', text: '全国どこでも送料無料\n届いてから30日は返品できます\nチャットでいつでも相談できます', marker: 'check' },
+      { type: 'spacer', size: 's' },
+      { type: 'button', label: '詳しく見る', look: 'cta', color: '#E5573F', action: 'none', target: '', url: '', track: true },
+    ],
+  },
 ]
+
+function screenName(screen: ItemData, index: number): string {
+  const name = str(screen, 'name').trim()
+  return name === '' ? `画面${index + 1}` : name
+}
 
 export const BUILDER_TEMPLATE: NocodeTemplate = {
   id: 'builder',
   name: '組み立てたWidget',
-  summary: '見出し・文章・画像・ボタンなどを上から順に積んで、自由に作ります',
+  summary: '見出し・文章・画像・ボタンなどを上から順に積んで、自由に作ります。画面を切り替えることもできます',
   icon: svg('<rect x="4" y="3" width="16" height="5" rx="1.5"/><rect x="4" y="10" width="16" height="5" rx="1.5"/><path d="M12 17v4M10 19h4"/>'),
   fields: [
-    { kind: 'blocks', key: 'blocks', label: '部品（上から順に並びます）', min: 1, max: 30, types: BLOCK_TYPES },
+    { kind: 'screens', key: 'screens', label: '画面と部品', min: 1, max: 20, blockMax: 30, types: BLOCK_TYPES },
     { kind: 'color', key: 'background', label: '背景の色', presets: BACKGROUND_PRESETS },
     {
       kind: 'select',
@@ -293,40 +126,85 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
       ],
     },
     { kind: 'color', key: 'accent', label: '箇条書きの印の色', presets: ACCENT_PRESETS },
+    {
+      kind: 'select',
+      key: 'transition',
+      label: '画面の切り替わり方',
+      options: [
+        { value: 'none', label: '瞬時に切り替える' },
+        { value: 'fade', label: 'ふわっと切り替える' },
+        { value: 'slide', label: '横から切り替える' },
+      ],
+      showIf: (data) => items(data, 'screens').length > 1,
+    },
   ],
   defaults: () => ({
-    blocks: DEFAULT_BLOCKS,
+    screens: DEFAULT_SCREENS,
     background: '#FFFFFF',
     padding: 'm',
     accent: '#E5573F',
+    transition: 'none',
   }),
   validate: (data) => {
-    const blocks = items(data, 'blocks')
-    if (blocks.length === 0) return '部品を1つ以上積んでください'
-    for (const item of blocks) {
-      const type = str(item, 'type')
-      if (type === 'button' && str(item, 'label').trim() === '') return 'ボタンの文字が空の部品があります。文字を書くか、その部品を消してください'
-      if ((type === 'image' || type === 'imageText') && safeImage(str(item, 'image')) === '') {
-        return '画像が選ばれていない部品があります。画像を選ぶか、その部品を消してください'
-      }
-      if ((type === 'heading' || type === 'text' || type === 'list') && str(item, 'text').trim() === '') {
-        return '文字が空の部品があります。文字を書くか、その部品を消してください'
+    const screens = items(data, 'screens')
+    if (screens.length === 0) return '画面を1つ以上作ってください'
+    const ids = new Set(screens.map((screen) => str(screen, 'id')).filter((id) => SCREEN_ID.test(id)))
+    for (const [index, screen] of screens.entries()) {
+      const name = screenName(screen, index)
+      const blocks = items(screen, 'blocks')
+      if (blocks.length === 0) return `「${name}」に部品がありません。部品を足すか、その画面を消してください`
+      for (const item of blocks) {
+        const type = str(item, 'type')
+        const where = `「${name}」の${blockLabel(type)}`
+        if (type === 'button' && str(item, 'label').trim() === '') return `ボタンの文字が空です（${where}）。文字を書くか、その部品を消してください`
+        if ((type === 'image' || type === 'imageText') && safeImage(str(item, 'image')) === '') {
+          return `画像が選ばれていません（${where}）。画像を選ぶか、その部品を消してください`
+        }
+        if (type === 'video' && safeVideo(str(item, 'video')) === '') return `動画が選ばれていません（${where}）。動画を選ぶか、その部品を消してください`
+        if ((type === 'heading' || type === 'text' || type === 'list') && str(item, 'text').trim() === '') {
+          return `文字が空です（${where}）。文字を書くか、その部品を消してください`
+        }
+        if (actionOf(item) === 'screen' && goTarget(item, ids) === null) {
+          return `移る先の画面が選ばれていません（${where}）。「移る先の画面」を選んでください`
+        }
       }
     }
     return null
   },
-  render: (data, uid) => {
+  render: (data, uid, view) => {
     const s = `.${uid}`
     const background = safeColor(str(data, 'background'), '#FFFFFF')
     const accent = safeColor(str(data, 'accent'), '#E5573F')
     const padding = PADDING[pick(data, 'padding', ['s', 'm', 'l'] as const, 'm')] ?? 40
-    const parts = items(data, 'blocks').map((item, index) => block(item, index + 1, s))
+    const transition = pick(data, 'transition', TRANSITIONS, 'none')
+    const screens = items(data, 'screens').filter((screen) => SCREEN_ID.test(str(screen, 'id')))
+    const ids = new Set(screens.map((screen) => str(screen, 'id')))
+    const previewStart = view?.screen !== undefined && ids.has(view.screen) ? view.screen : null
+    const start = previewStart ?? str(screens[0] ?? {}, 'id')
+
+    let counter = 0
+    const blockCss: string[] = []
+    const screenHtml = screens
+      .map((screen, index) => {
+        const blocks = items(screen, 'blocks').map((item) => {
+          counter += 1
+          const part = renderBlock(item, counter, s, ids)
+          blockCss.push(part.css)
+          return part.html
+        })
+        const id = str(screen, 'id')
+        const hidden = id === start ? '' : ' hidden'
+        return `<div class="nc-screen" data-nc-screen="${id}" data-nc-name="${esc(screenName(screen, index))}"${hidden}>${blocks.join('')}</div>`
+      })
+      .join('')
 
     const css =
       baseCss(s) +
       `${s}{padding:${padding}px 16px;background:${background}}` +
       `${s} .nc-b+.nc-b{margin-top:14px}` +
       `${s} .nc-b--center{text-align:center}` +
+      `${s} [data-nc-go]{cursor:pointer;-webkit-tap-highlight-color:transparent}` +
+      `${s} [data-nc-go][role="button"]:focus-visible{outline:3px solid ${shade(accent, -0.3)};outline-offset:3px}` +
       `${s} .nc-b-heading{font-weight:800;line-height:1.45}` +
       `${s} .nc-b-heading--l{font-size:26px}` +
       `${s} .nc-b-heading--m{font-size:21px}` +
@@ -340,10 +218,19 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
       `${s} .nc-b-image--w80 img{width:80%}` +
       `${s} .nc-b-image--w60 img{width:60%}` +
       `${s} .nc-b-image--round img{border-radius:12px}` +
-      `${s} .nc-b-image__link{display:block}` +
+      `${s} .nc-b-image__link,${s} .nc-b-video__link,${s} .nc-b-imageText__link{display:block;color:inherit;text-decoration:none}` +
       `${s} .nc-b-button{margin-top:22px}` +
+      `${s} .nc-b-button--choice+.nc-b-button--choice{margin-top:10px}` +
       `${s} .nc-b-button__label{min-width:0}` +
       `${s} .nc-b-button__a svg{flex:0 0 auto;width:18px;height:18px}` +
+      `${s} .nc-b-shape{display:flex;align-items:center;justify-content:center;margin-left:auto;margin-right:auto;` +
+      `padding:16px;text-align:center;font-size:17px;font-weight:800;line-height:1.4;text-decoration:none}` +
+      `${s} .nc-b-shape--round{border-radius:16px;min-height:88px}` +
+      `${s} .nc-b-shape--rect{border-radius:0;min-height:88px}` +
+      `${s} .nc-b-shape--circle{border-radius:50%;aspect-ratio:1/1}` +
+      `${s} .nc-b-shape--pill{border-radius:999px;min-height:56px}` +
+      ['100', '80', '60', '40'].map((w) => `${s} .nc-b-shape--w${w}{width:${w}%}`).join('') +
+      `${s} .nc-b-video__v{display:block;width:100%;height:auto;border-radius:10px;background:#000000}` +
       `${s} .nc-b-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}` +
       `${s} .nc-b-list__item{display:flex;align-items:flex-start;gap:10px}` +
       `${s} .nc-b-list__mark{flex:0 0 22px;width:22px;height:22px;margin-top:2px;color:${shade(accent, -0.15)};` +
@@ -351,7 +238,7 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
       `${s} .nc-b-list__mark svg{width:20px;height:20px;display:block}` +
       `${s} .nc-b-list__dot{width:7px;height:7px;border-radius:50%;background:currentColor}` +
       `${s} .nc-b-list__text{min-width:0;font-size:15px;line-height:1.7;font-weight:600}` +
-      `${s} .nc-b-imageText{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:16px;align-items:center}` +
+      `${s} .nc-b-imageText,${s} .nc-b-imageText__link{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:16px;align-items:center}` +
       `${s} .nc-b-imageText--right .nc-b-imageText__img{order:2}` +
       `${s} .nc-b-imageText__img img{border-radius:10px;width:100%}` +
       `${s} .nc-b-imageText__heading{font-size:17px;font-weight:800;line-height:1.5;margin:0 0 6px}` +
@@ -364,10 +251,19 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
       `${s} .nc-b-divider--dotted{border-top:2px dotted #C9CFD6}` +
       `${s} .nc-b+.nc-b-divider,${s} .nc-b-divider+.nc-b{margin-top:22px}` +
       // 狭い画面では画像と文章を縦に並べる（画像が上）
-      `@media (max-width:480px){${s} .nc-b-imageText{grid-template-columns:minmax(0,1fr)}` +
+      `@media (max-width:480px){${s} .nc-b-imageText,${s} .nc-b-imageText__link{grid-template-columns:minmax(0,1fr)}` +
       `${s} .nc-b-imageText--right .nc-b-imageText__img{order:0}}` +
-      parts.map((p) => p.css).join('')
+      blockCss.join('')
 
-    return wrapWidget({ uid, type: 'builder', css, body: parts.map((p) => p.html).join('') })
+    const attrs =
+      ` data-nc-screens="true" data-nc-transition="${transition}"` + (previewStart === null ? '' : ` data-nc-start="${previewStart}"`)
+    return wrapWidget({
+      uid,
+      type: 'builder',
+      css,
+      body: screenHtml,
+      attrs,
+      script: screens.length > 1 ? SCREENS_SCRIPT : undefined,
+    })
   },
 }

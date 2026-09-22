@@ -130,10 +130,12 @@ function renderForm(
   // スクリプトだけ許す（この画面の中身や保存には触れられない）
   frame.setAttribute('sandbox', 'allow-scripts')
   let timer = 0
+  /** 見え方に出す画面（「部品を積んで作る」で編集している画面。決めていなければ最初の画面） */
+  let previewScreen: string | undefined
   const paintPreview = (): void => {
     const current = store.get()
     if (current === null) return
-    frame.srcdoc = previewDoc(template.render(current.data, current.uid))
+    frame.srcdoc = previewDoc(template.render(current.data, current.uid, previewScreen === undefined ? undefined : { screen: previewScreen }))
   }
   const error = el('span', { class: 'ncf-error' })
   error.setAttribute('role', 'alert')
@@ -148,6 +150,11 @@ function renderForm(
       error.textContent = ''
       window.clearTimeout(timer)
       timer = window.setTimeout(paintPreview, PREVIEW_DELAY_MS)
+    },
+    onScreenChange: (screenId) => {
+      previewScreen = screenId
+      window.clearTimeout(timer)
+      paintPreview()
     },
   })
 
@@ -269,5 +276,6 @@ export const BUILDER_TAB = makeTemplateTab({
   id: 'builder',
   label: '部品を積んで作る',
   templates: [BUILDER_TEMPLATE],
-  intro: '見出し・文章・画像・ボタンなどを、上から順に積んで作ります。下の「部品を足す」から選んでください。',
+  intro:
+    '見出し・文章・画像・ボタンなどを、上から順に積んで作ります。画面①②…を作ると、ボタンや画像を押したときに、その画面へすぐ切り替えられます。',
 })

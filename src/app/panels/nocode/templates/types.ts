@@ -5,10 +5,16 @@
  * 入力欄の画面（template-form.ts）はこの形だけを見て組み立てるので、型を足すときは型のファイルを1つ足すだけでよい。
  */
 
-/** 並べられる入力（よくある質問の1問など）の中身 */
-export type ItemData = Readonly<Record<string, string | boolean | number>>
-export type FieldValue = string | boolean | number | readonly ItemData[]
-export type TemplateData = Readonly<Record<string, FieldValue>>
+/**
+ * 並べられる入力（よくある質問の1問・画面・画面の中の部品）の中身。
+ * 並びの中にさらに並びを持てる（画面 → 部品）。
+ */
+export type ItemValue = string | boolean | number | readonly ItemData[]
+export interface ItemData {
+  readonly [key: string]: ItemValue
+}
+export type FieldValue = ItemValue
+export type TemplateData = ItemData
 
 interface FieldBase {
   readonly key: string
@@ -19,6 +25,8 @@ interface FieldBase {
   readonly note?: string
   /** この入力を出すかどうか（ほかの入力の値しだいで出し分ける） */
   readonly showIf?: (data: TemplateData) => boolean
+  /** 並びの中の入力を、その1件の値しだいで出し分ける（「画面へ移る」を選んだときだけ「移る先」を出す） */
+  readonly showIfItem?: (item: ItemData) => boolean
 }
 
 export type Field =
@@ -27,7 +35,14 @@ export type Field =
   | (FieldBase & { readonly kind: 'url'; readonly placeholder?: string })
   | (FieldBase & { readonly kind: 'color'; readonly presets: readonly string[] })
   | (FieldBase & { readonly kind: 'image' })
-  | (FieldBase & { readonly kind: 'select'; readonly options: readonly { value: string; label: string }[] })
+  /** 動画のファイル（mp4・webm） */
+  | (FieldBase & { readonly kind: 'video' })
+  | (FieldBase & {
+      readonly kind: 'select'
+      readonly options: readonly { value: string; label: string }[]
+      /** 選べるものをほかの入力から作るとき（「移る先の画面」＝今ある画面の一覧） */
+      readonly optionsOf?: (data: TemplateData) => readonly { value: string; label: string }[]
+    })
   | (FieldBase & { readonly kind: 'number'; readonly min: number; readonly max: number; readonly unit?: string })
   | (FieldBase & { readonly kind: 'datetime' })
   | (FieldBase & { readonly kind: 'toggle' })
@@ -42,13 +57,17 @@ export type Field =
       readonly fields: readonly Field[]
       readonly newItem: () => ItemData
     })
-  /** 種類の違う部品を積む並び（「部品を積んで作る」）。1件ごとに type で入力欄が変わる */
-  | (FieldBase & {
-      readonly kind: 'blocks'
-      readonly min: number
-      readonly max: number
-      readonly types: readonly BlockType[]
-    })
+  | ScreensField
+
+/** 画面①・画面②…を作り、画面ごとに部品を積む（「部品を積んで作る」）。1件＝ { id, name, blocks } */
+export interface ScreensField extends FieldBase {
+  readonly kind: 'screens'
+  readonly min: number
+  readonly max: number
+  /** 1画面に積める部品の数 */
+  readonly blockMax: number
+  readonly types: readonly BlockType[]
+}
 
 /** 積める部品の種類（見出し・文章・画像…） */
 export interface BlockType {
@@ -75,8 +94,11 @@ export interface NocodeTemplate {
   readonly defaults: (now: Date) => TemplateData
   /** LPに入れる前の確かめ。問題があれば直し方の分かる文 */
   readonly validate: (data: TemplateData, now: Date) => string | null
-  /** LPに入れるHTML（<style>＋中身＋必要なら固定の<script>） */
-  readonly render: (data: TemplateData, uid: string) => string
+  /**
+   * LPに入れるHTML（<style>＋中身＋必要なら固定の<script>）。
+   * view は見え方（プレビュー）だけの指定（編集している画面から見せる）。LPに入れるときは渡さない
+   */
+  readonly render: (data: TemplateData, uid: string, view?: { readonly screen?: string }) => string
 }
 
 /* ── 値の読み出し（入力は信用しない。型が違えば既定の値） ── */
@@ -96,7 +118,7 @@ export function int(data: TemplateData | ItemData, key: string, min: number, max
   return Number.isFinite(n) ? Math.min(max, Math.max(min, Math.round(n))) : fallback
 }
 
-export function items(data: TemplateData, key: string): readonly ItemData[] {
+export function items(data: TemplateData | ItemData, key: string): readonly ItemData[] {
   const value = data[key]
   return Array.isArray(value) ? (value as readonly ItemData[]) : []
 }

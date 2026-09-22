@@ -58,6 +58,14 @@ export function safeImage(value: string): string {
   return DATA_IMAGE.test(value) ? value : ''
 }
 
+/** mp4・webm だけ（保存のときに別ファイルへ出せる形＝mock-server/lib/uploads.ts と同じ） */
+const DATA_VIDEO = /^data:video\/(mp4|webm);base64,[A-Za-z0-9+/]+=*$/
+
+/** 選んだ動画ファイル（data:video/mp4・webm;base64）だけ。それ以外は空 */
+export function safeVideo(value: string): string {
+  return DATA_VIDEO.test(value) ? value : ''
+}
+
 function channels(hex: string): [number, number, number] {
   const n = Number.parseInt(hex.slice(1), 16)
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255]
