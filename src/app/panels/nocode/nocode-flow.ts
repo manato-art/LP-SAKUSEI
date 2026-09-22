@@ -45,3 +45,18 @@ export function defaultRegisterName(knownTitle: string | undefined, visibleText:
   const text = visibleText.replace(/\s+/g, ' ').trim()
   return text === '' ? 'Widget' : Array.from(text).slice(0, NAME_MAX).join('').trim()
 }
+
+/**
+ * 見本から足したWidgetの、見本の名前（「Widgetとして登録」の名前の初期値に使う）。
+ * 画面の上だけで覚える。Widgetの外側（section）の属性に書くと、LPのHTMLに保存されて配信にまで出てしまう
+ * （2026-09-22 実測。最初は data-widget-title 属性にしていた）。
+ */
+const sampleTitles = new WeakMap<object, string>()
+
+export function rememberSampleTitle(node: object, title: string): void {
+  sampleTitles.set(node, title)
+}
+
+export function sampleTitleOf(node: object): string | undefined {
+  return sampleTitles.get(node)
+}

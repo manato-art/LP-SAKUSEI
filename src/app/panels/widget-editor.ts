@@ -13,7 +13,8 @@ import type Quill from 'quill'
 import { toast } from '../ui.ts'
 import { promptCard } from '../dialog.ts'
 import { saveCreatedWidget } from './widget-library-storage.ts'
-import { defaultRegisterName } from './nocode/nocode-flow.ts'
+import { defaultRegisterName, sampleTitleOf } from './nocode/nocode-flow.ts'
+import { templateById } from './nocode/templates/index.ts'
 import {    loadGoogleFonts } from './toolbar/text-format.ts'
 import {
   svgPlus,
@@ -381,7 +382,7 @@ function buildHeader(
     void promptCard({
       title: 'Widgetとして登録',
       label: '名前（「作成したWidget」にこの名前で入ります）',
-      value: defaultRegisterName(target.node.dataset['widgetTitle'], visibleTextOf(htmlCode)),
+      value: defaultRegisterName(sampleTitleOf(target.node) ?? templateNameOf(htmlCode), visibleTextOf(htmlCode)),
       submitLabel: '登録する',
       validate: (v) => (v === '' ? '名前を入れてください' : null),
     }).then((name) => {
@@ -564,8 +565,20 @@ function visibleTextOf(html: string): string {
   return doc.body.textContent ?? ''
 }
 
-/** Widget の HTML から名前を推定する（最初のクラス名またはテキストから）。 */
+/**
+ * 型から作ったWidget（外側に data-nocode）なら型の名前（「よくある質問」）。
+ * 無ければ undefined（クラス名の「nc」を名前にしない）。
+ */
+function templateNameOf(html: string): string | undefined {
+  const doc = new DOMParser().parseFromString(html, 'text/html')
+  const type = doc.body.firstElementChild?.getAttribute('data-nocode')
+  return type === null || type === undefined ? undefined : templateById(type)?.name
+}
+
+/** Widget の HTML から名前を推定する（型の名前・最初のクラス名・テキストの順）。 */
 export function guessWidgetName(html: string): string {
+  const templateName = templateNameOf(html)
+  if (templateName !== undefined) return templateName
   const doc = new DOMParser().parseFromString(html, 'text/html')
   const firstEl = doc.body.firstElementChild
   const cls = firstEl?.className ?? ''

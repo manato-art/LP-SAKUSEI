@@ -6,7 +6,7 @@
  */
 import type Quill from 'quill'
 import { openWidgetEditorForNode } from '../widget-editor.ts'
-import { newestNode } from './nocode-flow.ts'
+import { newestNode, rememberSampleTitle } from './nocode-flow.ts'
 
 /** 本文に入っているWidget（`section.sb-widget-block`） */
 export function widgetNodesInEditor(): HTMLElement[] {
@@ -15,13 +15,13 @@ export function widgetNodesInEditor(): HTMLElement[] {
 
 /**
  * 足す前の一覧と比べて、いま増えたWidgetの編集画面を開く。
- * 見本の名前は `data-widget-title` に控える（「Widgetとして登録」の名前の初期値に使う）。
- * 画面の上だけの目印で、保存されるHTMLには入らない（Widgetの中身だけが保存される）。
+ * 見本の名前は画面の上だけで控える（「Widgetとして登録」の名前の初期値に使う）。
+ * ⚠️ Widgetの外側（section）の属性には書かない。属性はLPのHTMLに保存され、配信にまで出る。
  */
 export function openEditorOnNewest(quill: Quill, before: readonly HTMLElement[], title: string): void {
   const node = newestNode(before, widgetNodesInEditor())
   if (node === null) return
-  node.dataset['widgetTitle'] = title
+  rememberSampleTitle(node, title)
   node.scrollIntoView({ block: 'center' })
   openWidgetEditorForNode(quill, node)
 }

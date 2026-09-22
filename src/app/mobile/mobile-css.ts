@@ -566,6 +566,27 @@ export function mobileCss(): string {
     `html body [class*="_scopeTable_"] tbody td[class*="_memoCell_"] textarea{width:100% !important}`,
     // トグルは右端に寄せる（中央寄せのままだと列名と重なって見える）
     `html body [class*="_scopeTable_"] tbody td [class*="_toggleSwitchWrapper_"]>*{margin:0 !important}`,
+
+    // ── ノーコードで作る「型から作る」（2026-09-22）: 入力と見え方は横に並べず、切り替えて1画面ずつ ──
+    // 入力画面のCSS（nocode-form-css.ts）はあとから差し込まれるので、同じ強さだと後勝ちでPCの形に戻る。
+    // ここは html body [data-nc-tab] を頭に付けて強くする（ui-forge deck-toggle-cascade-specificity）
+    // 本文の下の道具バー（履歴・Widget…）が入口の画面の下（「LPに入れる」）に重なるので、開いている間は隠す
+    // （Widget編集を開いているときと同じ）
+    `html body:has([data-nocode-panel]) [class*="_sideToolbarWrapper_"]{display:none !important}`,
+    `html body [data-nc-tab] .ncf-picker{grid-template-columns:1fr}`,
+    `html body [data-nc-tab] .ncf-seg{display:flex;flex-shrink:0;margin:0 0 10px;border:1px solid var(--sb-line);`,
+    `border-radius:8px;overflow:hidden}`,
+    `html body [data-nc-tab] .ncf-seg .ncf-btn{flex:1;min-height:44px;border:0;border-radius:0;background:transparent;`,
+    `color:var(--sb-sub)}`,
+    `html body [data-nc-tab] .ncf-seg .ncf-btn[aria-pressed="true"]{background:var(--sb-accent);color:var(--sb-accent-ink)}`,
+    `html body [data-nc-tab] .ncf-edit{grid-template-columns:minmax(0,1fr)}`,
+    `html body [data-nc-tab][data-nc-view="form"] .ncf-preview{display:none}`,
+    `html body [data-nc-tab][data-nc-view="preview"] .ncf-form{display:none}`,
+    `html body [data-nc-tab] .ncf-foot{flex-wrap:wrap}`,
+    `html body [data-nc-tab] .ncf-foot .ncf-error{flex-basis:100%}`,
+    `html body [data-nc-tab] .ncf-foot .ncf-error:empty{display:none}`,
+    `html body [data-nc-tab] .ncf-foot .ncf-btn{flex:1;min-height:44px}`,
+    `html body [data-nc-tab] .ncf-icon-btn{width:40px;height:40px}`,
     `}`,
   ].join('')
 }

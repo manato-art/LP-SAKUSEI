@@ -33,6 +33,7 @@ import { insertWidget, openWidgetCreator } from './widget-creator.ts'
 import { openNocodePanel } from './nocode/nocode-panel.ts'
 import { consumeEditAfterInsert, disarmEditAfterInsert } from './nocode/nocode-flow.ts'
 import { openEditorOnNewest, widgetNodesInEditor } from './nocode/edit-after-insert.ts'
+import { newUid, rekeyUid } from './nocode/templates/kit.ts'
 
 const HOOK = {
   trigger: '[aria-label="Widget管理"]',
@@ -461,7 +462,8 @@ function renderCreatedWidgets(root: HTMLElement, quill: Quill, close: () => void
       e.stopPropagation()
       close()
       requestAnimationFrame(() => {
-        insertWidget(quill, w.html, w.name)
+        // 型から作ったWidgetは入れるたびにCSSのクラスを付け直す（同じLPで片方の色を変えても、もう片方は変わらない）
+        insertWidget(quill, rekeyUid(w.html, newUid()), w.name)
         toast(`「${w.name}」を追加しました`)
       })
     })
@@ -528,7 +530,8 @@ function renderFavoriteWidgets(root: HTMLElement, quill: Quill, close: () => voi
       e.stopPropagation()
       close()
       requestAnimationFrame(() => {
-        insertWidget(quill, w.html, w.name)
+        // 型から作ったWidgetは入れるたびにCSSのクラスを付け直す（同じLPで片方の色を変えても、もう片方は変わらない）
+        insertWidget(quill, rekeyUid(w.html, newUid()), w.name)
         toast(`「${w.name}」を追加しました`)
       })
     })

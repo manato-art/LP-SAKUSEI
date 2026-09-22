@@ -5,7 +5,7 @@
  * そのまま編集画面を開く（今までの「追加」を押した人の動きは変えない）。
  */
 import { describe, expect, it } from 'vitest'
-import { armEditAfterInsert, consumeEditAfterInsert, defaultRegisterName, newestNode } from '../src/app/panels/nocode/nocode-flow.ts'
+import { armEditAfterInsert, consumeEditAfterInsert, defaultRegisterName, newestNode, rememberSampleTitle, sampleTitleOf } from '../src/app/panels/nocode/nocode-flow.ts'
 
 describe('追加したら編集画面を開くかどうか', () => {
   it('入口で見本を選びに行ったときだけ、1回だけ開く', () => {
@@ -42,5 +42,15 @@ describe('「Widgetとして登録」の名前の初期値', () => {
 
   it('文字も無ければ「Widget」', () => {
     expect(defaultRegisterName(undefined, '   ')).toBe('Widget')
+  })
+})
+
+describe('見本の名前の控え', () => {
+  it('足したWidgetごとに覚える（要素の属性には書かない＝LPのHTMLに保存されない）', () => {
+    const a = {}
+    const b = {}
+    rememberSampleTitle(a, '結果内容とフッター')
+    expect(sampleTitleOf(a)).toBe('結果内容とフッター')
+    expect(sampleTitleOf(b)).toBeUndefined()
   })
 })
