@@ -3,7 +3,7 @@
  *
  * 実測（2026-09-22）: 公開LPの Widget の外枠が、編集画面で付けた属性のまま出ていた。
  *   <section class="sb-widget-block" data-widget-block="true" contenteditable="false" style="margin: 8px 0px;" data-widget-name="MuiBox-root">
- * data-widget-name はホバー時の名前（widget-editor.ts の labelAllWidgets）、contenteditable は
+ * data-widget-name は編集画面がホバー時の名前に付けていたもの（52da45e でやめたが、それより前に保存したLPには残る）、contenteditable は
  * Quill の中で Widget を「文字を打てない1かたまり」にするもの（media-blots.ts の SbWidgetBlot）で、見る人には意味が無い。
  * 保存データは書き換えず、配信・プレビュー・ダウンロードのときに外す（本人指定）。
  */

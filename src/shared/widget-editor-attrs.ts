@@ -3,8 +3,8 @@
  *
  * LP の HTML は編集中の本文をそのまま保存するので、編集画面が自分の表示のために外枠へ付けた属性まで保存され、
  * 公開LPにもそのまま出ていた（実測: `data-widget-name="MuiBox-root"`）。見る人には意味が無い。
- *   - data-widget-name     … ホバー時に出す名前（widget-editor.ts の labelAllWidgets）
- *   - data-widget-selected … 選択中の青枠の目印（widget-editor.ts の選択CSS）
+ *   - data-widget-name     … 編集画面がホバー時の名前に付けていた（52da45e で名前の表示ごとやめた。それより前に保存したLPに残っている）
+ *   - data-widget-selected … 選択中の青枠の目印（編集画面の選択CSS だけが見る。保存済みのLPにあれば外す）
  *   - contenteditable      … Quill の中で Widget を「文字を打てない1かたまり」にする（media-blots.ts の SbWidgetBlot）。
  *                            もともと編集できないページでは、有っても無くても表示も操作も同じ。
  *                            配信のCSS・スクリプト（計測タグ・リンク・アニメ・ポップアップ）もこの属性を見ていない
