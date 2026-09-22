@@ -587,6 +587,8 @@ export function mobileCss(): string {
     `html body [data-nc-tab] .ncf-foot .ncf-error:empty{display:none}`,
     `html body [data-nc-tab] .ncf-foot .ncf-btn{flex:1;min-height:44px}`,
     `html body [data-nc-tab] .ncf-icon-btn{width:40px;height:40px}`,
+    // 「押したとき」「この部品を出す画面」のボタンは指で押しやすい高さに
+    `html body [data-nc-tab] .ncf-chip{min-height:40px;padding:8px 14px;font-size:13px}`,
     `}`,
   ].join('')
 }

@@ -3,7 +3,7 @@
  *
  * 見出し・文章・画像・ボタン・図形・動画・箇条書き・画像と文章・余白・区切り線。
  * ボタン・画像・図形・動画・画像と文章は「押したとき」を選べる:
- *   何もしない ／ 画面へ移る（data-nc-go。builder.ts のスクリプトが瞬時に切り替える）／ リンクを開く
+ *   なし ／ 画面②③…へ移る（data-nc-go。builder.ts のスクリプトが瞬時に切り替える）／ リンクを開く
  *
  * - 部品ごとの色などは、その部品だけのクラス（nc-b-1, nc-b-2…）に書く（②で並べ替え・複製しても崩れない）
  * - 本文サイズの色文字は暗い色だけを候補にする（ui-forge contrast-discipline）
@@ -11,7 +11,7 @@
  */
 import { ARROW_SVG, pressButtonCss } from './cta.ts'
 import { esc, inkOn, linkAttrs, safeColor, safeImage, safeVideo, shade, textHtml } from './kit.ts'
-import { ACCENT_PRESETS, bool, items, pick, str, type BlockType, type Field, type ItemData, type TemplateData } from './types.ts'
+import { ACCENT_PRESETS, bool, pick, str, type BlockType, type Field, type ItemData } from './types.ts'
 
 /** 文字の色の候補（本文にも使えるよう、暗い色だけ） */
 const TEXT_PRESETS: readonly string[] = ['#1F2A37', '#B83A26', '#A8264F', '#155BB0', '#0B7A3E', '#8A6414']
@@ -36,35 +36,13 @@ const CHECK_MARK =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7" fill="none" stroke="currentColor" ' +
   'stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>'
 
-/** 移る先の画面の選び方（今ある画面の一覧） */
-function screenOptions(data: TemplateData): readonly { value: string; label: string }[] {
-  return items(data, 'screens').map((screen, i) => ({
-    value: str(screen, 'id'),
-    label: str(screen, 'name').trim() === '' ? `画面${i + 1}` : str(screen, 'name').trim(),
-  }))
-}
-
-/** 「押したとき」の入力（ボタン・画像・図形・動画・画像と文章） */
+/**
+ * 「押したとき」の入力（ボタン・画像・図形・動画・画像と文章）。
+ * なし・画面②③…・＋新しい画面・リンクを開く をボタンで選ぶ（本人の依頼「画面2・3・4・5…として簡単に設定」）
+ */
 function actionFields(): readonly Field[] {
   return [
-    {
-      kind: 'select',
-      key: 'action',
-      label: '押したとき',
-      options: [
-        { value: 'none', label: '何もしない' },
-        { value: 'screen', label: '画面へ移る（すぐ切り替わる）' },
-        { value: 'link', label: 'リンクを開く' },
-      ],
-    },
-    {
-      kind: 'select',
-      key: 'target',
-      label: '移る先の画面',
-      options: [],
-      optionsOf: screenOptions,
-      showIfItem: (item) => str(item, 'action') === 'screen',
-    },
+    { kind: 'goto', key: 'action', label: '押したとき' },
     { kind: 'url', key: 'url', label: '開くページ', placeholder: 'https://', showIfItem: (item) => str(item, 'action') === 'link' },
     { kind: 'toggle', key: 'track', label: 'クリック数をレポートで数える', showIfItem: (item) => str(item, 'action') === 'link' },
   ]

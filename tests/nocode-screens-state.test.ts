@@ -6,7 +6,20 @@
  * どの部品からも移ってこない画面は、見ている人がたどり着けないので、画面に知らせを出す。
  */
 import { describe, expect, it } from 'vitest'
-import { cssPathFrom, editorScreenCss, editorStepCss, incomingCount, nextScreenId, nextScreenName } from '../src/app/panels/nocode/screens-state.ts'
+import {
+  addScreenFor,
+  cssPathFrom,
+  editorScreenCss,
+  editorStepCss,
+  goChoices,
+  incomingCount,
+  moveBlockToNewScreen,
+  moveBlockToScreen,
+  nextScreenId,
+  nextScreenName,
+  pressOf,
+  withPress,
+} from '../src/app/panels/nocode/screens-state.ts'
 import type { TemplateData } from '../src/app/panels/nocode/templates/types.ts'
 
 describe('画面のidと名前', () => {
@@ -35,6 +48,121 @@ describe('その画面へ移ってくる部品の数', () => {
   it('「画面へ移る」でその画面を選んでいる部品だけ数える', () => {
     expect(incomingCount(data, 's2')).toBe(2)
     expect(incomingCount(data, 's3')).toBe(0)
+  })
+
+  it('見本の部品の中のボタン・画像が移ってくる画面も数える', () => {
+    const withSample: TemplateData = {
+      screens: [
+        { id: 's1', name: '画面①', blocks: [{ type: 'sample', title: 'x', html: '<a href="ooooo" data-nc-go="s3">はい</a><img src="a.png" data-nc-go="s3">' }] },
+        { id: 's3', name: '画面③', blocks: [] },
+      ],
+    }
+    expect(incomingCount(withSample, 's3')).toBe(2)
+  })
+})
+
+/**
+ * 本人の依頼（2026-09-22）「画像や動画・ボタンなどの要素を、画面2・3・4・5…として簡単に設定したい」。
+ * 決定: 両方（押したら画面②③…へ移る／その部品を画面②③…に置く）・部品の一覧で画面のボタンを押すだけ。
+ */
+describe('部品を別の画面へ移す（出す画面）', () => {
+  const data = (): TemplateData => ({
+    screens: [
+      { id: 's1', name: '画面①', blocks: [{ type: 'heading', text: 'A' }, { type: 'image', image: 'x' }] },
+      { id: 's2', name: '画面②', blocks: [{ type: 'text', text: 'B' }] },
+    ],
+  })
+
+  it('選んだ画面のいちばん下へ移す（元の画面からは消える）', () => {
+    const moved = moveBlockToScreen(data(), 'screens', 0, 1, 1, 30)
+    expect(moved.screens).toEqual([
+      { id: 's1', name: '画面①', blocks: [{ type: 'heading', text: 'A' }] },
+      { id: 's2', name: '画面②', blocks: [{ type: 'text', text: 'B' }, { type: 'image', image: 'x' }] },
+    ])
+  })
+
+  it('同じ画面・無い画面・部品がいっぱいの画面へは移さない（元のまま）', () => {
+    const original = data()
+    expect(moveBlockToScreen(original, 'screens', 0, 1, 0, 30)).toBe(original)
+    expect(moveBlockToScreen(original, 'screens', 0, 1, 5, 30)).toBe(original)
+    expect(moveBlockToScreen(original, 'screens', 0, 9, 1, 30)).toBe(original)
+    expect(moveBlockToScreen(original, 'screens', 0, 1, 1, 1)).toBe(original)
+  })
+})
+
+describe('押したとき（画面のボタンを押すだけ）', () => {
+  const data: TemplateData = {
+    screens: [
+      { id: 's1', name: '画面①', blocks: [{ type: 'button', label: 'はい', action: 'none', target: '' }] },
+      { id: 's2', name: 'はいの人', blocks: [] },
+      { id: 's4', name: '', blocks: [] },
+    ],
+  }
+
+  it('移る先の候補は、その部品がある画面以外の画面（名前が無ければ番号の名前）', () => {
+    expect(goChoices(data, 'screens', 0)).toEqual([
+      { id: 's2', label: 'はいの人' },
+      { id: 's4', label: '画面③' },
+    ])
+    expect(goChoices(data, 'screens', 1).map((c) => c.id)).toEqual(['s1', 's4'])
+  })
+
+  it('「＋新しい画面」: 画面を足して、その部品の移る先にする', () => {
+    const out = addScreenFor(data, 'screens', ['screens', 0, 'blocks', 0], 20)
+    expect(out?.id).toBe('s5')
+    const screens = out?.data['screens'] as readonly Record<string, unknown>[]
+    expect(screens[3]).toEqual({ id: 's5', name: '画面②', blocks: [] })
+    expect((screens[0]?.['blocks'] as readonly Record<string, unknown>[])[0]).toMatchObject({ action: 'screen', target: 's5' })
+  })
+
+  it('画面がいっぱいなら足さない', () => {
+    expect(addScreenFor(data, 'screens', ['screens', 0, 'blocks', 0], 3)).toBeNull()
+  })
+
+  it('その部品がある画面へ移る指定になっていたら（出す画面で移した等）、その画面も「（この画面）」として候補に出す', () => {
+    expect(goChoices(data, 'screens', 1, 's2')).toEqual([
+      { id: 's1', label: '画面①' },
+      { id: 's4', label: '画面③' },
+      { id: 's2', label: 'はいの人（この画面）' },
+    ])
+    expect(goChoices(data, 'screens', 1, 's4').map((c) => c.id)).toEqual(['s1', 's4'])
+  })
+
+  it('押したときの今の選び（なし・リンク・画面のid）を読み、選び直した中身を作る', () => {
+    expect(pressOf({ action: 'none', target: 's2' })).toBe('none')
+    expect(pressOf({ action: 'link', target: '' })).toBe('link')
+    expect(pressOf({ action: 'screen', target: 's2' })).toBe('s2')
+    expect(pressOf({ action: 'screen', target: '' })).toBe('none')
+    expect(pressOf({})).toBe('none')
+    const path = ['screens', 0, 'blocks', 0] as const
+    const block = (d: TemplateData): unknown => (((d['screens'] as readonly Record<string, unknown>[])[0]?.['blocks']) as readonly unknown[])[0]
+    expect(block(withPress(data, path, 's4'))).toMatchObject({ action: 'screen', target: 's4' })
+    expect(block(withPress(data, path, 'link'))).toMatchObject({ action: 'link' })
+    expect(block(withPress(withPress(data, path, 's4'), path, 'none'))).toMatchObject({ action: 'none' })
+  })
+})
+
+describe('部品を新しい画面へ移す（出す画面の「＋新しい画面」）', () => {
+  const data: TemplateData = {
+    screens: [{ id: 's1', name: '画面①', blocks: [{ type: 'heading', text: 'A' }, { type: 'image', image: 'x' }] }],
+  }
+
+  it('いちばん右に画面を足し、その部品を移す', () => {
+    const out = moveBlockToNewScreen(data, 'screens', 0, 1, 20, 30)
+    expect(out).toEqual({
+      index: 1,
+      data: {
+        screens: [
+          { id: 's1', name: '画面①', blocks: [{ type: 'heading', text: 'A' }] },
+          { id: 's2', name: '画面②', blocks: [{ type: 'image', image: 'x' }] },
+        ],
+      },
+    })
+  })
+
+  it('画面がいっぱい・部品が無いときは何もしない', () => {
+    expect(moveBlockToNewScreen(data, 'screens', 0, 1, 1, 30)).toBeNull()
+    expect(moveBlockToNewScreen(data, 'screens', 0, 5, 20, 30)).toBeNull()
   })
 })
 

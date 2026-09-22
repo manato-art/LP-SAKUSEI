@@ -4,16 +4,15 @@
  * 見分け方は sample-model.ts（DOMを使わない形）。ここはブラウザで見本のHTMLを組み立てて使う。
  *  - readSample: 中身の一覧と、もともとある設問①②…。設問は、見本を画面の外で（スクリプトなしで）描いて、
  *    見えている・隠れているで見つける（HTMLだけでは、どれが隠れているか分からない）
- *  - editSample: 文字・ボタンの文字・画像・リンク先・押したときを1か所直した新しいHTMLを返す
+ *  - editSample: 文字・ボタンの文字・画像・動画・リンク先・押したときを1か所直した新しいHTMLを返す
  *  - previewWithStep: 見え方だけ、選んだ設問を出したHTML（保存するHTMLには入れない）
  * どれも見本を <div id="nc-sample-root"> に包んで組み立てる（先頭の <style> も中に残る＝番号がそろう）。
  */
 import { LP_BASE_CSS } from '../../lp-base-css.ts'
 import { WIDGET_RESET_CSS } from '../../../shared/sb-preview-css.ts'
 import { isAllowedLinkUrl, isTrackingLink, withTrackingParam } from '../../../shared/link-html.ts'
-import { elementsInOrder, findStepGroup, nestedScreens, nodeAt, sampleSlots, type Slot, type SlotNode } from './sample-model.ts'
-import { SCREEN_ID } from './templates/builder-blocks.ts'
-import { safeImage } from './templates/kit.ts'
+import { elementsInOrder, findStepGroup, nestedScreens, nodeAt, sampleSlots, setGoOn, type Slot, type SlotNode } from './sample-model.ts'
+import { safeImage, safeVideo } from './templates/kit.ts'
 
 const ROOT_ID = 'nc-sample-root'
 /** 見え方だけで使う目印（保存するHTMLには入れない） */
@@ -101,6 +100,8 @@ export type SampleChange =
   /** ボタンの文字（ボタンの中の最初の文字を入れ替える） */
   | { readonly kind: 'label'; readonly value: string }
   | { readonly kind: 'image'; readonly value: string }
+  /** 動画（選んだ mp4・webm） */
+  | { readonly kind: 'video'; readonly value: string }
   /** リンク先（a だけ）。計測の目印（sb_tracking）は元のリンクに合わせる */
   | { readonly kind: 'href'; readonly value: string }
   /** 押したら移る画面（null＝見本のまま） */
@@ -145,6 +146,22 @@ export function editSample(html: string, id: string, change: SampleChange): stri
       }
       break
     }
+    case 'video': {
+      const src = safeVideo(change.value)
+      if (!(node instanceof Element) || node.tagName !== 'VIDEO' || src === '') return html
+      // 元の動画の出し分け（<source>）も選んだ動画にそろえる。<source> は外さない（外すと、ほかの中身の番号がずれる）。
+      // 元の動画の最初の絵（poster）は、選んだ動画には合わないので外す
+      const type = /^data:(video\/(?:mp4|webm));/.exec(src)?.[1] ?? 'video/mp4'
+      for (const source of node.querySelectorAll('source')) {
+        source.setAttribute('src', src)
+        source.setAttribute('type', type)
+      }
+      node.removeAttribute('poster')
+      node.setAttribute('src', src)
+      node.setAttribute('playsinline', '')
+      node.setAttribute('preload', 'metadata')
+      break
+    }
     case 'href': {
       const url = change.value.trim()
       if (!(node instanceof Element) || node.tagName !== 'A' || (url !== '' && !isAllowedLinkUrl(url))) return html
@@ -154,8 +171,7 @@ export function editSample(html: string, id: string, change: SampleChange): stri
     }
     case 'go':
       if (!(node instanceof Element)) return html
-      if (change.value !== null && SCREEN_ID.test(change.value)) node.setAttribute('data-nc-go', change.value)
-      else node.removeAttribute('data-nc-go')
+      setGoOn(node, change.value)
       break
   }
   return root.innerHTML

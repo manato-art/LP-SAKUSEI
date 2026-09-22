@@ -120,6 +120,15 @@ textarea.ncf-input{resize:vertical;min-height:64px}
 .ncf-sample__slot{padding:10px 0 0;border-top:1px dashed var(--sb-line,#DDD)}
 .ncf-sample__slot .ncf-field{margin-bottom:10px}
 .ncf-goto{display:block;margin:-6px 0 14px;border:0;background:transparent;color:var(--sb-accent,#0091FF);font-size:12.5px;font-weight:700;cursor:pointer;padding:4px 0;text-align:left}
+.ncf-chips{display:flex;flex-wrap:wrap;gap:6px}
+.ncf-chip{max-width:100%;border:1px solid var(--sb-line,#DDD);border-radius:999px;background:var(--sb-surface,#FFF);color:var(--sb-text,#151515);
+  padding:6px 12px;font-size:12.5px;font-weight:600;line-height:1.4;cursor:pointer;text-align:left;overflow-wrap:anywhere}
+.ncf-chip:hover:not(:disabled){background:var(--sb-neutral,#F4F4F4)}
+.ncf-chip[aria-pressed="true"],.ncf-chip[aria-pressed="true"]:hover{background:var(--sb-accent,#0091FF);border-color:var(--sb-accent,#0091FF);color:var(--sb-accent-ink,#FFF)}
+.ncf-chip--add{border-style:dashed;background:transparent;color:var(--sb-accent,#0091FF)}
+.ncf-chip:disabled{opacity:.4;cursor:default}
+.ncf-chip:focus-visible{outline:2px solid var(--sb-accent,#0091FF);outline-offset:2px}
+.ncf-sample__box{margin:0 0 8px;font-size:12.5px;font-weight:700;overflow-wrap:anywhere}
 `
 
 export function ensureNocodeFormCss(): void {

@@ -14,7 +14,7 @@ import { COLOR_NAMES, type Field, type TemplateData } from './templates/types.ts
 
 export type Scalar = string | boolean | number
 /** 並びではない入力（見本の部品は form-sample.ts の専用の入力） */
-export type ScalarField = Exclude<Field, { kind: 'list' } | { kind: 'screens' } | { kind: 'sample' }>
+export type ScalarField = Exclude<Field, { kind: 'list' } | { kind: 'screens' } | { kind: 'sample' } | { kind: 'goto' }>
 
 export interface ControlEnv {
   read: () => unknown
@@ -156,26 +156,13 @@ export function scalarControl(field: ScalarField, env: ControlEnv, id: string): 
     case 'select': {
       const select = node('select', 'ncf-input')
       select.id = id
-      const fill = (): void => {
-        const current = typeof env.read() === 'string' ? String(env.read()) : ''
-        const options = field.optionsOf === undefined ? field.options : field.optionsOf(env.data())
-        const known = options.some((o) => o.value === current)
-        select.replaceChildren()
-        // まだ選んでいない（または選んでいた画面を消した）ときは「選んでください」を出す
-        if (field.optionsOf !== undefined && !known) {
-          const blank = node('option', '', '（選んでください）')
-          blank.value = ''
-          select.append(blank)
-        }
-        for (const option of options) {
-          const opt = node('option', '', option.label)
-          opt.value = option.value
-          select.append(opt)
-        }
-        select.value = known ? current : field.optionsOf === undefined ? (options[0]?.value ?? '') : ''
+      const current = typeof value === 'string' ? value : ''
+      for (const option of field.options) {
+        const opt = node('option', '', option.label)
+        opt.value = option.value
+        select.append(opt)
       }
-      fill()
-      if (field.optionsOf !== undefined) env.onRefresh(fill)
+      select.value = field.options.some((o) => o.value === current) ? current : (field.options[0]?.value ?? '')
       select.addEventListener('change', () => env.write(select.value))
       return select
     }

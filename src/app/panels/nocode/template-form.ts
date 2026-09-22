@@ -5,15 +5,31 @@
  *  - 文字を打つたびに中身を作り直して知らせる（onChange）。入力欄そのものは作り直さない（打っている途中で外れない）
  *  - 「ほかの入力しだいで出す欄」「ほかの入力から付く名前・選べるもの」は、そのたびに出し分け・直すだけ
  *  - 並びの足す・消す・上下・複製、画面の切り替えは、入力欄を組み立て直す
- *  - 画面（「部品を積んで作る」）: 画面①②…をタブで切り替えて編集する。部品が「画面へ移る」なら、
+ *  - 画面（「部品を積んで作る」）: 画面①②…をタブで切り替えて編集する。部品が画面へ移るなら、
  *    その下の「◯◯を開いて編集する →」で移る先の画面を開ける（本人の依頼「移行先の編集も行いたい」）
+ *  - 部品ごとに「この部品を出す画面」と「押したとき」をボタンで選ぶ（本人の依頼「画面2・3・4・5…として簡単に設定」。
+ *    決定: 両方＝押したら画面②③…へ移る／その部品を画面②③…に置く）。どちらにも「＋新しい画面」がある
  * 値の場所は道のり（path）で持つ: ['title'] / ['items', 1, 'q'] / ['screens', 0, 'blocks', 2, 'label']
  */
 import { confirmCard } from '../../dialog.ts'
+import { toast } from '../../ui.ts'
 import { node, scalarControl, type ControlEnv, type Scalar, type ScalarField } from './form-controls.ts'
 import { addAt, duplicateAt, getAt, moveAt, removeAt, setAt, type Path } from './form-state.ts'
 import { sampleEditor } from './form-sample.ts'
-import { incomingCount, nextScreenId, nextScreenName, screenLabel } from './screens-state.ts'
+import { chipRow, type Chip } from './press-chips.ts'
+import {
+  addScreenFor,
+  goChoices,
+  incomingCount,
+  moveBlockToNewScreen,
+  moveBlockToScreen,
+  nextScreenId,
+  nextScreenName,
+  pressOf,
+  screenLabel,
+  withPress,
+} from './screens-state.ts'
+import { SCREEN_ID } from './templates/builder-blocks.ts'
 import { items, str, type BlockType, type Field, type ItemData, type ScreensField, type TemplateData } from './templates/types.ts'
 
 type ListField = Extract<Field, { kind: 'list' }>
@@ -174,7 +190,8 @@ export function buildTemplateForm(options: {
       const name = node('span', 'ncf-item__name', `${field.itemLabel} ${index + 1}`)
       item.append(itemHead(name, listPath, index, list.length, { min: field.min, max: field.max, noun: field.itemLabel }))
       for (const sub of field.fields) {
-        if (sub.kind === 'list' || sub.kind === 'screens' || sub.kind === 'sample') continue // 並びの中の並びは作らない
+        // 並びの中の並びは作らない（見本・押したときは「部品を積んで作る」の部品の中だけ）
+        if (sub.kind === 'list' || sub.kind === 'screens' || sub.kind === 'sample' || sub.kind === 'goto') continue
         item.append(fieldEl(sub, [field.key, index, sub.key], [field.key, index]))
       }
       box.append(item)
@@ -190,8 +207,8 @@ export function buildTemplateForm(options: {
     return wrap
   }
 
-  /** 見本の部品（見本を選ぶ・中身を直す・設問①②…を切り替える） */
-  const sampleFieldEl = (itemPath: Path): HTMLElement => {
+  /** 見本の部品（見本を選ぶ・中身を直す・設問①②…を切り替える・中の画像やボタンの押したとき） */
+  const sampleFieldEl = (field: ScreensField, screenIndex: number, itemPath: Path): HTMLElement => {
     const key = JSON.stringify(itemPath)
     const item = (): ItemData => (getAt(data, itemPath) as ItemData | undefined) ?? {}
     return sampleEditor({
@@ -202,19 +219,92 @@ export function buildTemplateForm(options: {
       },
       writeHtml: (html) => write([...itemPath, 'html'], html),
       pickSample: options.pickSample,
-      screenOptions: () =>
-        items(data, screensKey).map((screen, index) => ({ value: str(screen, 'id'), label: screenNameAt(screen, index) })),
+      goChoices: (selected) => goChoices(data, field.key, screenIndex, selected),
+      canAddScreen: () => items(data, field.key).length < field.max,
+      newScreen: (htmlWith) => {
+        const added = addScreenFor(data, field.key, itemPath, field.max, (d, id) => setAt(d, [...itemPath, 'html'], htmlWith(id)))
+        if (added !== null) restructure(added.data)
+      },
       onPreview: (html) => options.onPreviewOverride?.(key, [...itemPath, 'html'], html),
       activeStep: { get: () => activeSteps.get(key) ?? 0, set: (index) => activeSteps.set(key, index) },
     })
   }
 
+  /** 部品の「押したとき」（なし・画面②③…・＋新しい画面・リンクを開く） */
+  const pressFieldEl = (field: ScreensField, screenIndex: number, itemPath: Path, label: string): HTMLElement => {
+    const item = (): ItemData => (getAt(data, itemPath) as ItemData | undefined) ?? {}
+    const state = (): { chips: Chip[]; selected: string; warn: string } => {
+      const selected = pressOf(item())
+      const isScreen = SCREEN_ID.test(selected)
+      const choices = goChoices(data, field.key, screenIndex, isScreen ? selected : null)
+      const lost = isScreen && !items(data, field.key).some((screen) => str(screen, 'id') === selected)
+      return {
+        chips: [
+          { value: 'none', label: 'なし' },
+          ...choices.map((choice) => ({ value: choice.id, label: choice.label })),
+          { value: 'new', label: '＋新しい画面', adds: true, disabled: items(data, field.key).length >= field.max },
+          { value: 'link', label: 'リンクを開く' },
+        ],
+        selected,
+        warn: lost ? '移る先の画面が消えています。移る先の画面を選び直してください' : '',
+      }
+    }
+    const first = state()
+    const row = chipRow({
+      label,
+      chips: first.chips,
+      selected: first.selected,
+      warn: first.warn,
+      onPick: (value) => {
+        if (value === 'new') {
+          const added = addScreenFor(data, field.key, itemPath, field.max)
+          if (added !== null) restructure(added.data)
+          return
+        }
+        if (replace(withPress(data, itemPath, value))) refreshAll()
+      },
+    })
+    refreshers.push(() => {
+      const next = state()
+      row.update(next.chips, next.selected, next.warn)
+    })
+    return row.el
+  }
+
+  /** 部品の「この部品を出す画面」（押すと、その画面のいちばん下へ移る。「＋新しい画面」は画面を足して移す） */
+  const placeFieldEl = (field: ScreensField, screenIndex: number, blockIndex: number, noun: string): HTMLElement => {
+    const chips = (): Chip[] => [
+      ...items(data, field.key).map((screen, index) => ({ value: String(index), label: screenNameAt(screen, index) })),
+      { value: 'new', label: '＋新しい画面', adds: true, disabled: items(data, field.key).length >= field.max },
+    ]
+    const row = chipRow({
+      label: 'この部品を出す画面',
+      chips: chips(),
+      selected: String(screenIndex),
+      onPick: (value) => {
+        if (value === String(screenIndex)) return
+        const to = Number(value)
+        const moved =
+          value === 'new'
+            ? moveBlockToNewScreen(data, field.key, screenIndex, blockIndex, field.max, field.blockMax)
+            : { data: moveBlockToScreen(data, field.key, screenIndex, blockIndex, to, field.blockMax), index: to }
+        if (moved === null || moved.data === data) {
+          toast(`移せませんでした（1画面に${field.blockMax}こまでです）`, 'error')
+          return
+        }
+        restructure(moved.data)
+        toast(`${noun}を「${screenNameAt(items(data, field.key)[moved.index], moved.index)}」のいちばん下へ移しました`)
+      },
+    })
+    refreshers.push(() => row.update(chips(), String(screenIndex)))
+    return row.el
+  }
+
   /** 部品の下の「◯◯を開いて編集する →」（押したら移る部品だけ。移る先の画面を開く） */
   const gotoEl = (itemPath: Path): HTMLElement => {
     const targetIndex = (): number => {
-      const item = (getAt(data, itemPath) as ItemData | undefined) ?? {}
-      if (str(item, 'action') !== 'screen') return -1
-      return items(data, screensKey).findIndex((screen) => str(screen, 'id') === str(item, 'target'))
+      const target = pressOf((getAt(data, itemPath) as ItemData | undefined) ?? {})
+      return SCREEN_ID.test(target) ? items(data, screensKey).findIndex((screen) => str(screen, 'id') === target) : -1
     }
     const b = textButton('', 'ncf-goto', () => {
       const index = targetIndex()
@@ -246,16 +336,21 @@ export function buildTemplateForm(options: {
       icon.innerHTML = type.icon
       name.append(icon, node('span', '', type.label))
       itemEl.append(itemHead(name, listPath, index, list.length, { min: 0, max: field.blockMax, noun: type.label }))
+      itemEl.append(placeFieldEl(field, screenIndex, index, type.label))
       const itemPath: Path = [...listPath, index]
       for (const sub of type.fields) {
         if (sub.kind === 'sample') {
-          itemEl.append(sampleFieldEl(itemPath))
+          itemEl.append(sampleFieldEl(field, screenIndex, itemPath))
+          continue
+        }
+        if (sub.kind === 'goto') {
+          itemEl.append(pressFieldEl(field, screenIndex, itemPath, sub.label))
           continue
         }
         if (sub.kind === 'list' || sub.kind === 'screens') continue
         itemEl.append(fieldEl(sub, [...itemPath, sub.key], itemPath))
       }
-      if (type.fields.some((f) => f.key === 'target')) itemEl.append(gotoEl(itemPath))
+      if (type.fields.some((f) => f.kind === 'goto')) itemEl.append(gotoEl(itemPath))
       box.append(itemEl)
     })
     const full = list.length >= field.blockMax
@@ -367,8 +462,8 @@ export function buildTemplateForm(options: {
         index === 0
           ? 'いちばん左の画面が、最初に出ます。'
           : reachable
-            ? 'この画面へは、ほかの画面の部品（「押したとき」→「画面へ移る」）から移ってきます。'
-            : 'まだどの部品からも、この画面へ移れません。ほかの画面のボタンなどで「押したとき」→「画面へ移る」→この画面を選んでください。'
+            ? 'この画面へは、ほかの画面の部品の「押したとき」から移ってきます。'
+            : 'まだどの部品からも、この画面へ移れません。ほかの画面のボタンなどの「押したとき」で、この画面を選んでください。'
     })
     const panel = node('div', 'ncf-screen')
     panel.append(screenHead(field, screens, index), note, blockListEl(field, index))
@@ -387,8 +482,8 @@ export function buildTemplateForm(options: {
           ? listEl(field)
           : field.kind === 'screens'
             ? screensEl(field)
-            : field.kind === 'sample'
-              ? node('div') // 見本は「部品を積んで作る」の部品の中だけで使う
+            : field.kind === 'sample' || field.kind === 'goto'
+              ? node('div') // 見本・押したときは「部品を積んで作る」の部品の中だけで使う
               : fieldEl(field, [field.key]),
       ),
     )

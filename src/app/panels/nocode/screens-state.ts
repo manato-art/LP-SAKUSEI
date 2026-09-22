@@ -6,7 +6,10 @@
  * - どの部品からも移ってこない画面は、見ている人がたどり着けない（画面に知らせを出すのに使う）
  * テストは tests/nocode-screens-state.test.ts。
  */
-import { items, str, type TemplateData } from './templates/types.ts'
+import { addAt, getAt, removeAt, setAt, type Path } from './form-state.ts'
+import { goTargetsIn } from './sample-model.ts'
+import { SCREEN_ID } from './templates/builder-blocks.ts'
+import { items, str, type ItemData, type TemplateData } from './templates/types.ts'
 
 const CIRCLED = '①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳'
 
@@ -31,11 +34,112 @@ export function nextScreenName(names: readonly string[]): string {
   return screenLabel(n)
 }
 
-/** その画面へ「画面へ移る」でつながっている部品の数 */
+/** その画面へ「画面へ移る」でつながっている部品の数（見本の部品の中のボタン・画像なども数える） */
 export function incomingCount(data: TemplateData, screenId: string): number {
   return items(data, 'screens')
     .flatMap((screen) => items(screen, 'blocks'))
-    .filter((block) => str(block, 'action') === 'screen' && str(block, 'target') === screenId).length
+    .reduce((count, block) => {
+      if (str(block, 'action') === 'screen' && str(block, 'target') === screenId) return count + 1
+      return count + goTargetsIn(str(block, 'html')).filter((target) => target === screenId).length
+    }, 0)
+}
+
+/** 画面の名前（無ければ「画面③」のような番号の名前） */
+function nameOf(screen: ItemData, index: number): string {
+  const name = str(screen, 'name').trim()
+  return name === '' ? screenLabel(index + 1) : name
+}
+
+/**
+ * 「押したとき」の移る先の候補（本人の依頼「画面2・3・4・5…として簡単に設定」）。
+ * その部品がある画面は候補にしない（同じ画面へ移っても何も変わらない）。
+ * ただし今の移る先がその画面なら（出す画面で移した等）、選んでいるものが見えるよう「（この画面）」として最後に出す。
+ */
+export function goChoices(
+  data: TemplateData,
+  screensKey: string,
+  currentScreen: number,
+  selected: string | null = null,
+): readonly { id: string; label: string }[] {
+  const screens = items(data, screensKey).map((screen, index) => ({ id: str(screen, 'id'), label: nameOf(screen, index), index }))
+  const others = screens
+    .filter((choice) => choice.index !== currentScreen && SCREEN_ID.test(choice.id))
+    .map(({ id, label }) => ({ id, label }))
+  const own = screens[currentScreen]
+  return own !== undefined && selected !== null && own.id === selected ? [...others, { id: own.id, label: `${own.label}（この画面）` }] : others
+}
+
+/** 部品の「押したとき」の今の選び: なし・リンク・移る先の画面のid */
+export function pressOf(item: ItemData): string {
+  const action = str(item, 'action')
+  if (action === 'link') return 'link'
+  const target = str(item, 'target')
+  return action === 'screen' && SCREEN_ID.test(target) ? target : 'none'
+}
+
+/** 部品の「押したとき」を選び直した中身（value は なし・リンク・画面のid） */
+export function withPress(data: TemplateData, itemPath: Path, value: string): TemplateData {
+  if (SCREEN_ID.test(value)) return setAt(setAt(data, [...itemPath, 'action'], 'screen'), [...itemPath, 'target'], value)
+  return setAt(data, [...itemPath, 'action'], value === 'link' ? 'link' : 'none')
+}
+
+/** いちばん右に足す空の画面（足せなければ null） */
+function withNewScreen(data: TemplateData, screensKey: string, max: number): { data: TemplateData; id: string; index: number } | null {
+  const screens = items(data, screensKey)
+  if (screens.length >= max) return null
+  const id = nextScreenId(screens.map((screen) => str(screen, 'id')))
+  const added = addAt(data, [screensKey], { id, name: nextScreenName(screens.map((screen) => str(screen, 'name'))), blocks: [] }, max)
+  return { data: added, id, index: screens.length }
+}
+
+/**
+ * 「＋新しい画面」: いちばん右に画面を足し、itemPath の部品の移る先にする。足せなければ null。
+ * （見本の部品の中の要素に使うときは、setGo を渡して移る先の書き方を変える）
+ */
+export function addScreenFor(
+  data: TemplateData,
+  screensKey: string,
+  itemPath: Path,
+  max: number,
+  setGo: (data: TemplateData, id: string) => TemplateData = (d, id) => withPress(d, itemPath, id),
+): { data: TemplateData; id: string } | null {
+  const added = withNewScreen(data, screensKey, max)
+  return added === null ? null : { data: setGo(added.data, added.id), id: added.id }
+}
+
+/**
+ * 部品を別の画面へ移す（本人の依頼「その部品を画面②③…に置く」）。移す先の画面のいちばん下に入る。
+ * 同じ画面・無い画面・部品がいっぱいの画面へは移さない（元の中身をそのまま返す）。
+ */
+export function moveBlockToScreen(
+  data: TemplateData,
+  screensKey: string,
+  fromScreen: number,
+  blockIndex: number,
+  toScreen: number,
+  blockMax: number,
+): TemplateData {
+  if (fromScreen === toScreen) return data
+  const block = getAt(data, [screensKey, fromScreen, 'blocks', blockIndex]) as ItemData | undefined
+  const target = getAt(data, [screensKey, toScreen]) as ItemData | undefined
+  if (block === undefined || target === undefined || items(target, 'blocks').length >= blockMax) return data
+  const removed = removeAt(data, [screensKey, fromScreen, 'blocks'], blockIndex, 0)
+  return addAt(removed, [screensKey, toScreen, 'blocks'], block, blockMax)
+}
+
+/** 出す画面の「＋新しい画面」: いちばん右に画面を足し、その部品を移す。画面がいっぱい・部品が無いときは null */
+export function moveBlockToNewScreen(
+  data: TemplateData,
+  screensKey: string,
+  fromScreen: number,
+  blockIndex: number,
+  max: number,
+  blockMax: number,
+): { data: TemplateData; index: number } | null {
+  if (getAt(data, [screensKey, fromScreen, 'blocks', blockIndex]) === undefined) return null
+  const added = withNewScreen(data, screensKey, max)
+  if (added === null) return null
+  return { data: moveBlockToScreen(added.data, screensKey, fromScreen, blockIndex, added.index, blockMax), index: added.index }
 }
 
 /**

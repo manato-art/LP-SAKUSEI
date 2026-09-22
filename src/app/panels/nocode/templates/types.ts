@@ -25,7 +25,7 @@ interface FieldBase {
   readonly note?: string
   /** この入力を出すかどうか（ほかの入力の値しだいで出し分ける） */
   readonly showIf?: (data: TemplateData) => boolean
-  /** 並びの中の入力を、その1件の値しだいで出し分ける（「画面へ移る」を選んだときだけ「移る先」を出す） */
+  /** 並びの中の入力を、その1件の値しだいで出し分ける（「リンクを開く」を選んだときだけ「開くページ」を出す） */
   readonly showIfItem?: (item: ItemData) => boolean
 }
 
@@ -39,12 +39,12 @@ export type Field =
   | (FieldBase & { readonly kind: 'video' })
   /** ライブラリの見本（「部品を積んで作る」の見本の部品。中身の一覧で直す＝form-sample.ts） */
   | (FieldBase & { readonly kind: 'sample' })
-  | (FieldBase & {
-      readonly kind: 'select'
-      readonly options: readonly { value: string; label: string }[]
-      /** 選べるものをほかの入力から作るとき（「移る先の画面」＝今ある画面の一覧） */
-      readonly optionsOf?: (data: TemplateData) => readonly { value: string; label: string }[]
-    })
+  /**
+   * 押したとき（「部品を積んで作る」の部品）。なし・画面②③…・＋新しい画面・リンクを開く をボタンで選ぶ。
+   * 値は action（none / screen / link）と target（画面のid）の2つ（template-form.ts が入れる）
+   */
+  | (FieldBase & { readonly kind: 'goto' })
+  | (FieldBase & { readonly kind: 'select'; readonly options: readonly { value: string; label: string }[] })
   | (FieldBase & { readonly kind: 'number'; readonly min: number; readonly max: number; readonly unit?: string })
   | (FieldBase & { readonly kind: 'datetime' })
   | (FieldBase & { readonly kind: 'toggle' })
