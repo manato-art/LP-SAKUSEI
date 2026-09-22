@@ -18,7 +18,6 @@ import { templateById } from './nocode/templates/index.ts'
 import {    loadGoogleFonts } from './toolbar/text-format.ts'
 import {
   svgPlus,
-  svgPointingHand,
 } from './widget-editor-icons.ts'
 import {
   COLOR,
@@ -31,6 +30,7 @@ import { buildDesignPanel } from './widget-design-panel.ts'
 import { widgetResetCss } from '../../shared/sb-preview-css.ts'
 import { scopeWidgetCss } from './widget-style-scope.ts'
 import { buildVisualEditor } from './widget-visual-editor.ts'
+import { widgetSelectionCss } from './widget-canvas-css.ts'
 
 /* ================================================================
  *  定数
@@ -51,30 +51,7 @@ function injectSelectionCss(): void {
   selectionCssInjected = true
   const style = document.createElement('style')
   style.setAttribute('data-widget-selection', 'true')
-  style.textContent = `
-    /* 指示155-2: 編集キャンバス(.ql-editor)は行間1.8のため、Widget内の見出し等(<br>改行)が
-       広がりすぎる。配信LP・編集プレビューと同じく1.5を既定にして揃える（Widget自身が
-       line-heightを明示した要素は直接指定が継承より優先されるので影響しない）。 */
-    .ql-editor section.sb-widget-block { line-height:1.5; }
-    section.sb-widget-block { cursor:pointer; transition:outline .15s, box-shadow .15s; position:relative; }
-    section.sb-widget-block:hover { outline:2px solid ${COLOR.selectBorder}; outline-offset:-2px; }
-    section.sb-widget-block:hover::after {
-      content:attr(data-widget-name);
-      position:absolute; bottom:8px; left:50%; transform:translateX(-50%);
-      background:${COLOR.selectLabelBg}; color:#fff; font:600 12px/1.4 ${FONT};
-      padding:4px 12px; border-radius:4px; white-space:nowrap; pointer-events:none;
-      z-index:5; box-shadow:0 2px 8px rgba(0,0,0,.3);
-    }
-    section.sb-widget-block[data-widget-selected="true"] {
-      outline:2px solid ${COLOR.selectBorder}; outline-offset:-2px;
-    }
-    /* 指示161: ツールバーで付けた素のリンク(<a href>・クラス無し)を、編集プレビューで
-       ひと目でリンクと分かる見た目にする（青＋下線）。Widget独自の装飾リンク(.link__button等)は
-       クラスを持つので影響しない。 */
-    [data-widget-editor] [contenteditable="true"] a:not([class]) {
-      color:#0d6efd; text-decoration:underline; cursor:pointer;
-    }
-  `
+  style.textContent = widgetSelectionCss(COLOR.selectBorder)
   document.head.append(style)
 }
 
@@ -93,9 +70,8 @@ export function wireWidgetClick(root: HTMLElement, quill: Quill): void {
 
   injectSelectionCss()
 
-  // 既存の Widget ブロックに名前ラベルを付与＋Widget CSSのスコープ補正（指示148）
+  // Widget CSSのスコープ補正（指示148）
   const refresh = (): void => {
-    labelAllWidgets(editor)
     refreshWidgetCanvasCss(editor)
   }
   refresh()
@@ -123,14 +99,6 @@ export function wireWidgetClick(root: HTMLElement, quill: Quill): void {
       length: blotIndex.length,
     })
   })
-}
-
-/** 全 Widget ブロックに data-widget-name 属性を付与（ホバー時のラベル表示用）。 */
-function labelAllWidgets(editor: HTMLElement): void {
-  for (const block of editor.querySelectorAll<HTMLElement>('section.sb-widget-block')) {
-    if (block.dataset['widgetName'] !== undefined) continue
-    block.dataset['widgetName'] = guessWidgetName(block.innerHTML)
-  }
 }
 
 /**
@@ -219,9 +187,6 @@ function openWidgetEditor(quill: Quill, target: WidgetEditTarget): void {
   /* ── ヘッダー ── */
   const header = buildHeader(panel, quill, target)
 
-  /* ── タイトル行 ── */
-  const titleBar = buildTitleBar(target)
-
   /* ── ダークコンテナ（2ペイン） ── */
   const darkContainer = document.createElement('div')
   darkContainer.dataset['widgetPanes'] = 'true'
@@ -293,7 +258,7 @@ function openWidgetEditor(quill: Quill, target: WidgetEditTarget): void {
   syncFn()
 
   /* ── 組み立て ── */
-  panel.append(header, titleBar, darkContainer)
+  panel.append(header, darkContainer)
 
   // 指示146: パネルがDOMに載ってからウィジェットの <script> を実行する。
   // （多くのウィジェットの init は document.querySelector で自分の要素を探すため、
@@ -437,28 +402,6 @@ function buildHeader(
   rightBtns.append(registerBtn, updateBtn)
   header.append(closeBtn, title, rightBtns)
   return header
-}
-
-/* ================================================================
- *  タイトル行（本番実測: fontSize:16px, fontWeight:400, icon:fa-hand-point-up, border:none）
- * ================================================================ */
-
-function buildTitleBar(target: WidgetEditTarget): HTMLElement {
-  const bar = document.createElement('div')
-  bar.style.cssText =
-    `display:flex;align-items:center;gap:8px;padding:12px;flex-shrink:0`
-
-  const handle = document.createElement('span')
-  handle.innerHTML = svgPointingHand()
-  handle.style.cssText = 'color:#999;flex-shrink:0'
-
-  const nameEl = document.createElement('div')
-  nameEl.textContent = guessWidgetName(target.html)
-  nameEl.style.cssText =
-    `font:400 16px/1.4 ${FONT};color:#333;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap`
-
-  bar.append(handle, nameEl)
-  return bar
 }
 
 /* ================================================================

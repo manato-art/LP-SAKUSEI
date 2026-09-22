@@ -10,10 +10,6 @@ export function svgPlus(): string {
     <path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
   </svg>`
 }
-/** 人差し指アイコン（本番の fa-hand-point-up 再現） */
-export function svgPointingHand(): string {
-  return `<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style="vertical-align:middle"><path d="M7 1c.55 0 1 .45 1 1v5h1c.55 0 1 .45 1 1l1-1c.55 0 1 .45 1 1v3c0 2.2-1.8 4-4 4H6c-2.2 0-4-1.8-4-4V8c0-.55.45-1 1-1s1 .45 1 1V7c0-.55.45-1 1-1s1 .45 1 1V2c0-.55.45-1 1-1z"/></svg>`
-}
 /** 分割表示アイコン（コードパネルのビュー切替） */
 export function svgViewSplit(): string {
   return `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2">

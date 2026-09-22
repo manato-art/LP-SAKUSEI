@@ -19,7 +19,6 @@ export const COLOR = {
   // Widget 選択UI
   selectBorder: 'var(--sb-accent, #0091FF)',
   selectLabel: '#333',
-  selectLabelBg: 'rgba(0,145,255,.9)',
 } as const
 export const FONT = '"Hiragino Sans","Hiragino Kaku Gothic ProN",sans-serif'
 export const MONO = '"SF Mono",Menlo,"Fira Code",monospace'
