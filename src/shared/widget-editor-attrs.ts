@@ -117,3 +117,29 @@ export function stripEditorWidgetAttributes(html: string): string {
   parts.push(html.slice(cursor))
   return parts.join('')
 }
+
+/**
+ * すべての Widget の外枠の class に cls を足した新しい HTML を返す（元の文字列は変えない）。
+ * もう付いている外枠・外枠でない section はそのまま。外枠の開始タグは属性を書かれたまま半角空白1つずつで並べ直す
+ * （stripEditorWidgetAttributes と同じ読み方・並べ方）。足す所が無ければ元の文字列をそのまま返す。
+ */
+export function addWidgetBlockClass(html: string, cls: string): string {
+  const openTag = /<section(?=[\t\n\f\r />])/gi
+  const parts: string[] = []
+  let cursor = 0
+  for (let m = openTag.exec(html); m !== null; m = openTag.exec(html)) {
+    const tag = readAttributes(html, m.index + m[0].length)
+    if (tag === null) continue
+    openTag.lastIndex = tag.end
+    if (!isWidgetBlock(tag.attributes)) continue
+    const classAttr = tag.attributes.find((a) => a.name === 'class')
+    const classes = (classAttr?.value ?? '').split(/[\t\n\f\r ]+/).filter((c) => c !== '')
+    if (classAttr === undefined || classes.includes(cls)) continue
+    const rewritten = tag.attributes.map((a) => (a === classAttr ? `class="${[...classes, cls].join(' ')}"` : a.source))
+    parts.push(html.slice(cursor, m.index), m[0], ...rewritten.map((source) => ` ${source}`), '>')
+    cursor = tag.end
+  }
+  if (parts.length === 0) return html
+  parts.push(html.slice(cursor))
+  return parts.join('')
+}

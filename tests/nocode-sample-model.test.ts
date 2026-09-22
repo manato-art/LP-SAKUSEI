@@ -9,7 +9,7 @@
  * ここはDOMを使わない形（テストは小さな木で確かめる）。
  */
 import { describe, expect, it } from 'vitest'
-import { findStepGroup, goTargetsIn, nodeAt, sampleSlots, type SlotNode } from '../src/app/panels/nocode/sample-model.ts'
+import { findStepGroup, goTargetsIn, nestedScreens, nodeAt, sampleSlots, type SlotNode } from '../src/app/panels/nocode/sample-model.ts'
 
 /** テスト用の小さな木（要素） */
 function el(tag: string, attrs: Record<string, string> = {}, children: SlotNode[] = []): SlotNode & { attrs: Record<string, string> } {
@@ -113,5 +113,40 @@ describe('見本の中身の一覧', () => {
 describe('押したら移る先', () => {
   it('HTMLの中の data-nc-go の画面を全部拾う（入れる前に、消した画面を指していないか確かめる）', () => {
     expect(goTargetsIn('<a data-nc-go="s2">a</a><button data-nc-go="s12">b</button><i data-nc-go="x">c</i>')).toEqual(['s2', 's12'])
+  })
+
+  it('画面①②…に作り変えた見本の中の「次の設問へ」（見本自身の画面）は拾わない。スクリプトの中の文字も拾わない', () => {
+    const converted =
+      '<div class="nc nc-sample nc-aaaaaaaa" data-nocode="sample" data-nc-screens="">' +
+      '<div class="nc-screen" data-nc-screen="s1"><a href="ooooo" data-nc-go="s2">はい</a><img src="x"></div>' +
+      '<div class="nc-screen" data-nc-screen="s2" hidden><p><a href="ooooo" data-nc-go="s3">はい</a></p></div>' +
+      '</div><script>var t = \'<a data-nc-go="s9">\'</script>'
+    expect(goTargetsIn(`<a data-nc-go="s4">外</a>${converted}<button data-nc-go="s5">外2</button>`)).toEqual(['s4', 's5'])
+  })
+})
+
+describe('画面①②…に作り変えた見本の中の画面', () => {
+  function converted(): { root: SlotNode; s1: SlotNode; s2: SlotNode; inner: SlotNode; outer: SlotNode } {
+    const inner = el('A', { href: 'ooooo', 'data-nc-go': 's2' }, [text('はい')])
+    const s1 = el('DIV', { class: 'nc-screen', 'data-nc-screen': 's1' }, [el('P', {}, [text('Q1')]), inner])
+    const s2 = el('DIV', { class: 'nc-screen', 'data-nc-screen': 's2', hidden: '' }, [el('P', {}, [text('Q2')])])
+    const outer = el('A', { href: 'https://example.test/' }, [text('外のリンク')])
+    const root = el('DIV', {}, [el('DIV', { class: 'MuiBox-root' }, [el('DIV', { class: 'nc nc-sample nc-aaaaaaaa', 'data-nc-screens': '' }, [s1, s2])]), outer])
+    return { root, s1, s2, inner, outer }
+  }
+
+  it('見本の中の画面を、そのまま設問①②…として返す（見え方で探さない）', () => {
+    const { root, s1, s2 } = converted()
+    expect(nestedScreens(root)).toEqual([s1, s2])
+    expect(nestedScreens(survey().root)).toEqual([])
+  })
+
+  it('見本の中の画面にあるボタンは「見本自身の切り替え」（部品を積んで作るの画面へは移せない）', () => {
+    const { root, s1, s2 } = converted()
+    const controls = sampleSlots(root, [s1, s2]).filter((slot) => slot.kind === 'control')
+    expect(controls.map((c) => (c.kind === 'control' ? [c.label, c.internal] : null))).toEqual([
+      ['はい', true],
+      ['外のリンク', false],
+    ])
   })
 })

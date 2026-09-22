@@ -4,6 +4,7 @@ import {
   EXTERNAL_HOST_ALLOWLIST,
   MONEY_SCAN_DIRS,
   PRODUCTION_HOST_PATTERN,
+  PRODUCTION_TOKEN_PATTERNS,
   SCAN_DIRS,
   SUSPICIOUS_MONEY_PATTERN,
 } from '../tools/gate/denylist.ts'
@@ -41,6 +42,21 @@ describe('金額らしき値の検出', () => {
   })
 })
 
+describe('改ざんチェック（integrity）の値はトークンではない', () => {
+  const token = PRODUCTION_TOKEN_PATTERNS.find((p) => p.name.startsWith('長い不透明トークン'))?.pattern ?? /$^/
+  const find = (t: string): string[] => t.match(new RegExp(token)) ?? []
+
+  it('公開ライブラリの integrity（sha256/384/512- のあとの値）は拾わない（2026-09-22 見本の点検で戻した値）', () => {
+    expect(find('integrity="sha512-93wYgwrIFL+b+P3RvYxi/WUFRXXUDSLCT2JQk9zhVGXuS2mHl2axj6d+R6pP+gcU5isMHRj1u0oYE/mWyt/RjA=="')).toEqual([])
+    expect(find("'sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4='")).toEqual([])
+  })
+
+  it('integrity の形でない長いトークンは今までどおり拾う', () => {
+    expect(find('token=n4KqkOQrraxHJcgjM1RvwbigfQKIKJVpM7xp')).toEqual(['n4KqkOQrraxHJcgjM1RvwbigfQKIKJVpM7xp'])
+    expect(find('sha512- n4KqkOQrraxHJcgjM1RvwbigfQKIKJVpM7xp')).toEqual(['n4KqkOQrraxHJcgjM1RvwbigfQKIKJVpM7xp'])
+  })
+})
+
 describe('長い不透明トークンの検出', () => {
   const PATTERN = /\b(?![A-Z]+_\d{4}\b)(?=[A-Za-z0-9]*\d)[A-Za-z0-9]{32,}\b/g
   const find = (t: string): string[] => t.match(new RegExp(PATTERN)) ?? []
@@ -72,6 +88,19 @@ describe('外部ホスト許可リスト', () => {
     expect(allowed('http://192.168.1.1')).toBe(true)
     expect(allowed('http://172.16.0.1')).toBe(true)
     expect(allowed('http://169.254.169.254')).toBe(true)
+  })
+
+  it('見本が読む公開ライブラリ・埋め込み・共有の入口は通す（2026-09-22 見本の点検で、匿名化で架空にされたのを戻した）', () => {
+    for (const host of [
+      'https://cdnjs.cloudflare.com', 'https://ajax.googleapis.com', 'https://unpkg.com',
+      'https://platform.twitter.com', 'https://player.vimeo.com', 'https://www.youtube.com',
+      'https://b.st-hatena.com', 'https://www.line-website.com',
+      'https://www.facebook.com', 'https://twitter.com', 'https://social-plugins.line.me', 'https://b.hatena.ne.jp', 'https://getpocket.com',
+    ]) expect(allowed(host)).toBe(true)
+    // 似せた別のホストは通さない
+    expect(allowed('https://cdnjs.cloudflare.com.attacker.net')).toBe(false)
+    expect(allowed('https://evil-unpkg.com')).toBe(false)
+    expect(allowed('https://api.twitter.com')).toBe(false)
   })
 
   it('見た目だけ似せた実在ホストは通さない（許可リストは末尾まで固定）', () => {

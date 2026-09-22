@@ -1,46 +1,28 @@
 /**
- * Widgetライブラリの資産（各カテゴリ約1,500枚ぶんの gz・合計13MB）の配信。
+ * Widgetライブラリの見本（カテゴリーごとの gz・合計約13MB）の配信。
  *
- * これをビルド成果（dist）としてDockerイメージへ焼くと、Railwayのデプロイが
- * INITIALIZING のまま昇格しなくなる（イメージ肥大が原因と判断）。そこで**永続Volume
- * (`DATA_DIR`)から配信**し、イメージには載せない。
+ * 見本はビルド成果（dist/clean/widget-library）に入っているので、デプロイした版から配る。
  *
- * 種蒔き（seed）: 起動時に「Volumeが空」かつ「dist側に資産が在る」なら一度だけコピーする。
- *   - 資産入りイメージのデプロイは昇格しなくてもコンテナは起動するので、そこで種蒔きされる。
- *   - 以後は資産をイメージから外して（.railwayignore）軽いイメージで昇格させ、Volumeから配信する。
+ * 経緯（2026-09-22 に直した）: 9/2 に「イメージへ焼くとデプロイが昇格しない」と判断して、
+ * 起動時に一度だけ永続Volume（DATA_DIR/widgets）へ写し、以後はVolumeから配っていた。
+ * ところが「イメージから外す」次の回は行われず、見本はずっとイメージにも入ったまま（デプロイも昇格している）。
+ * 一方Volumeの写しは 9/3 のまま更新されないので、見本を直して push しても本番は古い見本を配り続けていた
+ * （見本の点検と作り変えで発覚）。Volume の写しは消さずに残してある（使わない）。
+ *
+ * 直した見本が、前にライブラリを開いた人にもすぐ届くように、毎回確かめさせる（no-cache。
+ * 変わっていなければ ETag で 304 になるので軽い）。
  */
-import { cpSync, existsSync, mkdirSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import express, { type Router } from 'express'
 
-const DATA_DIR = process.env['DATA_DIR']
-
-/** Volume上のWidget資産ディレクトリ（DATA_DIR未設定＝ローカルはnull）。 */
-function widgetVolumeDir(): string | null {
-  return DATA_DIR === undefined || DATA_DIR === '' ? null : join(DATA_DIR, 'widgets')
-}
-
-/** Volumeが空で、dist側に資産が在れば一度だけコピーして種を蒔く。 */
-export function seedWidgetAssets(distDir: string): void {
-  const vol = widgetVolumeDir()
-  if (vol === null) return
-  if (existsSync(vol) && readdirSync(vol).length > 0) return // 種蒔き済み
-  const src = join(distDir, 'clean', 'widget-library')
-  if (!existsSync(src)) return // このイメージには資産が無い（配信専用デプロイ）
-  mkdirSync(vol, { recursive: true })
-  cpSync(src, vol, { recursive: true })
-  console.log(`[widgets] Volumeへ種蒔き: ${src} → ${vol}`)
-}
-
-/** `/clean/widget-library/*` をVolumeから配信するルーター（Volume無し＝ローカルはnull）。 */
-export function widgetAssetsRouter(): Router | null {
-  const vol = widgetVolumeDir()
-  if (vol === null) return null
+export function widgetLibraryRouter(distDir: string): Router {
   const router = express.Router()
   router.use(
     '/clean/widget-library',
-    express.static(vol, {
-      setHeaders: (res) => res.setHeader('Cache-Control', 'public, max-age=86400'),
+    express.static(join(distDir, 'clean', 'widget-library'), {
+      index: false,
+      fallthrough: false,
+      setHeaders: (res) => res.setHeader('Cache-Control', 'no-cache'),
     }),
   )
   return router

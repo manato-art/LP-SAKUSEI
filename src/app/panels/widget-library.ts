@@ -33,6 +33,7 @@ import { insertWidget, openWidgetCreator } from './widget-creator.ts'
 import { openNocodePanel } from './nocode/nocode-panel.ts'
 import { cancelSamplePick, takeSamplePick } from './nocode/nocode-flow.ts'
 import { newUid, rekeyUid } from './nocode/templates/kit.ts'
+import { placeholderLinkCount } from './link-placeholder.ts'
 
 const HOOK = {
   trigger: '[aria-label="Widget管理"]',
@@ -48,9 +49,13 @@ const HOOK = {
   cardTitle: '.MuiCardHeader-title p',
 } as const
 
-/** カテゴリー資産（採取＋匿名化＋gzip 済み）の場所。ボタンの並び順＝cat番号。 */
+/**
+ * カテゴリー資産（採取＋匿名化＋gzip 済み）の場所。ボタンの並び順＝cat番号。
+ * `?v=` は、以前の配り方（1日キャッシュ）で手元に残った古い見本を読まないため（2026-09-22 見本を直した）。
+ * 今は毎回確かめる配り方（mock-server/widget-assets.ts）なので、見本を直すたびに変える必要は無い。
+ */
 const CATEGORY_ASSET = (index: number): string =>
-  `/clean/widget-library/cat${index}/grid.html.gz`
+  `/clean/widget-library/cat${index}/grid.html.gz?v=20260922`
 
 /** 「お気に入り」カテゴリーのインデックス（採取物の2番目のボタン）。指示157で localStorage 連動に。 */
 const FAVORITE_CAT = 1
@@ -582,13 +587,21 @@ function wireCards(root: HTMLElement, quill: Quill, close: () => void): void {
     })
     add?.addEventListener('click', (event) => {
       event.stopPropagation()
-      const bodyHtml = widgetBodyHtml(card)
+      const raw = widgetBodyHtml(card)
+      // 画面①②…に作り変えた見本は、入れるたびに名前（nc-xxxxxxxx）を付け直す（同じLPに2つ入れても、画面の切り替えがぶつからない）
+      const bodyHtml = raw === null ? null : rekeyUid(raw, newUid())
       // 「部品を積んで作る」で見本を選んでいるときは、LPへは入れずに部品として渡す
       if (handOverToBuilder(title, bodyHtml)) return
       close()
       requestAnimationFrame(() => {
         insertWidget(quill, bodyHtml, title)
-        toast(`「${title}」を追加しました`)
+        // 見本のボタンはリンク先が仮のまま入っていることが多い（押すと行き止まり）。入れ方を知らせる
+        const placeholders = bodyHtml === null ? 0 : placeholderLinkCount(bodyHtml)
+        toast(
+          placeholders === 0
+            ? `「${title}」を追加しました`
+            : `「${title}」を追加しました。リンク先が仮のボタンが${placeholders}個あります（Widget編集でボタンを押すと入れられます）`,
+        )
       })
     })
     // 指示157: カード左下の★（採取物のブックマークSVG）をお気に入りトグルに配線する。

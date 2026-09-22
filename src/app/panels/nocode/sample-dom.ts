@@ -11,7 +11,7 @@
 import { LP_BASE_CSS } from '../../lp-base-css.ts'
 import { WIDGET_RESET_CSS } from '../../../shared/sb-preview-css.ts'
 import { isAllowedLinkUrl, isTrackingLink, withTrackingParam } from '../../../shared/link-html.ts'
-import { elementsInOrder, findStepGroup, nodeAt, sampleSlots, type Slot, type SlotNode } from './sample-model.ts'
+import { elementsInOrder, findStepGroup, nestedScreens, nodeAt, sampleSlots, type Slot, type SlotNode } from './sample-model.ts'
 import { SCREEN_ID } from './templates/builder-blocks.ts'
 import { safeImage } from './templates/kit.ts'
 
@@ -34,8 +34,17 @@ function parse(html: string): HTMLElement {
 
 const asNode = (el: Node): SlotNode => el as unknown as SlotNode
 
-/** 見本を画面の外で描き、もともとある設問①②…の箱（番号 e12 など）を返す。スクリプトは動かさない */
+/**
+ * 見本を画面の外で描き、もともとある設問①②…の箱（番号 e12 など）を返す。スクリプトは動かさない。
+ * 画面①②…に作り変えた見本（中に data-nc-screens の入れ物がある）は、その画面をそのまま設問にする（描かずに決まる）。
+ */
 async function findSteps(html: string): Promise<string[]> {
+  const parsed = asNode(parse(html))
+  const screens = nestedScreens(parsed)
+  if (screens.length >= 2) {
+    const order = elementsInOrder(parsed)
+    return screens.map((screen) => `e${order.indexOf(screen)}`)
+  }
   const frame = document.createElement('iframe')
   // 同じ場所（allow-same-origin）で描いて見え方を調べる。スクリプトは許さない（見本の動きは起きない）
   frame.setAttribute('sandbox', 'allow-same-origin')

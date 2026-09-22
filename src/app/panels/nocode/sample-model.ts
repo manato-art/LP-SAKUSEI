@@ -30,6 +30,8 @@ export type Slot =
       readonly href: string | null
       readonly go: string | null
       readonly step: number | null
+      /** 画面①②…に作り変えた見本の中の画面にある（押したときは見本自身の切り替え。外の画面へは移せない） */
+      readonly internal: boolean
     }
 
 /** 中を見ない要素（見た目の文字ではない） */
@@ -63,7 +65,7 @@ export function elementsInOrder(root: SlotNode): SlotNode[] {
 export function sampleSlots(root: SlotNode, steps: readonly SlotNode[]): Slot[] {
   const index = new Map(elementsInOrder(root).map((node, i) => [node, i]))
   const slots: Slot[] = []
-  const walk = (node: SlotNode, parentIndex: number, inControl: boolean, step: number | null): void => {
+  const walk = (node: SlotNode, parentIndex: number, inControl: boolean, step: number | null, inScreens: boolean): void => {
     Array.from(node.childNodes).forEach((child, ordinal) => {
       if (!isElement(child)) {
         const text = tidy(child.textContent ?? '')
@@ -89,13 +91,29 @@ export function sampleSlots(root: SlotNode, steps: readonly SlotNode[]): Slot[] 
           href: tag === 'A' ? attr('href') : null,
           go: attr('data-nc-go'),
           step: childStep,
+          internal: inScreens,
         })
       }
-      walk(child, i, inControl || isControl, childStep)
+      walk(child, i, inControl || isControl, childStep, inScreens || isScreensRoot(child))
     })
   }
-  walk(root, -1, false, null)
+  walk(root, -1, false, null, false)
   return slots
+}
+
+/** 画面①②…の入れ物（「部品を積んで作る」・画面に作り変えた見本） */
+function isScreensRoot(node: SlotNode): boolean {
+  return isElement(node) && node.getAttribute?.('data-nc-screens') !== null && node.getAttribute?.('data-nc-screens') !== undefined
+}
+
+/**
+ * 画面①②…に作り変えた見本（中に data-nc-screens の入れ物がある）なら、その画面を上から順に。無ければ空。
+ * 見本の部品で、設問①②…として切り替えて直すのに使う（見え方で探すより確か）。
+ */
+export function nestedScreens(root: SlotNode): SlotNode[] {
+  const holder = elementsInOrder(root).find(isScreensRoot)
+  if (holder === undefined) return []
+  return Array.from(holder.childNodes).filter((child) => isElement(child) && (child.getAttribute?.('data-nc-screen') ?? null) !== null)
 }
 
 /** 一覧の番号（e12 / t12.3）から、その要素・文字を見つける。見つからなければ null */
@@ -144,7 +162,34 @@ export function findStepGroup(root: SlotNode, isVisible: (node: SlotNode) => boo
   return search(root) ?? []
 }
 
-/** HTMLの中の「押したら移る先」（data-nc-go）の画面を全部。入れる前に、消した画面を指していないか確かめる */
+/** 中身を持たない要素（閉じタグが無い） */
+const VOID_TAGS: ReadonlySet<string> = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr'])
+/** コメント・中を読まない要素（スクリプト等）・開きタグ・閉じタグ */
+const TAG_RE = /<!--[\s\S]*?-->|<(script|style|template|textarea)\b[^>]*>[\s\S]*?<\/\1\s*>|<(\/?)([a-zA-Z][\w:-]*)((?:[^>"']|"[^"]*"|'[^']*')*)>/gi
+
+/**
+ * HTMLの中の「押したら移る先」（data-nc-go）の画面を全部。入れる前に、消した画面を指していないか確かめる。
+ * 画面①②…に作り変えた見本の中（data-nc-screens の入れ物の中）は、見本自身の画面なので拾わない。
+ * スクリプトの中の文字も拾わない。
+ */
 export function goTargetsIn(html: string): string[] {
-  return [...html.matchAll(/data-nc-go="(s\d{1,4})"/g)].map((m) => m[1] ?? '')
+  const out: string[] = []
+  const open: boolean[] = []
+  let insideScreens = 0
+  for (const match of html.matchAll(TAG_RE)) {
+    const tag = (match[3] ?? '').toLowerCase()
+    if (tag === '') continue
+    if (match[2] === '/') {
+      if (open.pop() === true) insideScreens -= 1
+      continue
+    }
+    const attrs = match[4] ?? ''
+    const go = /\sdata-nc-go="(s\d{1,4})"/.exec(attrs)?.[1]
+    if (go !== undefined && insideScreens === 0) out.push(go)
+    if (VOID_TAGS.has(tag) || attrs.trimEnd().endsWith('/')) continue
+    const screens = /\sdata-nc-screens(?:[\s=]|$)/.test(attrs)
+    open.push(screens)
+    if (screens) insideScreens += 1
+  }
+  return out
 }

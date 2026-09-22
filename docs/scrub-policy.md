@@ -126,6 +126,17 @@ LPビルダーである以上サンプルに価格が出るのは当たり前な
 |---|---|
 | `fonts.googleapis.com` | Webフォント。読み込まないとフォント指定が効かない |
 | `code.jquery.com` / `cdn.jsdelivr.net` | ウィジェットが前提にしている外部ライブラリ（jQuery / Swiper / SmoothScroll / GLightbox）。読み込まないと内蔵JSが ReferenceError で動かない |
+| `cdnjs.cloudflare.com` / `ajax.googleapis.com` / `unpkg.com` | Widgetライブラリの見本が読む公開ライブラリ（Chart.js・List.js・slick・Odometer 等）。2026-09-22・本人の依頼「見本を全て確認して動くものに作り変えて」で、匿名化が架空にしていたのを戻した（`tools/widget-library-fix/restore-urls.ts`） |
+| `platform.twitter.com` / `player.vimeo.com` / `www.youtube.com` / `b.st-hatena.com` / `www.line-website.com` | 同じく見本が読む埋め込み・ボタンのスクリプト（X・Vimeo・YouTube・はてな・LINE） |
+
+### 4. 見本の共有ボタンの行き先（見る人が押したときだけ開く）
+
+| 許可 | 理由 |
+|---|---|
+| `www.facebook.com` / `twitter.com` / `social-plugins.line.me` / `b.hatena.ne.jp` / `getpocket.com` | 見本の「シェア」ボタンの公開の共有の入口（2026-09-22 同上で戻した）。自動では通信しない |
+
+**戻さないもの**（元の持ち主が分かってしまう）: SBが持っていた画像・動画（灰色の仮の絵にした）、誰かのページ・投稿・動画・地図の場所。
+**改ざんチェックの値**（`integrity="sha512-…"`）は公開ファイルから計算した値でトークンではないので、`5-5 長い不透明トークン` の対象から外した。
 
 ### 許可リストを広げた後の検証（2026-09-09）
 

@@ -232,4 +232,17 @@ describe('見本の部品（ライブラリの見本を部品として積む）'
   it('中に別の「部品を積んで作る」が入っていても、その中の切り替えはその持ち主に任せる', () => {
     expect(SCREENS_SCRIPT).toContain("closest('[data-nc-screens]')!==root")
   })
+
+  it('押せない状態のボタン（選ぶまで押せない「次へ」など）では移らない（ページ移動も止めたまま）', () => {
+    // 見本の「次へ」は、選択肢を選ぶまで is-disabled になる（見本自身のスクリプトが付け外しする）
+    const click = /addEventListener\('click',function\(e\)\{([\s\S]*?)\},true\)/.exec(SCREENS_SCRIPT)?.[1] ?? ''
+    expect(click.indexOf('stopPropagation()')).toBeGreaterThan(-1)
+    expect(click.indexOf('off(t)')).toBeGreaterThan(click.indexOf('stopPropagation()'))
+    expect(click.indexOf('off(t)')).toBeLessThan(click.indexOf('show('))
+    expect(SCREENS_SCRIPT).toContain("hasAttribute('disabled')")
+    expect(SCREENS_SCRIPT).toContain("getAttribute('aria-disabled')==='true'")
+    // 見本によって is-disabled / disabled のどちらかを付け外しする
+    expect(SCREENS_SCRIPT).toContain('(is-)?disabled')
+    expect(() => new Function(SCREENS_SCRIPT)).not.toThrow()
+  })
 })

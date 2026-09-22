@@ -165,7 +165,9 @@ function slotEl(slot: Slot, apply: (id: string, change: SampleChange) => void, o
       label.value = slot.label
       label.addEventListener('input', () => apply(slot.id, { kind: 'label', value: label.value }))
       row.append(labeled(`${noun}の文字`, label))
-      if (slot.tag === 'A') {
+      // 画面①②…に作り変えた見本の中で、次の設問へ移るボタンはリンクではない（リンク先の欄は出さない）
+      const movesInside = slot.internal && slot.go !== null
+      if (slot.tag === 'A' && !movesInside) {
         const href = node('input', 'ncf-input')
         href.type = 'url'
         href.value = slot.href ?? ''
@@ -180,6 +182,18 @@ function slotEl(slot: Slot, apply: (id: string, change: SampleChange) => void, o
         const hrefField = labeled('リンク先', href)
         hrefField.append(warn)
         row.append(hrefField)
+      }
+      // 画面①②…に作り変えた見本の中のボタンは、見本自身の画面を切り替える（外の画面へは移せない）
+      if (slot.internal) {
+        const to = /^s(\d{1,4})$/.exec(slot.go ?? '')
+        row.append(
+          node(
+            'p',
+            'ncf-note',
+            movesInside && to !== null ? `押すと、見本の中の「${stepLabel(Number(to[1]) - 1)}」へ移ります。` : '押したときは見本のまま動きます（上のリンク先へ）。',
+          ),
+        )
+        break
       }
       const action = node('select', 'ncf-input')
       for (const [value, text] of [

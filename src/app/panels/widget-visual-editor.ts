@@ -17,6 +17,7 @@ import {
 import { openColorPicker } from './toolbar/color-picker.ts'
 import { attachItemToolbar } from './nocode/item-toolbar.ts'
 import { attachScreenSwitcher, attachStepSwitcher } from './nocode/screen-switcher.ts'
+import { openLinkBubble } from './widget-link-bubble.ts'
 import {
   svgToolAlign,
   svgToolBgColor,
@@ -444,6 +445,9 @@ export function buildVisualEditor(target: WidgetEditTarget): {
         // 編集モード: ウィジェットのクリック動作（次へ遷移など）を止める
         e.preventDefault()
         e.stopImmediatePropagation()
+        // リンクのボタンなら、下にリンク先を出す（見本のリンク先は仮のまま入っていることが多い・その場で入れられる）
+        const anchor = (e.target as HTMLElement).closest('a')
+        if (anchor !== null && contentDiv.contains(anchor)) openLinkBubble(anchor, syncContentToCode)
       } else if (interactive.tagName === 'A') {
         // 動作確認モード（指示156）: ウィジェットには `window.location.href = this.href` で
         // ページ遷移するタイプ（リンク型アンケート等）があり、そのまま通すと編集画面から離脱して

@@ -16,6 +16,7 @@
  *   - 編集画面の写し（キャンバス・Widget編集のプレビュー・サムネイル）にも、同じ土台をその場所の範囲に限って置く（`widgetResetCss`）
  * 配信時にこれを行い、保存済みのデータは書き換えない。
  */
+import { withSbPageStructure } from './sb-page-structure.ts'
 import { stripEditorWidgetAttributes } from './widget-editor-attrs.ts'
 
 /** 1つ目: `#articlePartPreview { … }`（記事設定の既定値。LPにこの id は無いので効き目も無い） */
@@ -122,6 +123,7 @@ export const WIDGET_RESET_CSS = widgetResetCss(':where(.sb-widget-block)')
 /**
  * LP の HTML にある `<style>` から、SquadBeyond のプレビュー用CSSを取り除く（配信時に使う）。
  * あわせて Widget の外枠から、編集画面だけの属性（data-widget-name 等）を外す（`stripEditorWidgetAttributes`・2026-09-22）。
+ * SBの配信ページの形（本文の .article-body・Widgetの .sb-custom）を前提にした見本が入っていれば、同じ形を足す（`withSbPageStructure`）。
  * 配信・プレビュー・HTMLダウンロード・アプリ内プレビュー・ヒートマップに敷くLPが、みなここを通る。
  * `hasWidget` が true なら、`WIDGET_RESET_CSS` を <head> に置くこと。
  */
@@ -130,5 +132,7 @@ export function neutralizeWidgetStyles(html: string): { html: string; hasWidget:
     const stripped = stripSbPreviewCss(body)
     return stripped === body ? whole : `${open}${stripped}${close}`
   })
-  return { html: out, hasWidget: out.includes('sb-widget-block') }
+  // SBの配信ページの形（.article-body・.sb-custom）を前提にした見本のために、同じ形を足す（使っているLPだけ）
+  const shaped = withSbPageStructure(out)
+  return { html: shaped, hasWidget: shaped.includes('sb-widget-block') }
 }

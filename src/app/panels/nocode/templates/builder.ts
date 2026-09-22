@@ -65,11 +65,15 @@ if(!t||!root.contains(t))return null;
 if(t.closest('[data-nc-screens]')!==root)return null;
 return t;
 }
+function off(t){
+return t.hasAttribute('disabled')||t.getAttribute('aria-disabled')==='true'||/(^|\\s)(is-)?disabled(\\s|$)/.test(t.getAttribute('class')||'');
+}
 root.addEventListener('click',function(e){
 var t=go(e);
 if(!t)return;
 e.preventDefault();
 e.stopPropagation();
+if(off(t))return;
 show(t.getAttribute('data-nc-go'),true);
 },true);
 root.addEventListener('keydown',function(e){
@@ -78,6 +82,7 @@ var t=go(e);
 if(!t||t.tagName==='A'||t.tagName==='BUTTON')return;
 e.preventDefault();
 e.stopPropagation();
+if(off(t))return;
 show(t.getAttribute('data-nc-go'),true);
 },true);
 show(root.getAttribute('data-nc-start')||screens[0].getAttribute('data-nc-screen'),false);

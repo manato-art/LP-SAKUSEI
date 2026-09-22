@@ -37,7 +37,9 @@ export const PRODUCTION_TOKEN_PATTERNS: readonly { name: string; pattern: RegExp
     // 数字を1つ以上含むものに限る。含めないと forceConsistentCasingInFileNames のような
     // 英単語をつないだ識別子を「トークン」と誤検知して、本物の違反が埋もれる。
     name: '長い不透明トークン(32文字以上)',
-    pattern: /\b(?![A-Z]+_\d{4}\b)(?=[A-Za-z0-9]*\d)[A-Za-z0-9]{32,}\b/g,
+    // 公開ライブラリの改ざんチェック（integrity="sha512-…"）の値は、公開ファイルから計算した値でトークンではない
+    // （2026-09-22 見本の点検で、匿名化が壊した値を正しい値に戻した）。sha256/384/512- に続く値の中は拾わない
+    pattern: /\b(?<!sha(?:256|384|512)-[A-Za-z0-9+/]*)(?![A-Z]+_\d{4}\b)(?=[A-Za-z0-9]*\d)[A-Za-z0-9]{32,}\b/g,
   },
   { name: 'Bearerヘッダ', pattern: /\bBearer\s+(?!sample_token_)[A-Za-z0-9._-]{20,}/g },
 ]
@@ -101,6 +103,22 @@ export const EXTERNAL_HOST_ALLOWLIST: readonly RegExp[] = [
   // mock-server/routes/delivery.ts の externalWidgetLibs を参照。
   /^https?:\/\/code\.jquery\.com$/,
   /^https?:\/\/cdn\.jsdelivr\.net$/,
+  // Widgetライブラリの見本が読む公開ライブラリ・埋め込み（2026-09-22・本人の依頼「見本を全て確認して動くものに作り変えて」）。
+  // 匿名化が公開CDNまで架空ホストにしていて、見本のスクリプトが動かなかった。tools/widget-library-fix/restore-urls.ts で戻した
+  /^https?:\/\/cdnjs\.cloudflare\.com$/,
+  /^https?:\/\/ajax\.googleapis\.com$/,
+  /^https?:\/\/unpkg\.com$/,
+  /^https?:\/\/platform\.twitter\.com$/,
+  /^https?:\/\/player\.vimeo\.com$/,
+  /^https?:\/\/www\.youtube\.com$/,
+  /^https?:\/\/b\.st-hatena\.com$/,
+  /^https?:\/\/www\.line-website\.com$/,
+  // 見本の共有ボタンの行き先（見る人が押したときだけ開く。自動では通信しない）
+  /^https?:\/\/www\.facebook\.com$/,
+  /^https?:\/\/twitter\.com$/,
+  /^https?:\/\/social-plugins\.line\.me$/,
+  /^https?:\/\/b\.hatena\.ne\.jp$/,
+  /^https?:\/\/getpocket\.com$/,
 ]
 
 /** 実金額らしいパターン（§13-E 実金額パターン）。合成データは桁が撹拌済みなので通る想定。 */
