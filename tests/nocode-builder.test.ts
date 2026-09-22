@@ -201,3 +201,35 @@ describe('入れる前の確かめ', () => {
     ).toContain('移る先')
   })
 })
+
+describe('見本の部品（ライブラリの見本を部品として積む）', () => {
+  const SAMPLE = '<style>.q{color:red}</style><div class="q"><a class="yes" href="#" data-nc-go="s2">はい</a></div><script>var a=1</script>'
+
+  it('見本のHTMLはそのまま、部品の箱に入れる（見本のstyle・scriptも残す）', () => {
+    const html = render([
+      screen('s1', '画面①', [{ type: 'sample', title: 'アンケート', html: SAMPLE }]),
+      screen('s2', '画面②', [{ type: 'text', text: 'ありがとう', align: 'center' }]),
+    ])
+    expect(html).toContain(`<div class="nc-b nc-b-sample nc-b-1">${SAMPLE}</div>`)
+  })
+
+  it('「部品を積んで作る」の土台の見た目（画像の出し方・余白など）は、見本の中には効かせない', () => {
+    const css = /<style>([\s\S]*?)<\/style>/.exec(render([screen('s1', '画面①', [{ type: 'sample', title: 'x', html: '<p>x</p>' }])]))?.[1] ?? ''
+    expect(css).toContain(`.${UID} img:not(.nc-b-sample *)`)
+    expect(css).toContain(`.${UID} *:not(.nc-b-sample *)`)
+    expect(css).toMatch(/\.nc-b-sample\{[^}]*line-height:1\.5/)
+  })
+
+  it('見本を選んでいない・見本のボタンが消した画面へ移る、は入れられない', () => {
+    expect(validate([screen('s1', '画面①', [{ type: 'sample', title: '', html: '' }])])).toContain('見本')
+    expect(validate([screen('s1', '画面①', [{ type: 'sample', title: 'x', html: '<a data-nc-go="s9">a</a>' }])])).toContain('移る先')
+  })
+
+  it('押したときの切り替えは、見本自身のスクリプト（次の設問へ・ページ移動）より先に受け取って止める', () => {
+    expect(SCREENS_SCRIPT).toMatch(/addEventListener\('click',function\(e\)\{[\s\S]*?stopPropagation\(\)[\s\S]*?\},true\)/)
+  })
+
+  it('中に別の「部品を積んで作る」が入っていても、その中の切り替えはその持ち主に任せる', () => {
+    expect(SCREENS_SCRIPT).toContain("closest('[data-nc-screens]')!==root")
+  })
+})

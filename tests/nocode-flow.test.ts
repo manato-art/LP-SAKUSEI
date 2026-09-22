@@ -1,56 +1,44 @@
 /**
- * 「見本から作る」の流れ（2026-09-22・本人の依頼）。
+ * 「部品を積んで作る」で見本を選ぶ流れ（2026-09-22・本人の依頼）。
  *
- * ノーコードの入口から「見本を選ぶ」を押した人だけ、見本を「追加」したあとに
- * そのまま編集画面を開く（今までの「追加」を押した人の動きは変えない）。
+ * 本人の依頼「見本から作るはいらない（Widgetの最初の画面と同じ）」「見本から作った時にも、部品を積んで作るみたいな
+ * 視覚的にわかりやすい要素を」（決定: 見本を部品として積む）。
+ * 「部品を積んで作る」で「見本」の部品を足すと、いつもの見本の一覧に戻る。そこで「追加」を押すと、
+ * LPには入れずに、その見本を部品として受け取る（1回だけ。普段の「追加」の動きは変えない）。
  */
 import { describe, expect, it } from 'vitest'
-import { armEditAfterInsert, consumeEditAfterInsert, defaultRegisterName, newestNode, rememberSampleTitle, sampleTitleOf } from '../src/app/panels/nocode/nocode-flow.ts'
+import { armSamplePick, cancelSamplePick, defaultRegisterName, takeSamplePick } from '../src/app/panels/nocode/nocode-flow.ts'
 
-describe('追加したら編集画面を開くかどうか', () => {
-  it('入口で見本を選びに行ったときだけ、1回だけ開く', () => {
-    expect(consumeEditAfterInsert(), '普段の「追加」では開かない').toBe(false)
-    armEditAfterInsert()
-    expect(consumeEditAfterInsert()).toBe(true)
-    expect(consumeEditAfterInsert(), '次の「追加」ではもう開かない').toBe(false)
-  })
-})
-
-describe('いま足したWidgetを見つける', () => {
-  it('足す前に無かったものを返す', () => {
-    const a = { id: 'a' }
-    const b = { id: 'b' }
-    const c = { id: 'c' }
-    expect(newestNode([a, b], [a, c, b])).toBe(c)
+describe('見本を部品として受け取る', () => {
+  it('選びに行ったときだけ、次の「追加」を1回だけ部品に回す', () => {
+    expect(takeSamplePick(), '普段の「追加」はLPに入れる').toBeNull()
+    const got: string[] = []
+    armSamplePick((sample) => got.push(sample.title))
+    const pick = takeSamplePick()
+    expect(pick).not.toBeNull()
+    pick?.({ title: '矢印', html: '<div>↓</div>' })
+    expect(got).toEqual(['矢印'])
+    expect(takeSamplePick(), '次の「追加」はまたLPに入れる').toBeNull()
   })
 
-  it('増えていなければ null（足せなかった）', () => {
-    const a = { id: 'a' }
-    expect(newestNode([a], [a])).toBeNull()
+  it('やめたら受け取らない', () => {
+    armSamplePick(() => undefined)
+    cancelSamplePick()
+    expect(takeSamplePick()).toBeNull()
   })
 })
 
 describe('「Widgetとして登録」の名前の初期値', () => {
-  it('見本から作ったときは、見本の名前をそのまま使う（英字のクラス名は出さない）', () => {
-    expect(defaultRegisterName('結果内容とフッター', 'ご購入はこちら')).toBe('結果内容とフッター')
+  it('型の名前などが分かれば、それを使う（英字のクラス名は出さない）', () => {
+    expect(defaultRegisterName('よくある質問', 'ご購入はこちら')).toBe('よくある質問')
   })
 
-  it('見本の名前が分からなければ、中の文字の頭から作る（空白はまとめる・長すぎたら切る）', () => {
+  it('分からなければ、中の文字の頭から作る（空白はまとめる・長すぎたら切る）', () => {
     expect(defaultRegisterName(undefined, '  よくある  質問\n Q. 送料は？ ')).toBe('よくある 質問 Q. 送料は？')
     expect(defaultRegisterName('', 'あいうえおかきくけこさしすせそたちつてとなにぬねの')).toBe('あいうえおかきくけこさしすせそたちつてと')
   })
 
   it('文字も無ければ「Widget」', () => {
     expect(defaultRegisterName(undefined, '   ')).toBe('Widget')
-  })
-})
-
-describe('見本の名前の控え', () => {
-  it('足したWidgetごとに覚える（要素の属性には書かない＝LPのHTMLに保存されない）', () => {
-    const a = {}
-    const b = {}
-    rememberSampleTitle(a, '結果内容とフッター')
-    expect(sampleTitleOf(a)).toBe('結果内容とフッター')
-    expect(sampleTitleOf(b)).toBeUndefined()
   })
 })

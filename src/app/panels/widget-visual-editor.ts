@@ -16,7 +16,7 @@ import {
 } from './toolbar/text-format.ts'
 import { openColorPicker } from './toolbar/color-picker.ts'
 import { attachItemToolbar } from './nocode/item-toolbar.ts'
-import { attachScreenSwitcher } from './nocode/screen-switcher.ts'
+import { attachScreenSwitcher, attachStepSwitcher } from './nocode/screen-switcher.ts'
 import {
   svgToolAlign,
   svgToolBgColor,
@@ -473,6 +473,8 @@ export function buildVisualEditor(target: WidgetEditTarget): {
   pane.append(toolbar, spacingBar, editorBody)
   // 画面①②…を作ったWidgetは、上に画面のタブを出して移る先の画面も直せるようにする（ノーコードでWidgetを作る④）
   attachScreenSwitcher(editorBody, contentDiv)
+  // 見本にもともとある設問①②…も、上のタブで切り替えて直せるようにする
+  attachStepSwitcher(editorBody, contentDiv)
   return { pane, contentDiv, setPreviewCss }
 }
 /**

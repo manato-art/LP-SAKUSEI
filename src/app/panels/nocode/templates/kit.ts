@@ -116,19 +116,21 @@ export function newUid(): string {
 /**
  * どの型にも付ける土台のCSS（このWidgetの中だけ）。
  * 見出しは最後の行に数文字だけ残らないよう balance にする（ui-forge text-wrap-balance-cjk-orphan）。
+ * isolate を渡すと、その中（ライブラリの見本など、自分のCSSで描く部分）には土台を効かせない。
  */
-export function baseCss(scope: string): string {
+export function baseCss(scope: string, isolate?: string): string {
+  const not = isolate === undefined ? '' : `:not(${isolate} *)`
   return (
     `${scope}{box-sizing:border-box;margin:0;padding:28px 16px;color:${INK_DARK};line-height:1.7;` +
     `font-size:15px;font-family:inherit;text-align:left}` +
-    `${scope} *,${scope} *::before,${scope} *::after{box-sizing:border-box}` +
-    `${scope} img{max-width:100%;height:auto;display:block}` +
-    `${scope} [hidden],${scope}[hidden]{display:none !important}` +
+    `${scope} *${not},${scope} *${not}::before,${scope} *${not}::after{box-sizing:border-box}` +
+    `${scope} img${not}{max-width:100%;height:auto;display:block}` +
+    `${scope} [hidden]${not},${scope}[hidden]{display:none !important}` +
     // 画面には出さず、読み上げだけで伝える文字（◎→「とても良い」など）
     `${scope} .nc-sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}` +
-    `${scope} h2,${scope} h3,${scope} p{margin:0}` +
+    `${scope} h2${not},${scope} h3${not},${scope} p${not}{margin:0}` +
     // 見出しは行の長さをそろえ、対応するブラウザでは言葉の切れ目で折り返す（「メー／ルのみ」のように語の途中で切らない）
-    `${scope} h2,${scope} h3{text-wrap:balance;word-break:auto-phrase}` +
+    `${scope} h2${not},${scope} h3${not}{text-wrap:balance;word-break:auto-phrase}` +
     `${scope} .nc-title{font-size:22px;font-weight:800;line-height:1.45;text-align:center;margin:0 0 20px}`
   )
 }

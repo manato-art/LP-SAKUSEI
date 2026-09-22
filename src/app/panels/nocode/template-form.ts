@@ -12,6 +12,7 @@
 import { confirmCard } from '../../dialog.ts'
 import { node, scalarControl, type ControlEnv, type Scalar, type ScalarField } from './form-controls.ts'
 import { addAt, duplicateAt, getAt, moveAt, removeAt, setAt, type Path } from './form-state.ts'
+import { sampleEditor } from './form-sample.ts'
 import { incomingCount, nextScreenId, nextScreenName, screenLabel } from './screens-state.ts'
 import { items, str, type BlockType, type Field, type ItemData, type ScreensField, type TemplateData } from './templates/types.ts'
 
@@ -34,10 +35,18 @@ export function buildTemplateForm(options: {
   onChange: (data: TemplateData) => void
   /** 編集する画面を切り替えたとき（見え方をその画面にする） */
   onScreenChange?: (screenId: string) => void
+  /** 見本の部品: いつもの見本の一覧から見本を選んでもらう（やめたら null） */
+  pickSample?: () => Promise<{ title: string; html: string } | null>
+  /** 見本の部品: 見え方だけ、その部品のHTMLを差し替える（選んだ設問を出す）。null で元に戻す */
+  onPreviewOverride?: (key: string, path: Path, html: string | null) => void
+  /** 組み立て直すとき、見え方だけの差し替えを全部やめる（部品の並びが変わると場所がずれるため） */
+  onPreviewReset?: () => void
 }): HTMLElement {
   let data = options.data
   /** いま編集している画面（組み立て直しても残す） */
   let activeScreen = 0
+  /** 見本の部品ごとの、いま直している設問（組み立て直しても残す） */
+  const activeSteps = new Map<string, number>()
   const root = node('div', 'ncf-form-body')
   /** 出し分け・名前や選べるものの直し（入力のたびに全部回す。軽い） */
   let refreshers: (() => void)[] = []
@@ -165,7 +174,7 @@ export function buildTemplateForm(options: {
       const name = node('span', 'ncf-item__name', `${field.itemLabel} ${index + 1}`)
       item.append(itemHead(name, listPath, index, list.length, { min: field.min, max: field.max, noun: field.itemLabel }))
       for (const sub of field.fields) {
-        if (sub.kind === 'list' || sub.kind === 'screens') continue // 並びの中の並びは作らない
+        if (sub.kind === 'list' || sub.kind === 'screens' || sub.kind === 'sample') continue // 並びの中の並びは作らない
         item.append(fieldEl(sub, [field.key, index, sub.key], [field.key, index]))
       }
       box.append(item)
@@ -179,6 +188,25 @@ export function buildTemplateForm(options: {
     )
     wrap.append(head, box, add)
     return wrap
+  }
+
+  /** 見本の部品（見本を選ぶ・中身を直す・設問①②…を切り替える） */
+  const sampleFieldEl = (itemPath: Path): HTMLElement => {
+    const key = JSON.stringify(itemPath)
+    const item = (): ItemData => (getAt(data, itemPath) as ItemData | undefined) ?? {}
+    return sampleEditor({
+      read: () => ({ title: str(item(), 'title'), html: str(item(), 'html') }),
+      replace: (sample) => {
+        activeSteps.delete(key)
+        restructure(setAt(setAt(data, [...itemPath, 'title'], sample.title), [...itemPath, 'html'], sample.html))
+      },
+      writeHtml: (html) => write([...itemPath, 'html'], html),
+      pickSample: options.pickSample,
+      screenOptions: () =>
+        items(data, screensKey).map((screen, index) => ({ value: str(screen, 'id'), label: screenNameAt(screen, index) })),
+      onPreview: (html) => options.onPreviewOverride?.(key, [...itemPath, 'html'], html),
+      activeStep: { get: () => activeSteps.get(key) ?? 0, set: (index) => activeSteps.set(key, index) },
+    })
   }
 
   /** 部品の下の「◯◯を開いて編集する →」（押したら移る部品だけ。移る先の画面を開く） */
@@ -220,6 +248,10 @@ export function buildTemplateForm(options: {
       itemEl.append(itemHead(name, listPath, index, list.length, { min: 0, max: field.blockMax, noun: type.label }))
       const itemPath: Path = [...listPath, index]
       for (const sub of type.fields) {
+        if (sub.kind === 'sample') {
+          itemEl.append(sampleFieldEl(itemPath))
+          continue
+        }
         if (sub.kind === 'list' || sub.kind === 'screens') continue
         itemEl.append(fieldEl(sub, [...itemPath, sub.key], itemPath))
       }
@@ -231,12 +263,18 @@ export function buildTemplateForm(options: {
     adder.append(node('span', 'ncf-adder__label', full ? `部品は1画面に${field.blockMax}こまでです` : '部品を足す（いちばん下に入ります）'))
     const grid = node('div', 'ncf-adder__grid')
     for (const type of field.types) {
-      const b = textButton(
-        '',
-        'ncf-adder__btn',
-        () => restructure(addAt(data, listPath, type.newItem(), field.blockMax), '[data-ncf-list="blocks"] .ncf-item:last-of-type'),
-        !full,
-      )
+      const focusNew = '[data-ncf-list="blocks"] .ncf-item:last-of-type'
+      const add = (): void => {
+        // 見本は、先に見本の一覧で選んでもらい、選んだら部品として入れる（やめたら何も足さない）
+        if (type.type === 'sample' && options.pickSample !== undefined) {
+          void options.pickSample().then((sample) => {
+            if (sample !== null) restructure(addAt(data, listPath, { ...type.newItem(), title: sample.title, html: sample.html }, field.blockMax), focusNew)
+          })
+          return
+        }
+        restructure(addAt(data, listPath, type.newItem(), field.blockMax), focusNew)
+      }
+      const b = textButton('', 'ncf-adder__btn', add, !full)
       const icon = node('span', 'ncf-adder__icon')
       icon.innerHTML = type.icon
       b.append(icon, node('span', '', type.label))
@@ -339,12 +377,19 @@ export function buildTemplateForm(options: {
   }
 
   const build = (): void => {
+    options.onPreviewReset?.()
     const scroller = root.closest<HTMLElement>('.ncf-form')
     const scrollTop = scroller?.scrollTop ?? 0
     refreshers = []
     root.replaceChildren(
       ...options.fields.map((field) =>
-        field.kind === 'list' ? listEl(field) : field.kind === 'screens' ? screensEl(field) : fieldEl(field, [field.key]),
+        field.kind === 'list'
+          ? listEl(field)
+          : field.kind === 'screens'
+            ? screensEl(field)
+            : field.kind === 'sample'
+              ? node('div') // 見本は「部品を積んで作る」の部品の中だけで使う
+              : fieldEl(field, [field.key]),
       ),
     )
     refreshAll()

@@ -1,34 +1,32 @@
 /**
- * 「見本から作る」の流れ（2026-09-22・本人の依頼。ノーコードでWidgetを作る①）。
+ * 「部品を積んで作る」で見本を選ぶ流れ（2026-09-22・本人の依頼）。
  *
- * ノーコードの入口で「見本を選ぶ」を押した人だけ、見本を「追加」したあとに
- * そのまま編集画面（見たまま編集＋要素ごとのカード）を開く。
- * 今までの「追加」を押した人の動きは変えない（1回だけの合図にしてある）。
+ * 「見本」の部品を足すと、いつもの見本の一覧（Widgetの最初の画面）に戻る。そこで「追加」を押すと、
+ * LPには入れずに、その見本を部品として受け取る（1回だけの合図。普段の「追加」の動きは変えない）。
+ * 以前あった「見本から作る」タブ（見本を追加→そのまま編集画面）は、本人の依頼で消した
+ * （「Widgetの最初の画面と同じだからいらない」）。
  */
 
-let armed = false
+/** 見本を受け取る先 */
+export type SamplePick = (sample: { title: string; html: string }) => void
 
-/** 次の「追加」のあとに編集画面を開く */
-export function armEditAfterInsert(): void {
-  armed = true
+let pending: SamplePick | null = null
+
+/** 次の「追加」を部品に回す */
+export function armSamplePick(receive: SamplePick): void {
+  pending = receive
 }
 
-/** 開くべきかを1回だけ答える（答えたら合図を下ろす） */
-export function consumeEditAfterInsert(): boolean {
-  const was = armed
-  armed = false
-  return was
+/** 部品に回すなら受け取る先を返す（返したら合図を下ろす）。普段は null */
+export function takeSamplePick(): SamplePick | null {
+  const receive = pending
+  pending = null
+  return receive
 }
 
-/** 合図を取り消す（入口を閉じた・別の操作に移ったとき） */
-export function disarmEditAfterInsert(): void {
-  armed = false
-}
-
-/** 足す前に無かったものを返す（いま足したWidgetを見つける）。増えていなければ null */
-export function newestNode<T>(before: readonly T[], after: readonly T[]): T | null {
-  const seen = new Set(before)
-  return after.find((node) => !seen.has(node)) ?? null
+/** 選ぶのをやめた・一覧を閉じた */
+export function cancelSamplePick(): void {
+  pending = null
 }
 
 /** 名前の初期値の長さ（一覧のカードに収まる程度） */
@@ -36,27 +34,12 @@ const NAME_MAX = 20
 
 /**
  * 「Widgetとして登録」の名前の初期値。
- * 見本から作ったなら見本の名前、分からなければ中の文字の頭、それも無ければ「Widget」。
- * 今までは最初のクラス名（例: MuiBox-root）が出ていて、コードを知らない人には意味が分からなかった。
+ * 型の名前などが分かればそれ、分からなければ中の文字の頭、それも無ければ「Widget」。
+ * 以前は最初のクラス名（例: MuiBox-root）が出ていて、コードを知らない人には意味が分からなかった。
  */
 export function defaultRegisterName(knownTitle: string | undefined, visibleText: string): string {
   const title = (knownTitle ?? '').trim()
   if (title !== '') return title
   const text = visibleText.replace(/\s+/g, ' ').trim()
   return text === '' ? 'Widget' : Array.from(text).slice(0, NAME_MAX).join('').trim()
-}
-
-/**
- * 見本から足したWidgetの、見本の名前（「Widgetとして登録」の名前の初期値に使う）。
- * 画面の上だけで覚える。Widgetの外側（section）の属性に書くと、LPのHTMLに保存されて配信にまで出てしまう
- * （2026-09-22 実測。最初は data-widget-title 属性にしていた）。
- */
-const sampleTitles = new WeakMap<object, string>()
-
-export function rememberSampleTitle(node: object, title: string): void {
-  sampleTitles.set(node, title)
-}
-
-export function sampleTitleOf(node: object): string | undefined {
-  return sampleTitles.get(node)
 }

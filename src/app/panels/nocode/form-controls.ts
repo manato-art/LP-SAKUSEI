@@ -13,8 +13,8 @@ import { pickLpVideo } from './lp-video.ts'
 import { COLOR_NAMES, type Field, type TemplateData } from './templates/types.ts'
 
 export type Scalar = string | boolean | number
-/** 並びではない入力 */
-export type ScalarField = Exclude<Field, { kind: 'list' } | { kind: 'screens' }>
+/** 並びではない入力（見本の部品は form-sample.ts の専用の入力） */
+export type ScalarField = Exclude<Field, { kind: 'list' } | { kind: 'screens' } | { kind: 'sample' }>
 
 export interface ControlEnv {
   read: () => unknown

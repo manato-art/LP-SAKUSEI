@@ -17,7 +17,11 @@ import { WIDGET_RESET_CSS } from '../../../shared/sb-preview-css.ts'
 import { insertWidget } from '../widget-creator.ts'
 import { saveCreatedWidget } from '../widget-library-storage.ts'
 import type { NocodeContext, NocodeTab } from './nocode-panel.ts'
+import { setAt, type Path } from './form-state.ts'
+import { showLibraryHint } from './library-hint.ts'
 import { ensureNocodeFormCss } from './nocode-form-css.ts'
+import { armSamplePick, cancelSamplePick } from './nocode-flow.ts'
+import { PREVIEW_STEP_CSS } from './sample-dom.ts'
 import { buildTemplateForm } from './template-form.ts'
 import { BUILDER_TEMPLATE } from './templates/builder.ts'
 import { TEMPLATES } from './templates/index.ts'
@@ -44,9 +48,32 @@ function previewDoc(html: string): string {
     '<!doctype html><html lang="ja"><head><meta charset="utf-8">' +
     '<meta name="viewport" content="width=device-width,initial-scale=1">' +
     `<style>body{margin:0 auto;max-width:620px;font-family:"Hiragino Sans",sans-serif;background:#fff;color:#151515}` +
-    `${LP_BASE_CSS}${WIDGET_RESET_CSS}</style>` +
+    // 見本の部品で選んだ設問を出す（見え方だけ）
+    `${LP_BASE_CSS}${WIDGET_RESET_CSS}${PREVIEW_STEP_CSS}</style>` +
     `</head><body><section class="sb-widget-block">${html}</section></body></html>`
   )
+}
+
+/**
+ * 見本の部品: いつもの見本の一覧で見本を選んでもらう（「追加」を押した見本を受け取る。やめたら null）。
+ * 選んでいる間はこの入口を隠すだけ（入力中の中身は残る）。
+ */
+function pickSampleFromLibrary(ctx: NocodeContext): Promise<{ title: string; html: string } | null> {
+  return new Promise((resolve) => {
+    let removeHint = (): void => undefined
+    const finish = (sample: { title: string; html: string } | null): void => {
+      removeHint()
+      ctx.showPanel()
+      if (sample !== null) toast(`「${sample.title}」を部品に入れました`)
+      resolve(sample)
+    }
+    armSamplePick((sample) => finish(sample))
+    ctx.hidePanel()
+    removeHint = showLibraryHint(ctx.libraryRoot, '部品にしたい見本の「追加」を押してください（LPにはまだ入りません）', () => {
+      cancelSamplePick()
+      finish(null)
+    })
+  })
 }
 
 /** 登録するときの名前の初期値（「ボタン（今すぐ申し込む）」。積んだものは最初の見出し） */
@@ -132,10 +159,14 @@ function renderForm(
   let timer = 0
   /** 見え方に出す画面（「部品を積んで作る」で編集している画面。決めていなければ最初の画面） */
   let previewScreen: string | undefined
+  /** 見え方だけの差し替え（見本の部品で選んだ設問を出したHTML）。保存する中身には入れない */
+  const previewOverrides = new Map<string, { path: Path; html: string }>()
   const paintPreview = (): void => {
     const current = store.get()
     if (current === null) return
-    frame.srcdoc = previewDoc(template.render(current.data, current.uid, previewScreen === undefined ? undefined : { screen: previewScreen }))
+    let previewData = current.data
+    for (const override of previewOverrides.values()) previewData = setAt(previewData, override.path, override.html)
+    frame.srcdoc = previewDoc(template.render(previewData, current.uid, previewScreen === undefined ? undefined : { screen: previewScreen }))
   }
   const error = el('span', { class: 'ncf-error' })
   error.setAttribute('role', 'alert')
@@ -156,6 +187,14 @@ function renderForm(
       window.clearTimeout(timer)
       paintPreview()
     },
+    pickSample: () => pickSampleFromLibrary(ctx),
+    onPreviewOverride: (key, path, html) => {
+      if (html === null) previewOverrides.delete(key)
+      else previewOverrides.set(key, { path, html })
+      window.clearTimeout(timer)
+      timer = window.setTimeout(paintPreview, PREVIEW_DELAY_MS)
+    },
+    onPreviewReset: () => previewOverrides.clear(),
   })
 
   const edit = el('div', { class: 'ncf-edit' }, [
@@ -277,5 +316,5 @@ export const BUILDER_TAB = makeTemplateTab({
   label: '部品を積んで作る',
   templates: [BUILDER_TEMPLATE],
   intro:
-    '見出し・文章・画像・ボタンなどを、上から順に積んで作ります。画面①②…を作ると、ボタンや画像を押したときに、その画面へすぐ切り替えられます。',
+    '見出し・文章・画像・ボタンなどを、上から順に積んで作ります。「見本」を選ぶと、いつもの見本も部品として使えます。画面①②…を作ると、ボタンや画像を押したときに、その画面へすぐ切り替えられます。',
 })

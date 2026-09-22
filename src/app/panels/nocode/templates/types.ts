@@ -37,6 +37,8 @@ export type Field =
   | (FieldBase & { readonly kind: 'image' })
   /** 動画のファイル（mp4・webm） */
   | (FieldBase & { readonly kind: 'video' })
+  /** ライブラリの見本（「部品を積んで作る」の見本の部品。中身の一覧で直す＝form-sample.ts） */
+  | (FieldBase & { readonly kind: 'sample' })
   | (FieldBase & {
       readonly kind: 'select'
       readonly options: readonly { value: string; label: string }[]

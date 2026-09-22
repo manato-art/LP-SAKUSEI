@@ -7,8 +7,11 @@
  * - 画面の hidden は触らない（触るとコード欄へ書き出されて保存され、LPの最初の画面が変わる）。
  *   見たまま画面の外に置いた style で見せ方だけを上書きする（editorScreenCss）
  * - 画面が1つだけのWidget・型で作っていないWidgetでは何も出さない
+ * - 見本にもともとある設問①②…（attachStepSwitcher）も、同じように上のタブで切り替えて直せる
+ *   （本人の依頼「見本でもページの切り替わりを」。決定: 両方）
  */
-import { editorScreenCss, screenLabel } from './screens-state.ts'
+import { findStepGroup, type SlotNode } from './sample-model.ts'
+import { cssPathFrom, editorScreenCss, editorStepCss, screenLabel } from './screens-state.ts'
 
 export function attachScreenSwitcher(editorBody: HTMLElement, contentDiv: HTMLElement): void {
   const root = contentDiv.querySelector<HTMLElement>('[data-nc-screens]')
@@ -60,4 +63,68 @@ export function attachScreenSwitcher(editorBody: HTMLElement, contentDiv: HTMLEl
   bar.append(style)
   editorBody.before(bar)
   show(screens[0]?.dataset['ncScreen'] ?? '')
+}
+
+const CIRCLED = '①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳'
+/** 見本のスクリプトが動いて、最初の見え方が決まるまで待つ */
+const STEP_DETECT_DELAY_MS = 500
+
+/**
+ * 見本にもともとある設問①②…を、Widget編集の上のタブで切り替える（入れたあとも隠れている設問を直せる）。
+ * 設問は、今の見え方（見えている箱が1つ・ほかは隠れている）で見つける。見本のスクリプトが動いてから調べる。
+ * 切り替えは見たまま画面の外の style で見せ方だけ変える（Widgetの中身には目印を付けない＝保存されない）。
+ */
+export function attachStepSwitcher(editorBody: HTMLElement, contentDiv: HTMLElement): void {
+  window.setTimeout(() => {
+    if (!contentDiv.isConnected) return
+    const visible = (node: SlotNode): boolean => {
+      const style = getComputedStyle(node as unknown as Element)
+      return style.display !== 'none' && style.visibility !== 'hidden'
+    }
+    const steps = findStepGroup(contentDiv as unknown as SlotNode, visible) as unknown as HTMLElement[]
+    const paths = steps.map((step) => cssPathFrom(contentDiv, step))
+    if (steps.length < 2 || paths.some((path) => path === null)) return
+    const bar = document.createElement('div')
+    bar.dataset['nocodeStepBar'] = 'true'
+    bar.setAttribute('role', 'tablist')
+    bar.setAttribute('aria-label', '見本の設問')
+    bar.style.cssText =
+      'display:flex;align-items:center;gap:6px;flex-shrink:0;overflow-x:auto;padding:8px 12px;' +
+      'background:#F7F8FA;border-bottom:1px solid #E3E6EA;font:12.5px/1.4 "Hiragino Sans",sans-serif'
+    const label = document.createElement('span')
+    label.textContent = '見本の設問'
+    label.style.cssText = 'flex-shrink:0;color:#6B7480;margin-right:4px'
+    bar.append(label)
+    const style = document.createElement('style')
+    const tabs: HTMLButtonElement[] = []
+    const paint = (active: number): void => {
+      for (const [i, tab] of tabs.entries()) {
+        const on = i === active
+        tab.setAttribute('aria-selected', String(on))
+        tab.style.background = on ? 'var(--sb-accent, #0091FF)' : '#FFFFFF'
+        tab.style.color = on ? '#FFFFFF' : '#1F2A37'
+        tab.style.borderColor = on ? 'var(--sb-accent, #0091FF)' : '#D5DAE0'
+      }
+    }
+    steps.forEach((_, index) => {
+      const tab = document.createElement('button')
+      tab.type = 'button'
+      tab.setAttribute('role', 'tab')
+      tab.textContent = `設問${Array.from(CIRCLED)[index] ?? String(index + 1)}`
+      tab.style.cssText =
+        'flex-shrink:0;border:1px solid #D5DAE0;border-radius:999px;padding:5px 12px;cursor:pointer;' +
+        'font:700 12.5px/1.4 "Hiragino Sans",sans-serif;white-space:nowrap'
+      tab.addEventListener('mousedown', (e) => e.preventDefault())
+      tab.addEventListener('click', () => {
+        style.textContent = editorStepCss(paths as string[], index)
+        paint(index)
+      })
+      tabs.push(tab)
+      bar.append(tab)
+    })
+    bar.append(style)
+    editorBody.before(bar)
+    // 今見えている設問を選んだ状態にする（見え方はまだ変えない）
+    paint(Math.max(0, steps.findIndex((step) => visible(step as unknown as SlotNode))))
+  }, STEP_DETECT_DELAY_MS)
 }

@@ -114,6 +114,11 @@ textarea.ncf-input{resize:vertical;min-height:64px}
 .ncf-btn:disabled{opacity:.4;cursor:default}
 .ncf-screen-note{margin:0 0 14px;font-size:12px;line-height:1.7;color:var(--sb-sub,#808080)}
 .ncf-screen-note--warn{color:#9A5B00}
+.ncf-sample__head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 10px}
+.ncf-sample__title{min-width:0;font-size:13.5px;font-weight:700;overflow-wrap:anywhere}
+.ncf-sample__group{margin:14px 0 6px;font-size:12px;font-weight:700;color:var(--sb-sub,#808080)}
+.ncf-sample__slot{padding:10px 0 0;border-top:1px dashed var(--sb-line,#DDD)}
+.ncf-sample__slot .ncf-field{margin-bottom:10px}
 .ncf-goto{display:block;margin:-6px 0 14px;border:0;background:transparent;color:var(--sb-accent,#0091FF);font-size:12.5px;font-weight:700;cursor:pointer;padding:4px 0;text-align:left}
 `
 

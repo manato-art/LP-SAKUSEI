@@ -49,3 +49,35 @@ export function editorScreenCss(uid: string, screenId: string): string {
   const root = `[data-widget-preview] .${uid}.${uid}>`
   return `${root}[data-nc-screen]{display:none !important}${root}[data-nc-screen="${screenId}"]{display:block !important}`
 }
+
+/** 道のりを数えるのに使う最小の形（DOMの Element はこれを満たす） */
+interface TreeNode {
+  readonly parentElement: TreeNode | null
+  readonly children: ArrayLike<TreeNode>
+}
+
+/**
+ * 見たまま画面（root）から node までの道のりを「何番目の子か」で書く（`:nth-child(2)>:nth-child(3)`）。
+ * Widgetの中身に目印の属性を付けると保存されてしまうので、場所で指す。root の中に無ければ null。
+ */
+export function cssPathFrom(root: TreeNode, node: TreeNode): string | null {
+  const steps: string[] = []
+  let current: TreeNode | null = node
+  while (current !== null && current !== root) {
+    const parent: TreeNode | null = current.parentElement
+    if (parent === null) return null
+    steps.unshift(`:nth-child(${Array.from(parent.children).indexOf(current) + 1})`)
+    current = parent
+  }
+  return current === root && steps.length > 0 ? steps.join('>') : null
+}
+
+/**
+ * Widget編集の見たまま画面で、見本の設問①②…のうち選んだものだけを見せるCSS。
+ * 見本のスクリプトが付け外しする「表示中」のクラスより強くするため !important。見たまま画面の外の style に置く
+ */
+export function editorStepCss(paths: readonly string[], active: number): string {
+  return paths
+    .map((path, i) => `[data-widget-preview]>${path}{display:${i === active ? 'block' : 'none'} !important}`)
+    .join('')
+}

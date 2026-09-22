@@ -5,13 +5,15 @@
  * そのまま残し、これは新しい入口として横に置く（本人指定「今までの機能は残して、新機能として」）。
  *
  * 作り方ごとにタブを分ける。タブはこのファイルの TABS に足していく。
- *   見本から作る … 見本を選ぶ→編集画面で文字・色・画像を変える→「Widgetとして登録」
  *   型から作る   … 型を選ぶ→入力欄に書く→「LPに入れる」（template-tab.ts）
- *   部品を積んで作る … 見出し・文章・画像・ボタンなどを上から順に積む（templates/builder.ts）
+ *   部品を積んで作る … 見出し・文章・画像・ボタン・見本などを上から順に積む（templates/builder.ts）
+ * 以前の「見本から作る」タブは消した（本人の依頼「Widgetの最初の画面と同じだからいらない」）。
+ * 見本は「部品を積んで作る」の「見本」の部品として使う。
  */
 import type Quill from 'quill'
 import { T, el } from '../../ui.ts'
-import { armEditAfterInsert, disarmEditAfterInsert } from './nocode-flow.ts'
+import { cancelSamplePick } from './nocode-flow.ts'
+import { removeLibraryHint } from './library-hint.ts'
 import { BUILDER_TAB, TEMPLATE_TAB } from './template-tab.ts'
 
 export interface NocodeContext {
@@ -21,6 +23,9 @@ export interface NocodeContext {
   closeLibrary: () => void
   /** この入口だけ閉じる（ライブラリは開いたまま） */
   closePanel: () => void
+  /** この入口を一時的に隠す／戻す（見本の一覧から見本を選ぶ間。入力中の中身は残る） */
+  hidePanel: () => void
+  showPanel: () => void
 }
 
 export interface NocodeTab {
@@ -30,108 +35,14 @@ export interface NocodeTab {
   render: (host: HTMLElement, ctx: NocodeContext) => void
 }
 
-const HINT_ATTR = 'data-nocode-hint'
-
-/**
- * ライブラリの下の方に「見本を選んで『追加』を押すと…」を浮かせて出す（取り消せる）。
- *
- * 一覧は「左にカテゴリー｜右にカード」の横並びなので、間に差し込むと3列目になって崩れる
- * （2026-09-22 実測）。並びの外に浮かせる。カテゴリーを切り替えてもカードの中身だけが
- * 入れ替わるので、ここに置けば消えない。
- */
-function showSampleHint(libraryRoot: HTMLElement): void {
-  libraryRoot.querySelector(`[${HINT_ATTR}]`)?.remove()
-  const paper = libraryRoot.querySelector<HTMLElement>('.MuiDialog-paper') ?? libraryRoot
-  paper.style.position = 'relative'
-  const hint = el('div', {
-    style:
-      `position:absolute;left:50%;bottom:18px;transform:translateX(-50%);z-index:5;` +
-      `display:flex;align-items:center;gap:14px;max-width:calc(100% - 32px);box-sizing:border-box;` +
-      `padding:10px 16px;border-radius:999px;background:${T.text};color:${T.surface};` +
-      `box-shadow:0 6px 24px rgba(0,0,0,.18);font:13px/1.6 ${T.font}`,
-  })
-  hint.setAttribute(HINT_ATTR, 'true')
-  hint.setAttribute('role', 'status')
-  const text = el('span', {
-    text: '見本を選んで「追加」を押すと、そのまま編集画面が開きます',
-    style: 'min-width:0',
-  })
-  const cancel = el('button', {
-    text: 'やめる',
-    style: `flex-shrink:0;border:0;background:transparent;color:inherit;opacity:.75;font:600 12px ${T.font};cursor:pointer;padding:4px 0;text-decoration:underline`,
-  })
-  cancel.addEventListener('click', () => {
-    disarmEditAfterInsert()
-    hint.remove()
-  })
-  hint.append(text, cancel)
-  paper.append(hint)
-}
-
-/** 並びに意味がある手順（1→2→3の順にやる）ので番号を付ける */
-function stepList(steps: readonly { title: string; note: string }[]): HTMLElement {
-  const list = el('ol', { style: 'list-style:none;margin:16px 0 0;padding:0;display:flex;flex-direction:column;gap:14px' })
-  steps.forEach((step, i) => {
-    list.append(
-      el('li', { style: 'display:flex;gap:12px;align-items:flex-start' }, [
-        el('span', {
-          text: String(i + 1),
-          style:
-            `flex:0 0 26px;height:26px;border-radius:50%;background:${T.primary};color:${T.primaryInk};` +
-            `display:flex;align-items:center;justify-content:center;font:700 13px ${T.font}`,
-        }),
-        el('span', { style: 'min-width:0' }, [
-          el('span', { text: step.title, style: `display:block;font:600 14px/1.6 ${T.font};color:${T.text}` }),
-          el('span', { text: step.note, style: `display:block;font:12.5px/1.8 ${T.font};color:${T.sub}` }),
-        ]),
-      ]),
-    )
-  })
-  return list
-}
-
-/** ① 見本から作る */
-const SAMPLE_TAB: NocodeTab = {
-  id: 'sample',
-  label: '見本から作る',
-  render: (host, ctx) => {
-    const start = el('button', {
-      text: '見本を選ぶ',
-      style:
-        `margin-top:22px;border:0;border-radius:6px;padding:10px 22px;cursor:pointer;` +
-        `background:${T.primary};color:${T.primaryInk};font:600 14px ${T.font}`,
-    })
-    start.addEventListener('click', () => {
-      armEditAfterInsert()
-      ctx.closePanel()
-      showSampleHint(ctx.libraryRoot)
-    })
-    host.append(
-      el('p', {
-        text: 'いちばん近い見本を選んで、文字や色を変えるだけで作れます。コードは出てきません。',
-        style: `margin:0;font:14px/1.8 ${T.font};color:${T.text}`,
-      }),
-      stepList([
-        { title: '見本を選んで「追加」を押す', note: 'LPに入ったうえで、そのまま編集画面が開きます。' },
-        {
-          title: '文字・色・画像・リンクを変える',
-          note: '左の画面で文字を直接書き換え、右のカードで色や大きさを変えます。よくある質問や口コミのように並んでいる所は、マウスを乗せると右上に出る「複製・上へ・下へ・消す」で数や順番を変えられます。',
-        },
-        {
-          title: '「Widgetとして登録」を押す',
-          note: '「作成したWidget」に入り、次からは一覧から選ぶだけで使い回せます。',
-        },
-      ]),
-      start,
-    )
-  },
-}
-
 /** 作り方のタブ（左から並ぶ順） */
-const TABS: readonly NocodeTab[] = [SAMPLE_TAB, TEMPLATE_TAB, BUILDER_TAB]
+const TABS: readonly NocodeTab[] = [TEMPLATE_TAB, BUILDER_TAB]
 
 export function openNocodePanel(libraryRoot: HTMLElement, quill: Quill, closeLibrary: () => void): void {
   libraryRoot.querySelector('[data-nocode-panel]')?.remove()
+  // 見本を選んでいる途中で開き直した（前の受け取り口と案内は下ろす。残すと次の「追加」が消えた画面に渡される）
+  cancelSamplePick()
+  removeLibraryHint(libraryRoot)
   const panel = el('div', {
     style:
       `position:absolute;inset:0;z-index:10;background:${T.surface};display:flex;flex-direction:column;` +
@@ -140,7 +51,18 @@ export function openNocodePanel(libraryRoot: HTMLElement, quill: Quill, closeLib
   panel.setAttribute('data-nocode-panel', 'true')
 
   const closePanel = (): void => panel.remove()
-  const ctx: NocodeContext = { libraryRoot, quill, closeLibrary, closePanel }
+  const ctx: NocodeContext = {
+    libraryRoot,
+    quill,
+    closeLibrary,
+    closePanel,
+    hidePanel: () => {
+      panel.style.display = 'none'
+    },
+    showPanel: () => {
+      panel.style.display = 'flex'
+    },
+  }
 
   const close = el('button', {
     text: '閉じる',

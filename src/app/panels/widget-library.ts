@@ -31,8 +31,7 @@ import {
 } from './widget-library-storage.ts'
 import { insertWidget, openWidgetCreator } from './widget-creator.ts'
 import { openNocodePanel } from './nocode/nocode-panel.ts'
-import { consumeEditAfterInsert, disarmEditAfterInsert } from './nocode/nocode-flow.ts'
-import { openEditorOnNewest, widgetNodesInEditor } from './nocode/edit-after-insert.ts'
+import { cancelSamplePick, takeSamplePick } from './nocode/nocode-flow.ts'
 import { newUid, rekeyUid } from './nocode/templates/kit.ts'
 
 const HOOK = {
@@ -101,7 +100,8 @@ function open(quill: Quill): void {
   ensureWhiteBase()
   const portal = openPortal(rawLibrary, HOOK.dialog, () => {
     isOpen = false
-    disarmEditAfterInsert()
+    // 「部品を積んで作る」で見本を選んでいる途中に閉じた（入口ごと消えるので受け取り口も下ろす）
+    cancelSamplePick()
     // スマホ用に足した「カテゴリー」ボタン・暗幕を残さない
     teardownMobileWidgetLibrary()
   })
@@ -460,6 +460,8 @@ function renderCreatedWidgets(root: HTMLElement, quill: Quill, close: () => void
       'cursor:pointer;font:12px "Hiragino Sans",sans-serif'
     add.addEventListener('click', (e) => {
       e.stopPropagation()
+      // 「部品を積んで作る」で見本を選んでいるときは、LPへは入れずに部品として渡す
+      if (handOverToBuilder(w.name, rekeyUid(w.html, newUid()))) return
       close()
       requestAnimationFrame(() => {
         // 型から作ったWidgetは入れるたびにCSSのクラスを付け直す（同じLPで片方の色を変えても、もう片方は変わらない）
@@ -528,6 +530,8 @@ function renderFavoriteWidgets(root: HTMLElement, quill: Quill, close: () => voi
       'cursor:pointer;font:12px "Hiragino Sans",sans-serif'
     add.addEventListener('click', (e) => {
       e.stopPropagation()
+      // 「部品を積んで作る」で見本を選んでいるときは、LPへは入れずに部品として渡す
+      if (handOverToBuilder(w.name, rekeyUid(w.html, newUid()))) return
       close()
       requestAnimationFrame(() => {
         // 型から作ったWidgetは入れるたびにCSSのクラスを付け直す（同じLPで片方の色を変えても、もう片方は変わらない）
@@ -579,14 +583,12 @@ function wireCards(root: HTMLElement, quill: Quill, close: () => void): void {
     add?.addEventListener('click', (event) => {
       event.stopPropagation()
       const bodyHtml = widgetBodyHtml(card)
-      // ノーコードの入口で「見本を選ぶ」を押した人だけ、足したあとに編集画面を開く
-      const editAfter = consumeEditAfterInsert()
-      const before = editAfter ? widgetNodesInEditor() : []
+      // 「部品を積んで作る」で見本を選んでいるときは、LPへは入れずに部品として渡す
+      if (handOverToBuilder(title, bodyHtml)) return
       close()
       requestAnimationFrame(() => {
         insertWidget(quill, bodyHtml, title)
         toast(`「${title}」を追加しました`)
-        if (editAfter) openEditorOnNewest(quill, before, title)
       })
     })
     // 指示157: カード左下の★（採取物のブックマークSVG）をお気に入りトグルに配線する。
@@ -610,6 +612,21 @@ function wireFavoriteToggle(card: HTMLElement, title: string): void {
     toggleFavorite(title, title, widgetBodyHtml(card) ?? '')
     paint()
   })
+}
+
+/**
+ * 「部品を積んで作る」で見本を選んでいる途中なら、その見本を部品として渡す（LPには入れない）。渡したら true。
+ * 見本の中身が取れないカードは部品にできない（知らせて、選び直してもらう）。
+ */
+function handOverToBuilder(title: string, html: string | null): boolean {
+  const receive = takeSamplePick()
+  if (receive === null) return false
+  if (html === null || html.trim() === '') {
+    toast(`「${title}」は部品にできません。ほかの見本を選んでください`, 'error')
+    return true
+  }
+  receive({ title, html })
+  return true
 }
 
 /**

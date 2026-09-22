@@ -13,7 +13,7 @@ import type Quill from 'quill'
 import { toast } from '../ui.ts'
 import { promptCard } from '../dialog.ts'
 import { saveCreatedWidget } from './widget-library-storage.ts'
-import { defaultRegisterName, sampleTitleOf } from './nocode/nocode-flow.ts'
+import { defaultRegisterName } from './nocode/nocode-flow.ts'
 import { templateById } from './nocode/templates/index.ts'
 import {    loadGoogleFonts } from './toolbar/text-format.ts'
 import {
@@ -359,7 +359,7 @@ function buildHeader(
     void promptCard({
       title: 'Widgetとして登録',
       label: '名前（「作成したWidget」にこの名前で入ります）',
-      value: defaultRegisterName(sampleTitleOf(target.node) ?? templateNameOf(htmlCode), visibleTextOf(htmlCode)),
+      value: defaultRegisterName(templateNameOf(htmlCode), visibleTextOf(htmlCode)),
       submitLabel: '登録する',
       validate: (v) => (v === '' ? '名前を入れてください' : null),
     }).then((name) => {

@@ -11,8 +11,12 @@
  *  - 「動かし始めた」目印は要素のプロパティに持つ（Widget編集で動いた状態が保存されても、LPで止まらない）
  *  - 編集中の本文（.ql-editor）の中では動かさない
  *  - 最初の画面以外は HTML の hidden で隠しておく（スクリプトが無くても最初の画面は出る）
+ *  - 押したときは「押す前」（capture）に受け取って止める。見本の部品のボタンは、見本自身のスクリプト
+ *    （次の設問へ・ページ移動）も持っているので、画面へ移る指定を先に効かせる
+ *  - 中に別の「部品を積んで作る」が入っていたら、その中の切り替えはその持ち主に任せる（idがぶつからない）
  */
 import { SCREEN_ID, BLOCK_TYPES, actionOf, blockLabel, goTarget, renderBlock } from './builder-blocks.ts'
+import { goTargetsIn } from '../sample-model.ts'
 import { baseCss, esc, safeColor, safeImage, safeVideo, shade, wrapWidget } from './kit.ts'
 import { ACCENT_PRESETS, items, pick, str, type ItemData, type NocodeTemplate } from './types.ts'
 
@@ -58,21 +62,24 @@ if(root.getBoundingClientRect().top<0)root.scrollIntoView({block:'start',behavio
 function go(e){
 var t=e.target&&e.target.closest?e.target.closest('[data-nc-go]'):null;
 if(!t||!root.contains(t))return null;
+if(t.closest('[data-nc-screens]')!==root)return null;
 return t;
 }
 root.addEventListener('click',function(e){
 var t=go(e);
 if(!t)return;
 e.preventDefault();
+e.stopPropagation();
 show(t.getAttribute('data-nc-go'),true);
-});
+},true);
 root.addEventListener('keydown',function(e){
 if(e.key!=='Enter'&&e.key!==' ')return;
 var t=go(e);
 if(!t||t.tagName==='A'||t.tagName==='BUTTON')return;
 e.preventDefault();
+e.stopPropagation();
 show(t.getAttribute('data-nc-go'),true);
-});
+},true);
 show(root.getAttribute('data-nc-start')||screens[0].getAttribute('data-nc-screen'),false);
 }
 })();`
@@ -167,6 +174,13 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
         if (actionOf(item) === 'screen' && goTarget(item, ids) === null) {
           return `移る先の画面が選ばれていません（${where}）。「移る先の画面」を選んでください`
         }
+        if (type === 'sample') {
+          const html = str(item, 'html')
+          if (html.trim() === '') return `見本が選ばれていません（${where}）。「見本を選ぶ」から選ぶか、その部品を消してください`
+          if (goTargetsIn(html).some((target) => !ids.has(target))) {
+            return `移る先の画面がありません（${where}のボタン）。「押したとき」の移る先を選び直してください`
+          }
+        }
       }
     }
     return null
@@ -199,8 +213,12 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
       .join('')
 
     const css =
-      baseCss(s) +
+      // ライブラリの見本の部品には土台を効かせない（見本は自分のCSSで描く）
+      baseCss(s, '.nc-b-sample') +
       `${s}{padding:${padding}px 16px;background:${background}}` +
+      // 見本は、LPに1つで置いたときと同じ見え方にする（文字の色・大きさ・行間は配信の土台と同じ。左右いっぱい）
+      `${s} .nc-b-sample{margin-left:-16px;margin-right:-16px;color:#000000;font-size:16px;line-height:1.5;` +
+      `text-align:left;font-weight:400;letter-spacing:normal}` +
       `${s} .nc-b+.nc-b{margin-top:14px}` +
       `${s} .nc-b--center{text-align:center}` +
       `${s} [data-nc-go]{cursor:pointer;-webkit-tap-highlight-color:transparent}` +

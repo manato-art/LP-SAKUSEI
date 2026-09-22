@@ -74,6 +74,13 @@ const NO_ACTION = { action: 'none', target: '', url: '', track: true }
 
 export const BLOCK_TYPES: readonly BlockType[] = [
   {
+    type: 'sample',
+    label: '見本',
+    icon: svg('<rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><path d="M17 14v6M14 17h6"/>'),
+    fields: [{ kind: 'sample', key: 'html', label: '見本' }],
+    newItem: () => ({ type: 'sample', title: '', html: '' }),
+  },
+  {
     type: 'heading',
     label: '見出し',
     icon: svg('<path d="M6 5v14M18 5v14M6 12h12"/>'),
@@ -425,6 +432,9 @@ export function renderBlock(item: ItemData, i: number, s: string, screenIds: Rea
       const style = pick(item, 'style', ['solid', 'dotted'] as const, 'solid')
       return { html: `<hr class="nc-b nc-b-divider nc-b-divider--${style} ${cls}">`, css: '' }
     }
+    case 'sample':
+      // ライブラリの見本（採取した見本のHTML。style・script ごとそのまま）。中身は入力の画面で直してある
+      return { html: `<div class="nc-b nc-b-sample ${cls}">${str(item, 'html')}</div>`, css: '' }
     default:
       return { html: '', css: '' }
   }
