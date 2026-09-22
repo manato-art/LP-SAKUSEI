@@ -11,6 +11,9 @@
  */
 import type Quill from 'quill'
 import { toast } from '../ui.ts'
+import { promptCard } from '../dialog.ts'
+import { saveCreatedWidget } from './widget-library-storage.ts'
+import { defaultRegisterName } from './nocode/nocode-flow.ts'
 import {    loadGoogleFonts } from './toolbar/text-format.ts'
 import {
   svgPlus,
@@ -366,8 +369,30 @@ function buildHeader(
   registerBtn.style.cssText =
     `display:flex;align-items:center;gap:4px;border:none;background:none;` +
     `color:${COLOR.brand};padding:6px 14px;font:12px/1 ${FONT};cursor:pointer`
+  // 今の見た目のまま「作成したWidget」に保存し、次から一覧で選ぶだけで使い回せるようにする（2026-09-22）。
+  // 以前は「クローンでは未対応です」と出るだけだった。LPの中のWidgetは変えない（それは「更新する」の役目）。
   registerBtn.addEventListener('click', () => {
-    toast('Widgetとして登録はクローンでは未対応です')
+    const htmlCode = panel.querySelector<HTMLTextAreaElement>('[data-code-html]')?.value.trim() ?? ''
+    const cssCode = panel.querySelector<HTMLTextAreaElement>('[data-code-css]')?.value.trim() ?? ''
+    if (htmlCode === '') {
+      toast('HTMLが空です', 'error')
+      return
+    }
+    void promptCard({
+      title: 'Widgetとして登録',
+      label: '名前（「作成したWidget」にこの名前で入ります）',
+      value: defaultRegisterName(target.node.dataset['widgetTitle'], visibleTextOf(htmlCode)),
+      submitLabel: '登録する',
+      validate: (v) => (v === '' ? '名前を入れてください' : null),
+    }).then((name) => {
+      if (name === null) return
+      const html = cssCode !== '' ? `<style>${cssCode}</style>${htmlCode}` : htmlCode
+      if (saveCreatedWidget(name, html)) {
+        toast(`「${name}」を作成したWidgetに登録しました`)
+      } else {
+        toast('登録できませんでした。画像が大きいと、このブラウザに保存しきれないことがあります', 'error')
+      }
+    })
   })
 
   // 「更新する」（本番実測: fontSize:12px, color:white, bg:var(--sb-accent, #0091FF), borderRadius:4px）
@@ -530,6 +555,13 @@ export function openWidgetEditorForNode(quill: Quill, widgetNode: HTMLElement): 
     index: blotIndex.index,
     length: blotIndex.length,
   })
+}
+
+/** 画面に見える文字だけ（script・style などの中身は入れない） */
+function visibleTextOf(html: string): string {
+  const doc = new DOMParser().parseFromString(html, 'text/html')
+  for (const hidden of doc.body.querySelectorAll('script,style,noscript,template')) hidden.remove()
+  return doc.body.textContent ?? ''
 }
 
 /** Widget の HTML から名前を推定する（最初のクラス名またはテキストから）。 */

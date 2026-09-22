@@ -12,6 +12,11 @@ interface CreatedWidget {
   name: string
   html: string
   ts: number
+  /**
+   * ノーコード（型・部品）で作ったときの元の入力（2026-09-22）。
+   * これがあれば、あとでコードを見ずにフォームのまま直せる。コードで作ったものには無い。
+   */
+  source?: unknown
 }
 /** localStorage から自作Widget一覧を読む（壊れていれば空）。 */
 export function loadCreatedWidgets(): CreatedWidget[] {
@@ -24,14 +29,22 @@ export function loadCreatedWidgets(): CreatedWidget[] {
     return []
   }
 }
-/** 自作Widgetを1件保存する（先頭に追加・最大100件）。 */
-export function saveCreatedWidget(name: string, html: string): void {
+/**
+ * 自作Widgetを1件保存する（先頭に追加・最大100件）。保存できたかを返す。
+ *
+ * 画像入りで大きいと、ブラウザの保存容量を超えて保存できないことがある。
+ * 以前は黙って捨てていた（作ったつもりで一覧に無い）ので、呼び出し側が知らせられるよう結果を返す。
+ * 今までの呼び出し（戻り値を見ない）はそのまま動く。
+ */
+export function saveCreatedWidget(name: string, html: string, source?: unknown): boolean {
   try {
     const list = loadCreatedWidgets()
-    list.unshift({ id: `cw_${Date.now().toString(36)}`, name, html, ts: Date.now() })
+    const entry: CreatedWidget = { id: `cw_${Date.now().toString(36)}`, name, html, ts: Date.now() }
+    list.unshift(source === undefined ? entry : { ...entry, source })
     localStorage.setItem(CREATED_WIDGETS_KEY, JSON.stringify(list.slice(0, 100)))
+    return true
   } catch {
-    /* localStorage 不可でも作成自体は続行 */
+    return false
   }
 }
 /** 自作Widgetを1件削除する。 */

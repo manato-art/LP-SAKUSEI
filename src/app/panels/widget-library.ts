@@ -30,6 +30,9 @@ import {
   toggleFavorite,
 } from './widget-library-storage.ts'
 import { insertWidget, openWidgetCreator } from './widget-creator.ts'
+import { openNocodePanel } from './nocode/nocode-panel.ts'
+import { consumeEditAfterInsert, disarmEditAfterInsert } from './nocode/nocode-flow.ts'
+import { openEditorOnNewest, widgetNodesInEditor } from './nocode/edit-after-insert.ts'
 
 const HOOK = {
   trigger: '[aria-label="Widget管理"]',
@@ -97,6 +100,7 @@ function open(quill: Quill): void {
   ensureWhiteBase()
   const portal = openPortal(rawLibrary, HOOK.dialog, () => {
     isOpen = false
+    disarmEditAfterInsert()
     // スマホ用に足した「カテゴリー」ボタン・暗幕を残さない
     teardownMobileWidgetLibrary()
   })
@@ -150,13 +154,20 @@ function injectWidgetGridCss(): void {
   style.id = 'sb-widget-grid-3col'
   style.textContent =
     '.css-ojejk4{display:flex !important;flex-wrap:wrap !important;gap:16px !important;align-content:flex-start !important}' +
-    '.css-ojejk4>.MuiCard-root{box-sizing:border-box !important;flex:0 0 calc(33.333% - 11px) !important;max-width:calc(33.333% - 11px) !important;min-width:0 !important;margin:0 !important}'
+    '.css-ojejk4>.MuiCard-root{box-sizing:border-box !important;flex:0 0 calc(33.333% - 11px) !important;max-width:calc(33.333% - 11px) !important;min-width:0 !important;margin:0 !important}' +
+    // 採取物の紙は幅1200px固定。768〜1231pxの画面（iPad・小さめのノートPC）では左右が画面の外へ切れていた
+    // （2026-09-22 実測: 幅1024pxで左右88pxずつ）。この幅だけ画面に収める。スマホは mobile-css.ts が全画面にしている
+    '@media (min-width:769px) and (max-width:1231px){' +
+    '[data-widget-library-paper]{min-width:0 !important;width:calc(100vw - 32px) !important;max-width:calc(100vw - 32px) !important}' +
+    '[data-widget-library-paper] .MuiDialogContent-root{min-width:0 !important}}'
   document.head.append(style)
 }
 
 function patchPortalLayout(root: HTMLElement, quill: Quill, close: () => void): void {
   /* ---- 0. カード一覧を3列表示にする（要望: 3つ横並び。実物は2列） ---- */
   injectWidgetGridCss()
+  // 紙の幅を画面に収めるCSS（injectWidgetGridCss 内）の目印
+  root.querySelector<HTMLElement>('.MuiDialog-paper')?.setAttribute('data-widget-library-paper', 'true')
   // スマホはカテゴリーを左から出す引き出しにする（横に並べると場所が足りない）
   if (isMobileViewport()) applyMobileWidgetLibrary(root)
 
@@ -222,12 +233,26 @@ function patchPortalLayout(root: HTMLElement, quill: Quill, close: () => void): 
     createBtn.addEventListener('click', () => {
       openWidgetCreator(root, quill, close)
     })
+    // ノーコードで作る（2026-09-22・本人の依頼）。コードで書く「＋ Widgetを作成」はそのまま残す
+    const nocodeBtn = document.createElement('button')
+    nocodeBtn.type = 'button'
+    nocodeBtn.textContent = '+ ノーコードで作る'
+    nocodeBtn.dataset['nocodeEntry'] = 'true'
+    nocodeBtn.style.cssText =
+      'display:block;width:100%;padding:8px 16px;margin-bottom:12px;' +
+      'border:none;border-radius:4px;background:var(--sb-accent, #1976d2);' +
+      'color:var(--sb-accent-ink, #fff);font:600 14px/1.4 "Hiragino Sans",sans-serif;' +
+      'cursor:pointer;text-align:center'
+    nocodeBtn.addEventListener('click', () => {
+      openNocodePanel(root, quill, close)
+    })
     // ヘッダー（「カテゴリー」見出し）の前に挿入
     const catHeader = sidebar.querySelector<HTMLElement>('.css-iorjen')
     if (catHeader !== null) {
       sidebar.insertBefore(createBtn, catHeader)
+      sidebar.insertBefore(nocodeBtn, catHeader)
     } else {
-      sidebar.prepend(createBtn)
+      sidebar.prepend(createBtn, nocodeBtn)
     }
   }
 
@@ -551,10 +576,14 @@ function wireCards(root: HTMLElement, quill: Quill, close: () => void): void {
     add?.addEventListener('click', (event) => {
       event.stopPropagation()
       const bodyHtml = widgetBodyHtml(card)
+      // ノーコードの入口で「見本を選ぶ」を押した人だけ、足したあとに編集画面を開く
+      const editAfter = consumeEditAfterInsert()
+      const before = editAfter ? widgetNodesInEditor() : []
       close()
       requestAnimationFrame(() => {
         insertWidget(quill, bodyHtml, title)
         toast(`「${title}」を追加しました`)
+        if (editAfter) openEditorOnNewest(quill, before, title)
       })
     })
     // 指示157: カード左下の★（採取物のブックマークSVG）をお気に入りトグルに配線する。
