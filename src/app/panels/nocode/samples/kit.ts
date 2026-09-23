@@ -49,6 +49,28 @@ export const CHECK = svg('<polyline points="4 12.5 9.5 18 20 6.5"/>', '2.6')
 /** 右向きの矢印（ボタンの右端） */
 export const ARROW_RIGHT_LABEL = svg('<line x1="4" y1="12" x2="19" y2="12"/><polyline points="13 6 19 12 13 18"/>', '2.6')
 
+/** 星（お客様の声の評価） */
+export const STAR =
+  '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">' +
+  '<path d="M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.4 6.2 20.4l1.1-6.4L2.6 9.4l6.5-.9z"/></svg>'
+
+/**
+ * 見出し＋リード（どの見本でも同じ形・同じ大きさ）。
+ * 見出しは真ん中、リードは薄い文字。リードが空なら出さない。
+ */
+export function headCss(uid: string): string {
+  const s = `.${uid}`
+  return (
+    `${s} .nsx-title{font-size:21px;font-weight:800;line-height:1.5;text-align:center;margin:0 0 6px}` +
+    `${s} .nsx-lead{font-size:14px;line-height:1.85;color:${INK_SUB};text-align:center;margin:0 0 24px}` +
+    `@media (max-width:480px){${s} .nsx-title{font-size:19px}}`
+  )
+}
+
+export function head(title: string, lead = ''): string {
+  return `<h2 class="nsx-title">${title}</h2>` + (lead === '' ? '' : `<p class="nsx-lead">${lead}</p>`)
+}
+
 /** 仮の画像（入れた人が「画像を変える」で差し替える前提の灰色の絵） */
 export const IMAGE_PLACEHOLDER =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='180'%3E%3Crect width='100%25' height='100%25' fill='%23ededed'/%3E%3Ctext x='50%25' y='50%25' fill='%23a8a8a8' font-family='sans-serif' font-size='15' text-anchor='middle' dominant-baseline='middle'%3E画像%3C/text%3E%3C/svg%3E"

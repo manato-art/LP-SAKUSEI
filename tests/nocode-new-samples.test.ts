@@ -71,7 +71,8 @@ describe('新しい見本（自作）', () => {
 
   it('外から読み込むものが無く、危ないものも入っていない', () => {
     for (const sample of NEW_SAMPLES) {
-      expect(sample.html).not.toMatch(/https?:\/\//)
+      // SVGの名前空間（http://www.w3.org/2000/svg）は読み込み先ではないので数えない
+      expect(sample.html.replace(/http:\/\/www\.w3\.org\/2000\/svg/g, '')).not.toMatch(/https?:\/\//)
       expect(sample.html).not.toMatch(/\son[a-z]+=/i)
       expect(sample.html).not.toMatch(/javascript:/i)
       expect(sample.html).not.toMatch(/@import|url\((?!['"]?data:)/i)
