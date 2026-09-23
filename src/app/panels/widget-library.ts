@@ -31,6 +31,7 @@ import {
 } from './widget-library-storage.ts'
 import { insertWidget, openWidgetCreator } from './widget-creator.ts'
 import { openNocodePanel } from './nocode/nocode-panel.ts'
+import { NEW_SAMPLES, type NewSample } from './nocode/samples/index.ts'
 import { startBuilderWithSample } from './nocode/template-tab.ts'
 import { cancelSamplePick, isSamplePickArmed, takeSamplePick } from './nocode/nocode-flow.ts'
 import { newUid, rekeyUid } from './nocode/templates/kit.ts'
@@ -69,6 +70,12 @@ const CREATED_CAT = -2
 
 /** 「作成したWidget」の空メッセージ。 */
 const CREATED_EMPTY_MSG = '作成したWidgetはまだありません。「＋ Widgetを作成」から作成できます。'
+
+/**
+ * 「新しい見本」カテゴリーのセンチネル値（2026-09-23・本人の依頼で作り直している自作の見本）。
+ * SB由来の見本（cat0〜）はそのまま残し、ここに作った分を並べていく。
+ */
+const NEW_SAMPLES_CAT = -3
 
 
 
@@ -211,13 +218,18 @@ function patchPortalLayout(root: HTMLElement, quill: Quill, close: () => void): 
     createdBtn.dataset['catIndex'] = String(CREATED_CAT)
     categories[1]!.after(createdBtn) // お気に入りの直後
 
+    // 「新しい見本」（自作の見本。作成したWidgetの直後）
+    const newSamplesBtn = createCategoryButton('新しい見本')
+    newSamplesBtn.dataset['catIndex'] = String(NEW_SAMPLES_CAT)
+    createdBtn.after(newSamplesBtn)
+
     /* ---- 5. 「カテゴリーから探す」セクションヘッダー挿入 ---- */
     const sectionHeader = document.createElement('h6')
     sectionHeader.textContent = 'カテゴリーから探す'
     sectionHeader.style.cssText =
       'font:600 13px/1.4 "Hiragino Sans",sans-serif;color:#333;' +
       'margin:16px 0 4px;padding:0 8px'
-    createdBtn.after(sectionHeader)
+    newSamplesBtn.after(sectionHeader)
   }
 
   /* ---- 6. 「+ Widgetを作成」ボタン挿入 ---- */
@@ -312,6 +324,9 @@ function wireCategories(root: HTMLElement, quill: Quill, close: () => void): voi
       if (catIndex === CREATED_CAT) {
         // 作成したWidget: localStorage の自作Widgetをカードで表示
         renderCreatedWidgets(root, quill, close)
+      } else if (catIndex === NEW_SAMPLES_CAT) {
+        // 新しい見本: 自作の見本（samples/）をカードで表示
+        renderNewSamples(root, quill, close)
       } else {
         void loadCategory(root, quill, close, catIndex)
       }
@@ -406,6 +421,77 @@ function gridMessage(text: string): HTMLElement {
   box.style.cssText =
     'grid-column:1/-1;padding:40px 16px;text-align:center;color:#bbb;font:14px "Hiragino Sans",sans-serif'
   return box
+}
+
+/* ================================================================
+ *  新しい見本（自作・samples/）の一覧描画
+ * ================================================================ */
+
+/**
+ * 「新しい見本」カテゴリー: 自作の見本をカードで描画する（2026-09-23）。
+ *
+ * カードの形は採取したカードと同じ目印（`.MuiCard-root` / `.MuiCardHeader-title p` / iframe /
+ * `.MuiCardActions-root` の「プレビュー」「追加」）にして、配線は `wireCards` にそのまま任せる
+ * （「画面を作って使う」・部品への受け渡し・仮のリンクの知らせも同じ動きになる）。
+ */
+function renderNewSamples(root: HTMLElement, quill: Quill, close: () => void): void {
+  const grid = root.querySelector<HTMLElement>(HOOK.grid)
+  if (grid === null) return
+  grid.replaceChildren(...NEW_SAMPLES.map((sample) => newSampleCard(sample)))
+  wireCards(root, quill, close)
+  applySearchFilter(root)
+}
+
+function cardActionButton(text: string, primary: boolean): HTMLButtonElement {
+  const b = document.createElement('button')
+  b.type = 'button'
+  b.textContent = text
+  b.style.cssText =
+    `border:${primary ? 'none' : '1px solid #E0A800'};background:${primary ? '#F5A623' : '#FFF'};` +
+    `color:${primary ? '#FFF' : '#B07800'};border-radius:6px;padding:6px 12px;cursor:pointer;` +
+    'font:600 12px "Hiragino Sans",sans-serif;white-space:nowrap'
+  return b
+}
+
+function newSampleCard(sample: NewSample): HTMLElement {
+  const card = document.createElement('div')
+  card.className = 'MuiCard-root' // グリッドの3列CSS(.css-ojejk4>.MuiCard-root)を再利用
+  card.style.cssText =
+    'box-sizing:border-box;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden;' +
+    'display:flex;flex-direction:column;background:#fff'
+
+  const head = document.createElement('div')
+  head.className = 'MuiCardHeader-title'
+  head.style.cssText = 'padding:10px 12px 0'
+  const title = document.createElement('p')
+  title.textContent = sample.name
+  title.setAttribute('aria-label', sample.name)
+  title.style.cssText =
+    'margin:0;font:600 13px/1.5 "Hiragino Sans",sans-serif;color:#333;' +
+    'white-space:nowrap;overflow:hidden;text-overflow:ellipsis'
+  const summary = document.createElement('span')
+  summary.textContent = sample.summary
+  summary.style.cssText = 'display:block;margin:2px 0 0;font:11.5px/1.6 "Hiragino Sans",sans-serif;color:#808080'
+  head.append(title, summary)
+
+  const frame = document.createElement('iframe')
+  frame.title = sample.name
+  // 見本の中身だけを出す（スクリプトは動かさない＝最初の画面のまま見える）
+  frame.setAttribute(
+    'srcdoc',
+    `<!doctype html><meta charset="utf-8"><body style="margin:0;font-family:Hiragino Sans,sans-serif">${sample.html}</body>`,
+  )
+  frame.setAttribute('sandbox', 'allow-same-origin')
+  frame.style.cssText = 'width:100%;height:180px;border:none;pointer-events:none;background:#fff'
+
+  const actions = document.createElement('div')
+  actions.className = 'MuiCardActions-root'
+  actions.style.cssText =
+    'display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:8px 12px;margin-top:auto;border-top:1px solid #eee'
+  actions.append(cardActionButton('プレビュー', false), cardActionButton('追加', true))
+
+  card.append(head, frame, actions)
+  return card
 }
 
 /* ================================================================
