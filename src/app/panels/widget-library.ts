@@ -189,7 +189,18 @@ function injectWidgetGridCss(): void {
     // （2026-09-22 実測: 幅1024pxで左右88pxずつ）。この幅だけ画面に収める。スマホは mobile-css.ts が全画面にしている
     '@media (min-width:769px) and (max-width:1231px){' +
     '[data-widget-library-paper]{min-width:0 !important;width:calc(100vw - 32px) !important;max-width:calc(100vw - 32px) !important}' +
-    '[data-widget-library-paper] .MuiDialogContent-root{min-width:0 !important}}'
+    '[data-widget-library-paper] .MuiDialogContent-root{min-width:0 !important}}' +
+    // 左（カテゴリー）と右（カード）は、紙の高さいっぱいを分け合ってそれぞれの中でスクロールする（2026-09-24 本人指摘）。
+    // 採取物はカード欄が高さ600px固定・カテゴリーは中身なり（約810px）で、行がカテゴリーに合わせて伸びて紙ごとスクロールし、
+    // 下へ送るとカード欄の下に白い空き（約190px）が出ていた。紙の高さを決め、中の段を flex で詰めて、はみ出しは列の中で送る。
+    // スマホは mobile-css.ts が別の形（カテゴリーは引き出し）にしているので、PC幅だけ
+    '@media (min-width:769px){' +
+    '[data-widget-library-paper]{height:calc(100% - 64px) !important}' +
+    '[data-widget-library-paper] .MuiDialogContent-root{display:flex !important;flex-direction:column !important;overflow:hidden !important;min-height:0 !important}' +
+    // 行は折り返さない（折り返しを許すと、列の高さが行ではなく中身＝1万px超に合わせて伸びる）
+    '[data-widget-library-paper] .MuiDialogContent-root>.MuiBox-root{flex:1 1 auto !important;min-height:0 !important;height:auto !important;flex-wrap:nowrap !important;align-items:stretch !important}' +
+    '[data-widget-library-paper] .css-xnrh4c{height:100% !important;max-height:100% !important;min-height:0 !important;overflow-y:auto !important;overscroll-behavior:contain;box-sizing:border-box !important}' +
+    '[data-widget-library-paper] .css-ojejk4{height:100% !important;max-height:100% !important;min-height:0 !important;overflow-y:auto !important;overscroll-behavior:contain;box-sizing:border-box !important}}'
   document.head.append(style)
 }
 
