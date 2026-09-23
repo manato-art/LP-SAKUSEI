@@ -19,7 +19,7 @@ import { confirmCard } from '../../dialog.ts'
 import { toast } from '../../ui.ts'
 import { blockSnippet } from './builder-data.ts'
 import { node, scalarControl, type ControlEnv, type Scalar, type ScalarField } from './form-controls.ts'
-import { addAt, duplicateAt, getAt, moveAt, removeAt, setAt, type Path } from './form-state.ts'
+import { addAt, duplicateAt, getAt, moveAt, moveTo, removeAt, setAt, type Path } from './form-state.ts'
 import { sampleEditor } from './form-sample.ts'
 import { chipRow, type Chip } from './press-chips.ts'
 import { splitSampleScreens } from './sample-to-screens.ts'
@@ -406,12 +406,41 @@ export function buildTemplateForm(options: TemplateFormOptions): TemplateForm {
     const head = node('div', 'ncf-listhead')
     head.append(node('span', 'ncf-label', '部品（上から順に並びます）'), node('span', 'ncf-count', `${list.length} / ${field.blockMax}`))
     const box = node('div', 'ncf-list')
+    /** つかんで並べ替え（頭をドラッグ → 別の部品の上半分/下半分に落とす） */
+    let dragFrom: number | null = null
+    const clearDropMarks = (): void => {
+      for (const el of box.querySelectorAll('.ncf-item--drop-before,.ncf-item--drop-after')) {
+        el.classList.remove('ncf-item--drop-before', 'ncf-item--drop-after')
+      }
+    }
     list.forEach((block, index) => {
       const type: BlockType | undefined = field.types.find((t) => t.type === block['type'])
       if (type === undefined) return
       const selected = index === selectedBlock
       const itemEl = node('div', selected ? 'ncf-item ncf-item--selected' : 'ncf-item')
       itemEl.dataset['ncfBlock'] = String(index)
+      itemEl.addEventListener('dragover', (event) => {
+        if (dragFrom === null || dragFrom === index) return
+        event.preventDefault()
+        clearDropMarks()
+        const rect = itemEl.getBoundingClientRect()
+        itemEl.classList.add(event.clientY > rect.top + rect.height / 2 ? 'ncf-item--drop-after' : 'ncf-item--drop-before')
+      })
+      itemEl.addEventListener('dragleave', () => itemEl.classList.remove('ncf-item--drop-before', 'ncf-item--drop-after'))
+      itemEl.addEventListener('drop', (event) => {
+        if (dragFrom === null) return
+        event.preventDefault()
+        const after = itemEl.classList.contains('ncf-item--drop-after')
+        clearDropMarks()
+        const from = dragFrom
+        dragFrom = null
+        let to = index + (after ? 1 : 0)
+        if (from < to) to -= 1
+        if (!replace(moveTo(data, listPath, from, to))) return
+        selectedBlock = to
+        build()
+        notifySelect()
+      })
       const name = node('span', 'ncf-item__name')
       const icon = node('span', 'ncf-item__icon')
       icon.innerHTML = type.icon
@@ -430,7 +459,22 @@ export function buildTemplateForm(options: TemplateFormOptions): TemplateForm {
       headEl.setAttribute('role', 'button')
       headEl.tabIndex = 0
       headEl.setAttribute('aria-expanded', String(selected))
-      headEl.title = selected ? '押すと畳む' : '押すと、この部品を直す欄が開きます'
+      headEl.title = selected ? '押すと畳む。つかんで動かすと並べ替え' : '押すと、この部品を直す欄が開きます。つかんで動かすと並べ替え'
+      headEl.draggable = true
+      headEl.addEventListener('dragstart', (event) => {
+        dragFrom = index
+        const transfer = event.dataTransfer
+        if (transfer !== null) {
+          transfer.setData('text/plain', String(index))
+          transfer.effectAllowed = 'move'
+        }
+        itemEl.classList.add('ncf-item--dragging')
+      })
+      headEl.addEventListener('dragend', () => {
+        dragFrom = null
+        itemEl.classList.remove('ncf-item--dragging')
+        clearDropMarks()
+      })
       const toggle = (): void => openScreen(screenIndex, selected ? null : index)
       headEl.addEventListener('click', toggle)
       headEl.addEventListener('keydown', (event) => {

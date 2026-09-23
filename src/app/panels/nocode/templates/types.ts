@@ -45,7 +45,14 @@ export type Field =
    */
   | (FieldBase & { readonly kind: 'goto' })
   | (FieldBase & { readonly kind: 'select'; readonly options: readonly { value: string; label: string }[] })
-  | (FieldBase & { readonly kind: 'number'; readonly min: number; readonly max: number; readonly unit?: string })
+  | (FieldBase & {
+      readonly kind: 'number'
+      readonly min: number
+      readonly max: number
+      readonly unit?: string
+      /** 以前の選び（大/中/小・s/m/l）を数に読み替える表（古い中身をそのまま開けるように） */
+      readonly legacy?: Readonly<Record<string, number>>
+    })
   | (FieldBase & { readonly kind: 'datetime' })
   | (FieldBase & { readonly kind: 'toggle' })
   /** 文字＋よく使う記号のボタン（比較表の ◎○△×） */

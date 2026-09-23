@@ -7,6 +7,7 @@
  */
 import { isAllowedLinkUrl } from '../../../shared/link-html.ts'
 import { toast } from '../../ui.ts'
+import { attachScrub, makeSlider } from '../number-scrub.ts'
 import { applySymbol } from './form-state.ts'
 import { pickLpImage } from './lp-image.ts'
 import { pickLpVideo } from './lp-video.ts'
@@ -159,22 +160,52 @@ export function scalarControl(field: ScalarField, env: ControlEnv, id: string): 
       return area
     }
     case 'number': {
-      const wrap = node('div', 'ncf-inline')
+      // 数字の欄＋単位（左右にドラッグで増減）＋スライダー（Canva風・2026-09-23）
+      const wrap = node('div', 'ncf-number')
+      const row = node('div', 'ncf-inline')
       const input = node('input', 'ncf-input')
       input.id = id
       input.type = 'number'
-      input.inputMode = 'numeric'
+      input.inputMode = 'decimal'
       input.min = String(field.min)
       input.max = String(field.max)
-      input.step = '1'
-      const asNumberText = (v: unknown): string => (typeof v === 'number' || typeof v === 'string' ? String(v) : '')
+      const step = field.unit === 'px' ? 0.5 : 1
+      input.step = String(step)
+      // 以前の選び（'l'・'m' など）は表で数に読み替える（読めなければ下限）
+      const asNumber = (v: unknown): number => {
+        const preset = typeof v === 'string' ? field.legacy?.[v] : undefined
+        const n = preset ?? (typeof v === 'number' ? v : typeof v === 'string' ? Number(v) : Number.NaN)
+        return Number.isFinite(n) ? n : field.min
+      }
+      const asNumberText = (v: unknown): string => (v === undefined || v === '' ? '' : String(asNumber(v)))
       input.value = asNumberText(value)
+      const slider = makeSlider({ min: field.min, max: field.max, step }, asNumber(value), 'ncf-slider', (n) => {
+        input.value = String(n)
+        env.write(n)
+      })
       input.addEventListener('input', () => {
-        if (Number.isFinite(input.valueAsNumber)) env.write(input.valueAsNumber)
+        if (!Number.isFinite(input.valueAsNumber)) return
+        slider.value = input.value
+        env.write(input.valueAsNumber)
       })
       followValue(env, input, () => asNumberText(env.read()))
-      wrap.append(input)
-      if (field.unit !== undefined) wrap.append(node('span', 'ncf-unit', field.unit))
+      env.onRefresh(() => {
+        const next = String(asNumber(env.read()))
+        if (slider.value !== next) slider.value = next
+      })
+      const grip = node('span', 'ncf-unit ncf-scrub', field.unit ?? '↔')
+      attachScrub(grip, {
+        read: () => asNumber(env.read()),
+        step,
+        range: { min: field.min, max: field.max },
+        apply: (n) => {
+          input.value = String(n)
+          slider.value = String(n)
+          env.write(n)
+        },
+      })
+      row.append(input, grip)
+      wrap.append(row, slider)
       return wrap
     }
     case 'select': {

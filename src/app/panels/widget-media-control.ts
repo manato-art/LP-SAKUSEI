@@ -29,6 +29,31 @@ export function pickImageDataUrl(): Promise<string | null> {
     input.click()
   })
 }
+/** 画像・動画の今の幅（親に対する%）。計測できない（幅0＝レイアウト前など）ときは 100 */
+export function currentMediaWidthPct(media: HTMLElement): number {
+  const parentW = media.parentElement?.getBoundingClientRect().width || media.getBoundingClientRect().width || 1
+  const rectW = media.getBoundingClientRect().width
+  const styleW = media.style.width
+  const measured = rectW > 4 && parentW > 8 ? Math.round((rectW / parentW) * 100) : 100
+  return styleW.endsWith('%') && !Number.isNaN(parseFloat(styleW))
+    ? Math.max(10, Math.min(100, Math.round(parseFloat(styleW))))
+    : Math.max(10, Math.min(100, measured))
+}
+
+/**
+ * 画像・動画の幅（%）を書く。高さは自動、LPと同じく中央寄せ（指示154）。
+ * 操作パネルのスライダーと、見たまま画面の選択枠のハンドル（selection-layer.ts）の両方から使う
+ */
+export function applyMediaWidth(media: HTMLElement, pct: number): void {
+  media.style.setProperty('width', `${pct}%`, 'important')
+  media.style.setProperty('height', 'auto', 'important')
+  media.removeAttribute('width')
+  media.removeAttribute('height')
+  media.style.setProperty('display', 'block', 'important')
+  media.style.setProperty('margin-left', 'auto', 'important')
+  media.style.setProperty('margin-right', 'auto', 'important')
+}
+
 /* 画像/動画クリック時の操作パネル（差し替え＋サイズ変更）。同時に1つだけ表示する。 */
 let mediaControlEl: HTMLElement | null = null
 let mediaControlOutside: ((e: MouseEvent) => void) | null = null
@@ -75,22 +100,8 @@ export function openMediaControl(media: HTMLElement, contentDiv: HTMLElement): v
     box.append(rep)
   }
 
-  // サイズ（幅%）。親要素に対する現在幅から初期値を出す。
-  const parentW = media.parentElement?.getBoundingClientRect().width || media.getBoundingClientRect().width || 1
-  const rectW = media.getBoundingClientRect().width
-  const styleW = media.style.width
-  // 計測できない（幅0＝レイアウト前など）ときは 100% を既定にする（10%に潰れるのを防ぐ）
-  const measured = rectW > 4 && parentW > 8 ? Math.round((rectW / parentW) * 100) : 100
-  const curPct = styleW.endsWith('%') && !Number.isNaN(parseFloat(styleW))
-    ? Math.max(10, Math.min(100, Math.round(parseFloat(styleW))))
-    : Math.max(10, Math.min(100, measured))
-
-  // 指示154: 画像を LP と同じく中央寄せにする（display:block + margin:auto）。
-  const centerMedia = (): void => {
-    media.style.setProperty('display', 'block', 'important')
-    media.style.setProperty('margin-left', 'auto', 'important')
-    media.style.setProperty('margin-right', 'auto', 'important')
-  }
+  // サイズ（幅%）。親要素に対する現在幅から初期値を出す（計測できないときは 100%＝10%に潰れるのを防ぐ）。
+  const curPct = currentMediaWidthPct(media)
 
   const row = document.createElement('div')
   row.style.cssText = 'display:flex;align-items:center;gap:8px'
@@ -109,11 +120,7 @@ export function openMediaControl(media: HTMLElement, contentDiv: HTMLElement): v
   num.style.cssText = 'min-width:40px;text-align:right;color:#333;font-variant-numeric:tabular-nums'
   slider.addEventListener('input', () => {
     const v = slider.value
-    media.style.setProperty('width', `${v}%`, 'important')
-    media.style.setProperty('height', 'auto', 'important')
-    media.removeAttribute('width')
-    media.removeAttribute('height')
-    centerMedia() // 指示154: サイズ変更時に中央寄せ
+    applyMediaWidth(media, Number(v)) // 指示154: サイズ変更時に中央寄せ
     num.textContent = `${v}%`
     sync()
   })

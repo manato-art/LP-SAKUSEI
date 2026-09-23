@@ -22,6 +22,23 @@ const SHAPE_PRESETS: readonly string[] = ['#E5573F', '#F2A516', '#06C755', '#1F7
 /** 画面のid（s1, s2…）。これ以外は移る先にしない */
 export const SCREEN_ID = /^s\d{1,4}$/
 
+/**
+ * 大きさの数（px・%）。以前の「大/中/小」「s/m/l」の選びは presets で数に読み替える
+ * （2026-09-23・Canva風に数字でドラッグできるようにした。古い中身もそのまま読める）。
+ * 範囲の外は端に、読めない値は fallback。0.5 刻み
+ */
+export function sizeOf(item: ItemData, key: string, presets: Readonly<Record<string, number>>, min: number, max: number, fallback: number): number {
+  const value = item[key]
+  const preset = typeof value === 'string' ? presets[value] : undefined
+  const n = preset ?? (typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : Number.NaN)
+  return Number.isFinite(n) ? Math.min(max, Math.max(min, Math.round(n * 2) / 2)) : fallback
+}
+
+/** 以前の選び（大/中/小・s/m/l）を px に読み替える表 */
+export const HEADING_SIZES: Readonly<Record<string, number>> = { l: 26, m: 21, s: 17 }
+export const TEXT_SIZES: Readonly<Record<string, number>> = { m: 15, s: 12.5 }
+export const SPACER_SIZES: Readonly<Record<string, number>> = { s: 16, m: 32, l: 56 }
+
 const ALIGNS = ['left', 'center'] as const
 const ALIGN_OPTIONS = [
   { value: 'left', label: '左に寄せる' },
@@ -65,20 +82,12 @@ export const BLOCK_TYPES: readonly BlockType[] = [
     icon: svg('<path d="M6 5v14M18 5v14M6 12h12"/>'),
     fields: [
       { kind: 'text', key: 'text', label: '文字', placeholder: 'はじめての方へ' },
-      {
-        kind: 'select',
-        key: 'size',
-        label: '大きさ',
-        options: [
-          { value: 'l', label: '大' },
-          { value: 'm', label: '中' },
-          { value: 's', label: '小' },
-        ],
-      },
+      // 大きさは数で持つ（以前の 大/中/小 は 26/21/17px として読める）。左の選択枠の角でもドラッグできる
+      { kind: 'number', key: 'size', label: '文字の大きさ', min: 12, max: 48, unit: 'px', legacy: HEADING_SIZES },
       { kind: 'select', key: 'align', label: '寄せ', options: ALIGN_OPTIONS },
       { kind: 'color', key: 'color', label: '文字の色', presets: TEXT_PRESETS },
     ],
-    newItem: () => ({ type: 'heading', text: '', size: 'm', align: 'center', color: '#1F2A37' }),
+    newItem: () => ({ type: 'heading', text: '', size: 21, align: 'center', color: '#1F2A37' }),
   },
   {
     type: 'text',
@@ -86,18 +95,11 @@ export const BLOCK_TYPES: readonly BlockType[] = [
     icon: svg('<path d="M4 6h16M4 10h16M4 14h16M4 18h10"/>'),
     fields: [
       { kind: 'textarea', key: 'text', label: '文章', rows: 4 },
-      {
-        kind: 'select',
-        key: 'size',
-        label: '文字の大きさ',
-        options: [
-          { value: 'm', label: '標準' },
-          { value: 's', label: '小さめ（注意書きなど）' },
-        ],
-      },
+      // 数で持つ（以前の 標準/小さめ は 15/12.5px として読める）。14px未満は注意書きの見た目（薄い色）
+      { kind: 'number', key: 'size', label: '文字の大きさ', min: 10, max: 24, unit: 'px', legacy: TEXT_SIZES },
       { kind: 'select', key: 'align', label: '寄せ', options: ALIGN_OPTIONS },
     ],
-    newItem: () => ({ type: 'text', text: '', size: 'm', align: 'left' }),
+    newItem: () => ({ type: 'text', text: '', size: 15, align: 'left' }),
   },
   {
     type: 'button',
@@ -212,19 +214,9 @@ export const BLOCK_TYPES: readonly BlockType[] = [
     type: 'spacer',
     label: '余白',
     icon: svg('<path d="M12 4v16M8 8l4-4 4 4M8 16l4 4 4-4"/>'),
-    fields: [
-      {
-        kind: 'select',
-        key: 'size',
-        label: '高さ',
-        options: [
-          { value: 's', label: '小' },
-          { value: 'm', label: '中' },
-          { value: 'l', label: '大' },
-        ],
-      },
-    ],
-    newItem: () => ({ type: 'spacer', size: 'm' }),
+    // 高さは数で持つ（以前の 小/中/大 は 16/32/56px として読める）。左の選択枠の下の辺でもドラッグできる
+    fields: [{ kind: 'number', key: 'size', label: '高さ', min: 0, max: 160, unit: 'px', legacy: SPACER_SIZES }],
+    newItem: () => ({ type: 'spacer', size: 32 }),
   },
   {
     type: 'divider',
@@ -351,15 +343,20 @@ export function renderBlock(
   const target = goTarget(item, screenIds)
   switch (str(item, 'type')) {
     case 'heading': {
-      const size = pick(item, 'size', ['l', 'm', 's'] as const, 'm')
+      const size = sizeOf(item, 'size', HEADING_SIZES, 12, 48, 21)
       return {
-        html: `<h2 class="nc-b nc-b-heading nc-b-heading--${size} nc-b--${align} ${cls}">${esc(str(item, 'text').trim())}</h2>`,
-        css: `${s} .${cls}{color:${safeColor(str(item, 'color'), '#1F2A37')}}`,
+        html: `<h2 class="nc-b nc-b-heading nc-b--${align} ${cls}">${esc(str(item, 'text').trim())}</h2>`,
+        css: `${s} .${cls}{color:${safeColor(str(item, 'color'), '#1F2A37')};font-size:${size}px}`,
       }
     }
     case 'text': {
-      const size = pick(item, 'size', ['m', 's'] as const, 'm')
-      return { html: `<p class="nc-b nc-b-text nc-b-text--${size} nc-b--${align} ${cls}">${textHtml(str(item, 'text'))}</p>`, css: '' }
+      const size = sizeOf(item, 'size', TEXT_SIZES, 10, 24, 15)
+      // 小さい文字は注意書きの見た目（薄い色・詰めた行間）
+      const small = size < 14 ? ' nc-b-text--s' : ''
+      return {
+        html: `<p class="nc-b nc-b-text${small} nc-b--${align} ${cls}">${textHtml(str(item, 'text'))}</p>`,
+        css: `${s} .${cls}{font-size:${size}px}`,
+      }
     }
     case 'button': {
       const color = safeColor(str(item, 'color'), '#E5573F')
@@ -446,8 +443,8 @@ export function renderBlock(
       }
     }
     case 'spacer': {
-      const size = pick(item, 'size', ['s', 'm', 'l'] as const, 'm')
-      return { html: `<div class="nc-b nc-b-spacer nc-b-spacer--${size} ${cls}" aria-hidden="true"></div>`, css: '' }
+      const size = sizeOf(item, 'size', SPACER_SIZES, 0, 160, 32)
+      return { html: `<div class="nc-b nc-b-spacer ${cls}" aria-hidden="true"></div>`, css: `${s} .${cls}{height:${size}px}` }
     }
     case 'divider': {
       const style = pick(item, 'style', ['solid', 'dotted'] as const, 'solid')

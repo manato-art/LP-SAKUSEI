@@ -86,6 +86,16 @@ export function moveAt(data: TemplateData, listPath: Path, index: number, direct
   })
 }
 
+/** from 番目を to 番目へ動かす（ドラッグで並べ替え）。同じ場所・無い場所なら元の中身 */
+export function moveTo(data: TemplateData, listPath: Path, from: number, to: number): TemplateData {
+  return updateList(data, listPath, (list) => {
+    const item = list[from]
+    if (item === undefined || from === to || to < 0 || to >= list.length) return null
+    const without = list.filter((_, i) => i !== from)
+    return [...without.slice(0, to), item, ...without.slice(to)]
+  })
+}
+
 /** すぐ下に同じ中身を入れる。copy で少し変えられる（画面を複製したら別のid・名前にする） */
 export function duplicateAt(
   data: TemplateData,

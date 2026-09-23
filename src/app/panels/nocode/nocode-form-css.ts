@@ -149,6 +149,17 @@ textarea.ncf-input{resize:vertical;min-height:64px}
 .ncf-fold[open]>.ncf-fold__summary::before{transform:rotate(45deg)}
 .ncf-fold>*:not(summary){margin-top:4px}
 .ncf-fold>.ncf-field:last-child,.ncf-fold>.ncf-screen-head:last-child{margin-bottom:12px}
+/* 数字の欄: 単位を左右にドラッグで増減・下にスライダー（Canva風・第2弾） */
+.ncf-number{display:flex;flex-direction:column;gap:4px}
+.ncf-number .ncf-input{max-width:120px}
+.ncf-scrub{cursor:ew-resize;user-select:none;padding:4px 8px;border-radius:6px;border:1px dashed var(--sb-line,#DDD)}
+.ncf-scrub:hover{background:var(--sb-neutral,#F4F4F4);color:var(--sb-text,#151515)}
+.ncf-slider{width:100%;max-width:320px;margin:0;height:22px;accent-color:var(--sb-accent,#0091FF);cursor:pointer}
+/* 部品の頭をつかんで並べ替え */
+.ncf-item__head[draggable="true"]{cursor:grab}
+.ncf-item--dragging{opacity:.4}
+.ncf-item--drop-before{box-shadow:inset 0 3px 0 var(--sb-accent,#0091FF)}
+.ncf-item--drop-after{box-shadow:inset 0 -3px 0 var(--sb-accent,#0091FF)}
 `
 
 export function ensureNocodeFormCss(): void {

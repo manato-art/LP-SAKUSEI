@@ -16,11 +16,11 @@ import { blockElementAt, isTextEditableBlock, outermostBlock, syncCanvasBlock } 
 import { getAt, setAt, type Path } from './nocode/form-state.ts'
 import { ensureNocodeFormCss } from './nocode/nocode-form-css.ts'
 import { buildTemplateForm } from './nocode/template-form.ts'
-import { BUILDER_TEMPLATE } from './nocode/templates/builder.ts'
-import { blockLabel } from './nocode/templates/builder-blocks.ts'
+import { BUILDER_PADDING, BUILDER_TEMPLATE } from './nocode/templates/builder.ts'
+import { HEADING_SIZES, SPACER_SIZES, TEXT_SIZES, blockLabel, sizeOf } from './nocode/templates/builder-blocks.ts'
 import { newUid } from './nocode/templates/kit.ts'
-import { items, str, type ItemData, type TemplateData } from './nocode/templates/types.ts'
-import { createSelectionLayer } from './selection-layer.ts'
+import { int, items, str, type ItemData, type TemplateData } from './nocode/templates/types.ts'
+import { createSelectionLayer, type SelectionHandle } from './selection-layer.ts'
 import { FONT } from './widget-editor-theme.ts'
 import { runWidgetScripts } from './widget-run-scripts.ts'
 
@@ -114,16 +114,122 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
     return null
   }
 
-  /** 左の選択枠を、右で選んでいる部品に合わせる */
+  /** 部品の1つの値を書いて、入力欄と見え方をそろえる（選択枠のハンドルから） */
+  const commitField = (path: Path, key: string, value: number): void => {
+    data = setAt(data, [...path, key], value)
+    form.setData(data)
+    paint()
+  }
+
+  /**
+   * 部品の選択枠に付けるハンドル（Canva風・第2弾）。
+   * 画像・図形＝幅%（右の辺）、余白＝高さ（下の辺）、見出し・文章＝文字の大きさ（右下の角）。
+   * 動かしている間は要素の style だけ変え（軽い）、離したら設定データへ書いて描き直す
+   */
+  const blockHandles = (blockEl: HTMLElement, screenIndex: number, blockIndex: number): SelectionHandle[] => {
+    const el = blockEl // eslint-safe alias（no-param-reassign 回避。動かしている間は style を直に書く）
+    const path: Path = ['screens', screenIndex, 'blocks', blockIndex]
+    const block = (): ItemData => blockAt(screenIndex, blockIndex) ?? {}
+    const pct = (): number => el.clientWidth / 100 || 1
+    switch (str(block(), 'type')) {
+      case 'image':
+        return [
+          {
+            kind: 'width',
+            label: '幅',
+            unit: '%',
+            range: { min: 10, max: 100, step: 1 },
+            read: () => int(block(), 'width', 10, 100, 100),
+            pxPerUnit: pct,
+            preview: (n) => {
+              const img = el.querySelector<HTMLElement>('img')
+              if (img !== null) img.style.width = `${n}%`
+            },
+            commit: (n) => commitField(path, 'width', n),
+          },
+        ]
+      case 'shape':
+        return [
+          {
+            kind: 'width',
+            label: '幅',
+            unit: '%',
+            range: { min: 10, max: 100, step: 1 },
+            read: () => int(block(), 'size', 10, 100, 100),
+            pxPerUnit: () => (el.parentElement?.clientWidth ?? el.clientWidth) / 100 || 1,
+            preview: (n) => {
+              el.style.width = `${n}%`
+            },
+            commit: (n) => commitField(path, 'size', n),
+          },
+        ]
+      case 'spacer':
+        return [
+          {
+            kind: 'height',
+            label: '高さ',
+            unit: 'px',
+            range: { min: 0, max: 160, step: 1 },
+            read: () => sizeOf(block(), 'size', SPACER_SIZES, 0, 160, 32),
+            pxPerUnit: () => 1,
+            preview: (n) => {
+              el.style.height = `${n}px`
+            },
+            commit: (n) => commitField(path, 'size', n),
+          },
+        ]
+      case 'heading':
+      case 'text': {
+        const isHeading = str(block(), 'type') === 'heading'
+        return [
+          {
+            kind: 'font',
+            label: '文字の大きさ',
+            unit: 'px',
+            range: isHeading ? { min: 12, max: 48, step: 1 } : { min: 10, max: 24, step: 0.5 },
+            read: () => (isHeading ? sizeOf(block(), 'size', HEADING_SIZES, 12, 48, 21) : sizeOf(block(), 'size', TEXT_SIZES, 10, 24, 15)),
+            pxPerUnit: () => 3,
+            preview: (n) => {
+              el.style.fontSize = `${n}px`
+            },
+            commit: (n) => commitField(path, 'size', n),
+          },
+        ]
+      }
+      default:
+        return []
+    }
+  }
+
+  /** Widget全体（何も選んでいないとき）: 上下の辺で上下の余白 */
+  const rootHandles = (root: HTMLElement): SelectionHandle[] =>
+    (['padTop', 'padBottom'] as const).map((kind) => ({
+      kind,
+      label: kind === 'padTop' ? '上の余白' : '下の余白',
+      unit: 'px',
+      range: { min: 0, max: 120, step: 1 },
+      read: () => sizeOf(data, 'padding', BUILDER_PADDING, 0, 120, 40),
+      pxPerUnit: () => 1,
+      preview: (n) => {
+        root.style.paddingTop = `${n}px`
+        root.style.paddingBottom = `${n}px`
+      },
+      commit: (n) => commitField([], 'padding', n),
+    }))
+
+  /** 左の選択枠を、右で選んでいる部品に合わせる（何も選んでいなければ Widget全体を薄い枠で） */
   const showSelection = (): void => {
     const blockIndex = form.selectedBlock()
+    const root = contentDiv.querySelector<HTMLElement>('.nc-builder')
     if (blockIndex === null) {
-      selection.select(null)
+      if (root === null) selection.select(null)
+      else selection.select(root, 'Widget全体（上下の辺で余白）', rootHandles(root), { soft: true })
       return
     }
-    const el = blockElementAt(data, contentDiv, form.activeScreen(), blockIndex)
-    const block = blockAt(form.activeScreen(), blockIndex)
-    selection.select(el, block === undefined ? '' : blockLabel(str(block, 'type')))
+    const screenIndex = form.activeScreen()
+    const el = blockElementAt(data, contentDiv, screenIndex, blockIndex)
+    const block = blockAt(screenIndex, blockIndex)
+    selection.select(el, block === undefined ? '' : blockLabel(str(block, 'type')), el === null ? [] : blockHandles(el, screenIndex, blockIndex))
   }
 
   /** 文字を打てない部品には、見たまま画面で文字を打てないようにする（左の中身は保存しないので目印を付けてよい） */

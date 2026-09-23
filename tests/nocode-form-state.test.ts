@@ -6,7 +6,7 @@
  * 並びは 足す・消す・上下に動かす・複製 ができ、型が決めた数（最小・最大）を超えない。
  */
 import { describe, expect, it } from 'vitest'
-import { addAt, applySymbol, duplicateAt, getAt, moveAt, removeAt, setAt } from '../src/app/panels/nocode/form-state.ts'
+import { addAt, applySymbol, duplicateAt, getAt, moveAt, moveTo, removeAt, setAt } from '../src/app/panels/nocode/form-state.ts'
 import type { ItemData, TemplateData } from '../src/app/panels/nocode/templates/types.ts'
 
 const base: TemplateData = {
@@ -90,5 +90,23 @@ describe('比較表の記号ボタン', () => {
     expect(applySymbol('980円', '○', S)).toBe('○ 980円')
     expect(applySymbol('', '×', S)).toBe('×')
     expect(applySymbol('◎', '△', S)).toBe('△')
+  })
+})
+
+describe('ドラッグで並べ替える（moveTo）', () => {
+  const base = { items: [{ q: 'a' }, { q: 'b' }, { q: 'c' }, { q: 'd' }] }
+  const order = (data: TemplateData): string[] => (getAt(data, ['items']) as { q: string }[]).map((i) => i.q)
+
+  it('from 番目を to 番目へ（前へも後ろへも）', () => {
+    expect(order(moveTo(base, ['items'], 0, 2))).toEqual(['b', 'c', 'a', 'd'])
+    expect(order(moveTo(base, ['items'], 3, 0))).toEqual(['d', 'a', 'b', 'c'])
+    expect(order(moveTo(base, ['items'], 1, 3))).toEqual(['a', 'c', 'd', 'b'])
+  })
+
+  it('同じ場所・無い場所なら元のまま', () => {
+    expect(moveTo(base, ['items'], 1, 1)).toBe(base)
+    expect(moveTo(base, ['items'], 9, 0)).toBe(base)
+    expect(moveTo(base, ['items'], 0, 4)).toBe(base)
+    expect(moveTo(base, ['items'], 0, -1)).toBe(base)
   })
 })

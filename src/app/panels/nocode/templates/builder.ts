@@ -15,7 +15,7 @@
  *    （次の設問へ・ページ移動）も持っているので、画面へ移る指定を先に効かせる
  *  - 中に別の「部品を積んで作る」が入っていたら、その中の切り替えはその持ち主に任せる（idがぶつからない）
  */
-import { SCREEN_ID, ALL_BLOCK_TYPES, actionOf, blockLabel, goTarget, renderBlock, templateOfBlock } from './builder-blocks.ts'
+import { SCREEN_ID, ALL_BLOCK_TYPES, actionOf, blockLabel, goTarget, renderBlock, sizeOf, templateOfBlock } from './builder-blocks.ts'
 import { goTargetsIn } from '../sample-model.ts'
 import { baseCss, esc, safeColor, safeImage, safeVideo, shade, wrapWidget } from './kit.ts'
 import { ACCENT_PRESETS, items, pick, str, type ItemData, type NocodeTemplate } from './types.ts'
@@ -24,8 +24,8 @@ export { ALL_BLOCK_TYPES, BLOCK_TYPES } from './builder-blocks.ts'
 
 /** 背景の色の候補（白と、淡い地） */
 const BACKGROUND_PRESETS: readonly string[] = ['#FFFFFF', '#F7F8FA', '#FFF8E7', '#FDF1EE', '#EEF6FF', '#EEF8F1']
-const PADDING: Readonly<Record<string, number>> = { s: 24, m: 40, l: 56 }
-const SPACER: Readonly<Record<string, number>> = { s: 16, m: 32, l: 56 }
+/** 以前の「狭い/普通/広い」を px に読み替える表（上下の余白は数で持つ・2026-09-23。選択枠のハンドルからも読む） */
+export const BUILDER_PADDING: Readonly<Record<string, number>> = { s: 24, m: 40, l: 56 }
 const TRANSITIONS = ['none', 'fade', 'slide'] as const
 
 const svg = (body: string): string =>
@@ -95,8 +95,8 @@ const DEFAULT_SCREENS: readonly ItemData[] = [
     id: 's1',
     name: '画面①',
     blocks: [
-      { type: 'heading', text: 'いちばん気になるのは？', size: 'l', align: 'center', color: '#1F2A37' },
-      { type: 'text', text: '当てはまるものを1つ選んでください。', size: 'm', align: 'center' },
+      { type: 'heading', text: 'いちばん気になるのは？', size: 26, align: 'center', color: '#1F2A37' },
+      { type: 'text', text: '当てはまるものを1つ選んでください。', size: 15, align: 'center' },
       { type: 'button', label: '毎日の時間が足りない', look: 'choice', color: '#E5573F', action: 'screen', target: 's2', url: '', track: true },
       { type: 'button', label: '続けられるか不安', look: 'choice', color: '#E5573F', action: 'screen', target: 's2', url: '', track: true },
       { type: 'button', label: '費用が気になる', look: 'choice', color: '#E5573F', action: 'screen', target: 's2', url: '', track: true },
@@ -106,9 +106,9 @@ const DEFAULT_SCREENS: readonly ItemData[] = [
     id: 's2',
     name: '画面②',
     blocks: [
-      { type: 'heading', text: 'ご回答ありがとうございます', size: 'm', align: 'center', color: '#1F2A37' },
+      { type: 'heading', text: 'ご回答ありがとうございます', size: 21, align: 'center', color: '#1F2A37' },
       { type: 'list', text: '全国どこでも送料無料\n届いてから30日は返品できます\nチャットでいつでも相談できます', marker: 'check' },
-      { type: 'spacer', size: 's' },
+      { type: 'spacer', size: 16 },
       { type: 'button', label: '詳しく見る', look: 'cta', color: '#E5573F', action: 'none', target: '', url: '', track: true },
     ],
   },
@@ -127,16 +127,8 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
   fields: [
     { kind: 'screens', key: 'screens', label: '画面と部品', min: 1, max: 20, blockMax: 30, types: ALL_BLOCK_TYPES },
     { kind: 'color', key: 'background', label: '背景の色', presets: BACKGROUND_PRESETS },
-    {
-      kind: 'select',
-      key: 'padding',
-      label: '上下の余白',
-      options: [
-        { value: 's', label: '狭い' },
-        { value: 'm', label: '普通' },
-        { value: 'l', label: '広い' },
-      ],
-    },
+    // 数で持つ（以前の 狭い/普通/広い は 24/40/56px として読める）。左の選択枠の上下の辺でもドラッグできる
+    { kind: 'number', key: 'padding', label: '上下の余白', min: 0, max: 120, unit: 'px', legacy: BUILDER_PADDING },
     { kind: 'color', key: 'accent', label: '箇条書きの印の色', presets: ACCENT_PRESETS },
     {
       kind: 'select',
@@ -153,7 +145,7 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
   defaults: () => ({
     screens: DEFAULT_SCREENS,
     background: '#FFFFFF',
-    padding: 'm',
+    padding: 40,
     accent: '#E5573F',
     transition: 'none',
   }),
@@ -200,7 +192,7 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
     const s = `.${uid}`
     const background = safeColor(str(data, 'background'), '#FFFFFF')
     const accent = safeColor(str(data, 'accent'), '#E5573F')
-    const padding = PADDING[pick(data, 'padding', ['s', 'm', 'l'] as const, 'm')] ?? 40
+    const padding = sizeOf(data, 'padding', BUILDER_PADDING, 0, 120, 40)
     const transition = pick(data, 'transition', TRANSITIONS, 'none')
     const screens = items(data, 'screens').filter((screen) => SCREEN_ID.test(str(screen, 'id')))
     const ids = new Set(screens.map((screen) => str(screen, 'id')))
@@ -237,13 +229,10 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
       `${s} [data-nc-go]{cursor:pointer;-webkit-tap-highlight-color:transparent}` +
       `${s} [data-nc-go][role="button"]:focus-visible{outline:3px solid ${shade(accent, -0.3)};outline-offset:3px}` +
       `${s} .nc-b-heading{font-weight:800;line-height:1.45}` +
-      `${s} .nc-b-heading--l{font-size:26px}` +
-      `${s} .nc-b-heading--m{font-size:21px}` +
-      `${s} .nc-b-heading--s{font-size:17px}` +
       // 最後の行に数文字だけ残さない（真ん中寄せは行の長さもそろえる）
       `${s} .nc-b-text{font-size:15px;line-height:1.85;color:#3A4452;text-wrap:pretty}` +
       `${s} .nc-b-text.nc-b--center{text-wrap:balance}` +
-      `${s} .nc-b-text--s{font-size:12.5px;line-height:1.75;color:#5B6572}` +
+      `${s} .nc-b-text--s{line-height:1.75;color:#5B6572}` +
       // 型の部品は自分で余白を持っている（余白は「部品を積んで作る」に任せ、ほかの部品と左右もそろえる）
       `${s} .nc-b-tpl>.nc{padding:0}` +
       `${s} .nc-b-image{margin-left:0;margin-right:0}` +
@@ -274,9 +263,6 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
       `${s} .nc-b-imageText__heading{font-size:17px;font-weight:800;line-height:1.5;margin:0 0 6px}` +
       `${s} .nc-b-imageText__text{font-size:14.5px;line-height:1.8;color:#3A4452}` +
       `${s} .nc-b-spacer,${s} .nc-b+.nc-b-spacer,${s} .nc-b-spacer+.nc-b{margin-top:0}` +
-      Object.entries(SPACER)
-        .map(([size, px]) => `${s} .nc-b-spacer--${size}{height:${px}px}`)
-        .join('') +
       `${s} .nc-b-divider{border:0;border-top:1px solid #D5DAE0;margin:22px 0}` +
       `${s} .nc-b-divider--dotted{border-top:2px dotted #C9CFD6}` +
       `${s} .nc-b+.nc-b-divider,${s} .nc-b-divider+.nc-b{margin-top:22px}` +

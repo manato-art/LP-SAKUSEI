@@ -32,6 +32,7 @@ import { closeMediaControl } from './widget-media-control.ts'
 import { RIGHT_PANE_FLEX, buildCodePanels } from './widget-code-panel.ts'
 import { buildDesignPanel } from './widget-design-panel.ts'
 import { buildVisualEditor } from './widget-visual-editor.ts'
+import { createSelectionLayer } from './selection-layer.ts'
 import { insertWidget } from './widget-creator.ts'
 import { openWidgetLibraryForPick } from './widget-library.ts'
 import { createBuilderSession, type BuilderSession } from './widget-studio-builder.ts'
@@ -106,9 +107,14 @@ export function openWidgetStudio(quill: Quill, source: StudioSource): void {
 
   // 左: 見たまま画面
   let session: BuilderSession | null = null
+  /** HTMLモードで左を押したとき（要素を選ぶ）。部品モードは session が受ける */
+  let selectDom: (clicked: EventTarget | null) => void = () => undefined
   const { pane: leftPane, contentDiv, editorBody, setPreviewCss } = buildVisualEditor(target, {
     builder: isBuilder,
-    onClick: (clicked) => session?.onCanvasClick(clicked),
+    onClick: (clicked) => {
+      if (session !== null) session.onCanvasClick(clicked)
+      else selectDom(clicked)
+    },
   })
   leftPane.dataset['widgetPane'] = 'visual'
 
@@ -206,6 +212,32 @@ export function openWidgetStudio(quill: Quill, source: StudioSource): void {
     }
     contentDiv.addEventListener('input', syncFn)
     syncFn()
+
+    // 左で要素を押すと選択枠＋ハンドル（幅・高さ・文字の大きさ）、右はその要素のカードだけ（Canva風・第2弾）。
+    // 何も選んでいないときは Widget全体を薄い枠で出し、上下の辺で上下の余白を動かせる
+    const selection = createSelectionLayer(editorBody, contentDiv)
+    const selectRoot = (): void => {
+      design.select(null)
+      const outer = contentDiv.firstElementChild
+      if (outer instanceof HTMLElement) selection.select(outer, 'Widget全体（上下の辺で余白）', design.handlesFor(outer), { soft: true })
+      else selection.select(null)
+    }
+    selectDom = (clicked) => {
+      const el = clicked instanceof HTMLElement ? clicked : clicked instanceof Node ? clicked.parentElement : null
+      if (el === null || el === contentDiv || !contentDiv.contains(el)) {
+        selectRoot()
+        return
+      }
+      const picked = design.select(el)
+      if (picked === null) {
+        selectRoot()
+        return
+      }
+      selection.select(picked.node, picked.label, design.handlesFor(picked.node))
+    }
+    // コード欄から書き換えたあとなど、中身が入れ替わったら選択枠を合わせ直す
+    contentDiv.addEventListener('input', () => selection.refresh())
+    selectRoot()
   }
   rightPane.append(tabsHost, codePanel.pane)
   darkContainer.append(leftPane, divider, rightPane)

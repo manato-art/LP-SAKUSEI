@@ -16,6 +16,11 @@
  *   - 当たるCSSがまったく同じ要素（リンクが並ぶ・矢印が3本 など）は1枚にまとめ、文言だけ並べる
  *   - 1度どこかのカードに出した設定は、後のカードに重ねて出さない
  *
+ * 2026-09-23（第2弾・Canva風）:
+ *   - 左で要素を押すと、その要素のカードだけを出す（`select`）。「全部のカードを見る」で元の一覧
+ *   - 数字の行は、名前を左右にドラッグで増減・下にスライダー（number-scrub.ts）
+ *   - 幅・高さ・文字の大きさの行は、左の選択枠のハンドルでもドラッグできる（`handlesFor`）
+ *
  * 普段はこれを出し、「デフォルト時のコードを表示」を押すと今のHTML/CSSに切り替わる（本人指定）。
  */
 import { T, el } from '../ui.ts'
@@ -23,6 +28,10 @@ import { directText } from '../pages/exit-popup-fields.ts'
 import { designCardCss } from './design-card-styles.ts'
 import { openColorPicker } from './toolbar/color-picker.ts'
 import { lpMediaMatches } from './lp-width-media.ts'
+import { handleKindOf, sliderRange } from './drag-math.ts'
+import { attachScrub, makeSlider } from './number-scrub.ts'
+import type { SelectionHandle } from './selection-layer.ts'
+import { applyMediaWidth, currentMediaWidthPct } from './widget-media-control.ts'
 import {
   colorToHex,
   numberStep,
@@ -47,6 +56,13 @@ export interface DesignPanel {
   readonly element: HTMLElement
   /** 作り直す（コード欄を直接書き換えてから、こちらへ戻ってきたときなど） */
   readonly refresh: () => void
+  /**
+   * 左で押した要素を選ぶ（カードのある要素＝自分か外側を返す）。null は選ぶのをやめる。
+   * 選ぶと、その要素のカードだけを出す
+   */
+  readonly select: (target: HTMLElement | null) => { node: HTMLElement; label: string } | null
+  /** 選んだ要素の選択枠に付けるハンドル（幅・高さ・文字の大きさ。画像は幅%。Widgetの外側は上下の余白） */
+  readonly handlesFor: (node: HTMLElement) => SelectionHandle[]
 }
 
 /** カード1行ぶん。CSS の設定か、要素に直接書く色（まとめた要素があれば全部に書く） */
@@ -67,6 +83,8 @@ interface Card {
   readonly snippet: string
   /** まとめた要素の数 */
   readonly count: number
+  /** このカードにまとめた要素（左で押した要素がどのカードか、を探すのに使う） */
+  readonly nodes: readonly HTMLElement[]
   /** 文言を書き換える要素（同じ見た目の要素が並ぶときは全部） */
   readonly texts: readonly HTMLElement[]
   readonly rows: readonly RowSource[]
@@ -85,6 +103,11 @@ const TEXT_ROWS_VISIBLE = 10
 
 /** プレビュー側で書式を変えたとき、カードを作り直すまでの待ち（打つたびに作り直さない） */
 const REFRESH_DELAY_MS = 250
+
+/** 文字の大きさのハンドルは、マウスを 3px 動かして 1px（細かく動かせるように） */
+const FONT_PX_PER_UNIT = 3
+/** em・rem の1単位はおよそ 16px */
+const EM_PX = 16
 
 /** 読めないセレクタ（`:-ms-input-placeholder` のようなブラウザ固有の書き方）は「当たらない」扱い */
 function queryAll(root: HTMLElement, selector: string): Element[] {
@@ -125,12 +148,13 @@ function collectCards(content: HTMLElement, css: string): Card[] {
     kind: string
     snippet: string
     count: number
+    nodes: HTMLElement[]
     texts: HTMLElement[]
     rows: RowSource[]
   }
   const drafts: Draft[] = []
   if (globals.length > 0) {
-    drafts.push({ kind: '全体', snippet: 'Widget全体に効く設定', count: 1, texts: [], rows: globals })
+    drafts.push({ kind: '全体', snippet: 'Widget全体に効く設定', count: 1, nodes: [], texts: [], rows: globals })
   }
   /** 当たる設定がまったく同じ要素は1枚にまとめる */
   const bySignature = new Map<string, Draft>()
@@ -151,6 +175,7 @@ function collectCards(content: HTMLElement, css: string): Card[] {
     const same = signature !== '' && inline.length === 0 ? bySignature.get(signature) : undefined
     if (same !== undefined) {
       same.count++
+      same.nodes.push(node)
       if (leafText !== '') same.texts.push(node)
       continue
     }
@@ -179,7 +204,7 @@ function collectCards(content: HTMLElement, css: string): Card[] {
           : selectorName !== ''
             ? selectorName
             : `<${tag}>`
-    const draft: Draft = { kind, snippet, count: 1, texts, rows }
+    const draft: Draft = { kind, snippet, count: 1, nodes: [node], texts, rows }
     drafts.push(draft)
     if (signature !== '' && inline.length === 0) bySignature.set(signature, draft)
   }
@@ -223,7 +248,7 @@ export function buildDesignPanel(deps: DesignPanelDeps): DesignPanel {
    * 数値・値まるごとの入力欄。同じ設定が状態違いで別のカードにも出ることがあるので、
    * 片方を変えたらもう片方の表示もそろえる（色の見本は swatches で同じことをしている）。
    */
-  let valueInputs = new Map<string, { input: HTMLInputElement; unitEl: HTMLElement | null }[]>()
+  let valueInputs = new Map<string, { input: HTMLInputElement; unitEl: HTMLElement | null; slider: HTMLInputElement | null }[]>()
   /** 数値の行で最後に書いた単位（無単位の 0 を変えると px が付くので、別の行とも共有する） */
   const units = new Map<string, string>()
   /** カードからの変更で飛ぶ input では作り直さない（打っている入力欄が消えないように） */
@@ -231,6 +256,12 @@ export function buildDesignPanel(deps: DesignPanelDeps): DesignPanel {
   let refreshTimer: ReturnType<typeof setTimeout> | undefined
   /** 行の中から作り直しを頼むための入口（render は行を組み立てる関数より後で決まる） */
   const rebuild = { now: (): void => undefined }
+  /** 左で選んだ要素（そのカードだけを出す）。null は選んでいない */
+  let selectedNode: HTMLElement | null = null
+  /** 選んでいても全部のカードを出す（「全部のカードを見る」） */
+  let showAll = false
+  /** 直近に組み立てたカード（選んだ要素がどのカードかを探す） */
+  let lastCards: Card[] = []
 
   const touchContent = (): void => {
     isApplying = true
@@ -240,6 +271,18 @@ export function buildDesignPanel(deps: DesignPanelDeps): DesignPanel {
 
   const writeSetting = (key: string, next: string): void => {
     deps.writeCss(replaceSetting(deps.readCss(), key, next))
+  }
+
+  /** 数値の行に今の値を書く（入力欄・スライダー・単位を全部そろえ、CSSへ書く） */
+  const writeNumber = (setting: Setting, n: number, from?: HTMLInputElement): void => {
+    const next = numberToken({ ...setting, unit: units.get(setting.key) ?? setting.unit }, n)
+    units.set(setting.key, next.unit)
+    for (const other of valueInputs.get(setting.key) ?? []) {
+      if (other.input !== from) other.input.value = String(n)
+      if (other.slider !== null && other.slider !== from) other.slider.value = String(n)
+      if (other.unitEl !== null) other.unitEl.textContent = next.unit
+    }
+    writeSetting(setting.key, next.token)
   }
 
   const labelEl = (text: string, extra = ''): HTMLElement =>
@@ -280,28 +323,38 @@ export function buildDesignPanel(deps: DesignPanelDeps): DesignPanel {
     return row
   }
 
-  const numberRow = (label: string, setting: Setting): HTMLElement => {
+  /** 数値の行（名前を左右にドラッグで増減）と、その下のスライダー */
+  const numberRow = (label: string, setting: Setting): HTMLElement[] => {
     const row = el('div', { class: 'ep-design-row' })
     const input = el('input', { class: 'ep-design-input wdp-number' })
     input.type = 'number'
-    input.step = String(numberStep(setting))
+    const step = numberStep(setting)
+    input.step = String(step)
     // `.5` は number 入力欄が受け付けないので、数として正規化してから入れる
-    input.value = String(Number(setting.value))
-    const unitEl = el('span', { class: 'ep-design-hex wdp-unit', text: units.get(setting.key) ?? setting.unit })
-    valueInputs.set(setting.key, [...(valueInputs.get(setting.key) ?? []), { input, unitEl }])
+    const value = Number(setting.value)
+    input.value = String(value)
+    const unit = units.get(setting.key) ?? setting.unit
+    const unitEl = el('span', { class: 'ep-design-hex wdp-unit', text: unit })
+    const range = sliderRange(unit, setting.property, value)
+    const slider = range === null ? null : makeSlider(range, value, 'wdp-slider', (n) => writeNumber(setting, n))
+    valueInputs.set(setting.key, [...(valueInputs.get(setting.key) ?? []), { input, unitEl, slider }])
     input.addEventListener('input', () => {
       const n = input.valueAsNumber
       if (!Number.isFinite(n)) return
-      const next = numberToken({ ...setting, unit: units.get(setting.key) ?? setting.unit }, n)
-      units.set(setting.key, next.unit)
-      for (const other of valueInputs.get(setting.key) ?? []) {
-        if (other.input !== input) other.input.value = input.value
-        if (other.unitEl !== null) other.unitEl.textContent = next.unit
-      }
-      writeSetting(setting.key, next.token)
+      writeNumber(setting, n, input)
     })
-    row.append(labelEl(label), input, unitEl)
-    return row
+    const name = labelEl(label)
+    attachScrub(name, {
+      read: () => (Number.isFinite(input.valueAsNumber) ? input.valueAsNumber : value),
+      step,
+      range: range ?? undefined,
+      apply: (n) => writeNumber(setting, n),
+    })
+    row.append(name, input, unitEl)
+    if (slider === null) return [row]
+    const sliderRow = el('div', { class: 'ep-design-row wdp-slider-row' })
+    sliderRow.append(slider)
+    return [row, sliderRow]
   }
 
   const textRow = (label: string, setting: Setting): HTMLElement => {
@@ -310,7 +363,7 @@ export function buildDesignPanel(deps: DesignPanelDeps): DesignPanel {
     input.type = 'text'
     input.value = setting.value
     input.spellcheck = false
-    valueInputs.set(setting.key, [...(valueInputs.get(setting.key) ?? []), { input, unitEl: null }])
+    valueInputs.set(setting.key, [...(valueInputs.get(setting.key) ?? []), { input, unitEl: null, slider: null }])
     input.addEventListener('input', () => {
       const clean = sanitizeValue(input.value)
       if (clean !== input.value) input.value = clean
@@ -325,28 +378,30 @@ export function buildDesignPanel(deps: DesignPanelDeps): DesignPanel {
     return row
   }
 
-  const buildRow = (source: RowSource, cardIndex: number): HTMLElement => {
+  const buildRow = (source: RowSource, cardIndex: number): HTMLElement[] => {
     if (source.kind === 'inline') {
       const { nodes, property } = source
-      return colorRow(
-        property === 'color' ? '文字色' : '背景色',
-        `inline:${cardIndex}:${property}`,
-        nodes[0]?.style.getPropertyValue(property) ?? '',
-        (hex) => {
-          for (const node of nodes) node.style.setProperty(property, hex)
-          touchContent()
-        },
-      )
+      return [
+        colorRow(
+          property === 'color' ? '文字色' : '背景色',
+          `inline:${cardIndex}:${property}`,
+          nodes[0]?.style.getPropertyValue(property) ?? '',
+          (hex) => {
+            for (const node of nodes) node.style.setProperty(property, hex)
+            touchContent()
+          },
+        ),
+      ]
     }
     const { setting, state } = source
     // 状態（ホバー時など）と効く条件（画面幅768px以上など）を名前の後ろに添える
     const notes = [state, setting.context].filter((n) => n !== '')
     const label = notes.length === 0 ? setting.label : `${setting.label}（${notes.join('・')}）`
     if (setting.kind === 'number') return numberRow(label, setting)
-    if (setting.kind === 'text') return textRow(label, setting)
-    return colorRow(label, setting.key, currentColors.get(setting.key) ?? setting.value, (hex) =>
-      writeSetting(setting.key, hex),
-    )
+    if (setting.kind === 'text') return [textRow(label, setting)]
+    return [
+      colorRow(label, setting.key, currentColors.get(setting.key) ?? setting.value, (hex) => writeSetting(setting.key, hex)),
+    ]
   }
 
   const textRows = (texts: readonly HTMLElement[]): HTMLElement[] =>
@@ -367,11 +422,13 @@ export function buildDesignPanel(deps: DesignPanelDeps): DesignPanel {
       return row
     })
 
+  const cardTitle = (card: Card, index: number): string => `${card.kind}${index + 1}`
+
   const buildCard = (card: Card, index: number): HTMLElement => {
     const box = el('div', { class: 'ep-design-card' })
     const head = el('div', { class: 'ep-design-card-head' })
     head.append(
-      el('span', { class: 'ep-design-card-kind', text: `${card.kind}${index + 1}` }),
+      el('span', { class: 'ep-design-card-kind', text: cardTitle(card, index) }),
       el('span', {
         class: 'ep-design-card-snippet',
         text: card.count > 1 ? `${card.snippet} ×${card.count}` : card.snippet,
@@ -429,15 +486,25 @@ export function buildDesignPanel(deps: DesignPanelDeps): DesignPanel {
       if (rows.length === 0) continue
       box.append(el('div', { class: 'wdp-group', text: GROUP_TITLES[group] }))
       for (const row of rows) {
-        const rowEl = buildRow(row, index)
-        box.append(rowEl)
+        const rowEls = buildRow(row, index)
+        box.append(...rowEls)
         const note = inactiveNote(row)
         if (note === '') continue
-        rowEl.classList.add('wdp-inactive')
+        for (const rowEl of rowEls) rowEl.classList.add('wdp-inactive')
         box.append(el('div', { class: 'wdp-row-note', text: note }))
       }
     }
     return box
+  }
+
+  /** 要素（自分か外側）のカード。Widgetの中身の外に出たら null */
+  const cardOf = (target: HTMLElement, cards: readonly Card[]): { card: Card; index: number; node: HTMLElement } | null => {
+    for (let node: HTMLElement | null = target; node !== null && node !== deps.content; node = node.parentElement) {
+      const index = cards.findIndex((card) => card.nodes.includes(node as HTMLElement))
+      const card = cards[index]
+      if (card !== undefined) return { card, index, node }
+    }
+    return null
   }
 
   const render = (): void => {
@@ -446,8 +513,30 @@ export function buildDesignPanel(deps: DesignPanelDeps): DesignPanel {
     currentColors.clear()
     units.clear()
     const cards = collectCards(deps.content, deps.readCss())
+    lastCards = cards
+    if (selectedNode !== null && !deps.content.contains(selectedNode)) selectedNode = null
+    const picked = selectedNode === null ? null : cardOf(selectedNode, cards)
+    const onlyPicked = picked !== null && !showAll
+
+    const bar = el('div', { class: 'wdp-select-bar' })
+    if (picked === null) {
+      bar.append(el('span', { class: 'wdp-select-note', text: '左で直したい所を押すと、その要素の設定だけを出します。' }))
+    } else {
+      bar.append(
+        el('span', { class: 'wdp-select-name', text: `選んでいるもの: ${cardTitle(picked.card, picked.index)}　${picked.card.snippet}` }),
+      )
+      const toggle = el('button', { class: 'wdp-select-toggle', text: onlyPicked ? '全部のカードを見る' : '選んだ要素だけ見る' })
+      toggle.type = 'button'
+      toggle.addEventListener('click', () => {
+        showAll = !showAll
+        render()
+      })
+      bar.append(toggle)
+    }
+
     const grid = el('div', { class: 'ep-design-grid' })
-    if (cards.length === 0) {
+    const shownCards = onlyPicked ? [picked] : cards.map((card, index) => ({ card, index }))
+    if (shownCards.length === 0) {
       grid.append(
         el('div', {
           class: 'ep-design-empty',
@@ -455,13 +544,14 @@ export function buildDesignPanel(deps: DesignPanelDeps): DesignPanel {
         }),
       )
     }
-    cards.forEach((card, i) => grid.append(buildCard(card, i)))
+    for (const { card, index } of shownCards) grid.append(buildCard(card, index))
     root.replaceChildren(
       el('div', { class: 'wdp-title', text: 'デザイン（要素ごとに編集）' }),
       el('div', {
         class: 'ep-design-note',
-        text: 'Widgetを要素ごとのカードに分けています。色・大きさ・余白・動きを変えると、左のプレビューとコードにそのまま反映されます。同じ見た目の要素は1枚にまとめています。',
+        text: 'Widgetを要素ごとのカードに分けています。色・大きさ・余白・動きを変えると、左のプレビューとコードにそのまま反映されます。数字は名前を左右にドラッグでも変えられます。',
       }),
+      bar,
       grid,
     )
   }
@@ -474,8 +564,111 @@ export function buildDesignPanel(deps: DesignPanelDeps): DesignPanel {
     refreshTimer = setTimeout(render, REFRESH_DELAY_MS)
   })
 
+  /** CSSの設定1つを、選択枠のハンドルにする */
+  const cssHandle = (kind: 'width' | 'height' | 'font', setting: Setting, node: HTMLElement): SelectionHandle => {
+    const current = (): Setting | undefined => scanSettings(deps.readCss()).find((s) => s.key === setting.key)
+    const unit = units.get(setting.key) ?? setting.unit
+    const range = sliderRange(unit, setting.property, Number(setting.value)) ?? { min: 0, max: 2000, step: 1 }
+    const pxPerUnit = (): number => {
+      if (kind === 'font') return unit === 'em' || unit === 'rem' ? FONT_PX_PER_UNIT * EM_PX : FONT_PX_PER_UNIT
+      if (unit === '%') {
+        const parent = node.parentElement
+        return (kind === 'width' ? (parent?.clientWidth ?? node.clientWidth) : (parent?.clientHeight ?? node.clientHeight)) / 100 || 1
+      }
+      if (unit === 'em' || unit === 'rem') return EM_PX
+      if (unit === 'vw') return window.innerWidth / 100
+      return 1
+    }
+    const write = (n: number): void => {
+      const latest = current()
+      if (latest !== undefined) writeNumber(latest, n)
+    }
+    return {
+      kind,
+      label: setting.label,
+      unit,
+      range,
+      read: () => Number(current()?.value ?? setting.value),
+      pxPerUnit,
+      preview: write,
+      commit: write,
+    }
+  }
+
+  /** 画像・動画の幅（%）。CSSに幅の設定が無いときの直書き（画像の操作パネルと同じ書き方） */
+  const mediaHandle = (media: HTMLElement): SelectionHandle => ({
+    kind: 'width',
+    label: '幅',
+    unit: '%',
+    range: { min: 10, max: 100, step: 1 },
+    read: () => currentMediaWidthPct(media),
+    pxPerUnit: () => (media.parentElement?.clientWidth ?? media.clientWidth) / 100 || 1,
+    preview: (n) => applyMediaWidth(media, n),
+    commit: (n) => {
+      applyMediaWidth(media, n)
+      touchContent()
+    },
+  })
+
+  /** Widgetの外側の上下の余白（余白の欄と同じ、直書きの padding） */
+  const paddingHandles = (outer: HTMLElement): SelectionHandle[] =>
+    (['Top', 'Bottom'] as const).map((side) => {
+      const property = `padding-${side.toLowerCase()}`
+      const write = (n: number): void => outer.style.setProperty(property, `${n}px`)
+      return {
+        kind: side === 'Top' ? 'padTop' : 'padBottom',
+        label: side === 'Top' ? '上の余白' : '下の余白',
+        unit: 'px',
+        range: { min: 0, max: 200, step: 1 },
+        read: () => {
+          const v = parseInt(getComputedStyle(outer)[`padding${side}`], 10)
+          return Number.isNaN(v) ? 0 : v
+        },
+        pxPerUnit: () => 1,
+        preview: write,
+        commit: (n) => {
+          write(n)
+          touchContent()
+        },
+      }
+    })
+
   render()
-  return { element: root, refresh: render }
+  return {
+    element: root,
+    refresh: render,
+    select: (target) => {
+      if (target === null) {
+        selectedNode = null
+        render()
+        return null
+      }
+      const cards = collectCards(deps.content, deps.readCss())
+      const found = cardOf(target, cards)
+      selectedNode = found?.node ?? null
+      showAll = false
+      render()
+      root.scrollTop = 0
+      return found === null ? null : { node: found.node, label: `${cardTitle(found.card, found.index)}　${found.card.snippet}` }
+    },
+    handlesFor: (node) => {
+      const handles: SelectionHandle[] = []
+      const found = cardOf(node, lastCards)
+      if (found !== null && found.node === node) {
+        const taken = new Set<string>()
+        for (const row of found.card.rows) {
+          if (row.kind !== 'css') continue
+          const kind = handleKindOf(row.setting)
+          if (kind === null || taken.has(kind) || row.state !== '' || row.setting.context !== '') continue
+          taken.add(kind)
+          handles.push(cssHandle(kind, row.setting, node))
+        }
+      }
+      if ((node.tagName === 'IMG' || node.tagName === 'VIDEO') && !handles.some((h) => h.kind === 'width')) handles.push(mediaHandle(node))
+      if (node === deps.content.firstElementChild) handles.push(...paddingHandles(node))
+      return handles
+    },
+  }
 }
 
 function injectStyles(): void {
@@ -497,6 +690,15 @@ function injectStyles(): void {
     .wdp-root .ep-design-label.wdp-label-text{flex:0 1 auto;max-width:45%}
     .wdp-root .ep-design-input.wdp-number{flex:none;width:96px;font-variant-numeric:tabular-nums}
     .wdp-unit{min-width:22px}
+    .wdp-slider-row{padding:0 0 4px}
+    .wdp-slider{width:100%;margin:0;height:18px;accent-color:var(--sb-accent,${T.primary});cursor:pointer}
+    .wdp-select-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 10px;
+      padding:8px 12px;border-radius:8px;background:#fff;border:1px solid #e3e6ea;font-size:12.5px;line-height:1.5}
+    .wdp-select-note{color:${T.sub}}
+    .wdp-select-name{min-width:0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .wdp-select-toggle{flex-shrink:0;border:1px solid #cfd5dd;background:#fff;color:var(--sb-accent,${T.primary});
+      border-radius:6px;padding:5px 10px;font-size:12px;font-family:inherit;font-weight:600;cursor:pointer;white-space:nowrap}
+    .wdp-select-toggle:hover{border-color:var(--sb-accent,${T.primary})}
     .wdp-swatch{cursor:pointer;flex:none}
     .wdp-swatch:focus-visible{outline:2px solid var(--sb-accent,${T.primary});outline-offset:2px}
     .wdp-inactive .wdp-label,.wdp-inactive .ep-design-hex{color:${T.sub}}

@@ -62,7 +62,39 @@ describe('部品を積む', () => {
     ])
     expect(html).toMatch(/\.nc-b-1\{[^}]*color:#E5573F/)
     expect(html).toMatch(/\.nc-b-2\{[^}]*color:#1F7AE0/)
-    expect(html).toContain('<h2 class="nc-b nc-b-heading nc-b-heading--l nc-b--center nc-b-1">A</h2>')
+    expect(html).toContain('<h2 class="nc-b nc-b-heading nc-b--center nc-b-1">A</h2>')
+    // 大きさは数（px）。以前の 大/小 は 26/17px として読む
+    expect(html).toMatch(/\.nc-b-1\{[^}]*font-size:26px/)
+    expect(html).toMatch(/\.nc-b-2\{[^}]*font-size:17px/)
+  })
+
+  it('見出し・文章・余白・上下の余白は数（px）で持ち、以前の選びも読める（Canva風にドラッグできる土台）', () => {
+    const html = render(
+      [
+        screen('s1', '画面①', [
+          { type: 'heading', text: 'A', size: 30, align: 'left', color: '#1F2A37' },
+          { type: 'text', text: 'x', size: 12, align: 'left' },
+          { type: 'text', text: 'y', size: 's', align: 'left' },
+          { type: 'spacer', size: 'l' },
+          { type: 'spacer', size: 12.4 },
+        ]),
+      ],
+      { padding: 8 },
+    )
+    expect(html).toMatch(/\.nc-b-1\{[^}]*font-size:30px/)
+    // 14px未満の文章は注意書きの見た目
+    expect(html).toContain('<p class="nc-b nc-b-text nc-b-text--s nc-b--left nc-b-2">x</p>')
+    expect(html).toMatch(/\.nc-b-2\{font-size:12px\}/)
+    expect(html).toMatch(/\.nc-b-3\{font-size:12.5px\}/)
+    expect(html).toMatch(/\.nc-b-4\{height:56px\}/)
+    expect(html).toMatch(/\.nc-b-5\{height:12.5px\}/)
+    expect(html).toMatch(new RegExp(`\\.${UID}\\{[^}]*padding:8px 16px`))
+    expect(html).not.toContain('nc-b-heading--')
+    expect(html).not.toContain('nc-b-spacer--')
+    // 範囲の外・読めない値は端か既定
+    const odd = render([screen('s1', '画面①', [{ type: 'heading', text: 'A', size: 999, align: 'left', color: '#1F2A37' }, { type: 'spacer', size: 'huge' }])])
+    expect(odd).toMatch(/\.nc-b-1\{[^}]*font-size:48px/)
+    expect(odd).toMatch(/\.nc-b-2\{height:32px\}/)
   })
 
   it('ボタンのリンクは「ボタン」の型と同じ見た目で、計測の目印も付けられる', () => {
