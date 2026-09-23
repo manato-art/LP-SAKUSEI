@@ -3,9 +3,9 @@
  *
  * HTML と CSS を行番号つきで出し、色分けしたまま編集できるようにする。
  *
- * 右上の2つのアイコンは表示の切り替え（指示183）。
- *   分割表示   … 左にビジュアルエディタ、右にコード（既定）
- *   コード表示 … ビジュアルを畳んでコードだけを全幅にする
+ * 右上のボタン1つで表示を切り替える（指示183。2026-09-24 に2つのボタンを1つにした）。
+ *   並べて表示 … 左に見え方、右にコード・部品（既定）
+ *   コードだけ … 見え方を畳んで右を横いっぱいにする
  * 実際に左ペインを畳むのは呼び出し側なので、`onViewChange` で知らせる。
  *
  * 部品で作ったWidget（設定データつき・2026-09-23）では、コードは設定から書き出したものなので見るだけ。
@@ -77,25 +77,39 @@ export function buildCodePanels(target: WidgetEditTarget, options: CodePanelOpti
     `background:#fff;transition:left .2s;box-shadow:0 1px 2px rgba(0,0,0,.3)`
   toggle.append(toggleKnob)
 
-  // ビュー切替アイコン（本番の2つのアイコンボタン）
-  const viewBtns = document.createElement('div')
-  viewBtns.style.cssText = 'display:flex;gap:2px;margin-left:8px'
-  const viewSplit = makeViewButton(svgViewSplit(), '分割表示（ビジュアルとコード）')
-  const viewCode = makeViewButton(svgViewCode(), 'コード表示（コードだけ全幅）')
+  // 表示の切り替えは1つのボタン（2026-09-24・本人「ボタンを1つにして、1つのボタンで切り替え」）。
+  // 押すと「見え方と並べる」⇔「コードだけ横いっぱい」。アイコンは押したら切り替わる先、
+  // コードだけのあいだはボタンを青くして、今どちらかも分かるようにする
+  const viewBtn = document.createElement('button')
+  viewBtn.type = 'button'
+  viewBtn.dataset['codeViewToggle'] = 'true'
   let view: CodePaneView = 'split'
-  const setView = (next: CodePaneView): void => {
-    if (next === view) return
-    view = next
-    viewSplit.style.background = next === 'split' ? '#444' : COLOR.container
-    viewCode.style.background = next === 'code' ? '#444' : COLOR.container
-    onViewChange?.(next)
+  const paintViewButton = (): void => {
+    const codeOnly = view === 'code'
+    viewBtn.innerHTML = codeOnly ? svgViewSplit() : svgViewCode()
+    const label = codeOnly ? '見え方と並べて表示する' : 'コードだけを横いっぱいに表示する'
+    viewBtn.title = label
+    viewBtn.setAttribute('aria-label', label)
+    viewBtn.setAttribute('aria-pressed', String(codeOnly))
+    viewBtn.style.background = codeOnly ? 'var(--sb-accent-tint, #E6F4FF)' : '#FFFFFF'
+    viewBtn.style.borderColor = codeOnly ? 'var(--sb-accent, #0091FF)' : '#D5DAE0'
+    viewBtn.style.color = codeOnly ? 'var(--sb-accent, #0091FF)' : '#555555'
   }
-  viewSplit.style.background = '#444' // 既定は分割表示（開いた直後の見た目と合わせる）
-  viewSplit.addEventListener('click', () => setView('split'))
-  viewCode.addEventListener('click', () => setView('code'))
-  viewBtns.append(viewSplit, viewCode)
+  viewBtn.style.cssText =
+    `width:30px;height:28px;margin-left:8px;border:1px solid #D5DAE0;border-radius:6px;cursor:pointer;` +
+    `display:flex;align-items:center;justify-content:center;padding:0;flex-shrink:0;transition:border-color .15s,color .15s`
+  viewBtn.addEventListener('mouseenter', () => {
+    if (view === 'split') viewBtn.style.borderColor = 'var(--sb-accent, #0091FF)'
+  })
+  viewBtn.addEventListener('mouseleave', paintViewButton)
+  viewBtn.addEventListener('click', () => {
+    view = view === 'split' ? 'code' : 'split'
+    paintViewButton()
+    onViewChange?.(view)
+  })
+  paintViewButton()
 
-  toggleRow.append(toggleLabel, toggle, viewBtns)
+  toggleRow.append(toggleLabel, toggle, viewBtn)
 
   // HTML(カスタム) パネル
   const htmlPanel = createCodeEditor('HTML(カスタム)', target.html, 'data-code-html', 'html', readOnly !== undefined)
@@ -175,16 +189,6 @@ function buildReadOnlyBar(readOnly: NonNullable<CodePanelOptions['readOnly']>): 
   return bar
 }
 
-function makeViewButton(svgHtml: string, title: string): HTMLButtonElement {
-  const btn = document.createElement('button')
-  btn.type = 'button'
-  btn.title = title
-  btn.innerHTML = svgHtml
-  btn.style.cssText =
-    `border:1px solid #555;background:${COLOR.container};color:#aaa;border-radius:3px;` +
-    `padding:4px 6px;cursor:pointer;display:flex;align-items:center`
-  return btn
-}
 /**
  * 色付きのコード欄（行番号・Tabで字下げ・まとめてコピー）。値は `[${dataAttr}]` の textarea。
  * Widget全体のコード（見るだけ）と、見本の部品の「コードで直す」（form-sample.ts）で使う
