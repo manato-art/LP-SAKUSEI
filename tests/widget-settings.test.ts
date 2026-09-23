@@ -299,28 +299,19 @@ describe('色の見本とピッカーに使う #rrggbb', () => {
   })
 })
 
-/* ── 採取した Widget ライブラリ全件 ── */
-
-function unescapeHtml(text: string): string {
-  return text
-    .replace(/&#(\d+);/g, (_m, n: string) => String.fromCodePoint(Number(n)))
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;|&apos;/g, "'")
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
+/* ── 採取した Widget ライブラリ全件（材料は tests/fixtures/sb-library-widget.json） ──
+ * 見本そのものは 2026-09-23 に外したが、すでにLPへ入っている Widget を編集できることは確かめ続ける。
+ * 見出し側のCSS（3つ）は25件すべて同じなので1組だけ持ち、ここで元の並び（見出し→Widget自身）に戻す。
+ */
+const FIXTURE = JSON.parse(readFileSync('tests/fixtures/sb-library-widget.json', 'utf8')) as {
+  headStyles: string[]
+  cssSamples: { title: string; styles: string[] }[]
 }
 
-const LIBRARY = [
-  ...readFileSync('src/app/fragments/ab_tests__UID__articles__widget-library.portals.html', 'utf8').matchAll(
-    /aria-label="([^"]*)">[^<]*<\/p>[\s\S]*?<iframe[^>]*srcdoc="([^"]*)"/g,
-  ),
-].map((m) => {
-  const doc = unescapeHtml(m[2] ?? '')
-  const styles = [...doc.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((s) => s[1] ?? '')
+const LIBRARY = FIXTURE.cssSamples.map((sample) => {
+  const styles = [...FIXTURE.headStyles, ...sample.styles]
   const own = styles.filter((s) => !['#articlePartPreview', 'normalize.css', '.CodeMirror'].some((k) => s.slice(0, 4000).includes(k)))
-  return { title: m[1] ?? '', css: styles.join('\n'), ownCss: own.join('\n') }
+  return { title: sample.title, css: styles.join('\n'), ownCss: own.join('\n') }
 })
 
 describe('Widget ライブラリ全件で確認する', () => {

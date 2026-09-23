@@ -17,7 +17,6 @@
     "traceability": "tsx tools/traceability/build.ts",
     "gate": "tsx tools/gate/grep-gate.ts",
     "rehydrate": "tsx tools/rehydrate/build.ts",
-    "widget-fix": "tsx tools/widget-library-fix/index.ts",
     "copy-snippet": "cat tools/capture-console/snippet.js | pbcopy && echo \"採取スニペットをクリップボードにコピーしました。Chrome の DevTools > Console に Cmd+V で貼り付けて Enter を押してください。\"",
     "fetch-assets": "tsx tools/capture-assets/fetch.ts",
     "coverage": "tsx tools/coverage/report.ts",

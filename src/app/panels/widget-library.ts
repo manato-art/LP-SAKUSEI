@@ -51,19 +51,8 @@ const HOOK = {
   cardTitle: '.MuiCardHeader-title p',
 } as const
 
-/**
- * カテゴリー資産（採取＋匿名化＋gzip 済み）の場所。ボタンの並び順＝cat番号。
- * `?v=` は、以前の配り方（1日キャッシュ）で手元に残った古い見本を読まないため（2026-09-22 見本を直した）。
- * 今は毎回確かめる配り方（mock-server/widget-assets.ts）なので、見本を直すたびに変える必要は無い。
- */
-const CATEGORY_ASSET = (index: number): string =>
-  `/clean/widget-library/cat${index}/grid.html.gz?v=20260922`
-
 /** 「お気に入り」カテゴリーのインデックス（採取物の2番目のボタン）。指示157で localStorage 連動に。 */
 const FAVORITE_CAT = 1
-
-/** 採取していないカテゴリー（現状なし。お気に入りは指示157で localStorage 連動にした）。 */
-const UNCAPTURED_CATEGORIES = new Set<number>([])
 
 /** 「作成したWidget」カテゴリーのセンチネル値（localStorage の自作Widgetを出す）。 */
 const CREATED_CAT = -2
@@ -87,9 +76,6 @@ const FAVORITE_EMPTY_MSG = 'お気に入りに登録したWidgetはありませ�
 
 
 
-
-/** 取得済みカテゴリーのカードHTMLをセッション内でキャッシュ（再取得しない）。 */
-const gridCache = new Map<number, string>()
 
 let isOpen = false
 
@@ -142,9 +128,8 @@ function open(quill: Quill): void {
 
   wireCategories(portal.root, quill, portal.close)
   wireSearch(portal.root)
-  wireCards(portal.root, quill, portal.close)
-  // 開いた直後に「すべて」の全件へ差し替える。
-  void loadCategory(portal.root, quill, portal.close, 0)
+  // 開いた直後は「見本」（自作の見本）を出す
+  renderNewSamples(portal.root, quill, portal.close)
 }
 
 /* ================================================================
@@ -189,7 +174,7 @@ function patchPortalLayout(root: HTMLElement, quill: Quill, close: () => void): 
   const titleEl = root.querySelector<HTMLElement>('.css-kzzyvh')
   if (titleEl !== null) titleEl.textContent = 'Widget'
 
-  /* ---- 2. 最初のカテゴリー名を「すべて」に変更 ---- */
+  /* ---- 2. 最初のカテゴリー名を「見本」に変更（2026-09-23: SB由来の見本を外し、自作の見本だけにした） ---- */
   const categories = [...root.querySelectorAll<HTMLElement>(HOOK.category)]
   if (categories.length > 0) {
     const firstBtn = categories[0]!
@@ -199,15 +184,15 @@ function patchPortalLayout(root: HTMLElement, quill: Quill, close: () => void): 
       firstBtn.childNodes.forEach((n) => {
         if (n !== span && n.nodeType === Node.TEXT_NODE) n.textContent = ''
       })
-      firstBtn.insertBefore(document.createTextNode('すべて'), span)
+      firstBtn.insertBefore(document.createTextNode('見本'), span)
     } else {
-      firstBtn.textContent = 'すべて'
+      firstBtn.textContent = '見本'
     }
   }
 
-  /* ---- 3. data-cat-index を既存ボタンに付与（gz 連番のまま） ---- */
+  /* ---- 3. data-cat-index を付与（0＝見本＝自作の見本、1＝お気に入り） ---- */
   for (const [i, cat] of categories.entries()) {
-    cat.dataset['catIndex'] = String(i)
+    cat.dataset['catIndex'] = String(i === 0 ? NEW_SAMPLES_CAT : i)
   }
 
   /* ---- 4. 「作成したWidget」カテゴリーを お気に入り(index=1) の後ろに挿入 ----
@@ -217,19 +202,6 @@ function patchPortalLayout(root: HTMLElement, quill: Quill, close: () => void): 
     const createdBtn = createCategoryButton('作成したWidget')
     createdBtn.dataset['catIndex'] = String(CREATED_CAT)
     categories[1]!.after(createdBtn) // お気に入りの直後
-
-    // 「新しい見本」（自作の見本。作成したWidgetの直後）
-    const newSamplesBtn = createCategoryButton('新しい見本')
-    newSamplesBtn.dataset['catIndex'] = String(NEW_SAMPLES_CAT)
-    createdBtn.after(newSamplesBtn)
-
-    /* ---- 5. 「カテゴリーから探す」セクションヘッダー挿入 ---- */
-    const sectionHeader = document.createElement('h6')
-    sectionHeader.textContent = 'カテゴリーから探す'
-    sectionHeader.style.cssText =
-      'font:600 13px/1.4 "Hiragino Sans",sans-serif;color:#333;' +
-      'margin:16px 0 4px;padding:0 8px'
-    newSamplesBtn.after(sectionHeader)
   }
 
   /* ---- 6. 「+ Widgetを作成」ボタン挿入 ---- */
@@ -320,15 +292,16 @@ function wireCategories(root: HTMLElement, quill: Quill, close: () => void): voi
   for (const cat of categories) {
     cat.addEventListener('click', () => {
       activateCategory(categories, cat)
-      const catIndex = Number(cat.dataset['catIndex'] ?? '0')
+      const catIndex = Number(cat.dataset['catIndex'] ?? String(NEW_SAMPLES_CAT))
       if (catIndex === CREATED_CAT) {
         // 作成したWidget: localStorage の自作Widgetをカードで表示
         renderCreatedWidgets(root, quill, close)
-      } else if (catIndex === NEW_SAMPLES_CAT) {
-        // 新しい見本: 自作の見本（samples/）をカードで表示
-        renderNewSamples(root, quill, close)
+      } else if (catIndex === FAVORITE_CAT) {
+        // お気に入り: localStorage のお気に入りをカードで表示
+        renderFavoriteWidgets(root, quill, close)
       } else {
-        void loadCategory(root, quill, close, catIndex)
+        // 見本: 自作の見本（samples/）をカードで表示
+        renderNewSamples(root, quill, close)
       }
     })
   }
@@ -349,69 +322,6 @@ function activateCategory(categories: readonly HTMLElement[], target: HTMLElemen
     cat.classList.toggle('MuiButton-containedPrimary', on)
     cat.classList.toggle('MuiButton-text', !on)
     cat.classList.toggle('MuiButton-textPrimary', !on)
-  }
-}
-
-/* ================================================================
- *  カテゴリー読み込み
- * ================================================================ */
-
-async function loadCategory(
-  root: HTMLElement,
-  quill: Quill,
-  close: () => void,
-  index: number,
-): Promise<void> {
-  const grid = root.querySelector<HTMLElement>(HOOK.grid)
-  if (grid === null) return
-  if (index === FAVORITE_CAT) {
-    // 指示157: お気に入りカテゴリーは localStorage のお気に入りWidgetを表示する。
-    renderFavoriteWidgets(root, quill, close)
-    return
-  }
-  if (UNCAPTURED_CATEGORIES.has(index)) {
-    grid.innerHTML = ''
-    grid.append(gridMessage('このカテゴリーは各ユーザー個別のため、クローンでは空です。'))
-    return
-  }
-  grid.innerHTML = ''
-  grid.append(gridMessage('読み込み中…'))
-  try {
-    const html = await fetchCategoryGrid(index)
-    if (html === null) {
-      grid.innerHTML = ''
-      grid.append(gridMessage('このカテゴリーの読み込みに失敗しました。'))
-      return
-    }
-    grid.innerHTML = html
-    wireCards(root, quill, close)
-    applySearchFilter(root)
-  } catch {
-    grid.innerHTML = ''
-    grid.append(gridMessage('このカテゴリーの読み込みに失敗しました。'))
-  }
-}
-
-async function fetchCategoryGrid(index: number): Promise<string | null> {
-  const cached = gridCache.get(index)
-  if (cached !== undefined) return cached
-  const res = await fetch(CATEGORY_ASSET(index))
-  if (!res.ok) return null
-  const buffer = await res.arrayBuffer()
-  const html = await gunzipToText(buffer)
-  const doc = new DOMParser().parseFromString(html, 'text/html')
-  const grid = doc.querySelector<HTMLElement>(HOOK.grid)
-  const inner = grid === null ? null : grid.innerHTML
-  if (inner !== null) gridCache.set(index, inner)
-  return inner
-}
-
-async function gunzipToText(buffer: ArrayBuffer): Promise<string> {
-  try {
-    const stream = new Blob([buffer]).stream().pipeThrough(new DecompressionStream('gzip'))
-    return await new Response(stream).text()
-  } catch {
-    return new TextDecoder().decode(buffer)
   }
 }
 
@@ -488,7 +398,15 @@ function newSampleCard(sample: NewSample): HTMLElement {
   actions.className = 'MuiCardActions-root'
   actions.style.cssText =
     'display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:8px 12px;margin-top:auto;border-top:1px solid #eee'
-  actions.append(cardActionButton('プレビュー', false), cardActionButton('追加', true))
+  // 左下の★（お気に入り）。wireFavoriteToggle が色と登録を受け持つ（採取カードと同じ目印＝直下の svg）
+  const star = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+  star.setAttribute('viewBox', '0 0 24 24')
+  star.setAttribute('fill', '#F5A623')
+  star.style.cssText = 'width:18px;height:18px;flex:0 0 auto'
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path')
+  path.setAttribute('d', 'M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.4 6.2 20.4l1.1-6.4L2.6 9.4l6.5-.9z')
+  star.append(path)
+  actions.append(star, cardActionButton('プレビュー', false), cardActionButton('追加', true))
 
   card.append(head, frame, actions)
   return card

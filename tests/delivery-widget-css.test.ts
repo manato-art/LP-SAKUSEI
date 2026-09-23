@@ -34,28 +34,19 @@ beforeEach(() => {
   resetState()
 })
 
-function unescapeHtml(text: string): string {
-  return text
-    .replace(/&#(\d+);/g, (_m, n: string) => String.fromCodePoint(Number(n)))
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;|&apos;/g, "'")
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-}
-
-/** ライブラリの見本から、これまでのアプリと同じ入れ方（<head> のCSS＋<body>）で Widget の HTML を作る */
+/**
+ * これまでのアプリと同じ入れ方（<head> のCSS＋<body>）で Widget の HTML を作る。
+ * 材料は tests/fixtures/sb-library-widget.json（SBのライブラリ見本から取り出したもの。
+ * 見本そのものは 2026-09-23 に外したが、すでにLPへ入っている Widget のために配信の確かめは続ける）。
+ */
 function libraryWidgetAsSaved(keyword: string): string {
-  const fragment = readFileSync('src/app/fragments/ab_tests__UID__articles__widget-library.portals.html', 'utf8')
-  const m = [...fragment.matchAll(/aria-label="([^"]*)">[^<]*<\/p>[\s\S]*?<iframe[^>]*srcdoc="([^"]*)"/g)].find((e) =>
-    (e[1] ?? '').includes(keyword),
-  )
-  const doc = unescapeHtml(m?.[2] ?? '')
-  const head = /<head[^>]*>([\s\S]*?)<\/head>/.exec(doc)?.[1] ?? ''
-  const body = /<body[^>]*>([\s\S]*)<\/body>/.exec(doc)?.[1] ?? ''
-  const headStyles = [...head.matchAll(/<style[^>]*>[\s\S]*?<\/style>/g)].map((s) => s[0]).join('')
-  return `<section class="sb-widget-block" data-widget-block="true" contenteditable="false">${headStyles}${body}</section>`
+  const fixture = JSON.parse(readFileSync('tests/fixtures/sb-library-widget.json', 'utf8')) as {
+    headStyles: string[]
+    widgets: { title: string; body: string }[]
+  }
+  const widget = fixture.widgets.find((w) => w.title.includes(keyword))
+  const headStyles = fixture.headStyles.map((css) => `<style>${css}</style>`).join('')
+  return `<section class="sb-widget-block" data-widget-block="true" contenteditable="false">${headStyles}${widget?.body ?? ''}</section>`
 }
 
 async function createPage(html: string): Promise<{ abTestUid: string; articleUid: string; versionUid: string }> {

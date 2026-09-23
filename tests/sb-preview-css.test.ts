@@ -16,33 +16,26 @@ import {
   widgetResetCss,
 } from '../src/shared/sb-preview-css.ts'
 
-function unescapeHtml(text: string): string {
-  return text
-    .replace(/&#(\d+);/g, (_m, n: string) => String.fromCodePoint(Number(n)))
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;|&apos;/g, "'")
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-}
 
-const LIBRARY = [
-  ...readFileSync('src/app/fragments/ab_tests__UID__articles__widget-library.portals.html', 'utf8').matchAll(
-    /aria-label="([^"]*)">[^<]*<\/p>[\s\S]*?<iframe[^>]*srcdoc="([^"]*)"/g,
-  ),
-].map((m) => {
-  const doc = unescapeHtml(m[2] ?? '')
-  const head = /<head[^>]*>([\s\S]*?)<\/head>/.exec(doc)?.[1] ?? ''
-  const body = /<body[^>]*>([\s\S]*)<\/body>/.exec(doc)?.[1] ?? ''
-  const styles = (html: string): string[] => [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((s) => s[1] ?? '')
-  return { title: m[1] ?? '', headStyles: styles(head), bodyStyles: styles(body) }
-})
+/**
+ * 材料（tests/fixtures/sb-library-widget.json）は、SBのライブラリ見本25件から取り出したもの。
+ * 25件の <head> のCSS（3つ）は全部同じ中身だったので1組だけ残し、Widget自身のCSSは2件ぶん残してある
+ * （見本そのものは 2026-09-23 に外した。stripSbPreviewCss は、これまでにLPへ入れた見本のために残る）。
+ */
+const FIXTURE = JSON.parse(readFileSync('tests/fixtures/sb-library-widget.json', 'utf8')) as {
+  headStyles: string[]
+  widgets: { title: string; body: string }[]
+}
+const LIBRARY = FIXTURE.widgets.map((w) => ({
+  title: w.title,
+  headStyles: FIXTURE.headStyles,
+  bodyStyles: [...w.body.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((s) => s[1] ?? ''),
+}))
 const [PREVIEW_DEFAULTS, PAGE_BASE, EDITOR_BASE] = (LIBRARY[0]?.headStyles ?? []).map((s) => s.trim())
 
 describe('SquadBeyond のプレビュー用CSSを取り除く', () => {
-  it('ライブラリ25件の <head> のCSS（3つ）は、どれも取り除くと空になる', () => {
-    expect(LIBRARY).toHaveLength(25)
+  it('見本の <head> のCSS（3つ）は、取り除くと空になる', () => {
+    expect(LIBRARY.length).toBeGreaterThanOrEqual(2)
     for (const w of LIBRARY) {
       expect(w.headStyles.map((s) => stripSbPreviewCss(s).trim()), w.title).toEqual(['', '', ''])
     }

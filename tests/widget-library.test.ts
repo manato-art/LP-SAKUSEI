@@ -18,29 +18,21 @@ describe('Widgetライブラリの土台（採取マークアップ）', () => {
     expect(fragment).toContain('>閉じる<')
   })
 
-  it('カテゴリーとカードの追加/プレビューがある', () => {
-    expect(fragment).toContain('最近追加されたウィジェット')
-    expect(fragment).toContain('MuiCard-root')
-    expect(fragment).toContain('>追加<')
-    expect(fragment).toContain('>プレビュー<')
+  it('カテゴリーの器と、カードを入れる器がある（中身はアプリが描く）', () => {
+    expect(fragment).toContain('MuiButton-fullWidth')
+    expect(fragment).toContain('css-ojejk4')
   })
 
   /**
-   * この断片は `npm run rehydrate` の出力**ではない**。
-   * 元になった `capture/clean/widget-library/baked/dom.html` は
-   * カテゴリ別の grid.html.gz に置き換わったときに消しており、
-   * 25枚の実プレビューはこのファイルにしか残っていない。
-   * rehydrate を回すと採取物から作り直されて 1MB → 70KB に痩せる（＝プレビューが消える）。
-   * 気付かずコミットしないよう、ここで大きさと中身を固定する。
+   * 2026-09-23: SB由来の見本（25枚のカードと16のカテゴリー）は本人の指示で外した。
+   * 一覧に出すのは自作の見本（src/app/panels/nocode/samples/）で、アプリが描く。
+   * 採取物に見本が混ざって戻らないよう（rehydrate で作り直すと戻る）、ここで空であることを固定する。
    */
-  it('25枚の実プレビュー（srcdoc）を保つ＝rehydrateで痩せていない', () => {
-    expect([...fragment.matchAll(/srcdoc=/g)].length).toBeGreaterThanOrEqual(25)
-    expect(fragment.length).toBeGreaterThan(900_000)
-  })
-
-  it('実ユーザーの独自Widget名・本番JS痕跡が混ざっていない', () => {
-    expect(fragment).not.toContain('フェムケア')
-    expect(fragment).not.toContain('<script')
-    expect(fragment).not.toContain('claude-agent')
+  it('見本のカード・SB由来のカテゴリーは残っていない（外したものが戻らない）', () => {
+    expect(fragment).not.toContain('srcdoc=')
+    expect(fragment).not.toContain('MuiCard-root')
+    expect([...fragment.matchAll(/MuiButton-fullWidth/g)]).toHaveLength(2) // 最初の2つ（見本・お気に入り）だけ
+    expect(fragment).not.toContain('吹き出し')
+    expect(fragment.length).toBeLessThan(20_000)
   })
 })

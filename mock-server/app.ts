@@ -11,7 +11,6 @@ import { mockStateMiddleware } from './lib/mock-state.ts'
 import { errorEnvelope } from './lib/envelope.ts'
 import { resetState } from './store/store.ts'
 import { captureSinkRouter } from './capture-sink.ts'
-import { widgetLibraryRouter } from './widget-assets.ts'
 import { versionSettingsRouter } from './routes/panel-version-settings.ts'
 import { tagSettingsRouter } from './routes/panel-tag-settings.ts'
 import { historyRouter } from './routes/panel-history.ts'
@@ -197,10 +196,6 @@ export function createApp(): Express {
   // ── 本番: ビルドしたフロントを配信する（開発時は Vite が担当するので無効）──
   if (SERVE_DIST !== undefined) {
     const distDir = resolve(SERVE_DIST)
-    // Widgetライブラリの見本は、デプロイした版から配る（直した見本がすぐ届くよう毎回確かめさせる）。
-    // 以前の Volume の写し（9/3 のまま）は使わない（widget-assets.ts の経緯）。
-    app.use(widgetLibraryRouter(distDir))
-
     // 管理SPA本体（index.html）はパスワード保護する。
     // ルート（`/`）の応答:
     //   ① ログイン済み → SPA を返す
