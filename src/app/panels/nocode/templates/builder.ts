@@ -15,12 +15,12 @@
  *    （次の設問へ・ページ移動）も持っているので、画面へ移る指定を先に効かせる
  *  - 中に別の「部品を積んで作る」が入っていたら、その中の切り替えはその持ち主に任せる（idがぶつからない）
  */
-import { SCREEN_ID, BLOCK_TYPES, actionOf, blockLabel, goTarget, renderBlock } from './builder-blocks.ts'
+import { SCREEN_ID, ALL_BLOCK_TYPES, actionOf, blockLabel, goTarget, renderBlock, templateOfBlock } from './builder-blocks.ts'
 import { goTargetsIn } from '../sample-model.ts'
 import { baseCss, esc, safeColor, safeImage, safeVideo, shade, wrapWidget } from './kit.ts'
 import { ACCENT_PRESETS, items, pick, str, type ItemData, type NocodeTemplate } from './types.ts'
 
-export { BLOCK_TYPES } from './builder-blocks.ts'
+export { ALL_BLOCK_TYPES, BLOCK_TYPES } from './builder-blocks.ts'
 
 /** 背景の色の候補（白と、淡い地） */
 const BACKGROUND_PRESETS: readonly string[] = ['#FFFFFF', '#F7F8FA', '#FFF8E7', '#FDF1EE', '#EEF6FF', '#EEF8F1']
@@ -125,7 +125,7 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
   summary: '見出し・文章・画像・ボタンなどを上から順に積んで、自由に作ります。画面を切り替えることもできます',
   icon: svg('<rect x="4" y="3" width="16" height="5" rx="1.5"/><rect x="4" y="10" width="16" height="5" rx="1.5"/><path d="M12 17v4M10 19h4"/>'),
   fields: [
-    { kind: 'screens', key: 'screens', label: '画面と部品', min: 1, max: 20, blockMax: 30, types: BLOCK_TYPES },
+    { kind: 'screens', key: 'screens', label: '画面と部品', min: 1, max: 20, blockMax: 30, types: ALL_BLOCK_TYPES },
     { kind: 'color', key: 'background', label: '背景の色', presets: BACKGROUND_PRESETS },
     {
       kind: 'select',
@@ -157,7 +157,7 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
     accent: '#E5573F',
     transition: 'none',
   }),
-  validate: (data) => {
+  validate: (data, now) => {
     const screens = items(data, 'screens')
     if (screens.length === 0) return '画面を1つ以上作ってください'
     const ids = new Set(screens.map((screen) => str(screen, 'id')).filter((id) => SCREEN_ID.test(id)))
@@ -178,6 +178,12 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
         }
         if (actionOf(item) === 'screen' && goTarget(item, ids) === null) {
           return `移る先の画面が選ばれていません（${where}）。「移る先の画面」を選んでください`
+        }
+        // 型の部品は、その型の確かめをそのまま使う（どの画面のどの部品かを頭に付ける）
+        const template = templateOfBlock(type)
+        if (template !== undefined) {
+          const problem = template.validate(item, now)
+          if (problem !== null) return `${where}: ${problem}`
         }
         if (type === 'sample') {
           const html = str(item, 'html')
@@ -238,6 +244,8 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
       `${s} .nc-b-text{font-size:15px;line-height:1.85;color:#3A4452;text-wrap:pretty}` +
       `${s} .nc-b-text.nc-b--center{text-wrap:balance}` +
       `${s} .nc-b-text--s{font-size:12.5px;line-height:1.75;color:#5B6572}` +
+      // 型の部品は自分で余白を持っている（余白は「部品を積んで作る」に任せ、ほかの部品と左右もそろえる）
+      `${s} .nc-b-tpl>.nc{padding:0}` +
       `${s} .nc-b-image{margin-left:0;margin-right:0}` +
       `${s} .nc-b-image img{margin:0 auto}` +
       `${s} .nc-b-image--w80 img{width:80%}` +

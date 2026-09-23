@@ -88,6 +88,7 @@ textarea.ncf-input{resize:vertical;min-height:64px}
 .ncf-item__icon svg{width:18px;height:18px}
 .ncf-adder{margin-top:12px}
 .ncf-adder__label{display:block;font-size:12px;color:var(--sb-sub,#808080);margin:0 0 8px}
+.ncf-adder__label--tpl{margin-top:12px}
 .ncf-adder__grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
 .ncf-adder__btn{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px;border:1px solid var(--sb-line,#DDD);
   border-radius:8px;background:var(--sb-surface,#FFF);color:var(--sb-text,#151515);font-size:12px;font-weight:600;cursor:pointer}

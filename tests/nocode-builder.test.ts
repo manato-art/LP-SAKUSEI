@@ -8,7 +8,8 @@
  * 書き出しの安全さは「型から作る」と同じ（kit.ts）。
  */
 import { describe, expect, it } from 'vitest'
-import { BUILDER_TEMPLATE, SCREENS_SCRIPT } from '../src/app/panels/nocode/templates/builder.ts'
+import { ALL_BLOCK_TYPES, BUILDER_TEMPLATE, SCREENS_SCRIPT } from '../src/app/panels/nocode/templates/builder.ts'
+import { TEMPLATES } from '../src/app/panels/nocode/templates/list.ts'
 import type { ItemData, TemplateData } from '../src/app/panels/nocode/templates/types.ts'
 
 const NOW = new Date(Date.UTC(2026, 8, 22, 3, 0))
@@ -265,5 +266,50 @@ describe('分けた見本の部品', () => {
     expect(html.split('window.q=(window.q||0)+1')).toHaveLength(2)
     expect(html).toContain('問い2')
     expect(html).toContain('.r{color:blue}')
+  })
+})
+
+/**
+ * 本人の決定（2026-09-23）「同じ画面と部品に型が入る」。
+ * 「型から作る」の型8種を、画面の中の部品として置ける（入力欄は型のものをそのまま使う）。
+ */
+describe('型の部品', () => {
+  it('型8種がそのまま部品として選べる（名前・アイコン・入力欄は型のもの）', () => {
+    for (const template of TEMPLATES) {
+      const block = ALL_BLOCK_TYPES.find((t) => t.type === `tpl-${template.id}`)
+      expect(block?.label).toBe(template.name)
+      expect(block?.icon).toBe(template.icon)
+      expect(block?.newItem()['uid']).toMatch(/^nc-[a-z0-9]{8}$/)
+      // 「押したとき」を足すのは押す所が1つの型だけ（ボタン）
+      const hasPress = (block?.fields ?? []).some((f) => f.kind === 'goto')
+      expect(hasPress).toBe(template.id === 'cta')
+    }
+  })
+
+  it('型の部品は型のHTMLをそのまま書き出す（この部品だけのWidgetの名前で、ほかの型とまざらない）', () => {
+    const faq = ALL_BLOCK_TYPES.find((t) => t.type === 'tpl-faq')?.newItem() ?? {}
+    const html = render([screen('s1', '画面①', [{ ...faq, uid: 'nc-abcd1234' }])])
+    expect(html).toContain('class="nc-b nc-b-tpl')
+    expect(html).toContain('class="nc nc-faq nc-abcd1234"')
+    expect(html).toContain('よくある質問')
+    // 型のCSSはその型の名前の中だけ（外の部品に効かない）
+    expect(html).toContain('.nc-abcd1234')
+  })
+
+  it('型の部品の中身がそろっていなければ、どの画面のどの部品かを添えて知らせる', () => {
+    const faq = ALL_BLOCK_TYPES.find((t) => t.type === 'tpl-faq')?.newItem() ?? {}
+    const problem = validate([screen('s1', '画面①', [{ ...faq, items: [{ q: '', a: '' }] }])])
+    expect(problem).toContain('「画面①」のよくある質問')
+    expect(problem).toContain('空の質問')
+  })
+
+  it('ボタンの型の部品は「押したとき」で画面へ移せる（型の中の最初のリンクに効く）', () => {
+    const cta = ALL_BLOCK_TYPES.find((t) => t.type === 'tpl-cta')?.newItem() ?? {}
+    const html = render([
+      screen('s1', '画面①', [{ ...cta, label: '申し込む', url: 'https://example.com/', action: 'screen', target: 's2' }]),
+      screen('s2', '画面②', [{ type: 'text', text: 'ありがとうございます', align: 'left' }]),
+    ])
+    expect(html).toContain('data-nc-go="s2"')
+    expect(html.indexOf('data-nc-go="s2"')).toBeLessThan(html.indexOf('申し込む'))
   })
 })

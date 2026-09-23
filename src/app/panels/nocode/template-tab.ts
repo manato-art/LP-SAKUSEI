@@ -28,7 +28,7 @@ import { buildTemplateForm } from './template-form.ts'
 import { BUILDER_TEMPLATE } from './templates/builder.ts'
 import { TEMPLATES } from './templates/index.ts'
 import { newUid } from './templates/kit.ts'
-import { items, str, type NocodeTemplate, type TemplateData } from './templates/types.ts'
+import { items, str, type ItemData, type NocodeTemplate, type TemplateData } from './templates/types.ts'
 
 interface Draft {
   readonly templateId: string
@@ -113,7 +113,9 @@ function renderPicker(root: HTMLElement, templates: readonly NocodeTemplate[], o
   root.replaceChildren(
     el('p', {
       class: 'ncf-intro',
-      text: '型を選んで、入力欄に書くだけで作れます。できあがりは右側でその場で確かめられます。コードは出てきません。',
+      text:
+        '型を選ぶと「部品を積んで作る」の画面と部品に、その型が部品として入ります。' +
+        '入力欄に書くだけで作れて、できあがりは右側でその場で確かめられます。コードは出てきません。',
     }),
     grid,
   )
@@ -263,16 +265,10 @@ function renderForm(
 }
 
 /**
- * 作り方のタブを作る。型が2つ以上なら「型を選ぶ」画面から、1つだけなら入力から始める。
- * 入力中の中身はタブごとに持つ（別のタブの型とまざらない）。
+ * 「部品を積んで作る」のタブ（型は1つ＝部品の並びなので、選ぶ画面は出さずに入力から始める）。
+ * 入力中の中身（draft）はタブを切り替えても残す。見本のカード・型の一覧からは draft に入れてから開く。
  */
-function makeTemplateTab(options: {
-  id: string
-  label: string
-  templates: readonly NocodeTemplate[]
-  /** 型が1つだけのとき、入力の上に出す説明 */
-  intro?: string
-}): NocodeTab & { readonly draft: DraftStore } {
+function makeBuilderTab(intro: string): NocodeTab & { readonly draft: DraftStore } {
   let draft: Draft | null = null
   const store: DraftStore = {
     get: () => draft,
@@ -281,46 +277,74 @@ function makeTemplateTab(options: {
     },
   }
   return {
-    id: options.id,
-    label: options.label,
+    id: BUILDER_TEMPLATE.id,
+    label: '部品を積んで作る',
     draft: store,
     render: (host, ctx) => {
       ensureNocodeFormCss()
       const root = el('div')
-      root.dataset['ncTab'] = options.id
+      root.dataset['ncTab'] = BUILDER_TEMPLATE.id
       host.append(root)
       // 入力の画面は高さいっぱいを使う（入力欄だけがスクロールし、見え方は動かない）
       root.style.height = '100%'
-
-      const open = (template: NocodeTemplate, top: { onBack?: () => void; intro?: string }): void => {
-        if (draft === null || draft.templateId !== template.id) {
-          draft = { templateId: template.id, data: template.defaults(new Date()), uid: newUid() }
-        }
-        renderForm(root, ctx, store, template, top)
+      if (draft === null || draft.templateId !== BUILDER_TEMPLATE.id) {
+        draft = { templateId: BUILDER_TEMPLATE.id, data: BUILDER_TEMPLATE.defaults(new Date()), uid: newUid() }
       }
-
-      const only = options.templates.length === 1 ? options.templates[0] : undefined
-      if (only !== undefined) {
-        open(only, { intro: options.intro })
-        return
-      }
-      const showPicker = (): void => renderPicker(root, options.templates, (template) => open(template, { onBack: showPicker }))
-      const resumed = options.templates.find((t) => t.id === draft?.templateId)
-      if (resumed === undefined) showPicker()
-      else open(resumed, { onBack: showPicker })
+      renderForm(root, ctx, store, BUILDER_TEMPLATE, { intro })
     },
   }
 }
 
-export const TEMPLATE_TAB = makeTemplateTab({ id: 'template', label: '型から作る', templates: TEMPLATES })
+export const BUILDER_TAB = makeBuilderTab(
+  '見出し・文章・画像・ボタンなどを、上から順に積んで作ります。「見本」や「型」も部品として使えます。' +
+    '画面①②…を作ると、ボタンや画像を押したときに、その画面へすぐ切り替えられます。',
+)
 
-export const BUILDER_TAB = makeTemplateTab({
-  id: 'builder',
-  label: '部品を積んで作る',
-  templates: [BUILDER_TEMPLATE],
-  intro:
-    '見出し・文章・画像・ボタンなどを、上から順に積んで作ります。「見本」を選ぶと、いつもの見本も部品として使えます。画面①②…を作ると、ボタンや画像を押したときに、その画面へすぐ切り替えられます。',
-})
+export const TEMPLATE_TAB: NocodeTab = {
+  id: 'template',
+  label: '型から作る',
+  render: (host, ctx) => {
+    ensureNocodeFormCss()
+    const root = el('div')
+    root.dataset['ncTab'] = 'template'
+    root.style.height = '100%'
+    host.append(root)
+    renderPicker(root, TEMPLATES, (template) => {
+      void startBuilderWithBlock(templateBlock(template), template.name).then((ok) => {
+        if (ok) ctx.openTab(BUILDER_TAB.id)
+      })
+    })
+  },
+}
+
+/** 型1つぶんの部品（「部品を積んで作る」の部品の形） */
+function templateBlock(template: NocodeTemplate): ItemData {
+  return { type: `tpl-${template.id}`, uid: newUid(), ...template.defaults(new Date()) }
+}
+
+/** 作りかけの中身を置き換えてよいか（あれば確かめる） */
+async function canReplaceDraft(): Promise<boolean> {
+  if (BUILDER_TAB.draft.get() === null) return true
+  return confirmCard({
+    title: '作りかけのWidgetを置き換えますか？',
+    message: '「部品を積んで作る」に作りかけの中身があります。ここから作り直すと、その中身は消えます。',
+    submitLabel: '作り直す',
+    danger: true,
+  })
+}
+
+/** 部品1つを画面①に置いて「部品を積んで作る」を始める */
+async function startBuilderWithBlock(block: ItemData, title: string): Promise<boolean> {
+  if (!(await canReplaceDraft())) return false
+  BUILDER_TAB.draft.set({
+    templateId: BUILDER_TEMPLATE.id,
+    data: { ...BUILDER_TEMPLATE.defaults(new Date()), screens: [{ id: 's1', name: screenLabel(1), blocks: [block] }] },
+    uid: newUid(),
+  })
+  toast(`「${title}」を部品にしました。画面と部品で続けて作れます`)
+  return true
+}
+
 
 /**
  * 見本のカードの「画面を作って使う」から、その見本を部品にして「部品を積んで作る」を始める
@@ -329,16 +353,7 @@ export const BUILDER_TAB = makeTemplateTab({
  * 作りかけの中身があるときは、消してよいか確かめる（やめたら false）。
  */
 export async function startBuilderWithSample(sample: { title: string; html: string }): Promise<boolean> {
-  const current = BUILDER_TAB.draft.get()
-  if (current !== null) {
-    const ok = await confirmCard({
-      title: '作りかけのWidgetを置き換えますか？',
-      message: '「部品を積んで作る」に作りかけの中身があります。この見本から作り直すと、その中身は消えます。',
-      submitLabel: '作り直す',
-      danger: true,
-    })
-    if (!ok) return false
-  }
+  if (!(await canReplaceDraft())) return false
   const parts = splitSampleScreens(sample.html)
   const ids = parts.map((_, index) => `s${index + 1}`)
   const screens = parts.map((part, index) => ({

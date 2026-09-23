@@ -26,6 +26,8 @@ export interface NocodeContext {
   /** この入口を一時的に隠す／戻す（見本の一覧から見本を選ぶ間。入力中の中身は残る） */
   hidePanel: () => void
   showPanel: () => void
+  /** 別の作り方のタブを開く（型を選んだら「部品を積んで作る」へ渡す） */
+  openTab: (id: string) => void
 }
 
 export interface NocodeTab {
@@ -51,11 +53,14 @@ export function openNocodePanel(libraryRoot: HTMLElement, quill: Quill, closeLib
   panel.setAttribute('data-nocode-panel', 'true')
 
   const closePanel = (): void => panel.remove()
+  // タブの中身は下で組み立てる（openTab はそこで入れ替える）
+  let openTab = (_id: string): void => undefined
   const ctx: NocodeContext = {
     libraryRoot,
     quill,
     closeLibrary,
     closePanel,
+    openTab: (id) => openTab(id),
     hidePanel: () => {
       panel.style.display = 'none'
     },
@@ -105,6 +110,11 @@ export function openNocodePanel(libraryRoot: HTMLElement, quill: Quill, closeLib
     b.setAttribute('role', 'tab')
     b.addEventListener('click', () => show(tab))
     tabBar.append(b)
+  }
+
+  openTab = (id): void => {
+    const tab = TABS.find((t) => t.id === id)
+    if (tab !== undefined) show(tab)
   }
 
   panel.append(header, tabBar, body)

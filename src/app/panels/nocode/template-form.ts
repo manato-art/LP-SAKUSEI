@@ -31,7 +31,7 @@ import {
   screenLabel,
   withPress,
 } from './screens-state.ts'
-import { SCREEN_ID } from './templates/builder-blocks.ts'
+import { SCREEN_ID, isTemplateBlock } from './templates/builder-blocks.ts'
 import { items, str, type BlockType, type Field, type ItemData, type ScreensField, type TemplateData } from './templates/types.ts'
 
 type ListField = Extract<Field, { kind: 'list' }>
@@ -65,6 +65,8 @@ export function buildTemplateForm(options: {
   let activeScreen = 0
   /** 見本の部品ごとの、いま直している設問（組み立て直しても残す） */
   const activeSteps = new Map<string, number>()
+  /** 並びごとの目印（足したあと、その1件に目を移すのに使う。組み立て直すたびに数え直す） */
+  let listSeq = 0
   const root = node('div', 'ncf-form-body')
   /** 出し分け・名前や選べるものの直し（入力のたびに全部回す。軽い） */
   let refreshers: (() => void)[] = []
@@ -178,12 +180,13 @@ export function buildTemplateForm(options: {
     return head
   }
 
-  /** 並び（よくある質問の1問など） */
-  const listEl = (field: ListField): HTMLElement => {
+  /** 並び（よくある質問の1問など）。型の部品の中の並びでも使う（basePath＝その部品の場所） */
+  const listEl = (field: ListField, basePath: Path = []): HTMLElement => {
     const wrap = node('div', 'ncf-field')
-    wrap.dataset['ncfList'] = field.key
-    const listPath: Path = [field.key]
-    const list = items(data, field.key)
+    const listKey = `l${(listSeq += 1)}`
+    wrap.dataset['ncfList'] = listKey
+    const listPath: Path = [...basePath, field.key]
+    const list = (getAt(data, listPath) as readonly ItemData[] | undefined) ?? []
     const head = node('div', 'ncf-listhead')
     head.append(node('span', 'ncf-label', field.label), node('span', 'ncf-count', `${list.length} / ${field.max}`))
     const box = node('div', 'ncf-list')
@@ -194,7 +197,7 @@ export function buildTemplateForm(options: {
       for (const sub of field.fields) {
         // 並びの中の並びは作らない（見本・押したときは「部品を積んで作る」の部品の中だけ）
         if (sub.kind === 'list' || sub.kind === 'screens' || sub.kind === 'sample' || sub.kind === 'goto') continue
-        item.append(fieldEl(sub, [field.key, index, sub.key], [field.key, index]))
+        item.append(fieldEl(sub, [...listPath, index, sub.key], [...listPath, index]))
       }
       box.append(item)
     })
@@ -202,7 +205,7 @@ export function buildTemplateForm(options: {
     const add = textButton(
       full ? `${field.itemLabel}は${field.max}つまでです` : `＋ ${field.itemLabel}を足す`,
       'ncf-add',
-      () => restructure(addAt(data, listPath, field.newItem(), field.max), `[data-ncf-list="${field.key}"] .ncf-item:last-of-type`),
+      () => restructure(addAt(data, listPath, field.newItem(), field.max), `[data-ncf-list="${listKey}"] .ncf-item:last-of-type`),
       !full,
     )
     wrap.append(head, box, add)
@@ -349,7 +352,12 @@ export function buildTemplateForm(options: {
           itemEl.append(pressFieldEl(field, screenIndex, itemPath, sub.label))
           continue
         }
-        if (sub.kind === 'list' || sub.kind === 'screens') continue
+        // 型の部品の中の並び（よくある質問の1問・口コミの1件など）も、そのまま足したり消したりできる
+        if (sub.kind === 'list') {
+          itemEl.append(listEl(sub, itemPath))
+          continue
+        }
+        if (sub.kind === 'screens') continue
         itemEl.append(fieldEl(sub, [...itemPath, sub.key], itemPath))
       }
       if (type.fields.some((f) => f.kind === 'goto')) itemEl.append(gotoEl(itemPath))
@@ -357,8 +365,10 @@ export function buildTemplateForm(options: {
     })
     const full = list.length >= field.blockMax
     const adder = node('div', 'ncf-adder')
-    adder.append(node('span', 'ncf-adder__label', full ? `部品は1画面に${field.blockMax}こまでです` : '部品を足す（いちばん下に入ります）'))
     const grid = node('div', 'ncf-adder__grid')
+    // 型の部品（まとまった部品）は、ふつうの部品と分けて並べる
+    const templateGrid = node('div', 'ncf-adder__grid')
+    adder.append(node('span', 'ncf-adder__label', full ? `部品は1画面に${field.blockMax}こまでです` : '部品を足す（いちばん下に入ります）'), grid)
     for (const type of field.types) {
       const focusNew = '[data-ncf-list="blocks"] .ncf-item:last-of-type'
       const add = (): void => {
@@ -387,9 +397,11 @@ export function buildTemplateForm(options: {
       const icon = node('span', 'ncf-adder__icon')
       icon.innerHTML = type.icon
       b.append(icon, node('span', '', type.label))
-      grid.append(b)
+      ;(isTemplateBlock(type.type) ? templateGrid : grid).append(b)
     }
-    adder.append(grid)
+    if (templateGrid.children.length > 0) {
+      adder.append(node('span', 'ncf-adder__label ncf-adder__label--tpl', '型を足す（中身は入力欄で直します）'), templateGrid)
+    }
     wrap.append(head, box, adder)
     return wrap
   }
@@ -490,6 +502,7 @@ export function buildTemplateForm(options: {
     const scroller = root.closest<HTMLElement>('.ncf-form')
     const scrollTop = scroller?.scrollTop ?? 0
     refreshers = []
+    listSeq = 0
     root.replaceChildren(
       ...options.fields.map((field) =>
         field.kind === 'list'

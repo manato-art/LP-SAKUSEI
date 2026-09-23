@@ -57,6 +57,8 @@ const ARROW = ARROW_SVG.replace('<svg ', '<svg class="nc-cta__arrow" ')
 
 export const CTA_TEMPLATE: NocodeTemplate = {
   id: 'cta',
+  // 押す所がボタン1つなので、部品にしたときは「押したとき」で画面②③…へ移せる
+  partPress: true,
   name: 'ボタン',
   summary: '申し込み・購入へ進むボタン。上下に一言を添えられます',
   icon:

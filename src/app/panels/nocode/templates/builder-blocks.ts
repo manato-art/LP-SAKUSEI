@@ -10,8 +10,9 @@
  * - 移る先は決まった形のid（s1, s2…）で、今ある画面だけ。入力の文字は属性にエスケープして入れる
  */
 import { ARROW_SVG, pressButtonCss } from './cta.ts'
-import { esc, inkOn, linkAttrs, safeColor, safeImage, safeVideo, shade, textHtml } from './kit.ts'
-import { ACCENT_PRESETS, bool, pick, str, type BlockType, type Field, type ItemData } from './types.ts'
+import { esc, inkOn, linkAttrs, newUid, safeColor, safeImage, safeVideo, shade, textHtml } from './kit.ts'
+import { TEMPLATES } from './list.ts'
+import { ACCENT_PRESETS, bool, pick, str, type BlockType, type Field, type ItemData, type NocodeTemplate } from './types.ts'
 
 /** 文字の色の候補（本文にも使えるよう、暗い色だけ） */
 const TEXT_PRESETS: readonly string[] = ['#1F2A37', '#B83A26', '#A8264F', '#155BB0', '#0B7A3E', '#8A6414']
@@ -261,8 +262,37 @@ export const BLOCK_TYPES: readonly BlockType[] = [
   },
 ]
 
+/**
+ * 型の部品（本人の決定 2026-09-23「同じ画面と部品に型が入る」）。
+ * 「型から作る」の型8種を、画面の中に1つの部品として置けるようにする。入力欄は型のものをそのまま使う。
+ * 中身は型と同じ形なので、この部品だけのWidgetの名前（uid）を持たせて、型の render にそのまま渡す。
+ */
+const TEMPLATE_PREFIX = 'tpl-'
+
+/** その部品の型（型の部品でなければ undefined） */
+export function templateOfBlock(type: string): NocodeTemplate | undefined {
+  return type.startsWith(TEMPLATE_PREFIX) ? TEMPLATES.find((t) => `${TEMPLATE_PREFIX}${t.id}` === type) : undefined
+}
+
+/** 型の部品かどうか（部品を足すところで、ふつうの部品と分けて並べる） */
+export function isTemplateBlock(type: string): boolean {
+  return templateOfBlock(type) !== undefined
+}
+
+const TEMPLATE_BLOCKS: readonly BlockType[] = TEMPLATES.map((template) => ({
+  type: `${TEMPLATE_PREFIX}${template.id}`,
+  label: template.name,
+  icon: template.icon,
+  // 押したときは、型の中の最初のボタン（リンク）に効かせる（ボタンの型など）
+  fields: template.partPress === true ? [...template.fields, ...actionFields()] : template.fields,
+  newItem: () => ({ type: `${TEMPLATE_PREFIX}${template.id}`, uid: newUid(), ...template.defaults(new Date()) }),
+}))
+
+/** 積める部品（ふつうの部品＋型の部品） */
+export const ALL_BLOCK_TYPES: readonly BlockType[] = [...BLOCK_TYPES, ...TEMPLATE_BLOCKS]
+
 export function blockLabel(type: string): string {
-  return BLOCK_TYPES.find((t) => t.type === type)?.label ?? '部品'
+  return ALL_BLOCK_TYPES.find((t) => t.type === type)?.label ?? '部品'
 }
 
 export function actionOf(item: ItemData): Action {
@@ -279,6 +309,15 @@ export function goTarget(item: ItemData, screenIds: ReadonlySet<string>): string
 function goAttrs(target: string | null, isControl: boolean): string {
   if (target === null) return ''
   return ` data-nc-go="${target}"${isControl ? '' : ' role="button" tabindex="0"'}`
+}
+
+/**
+ * 型の部品で「画面へ移る」を選んだとき、型が書き出したHTMLの最初のリンクに移る先を付ける
+ * （ボタンの型など、押す所が1つの型だけ。リンクが無ければ何もしない）。
+ */
+function withGoIn(html: string, target: string | null): string {
+  if (target === null || !/<a\s/.test(html)) return html
+  return html.replace(/<a\s/, `<a data-nc-go="${target}" `)
 }
 
 /** リンクで包む（「リンクを開く」のとき） */
@@ -434,7 +473,13 @@ export function renderBlock(
     case 'sample':
       // ライブラリの見本（採取した見本のHTML。style・script ごとそのまま）。中身は入力の画面で直してある
       return { html: `<div class="nc-b nc-b-sample ${cls}">${dedupeSampleAssets(str(item, 'html'), seen)}</div>`, css: '' }
-    default:
-      return { html: '', css: '' }
+    default: {
+      // 型の部品（型が自分でHTMLとCSSを書き出す。この部品だけのWidgetの名前で、ほかの型とまざらない）
+      const template = templateOfBlock(str(item, 'type'))
+      if (template === undefined) return { html: '', css: '' }
+      const sub = /^nc-[a-z0-9]{8}$/.test(str(item, 'uid')) ? str(item, 'uid') : `${s.slice(1)}t${i}`
+      const inner = template.render(item, sub)
+      return { html: `<div class="nc-b nc-b-tpl ${cls}">${withGoIn(inner, target)}</div>`, css: '' }
+    }
   }
 }

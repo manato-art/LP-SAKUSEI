@@ -85,6 +85,11 @@ export interface BlockType {
 
 export interface NocodeTemplate {
   readonly id: string
+  /**
+   * 「部品を積んで作る」の部品にしたとき、「押したとき」（画面②③…へ移る）を選べるか。
+   * 押す所が1つに決まっている型（ボタンなど）だけ true。書き出したHTMLの最初のリンクに効く
+   */
+  readonly partPress?: boolean
   /** 一覧に出す名前（「よくある質問」） */
   readonly name: string
   /** 一覧に出す一言 */
