@@ -33,7 +33,11 @@ interface Pressable {
 }
 
 export type Slot =
-  | { readonly kind: 'text'; readonly id: string; readonly text: string; readonly step: number | null }
+  /**
+   * line: その文字がのっている行（いちばん近い、文の中の飾りではない要素＝見出し・段落など）の番号。無ければ -1。
+   * 飾り（色・太字の span など）で区切られた同じ行のかけらは、同じ line になる（入力欄で横に並べるのに使う）
+   */
+  | { readonly kind: 'text'; readonly id: string; readonly text: string; readonly step: number | null; readonly line: number }
   /** inControl: ボタンの中の画像（画像のボタン）。押したときはボタンの方で決める */
   | (Pressable & { readonly kind: 'image'; readonly src: string; readonly alt: string; readonly inControl: boolean })
   | (Pressable & { readonly kind: 'video'; readonly src: string; readonly inControl: boolean })
@@ -79,12 +83,20 @@ export function elementsInOrder(root: SlotNode): SlotNode[] {
 export function sampleSlots(root: SlotNode, steps: readonly SlotNode[]): Slot[] {
   const index = new Map(elementsInOrder(root).map((node, i) => [node, i]))
   const slots: Slot[] = []
-  const walk = (node: SlotNode, parentIndex: number, inControl: boolean, step: number | null, inScreens: boolean, inBox: boolean): void => {
+  const walk = (
+    node: SlotNode,
+    parentIndex: number,
+    inControl: boolean,
+    step: number | null,
+    inScreens: boolean,
+    inBox: boolean,
+    line: number,
+  ): void => {
     const boxes = inControl || inBox ? new Set<SlotNode>() : boxesAmong(node, steps)
     Array.from(node.childNodes).forEach((child, ordinal) => {
       if (!isElement(child)) {
         const text = tidy(child.textContent ?? '')
-        if (child.nodeType === 3 && text !== '' && !inControl) slots.push({ kind: 'text', id: `t${parentIndex}.${ordinal}`, text, step })
+        if (child.nodeType === 3 && text !== '' && !inControl) slots.push({ kind: 'text', id: `t${parentIndex}.${ordinal}`, text, step, line })
         return
       }
       const tag = tagOf(child)
@@ -110,10 +122,12 @@ export function sampleSlots(root: SlotNode, steps: readonly SlotNode[]): Slot[] 
           href: tag === 'A' ? attr('href') : null,
         })
       }
-      walk(child, i, inControl || isControl, childStep, inScreens || isScreensRoot(child), inBox || isBox)
+      // 文の中の飾り（span・b など）は同じ行のまま。それ以外の要素（見出し・段落・箱）から新しい行
+      const childLine = INLINE_TAGS.has(tag) ? line : i
+      walk(child, i, inControl || isControl, childStep, inScreens || isScreensRoot(child), inBox || isBox, childLine)
     })
   }
-  walk(root, -1, false, null, false, false)
+  walk(root, -1, false, null, false, false, -1)
   return slots
 }
 

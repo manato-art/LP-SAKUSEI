@@ -244,13 +244,63 @@ function renderBody(body: HTMLElement, info: SampleInfo, options: SampleEditorOp
   let lastGroup: string | null = null
   // 囲みは同じ文字のことが多いので、上から順に番号を付ける（見え方のどれか分かるように）
   let boxNo = 0
+  /**
+   * 続いた文字の欄のまとまり。「文字」の見出しはまとまりに1回だけ付ける（2026-09-24・本人
+   * 「毎回『文字』と書かれていると行が多くなって直感的でない」）。
+   * 同じ行（同じ見出し・段落）のかけら（色や太字で区切られたもの）は横に並べて、1つの文だと分かるようにする
+   */
+  let textRun: HTMLElement | null = null
+  let lineRow: HTMLElement | null = null
+  let lineNo: number | null = null
   for (const slot of shown) {
     const group = steps.length === 0 ? '' : slot.step === null ? '共通の部分' : `${stepLabel(active)}の中身`
-    if (group !== '' && group !== lastGroup) body.append(node('p', 'ncf-sample__group', group))
+    if (group !== '' && group !== lastGroup) {
+      body.append(node('p', 'ncf-sample__group', group))
+      textRun = null
+    }
     lastGroup = group
+    if (slot.kind === 'text') {
+      if (textRun === null) {
+        textRun = node('div', 'ncf-sample__texts')
+        textRun.append(node('span', 'ncf-label', '文字'))
+        body.append(textRun)
+        lineRow = null
+      }
+      if (lineRow === null || lineNo !== slot.line) {
+        lineRow = node('div', 'ncf-sample__line')
+        textRun.append(lineRow)
+        lineNo = slot.line
+      }
+      lineRow.append(textPiece(slot, apply))
+      continue
+    }
+    textRun = null
+    lineRow = null
     if (slot.kind === 'box') boxNo += 1
     body.append(slotEl(slot, apply, options, htmlWithGo, boxNo))
   }
+}
+
+/** この長さを超える文字は、複数行の欄にして行いっぱいに使う */
+const LONG_TEXT = 24
+
+/** 文字1かけらの欄（見出しは付けない。同じ行のかけらと横に並ぶ） */
+function textPiece(slot: Extract<Slot, { kind: 'text' }>, apply: (id: string, change: SampleChange) => void): HTMLElement {
+  const long = slot.text.length > LONG_TEXT
+  const input = node(long ? 'textarea' : 'input', long ? 'ncf-input ncf-sample__piece ncf-sample__piece--long' : 'ncf-input ncf-sample__piece') as
+    | HTMLInputElement
+    | HTMLTextAreaElement
+  if (input instanceof HTMLTextAreaElement) {
+    input.rows = Math.min(6, Math.ceil(slot.text.length / 30) + 1)
+  } else {
+    // 欄の幅は中身の長さなり（全角は2つ分に数える）。同じ行の残りは伸びて埋める
+    const width = Array.from(slot.text).reduce((sum, ch) => sum + (ch.charCodeAt(0) > 0xff ? 2 : 1), 0)
+    input.size = Math.min(40, Math.max(4, width + 1))
+  }
+  input.value = slot.text
+  input.setAttribute('aria-label', `文字「${Array.from(slot.text).slice(0, 12).join('')}」`)
+  input.addEventListener('input', () => apply(slot.id, { kind: 'text', value: input.value }))
+  return input
 }
 
 type PressSlot = Exclude<Slot, { kind: 'text' }>
@@ -309,15 +359,10 @@ function slotEl(
     if (!target.internal && !inControl) row.append(pressRow(target, noneLabel, apply, options, htmlWithGo, onPicked))
   }
   switch (slot.kind) {
-    case 'text': {
-      const long = slot.text.length > 24
-      const input = node(long ? 'textarea' : 'input', 'ncf-input') as HTMLInputElement | HTMLTextAreaElement
-      if (input instanceof HTMLTextAreaElement) input.rows = Math.min(6, Math.ceil(slot.text.length / 26) + 1)
-      input.value = slot.text
-      input.addEventListener('input', () => apply(slot.id, { kind: 'text', value: input.value }))
-      row.append(labeled('文字', input))
+    case 'text':
+      // 文字はまとめて並べる（renderBody）。ここへは来ないが、来ても1かけらの欄を出す
+      row.append(textPiece(slot, apply))
       break
-    }
     case 'image': {
       const box = node('div', 'ncf-image')
       const thumb = node('img', 'ncf-image__thumb')

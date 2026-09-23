@@ -155,6 +155,13 @@ textarea.ncf-input{resize:vertical;min-height:64px}
 .ncf-sample__code{display:flex;flex-direction:column;gap:10px;margin-top:8px}
 .ncf-sample__code>*{height:220px;border-radius:6px;overflow:hidden}
 .ncf-sample .ncf-fold{margin-top:14px}
+/* 見本の部品の文字: 「文字」はまとまりに1回。同じ行のかけらは横に並べる（2026-09-24） */
+.ncf-sample__texts{display:flex;flex-direction:column;gap:6px;padding:10px 0 12px;border-top:1px dashed var(--sb-line,#DDD)}
+.ncf-sample__texts>.ncf-label{margin:0 0 2px}
+.ncf-sample__line{display:flex;flex-wrap:wrap;gap:6px}
+.ncf-sample__line+.ncf-sample__line{margin-top:2px}
+.ncf-input.ncf-sample__piece{flex:1 1 auto;width:auto;min-width:64px;padding:7px 10px;font-size:13.5px}
+.ncf-input.ncf-sample__piece--long{flex-basis:100%;min-height:0;resize:vertical}
 /* 白紙のときの「何から作りますか？」（以前の「型から作る」の一覧と同じ .ncf-picker） */
 .ncf-start{margin:0 0 18px}
 .ncf-start__title{margin:4px 0 2px;font-size:15px;font-weight:700}

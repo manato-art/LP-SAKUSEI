@@ -89,6 +89,19 @@ describe('見本の中身の一覧', () => {
     ])
   })
 
+  it('飾り（色の span・太字）で区切られた同じ見出しのかけらは、同じ行（line）になる。別の段落は別の行', () => {
+    const root = el('DIV', {}, [
+      el('H2', {}, [text('請求も'), el('SPAN', { style: 'color:red' }, [text('ひとつ')]), el('B', {}, [text('で')]), text('まとめて')]),
+      el('P', {}, [text('従業員30名')]),
+      el('DIV', {}, [el('P', {}, [text('96%')]), el('P', {}, [text('満足度')])]),
+    ])
+    const texts = sampleSlots(root, []).filter((s) => s.kind === 'text')
+    expect(texts.map((s) => (s.kind === 'text' ? s.text : ''))).toEqual(['請求も', 'ひとつ', 'で', 'まとめて', '従業員30名', '96%', '満足度'])
+    const lines = texts.map((s) => (s.kind === 'text' ? s.line : NaN))
+    expect(new Set(lines.slice(0, 4)).size).toBe(1)
+    expect(new Set(lines).size).toBe(4)
+  })
+
   it('ボタンはリンク先と、押したら移る先（data-nc-go）も持つ', () => {
     const { root } = survey()
     const [red, blue] = sampleSlots(root, []).filter((s) => s.kind === 'control')
