@@ -25,7 +25,7 @@ import {
   type WidgetEditTarget,
 } from './widget-editor-theme.ts'
 import { closeMediaControl } from './widget-media-control.ts'
-import { buildCodePanels } from './widget-code-panel.ts'
+import { RIGHT_PANE_FLEX, buildCodePanels } from './widget-code-panel.ts'
 import { buildDesignPanel } from './widget-design-panel.ts'
 import { widgetResetCss } from '../../shared/sb-preview-css.ts'
 import { scopeWidgetCss } from './widget-style-scope.ts'
@@ -165,23 +165,20 @@ function openWidgetEditor(quill: Quill, target: WidgetEditTarget): void {
     closeWidgetPanel(existingEditor as HTMLElement)
   }
 
-  // 本番と同じモーダルカード: キャンバスの前面に浮かぶフローティングカード
+  // 画面いっぱい（本人の指示 2026-09-23「カードではなく画面全体で大きく・別ページみたいに」）。
+  // 浮かぶカード（中央・最大1280×720・角丸・影）だと、見え方も直すところも小さく、
+  // 後ろのLPが透けて別画面に見えなかった。閉じるのはヘッダーの「閉じる」から
   const panel = document.createElement('div')
   panel.dataset['widgetEditor'] = 'true'
   panel.style.cssText =
-    `position:fixed;top:50%;left:calc(60px + 50%);z-index:200;` +
-    `transform:translate(-50%,-50%);` +
-    `width:min(94vw, 1280px);height:min(82vh, 720px);` +
+    `position:fixed;inset:0;z-index:200;` +
     `display:flex;flex-direction:column;background:#fff;` +
-    `overflow:hidden;font-family:${FONT};border-radius:12px;` +
-    `box-shadow:0 8px 40px rgba(0,0,0,.18),0 0 0 1px rgba(0,0,0,.06)`
+    `overflow:hidden;font-family:${FONT}`
 
-  // 背景オーバーレイ（半透明の暗幕）
+  // 後ろのLPを触らせない下敷き（画面いっぱいのパネルの下に敷くだけで、見た目には出ない）
   const backdrop = document.createElement('div')
   backdrop.dataset['widgetBackdrop'] = 'true'
-  backdrop.style.cssText =
-    `position:fixed;inset:0;z-index:199;background:rgba(0,0,0,.25)`
-  backdrop.addEventListener('click', () => closeWidgetPanel(panel))
+  backdrop.style.cssText = `position:fixed;inset:0;z-index:199;background:#FFFFFF`
   document.body.append(backdrop, panel)
 
   /* ── ヘッダー ── */
@@ -226,6 +223,8 @@ function openWidgetEditor(quill: Quill, target: WidgetEditTarget): void {
       const codeOnly = view === 'code'
       leftPane.style.display = codeOnly ? 'none' : leftDisplay
       divider.style.display = codeOnly ? 'none' : dividerDisplay
+      // コードだけのときは右が全幅（ふだんは決まった幅で、余った所は見え方に回す）
+      rightPane.style.flex = codeOnly ? '1 1 auto' : RIGHT_PANE_FLEX
     },
     design,
     // プレビューの見た目だけを作り直す（textarea の中身＝保存するCSSはそのまま）
@@ -237,7 +236,7 @@ function openWidgetEditor(quill: Quill, target: WidgetEditTarget): void {
   darkContainer.append(leftPane, divider, rightPane)
 
   // 仕切りをドラッグして左右ペインのサイズを調整できるようにする（要望）
-  wireDividerResize(divider, leftPane, darkContainer)
+  wireDividerResize(divider, rightPane, darkContainer)
 
   // ビジュアルエディタ → コードパネルの同期（入力イベントで反映）。
   // ※ textarea はまだ panel に append される前なので、panel からではなく
@@ -267,22 +266,23 @@ function openWidgetEditor(quill: Quill, target: WidgetEditTarget): void {
 }
 
 /**
- * 仕切り（col-resize）のドラッグで左ペイン(ビジュアル)と右ペイン(コード)の幅を変える。
- * 左ペインに固定幅(px)を与え、右ペインは flex:1 のまま残り幅を埋める。左右とも最小幅を確保。
+ * 仕切り（col-resize）のドラッグで左ペイン(見え方)と右ペイン(要素ごとに編集・コード)の幅を変える。
+ * 画面いっぱいになったので、**右ペインに幅(px)を与え、左ペインが残り全部**を埋める
+ * （右を固定幅にしたまま左を固定すると、広い画面で真ん中に隙間が空くため）。左右とも最小幅を確保。
  */
-function wireDividerResize(divider: HTMLElement, leftPane: HTMLElement, container: HTMLElement): void {
-  const MIN = 220
+function wireDividerResize(divider: HTMLElement, rightPane: HTMLElement, container: HTMLElement): void {
+  const MIN = 280
+  const pane = rightPane
   let startX = 0
-  let startLeftW = 0
+  let startRightW = 0
   const onMove = (e: MouseEvent): void => {
     e.preventDefault()
     const total = container.clientWidth
-    const dividerW = divider.offsetWidth
-    const max = total - dividerW - MIN
-    let next = startLeftW + (e.clientX - startX)
+    const max = total - divider.offsetWidth - MIN
+    let next = startRightW - (e.clientX - startX)
     if (next < MIN) next = MIN
     if (next > max) next = max
-    leftPane.style.flex = `0 0 ${next}px`
+    pane.style.flex = `0 0 ${next}px`
   }
   const onUp = (): void => {
     document.removeEventListener('mousemove', onMove)
@@ -292,7 +292,7 @@ function wireDividerResize(divider: HTMLElement, leftPane: HTMLElement, containe
   divider.addEventListener('mousedown', (e) => {
     e.preventDefault()
     startX = e.clientX
-    startLeftW = leftPane.getBoundingClientRect().width
+    startRightW = pane.getBoundingClientRect().width
     document.body.style.userSelect = 'none'
     document.addEventListener('mousemove', onMove)
     document.addEventListener('mouseup', onUp)

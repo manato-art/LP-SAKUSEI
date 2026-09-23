@@ -28,11 +28,18 @@ export interface CodePanelOptions {
   /** CSS欄が書き換えられたとき（手入力でも「要素ごとに編集」からでも）。プレビューへ流す */
   readonly onCssInput?: (css: string) => void
 }
+/**
+ * 右ペイン（要素ごとに編集・コード）の既定の幅。画面いっぱいになったので、
+ * 右は読みやすい幅で止め、余った所は左（見え方）に回す（本人の指示 2026-09-23）。
+ * 仕切りのドラッグで変えられる。「コードだけ」を選んだときは全幅（widget-editor.ts）。
+ */
+export const RIGHT_PANE_FLEX = '0 0 560px'
+
 
 export function buildCodePanels(target: WidgetEditTarget, options: CodePanelOptions = {}): HTMLElement {
   const { onViewChange, design, onCssInput } = options
   const pane = document.createElement('div')
-  pane.style.cssText = `flex:1;display:flex;flex-direction:column;min-width:0`
+  pane.style.cssText = `flex:${RIGHT_PANE_FLEX};display:flex;flex-direction:column;min-width:0`
 
   // 「デフォルト時のコードを表示」トグル行 + ビューアイコン
   const toggleRow = document.createElement('div')

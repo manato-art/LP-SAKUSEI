@@ -43,8 +43,9 @@ export function buildVisualEditor(target: WidgetEditTarget): {
   setPreviewCss: (css: string) => void
 } {
   const pane = document.createElement('div')
-  // 既定幅は 620px プレビュー＋左右padding(20px) が収まる 660px（仕切りドラッグで変更可）。
-  pane.style.cssText = `flex:0 0 660px;display:flex;flex-direction:column;min-width:0`
+  // 620px プレビュー＋左右padding(20px)＝660px を下回らないよう min-width を置く（仕切りドラッグで変更可）。
+  // 画面いっぱいになったので、左（見え方）が残り全部を取る。620pxのプレビューは中央に置かれる
+  pane.style.cssText = `flex:1 1 auto;display:flex;flex-direction:column;min-width:560px`
 
   // ── ツールバー（本番実測: 1行 flex-wrap, height:64px, 20項目, 1px×16pxセパレータ） ──
   const toolbar = document.createElement('div')

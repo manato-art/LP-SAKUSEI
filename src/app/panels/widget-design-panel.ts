@@ -483,9 +483,11 @@ function injectStyles(): void {
   const s = document.createElement('style')
   s.id = 'wdp-css'
   s.textContent = `
+    /* 画面いっぱいの「コード表示」では右が全幅になるので、カードは読みやすい幅で止めて真ん中に置く */
     .wdp-root{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;
       background:#f5f6f8;padding:16px 16px 24px;box-sizing:border-box;
       font-family:${T.font};color:${T.text}}
+    .wdp-root>*{width:100%;max-width:900px;margin-left:auto;margin-right:auto;box-sizing:border-box}
     .wdp-title{font-size:14px;font-weight:600;margin-bottom:6px}
     ${designCardCss()}
     .wdp-group{font-size:11px;font-weight:600;color:${T.sub};letter-spacing:.04em;
