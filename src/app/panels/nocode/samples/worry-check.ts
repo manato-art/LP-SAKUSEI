@@ -25,6 +25,7 @@ const worry = (text: string): string => `<li class="w-item">${CHECK}<span>${text
 
 export const WORRY_CHECK_SAMPLE: NewSample = {
   id: 'worry-check',
+  category: '悩み・共感',
   name: 'お悩みチェック（4つ）',
   summary: '「こんなことで困っていませんか？」を並べて、自分ごとにしてもらう区画',
   html: sampleHtml({

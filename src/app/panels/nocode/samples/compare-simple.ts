@@ -39,6 +39,7 @@ const row = (label: string, mine: readonly [string, string, string], other: read
 
 export const COMPARE_SIMPLE_SAMPLE: NewSample = {
   id: 'compare-simple',
+  category: '比較・違い',
   name: 'かんたん比較表（2列・5項目）',
   summary: '自社と一般的なサービスを◎○△×で比べます。狭い画面でも読める形',
   html: sampleHtml({

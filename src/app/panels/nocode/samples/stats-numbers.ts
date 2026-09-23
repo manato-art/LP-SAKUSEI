@@ -38,6 +38,7 @@ const item = (value: string, unit: string, label: string): string =>
 
 export const STATS_NUMBERS_SAMPLE: NewSample = {
   id: 'stats-numbers',
+  category: '信頼・実績',
   name: '数字で見せる実績（3つ）',
   summary: '満足度・導入数・評価などを3つ並べます。箱で囲まず、数字の大きさだけで見せます',
   html: sampleHtml({

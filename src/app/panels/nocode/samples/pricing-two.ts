@@ -40,6 +40,7 @@ const feat = (text: string): string => `<li class="r-feat">${CHECK}<span>${text}
 
 export const PRICING_TWO_SAMPLE: NewSample = {
   id: 'pricing-two',
+  category: '料金・プラン',
   name: '料金（2プラン・おすすめつき）',
   summary: 'おすすめの方だけ淡い地にして選びやすく。含まれるものと申し込みボタンつき',
   html: sampleHtml({

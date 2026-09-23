@@ -24,6 +24,7 @@ const link = (text: string): string => `<a class="o-link" href="ooooo">${text}</
 
 export const FOOTER_INFO_SAMPLE: NewSample = {
   id: 'footer-info',
+  category: 'フッター・注意書き',
   name: 'フッター（会社情報とリンク）',
   summary: '特定商取引法に基づく表記・プライバシーポリシー・お問い合わせの3つを最初から用意',
   html: sampleHtml({

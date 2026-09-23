@@ -26,6 +26,7 @@ const point = (no: string, title: string, text: string): string =>
 
 export const THREE_POINTS_SAMPLE: NewSample = {
   id: 'three-points',
+  category: '特徴・価値',
   name: '3つの特徴（番号つき）',
   summary: '選ばれる理由を3つ。番号を薄く大きく敷いて、見出しと説明を読ませます',
   html: sampleHtml({

@@ -29,6 +29,7 @@ const voice = (rating: number, title: string, text: string, who: string): string
 
 export const VOICES_THREE_SAMPLE: NewSample = {
   id: 'voices-three',
+  category: '信頼・実績',
   name: 'お客様の声（3件）',
   summary: '星・ひとこと・本文・お名前。箱で囲まず、細い線で区切って読ませます',
   html: sampleHtml({

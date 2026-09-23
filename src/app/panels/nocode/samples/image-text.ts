@@ -30,6 +30,7 @@ const row = (side: 'left' | 'right', step: string, title: string, text: string, 
 
 export const IMAGE_TEXT_SAMPLE: NewSample = {
   id: 'image-text',
+  category: '説明・使い方',
   name: '画像と文章（左右交互・2件）',
   summary: '写真と短い説明を左右交互に。狭い画面では画像が上、文章が下になります',
   html: sampleHtml({

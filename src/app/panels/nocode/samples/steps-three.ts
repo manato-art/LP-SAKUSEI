@@ -32,6 +32,7 @@ const step = (no: number, title: string, text: string, when: string): string =>
 
 export const STEPS_THREE_SAMPLE: NewSample = {
   id: 'steps-three',
+  category: '説明・使い方',
   name: 'ご利用の流れ（3ステップ）',
   summary: '申し込みから使い始めるまでを3つに。番号の丸と縦線でつなぎます',
   html: sampleHtml({

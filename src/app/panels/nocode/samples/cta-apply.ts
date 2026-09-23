@@ -41,6 +41,7 @@ const point = (text: string): string => `<li class="c-point">${CHECK}<span>${tex
 
 export const CTA_APPLY_SAMPLE: NewSample = {
   id: 'cta-apply',
+  category: '申し込み・CTA',
   name: '申し込みボタン（安心材料つき）',
   summary: '今だけの一言＋大きなボタン＋押す前の不安を消す3行。リンク先はあとから入れられます',
   html: sampleHtml({

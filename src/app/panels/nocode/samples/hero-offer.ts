@@ -36,6 +36,7 @@ const CSS =
 
 export const HERO_OFFER_SAMPLE: NewSample = {
   id: 'hero-offer',
+  category: '冒頭・つかみ',
   name: 'ファーストビュー（見出し＋ボタン＋画像）',
   summary: 'LPのいちばん上。言い切りの見出し・ボタン・信頼の一行・画像がひとそろい',
   html: sampleHtml({

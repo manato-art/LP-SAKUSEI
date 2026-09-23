@@ -35,6 +35,7 @@ const qa = (question: string, answer: string, open = false): string =>
 
 export const FAQ_OPEN_SAMPLE: NewSample = {
   id: 'faq-open',
+  category: 'よくある質問',
   name: 'よくある質問（5問・押すと開く）',
   summary: '押すと答えが開きます。スクリプトを使わないので、どの環境でも動きます',
   html: sampleHtml({

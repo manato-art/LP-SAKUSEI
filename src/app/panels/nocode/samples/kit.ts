@@ -75,10 +75,36 @@ export function head(title: string, lead = ''): string {
 export const IMAGE_PLACEHOLDER =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='180'%3E%3Crect width='100%25' height='100%25' fill='%23ededed'/%3E%3Ctext x='50%25' y='50%25' fill='%23a8a8a8' font-family='sans-serif' font-size='15' text-anchor='middle' dominant-baseline='middle'%3E画像%3C/text%3E%3C/svg%3E"
 
+/**
+ * 見本の分け方（ライブラリの左の一覧に出る順）。
+ * 100種まで増やす前提なので、1つの画面に全部は出さず、ここで選んで絞る（2026-09-23・本人の依頼）。
+ * 並びはLPの上から下＋道具類。
+ */
+export const SAMPLE_CATEGORIES = [
+  '冒頭・つかみ',
+  '悩み・共感',
+  '特徴・価値',
+  '説明・使い方',
+  '信頼・実績',
+  '比較・違い',
+  '料金・プラン',
+  '申し込み・CTA',
+  'よくある質問',
+  'アンケート・診断',
+  '限定・急ぎ',
+  '文章・区切り',
+  '画像・動画',
+  'フッター・注意書き',
+] as const
+
+export type SampleCategory = (typeof SAMPLE_CATEGORIES)[number]
+
 /** 見本1つ（ライブラリのカードに出す） */
 export interface NewSample {
   /** 種類の名前（英小文字とハイフン）。カードの並び順はこの一覧の順 */
   readonly id: string
+  /** 左の一覧のどこに出すか */
+  readonly category: SampleCategory
   /** カードに出す名前 */
   readonly name: string
   /** カードの下に出す一言 */

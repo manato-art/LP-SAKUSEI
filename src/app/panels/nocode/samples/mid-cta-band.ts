@@ -29,6 +29,7 @@ const CSS =
 
 export const MID_CTA_BAND_SAMPLE: NewSample = {
   id: 'mid-cta-band',
+  category: '申し込み・CTA',
   name: '途中のひと押し（細い帯）',
   summary: 'LPの途中に挟む短いCTA。背が低いので、読んでいる流れを止めません',
   html: sampleHtml({

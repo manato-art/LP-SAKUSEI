@@ -31,7 +31,7 @@ import {
 } from './widget-library-storage.ts'
 import { insertWidget, openWidgetCreator } from './widget-creator.ts'
 import { openNocodePanel } from './nocode/nocode-panel.ts'
-import { NEW_SAMPLES, type NewSample } from './nocode/samples/index.ts'
+import { NEW_SAMPLES, SAMPLE_CATEGORIES, type NewSample, type SampleCategory } from './nocode/samples/index.ts'
 import { startBuilderWithSample } from './nocode/template-tab.ts'
 import { cancelSamplePick, isSamplePickArmed, takeSamplePick } from './nocode/nocode-flow.ts'
 import { newUid, rekeyUid } from './nocode/templates/kit.ts'
@@ -202,6 +202,21 @@ function patchPortalLayout(root: HTMLElement, quill: Quill, close: () => void): 
     const createdBtn = createCategoryButton('作成したWidget')
     createdBtn.dataset['catIndex'] = String(CREATED_CAT)
     categories[1]!.after(createdBtn) // お気に入りの直後
+
+    /* ---- 5. 見本を種類でしぼるボタン（100種に増やすので、1画面に全部は出さない） ---- */
+    const sectionHeader = document.createElement('h6')
+    sectionHeader.textContent = '種類でしぼる'
+    sectionHeader.style.cssText =
+      'font:600 13px/1.4 "Hiragino Sans",sans-serif;color:#333;margin:16px 0 4px;padding:0 8px'
+    let after: HTMLElement = createdBtn
+    after.after(sectionHeader)
+    after = sectionHeader
+    for (const name of SAMPLE_CATEGORIES) {
+      const btn = createCategoryButton(name)
+      btn.dataset['sampleCategory'] = name
+      after.after(btn)
+      after = btn
+    }
   }
 
   /* ---- 6. 「+ Widgetを作成」ボタン挿入 ---- */
@@ -292,6 +307,12 @@ function wireCategories(root: HTMLElement, quill: Quill, close: () => void): voi
   for (const cat of categories) {
     cat.addEventListener('click', () => {
       activateCategory(categories, cat)
+      const sampleCategory = cat.dataset['sampleCategory']
+      if (sampleCategory !== undefined) {
+        // 見本を種類でしぼる
+        renderNewSamples(root, quill, close, sampleCategory as SampleCategory)
+        return
+      }
       const catIndex = Number(cat.dataset['catIndex'] ?? String(NEW_SAMPLES_CAT))
       if (catIndex === CREATED_CAT) {
         // 作成したWidget: localStorage の自作Widgetをカードで表示
@@ -344,10 +365,12 @@ function gridMessage(text: string): HTMLElement {
  * `.MuiCardActions-root` の「プレビュー」「追加」）にして、配線は `wireCards` にそのまま任せる
  * （「画面を作って使う」・部品への受け渡し・仮のリンクの知らせも同じ動きになる）。
  */
-function renderNewSamples(root: HTMLElement, quill: Quill, close: () => void): void {
+function renderNewSamples(root: HTMLElement, quill: Quill, close: () => void, category?: SampleCategory): void {
   const grid = root.querySelector<HTMLElement>(HOOK.grid)
   if (grid === null) return
-  grid.replaceChildren(...NEW_SAMPLES.map((sample) => newSampleCard(sample)))
+  const list = category === undefined ? NEW_SAMPLES : NEW_SAMPLES.filter((sample) => sample.category === category)
+  grid.replaceChildren(...list.map((sample) => newSampleCard(sample)))
+  if (list.length === 0) grid.append(gridMessage('この種類の見本はまだありません。'))
   wireCards(root, quill, close)
   applySearchFilter(root)
 }

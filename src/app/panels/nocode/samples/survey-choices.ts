@@ -71,6 +71,7 @@ const ask = (question: string, note: string): string =>
 
 export const SURVEY_CHOICES_SAMPLE: NewSample = {
   id: 'survey-choices',
+  category: 'アンケート・診断',
   name: '選んで進むアンケート（3問＋お礼）',
   summary: '選択肢を押すと次の設問へ瞬時に切り替わります。最後はお礼と申し込みボタン',
   html: sampleHtml({
