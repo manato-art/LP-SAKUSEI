@@ -1,44 +1,19 @@
 /**
- * Widget編集オーバーレイ（本番 SquadBeyond の Widget 編集 UI の再現）。
+ * Widget編集への入口（本番 SquadBeyond の Widget 編集 UI の再現）。
  *
- * エディタ上の Widget（SbWidgetBlot）をクリックすると開くインラインパネル。
- * 本番の実測色:
- *   - 全体コンテナ背景: #2B2B2B (rgb(43,43,43))
- *   - コードパネル背景: #151515 (rgb(21,21,21))
- *   - ラベル文字色: #fff
- *   - 構文ハイライト: Material Theme 系
- *   - ブランドカラー: var(--sb-accent, #0091FF) (rgb(0,145,255))
+ * エディタ上の Widget（SbWidgetBlot）をクリックすると開く。画面そのものは widget-studio.ts
+ * （2026-09-23 に「ノーコードで作る」と1つにした。部品で作ったWidgetは部品として、それ以外はHTMLとして直す）。
+ * ここに残るのは、キャンバス側の配線: クリックで開く・Widget CSS のスコープ補正・Widget の位置（index/length）。
  */
 import type Quill from 'quill'
-import { toast } from '../ui.ts'
-import { promptCard } from '../dialog.ts'
-import { saveCreatedWidget } from './widget-library-storage.ts'
-import { defaultRegisterName } from './nocode/nocode-flow.ts'
-import { templateById } from './nocode/templates/index.ts'
-import {    loadGoogleFonts } from './toolbar/text-format.ts'
-import {
-  svgPlus,
-} from './widget-editor-icons.ts'
-import {
-  COLOR,
-  FONT,
-  type WidgetEditTarget,
-} from './widget-editor-theme.ts'
-import { closeMediaControl } from './widget-media-control.ts'
-import { RIGHT_PANE_FLEX, buildCodePanels } from './widget-code-panel.ts'
-import { buildDesignPanel } from './widget-design-panel.ts'
+import { COLOR, type WidgetEditTarget } from './widget-editor-theme.ts'
 import { widgetResetCss } from '../../shared/sb-preview-css.ts'
 import { scopeWidgetCss } from './widget-style-scope.ts'
-import { buildVisualEditor } from './widget-visual-editor.ts'
 import { widgetSelectionCss } from './widget-canvas-css.ts'
+import { extractCss, extractHtml } from './widget-editor-html.ts'
+import { openWidgetStudio } from './widget-studio.ts'
 
-/* ================================================================
- *  定数
- * ================================================================ */
-
-
-
-
+export { guessWidgetName } from './widget-editor-html.ts'
 
 /* ================================================================
  *  Widget 選択 CSS（一度だけ注入）
@@ -58,7 +33,6 @@ function injectSelectionCss(): void {
 /* ================================================================
  *  公開 API
  * ================================================================ */
-
 
 /**
  * Quill エディタ上の Widget ブロットにクリックハンドラを配線する。
@@ -87,17 +61,7 @@ export function wireWidgetClick(root: HTMLElement, quill: Quill): void {
 
     event.preventDefault()
     event.stopPropagation()
-
-    const blotIndex = getBlotIndex(quill, widgetBlock)
-    if (blotIndex === null) return
-
-    openWidgetEditor(quill, {
-      node: widgetBlock,
-      html: extractHtml(widgetBlock),
-      css: extractCss(widgetBlock),
-      index: blotIndex.index,
-      length: blotIndex.length,
-    })
+    openWidgetEditorForNode(quill, widgetBlock)
   })
 }
 
@@ -153,332 +117,6 @@ function refreshWidgetCanvasCss(editor: HTMLElement): void {
 }
 
 /* ================================================================
- *  Widget 編集オーバーレイ本体
- * ================================================================ */
-
-function openWidgetEditor(quill: Quill, target: WidgetEditTarget): void {
-  // 指示158: フォント選択で確実に見た目が変わるよう、日本語Webフォントを読み込んでおく。
-  loadGoogleFonts()
-  // 既存の Widget エディタがあれば閉じる
-  const existingEditor = document.querySelector('[data-widget-editor]')
-  if (existingEditor !== null) {
-    closeWidgetPanel(existingEditor as HTMLElement)
-  }
-
-  // 画面いっぱい（本人の指示 2026-09-23「カードではなく画面全体で大きく・別ページみたいに」）。
-  // 浮かぶカード（中央・最大1280×720・角丸・影）だと、見え方も直すところも小さく、
-  // 後ろのLPが透けて別画面に見えなかった。閉じるのはヘッダーの「閉じる」から
-  const panel = document.createElement('div')
-  panel.dataset['widgetEditor'] = 'true'
-  panel.style.cssText =
-    `position:fixed;inset:0;z-index:200;` +
-    `display:flex;flex-direction:column;background:#fff;` +
-    `overflow:hidden;font-family:${FONT}`
-
-  // 後ろのLPを触らせない下敷き（画面いっぱいのパネルの下に敷くだけで、見た目には出ない）
-  const backdrop = document.createElement('div')
-  backdrop.dataset['widgetBackdrop'] = 'true'
-  backdrop.style.cssText = `position:fixed;inset:0;z-index:199;background:#FFFFFF`
-  document.body.append(backdrop, panel)
-
-  /* ── ヘッダー ── */
-  const header = buildHeader(panel, quill, target)
-
-  /* ── ダークコンテナ（2ペイン） ── */
-  const darkContainer = document.createElement('div')
-  darkContainer.dataset['widgetPanes'] = 'true'
-  darkContainer.style.cssText =
-    `flex:1;display:flex;background:${COLOR.container};overflow:hidden;min-height:0`
-
-  // 左: ビジュアルエディタ
-  const { pane: leftPane, contentDiv, setPreviewCss } = buildVisualEditor(target)
-  leftPane.dataset['widgetPane'] = 'visual'
-
-  // 仕切り（本番実測: ~10px幅, cursor:col-resize, 中身は空＝ドットなし）
-  const divider = document.createElement('div')
-  divider.dataset['widgetDivider'] = 'true'
-  divider.style.cssText =
-    `width:10px;background:${COLOR.container};cursor:col-resize;flex-shrink:0;` +
-    `display:flex;align-items:center;justify-content:center`
-
-  // 右: 普段は「要素ごとに編集」、「デフォルト時のコードを表示」で今のHTML/CSS（本人指定）。
-  // CSS の正本はコード欄の textarea（「更新する」もそこから保存する）。カードからの変更も
-  // textarea へ書いて input を投げるので、色付け・行番号・プレビューの style まで同じ道で更新される。
-  let cssArea: HTMLTextAreaElement | null = null
-  const design = buildDesignPanel({
-    content: contentDiv,
-    readCss: () => cssArea?.value ?? target.css,
-    writeCss: (css) => {
-      if (cssArea === null) return
-      cssArea.value = css
-      cssArea.dispatchEvent(new Event('input'))
-    },
-  })
-  // 「コード表示」を選んだら左ペインと仕切りを畳んで全幅にする（指示183）。
-  // display を空文字に戻すと cssText 側の display:flex ごと消えるので、元の値を控えておく。
-  const leftDisplay = leftPane.style.display
-  const dividerDisplay = divider.style.display
-  const rightPane = buildCodePanels(target, {
-    onViewChange: (view) => {
-      const codeOnly = view === 'code'
-      leftPane.style.display = codeOnly ? 'none' : leftDisplay
-      divider.style.display = codeOnly ? 'none' : dividerDisplay
-      // コードだけのときは右が全幅（ふだんは決まった幅で、余った所は見え方に回す）
-      rightPane.style.flex = codeOnly ? '1 1 auto' : RIGHT_PANE_FLEX
-    },
-    design,
-    // プレビューの見た目だけを作り直す（textarea の中身＝保存するCSSはそのまま）
-    onCssInput: setPreviewCss,
-  })
-  rightPane.dataset['widgetPane'] = 'code'
-  cssArea = rightPane.querySelector<HTMLTextAreaElement>('[data-code-css]')
-
-  darkContainer.append(leftPane, divider, rightPane)
-
-  // 仕切りをドラッグして左右ペインのサイズを調整できるようにする（要望）
-  wireDividerResize(divider, rightPane, darkContainer)
-
-  // ビジュアルエディタ → コードパネルの同期（入力イベントで反映）。
-  // ※ textarea はまだ panel に append される前なので、panel からではなく
-  //   （既に textarea を内包している）darkContainer から取得する。
-  //   以前は panel.querySelector が null を返し、ビジュアル編集がコードへ同期されず
-  //   「更新する」（コードtextareaから保存）で編集内容が失われていた。
-  const htmlArea = darkContainer.querySelector<HTMLTextAreaElement>('[data-code-html]')
-  const syncFn = (): void => {
-    if (htmlArea !== null && contentDiv !== null) {
-      htmlArea.value = contentDiv.innerHTML
-      // 値を入れるだけでは、上に重ねた色付き表示と行番号が古いまま（文字は透明の textarea の方にある）。
-      // 「デフォルト時のコードを表示」を押したときに古いHTMLが見えてしまうので、同じ更新を通す。
-      htmlArea.dispatchEvent(new Event('input'))
-    }
-  }
-  contentDiv.addEventListener('input', syncFn)
-  // 初期値も1回そろえておく（採取HTMLとtextareaのズレ防止）
-  syncFn()
-
-  /* ── 組み立て ── */
-  panel.append(header, darkContainer)
-
-  // 指示146: パネルがDOMに載ってからウィジェットの <script> を実行する。
-  // （多くのウィジェットの init は document.querySelector で自分の要素を探すため、
-  //   contentDiv がドキュメントに接続済みである必要がある。）
-  runWidgetScripts(contentDiv)
-}
-
-/**
- * 仕切り（col-resize）のドラッグで左ペイン(見え方)と右ペイン(要素ごとに編集・コード)の幅を変える。
- * 画面いっぱいになったので、**右ペインに幅(px)を与え、左ペインが残り全部**を埋める
- * （右を固定幅にしたまま左を固定すると、広い画面で真ん中に隙間が空くため）。左右とも最小幅を確保。
- */
-function wireDividerResize(divider: HTMLElement, rightPane: HTMLElement, container: HTMLElement): void {
-  const MIN = 280
-  const pane = rightPane
-  let startX = 0
-  let startRightW = 0
-  const onMove = (e: MouseEvent): void => {
-    e.preventDefault()
-    const total = container.clientWidth
-    const max = total - divider.offsetWidth - MIN
-    let next = startRightW - (e.clientX - startX)
-    if (next < MIN) next = MIN
-    if (next > max) next = max
-    pane.style.flex = `0 0 ${next}px`
-  }
-  const onUp = (): void => {
-    document.removeEventListener('mousemove', onMove)
-    document.removeEventListener('mouseup', onUp)
-    document.body.style.userSelect = ''
-  }
-  divider.addEventListener('mousedown', (e) => {
-    e.preventDefault()
-    startX = e.clientX
-    startRightW = pane.getBoundingClientRect().width
-    document.body.style.userSelect = 'none'
-    document.addEventListener('mousemove', onMove)
-    document.addEventListener('mouseup', onUp)
-  })
-}
-
-/** Widget 編集パネルを閉じる */
-function closeWidgetPanel(panel: HTMLElement): void {
-  closeMediaControl()
-  // 背景オーバーレイも一緒に消す
-  document.querySelector('[data-widget-backdrop]')?.remove()
-  panel.remove()
-}
-
-/* ================================================================
- *  ヘッダー（本番実測: padding:12px, borderBottom:1px solid #f4f4f4）
- * ================================================================ */
-
-function buildHeader(
-  panel: HTMLElement,
-  quill: Quill,
-  target: WidgetEditTarget,
-): HTMLElement {
-  const header = document.createElement('div')
-  // スマホCSSの目印（PCでは属性が増えるだけ）。クラス名は採取物と衝突するので data 属性を使う
-  header.dataset['widgetHeader'] = 'true'
-  header.style.cssText =
-    `display:flex;align-items:center;padding:12px;border-bottom:1px solid #f4f4f4;flex-shrink:0`
-
-  // 閉じる（本番実測: fontSize:12px, color:rgb(128,128,128), padding:0 8px）
-  const closeBtn = document.createElement('button')
-  closeBtn.type = 'button'
-  closeBtn.textContent = '閉じる'
-  closeBtn.style.cssText =
-    `border:none;background:none;color:rgb(128,128,128);font:12px/1 ${FONT};cursor:pointer;padding:0 8px`
-  closeBtn.addEventListener('click', () => closeWidgetPanel(panel))
-
-  // Widget編集（中央）
-  const title = document.createElement('div')
-  title.textContent = 'Widget編集'
-  title.style.cssText =
-    `flex:1;text-align:center;font:600 15px/1.4 ${FONT};color:#333`
-
-  // 右側ボタン群
-  const rightBtns = document.createElement('div')
-  rightBtns.style.cssText = 'display:flex;gap:8px;align-items:center'
-
-  // 「Widgetとして登録」（本番実測: fontSize:12px, color:var(--sb-accent, #0091FF), border:none, SVG plus icon）
-  const registerBtn = document.createElement('button')
-  registerBtn.type = 'button'
-  registerBtn.innerHTML = svgPlus() + ' Widgetとして登録'
-  registerBtn.style.cssText =
-    `display:flex;align-items:center;gap:4px;border:none;background:none;` +
-    `color:${COLOR.brand};padding:6px 14px;font:12px/1 ${FONT};cursor:pointer`
-  // 今の見た目のまま「作成したWidget」に保存し、次から一覧で選ぶだけで使い回せるようにする（2026-09-22）。
-  // 以前は「クローンでは未対応です」と出るだけだった。LPの中のWidgetは変えない（それは「更新する」の役目）。
-  registerBtn.addEventListener('click', () => {
-    const htmlCode = panel.querySelector<HTMLTextAreaElement>('[data-code-html]')?.value.trim() ?? ''
-    const cssCode = panel.querySelector<HTMLTextAreaElement>('[data-code-css]')?.value.trim() ?? ''
-    if (htmlCode === '') {
-      toast('HTMLが空です', 'error')
-      return
-    }
-    void promptCard({
-      title: 'Widgetとして登録',
-      label: '名前（「作成したWidget」にこの名前で入ります）',
-      value: defaultRegisterName(templateNameOf(htmlCode), visibleTextOf(htmlCode)),
-      submitLabel: '登録する',
-      validate: (v) => (v === '' ? '名前を入れてください' : null),
-    }).then((name) => {
-      if (name === null) return
-      const html = cssCode !== '' ? `<style>${cssCode}</style>${htmlCode}` : htmlCode
-      if (saveCreatedWidget(name, html)) {
-        toast(`「${name}」を作成したWidgetに登録しました`)
-      } else {
-        toast('登録できませんでした。画像が大きいと、このブラウザに保存しきれないことがあります', 'error')
-      }
-    })
-  })
-
-  // 「更新する」（本番実測: fontSize:12px, color:white, bg:var(--sb-accent, #0091FF), borderRadius:4px）
-  const updateBtn = document.createElement('button')
-  updateBtn.type = 'button'
-  updateBtn.textContent = '更新する'
-  updateBtn.style.cssText =
-    `border:none;background:${COLOR.brand};color:#fff;border-radius:4px;padding:6px 20px;` +
-    `font:12px/1 ${FONT};cursor:pointer`
-  updateBtn.addEventListener('click', () => {
-    const htmlArea = panel.querySelector<HTMLTextAreaElement>('[data-code-html]')
-    const cssArea = panel.querySelector<HTMLTextAreaElement>('[data-code-css]')
-    const htmlCode = htmlArea?.value.trim() ?? ''
-    const cssCode = cssArea?.value.trim() ?? ''
-
-    if (htmlCode === '') {
-      toast('HTMLが空です', 'error')
-      return
-    }
-
-    const finalHtml = cssCode !== '' ? `<style>${cssCode}</style>${htmlCode}` : htmlCode
-    quill.deleteText(target.index, target.length, 'user')
-    quill.insertEmbed(target.index, 'sbwidget', finalHtml, 'user')
-
-    closeWidgetPanel(panel)
-    toast('Widgetを更新しました')
-  })
-
-  rightBtns.append(registerBtn, updateBtn)
-  header.append(closeBtn, title, rightBtns)
-  return header
-}
-
-/* ================================================================
- *  左ペイン: ビジュアルエディタ
- * ================================================================ */
-
-
-
-
-
-
-
-/**
- * Widget の <script> をプレビュー内で実行する（指示146: 動作確認のため）。
- * innerHTML で挿入された <script> は実行されないので、実行可能な <script> を作り直して差し込む。
- * 多くのSBウィジェットは `DOMContentLoaded` で init するが、編集画面では既に発火済みのため、
- * 実行中だけ addEventListener('DOMContentLoaded'|'load') を「即時実行」に差し替えて init を走らせる。
- * 実行はユーザー自身のウィジェット内容（配信でも同じスクリプトが動く）なので信頼して実行する。
- */
-function runWidgetScripts(contentDiv: HTMLElement): void {
-  const scripts = [...contentDiv.querySelectorAll('script')]
-  if (scripts.length === 0) return
-
-  const docAdd = document.addEventListener.bind(document)
-  const winAdd = window.addEventListener.bind(window)
-  const fireNow = (fn: EventListenerOrEventListenerObject, type: string): void => {
-    try {
-      const ev = new Event(type)
-      if (typeof fn === 'function') fn(ev)
-      else fn.handleEvent(ev)
-    } catch {
-      /* 個別ウィジェットの初期化失敗は握って他へ波及させない */
-    }
-  }
-  const patch = (orig: typeof document.addEventListener) =>
-    ((type: string, fn: EventListenerOrEventListenerObject, opts?: unknown) => {
-      if ((type === 'DOMContentLoaded' || type === 'load') && fn !== null) {
-        fireNow(fn, type)
-        return
-      }
-      ;(orig as (t: string, f: EventListenerOrEventListenerObject, o?: unknown) => void)(type, fn, opts)
-    }) as typeof document.addEventListener
-  document.addEventListener = patch(docAdd)
-  window.addEventListener = patch(winAdd)
-  try {
-    for (const old of scripts) {
-      const s = document.createElement('script')
-      for (const attr of old.attributes) s.setAttribute(attr.name, attr.value)
-      s.textContent = old.textContent
-      old.replaceWith(s) // 差し替えで同期実行される
-    }
-  } finally {
-    document.addEventListener = docAdd
-    window.addEventListener = winAdd
-  }
-}
-
-/* ================================================================
- *  右ペイン: コードパネル (HTML + CSS)
- * ================================================================ */
-
-
-
-/* ================================================================
- *  構文ハイライト付きコードパネル
- *
- *  textareaを透明にして重ね、背後にハイライト済み pre を置く
- *  「overlay editor」パターン。
- * ================================================================ */
-
-
-/* ================================================================
- *  行番号
- * ================================================================ */
-
-
-/* ================================================================
  *  ヘルパー
  * ================================================================ */
 
@@ -498,92 +136,18 @@ function getBlotIndex(quill: Quill, node: HTMLElement): { index: number; length:
 }
 
 /**
- * Widget ノード（section.sb-widget-block）を指定して Widget 編集オーバーレイを開く。
- * widget-nav.ts の左カードからの呼び出し用。
+ * Widget ノード（section.sb-widget-block）を指定して Widget 編集を開く。
+ * キャンバスのクリックと、widget-nav.ts の左カードからの呼び出し用。
  */
 export function openWidgetEditorForNode(quill: Quill, widgetNode: HTMLElement): void {
   const blotIndex = getBlotIndex(quill, widgetNode)
   if (blotIndex === null) return
-  openWidgetEditor(quill, {
+  const target: WidgetEditTarget = {
     node: widgetNode,
     html: extractHtml(widgetNode),
     css: extractCss(widgetNode),
     index: blotIndex.index,
     length: blotIndex.length,
-  })
-}
-
-/** 画面に見える文字だけ（script・style などの中身は入れない） */
-function visibleTextOf(html: string): string {
-  const doc = new DOMParser().parseFromString(html, 'text/html')
-  for (const hidden of doc.body.querySelectorAll('script,style,noscript,template')) hidden.remove()
-  return doc.body.textContent ?? ''
-}
-
-/**
- * 型から作ったWidget（外側に data-nocode）なら型の名前（「よくある質問」）。
- * 無ければ undefined（クラス名の「nc」を名前にしない）。
- */
-function templateNameOf(html: string): string | undefined {
-  const doc = new DOMParser().parseFromString(html, 'text/html')
-  const type = doc.body.firstElementChild?.getAttribute('data-nocode')
-  return type === null || type === undefined ? undefined : templateById(type)?.name
-}
-
-/** Widget の HTML から名前を推定する（型の名前・最初のクラス名・テキストの順）。 */
-export function guessWidgetName(html: string): string {
-  const templateName = templateNameOf(html)
-  if (templateName !== undefined) return templateName
-  const doc = new DOMParser().parseFromString(html, 'text/html')
-  const firstEl = doc.body.firstElementChild
-  const cls = firstEl?.className ?? ''
-  const firstText = doc.body.textContent?.trim().substring(0, 30) ?? ''
-  if (cls !== '') return (cls.split(/\s+/)[0] ?? firstText) || 'Widget'
-  return firstText || 'Widget'
-}
-
-/** Widget の innerHTML から style タグの CSS を抽出する。 */
-function extractCss(node: HTMLElement): string {
-  const styles: string[] = []
-  for (const style of node.querySelectorAll('style')) {
-    styles.push(style.textContent ?? '')
   }
-  for (const style of document.head.querySelectorAll('style[data-widget-css]')) {
-    styles.push(style.textContent ?? '')
-  }
-  return styles.join('\n').trim()
+  openWidgetStudio(quill, { kind: 'lp', target })
 }
-
-/** Widget の innerHTML から style タグを除いた HTML を抽出する。 */
-function extractHtml(node: HTMLElement): string {
-  const clone = node.cloneNode(true) as HTMLElement
-  for (const style of clone.querySelectorAll('style')) style.remove()
-  return clone.innerHTML.trim()
-}
-
-/* ================================================================
- *  SVG アイコン — ヘッダー / タイトル / ビュー切替
- * ================================================================ */
-
-
-
-
-
-/* ================================================================
- *  SVG アイコン — ツールバー（本番のSVGアイコンを再現）
- * ================================================================ */
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

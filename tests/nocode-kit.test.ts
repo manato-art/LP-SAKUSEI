@@ -8,7 +8,7 @@
  *  - 色は #RRGGBB だけ。画像は選んだファイル（data:image/…）だけ
  */
 import { describe, expect, it } from 'vitest'
-import { esc, inkOn, linkAttrs, newUid, rekeyUid, safeColor, safeImage, shade, textHtml } from '../src/app/panels/nocode/templates/kit.ts'
+import { esc, inkOn, linkAttrs, newUid, rekeyUid, safeColor, safeImage, safeVideo, shade, textHtml } from '../src/app/panels/nocode/templates/kit.ts'
 
 describe('文字', () => {
   it('HTMLとして読まれる文字をすべてエスケープする', () => {
@@ -66,6 +66,18 @@ describe('色・画像', () => {
     expect(safeImage('https://example.test/a.png')).toBe('')
     expect(safeImage('data:text/html;base64,PHNjcmlwdD4=')).toBe('')
     expect(safeImage('data:image/png;base64,AAA" onerror="x')).toBe('')
+  })
+
+  it('保存で別ファイルになった画像・動画（/uploads/ハッシュ.拡張子）も受け付ける（開き直したときの形）', () => {
+    const hash = 'a'.repeat(64)
+    expect(safeImage(`/uploads/${hash}.webp`)).toBe(`/uploads/${hash}.webp`)
+    expect(safeImage(`/uploads/${hash}.mp4`)).toBe('')
+    expect(safeImage('/uploads/../x.png')).toBe('')
+    expect(safeImage(`https://example.test/uploads/${hash}.png`)).toBe('')
+    expect(safeVideo(`/uploads/${hash}.mp4`)).toBe(`/uploads/${hash}.mp4`)
+    expect(safeVideo(`/uploads/${hash}.png`)).toBe('')
+    expect(safeVideo('data:video/mp4;base64,AAAA')).toBe('data:video/mp4;base64,AAAA')
+    expect(safeVideo('data:video/quicktime;base64,AAAA')).toBe('')
   })
 
   it('濃くする・薄くする', () => {

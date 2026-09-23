@@ -46,8 +46,12 @@ function nowJstInput(): string {
 /** 画像・動画を選ぶ入力（小さな見本・選ぶ／変える・外す・大きさ） */
 function mediaControl(env: ControlEnv, id: string, kind: 'image' | 'video'): HTMLElement {
   const wrap = node('div', 'ncf-image')
+  let shown: string | null = null
   const paint = (): void => {
     const src = typeof env.read() === 'string' ? String(env.read()) : ''
+    // よそから中身が変わったときの描き直し（onRefresh）は、同じ画像なら何もしない（ボタンを作り直さない）
+    if (src === shown) return
+    shown = src
     wrap.replaceChildren()
     if (src === '') {
       wrap.append(node('span', 'ncf-image__empty', kind === 'image' ? '画像なし' : '動画なし'))
@@ -91,8 +95,24 @@ function mediaControl(env: ControlEnv, id: string, kind: 'image' | 'video'): HTM
     }
   }
   paint()
+  env.onRefresh(paint)
   return wrap
 }
+
+/**
+ * 中身がよそ（見たまま画面で文字を打ち直した など）から変わったとき、入力欄の値を合わせる。
+ * 打っている途中の欄（フォーカスがある）は触らない（打った文字が消えないように）。
+ */
+function followValue(env: ControlEnv, input: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement, read: () => string): void {
+  const field = input // eslint-safe alias（no-param-reassign 回避）
+  env.onRefresh(() => {
+    if (document.activeElement === field) return
+    const next = read()
+    if (field.value !== next) field.value = next
+  })
+}
+
+const asText = (value: unknown): string => (typeof value === 'string' ? value : '')
 
 export function scalarControl(field: ScalarField, env: ControlEnv, id: string): HTMLElement {
   const value = env.read()
@@ -107,6 +127,7 @@ export function scalarControl(field: ScalarField, env: ControlEnv, id: string): 
       if (field.kind !== 'datetime' && field.placeholder !== undefined) input.placeholder = field.placeholder
       if (field.kind === 'text' && field.maxLength !== undefined) input.maxLength = field.maxLength
       if (field.kind === 'datetime') input.min = nowJstInput()
+      followValue(env, input, () => asText(env.read()))
       if (field.kind !== 'url') {
         input.addEventListener('input', () => env.write(input.value))
         return input
@@ -134,6 +155,7 @@ export function scalarControl(field: ScalarField, env: ControlEnv, id: string): 
       area.value = typeof value === 'string' ? value : ''
       if (field.maxLength !== undefined) area.maxLength = field.maxLength
       area.addEventListener('input', () => env.write(area.value))
+      followValue(env, area, () => asText(env.read()))
       return area
     }
     case 'number': {
@@ -145,10 +167,12 @@ export function scalarControl(field: ScalarField, env: ControlEnv, id: string): 
       input.min = String(field.min)
       input.max = String(field.max)
       input.step = '1'
-      input.value = typeof value === 'number' || typeof value === 'string' ? String(value) : ''
+      const asNumberText = (v: unknown): string => (typeof v === 'number' || typeof v === 'string' ? String(v) : '')
+      input.value = asNumberText(value)
       input.addEventListener('input', () => {
         if (Number.isFinite(input.valueAsNumber)) env.write(input.valueAsNumber)
       })
+      followValue(env, input, () => asNumberText(env.read()))
       wrap.append(input)
       if (field.unit !== undefined) wrap.append(node('span', 'ncf-unit', field.unit))
       return wrap
@@ -162,8 +186,10 @@ export function scalarControl(field: ScalarField, env: ControlEnv, id: string): 
         opt.value = option.value
         select.append(opt)
       }
-      select.value = field.options.some((o) => o.value === current) ? current : (field.options[0]?.value ?? '')
+      const known = (v: string): string => (field.options.some((o) => o.value === v) ? v : (field.options[0]?.value ?? ''))
+      select.value = known(current)
       select.addEventListener('change', () => env.write(select.value))
+      followValue(env, select, () => known(asText(env.read())))
       return select
     }
     case 'toggle': {
@@ -174,6 +200,9 @@ export function scalarControl(field: ScalarField, env: ControlEnv, id: string): 
       box.type = 'checkbox'
       box.checked = value === true
       box.addEventListener('change', () => env.write(box.checked))
+      env.onRefresh(() => {
+        box.checked = env.read() === true
+      })
       label.append(box, node('span', '', field.label))
       return label
     }
@@ -212,6 +241,7 @@ export function scalarControl(field: ScalarField, env: ControlEnv, id: string): 
       custom.append(picker, node('span', '', 'ほかの色'))
       wrap.append(custom)
       paint()
+      env.onRefresh(paint)
       return wrap
     }
     case 'image':
@@ -226,6 +256,7 @@ export function scalarControl(field: ScalarField, env: ControlEnv, id: string): 
       input.value = typeof value === 'string' ? value : ''
       if (field.placeholder !== undefined) input.placeholder = field.placeholder
       input.addEventListener('input', () => env.write(input.value))
+      followValue(env, input, () => asText(env.read()))
       const syms = node('div', 'ncf-syms')
       for (const symbol of field.symbols) {
         const b = node('button', 'ncf-sym', symbol)

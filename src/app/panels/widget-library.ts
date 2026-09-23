@@ -21,7 +21,7 @@ import {
   applyMobileWidgetLibrary,
   teardownMobileWidgetLibrary,
 } from '../mobile/widget-library-mobile.ts'
-import { bindBackdropClose, findByExactText, openPortal } from './portal.ts'
+import { bindBackdropClose, findByExactText, openPortal, type Portal } from './portal.ts'
 import {
   deleteCreatedWidget,
   isFavorite,
@@ -30,12 +30,14 @@ import {
   toggleFavorite,
 } from './widget-library-storage.ts'
 import { insertWidget, openWidgetCreator } from './widget-creator.ts'
-import { openNocodePanel } from './nocode/nocode-panel.ts'
 // 見本の中身（106本ぶんのHTML・約0.8MB）は、ライブラリを開いたときだけ読む（LPの編集画面を軽くする）。
 // 種類の一覧と型は軽いので、そのまま読み込む
 import { SAMPLE_CATEGORIES, type NewSample, type SampleCategory } from './nocode/samples/kit.ts'
-import { startBuilderWithSample } from './nocode/template-tab.ts'
-import { cancelSamplePick, isSamplePickArmed, takeSamplePick } from './nocode/nocode-flow.ts'
+import { armSamplePick, cancelSamplePick, isSamplePickArmed, takeSamplePick, type SamplePick } from './nocode/nocode-flow.ts'
+import { showLibraryHint } from './nocode/library-hint.ts'
+import { sampleScreens } from './nocode/sample-to-screens.ts'
+import { BUILDER_TEMPLATE } from './nocode/templates/builder.ts'
+import { openWidgetStudio } from './widget-studio.ts'
 import { newUid, rekeyUid } from './nocode/templates/kit.ts'
 import { placeholderLinkCount } from './link-placeholder.ts'
 
@@ -80,6 +82,30 @@ const FAVORITE_EMPTY_MSG = 'お気に入りに登録したWidgetはありませ�
 
 
 let isOpen = false
+/** いま開いているライブラリ（見本を選んでもらうときに閉じる） */
+let currentPortal: Portal | null = null
+
+/**
+ * Widget編集の「見本」の部品のために、ライブラリを開いて見本を選んでもらう（2026-09-23・統合）。
+ * 「追加」を押した見本は LP には入れず onPick へ渡す。選ばずに閉じたら onCancel。
+ */
+export function openWidgetLibraryForPick(quill: Quill, handlers: { onPick: SamplePick; onCancel: () => void }): void {
+  let done = false
+  const finish = (sample: { title: string; html: string } | null): void => {
+    if (done) return
+    done = true
+    currentPortal?.close()
+    if (sample === null) handlers.onCancel()
+    else handlers.onPick(sample)
+  }
+  armSamplePick((sample) => finish(sample))
+  open(quill, { onClose: () => finish(null) })
+  if (currentPortal === null) {
+    finish(null)
+    return
+  }
+  showLibraryHint(currentPortal.root, '部品にしたい見本の「追加」を押してください（LPにはまだ入りません）', () => finish(null))
+}
 
 export function mountWidgetLibrary(root: HTMLElement, quill: Quill): void {
   const trigger = root.querySelector<HTMLElement>(HOOK.trigger)
@@ -96,21 +122,24 @@ export function mountWidgetLibrary(root: HTMLElement, quill: Quill): void {
   })
 }
 
-function open(quill: Quill): void {
+function open(quill: Quill, extra: { onClose?: () => void } = {}): void {
   if (isOpen) return
   ensureWhiteBase()
   const portal = openPortal(rawLibrary, HOOK.dialog, () => {
     isOpen = false
+    currentPortal = null
     // 「部品を積んで作る」で見本を選んでいる途中に閉じた（入口ごと消えるので受け取り口も下ろす）
     cancelSamplePick()
     // スマホ用に足した「カテゴリー」ボタン・暗幕を残さない
     teardownMobileWidgetLibrary()
+    extra.onClose?.()
   })
   if (portal === null) {
     toast('Widgetライブラリのマークアップが壊れています', 'error')
     return
   }
   isOpen = true
+  currentPortal = portal
 
   const backdrop = portal.root.querySelector<HTMLElement>(HOOK.backdrop)
   if (backdrop !== null) bindBackdropClose(backdrop, portal.close)
@@ -241,7 +270,8 @@ function patchPortalLayout(root: HTMLElement, quill: Quill, close: () => void): 
     createBtn.addEventListener('click', () => {
       openWidgetCreator(root, quill, close)
     })
-    // ノーコードで作る（2026-09-22・本人の依頼）。コードで書く「＋ Widgetを作成」はそのまま残す
+    // ノーコードで作る（2026-09-22・本人の依頼）。コードで書く「＋ Widgetを作成」はそのまま残す。
+    // 2026-09-23: Widget編集と1つの画面になった（本人の決定 D1）。ライブラリを閉じて、その画面を開く
     const nocodeBtn = document.createElement('button')
     nocodeBtn.type = 'button'
     nocodeBtn.textContent = '+ ノーコードで作る'
@@ -252,7 +282,12 @@ function patchPortalLayout(root: HTMLElement, quill: Quill, close: () => void): 
       'color:var(--sb-accent-ink, #fff);font:600 14px/1.4 "Hiragino Sans",sans-serif;' +
       'cursor:pointer;text-align:center'
     nocodeBtn.addEventListener('click', () => {
-      openNocodePanel(root, quill, close)
+      if (isSamplePickArmed()) {
+        toast('いまは部品にする見本を選んでいます。使いたい見本の「追加」を押してください', 'error')
+        return
+      }
+      close()
+      requestAnimationFrame(() => openWidgetStudio(quill, { kind: 'new', data: BUILDER_TEMPLATE.defaults(new Date()), uid: newUid() }))
     })
     // ヘッダー（「カテゴリー」見出し）の前に挿入
     const catHeader = sidebar.querySelector<HTMLElement>('.css-iorjen')
@@ -621,7 +656,7 @@ function wireCards(root: HTMLElement, quill: Quill, close: () => void): void {
       event.stopPropagation()
       openLargePreview(card, title)
     })
-    if (preview !== undefined) addUseAsScreens(card, preview, title, root, quill, close)
+    if (preview !== undefined) addUseAsScreens(card, preview, title, quill, close)
     add?.addEventListener('click', (event) => {
       event.stopPropagation()
       const raw = widgetBodyHtml(card)
@@ -650,11 +685,11 @@ function wireCards(root: HTMLElement, quill: Quill, close: () => void): void {
  * カードに「画面を作って使う」を足す（2026-09-23・本人の決定）。
  *
  * 本人の依頼「見本からでも型からでも、部品を積んで作るときと同じ『画面と部品』が欲しい」。
- * 押すと、その見本を部品にして「ノーコードで作る」→「部品を積んで作る」を開く。
+ * 押すと、その見本を部品にして Widget編集（部品）を開く（ライブラリは閉じる）。
  * 設問①②③で進む見本は、設問ごとの部品にして画面①②③に分ける（sample-to-screens.ts）。
  * 見た目は「プレビュー」のボタンを写して作る（採取したカードの見た目に合わせる）。
  */
-function addUseAsScreens(card: HTMLElement, preview: HTMLElement, title: string, root: HTMLElement, quill: Quill, close: () => void): void {
+function addUseAsScreens(card: HTMLElement, preview: HTMLElement, title: string, quill: Quill, close: () => void): void {
   const button = preview.cloneNode(true) as HTMLElement
   let named = false
   for (const node of Array.from(button.childNodes)) {
@@ -678,10 +713,11 @@ function addUseAsScreens(card: HTMLElement, preview: HTMLElement, title: string,
       toast(`「${title}」は部品にできません。ほかの見本を選んでください`, 'error')
       return
     }
-    void startBuilderWithSample({ title, html: bodyHtml }).then((ok) => {
-      if (!ok) return
-      openNocodePanel(root, quill, close, { tabId: 'builder' })
-      toast(`「${title}」を部品にしました。画面と部品で続けて作れます`)
+    const screens = sampleScreens({ title, html: bodyHtml })
+    close()
+    requestAnimationFrame(() => {
+      openWidgetStudio(quill, { kind: 'new', data: { ...BUILDER_TEMPLATE.defaults(new Date()), screens }, uid: newUid() })
+      toast(screens.length > 1 ? `「${title}」の設問を画面①〜${screens.length}に分けました。右で部品を足して作れます` : `「${title}」を部品にしました。右で部品を足して作れます`)
     })
   })
   preview.parentElement?.insertBefore(button, preview)

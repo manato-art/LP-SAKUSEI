@@ -13,7 +13,11 @@
 import { findStepGroup, type SlotNode } from './sample-model.ts'
 import { cssPathFrom, editorScreenCss, editorStepCss, screenLabel } from './screens-state.ts'
 
-export function attachScreenSwitcher(editorBody: HTMLElement, contentDiv: HTMLElement): void {
+/**
+ * 画面①②…のタブを host に足す（Widget編集の右側の「画面」の段。以前は見たまま画面の上に出していた）。
+ * 画面が1つだけ・部品で作っていないWidgetでは何も足さない。
+ */
+export function attachScreenSwitcher(host: HTMLElement, contentDiv: HTMLElement): void {
   const root = contentDiv.querySelector<HTMLElement>('[data-nc-screens]')
   if (root === null) return
   const uid = [...root.classList].find((c) => /^nc-[a-z0-9]{8}$/.test(c))
@@ -61,7 +65,7 @@ export function attachScreenSwitcher(editorBody: HTMLElement, contentDiv: HTMLEl
     bar.append(tab)
   })
   bar.append(style)
-  editorBody.before(bar)
+  host.append(bar)
   show(screens[0]?.dataset['ncScreen'] ?? '')
 }
 
@@ -74,7 +78,7 @@ const STEP_DETECT_DELAY_MS = 500
  * 設問は、今の見え方（見えている箱が1つ・ほかは隠れている）で見つける。見本のスクリプトが動いてから調べる。
  * 切り替えは見たまま画面の外の style で見せ方だけ変える（Widgetの中身には目印を付けない＝保存されない）。
  */
-export function attachStepSwitcher(editorBody: HTMLElement, contentDiv: HTMLElement): void {
+export function attachStepSwitcher(host: HTMLElement, contentDiv: HTMLElement): void {
   window.setTimeout(() => {
     if (!contentDiv.isConnected) return
     const visible = (node: SlotNode): boolean => {
@@ -123,7 +127,7 @@ export function attachStepSwitcher(editorBody: HTMLElement, contentDiv: HTMLElem
       bar.append(tab)
     })
     bar.append(style)
-    editorBody.before(bar)
+    host.append(bar)
     // 今見えている設問を選んだ状態にする（見え方はまだ変えない）
     paint(Math.max(0, steps.findIndex((step) => visible(step as unknown as SlotNode))))
   }, STEP_DETECT_DELAY_MS)

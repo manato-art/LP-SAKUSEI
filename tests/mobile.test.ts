@@ -417,7 +417,8 @@ describe('全画面を実測して見つかったはみ出し・重なり', () =
  */
 describe('スマホのWidget編集画面', () => {
   const css = mobileCss()
-  const editorSrc = readFileSync('src/app/panels/widget-editor.ts', 'utf8')
+  // 画面そのものは widget-studio.ts（2026-09-23 「ノーコードで作る」と1つにした）
+  const editorSrc = readFileSync('src/app/panels/widget-studio.ts', 'utf8')
   const visualSrc = readFileSync('src/app/panels/widget-visual-editor.ts', 'utf8')
 
   it('全画面にする（PC前提の「中央から右へ60px」を打ち消す）', () => {

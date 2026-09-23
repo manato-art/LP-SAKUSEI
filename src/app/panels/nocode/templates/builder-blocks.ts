@@ -12,7 +12,7 @@
 import { ARROW_SVG, pressButtonCss } from './cta.ts'
 import { esc, inkOn, linkAttrs, newUid, safeColor, safeImage, safeVideo, shade, textHtml } from './kit.ts'
 import { TEMPLATES } from './list.ts'
-import { ACCENT_PRESETS, bool, pick, str, type BlockType, type Field, type ItemData, type NocodeTemplate } from './types.ts'
+import { ACCENT_PRESETS, bool, int, pick, str, type BlockType, type Field, type ItemData, type NocodeTemplate } from './types.ts'
 
 /** 文字の色の候補（本文にも使えるよう、暗い色だけ） */
 const TEXT_PRESETS: readonly string[] = ['#1F2A37', '#B83A26', '#A8264F', '#155BB0', '#0B7A3E', '#8A6414']
@@ -126,20 +126,12 @@ export const BLOCK_TYPES: readonly BlockType[] = [
     fields: [
       { kind: 'image', key: 'image', label: '画像' },
       { kind: 'text', key: 'alt', label: '画像の説明（読み上げ用）' },
-      {
-        kind: 'select',
-        key: 'width',
-        label: '幅',
-        options: [
-          { value: '100', label: '横いっぱい' },
-          { value: '80', label: '少し小さく（8割）' },
-          { value: '60', label: '小さく（6割）' },
-        ],
-      },
+      // 幅は数で持つ（10〜100%。以前の「横いっぱい／8割／6割」の選びは 100・80・60 として読める）
+      { kind: 'number', key: 'width', label: '幅', min: 10, max: 100, unit: '%' },
       { kind: 'toggle', key: 'round', label: '角を丸くする' },
       ...actionFields(),
     ],
-    newItem: () => ({ type: 'image', image: '', alt: '', width: '100', round: false, ...NO_ACTION }),
+    newItem: () => ({ type: 'image', image: '', alt: '', width: 100, round: false, ...NO_ACTION }),
   },
   {
     type: 'shape',
@@ -157,22 +149,13 @@ export const BLOCK_TYPES: readonly BlockType[] = [
           { value: 'pill', label: '横長の丸（カプセル）' },
         ],
       },
-      {
-        kind: 'select',
-        key: 'size',
-        label: '幅',
-        options: [
-          { value: '100', label: '横いっぱい' },
-          { value: '80', label: '8割' },
-          { value: '60', label: '6割' },
-          { value: '40', label: '4割' },
-        ],
-      },
+      // 幅は数で持つ（10〜100%。以前の「横いっぱい／8割／6割／4割」の選びは 100・80・60・40 として読める）
+      { kind: 'number', key: 'size', label: '幅', min: 10, max: 100, unit: '%' },
       { kind: 'color', key: 'color', label: '色', presets: SHAPE_PRESETS },
       { kind: 'text', key: 'text', label: '中の文字（任意）' },
       ...actionFields(),
     ],
-    newItem: () => ({ type: 'shape', shape: 'round', size: '100', color: '#1F7AE0', text: '', ...NO_ACTION }),
+    newItem: () => ({ type: 'shape', shape: 'round', size: 100, color: '#1F7AE0', text: '', ...NO_ACTION }),
   },
   {
     type: 'video',
@@ -398,26 +381,26 @@ export function renderBlock(
     }
     case 'image': {
       const image = safeImage(str(item, 'image'))
-      const width = pick(item, 'width', ['100', '80', '60'] as const, '100')
+      const width = int(item, 'width', 10, 100, 100)
       const round = bool(item, 'round') ? ' nc-b-image--round' : ''
       const picture = image === '' ? '' : `<img src="${image}" alt="${esc(str(item, 'alt').trim())}">`
       return {
-        html: `<figure class="nc-b nc-b-image nc-b-image--w${width}${round} ${cls}"${goAttrs(target, false)}>${withLink(item, 'nc-b-image__link', picture)}</figure>`,
-        css: '',
+        html: `<figure class="nc-b nc-b-image${round} ${cls}"${goAttrs(target, false)}>${withLink(item, 'nc-b-image__link', picture)}</figure>`,
+        css: `${s} .${cls} img{width:${width}%}`,
       }
     }
     case 'shape': {
       const shape = pick(item, 'shape', ['round', 'rect', 'circle', 'pill'] as const, 'round')
-      const size = pick(item, 'size', ['100', '80', '60', '40'] as const, '100')
+      const size = int(item, 'size', 10, 100, 100)
       const color = safeColor(str(item, 'color'), '#1F7AE0')
       const text = str(item, 'text').trim()
       const inner = text === '' ? '' : `<span class="nc-b-shape__text">${esc(text)}</span>`
-      const shapeClass = `nc-b nc-b-shape nc-b-shape--${shape} nc-b-shape--w${size} ${cls}`
+      const shapeClass = `nc-b nc-b-shape nc-b-shape--${shape} ${cls}`
       const html =
         actionOf(item) === 'link' && str(item, 'url').trim() !== ''
           ? `<a class="${shapeClass}"${linkAttrs(str(item, 'url'), { track: bool(item, 'track'), newTab: false })}>${inner}</a>`
           : `<div class="${shapeClass}"${goAttrs(target, false)}>${inner}</div>`
-      return { html, css: `${s} .${cls}{background:${color};color:${inkOn(color)}}` }
+      return { html, css: `${s} .${cls}{background:${color};color:${inkOn(color)};width:${size}%}` }
     }
     case 'video': {
       const video = safeVideo(str(item, 'video'))

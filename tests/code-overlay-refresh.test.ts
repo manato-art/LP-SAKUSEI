@@ -17,6 +17,7 @@ const CODE_EDITORS = [
   'src/app/panels/widget-code-panel.ts',
   'src/app/panels/widget-creator.ts',
   'src/app/panels/widget-editor.ts',
+  'src/app/panels/widget-studio.ts',
   'src/app/pages/exit-popup-editor.ts',
   'src/app/pages/exit-popup-follow.ts',
 ]

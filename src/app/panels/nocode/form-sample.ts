@@ -86,18 +86,22 @@ export function sampleEditor(options: SampleEditorOptions): HTMLElement {
 }
 
 function renderBody(body: HTMLElement, info: SampleInfo, options: SampleEditorOptions): void {
-  let current = options.read().html
+  /**
+   * いまの中身は毎回読み直す（控えを持たない）。見たまま画面で文字を打ち直すと、この入力欄の外で
+   * 中身が変わる（Widget編集に統合・2026-09-23）。控えを基準に直すと、その打ち直しが消えてしまう
+   */
+  const current = (): string => options.read().html
   /** その要素の移る先を、まだ無い画面（id）にした中身（「＋新しい画面」） */
-  const htmlWithGo = (slotId: string, id: string): string => editSample(current, slotId, { kind: 'go', value: id })
+  const htmlWithGo = (slotId: string, id: string): string => editSample(current(), slotId, { kind: 'go', value: id })
   const steps = info.stepIds.length >= 2 ? info.stepIds : []
   const active = Math.min(Math.max(options.activeStep.get(), 0), Math.max(steps.length - 1, 0))
   /** 見え方: 2つ目以降の設問を選んでいるときだけ、その設問を出す（1つ目は見本のままの見え方） */
-  const paintPreview = (): void => options.onPreview(steps.length > 0 && active > 0 ? previewWithStep(current, steps, active) : null)
+  const paintPreview = (): void => options.onPreview(steps.length > 0 && active > 0 ? previewWithStep(current(), steps, active) : null)
   const apply = (id: string, change: SampleChange): void => {
-    const next = editSample(current, id, change)
-    if (next === current) return
-    current = next
-    options.writeHtml(current)
+    const before = current()
+    const next = editSample(before, id, change)
+    if (next === before) return
+    options.writeHtml(next)
     paintPreview()
   }
 

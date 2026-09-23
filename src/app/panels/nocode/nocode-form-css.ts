@@ -130,6 +130,25 @@ textarea.ncf-input{resize:vertical;min-height:64px}
 .ncf-chip:disabled{opacity:.4;cursor:default}
 .ncf-chip:focus-visible{outline:2px solid var(--sb-accent,#0091FF);outline-offset:2px}
 .ncf-sample__box{margin:0 0 8px;font-size:12.5px;font-weight:700;overflow-wrap:anywhere}
+/* Widget編集の右側（2026-09-23 統合）: 部品は選んだ1つだけ広げる。頭は押せる */
+.ncf-item__head[role="button"]{cursor:pointer;margin:0;padding:10px 6px;border-radius:6px}
+.ncf-item__head[role="button"]:hover{background:var(--sb-neutral,#F4F4F4)}
+.ncf-item__head[role="button"]:focus-visible{outline:2px solid var(--sb-accent,#0091FF);outline-offset:-2px}
+.ncf-item--selected>.ncf-item__head{background:var(--sb-accent-tint,#E6F4FF)}
+.ncf-item--selected>.ncf-item__head .ncf-item__name{color:var(--sb-text,#151515)}
+.ncf-item__snippet{min-width:0;flex:1;font-weight:400;color:var(--sb-sub,#808080);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ncf-item__body{padding:6px 6px 4px}
+.ncf-item{padding:0}
+.ncf-item>.ncf-item__head{margin-bottom:0}
+.ncf-item--selected{padding-bottom:8px}
+.ncf-fold{margin:0 0 14px;border:1px solid var(--sb-line,#DDD);border-radius:8px;padding:0 12px}
+.ncf-fold__summary{cursor:pointer;padding:10px 0;font-size:12.5px;font-weight:700;color:var(--sb-sub,#808080);list-style:none;display:flex;align-items:center;gap:8px}
+.ncf-fold__summary::-webkit-details-marker{display:none}
+.ncf-fold__summary::before{content:"";width:6px;height:6px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(-45deg);transition:transform .15s;flex-shrink:0}
+.ncf-fold[open]>.ncf-fold__summary{color:var(--sb-text,#151515)}
+.ncf-fold[open]>.ncf-fold__summary::before{transform:rotate(45deg)}
+.ncf-fold>*:not(summary){margin-top:4px}
+.ncf-fold>.ncf-field:last-child,.ncf-fold>.ncf-screen-head:last-child{margin-bottom:12px}
 `
 
 export function ensureNocodeFormCss(): void {

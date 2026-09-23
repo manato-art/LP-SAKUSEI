@@ -8,7 +8,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { parseHTML } from 'linkedom'
-import { applyScreenIds, splitSampleScreens } from '../src/app/panels/nocode/sample-to-screens.ts'
+import { applyScreenIds, sampleScreens, splitSampleScreens } from '../src/app/panels/nocode/sample-to-screens.ts'
 
 /** linkedom で「見本を入れた箱」を作る（ブラウザの DOMParser と同じ役目） */
 function parse(html: string): Element {
@@ -71,5 +71,30 @@ describe('見本を画面①②③に分ける', () => {
 
   it('足りない画面の番号は、そのボタンの移る先を空にする（変な文字をHTMLに入れない）', () => {
     expect(applyScreenIds('<a data-nc-go="@5">x</a>', ['s1'])).toBe('<a >x</a>')
+  })
+})
+
+describe('見本カードの「画面を作って使う」（Widget編集の部品モードで開く中身）', () => {
+  it('設問①②③は画面①②③に1つずつ入り、移る先は本当の画面のidになる', () => {
+    const screens = sampleScreens({ title: 'アンケート', html: converted }, parse)
+    expect(screens.map((s) => [s.id, s.name])).toEqual([
+      ['s1', '画面①'],
+      ['s2', '画面②'],
+      ['s3', '画面③'],
+    ])
+    expect(screens[0]?.blocks).toHaveLength(1)
+    expect(screens[0]?.blocks[0]?.type).toBe('sample')
+    expect(screens[0]?.blocks[0]?.title).toBe('アンケート')
+    expect(screens[0]?.blocks[0]?.html).toContain('data-nc-go="s2"')
+    expect(screens[1]?.blocks[0]?.html).toContain('data-nc-go="s3"')
+    expect(screens[1]?.blocks[0]?.html).toContain('data-nc-go="s1"')
+  })
+
+  it('分けられない見本は画面①に1つ（中身はそのまま）', () => {
+    const html = '<style>.a{}</style><div class="nc nc-sample nc-bbbbbbbb" data-nocode="sample"><p>x</p></div>'
+    const screens = sampleScreens({ title: '見出し', html }, parse)
+    expect(screens).toHaveLength(1)
+    expect(screens[0]?.id).toBe('s1')
+    expect(screens[0]?.blocks[0]?.html).toBe(html)
   })
 })

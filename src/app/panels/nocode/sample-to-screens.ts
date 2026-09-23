@@ -71,3 +71,23 @@ export function applyScreenIds(html: string, ids: readonly string[]): string {
     return id === undefined ? '' : `data-nc-go="${id}"`
   })
 }
+
+/**
+ * 見本のカードの「画面を作って使う」: その見本を部品にした画面①②…の並び
+ * （本人の依頼「見本からでも型からでも、部品を積んで作るときと同じ『画面と部品』が欲しい」）。
+ * 設問①②③で進む見本は、設問ごとの部品にして画面①②③に分ける。分けられない見本は画面①に1つ。
+ * 画面の名前は「画面①」…（screens-state.ts と同じ丸数字）。
+ */
+export function sampleScreens(
+  sample: { title: string; html: string },
+  parse: (html: string) => Element = domParse,
+): readonly { id: string; name: string; blocks: readonly { type: 'sample'; title: string; html: string }[] }[] {
+  const parts = splitSampleScreens(sample.html, parse)
+  const ids = parts.map((_, index) => `s${index + 1}`)
+  const circled = Array.from('①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳')
+  return parts.map((part, index) => ({
+    id: ids[index] ?? `s${index + 1}`,
+    name: `画面${circled[index] ?? String(index + 1)}`,
+    blocks: [{ type: 'sample', title: sample.title, html: applyScreenIds(part, ids) }],
+  }))
+}

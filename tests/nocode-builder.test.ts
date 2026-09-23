@@ -146,9 +146,23 @@ describe('図形・動画・選択肢のボタン', () => {
       screen('s1', '画面①', [{ type: 'shape', shape: 'circle', size: '40', color: '#1F7AE0', text: 'はい', action: 'screen', target: 's2' }]),
       screen('s2', '画面②', [{ type: 'text', text: 'x', align: 'left' }]),
     ])
-    expect(html).toMatch(/<div class="nc-b nc-b-shape nc-b-shape--circle nc-b-shape--w40 nc-b-1" data-nc-go="s2" role="button" tabindex="0">/)
+    expect(html).toMatch(/<div class="nc-b nc-b-shape nc-b-shape--circle nc-b-1" data-nc-go="s2" role="button" tabindex="0">/)
     expect(html).toMatch(/\.nc-b-1\{[^}]*background:#1F7AE0/)
+    // 幅は数で持つ（以前の '40' のような文字も 40% として読む）
+    expect(html).toMatch(/\.nc-b-1\{[^}]*width:40%/)
     expect(html).toContain('はい')
+  })
+
+  it('画像・図形の幅は 10〜100% の数（範囲の外・読めない値は既定の 100%）', () => {
+    const wide = render([screen('s1', '画面①', [{ type: 'image', image: PNG, alt: '', action: 'none', width: 75 }])])
+    expect(wide).toMatch(/\.nc-b-1 img\{width:75%\}/)
+    expect(wide).not.toContain('nc-b-image--w')
+    const legacy = render([screen('s1', '画面①', [{ type: 'image', image: PNG, alt: '', action: 'none', width: '60' }])])
+    expect(legacy).toMatch(/\.nc-b-1 img\{width:60%\}/)
+    const broken = render([screen('s1', '画面①', [{ type: 'shape', shape: 'rect', size: 'huge', color: '#E5573F', text: '', action: 'none' }])])
+    expect(broken).toMatch(/\.nc-b-1\{[^}]*width:100%/)
+    const tiny = render([screen('s1', '画面①', [{ type: 'shape', shape: 'rect', size: 3, color: '#E5573F', text: '', action: 'none' }])])
+    expect(tiny).toMatch(/\.nc-b-1\{[^}]*width:10%/)
   })
 
   it('動画は、押したら移るなら操作ボタンを出さない（押すと再生ではなく移る）。自動再生は音なし・くり返し', () => {

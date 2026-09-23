@@ -52,18 +52,24 @@ export function safeColor(value: string, fallback: string): string {
 }
 
 const DATA_IMAGE = /^data:image\/(png|jpe?g|gif|webp|avif);base64,[A-Za-z0-9+/]+=*$/
+/**
+ * 保存のときに別ファイルへ出された画像（mock-server/lib/uploads.ts。名前は中身のハッシュ）。
+ * 部品で作ったWidgetを開き直したとき（builder-data.ts）、設定データの画像はこの形になっている
+ */
+const UPLOADED_IMAGE = /^\/uploads\/[0-9a-f]{64}\.(png|jpg|gif|webp|avif)$/
 
-/** 選んだ画像ファイル（data:image/…;base64）だけ。それ以外は空 */
+/** 選んだ画像ファイル（data:image/…;base64）か、保存で別ファイルになった画像（/uploads/…）だけ。それ以外は空 */
 export function safeImage(value: string): string {
-  return DATA_IMAGE.test(value) ? value : ''
+  return DATA_IMAGE.test(value) || UPLOADED_IMAGE.test(value) ? value : ''
 }
 
 /** mp4・webm だけ（保存のときに別ファイルへ出せる形＝mock-server/lib/uploads.ts と同じ） */
 const DATA_VIDEO = /^data:video\/(mp4|webm);base64,[A-Za-z0-9+/]+=*$/
+const UPLOADED_VIDEO = /^\/uploads\/[0-9a-f]{64}\.(mp4|webm)$/
 
-/** 選んだ動画ファイル（data:video/mp4・webm;base64）だけ。それ以外は空 */
+/** 選んだ動画ファイル（data:video/mp4・webm;base64）か、保存で別ファイルになった動画だけ。それ以外は空 */
 export function safeVideo(value: string): string {
-  return DATA_VIDEO.test(value) ? value : ''
+  return DATA_VIDEO.test(value) || UPLOADED_VIDEO.test(value) ? value : ''
 }
 
 function channels(hex: string): [number, number, number] {

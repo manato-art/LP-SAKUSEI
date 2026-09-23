@@ -248,8 +248,6 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
       `${s} .nc-b-tpl>.nc{padding:0}` +
       `${s} .nc-b-image{margin-left:0;margin-right:0}` +
       `${s} .nc-b-image img{margin:0 auto}` +
-      `${s} .nc-b-image--w80 img{width:80%}` +
-      `${s} .nc-b-image--w60 img{width:60%}` +
       `${s} .nc-b-image--round img{border-radius:12px}` +
       `${s} .nc-b-image__link,${s} .nc-b-video__link,${s} .nc-b-imageText__link{display:block;color:inherit;text-decoration:none}` +
       `${s} .nc-b-button{margin-top:22px}` +
@@ -262,7 +260,6 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
       `${s} .nc-b-shape--rect{border-radius:0;min-height:88px}` +
       `${s} .nc-b-shape--circle{border-radius:50%;aspect-ratio:1/1}` +
       `${s} .nc-b-shape--pill{border-radius:999px;min-height:56px}` +
-      ['100', '80', '60', '40'].map((w) => `${s} .nc-b-shape--w${w}{width:${w}%}`).join('') +
       `${s} .nc-b-video__v{display:block;width:100%;height:auto;border-radius:10px;background:#000000}` +
       `${s} .nc-b-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}` +
       `${s} .nc-b-list__item{display:flex;align-items:flex-start;gap:10px}` +

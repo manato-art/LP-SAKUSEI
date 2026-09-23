@@ -7,6 +7,9 @@
  *   分割表示   … 左にビジュアルエディタ、右にコード（既定）
  *   コード表示 … ビジュアルを畳んでコードだけを全幅にする
  * 実際に左ペインを畳むのは呼び出し側なので、`onViewChange` で知らせる。
+ *
+ * 部品で作ったWidget（設定データつき・2026-09-23）では、コードは設定から書き出したものなので見るだけ。
+ * 直接直したいときは「部品を解除」でHTMLのWidgetにする（readOnly）。
  */
 import { COLOR, FONT, MONO, type WidgetEditTarget } from './widget-editor-theme.ts'
 import { highlightHtml, highlightCss } from './syntax-highlight.ts'
@@ -21,25 +24,36 @@ export interface CodePanelOptions {
   /** 分割表示／コード表示が切り替わったとき（左ペインを畳むのは呼び出し側） */
   readonly onViewChange?: (view: CodePaneView) => void
   /**
-   * 普段（「デフォルト時のコードを表示」がOFF）に出す「要素ごとに編集」。
+   * 普段（「デフォルト時のコードを表示」がOFF）に出す「要素ごとに編集」（部品で作ったWidgetでは「部品」の入力欄）。
    * ONにすると代わりに今の HTML / CSS が出る（本人指定）。無ければ従来どおりコードだけを出す。
    */
   readonly design?: { readonly element: HTMLElement; readonly refresh: () => void }
   /** CSS欄が書き換えられたとき（手入力でも「要素ごとに編集」からでも）。プレビューへ流す */
   readonly onCssInput?: (css: string) => void
+  /** コードを見るだけにする（部品で作ったWidget）。「部品を解除」のボタンを出す */
+  readonly readOnly?: { readonly note: string; readonly detachLabel: string; readonly onDetach: () => void }
+  /** 「デフォルト時のコードを表示」をONにした直後（部品で作ったWidgetは、ここで今のコードを入れ直す） */
+  readonly onShowCode?: () => void
 }
+
+export interface CodePanel {
+  readonly pane: HTMLElement
+  /** HTML・CSS の欄を入れ直す（色付け・行番号・プレビューも同じ道で更新される） */
+  readonly setCode: (html: string, css: string) => void
+  readonly isCodeVisible: () => boolean
+}
+
 /**
  * 右ペイン（要素ごとに編集・コード）の既定の幅。画面いっぱいになったので、
  * 右は読みやすい幅で止め、余った所は左（見え方）に回す（本人の指示 2026-09-23）。
- * 仕切りのドラッグで変えられる。「コードだけ」を選んだときは全幅（widget-editor.ts）。
+ * 仕切りのドラッグで変えられる。「コードだけ」を選んだときは全幅（widget-studio.ts）。
  */
 export const RIGHT_PANE_FLEX = '0 0 560px'
 
-
-export function buildCodePanels(target: WidgetEditTarget, options: CodePanelOptions = {}): HTMLElement {
-  const { onViewChange, design, onCssInput } = options
+export function buildCodePanels(target: WidgetEditTarget, options: CodePanelOptions = {}): CodePanel {
+  const { onViewChange, design, onCssInput, readOnly, onShowCode } = options
   const pane = document.createElement('div')
-  pane.style.cssText = `flex:${RIGHT_PANE_FLEX};display:flex;flex-direction:column;min-width:0`
+  pane.style.cssText = `flex:1;display:flex;flex-direction:column;min-width:0;min-height:0`
 
   // 「デフォルト時のコードを表示」トグル行 + ビューアイコン
   const toggleRow = document.createElement('div')
@@ -84,21 +98,22 @@ export function buildCodePanels(target: WidgetEditTarget, options: CodePanelOpti
   toggleRow.append(toggleLabel, toggle, viewBtns)
 
   // HTML(カスタム) パネル
-  const htmlPanel = createHighlightedCodePanel('HTML(カスタム)', target.html, 'data-code-html', 'html')
+  const htmlPanel = createHighlightedCodePanel('HTML(カスタム)', target.html, 'data-code-html', 'html', readOnly !== undefined)
 
   // 分割線
   const codeDivider = document.createElement('div')
   codeDivider.style.cssText = `height:10px;background:${COLOR.container};flex-shrink:0`
 
   // CSS(カスタム) パネル
-  const cssPanel = createHighlightedCodePanel('CSS(カスタム)', target.css, 'data-code-css', 'css')
-  cssPanel
-    .querySelector<HTMLTextAreaElement>('[data-code-css]')
-    ?.addEventListener('input', (e) => onCssInput?.((e.currentTarget as HTMLTextAreaElement).value))
+  const cssPanel = createHighlightedCodePanel('CSS(カスタム)', target.css, 'data-code-css', 'css', readOnly !== undefined)
+  const htmlArea = htmlPanel.querySelector<HTMLTextAreaElement>('[data-code-html]')
+  const cssArea = cssPanel.querySelector<HTMLTextAreaElement>('[data-code-css]')
+  cssArea?.addEventListener('input', (e) => onCssInput?.((e.currentTarget as HTMLTextAreaElement).value))
 
   // HTML と CSS はひとまとめにして、トグルで「要素ごとに編集」と入れ替える
   const codeArea = document.createElement('div')
   codeArea.style.cssText = 'flex:1;display:flex;flex-direction:column;min-height:0'
+  if (readOnly !== undefined) codeArea.append(buildReadOnlyBar(readOnly))
   codeArea.append(htmlPanel, codeDivider, cssPanel)
 
   // 「デフォルト時のコードを表示」: 押すと今のコードを出す／戻すと「要素ごとに編集」（本人指定）
@@ -110,6 +125,7 @@ export function buildCodePanels(target: WidgetEditTarget, options: CodePanelOpti
     toggle.style.background = visible ? COLOR.toggleBgOn : COLOR.toggleBg
     toggleKnob.style.left = visible ? '18px' : '2px'
     codeArea.style.display = visible || design === undefined ? 'flex' : 'none'
+    if (visible && !wasVisible) onShowCode?.()
     if (design === undefined) return
     design.element.style.display = visible ? 'none' : ''
     // コードを直接書き換えてから戻ってきたら、今のコードでカードを作り直す
@@ -120,8 +136,42 @@ export function buildCodePanels(target: WidgetEditTarget, options: CodePanelOpti
   pane.append(toggleRow, codeArea)
   if (design !== undefined) pane.append(design.element)
   setCodeVisible(false)
-  return pane
+
+  const setCode = (html: string, css: string): void => {
+    for (const [area, value] of [
+      [htmlArea, html],
+      [cssArea, css],
+    ] as const) {
+      if (area === null || area.value === value) continue
+      area.value = value
+      // 値を入れるだけでは、上に重ねた色付き表示と行番号が古いまま。同じ更新を通す
+      area.dispatchEvent(new Event('input'))
+    }
+  }
+  return { pane, setCode, isCodeVisible: () => isCodeVisible }
 }
+
+/** 見るだけのコードの上に出す帯（理由と「部品を解除」） */
+function buildReadOnlyBar(readOnly: NonNullable<CodePanelOptions['readOnly']>): HTMLElement {
+  const bar = document.createElement('div')
+  bar.dataset['codeReadonly'] = 'true'
+  bar.style.cssText =
+    `display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 12px;flex-shrink:0;` +
+    `background:#1f1f1f;color:#bbb;font:12px/1.5 ${FONT}`
+  const note = document.createElement('span')
+  note.textContent = readOnly.note
+  note.style.cssText = 'flex:1;min-width:180px'
+  const detach = document.createElement('button')
+  detach.type = 'button'
+  detach.textContent = readOnly.detachLabel
+  detach.style.cssText =
+    `border:1px solid #666;background:transparent;color:#eee;border-radius:4px;padding:5px 10px;` +
+    `font:600 12px/1 ${FONT};cursor:pointer;white-space:nowrap`
+  detach.addEventListener('click', readOnly.onDetach)
+  bar.append(note, detach)
+  return bar
+}
+
 function makeViewButton(svgHtml: string, title: string): HTMLButtonElement {
   const btn = document.createElement('button')
   btn.type = 'button'
@@ -137,6 +187,7 @@ function createHighlightedCodePanel(
   content: string,
   dataAttr: string,
   lang: 'html' | 'css',
+  readOnly: boolean,
 ): HTMLElement {
   const panel = document.createElement('div')
   panel.style.cssText =
@@ -190,6 +241,7 @@ function createHighlightedCodePanel(
   const textarea = document.createElement('textarea')
   textarea.value = content
   textarea.spellcheck = false
+  textarea.readOnly = readOnly
   textarea.setAttribute(dataAttr, 'true')
   textarea.style.cssText =
     `position:relative;z-index:1;width:100%;height:100%;border:none;resize:none;padding:4px 12px;` +
@@ -212,7 +264,7 @@ function createHighlightedCodePanel(
 
   // Tab キーでインデント
   textarea.addEventListener('keydown', (e) => {
-    if (e.key === 'Tab') {
+    if (e.key === 'Tab' && !readOnly) {
       e.preventDefault()
       const start = textarea.selectionStart
       const end = textarea.selectionEnd

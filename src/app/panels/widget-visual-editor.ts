@@ -16,7 +16,6 @@ import {
 } from './toolbar/text-format.ts'
 import { openColorPicker } from './toolbar/color-picker.ts'
 import { attachItemToolbar } from './nocode/item-toolbar.ts'
-import { attachScreenSwitcher, attachStepSwitcher } from './nocode/screen-switcher.ts'
 import { openLinkBubble } from './widget-link-bubble.ts'
 import {
   svgToolAlign,
@@ -36,12 +35,29 @@ import {
   svgToolUndo,
 } from './widget-editor-icons.ts'
 
-export function buildVisualEditor(target: WidgetEditTarget): {
+export interface VisualEditorOptions {
+  /**
+   * 部品で作ったWidget（設定データつき・2026-09-23）。
+   * 書式のツールバー・余白の欄・並んだ部品の操作・画像の操作パネル・リンクの吹き出しは出さない
+   * （見た目は右の「部品」で直す。文字はその場で打ち直せる。書式が要るときは「部品を解除」でHTMLのWidgetにする）
+   */
+  readonly builder?: boolean
+  /** 見たまま画面を（動作確認の Ctrl/⌘ なしで）押したとき。部品を選ぶのに使う */
+  readonly onClick?: (target: EventTarget | null) => void
+}
+
+export function buildVisualEditor(
+  target: WidgetEditTarget,
+  options: VisualEditorOptions = {},
+): {
   pane: HTMLElement
   contentDiv: HTMLElement
+  /** 見たまま画面のスクロールする器（選択枠などの層を置く所） */
+  editorBody: HTMLElement
   /** プレビューに当てる Widget の CSS を差し替える。コード欄や「要素ごとに編集」の変更をここへ流し込む */
   setPreviewCss: (css: string) => void
 } {
+  const isBuilder = options.builder === true
   const pane = document.createElement('div')
   // 620px プレビュー＋左右padding(20px)＝660px を下回らないよう min-width を置く（仕切りドラッグで変更可）。
   // 画面いっぱいになったので、左（見え方）が残り全部を取る。620pxのプレビューは中央に置かれる
@@ -404,15 +420,17 @@ export function buildVisualEditor(target: WidgetEditTarget): {
     `outline:none;min-height:100px;width:${WIDGET_PREVIEW_WIDTH}px;max-width:none;margin:0 auto;box-sizing:border-box;line-height:1.5`
   contentDiv.innerHTML = target.html
   editorBody.append(contentDiv)
-  // よくある質問・口コミのように並んでいる部品に「複製・上へ・下へ・消す」を出す（ノーコードでWidgetを作る②）
-  attachItemToolbar(editorBody, contentDiv)
+  // よくある質問・口コミのように並んでいる部品に「複製・上へ・下へ・消す」を出す（ノーコードでWidgetを作る②）。
+  // 部品で作ったWidgetは、部品の並びを右で直す（DOMを直に動かすと設定データとずれる）
+  if (!isBuilder) attachItemToolbar(editorBody, contentDiv)
 
   // 画像/動画はクリックで操作パネル（差し替え＋サイズ変更）を出す。
   // グレーの「画像」枠も data URI の <img> なので同様に効く。
+  // 部品で作ったWidgetでは、押すとその部品が右で開く（画像の差し替え・幅はそこで）
   const markImages = (): void => {
     for (const el of contentDiv.querySelectorAll<HTMLElement>('img, video')) {
       el.style.cursor = 'pointer'
-      if (el.title === '') el.title = 'クリックで差し替え・サイズ変更'
+      if (el.title === '') el.title = isBuilder ? 'クリックで右に開く（差し替え・幅）' : 'クリックで差し替え・サイズ変更'
     }
   }
   markImages()
@@ -420,6 +438,7 @@ export function buildVisualEditor(target: WidgetEditTarget): {
   contentDiv.addEventListener('click', (e) => {
     // 修飾キー押下時はウィジェットの動作確認モード（指示146）。メディア操作パネルは出さない。
     if (e.ctrlKey || e.metaKey) return
+    if (isBuilder) return
     const media = (e.target as HTMLElement).closest<HTMLElement>('img, video')
     if (media === null || !contentDiv.contains(media)) {
       closeMediaControl()
@@ -437,18 +456,21 @@ export function buildVisualEditor(target: WidgetEditTarget): {
   contentDiv.addEventListener(
     'click',
     (e) => {
+      const mod = e.ctrlKey || e.metaKey
+      // 部品を選ぶなど、押した所を知りたい側へ先に知らせる（この下でボタンの押下を止めても届くように）
+      if (!mod) options.onClick?.(e.target)
       const interactive = (e.target as HTMLElement).closest(
         'button, a, [role="button"], input[type="button"], input[type="submit"]',
       )
       if (interactive === null) return
-      const mod = e.ctrlKey || e.metaKey
       if (!mod) {
         // 編集モード: ウィジェットのクリック動作（次へ遷移など）を止める
         e.preventDefault()
         e.stopImmediatePropagation()
-        // リンクのボタンなら、下にリンク先を出す（見本のリンク先は仮のまま入っていることが多い・その場で入れられる）
+        // リンクのボタンなら、下にリンク先を出す（見本のリンク先は仮のまま入っていることが多い・その場で入れられる）。
+        // 部品で作ったWidgetでは、リンク先は右の「押したとき」で直す
         const anchor = (e.target as HTMLElement).closest('a')
-        if (anchor !== null && contentDiv.contains(anchor)) openLinkBubble(anchor, syncContentToCode)
+        if (!isBuilder && anchor !== null && contentDiv.contains(anchor)) openLinkBubble(anchor, syncContentToCode)
       } else if (interactive.tagName === 'A') {
         // 動作確認モード（指示156）: ウィジェットには `window.location.href = this.href` で
         // ページ遷移するタイプ（リンク型アンケート等）があり、そのまま通すと編集画面から離脱して
@@ -473,14 +495,31 @@ export function buildVisualEditor(target: WidgetEditTarget): {
   // ── 余白調整バー（指示144: 上下の余白を調整できるように） ──
   // Widget 最外要素の padding-top / padding-bottom を px で調整する。
   // 変更はインラインstyleとして最外要素に付き、input イベント経由でコードパネル→保存に反映される。
-  const spacingBar = buildSpacingBar(contentDiv)
+  // 部品で作ったWidgetの余白は設定データ（Widget全体の設定）で持つので、ここでは出さない
+  if (isBuilder) {
+    pane.append(buildBuilderHintBar(), editorBody)
+  } else {
+    pane.append(toolbar, buildSpacingBar(contentDiv), editorBody)
+  }
+  // 画面①②…・設問①②…のタブは、右側のいちばん上に出す（widget-studio.ts）
+  return { pane, contentDiv, editorBody, setPreviewCss }
+}
 
-  pane.append(toolbar, spacingBar, editorBody)
-  // 画面①②…を作ったWidgetは、上に画面のタブを出して移る先の画面も直せるようにする（ノーコードでWidgetを作る④）
-  attachScreenSwitcher(editorBody, contentDiv)
-  // 見本にもともとある設問①②…も、上のタブで切り替えて直せるようにする
-  attachStepSwitcher(editorBody, contentDiv)
-  return { pane, contentDiv, setPreviewCss }
+/** 部品で作ったWidgetの見たまま画面の上に出す一言（ツールバーの代わり） */
+function buildBuilderHintBar(): HTMLElement {
+  const bar = document.createElement('div')
+  bar.dataset['widgetToolbar'] = 'true'
+  bar.style.cssText =
+    `display:flex;align-items:center;gap:12px;background:#fafafa;border-bottom:1px solid #eee;` +
+    `flex-shrink:0;padding:8px 14px;font:12px/1.5 ${FONT};color:#666`
+  const hint = document.createElement('span')
+  hint.textContent = '部品を押すと右で直せます。文字はこの場で打ち直せます。'
+  const note = document.createElement('span')
+  note.dataset['widgetNote'] = 'true'
+  note.textContent = 'ボタンの動作確認は Ctrl（Windows）/ ⌘（Mac）＋クリック'
+  note.style.cssText = 'margin-left:auto;color:#999;font-size:11px;white-space:nowrap'
+  bar.append(hint, note)
+  return bar
 }
 /**
  * Widget の上下余白（最外要素の padding-top / padding-bottom）を調整する小さなバー。
