@@ -35,6 +35,7 @@ import { buildVisualEditor } from './widget-visual-editor.ts'
 import { insertWidget } from './widget-creator.ts'
 import { openWidgetLibraryForPick } from './widget-library.ts'
 import { createBuilderSession, type BuilderSession } from './widget-studio-builder.ts'
+import { buildPaneDivider } from './pane-divider.ts'
 
 export type StudioSource =
   /** LPの中のWidget（設定データがあればそれで、無ければ見本の部品1つとして開く） */
@@ -109,7 +110,8 @@ export function openWidgetStudio(quill: Quill, source: StudioSource): void {
   /* ── 本体（2ペイン） ── */
   const darkContainer = document.createElement('div')
   darkContainer.dataset['widgetPanes'] = 'true'
-  darkContainer.style.cssText = `flex:1;display:flex;background:${COLOR.container};overflow:hidden;min-height:0`
+  // 地は白（以前の濃い地 #2B2B2B は仕切りの帯として見えていた）
+  darkContainer.style.cssText = `flex:1;display:flex;background:#FFFFFF;overflow:hidden;min-height:0`
 
   // 左: 見たまま画面（書式のツールバーつき）
   let session: BuilderSession | null = null
@@ -119,17 +121,14 @@ export function openWidgetStudio(quill: Quill, source: StudioSource): void {
   })
   leftPane.dataset['widgetPane'] = 'visual'
 
-  // 仕切り（本番実測: ~10px幅, cursor:col-resize, 中身は空＝ドットなし）
-  const divider = document.createElement('div')
-  divider.dataset['widgetDivider'] = 'true'
-  divider.style.cssText =
-    `width:10px;background:${COLOR.container};cursor:col-resize;flex-shrink:0;` +
-    `display:flex;align-items:center;justify-content:center`
-
   // 右: 上に画面のタブ、その下に「部品」とコード
   const rightPane = document.createElement('div')
   rightPane.dataset['widgetPane'] = 'code'
   rightPane.style.cssText = `flex:${RIGHT_PANE_FLEX};display:flex;flex-direction:column;min-width:0;min-height:0;background:#fff`
+
+  // 仕切り: 白地に細い線＋真ん中のつまみ。乗せると青くなる・ドラッグで幅・ダブルクリックで元の幅（pane-divider.ts）
+  const divider = buildPaneDivider({ rightPane, container: darkContainer, defaultFlex: RIGHT_PANE_FLEX })
+  divider.dataset['widgetDivider'] = 'true'
   const tabsHost = document.createElement('div')
   tabsHost.dataset['widgetTabs'] = 'true'
   tabsHost.style.cssText = `flex-shrink:0;display:none;flex-direction:column;background:#fff;border-bottom:1px solid #E3E6EA`
@@ -171,7 +170,6 @@ export function openWidgetStudio(quill: Quill, source: StudioSource): void {
   })
   rightPane.append(tabsHost, codePanel.pane)
   darkContainer.append(leftPane, divider, rightPane)
-  wireDividerResize(divider, rightPane, darkContainer)
 
   /* ── ヘッダー ── */
   const readOutput = (): string | null => {
@@ -224,39 +222,6 @@ export function openWidgetStudio(quill: Quill, source: StudioSource): void {
   panel.append(header, darkContainer)
   // 画面に載ってから描く（Widgetの init は document.querySelector で自分の要素を探すため）
   current.start()
-}
-
-/**
- * 仕切り（col-resize）のドラッグで左ペイン(見え方)と右ペイン(直すところ)の幅を変える。
- * 右ペインに幅(px)を与え、左ペインが残り全部を埋める。左右とも最小幅を確保。
- */
-function wireDividerResize(divider: HTMLElement, rightPane: HTMLElement, container: HTMLElement): void {
-  const MIN = 280
-  const pane = rightPane // eslint-safe alias（no-param-reassign 回避）
-  let startX = 0
-  let startRightW = 0
-  const onMove = (e: MouseEvent): void => {
-    e.preventDefault()
-    const total = container.clientWidth
-    const max = total - divider.offsetWidth - MIN
-    let next = startRightW - (e.clientX - startX)
-    if (next < MIN) next = MIN
-    if (next > max) next = max
-    pane.style.flex = `0 0 ${next}px`
-  }
-  const onUp = (): void => {
-    document.removeEventListener('mousemove', onMove)
-    document.removeEventListener('mouseup', onUp)
-    document.body.style.userSelect = ''
-  }
-  divider.addEventListener('mousedown', (e) => {
-    e.preventDefault()
-    startX = e.clientX
-    startRightW = pane.getBoundingClientRect().width
-    document.body.style.userSelect = 'none'
-    document.addEventListener('mousemove', onMove)
-    document.addEventListener('mouseup', onUp)
-  })
 }
 
 /* ================================================================
