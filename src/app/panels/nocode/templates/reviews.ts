@@ -7,6 +7,7 @@
  */
 import { baseCss, esc, safeColor, safeImage, shade, textHtml, titleHtml, wrapWidget } from './kit.ts'
 import { ACCENT_PRESETS, items, pick, str, type ItemData, type NocodeTemplate } from './types.ts'
+import { RATING_ICONS } from './option-icons.ts'
 
 const RATINGS = ['5', '4', '3', 'none'] as const
 
@@ -63,10 +64,10 @@ export const REVIEWS_TEMPLATE: NocodeTemplate = {
           key: 'rating',
           label: '星',
           options: [
-            { value: '5', label: '★★★★★（5）' },
-            { value: '4', label: '★★★★☆（4）' },
-            { value: '3', label: '★★★☆☆（3）' },
-            { value: 'none', label: '出さない' },
+            { value: '5', label: '星5つ', short: '5', icon: RATING_ICONS['5'] },
+            { value: '4', label: '星4つ', short: '4', icon: RATING_ICONS['4'] },
+            { value: '3', label: '星3つ', short: '3', icon: RATING_ICONS['3'] },
+            { value: 'none', label: '出さない', icon: RATING_ICONS.none },
           ],
         },
         { kind: 'image', key: 'image', label: '写真（無ければ人の形のアイコン）' },

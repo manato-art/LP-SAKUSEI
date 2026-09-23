@@ -9,6 +9,7 @@
  */
 import { INK_DARK, baseCss, esc, linkAttrs, safeColor, safeImage, shade, wrapWidget } from './kit.ts'
 import { ACCENT_PRESETS, bool, items, pick, str, type ItemData, type NocodeTemplate } from './types.ts'
+import { AUTOPLAY_ICONS, RATIO_ICONS } from './option-icons.ts'
 
 const RATIOS = ['auto', '1/1', '4/5', '16/9'] as const
 const AUTOPLAY = ['0', '3', '5', '8'] as const
@@ -102,10 +103,10 @@ export const SLIDER_TEMPLATE: NocodeTemplate = {
       key: 'ratio',
       label: '画像の形',
       options: [
-        { value: 'auto', label: 'そのまま（切り取らない）' },
-        { value: '1/1', label: '正方形' },
-        { value: '4/5', label: '縦長（4:5）' },
-        { value: '16/9', label: '横長（16:9）' },
+        { value: 'auto', label: 'そのまま（切り取らない）', short: 'そのまま', icon: RATIO_ICONS.auto },
+        { value: '1/1', label: '正方形', icon: RATIO_ICONS['1/1'] },
+        { value: '4/5', label: '縦長（4:5）', short: '縦長', icon: RATIO_ICONS['4/5'] },
+        { value: '16/9', label: '横長（16:9）', short: '横長', icon: RATIO_ICONS['16/9'] },
       ],
     },
     {
@@ -113,10 +114,10 @@ export const SLIDER_TEMPLATE: NocodeTemplate = {
       key: 'autoplay',
       label: '自動で送る',
       options: [
-        { value: '0', label: '送らない' },
-        { value: '3', label: '3秒ごと' },
-        { value: '5', label: '5秒ごと' },
-        { value: '8', label: '8秒ごと' },
+        { value: '0', label: '送らない', icon: AUTOPLAY_ICONS['0'] },
+        { value: '3', label: '3秒ごと', icon: AUTOPLAY_ICONS['3'] },
+        { value: '5', label: '5秒ごと', icon: AUTOPLAY_ICONS['5'] },
+        { value: '8', label: '8秒ごと', icon: AUTOPLAY_ICONS['8'] },
       ],
     },
     { kind: 'toggle', key: 'track', label: 'リンクのクリック数をレポートで数える' },

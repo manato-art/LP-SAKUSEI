@@ -115,6 +115,58 @@ function followValue(env: ControlEnv, input: HTMLInputElement | HTMLTextAreaElem
 
 const asText = (value: unknown): string => (typeof value === 'string' ? value : '')
 
+type SelectField = Extract<ScalarField, { kind: 'select' }>
+
+/**
+ * 絵のタイルで選ぶ（2026-09-24・本人「プルダウンの文字を、パッと見で分かるように」）。
+ * タイル＝絵＋下に短い言葉。選んでいるものは青い枠。名前（label）は読み上げとマウスを乗せたときに出す。
+ * キーボードは Tab で移り Enter/Space で選ぶ。← → でも選べる（ラジオボタンと同じ）
+ */
+function tileControl(field: SelectField, env: ControlEnv, id: string): HTMLElement {
+  const group = node('div', 'ncf-tiles')
+  group.id = id
+  group.setAttribute('role', 'radiogroup')
+  group.setAttribute('aria-label', field.label)
+  const known = (v: string): string => (field.options.some((o) => o.value === v) ? v : (field.options[0]?.value ?? ''))
+  const tiles: HTMLButtonElement[] = []
+  const paint = (): void => {
+    const current = known(asText(env.read()))
+    for (const tile of tiles) {
+      const on = tile.dataset['value'] === current
+      tile.setAttribute('aria-checked', String(on))
+      tile.tabIndex = on ? 0 : -1
+    }
+  }
+  field.options.forEach((option, index) => {
+    const tile = node('button', 'ncf-tile')
+    tile.type = 'button'
+    tile.dataset['value'] = option.value
+    tile.setAttribute('role', 'radio')
+    tile.setAttribute('aria-label', option.label)
+    tile.title = option.label
+    const icon = node('span', 'ncf-tile__icon')
+    icon.innerHTML = option.icon ?? ''
+    tile.append(icon, node('span', 'ncf-tile__label', option.short ?? option.label))
+    const choose = (): void => {
+      env.write(option.value)
+      paint()
+    }
+    tile.addEventListener('click', choose)
+    tile.addEventListener('keydown', (event) => {
+      if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return
+      event.preventDefault()
+      const next = tiles[(index + (event.key === 'ArrowRight' ? 1 : -1) + tiles.length) % tiles.length]
+      next?.focus()
+      next?.click()
+    })
+    tiles.push(tile)
+    group.append(tile)
+  })
+  paint()
+  env.onRefresh(paint)
+  return group
+}
+
 export function scalarControl(field: ScalarField, env: ControlEnv, id: string): HTMLElement {
   const value = env.read()
   switch (field.kind) {
@@ -209,6 +261,8 @@ export function scalarControl(field: ScalarField, env: ControlEnv, id: string): 
       return wrap
     }
     case 'select': {
+      // 全部の選択肢に絵があれば、プルダウンではなく絵のタイルで選ぶ（言葉が違う人でも形で分かる）
+      if (field.options.length > 0 && field.options.every((option) => option.icon !== undefined)) return tileControl(field, env, id)
       const select = node('select', 'ncf-input')
       select.id = id
       const current = typeof value === 'string' ? value : ''

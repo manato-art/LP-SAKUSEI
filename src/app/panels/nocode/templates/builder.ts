@@ -20,6 +20,7 @@ import { goTargetsIn } from '../sample-model.ts'
 import { baseCss, esc, safeColor, safeImage, safeVideo, shade, wrapWidget } from './kit.ts'
 import { ACCENT_PRESETS, items, pick, str, type ItemData, type NocodeTemplate } from './types.ts'
 import { isRichEmpty } from '../rich-text.ts'
+import { TRANSITION_ICONS } from './option-icons.ts'
 
 export { ALL_BLOCK_TYPES, BLOCK_TYPES } from './builder-blocks.ts'
 
@@ -145,9 +146,9 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
       key: 'transition',
       label: '画面の切り替わり方',
       options: [
-        { value: 'none', label: '瞬時に切り替える' },
-        { value: 'fade', label: 'ふわっと切り替える' },
-        { value: 'slide', label: '横から切り替える' },
+        { value: 'none', label: '瞬時に切り替える', short: '瞬時', icon: TRANSITION_ICONS.none },
+        { value: 'fade', label: 'ふわっと切り替える', short: 'ふわっと', icon: TRANSITION_ICONS.fade },
+        { value: 'slide', label: '横から切り替える', short: '横から', icon: TRANSITION_ICONS.slide },
       ],
       showIf: (data) => items(data, 'screens').length > 1,
     },
@@ -260,6 +261,16 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
       `${s} .nc-b-shape--rect{border-radius:0;min-height:88px}` +
       `${s} .nc-b-shape--circle{border-radius:50%;aspect-ratio:1/1}` +
       `${s} .nc-b-shape--pill{border-radius:999px;min-height:56px}` +
+      // 2026-09-24 に足した形（楕円・ひし形・六角形・吹き出し・右向きの矢印・下向き・リボン）。中の文字が切れないよう内側を空ける
+      `${s} .nc-b-shape--ellipse{border-radius:50%;min-height:120px;padding:24px 14%}` +
+      `${s} .nc-b-shape--diamond{aspect-ratio:1/1;padding:22%;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}` +
+      `${s} .nc-b-shape--hexagon{min-height:96px;padding:16px 44px;clip-path:polygon(32px 0,calc(100% - 32px) 0,100% 50%,calc(100% - 32px) 100%,32px 100%,0 50%)}` +
+      `${s} .nc-b-shape--bubble{position:relative;border-radius:16px;min-height:80px;margin-bottom:14px}` +
+      `${s} .nc-b-shape--bubble::after{content:"";position:absolute;left:50%;top:100%;width:26px;height:14px;` +
+      `transform:translateX(-50%);background:inherit;clip-path:polygon(0 0,100% 0,50% 100%)}` +
+      `${s} .nc-b-shape--arrow{min-height:72px;padding-right:48px;clip-path:polygon(0 0,calc(100% - 34px) 0,100% 50%,calc(100% - 34px) 100%,0 100%)}` +
+      `${s} .nc-b-shape--down{min-height:100px;padding-bottom:40px;clip-path:polygon(0 0,100% 0,100% calc(100% - 30px),50% 100%,0 calc(100% - 30px))}` +
+      `${s} .nc-b-shape--ribbon{min-height:64px;padding:16px 40px;clip-path:polygon(0 0,100% 0,calc(100% - 22px) 50%,100% 100%,0 100%,22px 50%)}` +
       `${s} .nc-b-video__v{display:block;width:100%;height:auto;border-radius:10px;background:#000000}` +
       `${s} .nc-b-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}` +
       `${s} .nc-b-list__item{display:flex;align-items:flex-start;gap:10px}` +

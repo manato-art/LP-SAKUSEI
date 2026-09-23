@@ -155,6 +155,19 @@ textarea.ncf-input{resize:vertical;min-height:64px}
 .ncf-sample__code{display:flex;flex-direction:column;gap:10px;margin-top:8px}
 .ncf-sample__code>*{height:220px;border-radius:6px;overflow:hidden}
 .ncf-sample .ncf-fold{margin-top:14px}
+/* 選ぶ入力の絵のタイル（2026-09-24・プルダウンをやめ、形や絵でパッと選べるように） */
+.ncf-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:6px}
+.ncf-tile{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:62px;padding:8px 4px 6px;
+  border:1px solid var(--sb-line,#DDD);border-radius:8px;background:var(--sb-surface,#FFF);color:var(--sb-sub,#6B7480);cursor:pointer;
+  transition:border-color .12s,background .12s,color .12s}
+.ncf-tile:hover{border-color:var(--sb-accent,#0091FF);color:var(--sb-text,#151515)}
+.ncf-tile[aria-checked="true"]{border-color:var(--sb-accent,#0091FF);background:var(--sb-accent-tint,#E6F4FF);color:var(--sb-accent,#0091FF);
+  box-shadow:inset 0 0 0 1px var(--sb-accent,#0091FF)}
+.ncf-tile:focus-visible{outline:2px solid var(--sb-accent,#0091FF);outline-offset:2px}
+.ncf-tile__icon{display:block;line-height:0}
+.ncf-tile__icon svg{display:block;width:32px;height:24px}
+.ncf-tile__label{font-size:11px;font-weight:600;line-height:1.3;text-align:center;overflow-wrap:anywhere}
+@media (prefers-reduced-motion:reduce){.ncf-tile{transition:none}}
 /* 見本の部品の文字: 「文字」はまとまりに1回。同じ行のかけらは横に並べる（2026-09-24） */
 .ncf-sample__texts{display:flex;flex-direction:column;gap:6px;padding:10px 0 12px;border-top:1px dashed var(--sb-line,#DDD)}
 .ncf-sample__texts>.ncf-label{margin:0 0 2px}

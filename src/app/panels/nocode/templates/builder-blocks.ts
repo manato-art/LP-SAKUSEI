@@ -12,6 +12,7 @@
 import { ARROW_SVG, pressButtonCss } from './cta.ts'
 import { esc, inkOn, linkAttrs, newUid, safeColor, safeImage, safeVideo, shade } from './kit.ts'
 import { richText } from '../rich-text.ts'
+import { ALIGN_ICONS, BUTTON_LOOK_ICONS, DIVIDER_ICONS, MARKER_ICONS, SHAPE_ICONS, SIDE_ICONS } from './option-icons.ts'
 import { TEMPLATES } from './list.ts'
 import { ACCENT_PRESETS, bool, int, pick, str, type BlockType, type Field, type ItemData, type NocodeTemplate } from './types.ts'
 
@@ -42,9 +43,28 @@ export const SPACER_SIZES: Readonly<Record<string, number>> = { s: 16, m: 32, l:
 
 const ALIGNS = ['left', 'center'] as const
 const ALIGN_OPTIONS = [
-  { value: 'left', label: '左に寄せる' },
-  { value: 'center', label: '真ん中' },
+  { value: 'left', label: '左に寄せる', short: '左', icon: ALIGN_ICONS.left },
+  { value: 'center', label: '真ん中', short: '真ん中', icon: ALIGN_ICONS.center },
 ]
+
+/**
+ * 図形の形（2026-09-24・本人「文字ではなく形で選べるように。種類をもっと多く」で4種→11種）。
+ * 並びは選ぶタイルの順。CSS は builder.ts の .nc-b-shape--<形>
+ */
+export const SHAPE_KINDS = ['round', 'rect', 'circle', 'pill', 'ellipse', 'diamond', 'hexagon', 'bubble', 'arrow', 'down', 'ribbon'] as const
+const SHAPE_LABELS: Readonly<Record<(typeof SHAPE_KINDS)[number], string>> = {
+  round: '角の丸い四角',
+  rect: '四角',
+  circle: '丸',
+  pill: 'カプセル',
+  ellipse: '楕円',
+  diamond: 'ひし形',
+  hexagon: '六角形',
+  bubble: '吹き出し',
+  arrow: '右向きの矢印',
+  down: '下向き（次へ）',
+  ribbon: 'リボン',
+}
 const ACTIONS = ['none', 'screen', 'link'] as const
 type Action = (typeof ACTIONS)[number]
 
@@ -113,8 +133,8 @@ export const BLOCK_TYPES: readonly BlockType[] = [
         key: 'look',
         label: '見た目',
         options: [
-          { value: 'cta', label: '目立つボタン（申し込みなど）' },
-          { value: 'choice', label: '選択肢（白地に枠・アンケート向き）' },
+          { value: 'cta', label: '目立つボタン（申し込みなど）', short: '目立つ', icon: BUTTON_LOOK_ICONS.cta },
+          { value: 'choice', label: '選択肢（白地に枠・アンケート向き）', short: '選択肢', icon: BUTTON_LOOK_ICONS.choice },
         ],
       },
       { kind: 'color', key: 'color', label: 'ボタンの色', presets: ACCENT_PRESETS },
@@ -145,12 +165,7 @@ export const BLOCK_TYPES: readonly BlockType[] = [
         kind: 'select',
         key: 'shape',
         label: '形',
-        options: [
-          { value: 'round', label: '角の丸い四角' },
-          { value: 'rect', label: '四角' },
-          { value: 'circle', label: '丸' },
-          { value: 'pill', label: '横長の丸（カプセル）' },
-        ],
+        options: SHAPE_KINDS.map((kind) => ({ value: kind, label: SHAPE_LABELS[kind], icon: SHAPE_ICONS[kind] })),
       },
       // 幅は数で持つ（10〜100%。以前の「横いっぱい／8割／6割／4割」の選びは 100・80・60・40 として読める）
       { kind: 'number', key: 'size', label: '幅', min: 10, max: 100, unit: '%' },
@@ -182,9 +197,9 @@ export const BLOCK_TYPES: readonly BlockType[] = [
         key: 'marker',
         label: '頭の印',
         options: [
-          { value: 'check', label: 'チェック' },
-          { value: 'dot', label: '点' },
-          { value: 'number', label: '番号（1. 2. 3.）' },
+          { value: 'check', label: 'チェック', icon: MARKER_ICONS.check },
+          { value: 'dot', label: '点', icon: MARKER_ICONS.dot },
+          { value: 'number', label: '番号（1. 2. 3.）', short: '番号', icon: MARKER_ICONS.number },
         ],
       },
     ],
@@ -203,8 +218,8 @@ export const BLOCK_TYPES: readonly BlockType[] = [
         key: 'side',
         label: '画像を置く側',
         options: [
-          { value: 'left', label: '左' },
-          { value: 'right', label: '右' },
+          { value: 'left', label: '左', icon: SIDE_ICONS.left },
+          { value: 'right', label: '右', icon: SIDE_ICONS.right },
         ],
       },
       ...actionFields(),
@@ -229,8 +244,8 @@ export const BLOCK_TYPES: readonly BlockType[] = [
         key: 'style',
         label: '線',
         options: [
-          { value: 'solid', label: '細い線' },
-          { value: 'dotted', label: '点線' },
+          { value: 'solid', label: '細い線', icon: DIVIDER_ICONS.solid },
+          { value: 'dotted', label: '点線', icon: DIVIDER_ICONS.dotted },
         ],
       },
     ],
@@ -388,7 +403,7 @@ export function renderBlock(
       }
     }
     case 'shape': {
-      const shape = pick(item, 'shape', ['round', 'rect', 'circle', 'pill'] as const, 'round')
+      const shape = pick(item, 'shape', SHAPE_KINDS, 'round')
       const size = int(item, 'size', 10, 100, 100)
       const color = safeColor(str(item, 'color'), '#1F7AE0')
       const text = richText(str(item, 'text'))

@@ -401,3 +401,43 @@ describe('白紙から始める（2026-09-24・「ノーコードで作る」で
     expect(BUILDER_TEMPLATE.render(blank, UID)).toContain(`class="nc nc-builder ${UID}"`)
   })
 })
+
+describe('選ぶ入力は絵のタイル・図形は11種（2026-09-24・本人「文字ではなく形で。言葉が違う人でも分かるように」）', () => {
+  const selectsIn = (fields: readonly unknown[]): { key: string; options: readonly { icon?: string }[] }[] =>
+    (fields as { kind: string; key: string; options?: readonly { icon?: string }[]; fields?: readonly unknown[] }[]).flatMap((f) => [
+      ...(f.kind === 'select' ? [{ key: f.key, options: f.options ?? [] }] : []),
+      ...(f.kind === 'list' ? selectsIn(f.fields ?? []) : []),
+    ])
+
+  it('部品・型・Widget全体の選ぶ入力は、どの選択肢にも絵がある（プルダウンが残らない）', () => {
+    const all = [
+      ...selectsIn(BUILDER_TEMPLATE.fields),
+      ...ALL_BLOCK_TYPES.flatMap((t) => selectsIn(t.fields)),
+      ...TEMPLATES.flatMap((t) => selectsIn(t.fields)),
+    ]
+    expect(all.length).toBeGreaterThan(10)
+    for (const select of all) {
+      for (const option of select.options) expect(option.icon, select.key).toMatch(/^<svg /)
+    }
+  })
+
+  it('図形は11種。どれもその形のクラスで書き出し、形ごとのCSSがある。知らない形は角の丸い四角', () => {
+    const shapeType = ALL_BLOCK_TYPES.find((t) => t.type === 'shape')
+    const shapeField = shapeType?.fields.find((f) => f.key === 'shape') as { options: readonly { value: string }[] } | undefined
+    const kinds = shapeField?.options.map((o) => o.value) ?? []
+    expect(kinds).toEqual(['round', 'rect', 'circle', 'pill', 'ellipse', 'diamond', 'hexagon', 'bubble', 'arrow', 'down', 'ribbon'])
+    const html = render([
+      screen(
+        's1',
+        '画面①',
+        [...kinds, 'zzbad"><script>'].map((shape) => ({ type: 'shape', shape, size: 60, color: '#1F7AE0', text: 'x', action: 'none' })),
+      ),
+    ])
+    for (const kind of kinds) {
+      expect(html).toContain(`nc-b-shape--${kind} `)
+      expect(html).toMatch(new RegExp(`\\.nc-b-shape--${kind}\\{`))
+    }
+    expect(html).not.toContain('zzbad')
+    expect(html.match(/nc-b-shape--round /g)?.length).toBe(2)
+  })
+})

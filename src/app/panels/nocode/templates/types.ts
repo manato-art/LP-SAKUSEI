@@ -45,7 +45,14 @@ export type Field =
    * 値は action（none / screen / link）と target（画面のid）の2つ（template-form.ts が入れる）
    */
   | (FieldBase & { readonly kind: 'goto' })
-  | (FieldBase & { readonly kind: 'select'; readonly options: readonly { value: string; label: string }[] })
+  /**
+   * 選ぶ入力。全部の選択肢に icon（固定のSVG・option-icons.ts）があれば、プルダウンではなく絵のタイルで選ぶ
+   * （2026-09-24・本人「言葉が違う人でも、形や色でパッと選べるように」）。short はタイルの下に出す短い言葉（無ければ label）
+   */
+  | (FieldBase & {
+      readonly kind: 'select'
+      readonly options: readonly { value: string; label: string; short?: string; icon?: string }[]
+    })
   | (FieldBase & {
       readonly kind: 'number'
       readonly min: number

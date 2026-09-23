@@ -7,6 +7,7 @@
  */
 import { baseCss, contrastWithWhite, esc, inkOn, linkAttrs, safeColor, shade, wrapWidget } from './kit.ts'
 import { ACCENT_PRESETS, bool, pick, str, type NocodeTemplate } from './types.ts'
+import { CTA_MOTION_ICONS, CTA_SHAPE_ICONS, CTA_WIDTH_ICONS } from './option-icons.ts'
 
 const SHAPES = ['soft', 'round', 'square'] as const
 const RADIUS: Readonly<Record<(typeof SHAPES)[number], string>> = { soft: '12px', round: '999px', square: '4px' }
@@ -77,9 +78,9 @@ export const CTA_TEMPLATE: NocodeTemplate = {
       key: 'shape',
       label: '形',
       options: [
-        { value: 'soft', label: '角を少し丸く' },
-        { value: 'round', label: '丸く' },
-        { value: 'square', label: '四角' },
+        { value: 'soft', label: '角を少し丸く', short: '少し丸く', icon: CTA_SHAPE_ICONS.soft },
+        { value: 'round', label: '丸く', icon: CTA_SHAPE_ICONS.round },
+        { value: 'square', label: '四角', icon: CTA_SHAPE_ICONS.square },
       ],
     },
     {
@@ -87,8 +88,8 @@ export const CTA_TEMPLATE: NocodeTemplate = {
       key: 'width',
       label: '幅',
       options: [
-        { value: 'full', label: '横いっぱい' },
-        { value: 'auto', label: '文字に合わせる' },
+        { value: 'full', label: '横いっぱい', icon: CTA_WIDTH_ICONS.full },
+        { value: 'auto', label: '文字に合わせる', short: '文字なり', icon: CTA_WIDTH_ICONS.auto },
       ],
     },
     {
@@ -96,8 +97,8 @@ export const CTA_TEMPLATE: NocodeTemplate = {
       key: 'motion',
       label: '動き',
       options: [
-        { value: 'press', label: 'ときどき押し込む（目を引く）' },
-        { value: 'none', label: '動かさない' },
+        { value: 'press', label: 'ときどき押し込む（目を引く）', short: '押し込む', icon: CTA_MOTION_ICONS.press },
+        { value: 'none', label: '動かさない', icon: CTA_MOTION_ICONS.none },
       ],
     },
   ],

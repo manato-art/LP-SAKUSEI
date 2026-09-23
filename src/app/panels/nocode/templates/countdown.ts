@@ -13,6 +13,7 @@
  */
 import { baseCss, esc, safeColor, shade, wrapWidget } from './kit.ts'
 import { ACCENT_PRESETS, int, pick, str, type NocodeTemplate } from './types.ts'
+import { COUNTDOWN_AFTER_ICONS, COUNTDOWN_MODE_ICONS } from './option-icons.ts'
 
 const MODES = ['fixed', 'evergreen'] as const
 const AFTERS = ['message', 'hide'] as const
@@ -115,8 +116,8 @@ export const COUNTDOWN_TEMPLATE: NocodeTemplate = {
       key: 'mode',
       label: '終わりの決め方',
       options: [
-        { value: 'fixed', label: '決まった日時で終わる' },
-        { value: 'evergreen', label: '見た人ごとに（初めて見てから◯時間）' },
+        { value: 'fixed', label: '決まった日時で終わる', short: '決まった日時', icon: COUNTDOWN_MODE_ICONS.fixed },
+        { value: 'evergreen', label: '見た人ごとに（初めて見てから◯時間）', short: '見た人ごと', icon: COUNTDOWN_MODE_ICONS.evergreen },
       ],
     },
     { kind: 'datetime', key: 'deadline', label: '終わる日時（日本時間）', showIf: (d) => str(d, 'mode') !== 'evergreen' },
@@ -135,8 +136,8 @@ export const COUNTDOWN_TEMPLATE: NocodeTemplate = {
       key: 'after',
       label: '終わったあと',
       options: [
-        { value: 'message', label: '文字を出す' },
-        { value: 'hide', label: 'このWidgetを隠す' },
+        { value: 'message', label: '文字を出す', icon: COUNTDOWN_AFTER_ICONS.message },
+        { value: 'hide', label: 'このWidgetを隠す', short: '隠す', icon: COUNTDOWN_AFTER_ICONS.hide },
       ],
     },
     { kind: 'text', key: 'doneText', label: '終わったあとの文字', showIf: (d) => str(d, 'after') !== 'hide' },
