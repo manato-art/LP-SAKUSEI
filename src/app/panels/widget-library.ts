@@ -31,7 +31,9 @@ import {
 } from './widget-library-storage.ts'
 import { insertWidget, openWidgetCreator } from './widget-creator.ts'
 import { openNocodePanel } from './nocode/nocode-panel.ts'
-import { NEW_SAMPLES, SAMPLE_CATEGORIES, type NewSample, type SampleCategory } from './nocode/samples/index.ts'
+// 見本の中身（106本ぶんのHTML・約0.8MB）は、ライブラリを開いたときだけ読む（LPの編集画面を軽くする）。
+// 種類の一覧と型は軽いので、そのまま読み込む
+import { SAMPLE_CATEGORIES, type NewSample, type SampleCategory } from './nocode/samples/kit.ts'
 import { startBuilderWithSample } from './nocode/template-tab.ts'
 import { cancelSamplePick, isSamplePickArmed, takeSamplePick } from './nocode/nocode-flow.ts'
 import { newUid, rekeyUid } from './nocode/templates/kit.ts'
@@ -368,11 +370,17 @@ function gridMessage(text: string): HTMLElement {
 function renderNewSamples(root: HTMLElement, quill: Quill, close: () => void, category?: SampleCategory): void {
   const grid = root.querySelector<HTMLElement>(HOOK.grid)
   if (grid === null) return
-  const list = category === undefined ? NEW_SAMPLES : NEW_SAMPLES.filter((sample) => sample.category === category)
-  grid.replaceChildren(...list.map((sample) => newSampleCard(sample)))
-  if (list.length === 0) grid.append(gridMessage('この種類の見本はまだありません。'))
-  wireCards(root, quill, close)
-  applySearchFilter(root)
+  grid.replaceChildren(gridMessage('読み込み中…'))
+  void import('./nocode/samples/index.ts').then(
+    ({ NEW_SAMPLES }) => {
+      const list = category === undefined ? NEW_SAMPLES : NEW_SAMPLES.filter((sample) => sample.category === category)
+      grid.replaceChildren(...list.map((sample) => newSampleCard(sample)))
+      if (list.length === 0) grid.append(gridMessage('この種類の見本はまだありません。'))
+      wireCards(root, quill, close)
+      applySearchFilter(root)
+    },
+    () => grid.replaceChildren(gridMessage('見本を読み込めませんでした。開き直してください。')),
+  )
 }
 
 function cardActionButton(text: string, primary: boolean): HTMLButtonElement {
