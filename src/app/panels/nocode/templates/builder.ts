@@ -19,11 +19,13 @@ import { SCREEN_ID, ALL_BLOCK_TYPES, actionOf, blockLabel, goTarget, renderBlock
 import { goTargetsIn } from '../sample-model.ts'
 import { baseCss, esc, safeColor, safeImage, safeVideo, shade, wrapWidget } from './kit.ts'
 import { ACCENT_PRESETS, items, pick, str, type ItemData, type NocodeTemplate } from './types.ts'
+import { isRichEmpty } from '../rich-text.ts'
 
 export { ALL_BLOCK_TYPES, BLOCK_TYPES } from './builder-blocks.ts'
 
-/** 背景の色の候補（白と、淡い地） */
-const BACKGROUND_PRESETS: readonly string[] = ['#FFFFFF', '#F7F8FA', '#FFF8E7', '#FDF1EE', '#EEF6FF', '#EEF8F1']
+/** 背景の色の候補（なし＝LPの地のまま・白・淡い地）。'none' は色の入力欄で「なし」の見本になる */
+export const NO_BACKGROUND = 'none'
+const BACKGROUND_PRESETS: readonly string[] = [NO_BACKGROUND, '#FFFFFF', '#F7F8FA', '#FFF8E7', '#FDF1EE', '#EEF6FF', '#EEF8F1']
 /** 以前の「狭い/普通/広い」を px に読み替える表（上下の余白は数で持つ・2026-09-23。選択枠のハンドルからも読む） */
 export const BUILDER_PADDING: Readonly<Record<string, number>> = { s: 24, m: 40, l: 56 }
 const TRANSITIONS = ['none', 'fade', 'slide'] as const
@@ -160,12 +162,12 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
       for (const item of blocks) {
         const type = str(item, 'type')
         const where = `「${name}」の${blockLabel(type)}`
-        if (type === 'button' && str(item, 'label').trim() === '') return `ボタンの文字が空です（${where}）。文字を書くか、その部品を消してください`
+        if (type === 'button' && isRichEmpty(str(item, 'label'))) return `ボタンの文字が空です（${where}）。文字を書くか、その部品を消してください`
         if ((type === 'image' || type === 'imageText') && safeImage(str(item, 'image')) === '') {
           return `画像が選ばれていません（${where}）。画像を選ぶか、その部品を消してください`
         }
         if (type === 'video' && safeVideo(str(item, 'video')) === '') return `動画が選ばれていません（${where}）。動画を選ぶか、その部品を消してください`
-        if ((type === 'heading' || type === 'text' || type === 'list') && str(item, 'text').trim() === '') {
+        if ((type === 'heading' || type === 'text' || type === 'list') && isRichEmpty(str(item, 'text'))) {
           return `文字が空です（${where}）。文字を書くか、その部品を消してください`
         }
         if (actionOf(item) === 'screen' && goTarget(item, ids) === null) {
@@ -190,7 +192,8 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
   },
   render: (data, uid, view) => {
     const s = `.${uid}`
-    const background = safeColor(str(data, 'background'), '#FFFFFF')
+    const rawBackground = str(data, 'background')
+    const background = rawBackground === NO_BACKGROUND ? '' : `background:${safeColor(rawBackground, '#FFFFFF')}`
     const accent = safeColor(str(data, 'accent'), '#E5573F')
     const padding = sizeOf(data, 'padding', BUILDER_PADDING, 0, 120, 40)
     const transition = pick(data, 'transition', TRANSITIONS, 'none')
@@ -220,7 +223,7 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
     const css =
       // ライブラリの見本の部品には土台を効かせない（見本は自分のCSSで描く）
       baseCss(s, '.nc-b-sample') +
-      `${s}{padding:${padding}px 16px;background:${background}}` +
+      `${s}{padding:${padding}px 16px;${background}}` +
       // 見本は、LPに1つで置いたときと同じ見え方にする（文字の色・大きさ・行間は配信の土台と同じ。左右いっぱい）
       `${s} .nc-b-sample{margin-left:-16px;margin-right:-16px;color:#000000;font-size:16px;line-height:1.5;` +
       `text-align:left;font-weight:400;letter-spacing:normal}` +

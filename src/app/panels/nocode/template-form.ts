@@ -22,7 +22,9 @@ import { node, scalarControl, type ControlEnv, type Scalar, type ScalarField } f
 import { addAt, duplicateAt, getAt, moveAt, moveTo, removeAt, setAt, type Path } from './form-state.ts'
 import { sampleEditor } from './form-sample.ts'
 import { chipRow, type Chip } from './press-chips.ts'
+import { plainTextOfRich, plainToRich } from './rich-text.ts'
 import { splitSampleScreens } from './sample-to-screens.ts'
+import type { SelectionHandle } from '../selection-layer.ts'
 import {
   addSampleParts,
   addScreenFor,
@@ -68,6 +70,10 @@ export interface TemplateFormOptions {
   tabsHost?: HTMLElement
   /** 部品を選んだ・選ぶのをやめた（見たまま画面の選択枠を合わせる） */
   onSelect?: (screenIndex: number, blockIndex: number | null) => void
+  /** 部品の、見たまま画面での要素（見本の部品のカード・つまみに使う） */
+  blockElement?: (screenIndex: number, blockIndex: number) => HTMLElement | null
+  /** 見本の部品の中の要素を選んだ（見たまま画面の選択枠をその要素に合わせる） */
+  onInnerSelected?: (nodeEl: HTMLElement, label: string, handles: readonly SelectionHandle[]) => void
 }
 
 export interface TemplateForm {
@@ -79,6 +85,8 @@ export interface TemplateForm {
   readonly rebuild: () => void
   /** 部品を選ぶ（その画面を開き、その部品だけ広げる）。null は選ぶのをやめる */
   readonly select: (screenIndex: number, blockIndex: number | null) => void
+  /** 見本の部品の中の要素を選ぶ（その部品を広げ、カードの段でその要素のカードを出す） */
+  readonly selectInside: (screenIndex: number, blockIndex: number, target: HTMLElement) => void
   readonly activeScreen: () => number
   readonly selectedBlock: () => number | null
 }
@@ -94,6 +102,10 @@ export function buildTemplateForm(options: TemplateFormOptions): TemplateForm {
   let screenSettingsOpen = false
   /** 見本の部品ごとの、いま直している設問（組み立て直しても残す） */
   const activeSteps = new Map<string, number>()
+  /** 見本の部品ごとの入口（中の要素を選ぶ）。組み立て直すたびに作り直す */
+  let sampleApis = new Map<string, { selectInner: (target: HTMLElement) => void }>()
+  /** 組み立て直したあとに選んでおく、見本の中の要素 */
+  let pendingInner: { key: string; target: HTMLElement } | null = null
   /** 並びごとの目印（足したあと、その1件に目を移すのに使う。組み立て直すたびに数え直す） */
   let listSeq = 0
   const root = node('div', 'ncf-form-body')
@@ -140,9 +152,14 @@ export function buildTemplateForm(options: TemplateFormOptions): TemplateForm {
   const fieldEl = (field: ScalarField, path: Path, itemPath?: Path): HTMLElement => {
     const wrap = node('div', 'ncf-field')
     const id = nextId()
+    // 飾りつきの文字（見出しなど）は、入力欄では飾りを外して出し、打ち直したら素の文字にする
+    const rich = (field.kind === 'text' || field.kind === 'textarea') && field.rich === true
     const env: ControlEnv = {
-      read: () => getAt(data, path),
-      write: (value) => write(path, value),
+      read: () => {
+        const value = getAt(data, path)
+        return rich && typeof value === 'string' ? plainTextOfRich(value) : value
+      },
+      write: (value) => write(path, rich && typeof value === 'string' ? plainToRich(value) : value),
       data: () => data,
       onRefresh: (refresh) => refreshers.push(refresh),
     }
@@ -254,11 +271,13 @@ export function buildTemplateForm(options: TemplateFormOptions): TemplateForm {
     return wrap
   }
 
-  /** 見本の部品（見本を選ぶ・中身を直す・設問①②…を切り替える・中の画像やボタンの押したとき） */
-  const sampleFieldEl = (field: ScreensField, screenIndex: number, itemPath: Path): HTMLElement => {
+  /** 見本の部品（見本を選ぶ・中身を直す・設問①②…を切り替える・中の画像やボタンの押したとき・カード・コード） */
+  const sampleFieldEl = (field: ScreensField, screenIndex: number, blockIndex: number, itemPath: Path): HTMLElement => {
     const key = JSON.stringify(itemPath)
     const item = (): ItemData => (getAt(data, itemPath) as ItemData | undefined) ?? {}
-    return sampleEditor({
+    const initialInner = pendingInner !== null && pendingInner.key === key ? pendingInner.target : null
+    if (initialInner !== null) pendingInner = null
+    const editor = sampleEditor({
       read: () => ({ title: str(item(), 'title'), html: str(item(), 'html') }),
       replace: (sample) => {
         activeSteps.delete(key)
@@ -274,7 +293,13 @@ export function buildTemplateForm(options: TemplateFormOptions): TemplateForm {
       },
       onPreview: (html) => options.onPreviewOverride?.(key, [...itemPath, 'html'], html),
       activeStep: { get: () => activeSteps.get(key) ?? 0, set: (index) => activeSteps.set(key, index) },
+      getElement: () => options.blockElement?.(screenIndex, blockIndex) ?? null,
+      onInnerSelected: options.onInnerSelected,
+      initialInner,
+      rebuild: build,
     })
+    sampleApis.set(key, { selectInner: editor.selectInner })
+    return editor.element
   }
 
   /** 部品の「押したとき」（なし・画面②③…・＋新しい画面・リンクを開く） */
@@ -375,7 +400,7 @@ export function buildTemplateForm(options: TemplateFormOptions): TemplateForm {
     const itemPath: Path = [...listPath, index]
     for (const sub of type.fields) {
       if (sub.kind === 'sample') {
-        body.append(sampleFieldEl(field, screenIndex, itemPath))
+        body.append(sampleFieldEl(field, screenIndex, index, itemPath))
         continue
       }
       if (sub.kind === 'goto') {
@@ -659,6 +684,7 @@ export function buildTemplateForm(options: TemplateFormOptions): TemplateForm {
     const scrollTop = scroller?.scrollTop ?? 0
     refreshers = []
     listSeq = 0
+    sampleApis = new Map()
     const screens = options.fields.filter((field): field is ScreensField => field.kind === 'screens')
     const others = options.fields.filter((field) => field.kind !== 'screens' && field.kind !== 'sample' && field.kind !== 'goto')
     const otherEls = others.map((field) => (field.kind === 'list' ? listEl(field) : fieldEl(field, [field.key])))
@@ -696,6 +722,17 @@ export function buildTemplateForm(options: TemplateFormOptions): TemplateForm {
       const screens = items(data, screensKey)
       if (screens[screenIndex] === undefined) return
       if (screenIndex === activeScreen && blockIndex === selectedBlock) return
+      openScreen(screenIndex, blockIndex)
+      root.querySelector<HTMLElement>('.ncf-item--selected')?.scrollIntoView({ block: 'nearest' })
+    },
+    selectInside: (screenIndex, blockIndex, target) => {
+      const key = JSON.stringify(['screens', screenIndex, 'blocks', blockIndex])
+      const api = sampleApis.get(key)
+      if (api !== undefined && screenIndex === activeScreen && blockIndex === selectedBlock) {
+        api.selectInner(target)
+        return
+      }
+      pendingInner = { key, target }
       openScreen(screenIndex, blockIndex)
       root.querySelector<HTMLElement>('.ncf-item--selected')?.scrollIntoView({ block: 'nearest' })
     },

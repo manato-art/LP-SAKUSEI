@@ -8,9 +8,16 @@
  *  - 画像・動画・ボタン・囲み（商品カードなど）は「押したとき」を画面のボタンで選べる
  *    （見本のまま／画面②③…／＋新しい画面。本人の決定 2026-09-22「画像・動画・ボタン・囲み」）
  *  - 見本にもともとある設問①②…は、タブで切り替えて直す。右の見え方もその設問を出す（見え方だけ。保存はしない）
+ *
+ * 2026-09-24（第3弾・どのWidgetも同じ画面で直す）: 設定データを持たないWidget（自作の見本・手書きのHTML）も
+ * 「見本の部品1つ」として開くので、以前のWidget編集にあった直し方もこの中に置く:
+ *  - 「見た目の細かい設定」＝要素ごとのカード（widget-design-panel.ts。色・大きさ・余白・動き）
+ *  - 「コードで直す」＝この見本のHTML・CSS（widget-code-panel.ts の色付きコード欄）
+ * 左の見たまま画面で見本の中の要素を押すと、カードの段が開いてその要素のカードだけが出る（selectInner）。
  */
 import { isAllowedLinkUrl } from '../../../shared/link-html.ts'
 import { toast } from '../../ui.ts'
+import { replaceSampleCss, splitStyles } from './builder-data.ts'
 import { node } from './form-controls.ts'
 import { pickLpImage } from './lp-image.ts'
 import { pickLpVideo } from './lp-video.ts'
@@ -18,6 +25,9 @@ import { chipRow, type Chip } from './press-chips.ts'
 import { editSample, previewWithStep, readSample, type SampleChange, type SampleInfo } from './sample-dom.ts'
 import type { Slot } from './sample-model.ts'
 import { SCREEN_ID } from './templates/builder-blocks.ts'
+import { createCodeEditor } from '../widget-code-panel.ts'
+import { buildDesignPanel } from '../widget-design-panel.ts'
+import type { SelectionHandle } from '../selection-layer.ts'
 
 export interface SampleEditorOptions {
   read: () => { title: string; html: string }
@@ -35,10 +45,27 @@ export interface SampleEditorOptions {
   onPreview: (html: string | null) => void
   /** 設問のタブ（組み立て直しても残す） */
   activeStep: { get: () => number; set: (index: number) => void }
+  /** この見本の部品の、見たまま画面での要素（描き直しで入れ替わるので、そのつど取り直す） */
+  getElement?: () => HTMLElement | null
+  /** 見本の中の要素を選んだ（左の選択枠をその要素に合わせる） */
+  onInnerSelected?: (nodeEl: HTMLElement, label: string, handles: readonly SelectionHandle[]) => void
+  /** 開いた直後に選んでおく、見本の中の要素（左で押した所） */
+  initialInner?: HTMLElement | null
+  /** コードを直し終わったら入力欄を組み立て直す（中身の番号がずれるため） */
+  rebuild?: () => void
+}
+
+export interface SampleEditor {
+  readonly element: HTMLElement
+  /** 見本の中の要素を選ぶ（カードの段を開き、その要素のカードだけを出す） */
+  readonly selectInner: (target: HTMLElement) => void
 }
 
 const CIRCLED = '①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳'
 const stepLabel = (index: number): string => `設問${Array.from(CIRCLED)[index] ?? String(index + 1)}`
+
+/** コードを打ってから見え方へ流すまでの待ち */
+const CODE_DELAY_MS = 400
 
 let idSeq = 0
 const nextId = (): string => `ncs-${(idSeq += 1)}`
@@ -54,7 +81,7 @@ function labeled(label: string, control: HTMLElement): HTMLElement {
   return wrap
 }
 
-export function sampleEditor(options: SampleEditorOptions): HTMLElement {
+export function sampleEditor(options: SampleEditorOptions): SampleEditor {
   const wrap = node('div', 'ncf-sample')
   const { title, html } = options.read()
   const head = node('div', 'ncf-sample__head')
@@ -69,20 +96,104 @@ export function sampleEditor(options: SampleEditorOptions): HTMLElement {
   })
   head.append(pick)
   wrap.append(head)
+  /** カードの段ができる前に選ばれた要素（できたら選ぶ） */
+  let pendingInner: HTMLElement | null = options.initialInner ?? null
+  let selectInner: (target: HTMLElement) => void = (target) => {
+    pendingInner = target
+  }
   if (html === '') {
     wrap.append(
       node('p', 'ncf-note', '「見本を選ぶ」を押すと、いつもの見本の一覧に切り替わります。使いたい見本の「追加」を押すと、この部品に入ります（LPにはまだ入りません）。'),
     )
-    return wrap
+    return { element: wrap, selectInner: () => undefined }
   }
   const body = node('div', 'ncf-sample__body')
   body.append(node('p', 'ncf-note', '見本の中身を読み込んでいます…'))
   wrap.append(body)
   readSample(html).then(
-    (info) => renderBody(body, info, options),
+    (info) => {
+      renderBody(body, info, options)
+      const api = appendFineTuning(wrap, options)
+      selectInner = api.selectInner
+      if (pendingInner !== null) {
+        api.selectInner(pendingInner)
+        pendingInner = null
+      }
+    },
     () => body.replaceChildren(node('p', 'ncf-warn', '見本の中身を読み込めませんでした。選び直してください')),
   )
-  return wrap
+  return { element: wrap, selectInner: (target) => selectInner(target) }
+}
+
+/** 畳める段（`<details>`） */
+function fold(title: string, open = false): { details: HTMLDetailsElement; body: HTMLElement } {
+  const details = node('details', 'ncf-fold')
+  details.open = open
+  details.append(node('summary', 'ncf-fold__summary', title))
+  const body = node('div', 'ncf-fold__body')
+  details.append(body)
+  return { details, body }
+}
+
+/**
+ * 「見た目の細かい設定」（要素ごとのカード）と「コードで直す」（この見本のHTML・CSS）を、
+ * 中身の一覧の下に畳んで置く（以前のWidget編集にあった直し方）。
+ */
+function appendFineTuning(wrap: HTMLElement, options: SampleEditorOptions): { selectInner: (target: HTMLElement) => void } {
+  const current = (): string => options.read().html
+
+  // ── 要素ごとのカード ──
+  const cards = fold('見た目の細かい設定（色・大きさ・余白・動き）')
+  const design = buildDesignPanel({
+    content: () => options.getElement?.() ?? null,
+    readCss: () => splitStyles(current()).css,
+    writeCss: (css) => options.writeHtml(replaceSampleCss(current(), css)),
+  })
+  cards.body.append(design.element)
+  // 開いたときに作り直す（畳んでいる間に左で変えた分を反映）
+  cards.details.addEventListener('toggle', () => {
+    if (cards.details.open) design.refresh()
+  })
+  wrap.append(cards.details)
+
+  // ── コードで直す ──
+  const code = fold('コードで直す（この見本のHTML・CSS）')
+  const parts = splitStyles(current())
+  const htmlEditor = createCodeEditor('HTML', parts.body, 'data-sample-html', 'html', false)
+  const cssEditor = createCodeEditor('CSS', parts.css, 'data-sample-css', 'css', false)
+  const htmlArea = htmlEditor.querySelector<HTMLTextAreaElement>('[data-sample-html]')
+  const cssArea = cssEditor.querySelector<HTMLTextAreaElement>('[data-sample-css]')
+  let codeTimer = 0
+  const writeCode = (): void => {
+    const nextHtml = `<style>${cssArea?.value ?? ''}</style>${htmlArea?.value ?? ''}`
+    if (nextHtml !== current()) options.writeHtml(nextHtml)
+  }
+  for (const area of [htmlArea, cssArea]) {
+    area?.addEventListener('input', () => {
+      window.clearTimeout(codeTimer)
+      codeTimer = window.setTimeout(writeCode, CODE_DELAY_MS)
+    })
+    // 打ち終わって欄を離れたら、中身の一覧を作り直す（要素の番号がずれるため）
+    area?.addEventListener('change', () => {
+      window.clearTimeout(codeTimer)
+      writeCode()
+      options.rebuild?.()
+    })
+  }
+  const editors = node('div', 'ncf-sample__code')
+  editors.append(htmlEditor, cssEditor)
+  code.body.append(node('p', 'ncf-note', 'この見本だけのコードです。直すと左の見え方にそのまま反映されます。'), editors)
+  wrap.append(code.details)
+
+  return {
+    selectInner: (target) => {
+      cards.details.open = true
+      const picked = design.select(target)
+      if (picked === null) return
+      options.onInnerSelected?.(picked.node, picked.label, design.handlesFor(picked.node))
+      cards.details.scrollIntoView({ block: 'nearest' })
+    },
+  }
 }
 
 function renderBody(body: HTMLElement, info: SampleInfo, options: SampleEditorOptions): void {
@@ -127,7 +238,7 @@ function renderBody(body: HTMLElement, info: SampleInfo, options: SampleEditorOp
 
   const shown = info.slots.filter((slot) => steps.length === 0 || slot.step === null || slot.step === active)
   if (shown.length === 0) {
-    body.append(node('p', 'ncf-note', 'この見本には、ここで直せる文字・画像・動画・ボタンがありません。LPに入れたあと、見たまま編集で直せます。'))
+    body.append(node('p', 'ncf-note', 'この見本には、ここで直せる文字・画像・動画・ボタンがありません。左の見たまま画面で直すか、下の「見た目の細かい設定」「コードで直す」を使ってください。'))
     return
   }
   let lastGroup: string | null = null

@@ -32,6 +32,7 @@ import { handleKindOf, sliderRange } from './drag-math.ts'
 import { attachScrub, makeSlider } from './number-scrub.ts'
 import type { SelectionHandle } from './selection-layer.ts'
 import { applyMediaWidth, currentMediaWidthPct } from './widget-media-control.ts'
+import { notifyCanvasEdit } from './widget-canvas-events.ts'
 import {
   colorToHex,
   numberStep,
@@ -44,8 +45,11 @@ import {
 } from './widget-settings.ts'
 
 export interface DesignPanelDeps {
-  /** 左のプレビューの本文（contenteditable）。文言・直書きの色の書き換え先 */
-  readonly content: HTMLElement
+  /**
+   * 左のプレビューのうち、このカードが受け持つ要素（見本の部品なら、その部品の要素）。文言・直書きの色の書き換え先。
+   * 描き直しで要素が入れ替わるので、そのつど取り直す（無ければ null＝カードを出さない）
+   */
+  readonly content: () => HTMLElement | null
   /** いまの CSS（コード欄の textarea が正本。「更新する」もそこから保存する） */
   readonly readCss: () => string
   /** CSS を書き換える（コード欄の色付け・行番号・プレビューまで同じ道で更新される） */
@@ -56,6 +60,8 @@ export interface DesignPanel {
   readonly element: HTMLElement
   /** 作り直す（コード欄を直接書き換えてから、こちらへ戻ってきたときなど） */
   readonly refresh: () => void
+  /** 少し待ってから作り直す（左で文字や書式を変えたとき。打つたびに作り直さない） */
+  readonly refreshSoon: () => void
   /**
    * 左で押した要素を選ぶ（カードのある要素＝自分か外側を返す）。null は選ぶのをやめる。
    * 選ぶと、その要素のカードだけを出す
@@ -263,9 +269,12 @@ export function buildDesignPanel(deps: DesignPanelDeps): DesignPanel {
   /** 直近に組み立てたカード（選んだ要素がどのカードかを探す） */
   let lastCards: Card[] = []
 
-  const touchContent = (): void => {
+  /** 見たまま画面の要素を直に書き換えたことを知らせる（どの要素を変えたかを添える） */
+  const touchContent = (node?: HTMLElement): void => {
+    const content = deps.content()
+    if (content === null) return
     isApplying = true
-    deps.content.dispatchEvent(new Event('input', { bubbles: true }))
+    notifyCanvasEdit(content, node ?? content)
     isApplying = false
   }
 
@@ -388,7 +397,7 @@ export function buildDesignPanel(deps: DesignPanelDeps): DesignPanel {
           nodes[0]?.style.getPropertyValue(property) ?? '',
           (hex) => {
             for (const node of nodes) node.style.setProperty(property, hex)
-            touchContent()
+            touchContent(nodes[0])
           },
         ),
       ]
@@ -413,7 +422,7 @@ export function buildDesignPanel(deps: DesignPanelDeps): DesignPanel {
       input.value = directText(target)
       input.addEventListener('input', () => {
         target.textContent = input.value
-        touchContent()
+        touchContent(target)
       })
       row.append(
         el('label', { class: 'ep-design-label', text: texts.length === 1 ? '文言' : `文言${i + 1}` }),
@@ -499,7 +508,9 @@ export function buildDesignPanel(deps: DesignPanelDeps): DesignPanel {
 
   /** 要素（自分か外側）のカード。Widgetの中身の外に出たら null */
   const cardOf = (target: HTMLElement, cards: readonly Card[]): { card: Card; index: number; node: HTMLElement } | null => {
-    for (let node: HTMLElement | null = target; node !== null && node !== deps.content; node = node.parentElement) {
+    const content = deps.content()
+    if (content === null) return null
+    for (let node: HTMLElement | null = target; node !== null && node !== content; node = node.parentElement) {
       const index = cards.findIndex((card) => card.nodes.includes(node as HTMLElement))
       const card = cards[index]
       if (card !== undefined) return { card, index, node }
@@ -512,9 +523,10 @@ export function buildDesignPanel(deps: DesignPanelDeps): DesignPanel {
     valueInputs = new Map()
     currentColors.clear()
     units.clear()
-    const cards = collectCards(deps.content, deps.readCss())
+    const content = deps.content()
+    const cards = content === null ? [] : collectCards(content, deps.readCss())
     lastCards = cards
-    if (selectedNode !== null && !deps.content.contains(selectedNode)) selectedNode = null
+    if (selectedNode !== null && (content === null || !content.contains(selectedNode))) selectedNode = null
     const picked = selectedNode === null ? null : cardOf(selectedNode, cards)
     const onlyPicked = picked !== null && !showAll
 
@@ -546,10 +558,9 @@ export function buildDesignPanel(deps: DesignPanelDeps): DesignPanel {
     }
     for (const { card, index } of shownCards) grid.append(buildCard(card, index))
     root.replaceChildren(
-      el('div', { class: 'wdp-title', text: 'デザイン（要素ごとに編集）' }),
       el('div', {
         class: 'ep-design-note',
-        text: 'Widgetを要素ごとのカードに分けています。色・大きさ・余白・動きを変えると、左のプレビューとコードにそのまま反映されます。数字は名前を左右にドラッグでも変えられます。',
+        text: '要素ごとのカードに分けています。色・大きさ・余白・動きを変えると、左の見え方にそのまま反映されます。数字は名前を左右にドラッグでも変えられます。',
       }),
       bar,
       grid,
@@ -557,12 +568,12 @@ export function buildDesignPanel(deps: DesignPanelDeps): DesignPanel {
   }
   rebuild.now = render
 
-  // 左のプレビューで文字や書式を変えたら、少し待ってからカードを作り直す
-  deps.content.addEventListener('input', () => {
+  /** 左のプレビューで文字や書式を変えたら、少し待ってからカードを作り直す（呼ぶのは持ち主） */
+  const refreshSoon = (): void => {
     if (isApplying) return
     clearTimeout(refreshTimer)
     refreshTimer = setTimeout(render, REFRESH_DELAY_MS)
-  })
+  }
 
   /** CSSの設定1つを、選択枠のハンドルにする */
   const cssHandle = (kind: 'width' | 'height' | 'font', setting: Setting, node: HTMLElement): SelectionHandle => {
@@ -606,7 +617,7 @@ export function buildDesignPanel(deps: DesignPanelDeps): DesignPanel {
     preview: (n) => applyMediaWidth(media, n),
     commit: (n) => {
       applyMediaWidth(media, n)
-      touchContent()
+      touchContent(media)
     },
   })
 
@@ -628,7 +639,7 @@ export function buildDesignPanel(deps: DesignPanelDeps): DesignPanel {
         preview: write,
         commit: (n) => {
           write(n)
-          touchContent()
+          touchContent(outer)
         },
       }
     })
@@ -637,13 +648,15 @@ export function buildDesignPanel(deps: DesignPanelDeps): DesignPanel {
   return {
     element: root,
     refresh: render,
+    refreshSoon,
     select: (target) => {
       if (target === null) {
         selectedNode = null
         render()
         return null
       }
-      const cards = collectCards(deps.content, deps.readCss())
+      const content = deps.content()
+      const cards = content === null ? [] : collectCards(content, deps.readCss())
       const found = cardOf(target, cards)
       selectedNode = found?.node ?? null
       showAll = false
@@ -665,7 +678,7 @@ export function buildDesignPanel(deps: DesignPanelDeps): DesignPanel {
         }
       }
       if ((node.tagName === 'IMG' || node.tagName === 'VIDEO') && !handles.some((h) => h.kind === 'width')) handles.push(mediaHandle(node))
-      if (node === deps.content.firstElementChild) handles.push(...paddingHandles(node))
+      if (node === deps.content()?.firstElementChild) handles.push(...paddingHandles(node))
       return handles
     },
   }
@@ -677,11 +690,10 @@ function injectStyles(): void {
   s.id = 'wdp-css'
   s.textContent = `
     /* 画面いっぱいの「コード表示」では右が全幅になるので、カードは読みやすい幅で止めて真ん中に置く */
-    .wdp-root{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;
-      background:#f5f6f8;padding:16px 16px 24px;box-sizing:border-box;
+    .wdp-root{display:flex;flex-direction:column;min-width:0;
+      background:#f5f6f8;padding:12px;border-radius:8px;box-sizing:border-box;
       font-family:${T.font};color:${T.text}}
-    .wdp-root>*{width:100%;max-width:900px;margin-left:auto;margin-right:auto;box-sizing:border-box}
-    .wdp-title{font-size:14px;font-weight:600;margin-bottom:6px}
+    .wdp-root>*{width:100%;box-sizing:border-box}
     ${designCardCss()}
     .wdp-group{font-size:11px;font-weight:600;color:${T.sub};letter-spacing:.04em;
       margin:12px 0 0;padding-top:10px;border-top:1px solid #eef0f3}

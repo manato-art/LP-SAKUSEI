@@ -252,12 +252,13 @@ export function scalarControl(field: ScalarField, env: ControlEnv, id: string): 
         if (/^#[0-9A-F]{6}$/.test(current())) picker.value = current().toLowerCase()
       }
       for (const color of field.presets) {
-        const b = node('button', 'ncf-swatch')
+        const b = node('button', color === 'none' ? 'ncf-swatch ncf-swatch--none' : 'ncf-swatch')
         b.type = 'button'
         b.dataset['color'] = color
-        b.style.background = color
-        b.setAttribute('aria-label', COLOR_NAMES[color] ?? color)
-        b.title = COLOR_NAMES[color] ?? color
+        // 'none'＝色なし（LPの地のまま）。斜線の見本にする
+        if (color !== 'none') b.style.background = color
+        b.setAttribute('aria-label', color === 'none' ? 'なし（LPの地のまま）' : (COLOR_NAMES[color] ?? color))
+        b.title = color === 'none' ? 'なし（LPの地のまま）' : (COLOR_NAMES[color] ?? color)
         b.addEventListener('click', () => {
           env.write(color)
           paint()

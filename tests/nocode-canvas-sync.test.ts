@@ -43,11 +43,25 @@ describe('部品の要素から文字を読み戻す', () => {
     )
     const el = (n: number): HTMLElement => root.children[n - 1] as HTMLElement
     expect(readBlockFromCanvas(el(1), { type: 'heading', text: 'x' })).toEqual({ type: 'heading', text: '見出し 2行目' })
-    expect(readBlockFromCanvas(el(2), { type: 'text', text: 'x' })).toEqual({ type: 'text', text: '本文\n次の行' })
+    // 文章の改行は <br> のまま持つ（飾りつきの文字）
+    expect(readBlockFromCanvas(el(2), { type: 'text', text: 'x' })).toEqual({ type: 'text', text: '本文<br>次の行' })
     expect(readBlockFromCanvas(el(3), { type: 'button', label: 'x', color: '#E5573F' })).toEqual({ type: 'button', label: '申し込む', color: '#E5573F' })
     expect(readBlockFromCanvas(el(4), { type: 'shape', text: 'x' })).toEqual({ type: 'shape', text: 'はい' })
     expect(readBlockFromCanvas(el(5), { type: 'list', text: 'x' })).toEqual({ type: 'list', text: '送料無料\n返品可' })
-    expect(readBlockFromCanvas(el(6), { type: 'imageText', heading: 'x', text: 'y' })).toEqual({ type: 'imageText', heading: '見出し', text: '説明\n2行' })
+    expect(readBlockFromCanvas(el(6), { type: 'imageText', heading: 'x', text: 'y' })).toEqual({ type: 'imageText', heading: '見出し', text: '説明<br>2行' })
+  })
+
+  it('ツールバーで付けた飾り（太字・色）は残り、危ないものは外す（第3弾）', () => {
+    const { root } = dom(
+      '<h2 class="nc-b nc-b-heading nc-b-1">請求も<span style="color:#e5573f">ひとつ</span>で<b>まとめて</b></h2>' +
+        '<div class="nc-b nc-b-text nc-b-2">a<div>b</div><div>c<img src=x onerror="alert(1)"></div></div>',
+    )
+    const el = (n: number): HTMLElement => root.querySelector(`.nc-b-${n}`) as HTMLElement
+    expect(readBlockFromCanvas(el(1), { type: 'heading', text: 'x' })).toEqual({
+      type: 'heading',
+      text: '請求も<span style="color:#e5573f">ひとつ</span>で<b>まとめて</b>',
+    })
+    expect(readBlockFromCanvas(el(2), { type: 'text', text: 'x' })).toEqual({ type: 'text', text: 'a<br>b<br>c' })
   })
 
   it('見本の部品は中身のHTMLごと（元の <style>・<script> を付け直す）', () => {
@@ -85,7 +99,7 @@ describe('打ち直した要素から部品の場所を見つけて戻す', () =
     const p = root.querySelector('.nc-b-3') as HTMLElement
     const result = syncCanvasBlock(data, p.firstChild, root)
     expect(result?.path).toEqual(['screens', 1, 'blocks', 1])
-    expect(result?.block).toEqual({ type: 'text', text: 'B\n直した', size: 'm', align: 'left' })
+    expect(result?.block).toEqual({ type: 'text', text: 'B<br>直した', size: 'm', align: 'left' })
     expect((result?.data['screens'] as readonly ItemData[])[0]).toBe((data['screens'] as readonly ItemData[])[0])
   })
 

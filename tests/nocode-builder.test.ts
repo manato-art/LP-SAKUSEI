@@ -359,3 +359,31 @@ describe('型の部品', () => {
     expect(html.indexOf('data-nc-go="s2"')).toBeLessThan(html.indexOf('申し込む'))
   })
 })
+
+describe('部品の文字の飾り（第3弾・ツールバーで付けた太字や色を持つ）', () => {
+  it('飾りは残り、危ないものは外れ、以前の素の文字もそのまま', () => {
+    const html = render([
+      screen('s1', '画面①', [
+        { type: 'heading', text: '請求も<span style="color:#e5573f">ひとつ</span>で<b>まとめて</b><img src=x onerror=alert(1)>', size: 21, align: 'left', color: '#1F2A37' },
+        { type: 'text', text: 'A & B\n2行目<script>x()</script>', size: 15, align: 'left' },
+        { type: 'button', label: '<u>申し込む</u>', look: 'cta', color: '#E5573F', action: 'none' },
+        { type: 'list', text: '<b>送料無料</b>\n返品可', marker: 'check' },
+      ]),
+    ])
+    expect(html).toContain('請求も<span style="color:#e5573f">ひとつ</span>で<b>まとめて</b></h2>')
+    expect(html).not.toContain('onerror')
+    expect(html).toContain('A &amp; B<br>2行目</p>')
+    expect(html).not.toContain('x()')
+    expect(html).toContain('<span class="nc-b-button__label"><u>申し込む</u></span>')
+    expect(html).toContain('<span class="nc-b-list__text"><b>送料無料</b></span>')
+  })
+
+  it('飾りだけで文字が無いものは空として確かめる', () => {
+    expect(validate([screen('s1', '画面①', [{ type: 'heading', text: '<b></b><br>', size: 21, align: 'left', color: '#1F2A37' }])])).toContain('文字が空')
+  })
+
+  it('背景「なし」はLPの地のまま（背景の指定を書かない）', () => {
+    const html = render([screen('s1', '画面①', [{ type: 'text', text: 'x', align: 'left' }])], { background: 'none', padding: 0 })
+    expect(html).toMatch(new RegExp(`\\.${UID}\\{padding:0px 16px;\\}`))
+  })
+})

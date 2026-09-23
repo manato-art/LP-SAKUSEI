@@ -30,8 +30,9 @@ interface FieldBase {
 }
 
 export type Field =
-  | (FieldBase & { readonly kind: 'text'; readonly placeholder?: string; readonly maxLength?: number })
-  | (FieldBase & { readonly kind: 'textarea'; readonly rows?: number; readonly maxLength?: number })
+  /** rich: 見たまま画面のツールバーで付けた飾り（太字・色）を持つ文字（rich-text.ts）。入力欄では飾りを外した文字を出す */
+  | (FieldBase & { readonly kind: 'text'; readonly placeholder?: string; readonly maxLength?: number; readonly rich?: boolean })
+  | (FieldBase & { readonly kind: 'textarea'; readonly rows?: number; readonly maxLength?: number; readonly rich?: boolean })
   | (FieldBase & { readonly kind: 'url'; readonly placeholder?: string })
   | (FieldBase & { readonly kind: 'color'; readonly presets: readonly string[] })
   | (FieldBase & { readonly kind: 'image' })

@@ -9,10 +9,12 @@ import {
   blockSnippet,
   embedBuilderData,
   extractBuilderData,
+  replaceSampleCss,
   splitStyles,
   stripBuilderData,
   unescapeAttr,
   withSampleAssets,
+  wrapHtmlAsBuilder,
 } from '../src/app/panels/nocode/builder-data.ts'
 import { BUILDER_TEMPLATE } from '../src/app/panels/nocode/templates/builder.ts'
 import type { TemplateData } from '../src/app/panels/nocode/templates/types.ts'
@@ -133,5 +135,31 @@ describe('部品の呼び名に添える文字', () => {
     expect(blockSnippet({ type: 'sample', title: 'よくある質問' })).toBe('よくある質問')
     expect(blockSnippet({ type: 'heading', text: '一二三四五六七八九十一二三四五六七八九十' })).toBe('一二三四五六七八九十一二三四五六七八')
     expect(blockSnippet({ type: 'spacer' })).toBe('')
+  })
+})
+
+describe('設定データを持たないWidgetを見本の部品1つにする（第3弾）', () => {
+  const sample = '<style>.nc-abcdefgh .t{color:red}</style><div class="nc nc-sample nc-abcdefgh" data-nocode="sample"><p class="t">x</p></div>'
+
+  it('画面①に見本の部品が1つ。余白0・背景なしで、見え方は元のまま', () => {
+    const wrapped = wrapHtmlAsBuilder(sample, '見出し', BUILDER_TEMPLATE.defaults(NOW))
+    expect(wrapped['padding']).toBe(0)
+    expect(wrapped['background']).toBe('none')
+    expect(wrapped['screens']).toEqual([{ id: 's1', name: '画面①', blocks: [{ type: 'sample', title: '見出し', html: sample }] }])
+    const html = BUILDER_TEMPLATE.render(wrapped, UID)
+    expect(html).toContain(`<div class="nc-b nc-b-sample nc-b-1">${sample}</div>`)
+    expect(html).toMatch(new RegExp(`\\.${UID}\\{padding:0px 16px;\\}`))
+    expect(html).not.toMatch(new RegExp(`\\.${UID}\\{[^}]*background`))
+    expect(BUILDER_TEMPLATE.validate(wrapped, NOW)).toBeNull()
+  })
+
+  it('見本のCSSを差し替える（<style> は先頭の1つにまとめる）', () => {
+    const two = '<style>.a{}</style><div><style>.b{}</style><p>x</p></div>'
+    expect(replaceSampleCss(two, '.a{color:red}\n.b{}')).toBe('<style>.a{color:red}\n.b{}</style><div><p>x</p></div>')
+    expect(splitStyles(replaceSampleCss(two, '.z{}')).css).toBe('.z{}')
+  })
+
+  it('飾りつきの文字の呼び名は飾りを外す', () => {
+    expect(blockSnippet({ type: 'heading', text: '請求も<span style="color:red">ひとつ</span>で' })).toBe('請求もひとつで')
   })
 })

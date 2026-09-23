@@ -12,6 +12,7 @@
  * - 「01」「02」…と番号が1つずつ増えていた部品は、操作のあと上から番号を付け直す（serial-numbers.ts）
  */
 import { toast } from '../../ui.ts'
+import { notifyCanvasEdit } from '../widget-canvas-events.ts'
 import { radioNamesToRename, renameIds, rewriteIdRefs } from './clone-ids.ts'
 import { createKnownGroups, findRepeatItem, neighborOf, repeatGroupOf, repeatSignature, type NodeShape } from './repeat-logic.ts'
 import { isSerialRun, parseSerial, renumberSerials } from './serial-numbers.ts'
@@ -162,8 +163,13 @@ function setEnabled(btn: HTMLButtonElement, enabled: boolean, reason = ''): void
   btn.title = enabled ? (btn.getAttribute('aria-label') ?? '') : reason
 }
 
+export interface ItemToolbarOptions {
+  /** この要素に操作ボタンを出してよいか（部品で作ったWidgetでは、見本の部品の中だけ。部品そのものは右で並べ替える） */
+  readonly allow?: (item: Element) => boolean
+}
+
 /** 見たまま編集に、並んでいる部品の操作ボタンを付ける */
-export function attachItemToolbar(editorBody: HTMLElement, contentDiv: HTMLElement): void {
+export function attachItemToolbar(editorBody: HTMLElement, contentDiv: HTMLElement, options: ItemToolbarOptions = {}): void {
   const known = createKnownGroups()
 
   const layer = document.createElement('div')
@@ -246,12 +252,14 @@ export function attachItemToolbar(editorBody: HTMLElement, contentDiv: HTMLEleme
 
   const itemAt = (target: EventTarget | null): HTMLElement | null => {
     if (!(target instanceof Element) || !contentDiv.contains(target)) return null
-    return asElement(findRepeatItem(target, contentDiv, known))
+    const item = asElement(findRepeatItem(target, contentDiv, known))
+    if (item !== null && options.allow !== undefined && !options.allow(item)) return null
+    return item
   }
 
-  /** 変えたことをコード欄へ伝える（書式ボタンと同じ道） */
-  const sync = (): void => {
-    contentDiv.dispatchEvent(new Event('input', { bubbles: true }))
+  /** 変えたことをコード欄・設定データへ伝える（書式ボタンと同じ道。どの要素を変えたかを添える） */
+  const sync = (changed: HTMLElement): void => {
+    notifyCanvasEdit(contentDiv, changed)
   }
 
   contentDiv.addEventListener('mousemove', (e) => {
@@ -300,7 +308,7 @@ export function attachItemToolbar(editorBody: HTMLElement, contentDiv: HTMLEleme
     item.after(copy)
     known.remember(copy)
     if (numbered) renumber(groupOf(item))
-    sync()
+    sync(copy)
     copy.scrollIntoView({ block: 'nearest' })
     show(copy)
   })
@@ -314,7 +322,7 @@ export function attachItemToolbar(editorBody: HTMLElement, contentDiv: HTMLEleme
     const numbered = wasNumbered(group)
     swapNodes(item, other)
     if (numbered) renumber(groupOf(item))
-    sync()
+    sync(item)
     item.scrollIntoView({ block: 'nearest' })
     show(item)
   }
@@ -339,9 +347,10 @@ export function attachItemToolbar(editorBody: HTMLElement, contentDiv: HTMLEleme
     }
     const numbered = wasNumbered(group)
     const survivor = group.find((member) => member !== item)
+    const parent = item.parentElement ?? contentDiv
     item.remove()
     if (numbered && survivor !== undefined) renumber(groupOf(survivor))
     hide()
-    sync()
+    sync(survivor ?? parent)
   })
 }

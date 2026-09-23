@@ -5,6 +5,7 @@
  * コードパネル側の textarea を追従させる（そうしないと「更新する」で変更が失われる）。
  */
 import { FONT, COLOR } from './widget-editor-theme.ts'
+import { notifyCanvasEdit } from './widget-canvas-events.ts'
 
 /** PCから画像ファイルを選ばせ、data URL として返す（キャンセル時は null）。 */
 export function pickImageDataUrl(): Promise<string | null> {
@@ -72,7 +73,7 @@ export function openMediaControl(media: HTMLElement, contentDiv: HTMLElement): v
   closeMediaControl()
   const isImg = media.tagName === 'IMG'
   const sync = (): void => {
-    contentDiv.dispatchEvent(new Event('input', { bubbles: true }))
+    notifyCanvasEdit(contentDiv, media)
   }
 
   const box = document.createElement('div')

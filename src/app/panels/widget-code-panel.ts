@@ -30,8 +30,8 @@ export interface CodePanelOptions {
   readonly design?: { readonly element: HTMLElement; readonly refresh: () => void }
   /** CSS欄が書き換えられたとき（手入力でも「要素ごとに編集」からでも）。プレビューへ流す */
   readonly onCssInput?: (css: string) => void
-  /** コードを見るだけにする（部品で作ったWidget）。「部品を解除」のボタンを出す */
-  readonly readOnly?: { readonly note: string; readonly detachLabel: string; readonly onDetach: () => void }
+  /** コードを見るだけにする（部品で作ったWidget）。ボタンがあれば帯の右に出す */
+  readonly readOnly?: { readonly note: string; readonly detachLabel?: string; readonly onDetach?: () => void }
   /** 「デフォルト時のコードを表示」をONにした直後（部品で作ったWidgetは、ここで今のコードを入れ直す） */
   readonly onShowCode?: () => void
 }
@@ -98,14 +98,14 @@ export function buildCodePanels(target: WidgetEditTarget, options: CodePanelOpti
   toggleRow.append(toggleLabel, toggle, viewBtns)
 
   // HTML(カスタム) パネル
-  const htmlPanel = createHighlightedCodePanel('HTML(カスタム)', target.html, 'data-code-html', 'html', readOnly !== undefined)
+  const htmlPanel = createCodeEditor('HTML(カスタム)', target.html, 'data-code-html', 'html', readOnly !== undefined)
 
   // 分割線
   const codeDivider = document.createElement('div')
   codeDivider.style.cssText = `height:10px;background:${COLOR.container};flex-shrink:0`
 
   // CSS(カスタム) パネル
-  const cssPanel = createHighlightedCodePanel('CSS(カスタム)', target.css, 'data-code-css', 'css', readOnly !== undefined)
+  const cssPanel = createCodeEditor('CSS(カスタム)', target.css, 'data-code-css', 'css', readOnly !== undefined)
   const htmlArea = htmlPanel.querySelector<HTMLTextAreaElement>('[data-code-html]')
   const cssArea = cssPanel.querySelector<HTMLTextAreaElement>('[data-code-css]')
   cssArea?.addEventListener('input', (e) => onCssInput?.((e.currentTarget as HTMLTextAreaElement).value))
@@ -161,14 +161,17 @@ function buildReadOnlyBar(readOnly: NonNullable<CodePanelOptions['readOnly']>): 
   const note = document.createElement('span')
   note.textContent = readOnly.note
   note.style.cssText = 'flex:1;min-width:180px'
-  const detach = document.createElement('button')
-  detach.type = 'button'
-  detach.textContent = readOnly.detachLabel
-  detach.style.cssText =
-    `border:1px solid #666;background:transparent;color:#eee;border-radius:4px;padding:5px 10px;` +
-    `font:600 12px/1 ${FONT};cursor:pointer;white-space:nowrap`
-  detach.addEventListener('click', readOnly.onDetach)
-  bar.append(note, detach)
+  bar.append(note)
+  if (readOnly.detachLabel !== undefined && readOnly.onDetach !== undefined) {
+    const detach = document.createElement('button')
+    detach.type = 'button'
+    detach.textContent = readOnly.detachLabel
+    detach.style.cssText =
+      `border:1px solid #666;background:transparent;color:#eee;border-radius:4px;padding:5px 10px;` +
+      `font:600 12px/1 ${FONT};cursor:pointer;white-space:nowrap`
+    detach.addEventListener('click', readOnly.onDetach)
+    bar.append(detach)
+  }
   return bar
 }
 
@@ -182,7 +185,11 @@ function makeViewButton(svgHtml: string, title: string): HTMLButtonElement {
     `padding:4px 6px;cursor:pointer;display:flex;align-items:center`
   return btn
 }
-function createHighlightedCodePanel(
+/**
+ * 色付きのコード欄（行番号・Tabで字下げ・まとめてコピー）。値は `[${dataAttr}]` の textarea。
+ * Widget全体のコード（見るだけ）と、見本の部品の「コードで直す」（form-sample.ts）で使う
+ */
+export function createCodeEditor(
   title: string,
   content: string,
   dataAttr: string,

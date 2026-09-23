@@ -57,6 +57,7 @@ textarea.ncf-input{resize:vertical;min-height:64px}
 .ncf-swatches{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
 .ncf-swatch{width:30px;height:30px;border-radius:50%;border:0;padding:0;cursor:pointer;box-shadow:inset 0 0 0 1px rgba(0,0,0,.15)}
 .ncf-swatch[aria-pressed="true"]{box-shadow:0 0 0 2px var(--sb-surface,#FFF),0 0 0 4px var(--sb-text,#151515)}
+.ncf-swatch--none{background:linear-gradient(135deg,transparent 45%,#C0392B 45%,#C0392B 55%,transparent 55%) var(--sb-surface,#FFF)}
 .ncf-custom{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--sb-sub,#808080);cursor:pointer}
 .ncf-custom input{width:30px;height:30px;border:0;padding:0;background:none;cursor:pointer}
 .ncf-image{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
@@ -149,6 +150,11 @@ textarea.ncf-input{resize:vertical;min-height:64px}
 .ncf-fold[open]>.ncf-fold__summary::before{transform:rotate(45deg)}
 .ncf-fold>*:not(summary){margin-top:4px}
 .ncf-fold>.ncf-field:last-child,.ncf-fold>.ncf-screen-head:last-child{margin-bottom:12px}
+.ncf-fold__body{padding:0 0 12px}
+/* 見本の部品の「コードで直す」（色付きのコード欄を2段） */
+.ncf-sample__code{display:flex;flex-direction:column;gap:10px;margin-top:8px}
+.ncf-sample__code>*{height:220px;border-radius:6px;overflow:hidden}
+.ncf-sample .ncf-fold{margin-top:14px}
 /* 数字の欄: 単位を左右にドラッグで増減・下にスライダー（Canva風・第2弾） */
 .ncf-number{display:flex;flex-direction:column;gap:4px}
 .ncf-number .ncf-input{max-width:120px}

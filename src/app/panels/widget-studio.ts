@@ -1,50 +1,46 @@
 /**
  * Widget編集（1つの画面・2026-09-23・本人の決定 D1「ノーコードで作る」と「Widget編集」を1つにする）。
+ * 2026-09-24（第3弾）: 右側を「部品」に一本化した（本人「ノーコードで作るの方に合わせて。書式のツールバーは残す」）。
  *
- * 全画面。左＝見え方（620pxの見たまま画面）、右＝直すところ（この並びは崩さない・本人指定）。
+ * 全画面。左＝見え方（620pxの見たまま画面＋書式のツールバー）、右＝直すところ（この並びは崩さない・本人指定）。
  * 右は3段:
- *   1. 画面のタブ（画面①②…／見本の設問①②…）
- *   2. 直すところ（部品で作ったWidgetは「部品」の入力欄、それ以外は「要素ごとに編集」のカード）
- *   3. 「デフォルト時のコードを表示」（HTML/CSS。部品で作ったWidgetは見るだけ＋「部品を解除」）
- * ヘッダー: 閉じる／作成したWidgetに登録／LPに入れる（LPの中のWidgetなら「更新する」）
+ *   1. 画面のタブ（画面①②…）
+ *   2. 部品（画面の設定／部品の一覧＝選んだ1つを広げる／部品を足す／Widget全体の設定）
+ *   3. 「デフォルト時のコードを表示」（Widget全体のHTML/CSS。設定から書き出したものなので見るだけ）
+ * ヘッダー: 閉じる／作成したWidgetに登録／LPに入れる（LPの中のWidgetなら「更新する」）。
  *
+ * どのWidgetも同じ画面で直す:
+ *   - 部品で作ったWidget（外側に data-nc-data）はその設定データで開く
+ *   - 設定データを持たないWidget（自作の見本・手書きのHTML・以前の部品Widget）は「見本の部品1つ」として開く
+ *     （見え方は変えない＝余白0・背景なし。文字・画像・ボタンの欄、要素ごとのカード、コードは見本の部品の中）
  * 開き方は4つ（全部ここ）:
- *   - ライブラリの「+ ノーコードで作る」        → 新しく部品で作る
- *   - 見本のカードの「画面を作って使う」         → その見本を部品にして作る
- *   - LPの中のWidgetをクリック／設置済みWidgetのカード → 設定データがあれば「部品」、無ければHTMLとして直す
- *   - 「部品を解除」                              → 同じ中身をHTMLとして開き直す
- *
- * 本番 SquadBeyond の Widget 編集 UI の実測色（widget-editor-theme.ts）はそのまま使う。
+ *   ライブラリの「+ ノーコードで作る」／見本のカードの「画面を作って使う」／LPの中のWidgetをクリック／設置済みWidgetのカード
  */
 import type Quill from 'quill'
 import { toast } from '../ui.ts'
-import { confirmCard, promptCard } from '../dialog.ts'
+import { promptCard } from '../dialog.ts'
 import { saveCreatedWidget } from './widget-library-storage.ts'
-import { defaultRegisterName } from './nocode/nocode-flow.ts'
-import { extractBuilderData, splitStyles } from './nocode/builder-data.ts'
-import { attachScreenSwitcher, attachStepSwitcher } from './nocode/screen-switcher.ts'
+import { extractBuilderData, wrapHtmlAsBuilder } from './nocode/builder-data.ts'
+import { BUILDER_TEMPLATE } from './nocode/templates/builder.ts'
+import { newUid } from './nocode/templates/kit.ts'
 import type { TemplateData } from './nocode/templates/types.ts'
 import { loadGoogleFonts } from './toolbar/text-format.ts'
 import { svgPlus } from './widget-editor-icons.ts'
 import { COLOR, FONT, type WidgetEditTarget } from './widget-editor-theme.ts'
 import { templateNameOf, visibleTextOf } from './widget-editor-html.ts'
+import { defaultRegisterName } from './nocode/nocode-flow.ts'
 import { closeMediaControl } from './widget-media-control.ts'
 import { RIGHT_PANE_FLEX, buildCodePanels } from './widget-code-panel.ts'
-import { buildDesignPanel } from './widget-design-panel.ts'
 import { buildVisualEditor } from './widget-visual-editor.ts'
-import { createSelectionLayer } from './selection-layer.ts'
 import { insertWidget } from './widget-creator.ts'
 import { openWidgetLibraryForPick } from './widget-library.ts'
 import { createBuilderSession, type BuilderSession } from './widget-studio-builder.ts'
-import { runWidgetScripts } from './widget-run-scripts.ts'
 
 export type StudioSource =
-  /** LPの中のWidget（設定データがあれば部品として、無ければHTMLとして直す） */
+  /** LPの中のWidget（設定データがあればそれで、無ければ見本の部品1つとして開く） */
   | { readonly kind: 'lp'; readonly target: WidgetEditTarget }
   /** 新しく部品で作る */
   | { readonly kind: 'new'; readonly data: TemplateData; readonly uid: string }
-  /** 新しく、HTMLとして直す（部品を解除したとき） */
-  | { readonly kind: 'new-html'; readonly html: string; readonly css: string }
 
 /** いま開いているWidget編集を閉じる（開いていなければ何もしない） */
 export function closeWidgetStudio(): void {
@@ -53,18 +49,28 @@ export function closeWidgetStudio(): void {
   document.querySelector('[data-widget-editor]')?.remove()
 }
 
+/** 開く元から、部品の設定データと名前（uid）を決める */
+function builderStart(source: StudioSource): { data: TemplateData; uid: string } {
+  if (source.kind === 'new') return { data: source.data, uid: source.uid }
+  const found = extractBuilderData(source.target.html)
+  if (found !== null) return found
+  // 設定データを持たないWidget: 元のHTML（<style> ごと）を見本の部品1つにする。
+  // 名前は型の名前か、見える文字の頭（クラス名の「MuiBox-root」を名前にしない）
+  const css = source.target.css.trim()
+  const html = (css === '' ? '' : `<style>${css}</style>`) + source.target.html
+  const title = defaultRegisterName(templateNameOf(source.target.html), visibleTextOf(source.target.html))
+  return { data: wrapHtmlAsBuilder(html, title, BUILDER_TEMPLATE.defaults(new Date())), uid: newUid() }
+}
+
 export function openWidgetStudio(quill: Quill, source: StudioSource): void {
   // 指示158: フォント選択で確実に見た目が変わるよう、日本語Webフォントを読み込んでおく。
   loadGoogleFonts()
   closeWidgetStudio()
 
   const target: WidgetEditTarget =
-    source.kind === 'lp'
-      ? source.target
-      : { node: document.createElement('div'), html: source.kind === 'new-html' ? source.html : '', css: source.kind === 'new-html' ? source.css : '', index: -1, length: 0 }
-  const builderStart = source.kind === 'new' ? { data: source.data, uid: source.uid } : source.kind === 'lp' ? extractBuilderData(source.target.html) : null
-  const isBuilder = builderStart !== null
+    source.kind === 'lp' ? source.target : { node: document.createElement('div'), html: '', css: '', index: -1, length: 0 }
   const isInLp = source.kind === 'lp'
+  const start = builderStart(source)
 
   // 画面いっぱい（本人の指示 2026-09-23「カードではなく画面全体で大きく・別ページみたいに」）
   const panel = document.createElement('div')
@@ -105,16 +111,11 @@ export function openWidgetStudio(quill: Quill, source: StudioSource): void {
   darkContainer.dataset['widgetPanes'] = 'true'
   darkContainer.style.cssText = `flex:1;display:flex;background:${COLOR.container};overflow:hidden;min-height:0`
 
-  // 左: 見たまま画面
+  // 左: 見たまま画面（書式のツールバーつき）
   let session: BuilderSession | null = null
-  /** HTMLモードで左を押したとき（要素を選ぶ）。部品モードは session が受ける */
-  let selectDom: (clicked: EventTarget | null) => void = () => undefined
   const { pane: leftPane, contentDiv, editorBody, setPreviewCss } = buildVisualEditor(target, {
-    builder: isBuilder,
-    onClick: (clicked) => {
-      if (session !== null) session.onCanvasClick(clicked)
-      else selectDom(clicked)
-    },
+    toolScope: (el) => session?.toolScope(el) ?? false,
+    onClick: (clicked) => session?.onCanvasClick(clicked),
   })
   leftPane.dataset['widgetPane'] = 'visual'
 
@@ -125,14 +126,14 @@ export function openWidgetStudio(quill: Quill, source: StudioSource): void {
     `width:10px;background:${COLOR.container};cursor:col-resize;flex-shrink:0;` +
     `display:flex;align-items:center;justify-content:center`
 
-  // 右: 上に画面のタブ、その下に「直すところ」（部品／要素ごと）とコード
+  // 右: 上に画面のタブ、その下に「部品」とコード
   const rightPane = document.createElement('div')
   rightPane.dataset['widgetPane'] = 'code'
   rightPane.style.cssText = `flex:${RIGHT_PANE_FLEX};display:flex;flex-direction:column;min-width:0;min-height:0;background:#fff`
   const tabsHost = document.createElement('div')
   tabsHost.dataset['widgetTabs'] = 'true'
   tabsHost.style.cssText = `flex-shrink:0;display:none;flex-direction:column;background:#fff;border-bottom:1px solid #E3E6EA`
-  // タブは中身があるときだけ見せる（見本の設問は少し遅れて見つかる）
+  // タブは中身があるときだけ見せる
   new MutationObserver(() => {
     tabsHost.style.display = tabsHost.childElementCount > 0 ? 'flex' : 'none'
   }).observe(tabsHost, { childList: true })
@@ -147,128 +148,47 @@ export function openWidgetStudio(quill: Quill, source: StudioSource): void {
     rightPane.style.flex = codeOnly ? '1 1 auto' : RIGHT_PANE_FLEX
   }
 
-  let codePanel: ReturnType<typeof buildCodePanels>
-  /** 部品を解除して、同じ中身をHTMLとして開き直す */
-  const detach = (): void => {
-    if (session === null) return
-    void confirmCard({
-      title: '部品を解除して、HTMLとして直しますか？',
-      message:
-        '見出しを足す・押したときを選ぶ などの部品の操作はできなくなり、代わりに文字の書式やコードを直接直せるようになります。元には戻せません。',
-      submitLabel: '解除する',
-      danger: true,
-    }).then((ok) => {
-      if (!ok || session === null) return
-      const { css, body } = splitStyles(session.plainHtml())
-      closeWidgetStudio()
-      openWidgetStudio(quill, isInLp ? { kind: 'lp', target: { ...target, html: body, css } } : { kind: 'new-html', html: body, css })
-    })
-  }
-
-  if (builderStart !== null) {
-    session = createBuilderSession({
-      data: builderStart.data,
-      uid: builderStart.uid,
-      contentDiv,
-      editorBody,
-      setPreviewCss,
-      tabsHost,
-      pickSample,
-    })
-    const current = session
-    codePanel = buildCodePanels(target, {
-      onViewChange,
-      design: { element: current.panel, refresh: () => undefined },
-      readOnly: {
-        note: '部品で作ったWidgetのコードは、設定から書き出したものです（見るだけ）。',
-        detachLabel: '部品を解除してコードを直す',
-        onDetach: detach,
-      },
-      onShowCode: () => {
-        const code = current.currentCode()
-        codePanel.setCode(code.html, code.css)
-      },
-    })
-  } else {
-    // HTMLとして直す（「要素ごとに編集」のカード＋コード）。CSS の正本はコード欄の textarea
-    let cssArea: HTMLTextAreaElement | null = null
-    const design = buildDesignPanel({
-      content: contentDiv,
-      readCss: () => cssArea?.value ?? target.css,
-      writeCss: (css) => {
-        if (cssArea === null) return
-        cssArea.value = css
-        cssArea.dispatchEvent(new Event('input'))
-      },
-    })
-    codePanel = buildCodePanels(target, { onViewChange, design, onCssInput: setPreviewCss })
-    cssArea = codePanel.pane.querySelector<HTMLTextAreaElement>('[data-code-css]')
-    // ビジュアルエディタ → コードパネルの同期（入力イベントで反映）
-    const htmlArea = codePanel.pane.querySelector<HTMLTextAreaElement>('[data-code-html]')
-    const syncFn = (): void => {
-      if (htmlArea === null) return
-      htmlArea.value = contentDiv.innerHTML
-      htmlArea.dispatchEvent(new Event('input'))
-    }
-    contentDiv.addEventListener('input', syncFn)
-    syncFn()
-
-    // 左で要素を押すと選択枠＋ハンドル（幅・高さ・文字の大きさ）、右はその要素のカードだけ（Canva風・第2弾）。
-    // 何も選んでいないときは Widget全体を薄い枠で出し、上下の辺で上下の余白を動かせる
-    const selection = createSelectionLayer(editorBody, contentDiv)
-    const selectRoot = (): void => {
-      design.select(null)
-      const outer = contentDiv.firstElementChild
-      if (outer instanceof HTMLElement) selection.select(outer, 'Widget全体（上下の辺で余白）', design.handlesFor(outer), { soft: true })
-      else selection.select(null)
-    }
-    selectDom = (clicked) => {
-      const el = clicked instanceof HTMLElement ? clicked : clicked instanceof Node ? clicked.parentElement : null
-      if (el === null || el === contentDiv || !contentDiv.contains(el)) {
-        selectRoot()
-        return
-      }
-      const picked = design.select(el)
-      if (picked === null) {
-        selectRoot()
-        return
-      }
-      selection.select(picked.node, picked.label, design.handlesFor(picked.node))
-    }
-    // コード欄から書き換えたあとなど、中身が入れ替わったら選択枠を合わせ直す
-    contentDiv.addEventListener('input', () => selection.refresh())
-    selectRoot()
-  }
+  session = createBuilderSession({
+    data: start.data,
+    uid: start.uid,
+    contentDiv,
+    editorBody,
+    setPreviewCss,
+    tabsHost,
+    pickSample,
+  })
+  const current = session
+  const codePanel = buildCodePanels(target, {
+    onViewChange,
+    design: { element: current.panel, refresh: () => undefined },
+    readOnly: {
+      note: 'Widget全体のコードは、部品の設定から書き出したものです（見るだけ）。見本の部品のコードは、その部品の「コードで直す」から直せます。',
+    },
+    onShowCode: () => {
+      const code = current.currentCode()
+      codePanel.setCode(code.html, code.css)
+    },
+  })
   rightPane.append(tabsHost, codePanel.pane)
   darkContainer.append(leftPane, divider, rightPane)
   wireDividerResize(divider, rightPane, darkContainer)
 
   /* ── ヘッダー ── */
   const readOutput = (): string | null => {
-    if (session !== null) {
-      const out = session.finalHtml()
-      return 'html' in out ? out.html : null
-    }
-    const htmlCode = panel.querySelector<HTMLTextAreaElement>('[data-code-html]')?.value.trim() ?? ''
-    const cssCode = panel.querySelector<HTMLTextAreaElement>('[data-code-css]')?.value.trim() ?? ''
-    if (htmlCode === '') {
-      toast('HTMLが空です', 'error')
-      return null
-    }
-    return cssCode !== '' ? `<style>${cssCode}</style>${htmlCode}` : htmlCode
+    const out = current.finalHtml()
+    return 'html' in out ? out.html : null
   }
   const header = buildHeader({
-    title: isInLp ? 'Widget編集' : 'Widgetを作る',
+    title: 'Widget編集',
     primaryLabel: isInLp ? '更新する' : 'LPに入れる',
     onClose: closeWidgetStudio,
     onRegister: () => {
       const html = readOutput()
       if (html === null) return
-      const value = session !== null ? session.suggestName() : defaultRegisterName(templateNameOf(html), visibleTextOf(html))
       void promptCard({
         title: '作成したWidgetに登録',
         label: '名前（「作成したWidget」にこの名前で入ります）',
-        value,
+        value: current.suggestName(),
         submitLabel: '登録する',
         validate: (v) => (v === '' ? '名前を入れてください' : null),
       }).then((name) => {
@@ -278,7 +198,7 @@ export function openWidgetStudio(quill: Quill, source: StudioSource): void {
           return
         }
         // このあと入れる分は別の名前にする（登録した分と同じLPに並んでも、色がまざらない）
-        session?.rekey()
+        current.rekey()
         toast(`「${name}」を作成したWidgetに登録しました`)
       })
     },
@@ -292,7 +212,7 @@ export function openWidgetStudio(quill: Quill, source: StudioSource): void {
         toast('Widgetを更新しました')
         return
       }
-      const name = session !== null ? session.suggestName() : defaultRegisterName(templateNameOf(html), visibleTextOf(html))
+      const name = current.suggestName()
       closeWidgetStudio()
       requestAnimationFrame(() => {
         insertWidget(quill, html, name)
@@ -302,16 +222,8 @@ export function openWidgetStudio(quill: Quill, source: StudioSource): void {
   })
 
   panel.append(header, darkContainer)
-
   // 画面に載ってから描く（Widgetの init は document.querySelector で自分の要素を探すため）
-  if (session !== null) {
-    session.start()
-  } else {
-    runWidgetScripts(contentDiv)
-    // 画面①②…・見本の設問①②…のタブ（右側のいちばん上）
-    attachScreenSwitcher(tabsHost, contentDiv)
-    attachStepSwitcher(tabsHost, contentDiv)
-  }
+  current.start()
 }
 
 /**
@@ -340,7 +252,7 @@ function wireDividerResize(divider: HTMLElement, rightPane: HTMLElement, contain
   divider.addEventListener('mousedown', (e) => {
     e.preventDefault()
     startX = e.clientX
-    startRightW = rightPane.getBoundingClientRect().width
+    startRightW = pane.getBoundingClientRect().width
     document.body.style.userSelect = 'none'
     document.addEventListener('mousemove', onMove)
     document.addEventListener('mouseup', onUp)

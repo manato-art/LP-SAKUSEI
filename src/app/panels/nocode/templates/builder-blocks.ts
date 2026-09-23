@@ -10,7 +10,8 @@
  * - 移る先は決まった形のid（s1, s2…）で、今ある画面だけ。入力の文字は属性にエスケープして入れる
  */
 import { ARROW_SVG, pressButtonCss } from './cta.ts'
-import { esc, inkOn, linkAttrs, newUid, safeColor, safeImage, safeVideo, shade, textHtml } from './kit.ts'
+import { esc, inkOn, linkAttrs, newUid, safeColor, safeImage, safeVideo, shade } from './kit.ts'
+import { richText } from '../rich-text.ts'
 import { TEMPLATES } from './list.ts'
 import { ACCENT_PRESETS, bool, int, pick, str, type BlockType, type Field, type ItemData, type NocodeTemplate } from './types.ts'
 
@@ -81,7 +82,7 @@ export const BLOCK_TYPES: readonly BlockType[] = [
     label: '見出し',
     icon: svg('<path d="M6 5v14M18 5v14M6 12h12"/>'),
     fields: [
-      { kind: 'text', key: 'text', label: '文字', placeholder: 'はじめての方へ' },
+      { kind: 'text', key: 'text', label: '文字', placeholder: 'はじめての方へ', rich: true },
       // 大きさは数で持つ（以前の 大/中/小 は 26/21/17px として読める）。左の選択枠の角でもドラッグできる
       { kind: 'number', key: 'size', label: '文字の大きさ', min: 12, max: 48, unit: 'px', legacy: HEADING_SIZES },
       { kind: 'select', key: 'align', label: '寄せ', options: ALIGN_OPTIONS },
@@ -94,7 +95,7 @@ export const BLOCK_TYPES: readonly BlockType[] = [
     label: '文章',
     icon: svg('<path d="M4 6h16M4 10h16M4 14h16M4 18h10"/>'),
     fields: [
-      { kind: 'textarea', key: 'text', label: '文章', rows: 4 },
+      { kind: 'textarea', key: 'text', label: '文章', rows: 4, rich: true },
       // 数で持つ（以前の 標準/小さめ は 15/12.5px として読める）。14px未満は注意書きの見た目（薄い色）
       { kind: 'number', key: 'size', label: '文字の大きさ', min: 10, max: 24, unit: 'px', legacy: TEXT_SIZES },
       { kind: 'select', key: 'align', label: '寄せ', options: ALIGN_OPTIONS },
@@ -106,7 +107,7 @@ export const BLOCK_TYPES: readonly BlockType[] = [
     label: 'ボタン',
     icon: svg('<rect x="3" y="8" width="18" height="8" rx="4"/><path d="M13 12h4"/>'),
     fields: [
-      { kind: 'text', key: 'label', label: 'ボタンの文字', placeholder: '今すぐ申し込む', maxLength: 40 },
+      { kind: 'text', key: 'label', label: 'ボタンの文字', placeholder: '今すぐ申し込む', maxLength: 40, rich: true },
       {
         kind: 'select',
         key: 'look',
@@ -154,7 +155,7 @@ export const BLOCK_TYPES: readonly BlockType[] = [
       // 幅は数で持つ（10〜100%。以前の「横いっぱい／8割／6割／4割」の選びは 100・80・60・40 として読める）
       { kind: 'number', key: 'size', label: '幅', min: 10, max: 100, unit: '%' },
       { kind: 'color', key: 'color', label: '色', presets: SHAPE_PRESETS },
-      { kind: 'text', key: 'text', label: '中の文字（任意）' },
+      { kind: 'text', key: 'text', label: '中の文字（任意）', rich: true },
       ...actionFields(),
     ],
     newItem: () => ({ type: 'shape', shape: 'round', size: 100, color: '#1F7AE0', text: '', ...NO_ACTION }),
@@ -175,7 +176,7 @@ export const BLOCK_TYPES: readonly BlockType[] = [
     label: '箇条書き',
     icon: svg('<path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/>'),
     fields: [
-      { kind: 'textarea', key: 'text', label: '1行に1つ書きます', rows: 4 },
+      { kind: 'textarea', key: 'text', label: '1行に1つ書きます', rows: 4, rich: true },
       {
         kind: 'select',
         key: 'marker',
@@ -195,8 +196,8 @@ export const BLOCK_TYPES: readonly BlockType[] = [
     icon: svg('<rect x="3" y="6" width="8" height="12" rx="1.5"/><path d="M14 8h7M14 12h7M14 16h5"/>'),
     fields: [
       { kind: 'image', key: 'image', label: '画像' },
-      { kind: 'text', key: 'heading', label: '見出し（任意）' },
-      { kind: 'textarea', key: 'text', label: '文章', rows: 3 },
+      { kind: 'text', key: 'heading', label: '見出し（任意）', rich: true },
+      { kind: 'textarea', key: 'text', label: '文章', rows: 3, rich: true },
       {
         kind: 'select',
         key: 'side',
@@ -345,7 +346,7 @@ export function renderBlock(
     case 'heading': {
       const size = sizeOf(item, 'size', HEADING_SIZES, 12, 48, 21)
       return {
-        html: `<h2 class="nc-b nc-b-heading nc-b--${align} ${cls}">${esc(str(item, 'text').trim())}</h2>`,
+        html: `<h2 class="nc-b nc-b-heading nc-b--${align} ${cls}">${richText(str(item, 'text'))}</h2>`,
         css: `${s} .${cls}{color:${safeColor(str(item, 'color'), '#1F2A37')};font-size:${size}px}`,
       }
     }
@@ -354,7 +355,7 @@ export function renderBlock(
       // 小さい文字は注意書きの見た目（薄い色・詰めた行間）
       const small = size < 14 ? ' nc-b-text--s' : ''
       return {
-        html: `<p class="nc-b nc-b-text${small} nc-b--${align} ${cls}">${textHtml(str(item, 'text'))}</p>`,
+        html: `<p class="nc-b nc-b-text${small} nc-b--${align} ${cls}">${richText(str(item, 'text'))}</p>`,
         css: `${s} .${cls}{font-size:${size}px}`,
       }
     }
@@ -362,7 +363,7 @@ export function renderBlock(
       const color = safeColor(str(item, 'color'), '#E5573F')
       const look = pick(item, 'look', ['cta', 'choice'] as const, 'cta')
       const aClass = `nc-b-button__a nc-b-button__a--${look}`
-      const label = `<span class="nc-b-button__label">${esc(str(item, 'label').trim())}</span>${look === 'cta' ? ARROW_SVG : ''}`
+      const label = `<span class="nc-b-button__label">${richText(str(item, 'label'))}</span>${look === 'cta' ? ARROW_SVG : ''}`
       const action = actionOf(item)
       const anchor =
         action === 'link'
@@ -390,8 +391,8 @@ export function renderBlock(
       const shape = pick(item, 'shape', ['round', 'rect', 'circle', 'pill'] as const, 'round')
       const size = int(item, 'size', 10, 100, 100)
       const color = safeColor(str(item, 'color'), '#1F7AE0')
-      const text = str(item, 'text').trim()
-      const inner = text === '' ? '' : `<span class="nc-b-shape__text">${esc(text)}</span>`
+      const text = richText(str(item, 'text'))
+      const inner = text === '' ? '' : `<span class="nc-b-shape__text">${text}</span>`
       const shapeClass = `nc-b nc-b-shape nc-b-shape--${shape} ${cls}`
       const html =
         actionOf(item) === 'link' && str(item, 'url').trim() !== ''
@@ -423,7 +424,7 @@ export function renderBlock(
         .map(
           (line, n) =>
             `<li class="nc-b-list__item"><span class="nc-b-list__mark" aria-hidden="true">${mark(n + 1)}</span>` +
-            `<span class="nc-b-list__text">${esc(line)}</span></li>`,
+            `<span class="nc-b-list__text">${richText(line)}</span></li>`,
         )
         .join('')
       return { html: `<${tag} class="nc-b nc-b-list nc-b-list--${marker} ${cls}">${lis}</${tag}>`, css: '' }
@@ -431,12 +432,12 @@ export function renderBlock(
     case 'imageText': {
       const image = safeImage(str(item, 'image'))
       const side = pick(item, 'side', ['left', 'right'] as const, 'left')
-      const heading = str(item, 'heading').trim()
+      const heading = richText(str(item, 'heading'))
       const inner =
         `<div class="nc-b-imageText__img">${image === '' ? '' : `<img src="${image}" alt="">`}</div>` +
         `<div class="nc-b-imageText__body">` +
-        (heading === '' ? '' : `<h3 class="nc-b-imageText__heading">${esc(heading)}</h3>`) +
-        `<p class="nc-b-imageText__text">${textHtml(str(item, 'text'))}</p></div>`
+        (heading === '' ? '' : `<h3 class="nc-b-imageText__heading">${heading}</h3>`) +
+        `<p class="nc-b-imageText__text">${richText(str(item, 'text'))}</p></div>`
       return {
         html: `<div class="nc-b nc-b-imageText nc-b-imageText--${side} ${cls}"${goAttrs(target, false)}>${withLink(item, 'nc-b-imageText__link', inner)}</div>`,
         css: '',

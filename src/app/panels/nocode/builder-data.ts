@@ -15,6 +15,7 @@
  * DOM を使わない（テストは tests/nocode-builder-data.test.ts）。
  */
 import type { Path } from './form-state.ts'
+import { plainTextOfRich } from './rich-text.ts'
 import { items, str, type ItemData, type TemplateData } from './templates/types.ts'
 
 export const BUILDER_DATA_ATTR = 'data-nc-data'
@@ -134,9 +135,34 @@ export function withSampleAssets(original: string, body: string): string {
   return `${leading}${inner}${trailing}`
 }
 
-/** 部品の呼び名に添える、いちばん最初の文字（見出しの文言・ボタンの文字・見本の名前） */
+/** 部品の呼び名に添える、いちばん最初の文字（見出しの文言・ボタンの文字・見本の名前）。飾りは外す */
 export function blockSnippet(block: ItemData): string {
   const text = str(block, 'text') || str(block, 'label') || str(block, 'heading') || str(block, 'title')
-  const line = text.replace(/\s+/g, ' ').trim()
+  const line = plainTextOfRich(text).replace(/\s+/g, ' ').trim()
   return Array.from(line).slice(0, 18).join('')
+}
+
+/**
+ * 設定データを持たないWidget（自作の見本・手で書いたHTML・以前の部品Widget）を、
+ * 「見本の部品1つ」の設定データにする（2026-09-24・第3弾＝どのWidgetも同じ画面で直す）。
+ * 見え方を変えないよう、Widget全体の余白は 0・背景は「なし」にする。
+ */
+export function wrapHtmlAsBuilder(html: string, title: string, defaults: TemplateData): TemplateData {
+  return {
+    ...defaults,
+    padding: 0,
+    background: 'none',
+    screens: [{ id: 's1', name: '画面①', blocks: [{ type: 'sample', title, html }] }],
+  }
+}
+
+const STYLE_BLOCK = /<style\b[^>]*>[\s\S]*?<\/style\s*>/gi
+
+/**
+ * 見本の部品のCSSを差し替える（「見た目の細かい設定」のカードから）。
+ * 見本の <style> は全部外して、先頭に1つにまとめて置く（複数あっても並び順は保たれるので効き方は同じ）。
+ */
+export function replaceSampleCss(html: string, css: string): string {
+  const body = html.replace(STYLE_BLOCK, '')
+  return `<style>${css}</style>${body}`
 }

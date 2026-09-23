@@ -10,6 +10,7 @@
  */
 import { blockNumberOf, blockPathAt, withSampleAssets } from './builder-data.ts'
 import { getAt, setAt, type Path } from './form-state.ts'
+import { sanitizeRichHtml } from './rich-text.ts'
 import { str, type ItemData, type TemplateData } from './templates/types.ts'
 
 /** 塊になる要素（この切れ目は改行として読む） */
@@ -60,26 +61,37 @@ export function plainTextOf(el: Node): string {
     .replace(/^\n|\n$/g, '')
 }
 
-const oneLine = (text: string): string => text.replace(/\s*\n\s*/g, ' ').trim()
+/**
+ * 要素の中の飾りつきの文字（太字・色は残す。<br> は改行）。
+ * 打ち直しで増えた <div>（塊）は改行として読む。見出しなど1行の部品は oneLine で改行を空白にする
+ */
+export function richTextOf(el: Element): string {
+  return sanitizeRichHtml(el.innerHTML.replace(/<\/?(?:div|p)\b[^>]*>/gi, '\n'))
+    .replace(/(?:\s*<br>\s*|\n)+/g, '<br>')
+    .replace(/^(?:<br>)+|(?:<br>)+$/g, '')
+    .trim()
+}
 
-/** 部品の要素から、その部品の文字の欄を読み戻した中身。読み戻せない部品は null */
+const oneLine = (text: string): string => text.replace(/\s*(?:<br>|\n)\s*/g, ' ').trim()
+
+/** 部品の要素から、その部品の文字の欄を読み戻した中身（飾りつき）。読み戻せない部品は null */
 export function readBlockFromCanvas(el: HTMLElement, block: ItemData): ItemData | null {
   const pick = (selector: string): Element | null => el.querySelector(selector)
   switch (str(block, 'type')) {
     case 'heading':
-      return { ...block, text: oneLine(plainTextOf(el)) }
+      return { ...block, text: oneLine(richTextOf(el)) }
     case 'text':
-      return { ...block, text: plainTextOf(el) }
+      return { ...block, text: richTextOf(el) }
     case 'button': {
       const label = pick('.nc-b-button__label')
-      return label === null ? null : { ...block, label: oneLine(plainTextOf(label)) }
+      return label === null ? null : { ...block, label: oneLine(richTextOf(label)) }
     }
     case 'shape': {
       const text = pick('.nc-b-shape__text')
-      return { ...block, text: oneLine(plainTextOf(text ?? el)) }
+      return { ...block, text: oneLine(richTextOf(text ?? el)) }
     }
     case 'list': {
-      const lines = [...el.querySelectorAll('.nc-b-list__text')].map((item) => plainTextOf(item))
+      const lines = [...el.querySelectorAll('.nc-b-list__text')].map((item) => richTextOf(item))
       return { ...block, text: lines.join('\n') }
     }
     case 'imageText': {
@@ -87,8 +99,8 @@ export function readBlockFromCanvas(el: HTMLElement, block: ItemData): ItemData 
       const text = pick('.nc-b-imageText__text')
       return {
         ...block,
-        heading: heading === null ? '' : oneLine(plainTextOf(heading)),
-        text: text === null ? str(block, 'text') : plainTextOf(text),
+        heading: heading === null ? '' : oneLine(richTextOf(heading)),
+        text: text === null ? str(block, 'text') : richTextOf(text),
       }
     }
     case 'sample':
