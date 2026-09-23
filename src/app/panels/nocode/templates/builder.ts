@@ -116,6 +116,14 @@ const DEFAULT_SCREENS: readonly ItemData[] = [
   },
 ]
 
+/**
+ * 白紙（画面①だけ・部品なし）。「+ ノーコードで作る」はここから始め、右に「何から作りますか？」を出す
+ * （2026-09-24・本人の指摘「前のもの（アンケートの例）が引き継がれて消せない。選択肢がなくなった」）
+ */
+export function blankBuilderData(now: Date): ItemData {
+  return { ...BUILDER_TEMPLATE.defaults(now), screens: [{ id: 's1', name: '画面①', blocks: [] }] }
+}
+
 function screenName(screen: ItemData, index: number): string {
   const name = str(screen, 'name').trim()
   return name === '' ? `画面${index + 1}` : name

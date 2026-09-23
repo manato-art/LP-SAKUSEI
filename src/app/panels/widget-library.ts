@@ -36,7 +36,7 @@ import { SAMPLE_CATEGORIES, type NewSample, type SampleCategory } from './nocode
 import { armSamplePick, cancelSamplePick, isSamplePickArmed, takeSamplePick, type SamplePick } from './nocode/nocode-flow.ts'
 import { showLibraryHint } from './nocode/library-hint.ts'
 import { sampleScreens } from './nocode/sample-to-screens.ts'
-import { BUILDER_TEMPLATE } from './nocode/templates/builder.ts'
+import { BUILDER_TEMPLATE, blankBuilderData } from './nocode/templates/builder.ts'
 import { openWidgetStudio } from './widget-studio.ts'
 import { newUid, rekeyUid } from './nocode/templates/kit.ts'
 import { placeholderLinkCount } from './link-placeholder.ts'
@@ -287,7 +287,8 @@ function patchPortalLayout(root: HTMLElement, quill: Quill, close: () => void): 
         return
       }
       close()
-      requestAnimationFrame(() => openWidgetStudio(quill, { kind: 'new', data: BUILDER_TEMPLATE.defaults(new Date()), uid: newUid() }))
+      // 白紙から始め、右に「何から作りますか？」を出す（以前は毎回アンケートの例が入っていて、選べず・消しにくかった）
+      requestAnimationFrame(() => openWidgetStudio(quill, { kind: 'new', data: blankBuilderData(new Date()), uid: newUid() }))
     })
     // ヘッダー（「カテゴリー」見出し）の前に挿入
     const catHeader = sidebar.querySelector<HTMLElement>('.css-iorjen')

@@ -575,6 +575,8 @@ export function mobileCss(): string {
     // 「複製」「消す」は文字のボタン（幅40pxだと「複\n製」と2行に割れる）
     `html body [data-nc-tab] .ncf-item__copy,html body [data-nc-tab] .ncf-item__remove{width:auto;white-space:nowrap}`,
     `html body [data-nc-tab] .ncf-adder__grid{grid-template-columns:repeat(3,minmax(0,1fr))}`,
+    // 「何から作りますか？」は1列（2列だと説明文が細切れになる）
+    `html body [data-nc-tab] .ncf-picker{grid-template-columns:1fr}`,
     // 「押したとき」「この部品を出す画面」のボタンは指で押しやすい高さに
     `html body [data-nc-tab] .ncf-chip{min-height:40px;padding:8px 14px;font-size:13px}`,
     `}`,

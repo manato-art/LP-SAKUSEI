@@ -155,6 +155,14 @@ textarea.ncf-input{resize:vertical;min-height:64px}
 .ncf-sample__code{display:flex;flex-direction:column;gap:10px;margin-top:8px}
 .ncf-sample__code>*{height:220px;border-radius:6px;overflow:hidden}
 .ncf-sample .ncf-fold{margin-top:14px}
+/* 白紙のときの「何から作りますか？」（以前の「型から作る」の一覧と同じ .ncf-picker） */
+.ncf-start{margin:0 0 18px}
+.ncf-start__title{margin:4px 0 2px;font-size:15px;font-weight:700}
+.ncf-start .ncf-picker{margin-top:10px;column-gap:16px}
+.ncf-start .ncf-pick{padding:12px 6px}
+.ncf-listhead .ncf-reset{margin-left:auto;border:0;background:transparent;color:#C0392B;font-size:12px;font-weight:600;cursor:pointer;padding:2px 4px}
+.ncf-listhead .ncf-reset:hover{text-decoration:underline}
+.ncf-listhead .ncf-reset:focus-visible{outline:2px solid var(--sb-accent,#0091FF);outline-offset:2px}
 /* 数字の欄: 単位を左右にドラッグで増減・下にスライダー（Canva風・第2弾） */
 .ncf-number{display:flex;flex-direction:column;gap:4px}
 .ncf-number .ncf-input{max-width:120px}

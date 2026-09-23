@@ -83,6 +83,18 @@ function suggestBuilderName(data: TemplateData): string {
   return hint === '' ? BUILDER_TEMPLATE.name : `${BUILDER_TEMPLATE.name}（${hint}）`
 }
 
+/** 部品が1つも無いときの左の案内 */
+function emptyHint(): HTMLElement {
+  const hint = document.createElement('div')
+  hint.dataset['widgetEmpty'] = 'true'
+  hint.setAttribute('contenteditable', 'false')
+  hint.textContent = '右の「何から作りますか？」から選ぶか、「部品を足す」で部品を積むと、ここに出ます'
+  hint.style.cssText =
+    `margin:24px 16px;padding:40px 16px;border:1.5px dashed #C9CFD6;border-radius:10px;text-align:center;` +
+    `color:#6B7480;font:14px/1.8 ${FONT};user-select:none`
+  return hint
+}
+
 export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
   ensureNocodeFormCss()
   const { contentDiv, editorBody } = deps
@@ -269,6 +281,8 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
     contentDiv.innerHTML = body
     runWidgetScripts(contentDiv)
     markNonEditable()
+    // 部品が1つも無いときは、左に案内を出す（見たまま画面の中身は保存しないので、置いてよい）
+    if (items(data, 'screens').every((s) => items(s, 'blocks').length === 0)) contentDiv.append(emptyHint())
     showSelection()
   }
   const schedulePaint = (): void => {
@@ -292,6 +306,15 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
     },
     onPreviewReset: () => previewOverrides.clear(),
     tabsHost: deps.tabsHost,
+    // 白紙のときの「何から作りますか？」に出す例
+    examples: [
+      {
+        label: 'アンケートの例',
+        summary: '質問に答えると画面②へ進む、2画面の例です。中身を直して使えます',
+        icon: BUILDER_TEMPLATE.icon,
+        data: () => BUILDER_TEMPLATE.defaults(new Date()),
+      },
+    ],
     onSelect: () => showSelection(),
     blockElement: (screenIndex, blockIndex) => blockElementAt(data, contentDiv, screenIndex, blockIndex),
     onInnerSelected: (node, label, handles) => selection.select(node, label, handles),

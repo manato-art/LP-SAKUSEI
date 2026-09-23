@@ -8,7 +8,7 @@
  * 書き出しの安全さは「型から作る」と同じ（kit.ts）。
  */
 import { describe, expect, it } from 'vitest'
-import { ALL_BLOCK_TYPES, BUILDER_TEMPLATE, SCREENS_SCRIPT } from '../src/app/panels/nocode/templates/builder.ts'
+import { ALL_BLOCK_TYPES, BUILDER_TEMPLATE, SCREENS_SCRIPT, blankBuilderData } from '../src/app/panels/nocode/templates/builder.ts'
 import { TEMPLATES } from '../src/app/panels/nocode/templates/list.ts'
 import type { ItemData, TemplateData } from '../src/app/panels/nocode/templates/types.ts'
 
@@ -385,5 +385,19 @@ describe('部品の文字の飾り（第3弾・ツールバーで付けた太字
   it('背景「なし」はLPの地のまま（背景の指定を書かない）', () => {
     const html = render([screen('s1', '画面①', [{ type: 'text', text: 'x', align: 'left' }])], { background: 'none', padding: 0 })
     expect(html).toMatch(new RegExp(`\\.${UID}\\{padding:0px 16px;\\}`))
+  })
+})
+
+describe('白紙から始める（2026-09-24・「ノーコードで作る」で前の例が引き継がれて消せなかった）', () => {
+  it('画面①だけ・部品なし。Widget全体の設定は既定のまま', () => {
+    const blank = blankBuilderData(NOW)
+    expect(blank['screens']).toEqual([{ id: 's1', name: '画面①', blocks: [] }])
+    expect(blank['padding']).toBe(BUILDER_TEMPLATE.defaults(NOW)['padding'])
+  })
+
+  it('白紙のままでは入れられない（部品を足すように知らせる）が、書き出しは壊れない', () => {
+    const blank = blankBuilderData(NOW)
+    expect(BUILDER_TEMPLATE.validate(blank, NOW)).toContain('部品がありません')
+    expect(BUILDER_TEMPLATE.render(blank, UID)).toContain(`class="nc nc-builder ${UID}"`)
   })
 })

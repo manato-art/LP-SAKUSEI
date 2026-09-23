@@ -38,7 +38,7 @@ import {
   screenLabel,
   withPress,
 } from './screens-state.ts'
-import { SCREEN_ID, isTemplateBlock } from './templates/builder-blocks.ts'
+import { SCREEN_ID, isTemplateBlock, templateOfBlock } from './templates/builder-blocks.ts'
 import { items, str, type BlockType, type Field, type ItemData, type ScreensField, type TemplateData } from './templates/types.ts'
 
 type ListField = Extract<Field, { kind: 'list' }>
@@ -74,6 +74,11 @@ export interface TemplateFormOptions {
   blockElement?: (screenIndex: number, blockIndex: number) => HTMLElement | null
   /** 見本の部品の中の要素を選んだ（見たまま画面の選択枠をその要素に合わせる） */
   onInnerSelected?: (nodeEl: HTMLElement, label: string, handles: readonly SelectionHandle[]) => void
+  /**
+   * 白紙のときの「何から作りますか？」に出す例（アンケートの例 など）。選ぶと中身をまるごとその例にする
+   * （2026-09-24・本人の指摘「ノーコードで作るを押すと前のものが引き継がれて消せない。選択肢がなくなった」）
+   */
+  examples?: readonly { label: string; summary: string; icon: string; data: () => TemplateData }[]
 }
 
 export interface TemplateForm {
@@ -419,6 +424,98 @@ export function buildTemplateForm(options: TemplateFormOptions): TemplateForm {
     return body
   }
 
+  /** 足した部品を選んだ状態で組み立て直す */
+  const addSelected = (field: ScreensField, screenIndex: number, next: TemplateData): void => {
+    if (!replace(next)) return
+    selectedBlock = items(items(data, field.key)[screenIndex] ?? {}, 'blocks').length - 1
+    build()
+    notifySelect()
+    root.querySelector<HTMLElement>('.ncf-item--selected')?.querySelector<HTMLElement>('input,textarea,select')?.focus()
+  }
+
+  /** 部品を1つ、その画面のいちばん下に足す（見本は先に見本の一覧で選んでもらう） */
+  const addBlockOfType = (field: ScreensField, screenIndex: number, type: BlockType): void => {
+    const listPath: Path = [field.key, screenIndex, 'blocks']
+    // 見本は、先に見本の一覧で選んでもらい、選んだら部品として入れる（やめたら何も足さない）
+    if (type.type === 'sample' && options.pickSample !== undefined) {
+      void options.pickSample().then((sample) => {
+        if (sample === null) return
+        // 設問①②③で進む見本は、設問ごとの部品にして画面①②③へ分ける（本人の決定）
+        const parts = splitSampleScreens(sample.html)
+        const split =
+          parts.length < 2 ? null : addSampleParts(data, field.key, screenIndex, sample.title, parts, { max: field.max, blockMax: field.blockMax })
+        if (split !== null) {
+          addSelected(field, screenIndex, split)
+          toast(`「${sample.title}」の設問を、画面ごとの部品に分けました（${parts.length}画面）`)
+          return
+        }
+        addSelected(field, screenIndex, addAt(data, listPath, { ...type.newItem(), title: sample.title, html: sample.html }, field.blockMax))
+      })
+      return
+    }
+    addSelected(field, screenIndex, addAt(data, listPath, type.newItem(), field.blockMax))
+  }
+
+  /** 部品が1つも無く、画面も1つだけ（白紙） */
+  const isBlank = (field: ScreensField): boolean => {
+    const screens = items(data, field.key)
+    return screens.length <= 1 && items(screens[0] ?? {}, 'blocks').length === 0
+  }
+
+  /** 白紙に戻す（画面①だけ・部品なし。背景などWidget全体の設定はそのまま） */
+  const resetToBlank = (field: ScreensField): void => {
+    if (!replace(setAt(data, [field.key], [{ id: 's1', name: screenLabel(1), blocks: [] }]))) return
+    const changed = activeScreen !== 0
+    activeScreen = 0
+    selectedBlock = null
+    build()
+    if (changed) options.onScreenChange?.('s1')
+    notifySelect()
+  }
+
+  /**
+   * 白紙のときの「何から作りますか？」（以前の「型から作る」の一覧と同じ見た目）。
+   * 例（アンケート）・ライブラリの見本・型8種から選ぶ。選ぶと画面①に入る（例は中身まるごと）
+   */
+  const startChooserEl = (field: ScreensField): HTMLElement => {
+    const wrap = node('div', 'ncf-start')
+    wrap.append(
+      node('p', 'ncf-start__title', '何から作りますか？'),
+      node('p', 'ncf-note', '選ぶと左に出ます。あとから部品を足したり、消したり、並べ替えたりできます。'),
+    )
+    const grid = node('div', 'ncf-picker')
+    const choice = (icon: string, name: string, summary: string, onPick: () => void): void => {
+      const b = textButton('', 'ncf-pick', onPick)
+      const iconEl = node('span', 'ncf-pick__icon')
+      iconEl.innerHTML = icon
+      const text = node('span')
+      text.append(node('span', 'ncf-pick__name', name), node('span', 'ncf-pick__sum', summary))
+      b.append(iconEl, text)
+      grid.append(b)
+    }
+    for (const example of options.examples ?? []) {
+      choice(example.icon, example.label, example.summary, () => {
+        if (!replace(example.data())) return
+        activeScreen = 0
+        selectedBlock = null
+        build()
+        options.onScreenChange?.(str(items(data, field.key)[0] ?? {}, 'id'))
+        notifySelect()
+      })
+    }
+    const sample = field.types.find((t) => t.type === 'sample')
+    if (sample !== undefined && options.pickSample !== undefined) {
+      choice(sample.icon, 'ライブラリの見本から', '用意された見本から選んで、中身を直して使います', () => addBlockOfType(field, 0, sample))
+    }
+    for (const type of field.types) {
+      const template = templateOfBlock(type.type)
+      if (template === undefined) continue
+      choice(type.icon, template.name, template.summary, () => addBlockOfType(field, 0, type))
+    }
+    wrap.append(grid, node('p', 'ncf-note', '下の「部品を足す」から、見出し・文章・画像などを1つずつ積んで作ることもできます。'))
+    return wrap
+  }
+
   /**
    * 画面の中の部品の並び。1件ごとに部品の名前と複製・上へ・下へ・消す。頭を押すとその部品だけが広がる
    * （見たまま画面で部品を押したときも同じ）。いちばん下に種類ごとの「足す」
@@ -430,6 +527,20 @@ export function buildTemplateForm(options: TemplateFormOptions): TemplateForm {
     const list = (getAt(data, listPath) as readonly ItemData[] | undefined) ?? []
     const head = node('div', 'ncf-listhead')
     head.append(node('span', 'ncf-label', '部品（上から順に並びます）'), node('span', 'ncf-count', `${list.length} / ${field.blockMax}`))
+    // 全部消して最初から（白紙に戻すと「何から作りますか？」がまた出る）
+    if (!isBlank(field)) {
+      const reset = textButton('全部消して作り直す', 'ncf-reset', () => {
+        void confirmCard({
+          title: '全部消して作り直しますか？',
+          message: 'すべての画面と部品を消して、白紙に戻します。Widget全体の設定（背景・余白）はそのままです。',
+          submitLabel: '全部消す',
+          danger: true,
+        }).then((ok) => {
+          if (ok) resetToBlank(field)
+        })
+      })
+      head.append(reset)
+    }
     const box = node('div', 'ncf-list')
     /** つかんで並べ替え（頭をドラッグ → 別の部品の上半分/下半分に落とす） */
     let dragFrom: number | null = null
@@ -517,37 +628,8 @@ export function buildTemplateForm(options: TemplateFormOptions): TemplateForm {
     // 型の部品（まとまった部品）は、ふつうの部品と分けて並べる
     const templateGrid = node('div', 'ncf-adder__grid')
     adder.append(node('span', 'ncf-adder__label', full ? `部品は1画面に${field.blockMax}こまでです` : '部品を足す（いちばん下に入り、すぐ直せます）'), grid)
-    /** 足した部品を選んだ状態で組み立て直す */
-    const addSelected = (next: TemplateData): void => {
-      if (!replace(next)) return
-      selectedBlock = items(items(data, field.key)[screenIndex] ?? {}, 'blocks').length - 1
-      build()
-      notifySelect()
-      root.querySelector<HTMLElement>('.ncf-item--selected')?.querySelector<HTMLElement>('input,textarea,select')?.focus()
-    }
     for (const type of field.types) {
-      const add = (): void => {
-        // 見本は、先に見本の一覧で選んでもらい、選んだら部品として入れる（やめたら何も足さない）
-        if (type.type === 'sample' && options.pickSample !== undefined) {
-          void options.pickSample().then((sample) => {
-            if (sample === null) return
-            // 設問①②③で進む見本は、設問ごとの部品にして画面①②③へ分ける（本人の決定）
-            const parts = splitSampleScreens(sample.html)
-            const split =
-              parts.length < 2
-                ? null
-                : addSampleParts(data, field.key, screenIndex, sample.title, parts, { max: field.max, blockMax: field.blockMax })
-            if (split !== null) {
-              addSelected(split)
-              toast(`「${sample.title}」の設問を、画面ごとの部品に分けました（${parts.length}画面）`)
-              return
-            }
-            addSelected(addAt(data, listPath, { ...type.newItem(), title: sample.title, html: sample.html }, field.blockMax))
-          })
-          return
-        }
-        addSelected(addAt(data, listPath, type.newItem(), field.blockMax))
-      }
+      const add = (): void => addBlockOfType(field, screenIndex, type)
       const b = textButton('', 'ncf-adder__btn', add, !full)
       const icon = node('span', 'ncf-adder__icon')
       icon.innerHTML = type.icon
@@ -662,6 +744,12 @@ export function buildTemplateForm(options: TemplateFormOptions): TemplateForm {
             : 'まだどの部品からも、この画面へ移れません。ほかの画面のボタンなどの「押したとき」で、この画面を選んでください。'
     })
     const panel = node('div', 'ncf-screen')
+    // 白紙のときは「何から作りますか？」を先に出す（画面の設定・知らせは要らない）
+    if (isBlank(field)) {
+      panel.append(startChooserEl(field), blockListEl(field, index))
+      wrap.append(panel)
+      return wrap
+    }
     panel.append(
       note,
       foldable(
