@@ -16,7 +16,7 @@ import { getState, setState } from '../store/store.ts'
 import { getMasterStyleSheet } from '../store/master-style-sheet.ts'
 import { getHtmlSetting } from '../store/html-tags.ts'
 import { bulkTagsForFolder } from '../store/bulk-tags.ts'
-import { bumpMetric, recordConversion } from '../store/actions.ts'
+import { recordConversion } from '../store/actions.ts'
 import { shouldExclude } from '../store/exclusions.ts'
 import type { RequestLogEntry } from '../store/types.ts'
 import { broadcastConversion, type ConversionPush } from '../ws/cable.ts'
@@ -35,7 +35,7 @@ import { isBotAccess } from '../lib/bot-detect.ts'
 import { recordBotHit } from '../store/bot-hits.ts'
 import { adParamsOf, mergeHeatmapEvent } from './track-heatmap.ts'
 import { deviceOfUserAgent } from '../lib/device.ts'
-import { bumpDeviceMetric } from '../store/device-metrics.ts'
+import { countPvOrClick } from './track-counts.ts'
 import { attributeConversion, recordTouch, toVisitorId } from '../store/visitor-touches.ts'
 import { buildVisitorContext, pickDeliveryVersion } from './delivery-targeting.ts'
 import { canonicalHost, isServableOnHost } from '../lib/delivery-host.ts'
@@ -647,25 +647,8 @@ deliveryRouter.post('/lp/:uid/__track', (req, res) => {
   const adParams = adParamsOf((body as { params?: unknown }).params)
 
   setState((s) => {
-    let next: State = { ...s, metrics: bumpMetric(s, abTest.uid, 'ab_test', date, delta) }
-    // 端末ごとにも同じだけ数える（DailyMetric とは別の入れ物・store/device-metrics.ts）
-    let deviceMetrics = bumpDeviceMetric(next.deviceMetrics, { entity_uid: abTest.uid, scope: 'ab_test', date, device }, delta)
-    if (versionUid !== '') {
-      next = { ...next, metrics: bumpMetric(next, versionUid, 'version', date, delta) }
-      deviceMetrics = bumpDeviceMetric(deviceMetrics, { entity_uid: versionUid, scope: 'version', date, device }, delta)
-      for (const param of adParams) {
-        next = {
-          ...next,
-          metrics: bumpMetric(next, `${versionUid}|${param}`, 'parameter', date, delta),
-        }
-        deviceMetrics = bumpDeviceMetric(
-          deviceMetrics,
-          { entity_uid: `${versionUid}|${param}`, scope: 'parameter', date, device },
-          delta,
-        )
-      }
-    }
-    next = { ...next, deviceMetrics, deviceRecordedSince: next.deviceRecordedSince ?? date }
+    // ページ全体・Version・Version×広告に数え、端末ごとにも同じだけ数える（track-counts.ts）
+    let next: State = countPvOrClick(s, { abTestUid: abTest.uid, versionUid, adParams, date, device, delta })
     // 目印があれば「見た・押した」記録を残す（CVタグから成果が届いたとき、どのVersionの成果かを照らし合わせる）
     if (vid !== null) {
       next = {
