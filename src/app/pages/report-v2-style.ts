@@ -179,7 +179,11 @@ export function injectReportStyles(): void {
       display:flex; align-items:center; justify-content:space-between; gap:12px;
       padding:9px 14px; font-size:12px; border-bottom:1px solid var(--rv2-rule);
     }
-    .rv2-creative-param-name { color:var(--rv2-ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .rv2-creative-param-name { color:var(--rv2-ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; min-width:0; }
+    /* 「比較」の印（押すと右の比較の枠に並ぶ・2026-09-24） */
+    .rv2-creative-param-pick { display:inline-flex; align-items:center; gap:4px; font-size:11px; color:var(--rv2-sub); cursor:pointer; flex-shrink:0; }
+    .rv2-compare th, .rv2-compare td { font-size:11px; }
+    .rv2-legend span + span { margin-left:8px; font-variant-numeric:tabular-nums; }
     .rv2-creative-param-value { color:var(--rv2-ink); font-variant-numeric:tabular-nums; flex-shrink:0; }
     .rv2-readmore {
       border:0; background:transparent; color:var(--rv2-accent); font:inherit; font-size:12px;

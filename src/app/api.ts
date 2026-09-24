@@ -186,6 +186,8 @@ export interface ReportVersionRow extends ReportKpi {
 
 export interface ReportDailyRow extends ReportKpi {
   date: string
+  /** 配信金額が分かっているか（Version だけを足し直した日別では false・2026-09-24） */
+  cost_known?: boolean
 }
 
 export interface ReportResponse {

@@ -9,16 +9,23 @@ import { toast } from '../ui.ts'
 import {
   CREATIVE_PAGE_SIZE,
   creativeParameterRows,
+  filterVersionsByAdStatus,
+  perDayRow,
+  searchCreativeRows,
   sortCreativeRows,
+  summarizeDaily,
+  versionDailySeries,
+  type AdStatusFilter,
+  type Aggregation,
   type CreativeSortKey,
   type SortDirection,
 } from './report-creative-rows.ts'
+import { MAX_COMPARED, buildCompareTable, comparedRows } from './report-creative-compare.ts'
 import { api } from '../api.ts'
 import type { ReportDailyRow, ReportVersionRow } from '../api.ts'
 import type { DateRange } from './report-period.ts'
 import type { KpiKey } from './report-v2-kpi.ts'
 
-/** グラフのタブ（実物のクリエイティブレポートと同じ並び） */
 /**
  * 列選択（実物のクリエイティブ欄にある9指標のチェックボックス＋保存）。
  * 名前は採取物の `name` 属性そのまま。既定で入っている5つも採取物どおり。
@@ -33,14 +40,6 @@ export const COLUMN_CHOICES: readonly { name: string; label: string; key: KpiKey
   { name: 'ctvr', label: 'CTVR', key: 'ctvr', on: false },
   { name: 'cpa', label: 'CPA', key: 'cpa', on: true },
   { name: 'mcpa', label: 'MCPA', key: 'mcpa', on: false },
-]
-
-const CHART_TABS: readonly { key: KpiKey; label: string }[] = [
-  { key: 'ad_cost', label: '配信金額' },
-  { key: 'cv', label: 'CV' },
-  { key: 'cpa', label: 'CPA' },
-  { key: 'ctr', label: 'CTR' },
-  { key: 'cvr', label: 'CVR' },
 ]
 
 /**
@@ -61,6 +60,8 @@ function svgEl<K extends keyof SVGElementTagNameMap>(name: K): SVGElementTagName
 }
 
 function valueOf(row: ReportDailyRow, key: KpiKey): number | null {
+  // Version だけを足し直した日別（配信中 / 停止中で絞ったとき）は配信金額が分からない（0 と描かない）
+  if (row.cost_known === false && (key === 'ad_cost' || key === 'cpa' || key === 'mcpa')) return null
   switch (key) {
     case 'ad_cost':
       return row.ad_cost
@@ -90,6 +91,14 @@ function niceStep(rough: number): number {
   const n = rough / pow
   const step = n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10
   return step * pow
+}
+
+/** グラフの横に出す期間の値の書き方 */
+function formatSummary(v: number | null, key: KpiKey): string {
+  if (v === null) return '-'
+  if (key === 'ctr' || key === 'cvr' || key === 'ctvr') return `${(v * 100).toFixed(2)}%`
+  if (key === 'ad_cost' || key === 'cpa' || key === 'mcpa') return `¥ ${Math.round(v).toLocaleString('ja-JP')}`
+  return v.toLocaleString('ja-JP', { maximumFractionDigits: 1 })
 }
 
 function formatAxis(v: number, key: KpiKey): string {
@@ -251,16 +260,22 @@ export function buildCreativeReport(deps: ChartDeps): HTMLElement {
   const filters = document.createElement('div')
   filters.className = 'rv2-creative-filters'
 
-  // Parameter検索（実物と同じ placeholder）
+  // Parameter検索（実物と同じ placeholder）。広告の名前に含まれる文字で下の一覧を絞る（2026-09-24）
+  let paramQuery = ''
   const paramSearch = document.createElement('input')
   paramSearch.type = 'search'
   paramSearch.className = 'rv2-input'
   paramSearch.placeholder = 'Parameter検索'
-  paramSearch.title = 'パラメーター別の実績はまだ集計していないため、いまは絞り込めません'
-  paramSearch.disabled = true
+  paramSearch.title = '広告の名前（utm_source=fb など）に含まれる文字で、下の一覧を絞ります'
+  paramSearch.addEventListener('input', () => {
+    paramQuery = paramSearch.value
+    shownCount = CREATIVE_PAGE_SIZE
+    renderParamRows()
+  })
 
-  // 広告ステータス（配信中 / 停止中 / ALL・既定はALL）
-  let adStatus: '配信中' | '停止中' | 'ALL' = 'ALL'
+  // 広告ステータス（配信中 / 停止中 / ALL・既定はALL）。
+  // 配信中＝実際に配信している Version（アーカイブしておらず配信割合が1%以上）に来た広告・その Version の日別
+  let adStatus: AdStatusFilter = 'ALL'
   const statuses = document.createElement('div')
   statuses.className = 'rv2-chipgroup'
   for (const label of ['配信中', '停止中', 'ALL'] as const) {
@@ -278,8 +293,9 @@ export function buildCreativeReport(deps: ChartDeps): HTMLElement {
     statuses.append(chip)
   }
 
-  // 平均 / 合計（実物は「平均」が選択側に見える配色）
-  let aggregation: '平均' | '合計' = '平均'
+  // 平均 / 合計（実物は「平均」が選択側に見える配色）。
+  // 平均＝1日あたり（回数・金額を日数で割る）／合計＝期間の合計。率はどちらでも期間の合計から出す
+  let aggregation: Aggregation = '平均'
   const aggs = document.createElement('div')
   aggs.className = 'rv2-chipgroup'
   for (const label of ['平均', '合計'] as const) {
@@ -315,10 +331,20 @@ export function buildCreativeReport(deps: ChartDeps): HTMLElement {
 
   let current: KpiKey = 'ad_cost'
 
-  /** 絞り込みを通した日別の行（広告ステータスは行側に無いので、選ばれた日だけ絞る） */
+  const versions = deps.rows ?? []
+  /**
+   * 絞り込みを通した日別の行。ALL はページ全体の日別（配信金額あり）、
+   * 配信中 / 停止中はその Version の日別を足し直したもの（配信金額はページ単位なので分からない）。
+   */
   const visibleDaily = (): readonly ReportDailyRow[] => {
-    const rows = pickedDate === null ? deps.daily : deps.daily.filter((d) => d.date === pickedDate)
-    return rows
+    const base =
+      adStatus === 'ALL'
+        ? deps.daily
+        : versionDailySeries(
+            filterVersionsByAdStatus(versions, adStatus),
+            deps.daily.map((d) => d.date),
+          )
+    return pickedDate === null ? base : base.filter((d) => d.date === pickedDate)
   }
 
   const renderDateChips = (): void => {
@@ -340,22 +366,32 @@ export function buildCreativeReport(deps: ChartDeps): HTMLElement {
   }
 
   const render = (): void => {
-    const def = CHART_TABS.find((t) => t.key === current)
+    const label = COLUMN_CHOICES.find((c) => c.key === current)?.label ?? ''
+    const daily = visibleDaily()
     legend.innerHTML = ''
     const dot = document.createElement('i')
     const name = document.createElement('span')
-    name.textContent = def?.label ?? ''
-    legend.append(dot, name)
+    name.textContent = label
+    // 平均＝1日あたり／合計＝期間の合計（2026-09-24）
+    const summary = document.createElement('span')
+    summary.textContent = `${aggregation === '合計' ? '期間の合計' : '1日平均'} ${formatSummary(summarizeDaily(daily, current, aggregation), current)}`
+    legend.append(dot, name, summary)
 
     holder.innerHTML = ''
-    const chart = drawChart(visibleDaily(), current)
+    const isCostOnly = current === 'ad_cost' || current === 'cpa' || current === 'mcpa'
+    const chart = drawChart(daily, current)
     holder.append(
       chart ??
-        // 文言は採取物どおり（実物のクリエイティブ欄の空表示）
-        emptyBox(
-          '表示できるレポートがありません',
-          '選択した期間にデータがありません。期間を変えると表示されることがあります。',
-        ),
+        (adStatus !== 'ALL' && isCostOnly
+          ? emptyBox(
+              '配信金額はページ全体でしか分かりません',
+              '配信中・停止中で絞ると、配信金額・CPA・MCPA は出せません。ALL に戻すと出ます。',
+            )
+          : // 文言は採取物どおり（実物のクリエイティブ欄の空表示）
+            emptyBox(
+              '表示できるレポートがありません',
+              '選択した期間にデータがありません。期間を変えると表示されることがあります。',
+            )),
     )
     for (const b of tabs.querySelectorAll('button')) {
       b.classList.toggle('on', b.dataset['key'] === current)
@@ -479,12 +515,21 @@ export function buildCreativeReport(deps: ChartDeps): HTMLElement {
   choiceToggle.addEventListener('click', () => choiceBox.classList.toggle('open'))
   choiceBox.append(choiceToggle, choiceForm)
 
-  // 右側は実物と同じく「別軸の比較枠」。比較対象は未設定なので空表示にする。
-  const side = emptyBox(
-    'データがありません',
-    '比較する対象が選ばれていません。\n表の行から比較したいものを選ぶと、ここに並びます。',
-  )
+  // 右側は実物と同じく「別軸の比較枠」。下の広告の一覧で「比較」に印を付けたものを並べる（2026-09-24）
+  const side = document.createElement('div')
   row.append(side)
+  const compared = new Set<string>()
+  const renderCompare = (rows: readonly ReportVersionRow[]): void => {
+    const columns = COLUMN_CHOICES.filter((c) => chosen.has(c.key)).map((c) => ({ key: c.key, label: c.label }))
+    const table = buildCompareTable(comparedRows(rows, compared), columns, formatKpi)
+    side.replaceChildren(
+      table ??
+        emptyBox(
+          'データがありません',
+          '比較する対象が選ばれていません。\n下の広告の一覧で「比較」に印を付けると、ここに並びます。',
+        ),
+    )
+  }
 
   /* ── 広告パラメータの一覧（実物はチャートの下に並び、最後に「もっと表示」）── */
   let sort: { key: CreativeSortKey; direction: SortDirection } = { key: 'pv', direction: 'desc' }
@@ -494,12 +539,42 @@ export function buildCreativeReport(deps: ChartDeps): HTMLElement {
 
   const renderParamRows = (): void => {
     paramList.innerHTML = ''
-    const all = creativeParameterRows(deps.rows ?? [])
-    if (all.length === 0) return
+    // 配信中 / 停止中 → その Version に来た広告だけ。Parameter検索 → 名前で絞る。平均 → 1日あたり
+    const days = Math.max(1, visibleDaily().length)
+    const all = searchCreativeRows(creativeParameterRows(filterVersionsByAdStatus(versions, adStatus)), paramQuery)
+      .map((entry) => (aggregation === '平均' ? perDayRow(entry, days) : entry))
+    renderCompare(all)
+    if (all.length === 0) {
+      if (paramQuery.trim() !== '') {
+        const none = document.createElement('div')
+        none.className = 'rv2-note'
+        none.textContent = `「${paramQuery.trim()}」を含む広告はありません。`
+        paramList.append(none)
+      }
+      return
+    }
     const ordered = sortCreativeRows(all, sort.key, sort.direction)
     for (const entry of ordered.slice(0, shownCount)) {
       const line = document.createElement('div')
       line.className = 'rv2-creative-param'
+      const pick = document.createElement('label')
+      pick.className = 'rv2-creative-param-pick'
+      const box = document.createElement('input')
+      box.type = 'checkbox'
+      box.checked = compared.has(entry.name)
+      box.addEventListener('change', () => {
+        if (box.checked && compared.size >= MAX_COMPARED) {
+          box.checked = false
+          toast(`比較に並べられるのは${MAX_COMPARED}件までです`, 'error')
+          return
+        }
+        if (box.checked) compared.add(entry.name)
+        else compared.delete(entry.name)
+        renderCompare(all)
+      })
+      const pickText = document.createElement('span')
+      pickText.textContent = '比較'
+      pick.append(box, pickText)
       const name = document.createElement('span')
       name.className = 'rv2-creative-param-name'
       name.textContent = entry.name
@@ -507,7 +582,7 @@ export function buildCreativeReport(deps: ChartDeps): HTMLElement {
       const value = document.createElement('span')
       value.className = 'rv2-creative-param-value'
       value.textContent = formatKpi(entry, current)
-      line.append(name, value)
+      line.append(pick, name, value)
       paramList.append(line)
     }
     if (ordered.length > shownCount) {
