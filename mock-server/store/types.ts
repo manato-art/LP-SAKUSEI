@@ -4,6 +4,7 @@
  */
 
 import type { MediaField } from './media-templates.ts'
+import type { ExitPopupContentKey, FollowPopupContentKey } from '../../src/shared/popup-content.ts'
 
 export type MediaIconName = string
 
@@ -311,33 +312,8 @@ export interface ExitPopup {
   live?: ExitPopupContent | null
 }
 
-/** 離脱防止ポップアップの、下書きと本番に分ける項目（名前・割合・配信ON/OFF・種類は分けない） */
-export type ExitPopupContent = Pick<
-  ExitPopup,
-  | 'visit_count'
-  | 'phone_number'
-  | 'link_url'
-  | 'link_target'
-  | 'tracking_urls'
-  | 'animation'
-  | 'delay_seconds'
-  | 'scroll_trigger'
-  | 'scroll_position'
-  | 'countdown_trigger'
-  | 'countdown_seconds'
-  | 'back_button_trigger'
-  | 'exit_trigger'
-  | 'position_x'
-  | 'position_y'
-  | 'device_sp'
-  | 'device_tablet'
-  | 'device_pc'
-  | 'html'
-  | 'javascript'
-  | 'head_tag'
-  | 'body_tag'
-  | 'link_action'
->
+/** 離脱防止ポップアップの、下書きと本番に分ける項目（名前・割合・配信ON/OFF・種類は分けない。並びは src/shared/popup-content.ts） */
+export type ExitPopupContent = Pick<ExitPopup, ExitPopupContentKey>
 
 /** 追尾型ポップアップ（指示85: スクロール追従バナー） */
 export interface FollowPopup {
@@ -368,20 +344,8 @@ export interface FollowPopup {
   live?: FollowPopupContent | null
 }
 
-/** 追従型ポップアップの、下書きと本番に分ける項目（名前・配信ON/OFFは分けない） */
-export type FollowPopupContent = Pick<
-  FollowPopup,
-  | 'position'
-  | 'show_after_scroll'
-  | 'show_close_button'
-  | 'animation'
-  | 'device_sp'
-  | 'device_tablet'
-  | 'device_pc'
-  | 'html'
-  | 'javascript'
-  | 'css'
->
+/** 追従型ポップアップの、下書きと本番に分ける項目（名前・配信ON/OFFは分けない。並びは src/shared/popup-content.ts） */
+export type FollowPopupContent = Pick<FollowPopup, FollowPopupContentKey>
 
 export type SplitTestType = 'devices' | 'oses' | 'carriers' | 'hours' | 'periods' | 'params'
 

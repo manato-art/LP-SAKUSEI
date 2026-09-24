@@ -10,6 +10,7 @@
  */
 import substrate from '../fragments/ab_tests__UID__articles__UID__previews__default.html?raw'
 import { api, type ExitPopup, type Version } from '../api.ts'
+import { popupApi } from '../api-popups.ts'
 import { isStale } from '../main.ts'
 import { toast } from '../ui.ts'
 import { mountCapturedPage, setTopBarNames, wireBackLink, wireCapturedLinks } from './report-dom.ts'
@@ -30,7 +31,7 @@ export async function renderPreview(
   const [{ ab_test }, { articles }, { exit_popups }] = await Promise.all([
     api.abTest(abTestUid),
     api.articles(abTestUid),
-    api.exitPopups(abTestUid),
+    popupApi.exitPopups(abTestUid),
   ])
   const articleUid = articles[0]?.uid
   if (articleUid === undefined) {
@@ -58,7 +59,9 @@ export async function renderPreview(
 
   wireUrlCards(root, abTestUid, version)
   mountPreviewWarningBanner(root)
-  fillPreviewIframe(root, version, styleCss, exit_popups.filter((p) => p.enabled))
+  // 配信と同じく、本番反映したポップアップを本番の中身で出す（下書きは編集画面の「下書きを確認」で見る・2026-09-24）
+  const livePopups = exit_popups.flatMap((p) => (p.enabled && p.live !== null ? [{ ...p, ...p.live }] : []))
+  fillPreviewIframe(root, version, styleCss, livePopups)
 }
 
 /**

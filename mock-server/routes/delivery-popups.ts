@@ -81,7 +81,7 @@ export function countPopupVisit(req: Request, res: Response, abTestUid: string):
   return count
 }
 
-interface ViewTarget {
+export interface ViewTarget {
   readonly state: State
   readonly abTest: AbTest
   readonly version: Version
@@ -120,4 +120,18 @@ export function renderDraftPopup(target: ViewTarget, popupUid: string): string {
   const follow = state.followPopups.find((p) => p.uid === popupUid && p.ab_test_id === abTest.id)
   if (follow !== undefined) return buildFollowPopupSnippet({ ...follow, ...everyDevice }, device)
   return ''
+}
+
+/**
+ * プレビュー（/preview/:versionUid）に入れるポップアップのHTML。/preview の処理からはこれ1つだけを呼ぶ。
+ *   bare（?bare=1・中身を直す画面の後ろに敷くLP）… 出さない
+ *   draftUid（?popup_draft=・「下書きを確認」）… そのポップアップの下書きだけ（renderDraftPopup）
+ *   それ以外 … 配信と同じ選び方（本番反映した物・このVersionで配信・割合）。訪問回数では外さない（数えない）
+ */
+export function renderPreviewPopups(
+  target: ViewTarget | null,
+  options: { readonly bare: boolean; readonly draftUid: string },
+): string {
+  if (target === null || options.bare) return ''
+  return options.draftUid !== '' ? renderDraftPopup(target, options.draftUid) : renderPopupsForView(target, null)
 }

@@ -10,49 +10,17 @@
  *   - 名前・配信のON/OFF・割合・種類（離脱防止/表示直後）は分けない。一覧からすぐ変えられる運用の項目。
  */
 import type { ExitPopup, ExitPopupContent, FollowPopup, FollowPopupContent } from './types.ts'
+import {
+  EXIT_POPUP_CONTENT_KEYS,
+  FOLLOW_POPUP_CONTENT_KEYS,
+  type PopupPublishStatus,
+} from '../../src/shared/popup-content.ts'
 
-/** 本番に写す項目（types.ts の ExitPopupContent と同じ並び） */
-export const EXIT_CONTENT_KEYS: readonly (keyof ExitPopupContent)[] = [
-  'visit_count',
-  'phone_number',
-  'link_url',
-  'link_target',
-  'tracking_urls',
-  'animation',
-  'delay_seconds',
-  'scroll_trigger',
-  'scroll_position',
-  'countdown_trigger',
-  'countdown_seconds',
-  'back_button_trigger',
-  'exit_trigger',
-  'position_x',
-  'position_y',
-  'device_sp',
-  'device_tablet',
-  'device_pc',
-  'html',
-  'javascript',
-  'head_tag',
-  'body_tag',
-  'link_action',
-]
+/** 本番に写す項目（画面と同じ並び・src/shared/popup-content.ts） */
+export const EXIT_CONTENT_KEYS: readonly (keyof ExitPopupContent)[] = EXIT_POPUP_CONTENT_KEYS
+export const FOLLOW_CONTENT_KEYS: readonly (keyof FollowPopupContent)[] = FOLLOW_POPUP_CONTENT_KEYS
 
-export const FOLLOW_CONTENT_KEYS: readonly (keyof FollowPopupContent)[] = [
-  'position',
-  'show_after_scroll',
-  'show_close_button',
-  'animation',
-  'device_sp',
-  'device_tablet',
-  'device_pc',
-  'html',
-  'javascript',
-  'css',
-]
-
-/** 一覧・編集画面に出す「本番との違い」 */
-export type PopupPublishStatus = 'unpublished' | 'changed' | 'published'
+export type { PopupPublishStatus }
 
 function pick<T extends object, K extends keyof T>(item: T, keys: readonly K[]): Pick<T, K> {
   return Object.fromEntries(keys.filter((k) => k in item).map((k) => [k, item[k]])) as Pick<T, K>

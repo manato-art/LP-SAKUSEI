@@ -37,7 +37,7 @@ import { adParamsOf, mergeHeatmapEvent } from './track-heatmap.ts'
 import { attributeConversion, recordTouch, toVisitorId } from '../store/visitor-touches.ts'
 import { buildVisitorContext, pickDeliveryVersion } from './delivery-targeting.ts'
 import { canonicalHost, isServableOnHost } from '../lib/delivery-host.ts'
-import { countPopupVisit, renderDraftPopup, renderPopupsForView } from './delivery-popups.ts'
+import { countPopupVisit, renderPopupsForView, renderPreviewPopups } from './delivery-popups.ts'
 import {
   escapeHtml,
   renderExcludePage,
@@ -711,12 +711,11 @@ deliveryRouter.get('/preview/:versionUid', (req, res) => {
   const bare = req.query['bare'] === '1'
 
   // 指示174: プレビューでも離脱防止/表示直後/追尾ポップを発動させる（配信と同じ・本番反映した物）。
-  // ?popup_draft={uid}: 編集画面の「下書きを確認」。そのポップアップの下書きだけを出す（2026-09-24）
-  const draftUid = typeof req.query['popup_draft'] === 'string' ? req.query['popup_draft'] : ''
-  const target = abTest === undefined ? null : { state, abTest, version, device: buildVisitorContext(req).device }
-  const previewPopupHtml = target === null || bare
-    ? ''
-    : draftUid !== '' ? renderDraftPopup(target, draftUid) : renderPopupsForView(target, null)
+  // ?popup_draft={uid}: 編集画面の「下書きを確認」＝そのポップアップの下書きだけ（delivery-popups.ts・2026-09-24）
+  const previewPopupHtml = renderPreviewPopups(
+    abTest === undefined ? null : { state, abTest, version, device: buildVisitorContext(req).device },
+    { bare, draftUid: typeof req.query['popup_draft'] === 'string' ? req.query['popup_draft'] : '' },
+  )
 
   const html =
     `<!doctype html><html lang="ja"><head><meta charset="utf-8">` +

@@ -4,9 +4,18 @@
  */
 import type { MasterStyleSheet } from './master-style.ts'
 
+// ポップアップのAPIと型は api-popups.ts（型はここからも読めるようにしておく）
+export type {
+  ExitPopup,
+  ExitPopupContent,
+  FollowPopup,
+  FollowPopupContent,
+  PopupDeliveryVersion,
+} from './api-popups.ts'
+
 const BASE = '/api/v1'
 
-async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+export async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     method,
     headers: { 'Content-Type': 'application/json' },
@@ -547,22 +556,6 @@ export const api = {
       `/articles/${articleUid}/master_style_sheet`,
     ),
 
-  /** 離脱ポップアップ一覧 */
-  exitPopups: (abTestUid: string) =>
-    request<{ exit_popups: ExitPopup[] }>('GET', `/ab_tests/${abTestUid}/exit_popups`),
-  /** 離脱ポップアップ作成 */
-  createExitPopup: (abTestUid: string, body: Partial<ExitPopup> & { name: string }) =>
-    request<{ exit_popup: ExitPopup }>('POST', `/ab_tests/${abTestUid}/exit_popups`, body),
-  /** 離脱ポップアップ更新（割合変更時は2個なら adjusted_siblings で相方の追従結果が返る） */
-  updateExitPopup: (abTestUid: string, popupUid: string, patch: Partial<ExitPopup>) =>
-    request<{
-      exit_popup: ExitPopup
-      adjusted_siblings?: ReadonlyArray<{ uid: string; ratio: number }>
-    }>('PUT', `/ab_tests/${abTestUid}/exit_popups/${popupUid}`, patch),
-  /** 離脱ポップアップ削除 */
-  deleteExitPopup: (abTestUid: string, popupUid: string) =>
-    request<void>('DELETE', `/ab_tests/${abTestUid}/exit_popups/${popupUid}`),
-
   /** Meta広告の紐付け（媒体実績の取り込み元）。トークンは扱わない＝サーバーの環境変数のみ。 */
   setMetaLink: (abTestUid: string, body: { meta_level: string; meta_object_id: string }) =>
     request<{ ok: boolean; meta_level: string | null; meta_object_id: string | null }>(
@@ -577,19 +570,6 @@ export const api = {
       `/ab_tests/${abTestUid}/meta_sync`,
       body,
     ),
-
-  /** 追尾型ポップアップ一覧 */
-  followPopups: (abTestUid: string) =>
-    request<{ follow_popups: FollowPopup[] }>('GET', `/ab_tests/${abTestUid}/follow_popups`),
-  /** 追尾型ポップアップ作成 */
-  createFollowPopup: (abTestUid: string, body: Partial<FollowPopup> & { name: string }) =>
-    request<{ follow_popup: FollowPopup }>('POST', `/ab_tests/${abTestUid}/follow_popups`, body),
-  /** 追尾型ポップアップ更新 */
-  updateFollowPopup: (abTestUid: string, popupUid: string, patch: Partial<FollowPopup>) =>
-    request<{ follow_popup: FollowPopup }>('PUT', `/ab_tests/${abTestUid}/follow_popups/${popupUid}`, patch),
-  /** 追尾型ポップアップ削除 */
-  deleteFollowPopup: (abTestUid: string, popupUid: string) =>
-    request<void>('DELETE', `/ab_tests/${abTestUid}/follow_popups/${popupUid}`),
 
   /** レポートタブ（§10-3 `GET /ab_tests/:uid/reports?start_date&end_date`） */
   report: (abTestUid: string, query: string) =>
@@ -824,68 +804,6 @@ export interface MetaAdAccountsResponse {
   configured: boolean
   accounts: MetaAdAccount[]
   error?: string
-}
-
-/** 離脱ポップアップ（指示80） */
-export interface ExitPopup {
-  id: number
-  uid: string
-  ab_test_id: number
-  name: string
-  ratio: number
-  enabled: boolean
-  preset_id: string | null
-  visit_count: string
-  phone_number: string
-  /** クリック時の遷移先URL（計測ON時は sb_tracking=true 付き・画像リンクと同じ規約） */
-  link_url: string
-  /** 遷移先を新しいタブで開くか（'_blank' / '_self'） */
-  link_target: string
-  /** 計測用URL（クリックでビーコン発火・複数可・画像の data-tracking-urls と同じ） */
-  tracking_urls: string[]
-  animation: string
-  delay_seconds: number
-  scroll_trigger: boolean
-  scroll_position: number
-  countdown_trigger: boolean
-  countdown_seconds: number
-  back_button_trigger: boolean
-  exit_trigger: boolean
-  position_x: number
-  position_y: number
-  device_sp: boolean
-  device_tablet: boolean
-  device_pc: boolean
-  html: string
-  javascript: string
-  head_tag: string
-  body_tag: string
-  /** 指示176: ポップの種別。'exit'=離脱防止（既定・離脱意図で発動）/
-   *  'instant'=表示直後（LPを開いた直後にオーバーレイ表示）。未設定は 'exit' 扱い。 */
-  popup_kind?: 'exit' | 'instant'
-  /** 指示172: ポップを触ったときの動作。'link'=遷移先URLへ移動（既定）/
-   *  'close'=LPに戻る（ポップを閉じて元の位置へ・×と同じ）。未設定は 'link' 扱い。 */
-  link_action?: 'link' | 'close'
-}
-
-/** 追尾型ポップアップ（指示85） */
-export interface FollowPopup {
-  id: number
-  uid: string
-  ab_test_id: number
-  name: string
-  enabled: boolean
-  preset_id: string | null
-  position: 'top' | 'bottom' | 'bottom-right' | 'bottom-left'
-  show_after_scroll: number
-  show_close_button: boolean
-  animation: string
-  device_sp: boolean
-  device_tablet: boolean
-  device_pc: boolean
-  html: string
-  javascript: string
-  css: string
 }
 
 /** 中間ページ（redirect page・指示⑮） */

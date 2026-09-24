@@ -17,7 +17,7 @@ const CODE_SCREENS: readonly [string, string][] = [
   ['タグ設定のJavaScript head/body', 'src/app/panels/tag-settings.ts'],
   ['計測タグの発行', 'src/app/panels/tracking-tag-modal.ts'],
   ['中間ページのタグ', 'src/app/pages/redirect-pages.ts'],
-  ['離脱防止ポップのHTML', 'src/app/pages/exit-popup-editor.ts'],
+  ['離脱防止ポップのHTML', 'src/app/pages/exit-popup-editor-tabs.ts'],
   ['一括タグのhead/body', 'src/app/pages/bulk-tags-page.ts'],
   ['WidgetのHTML編集', 'src/app/panels/widget-manager.ts'],
 ]
