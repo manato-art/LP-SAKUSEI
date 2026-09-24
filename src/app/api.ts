@@ -3,6 +3,7 @@
  * 本番ドメインは登場させない（§3-2）。
  */
 import type { MasterStyleSheet } from './master-style.ts'
+import type { TaskStatus } from '../shared/task-status.ts'
 
 const BASE = '/api/v1'
 
@@ -789,9 +790,21 @@ export const api = {
     report_items?: ReportItemsInput
     notify?: { service: NotifyServiceName; destination_id: string } | null
   }) => request<{ task: Task }>('POST', '/tasks', input),
-  /** タスク更新 */
-  updateTask: (uid: string, patch: { status?: string; title?: string }) =>
-    request<{ task: Task }>('PUT', `/tasks/${uid}`, patch),
+  /** タスク更新（送った項目だけ変わる） */
+  updateTask: (
+    uid: string,
+    patch: {
+      status?: TaskStatus
+      title?: string
+      description?: string
+      schedule?: { kind: string; hour: string; minute: string; weekdays: readonly number[] }
+      span?: string
+      report_items?: ReportItemsInput
+      notify?: { service: NotifyServiceName; destination_id: string } | null
+    },
+  ) => request<{ task: Task }>('PUT', `/tasks/${uid}`, patch),
+  /** タスク削除 */
+  deleteTask: (uid: string) => request<void>('DELETE', `/tasks/${uid}`),
   /** タスク一覧 */
   listTasks: () => request<{ tasks: Task[] }>('GET', '/tasks'),
   /** SB AI 会話一覧 */
@@ -969,9 +982,14 @@ export interface Task {
   last_run_status?: 'ok' | 'failed' | null
   last_run_error?: string | null
   assignee_member_id: number | null
-  status: string
+  status: TaskStatus
   due_at: string | null
   created_at: number
+  description: string
+  schedule: { kind: string; hour: string; minute: string; weekdays: readonly number[] }
+  span: string
+  notify: { service: NotifyServiceName; destination_id: string } | null
+  report_items?: ReportItemsInput
 }
 
 /** ドメイン */

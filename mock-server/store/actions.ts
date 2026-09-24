@@ -12,6 +12,7 @@ import { nextSeq, nowTs, freshUid } from './actions-shared.ts'
 export {
   bumpMetric,
   createTask,
+  deleteTask,
   recordConversion,
   setMediaMetrics,
   updateTask,

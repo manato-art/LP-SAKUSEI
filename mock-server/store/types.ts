@@ -425,7 +425,9 @@ export interface OperatorArticle {
   body: string
 }
 
-export type TaskStatus = 'todo' | 'doing' | 'done'
+/** 状態の言葉は画面と共有する（src/shared/task-status.ts が正本） */
+export type { TaskStatus } from '../../src/shared/task-status.ts'
+import type { TaskStatus } from '../../src/shared/task-status.ts'
 
 /** タスクの実行間隔（実物のプルダウンどおり） */
 export type TaskScheduleKind =
