@@ -40,8 +40,8 @@ export interface BuilderSessionDeps {
   readonly setPreviewCss: (css: string) => void
   /** 画面①②…のタブを置く所（右側のいちばん上） */
   readonly tabsHost: HTMLElement
-  /** 見本の部品: いつもの見本の一覧から見本を選んでもらう（やめたら null） */
-  readonly pickSample: () => Promise<{ title: string; html: string } | null>
+  /** 見本の部品: いつもの見本の一覧から見本を選んでもらう（やめたら null）。無い画面（ポップアップ）では見本を選ばせない */
+  readonly pickSample?: () => Promise<{ title: string; html: string } | null>
 }
 
 export interface BuilderSession {
@@ -469,7 +469,7 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
       schedulePaint()
     },
     onScreenChange: () => paint(),
-    pickSample: deps.pickSample,
+    ...(deps.pickSample === undefined ? {} : { pickSample: deps.pickSample }),
     onPreviewOverride: (key, path, html) => {
       if (html === null) previewOverrides.delete(key)
       else previewOverrides.set(key, { path, html })

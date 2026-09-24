@@ -455,6 +455,15 @@ describe('どの部品も幅と置く位置を持つ（2026-09-24・本人「部
     }
   })
 
+  it('値が無い部品（見本の部品・以前の中身）は、欄にも書き出しの既定（幅100%・中央）を見せる', () => {
+    for (const type of ALL_BLOCK_TYPES) {
+      if (type.type === 'spacer') continue
+      const [width, place] = type.fields
+      expect(width?.kind === 'number' ? width.fallback : null, type.type).toBe(100)
+      expect(place?.kind === 'select' ? place.fallback : null, type.type).toBe('center')
+    }
+  })
+
   it('画像・動画は中の絵、図形はそれ自体、ほかは外枠に幅と位置を書く（100%の外枠は何も書かない）', () => {
     const html = render([
       screen('s1', '画面①', [

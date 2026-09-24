@@ -1,7 +1,9 @@
 /**
  * 離脱防止ポップアップの編集モーダル（exit-popup.ts から分離）。
  *
- * 6つのタブ（基本設定 / デザイン / 表示条件 / 表示位置 / デバイス / HTML）と、
+ * 中身（見た目）は「中身を編集」から Widget編集と同じ画面で直す（2026-09-24・本人の決定「中身だけWidget編集で」。
+ * 以前の「デザイン」タブ・HTMLの欄は無くした＝直す画面を1つにする）。
+ * ここは5つのタブ（基本設定 / 表示条件 / 表示位置 / 出し分け / コード）と、
  * その場で見た目を確かめるプレビュー表示を受け持つ。
  *
  * 依存は一方向にしてある: このファイルは exit-popup.ts を import しない。
@@ -14,27 +16,19 @@ import { withTrackingParam, isTrackingLink } from '../../shared/link-html.ts'
 import { highlight } from '../panels/syntax-highlight.ts'
 import { PRESETS } from './exit-popup-presets.ts'
 import type { PopupPageState } from './exit-popup-state.ts'
-import { injectDesignTabCss, injectPositionGridCss } from './exit-popup-styles.ts'
-import {
-  colorToHex,
-  directText,
-  makeCheckboxRow,
-  makeSuffixField,
-  makeTextField,
-  readStyleProp,
-  updateGutter,
-  writeStyleProp,
-} from './exit-popup-fields.ts'
+import { injectPositionGridCss } from './exit-popup-styles.ts'
+import { makeCheckboxRow, makeSuffixField, makeTextField, updateGutter } from './exit-popup-fields.ts'
+import { openPopupStudio } from '../panels/popup-studio.ts'
+import { popupContentCard } from './popup-content-card.ts'
 
-type EditorTab = 'basic' | 'design' | 'display' | 'position' | 'device' | 'html'
+type EditorTab = 'basic' | 'display' | 'position' | 'device' | 'code'
 const EDITOR_TABS: readonly { id: EditorTab; label: string }[] = [
   { id: 'basic', label: '基本' },
-  // デザイン: HTMLを要素ごとのカードに分解して文言・色を編集できる（クローン独自の編集支援）
-  { id: 'design', label: 'デザイン' },
   { id: 'display', label: '表示' },
   { id: 'position', label: '位置' },
   { id: 'device', label: '出し分け' },
-  { id: 'html', label: 'HTML' },
+  // 中身の HTML は「中身を編集」で直す。ここは動き（JavaScript）と head・body に足すタグだけ
+  { id: 'code', label: 'コード' },
 ]
 export function openEditor(state: PopupPageState, popup: ExitPopup): void {
   // モーダルパネルとエディタを除去してから再描画
@@ -74,26 +68,28 @@ export function openEditor(state: PopupPageState, popup: ExitPopup): void {
   const saveDraftBtn = el('button', { class: 'ep-editor-btn-draft', text: '下書き反映' })
   const saveProdBtn = el('button', { class: 'ep-editor-btn-prod', text: '本番反映' })
 
-  /** 保存処理の共通化 */
+  /** 保存（下書き反映・本番反映・中身の「ポップアップに反映」で共通）。保存できたら true */
+  const saveDraft = async (): Promise<boolean> => {
+    const { id: _id, uid: _uid, ab_test_id: _abid, ...patch } = draft
+    try {
+      const { exit_popup } = await api.updateExitPopup(state.abTestUid, popup.uid, patch)
+      state.popups = state.popups.map((p) => (p.uid === popup.uid ? exit_popup : p))
+      Object.assign(popup, exit_popup)
+      toast('ポップアップを保存しました')
+      return true
+    } catch (err: unknown) {
+      toast((err as Error).message, 'error')
+      return false
+    }
+  }
   const handleSave = (btn: HTMLElement): void => {
     const origText = btn.textContent ?? ''
     btn.textContent = '保存中…'
     ;(btn as HTMLButtonElement).disabled = true
-    const { id: _id, uid: _uid, ab_test_id: _abid, ...patch } = draft
-    void api.updateExitPopup(state.abTestUid, popup.uid, patch).then(
-      ({ exit_popup }) => {
-        state.popups = state.popups.map((p) => (p.uid === popup.uid ? exit_popup : p))
-        Object.assign(popup, exit_popup)
-        ;(btn as HTMLButtonElement).disabled = false
-        btn.textContent = origText
-        toast('ポップアップを保存しました')
-      },
-      (err: unknown) => {
-        ;(btn as HTMLButtonElement).disabled = false
-        btn.textContent = origText
-        toast((err as Error).message, 'error')
-      },
-    )
+    void saveDraft().then(() => {
+      ;(btn as HTMLButtonElement).disabled = false
+      btn.textContent = origText
+    })
   }
   saveDraftBtn.addEventListener('click', () => handleSave(saveDraftBtn))
   saveProdBtn.addEventListener('click', () => handleSave(saveProdBtn))
@@ -106,20 +102,26 @@ export function openEditor(state: PopupPageState, popup: ExitPopup): void {
   // ── フォーム上部: サムネイル + 配信/名前/割合 ──
   const formTop = el('div', { class: 'ep-form-top' })
 
-  // サムネイル（プリセットSVGまたは縮小HTML）
-  const thumbWrap = el('div', { class: 'ep-form-thumb' })
-  const presetDef = popup.preset_id !== null ? PRESETS.find((p) => p.id === popup.preset_id) : null
-  if (presetDef !== null && presetDef !== undefined) {
-    thumbWrap.innerHTML = presetDef.thumbnailSvg
-  } else if (popup.html) {
-    const miniPreview = document.createElement('div')
-    miniPreview.style.cssText = 'transform:scale(0.15);transform-origin:top left;width:667%;pointer-events:none;position:absolute;top:0;left:0'
-    miniPreview.innerHTML = popup.html
-    thumbWrap.append(miniPreview)
-  } else {
-    thumbWrap.textContent = 'NO IMAGE'
-  }
-  formTop.append(thumbWrap)
+  // 中身: 見え方の小さな絵（今の中身そのもの）＋「中身を編集」＝Widget編集と同じ画面
+  const presetDef = popup.preset_id !== null ? PRESETS.find((p) => p.id === popup.preset_id) : undefined
+  const content = popupContentCard({
+    read: () => ({ html: draft.html, css: '' }),
+    renderWidth: 500,
+    ...(presetDef === undefined ? {} : { emptyArt: presetDef.thumbnailSvg }),
+    onEdit: () =>
+      openPopupStudio({
+        html: draft.html,
+        css: '',
+        name: draft.name,
+        frame: 'overlay',
+        onSave: (html) => {
+          draft.html = html
+          content.refresh()
+          return saveDraft()
+        },
+      }),
+  })
+  formTop.append(content.el)
 
   const fields = el('div', { class: 'ep-form-fields' })
 
@@ -188,11 +190,10 @@ function renderEditorTab(body: HTMLElement, draft: ExitPopup, tab: EditorTab): v
   body.innerHTML = ''
   switch (tab) {
     case 'basic': renderBasicTab(body, draft); break
-    case 'design': renderDesignTab(body, draft); break
     case 'display': renderDisplayTab(body, draft); break
     case 'position': renderPositionTab(body, draft); break
     case 'device': renderDeviceTab(body, draft); break
-    case 'html': renderHtmlTab(body, draft); break
+    case 'code': renderCodeTab(body, draft); break
   }
 }
 function renderBasicTab(body: HTMLElement, draft: ExitPopup): void {
@@ -333,112 +334,6 @@ function makePopupTrackingField(draft: ExitPopup): HTMLElement {
 
   field.append(list, addBtn)
   return field
-}
-/**
- * デザインタブ本体。draft.html を1つの生きたDOMに展開し、
- * 「文言」「文字色」「背景色」などの編集可能な要素を1個ずつのカードに分解する。
- * カードを編集すると、その生きたDOMを直接書き換え → draft.html を再シリアライズする
- * （＝大元のHTMLが変わる）。指示: ユーザー提案のカード分解方式。
- */
-function renderDesignTab(body: HTMLElement, draft: ExitPopup): void {
-  injectDesignTabCss()
-  body.append(el('div', { class: 'ep-section-title', text: 'デザイン（要素ごとに編集）' }))
-  body.append(el('div', {
-    class: 'ep-design-note',
-    text: 'HTMLの要素を1個ずつカードに分解しています。ここで文言や色を変えると、大元のHTMLへ自動で反映されます。',
-  }))
-
-  // draft.html を生きたDOMへ（このタブが開いている間は保持し、直接書き換える）
-  const holder = document.createElement('div')
-  holder.innerHTML = draft.html
-
-  const sync = (): void => { draft.html = holder.innerHTML }
-
-  // 編集対象の収集: 直下テキストを持つ要素 / 文字色・背景色を持つ要素 / ボタン・リンク
-  const editable: HTMLElement[] = []
-  for (const node of Array.from(holder.querySelectorAll<HTMLElement>('*'))) {
-    if (node.tagName === 'SCRIPT' || node.tagName === 'STYLE') continue
-    const isLeafText = node.children.length === 0 && directText(node).trim() !== ''
-    const hasColor = readStyleProp(node, 'color') !== ''
-    const hasBg = readStyleProp(node, 'background-color') !== '' || readStyleProp(node, 'background') !== ''
-    const isBtn = node.tagName === 'BUTTON' || node.tagName === 'A'
-    if (isLeafText || hasColor || hasBg || isBtn) editable.push(node)
-  }
-
-  const grid = el('div', { class: 'ep-design-grid' })
-
-  if (editable.length === 0) {
-    grid.append(el('div', {
-      class: 'ep-design-empty',
-      text: '編集できるテキスト・色の要素が見つかりませんでした（画像のみのポップアップ等）。HTMLタブで直接編集してください。',
-    }))
-  }
-
-  editable.forEach((node, idx) => {
-    grid.append(buildDesignCard(node, idx, sync))
-  })
-
-  body.append(grid)
-}
-/** 1要素ぶんの編集カードを作る（文言 / 文字色 / 背景色 / ボタン色）。 */
-function buildDesignCard(node: HTMLElement, idx: number, sync: () => void): HTMLElement {
-  const card = el('div', { class: 'ep-design-card' })
-
-  // ── カード見出し: 種別 + 中身プレビュー ──
-  const tag = node.tagName.toLowerCase()
-  const isBtn = tag === 'button' || tag === 'a'
-  const leafText = node.children.length === 0 ? directText(node).trim() : ''
-  const kind = isBtn ? 'ボタン' : leafText !== '' ? 'テキスト' : '要素'
-  const snippet = leafText !== '' ? leafText.slice(0, 24) : `<${tag}>`
-  const head = el('div', { class: 'ep-design-card-head' })
-  head.append(el('span', { class: 'ep-design-card-kind', text: `${kind}${idx + 1}` }))
-  head.append(el('span', { class: 'ep-design-card-snippet', text: snippet }))
-  card.append(head)
-
-  // ── 文言（直下テキストを持つ葉要素のみ） ──
-  if (node.children.length === 0 && directText(node).trim() !== '') {
-    const row = el('div', { class: 'ep-design-row' })
-    row.append(el('label', { class: 'ep-design-label', text: '文言' }))
-    const input = document.createElement('input')
-    input.type = 'text'
-    input.className = 'ep-design-input'
-    input.value = directText(node)
-    input.addEventListener('input', () => {
-      node.textContent = input.value
-      sync()
-    })
-    row.append(input)
-    card.append(row)
-  }
-
-  // ── 文字色 ──
-  card.append(buildColorRow('文字色', colorToHex(readStyleProp(node, 'color')), (hex) => {
-    writeStyleProp(node, 'color', hex)
-    sync()
-  }))
-
-  // ── 背景色 ──
-  const bgCurrent = readStyleProp(node, 'background-color') || readStyleProp(node, 'background')
-  card.append(buildColorRow('背景色', colorToHex(bgCurrent), (hex) => {
-    writeStyleProp(node, 'background-color', hex)
-    sync()
-  }))
-
-  return card
-}
-/** 色編集の1行（スウォッチ + カラーピッカー + 反映ボタン）。 */
-function buildColorRow(label: string, currentHex: string, onChange: (hex: string) => void): HTMLElement {
-  const row = el('div', { class: 'ep-design-row' })
-  row.append(el('label', { class: 'ep-design-label', text: label }))
-  const picker = document.createElement('input')
-  picker.type = 'color'
-  picker.className = 'ep-design-color'
-  picker.value = currentHex !== '' ? currentHex : '#ffffff'
-  picker.addEventListener('input', () => onChange(picker.value))
-  const hexLabel = el('span', { class: 'ep-design-hex', text: currentHex !== '' ? currentHex.toUpperCase() : '未設定' })
-  picker.addEventListener('input', () => { hexLabel.textContent = picker.value.toUpperCase() })
-  row.append(picker, hexLabel)
-  return row
 }
 /** 表示アニメーションの選択肢（本番準拠: 日本語名） */
 const ANIMATION_OPTIONS: { value: string; label: string }[] = [
@@ -617,16 +512,16 @@ function renderDeviceTab(body: HTMLElement, draft: ExitPopup): void {
     body.append(row)
   }
 }
-function renderHtmlTab(body: HTMLElement, draft: ExitPopup): void {
-  type HtmlSubTab = 'html' | 'javascript' | 'head_tag' | 'body_tag'
+/** コード（中身の HTML は「中身を編集」で直す。ここは動きの JavaScript と、head・body に足すタグ） */
+function renderCodeTab(body: HTMLElement, draft: ExitPopup): void {
+  type HtmlSubTab = 'javascript' | 'head_tag' | 'body_tag'
   const subTabs: { id: HtmlSubTab; label: string }[] = [
-    { id: 'html', label: 'HTML' },
     { id: 'javascript', label: 'JavaScript' },
     { id: 'head_tag', label: 'HeadTag' },
     { id: 'body_tag', label: 'BodyTag' },
   ]
 
-  let activeSubTab: HtmlSubTab = 'html'
+  let activeSubTab: HtmlSubTab = 'javascript'
   const tabBar = el('div', { class: 'ep-html-tabs' })
   const editorArea = el('div')
 
@@ -661,8 +556,7 @@ function renderHtmlTab(body: HTMLElement, draft: ExitPopup): void {
     copyBar.append(codeCopyButton(textarea))
 
     const sync = (): void => {
-      if (activeSubTab === 'html') draft.html = textarea.value
-      else if (activeSubTab === 'javascript') draft.javascript = textarea.value
+      if (activeSubTab === 'javascript') draft.javascript = textarea.value
       else if (activeSubTab === 'head_tag') draft.head_tag = textarea.value
       else if (activeSubTab === 'body_tag') draft.body_tag = textarea.value
       pre.innerHTML = highlight(textarea.value, langOf(activeSubTab))

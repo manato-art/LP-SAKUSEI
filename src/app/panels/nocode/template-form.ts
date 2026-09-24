@@ -632,6 +632,8 @@ export function buildTemplateForm(options: TemplateFormOptions): TemplateForm {
     const templateGrid = node('div', 'ncf-adder__grid')
     adder.append(node('span', 'ncf-adder__label', full ? `部品は1画面に${field.blockMax}こまでです` : '部品を足す（いちばん下に入り、すぐ直せます）'), grid)
     for (const type of field.types) {
+      // 見本の一覧を開けない画面（ポップアップの中身）では「見本」を出さない（中身の無い見本の部品になるだけ）
+      if (type.type === 'sample' && options.pickSample === undefined) continue
       const add = (): void => addBlockOfType(field, screenIndex, type)
       const b = textButton('', 'ncf-adder__btn', add, !full)
       const icon = node('span', 'ncf-adder__icon')

@@ -20,25 +20,6 @@ export function makeCheckboxRow(label: string, checked: boolean): [HTMLElement, 
   wrap.append(cb, txt)
   return [wrap, cb]
 }
-/** CSSの色文字列（hex/rgb/名前）を input[type=color] 用の #rrggbb に正規化する。 */
-export function colorToHex(value: string): string {
-  const v = value.trim()
-  if (v === '' || v === 'transparent') return ''
-  const probe = document.createElement('span')
-  probe.style.color = ''
-  probe.style.color = v
-  if (probe.style.color === '') return '' // 不正な色
-  document.body.append(probe)
-  const rgb = getComputedStyle(probe).color
-  probe.remove()
-  const m = /rgba?\(([^)]+)\)/.exec(rgb)
-  if (m === null || m[1] === undefined) return ''
-  const parts = m[1].split(',').map((s) => parseFloat(s.trim()))
-  const [r, g, b] = parts
-  if (r === undefined || g === undefined || b === undefined) return ''
-  const toHex = (n: number): string => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, '0')
-  return `#${toHex(r)}${toHex(g)}${toHex(b)}`
-}
 /** 要素の直下テキスト（子要素を除く自分のテキストノードだけ）を取り出す。 */
 export function directText(elm: Element): string {
   let t = ''
@@ -46,17 +27,6 @@ export function directText(elm: Element): string {
     if (n.nodeType === Node.TEXT_NODE) t += n.textContent ?? ''
   }
   return t
-}
-/** style属性から特定プロパティの値を読む（無ければ ''）。 */
-export function readStyleProp(elm: Element, prop: string): string {
-  const style = elm.getAttribute('style') ?? ''
-  const re = new RegExp(`(?:^|;)\\s*${prop}\\s*:\\s*([^;]+)`, 'i')
-  const m = re.exec(style)
-  return m?.[1]?.trim() ?? ''
-}
-/** style属性に特定プロパティを設定/更新する（インラインstyleを壊さない）。 */
-export function writeStyleProp(elm: HTMLElement, prop: string, value: string): void {
-  elm.style.setProperty(prop, value)
 }
 export function makeTextField(
   label: string,

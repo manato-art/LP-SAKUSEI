@@ -19,6 +19,7 @@ import { popupKindOf, type PopupPageState, type SubTab } from './exit-popup-stat
 import { openFollowPresetModal, renderFollowCard } from './exit-popup-follow.ts'
 import { openEditor, previewPopup } from './exit-popup-editor.ts'
 import { injectPopupCss } from './exit-popup-styles.ts'
+import { drawPopupThumb } from './popup-content-card.ts'
 
 // ─── CSS注入 ────────────────────────────────────────
 
@@ -225,14 +226,11 @@ function renderPopupCard(state: PopupPageState, popup: ExitPopup): HTMLElement {
   card.append(menuBtn)
 
   // サムネイル
+  // 今の中身そのもの（中身が空ならプリセットの絵）
   const thumb = el('div', { class: 'ep-card-thumb' })
-  const preset = popup.preset_id !== null ? PRESETS.find((p) => p.id === popup.preset_id) : null
-  if (preset !== null && preset !== undefined) {
-    thumb.innerHTML = preset.thumbnailSvg
-  } else {
-    thumb.textContent = 'NO IMAGE'
-  }
+  const preset = popup.preset_id !== null ? PRESETS.find((p) => p.id === popup.preset_id) : undefined
   card.append(thumb)
+  drawPopupThumb(thumb, { html: popup.html, css: '' }, 500, preset?.thumbnailSvg)
 
   // カード下部
   const body = el('div', { class: 'ep-card-body' })

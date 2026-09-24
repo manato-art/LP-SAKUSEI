@@ -4,7 +4,6 @@
  * どれも「1回だけ <style> を差し込む」だけで、状態も引数も持たない。
  */
 import { T } from '../ui.ts'
-import { designCardCss } from '../panels/design-card-styles.ts'
 
 export function injectPopupCss(): void {
   if (document.getElementById('sb-exit-popup-css') !== null) return
@@ -154,15 +153,6 @@ export function injectPopupCss(): void {
     .ep-dropdown-item { display:flex; align-items:center; width:100%; padding:10px 14px; font-size:13px; text-align:left; cursor:pointer; background:none; border:none; font-family:${T.font}; color:${T.text}; gap:8px; }
     .ep-dropdown-item:hover { background:#f5f5f5; }
     .ep-dropdown-item.danger { color:#D0021B; }
-  `
-  document.head.append(s)
-}
-export function injectDesignTabCss(): void {
-  if (document.getElementById('ep-design-css') !== null) return
-  const s = document.createElement('style')
-  s.id = 'ep-design-css'
-  s.textContent = `
-    ${designCardCss()}
   `
   document.head.append(s)
 }

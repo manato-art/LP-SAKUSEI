@@ -14,6 +14,8 @@ import { highlight } from '../panels/syntax-highlight.ts'
 import { FOLLOW_PRESETS, type FollowPreset } from './follow-popup-presets.ts'
 import type { PopupPageState } from './exit-popup-state.ts'
 import { makeNumberField, updateGutter } from './exit-popup-fields.ts'
+import { openPopupStudio } from '../panels/popup-studio.ts'
+import { drawPopupThumb, popupContentCard } from './popup-content-card.ts'
 
 export function renderFollowCard(state: PopupPageState, fp: FollowPopup): HTMLElement {
   const card = el('div', { class: 'ep-card' })
@@ -27,14 +29,11 @@ export function renderFollowCard(state: PopupPageState, fp: FollowPopup): HTMLEl
   card.append(menuBtn)
 
   // サムネイル
+  // 今の中身そのもの（中身が空ならプリセットの絵）
   const thumb = el('div', { class: 'ep-card-thumb' })
-  const preset = fp.preset_id !== null ? FOLLOW_PRESETS.find((p) => p.id === fp.preset_id) : null
-  if (preset !== null && preset !== undefined) {
-    thumb.innerHTML = preset.thumbnailSvg
-  } else {
-    thumb.textContent = 'NO IMAGE'
-  }
+  const preset = fp.preset_id !== null ? FOLLOW_PRESETS.find((p) => p.id === fp.preset_id) : undefined
   card.append(thumb)
+  drawPopupThumb(thumb, { html: fp.html, css: fp.css }, isCornerPosition(fp.position) ? 360 : 620, preset?.thumbnailSvg)
 
   // カード下部
   const body = el('div', { class: 'ep-card-body' })
@@ -270,12 +269,16 @@ function createBlankFollowPopup(state: PopupPageState): void {
     (err: unknown) => toast((err as Error).message, 'error'),
   )
 }
-type FollowEditorTab = 'settings' | 'device' | 'html'
+type FollowEditorTab = 'settings' | 'device' | 'code'
 const FOLLOW_EDITOR_TABS: readonly { id: FollowEditorTab; label: string }[] = [
   { id: 'settings', label: '表示設定' },
   { id: 'device', label: '出し分け' },
-  { id: 'html', label: 'HTML' },
+  // 中身の HTML は「中身を編集」＝Widget編集と同じ画面で直す（2026-09-24）。ここは CSS と動きの JavaScript
+  { id: 'code', label: 'コード' },
 ]
+
+/** 画面の上端・下端の帯は画面の幅いっぱい（見たまま画面はLPと同じ620px）、角は中身の幅 */
+const isCornerPosition = (position: string): boolean => position === 'bottom-right' || position === 'bottom-left'
 function openFollowEditor(state: PopupPageState, fp: FollowPopup): void {
   for (const p of state.root.querySelectorAll('.ep-panel')) p.remove()
   for (const e of state.root.querySelectorAll('.ep-editor')) e.remove()
@@ -312,25 +315,28 @@ function openFollowEditor(state: PopupPageState, fp: FollowPopup): void {
   const saveDraftBtn = el('button', { class: 'ep-editor-btn-draft', text: '下書き反映' })
   const saveProdBtn = el('button', { class: 'ep-editor-btn-prod', text: '本番反映' })
 
+  /** 保存（下書き反映・本番反映・中身の「ポップアップに反映」で共通）。保存できたら true */
+  const saveDraft = async (): Promise<boolean> => {
+    const { id: _id, uid: _uid, ab_test_id: _abid, ...patch } = draft
+    try {
+      const { follow_popup } = await api.updateFollowPopup(state.abTestUid, fp.uid, patch)
+      state.followPopups = state.followPopups.map((p) => (p.uid === fp.uid ? follow_popup : p))
+      Object.assign(fp, follow_popup)
+      toast('追従型ポップアップを保存しました')
+      return true
+    } catch (err: unknown) {
+      toast((err as Error).message, 'error')
+      return false
+    }
+  }
   const handleSave = (btn: HTMLElement): void => {
     const origText = btn.textContent ?? ''
     btn.textContent = '保存中…'
     ;(btn as HTMLButtonElement).disabled = true
-    const { id: _id, uid: _uid, ab_test_id: _abid, ...patch } = draft
-    void api.updateFollowPopup(state.abTestUid, fp.uid, patch).then(
-      ({ follow_popup }) => {
-        state.followPopups = state.followPopups.map((p) => (p.uid === fp.uid ? follow_popup : p))
-        Object.assign(fp, follow_popup)
-        ;(btn as HTMLButtonElement).disabled = false
-        btn.textContent = origText
-        toast('追従型ポップアップを保存しました')
-      },
-      (err: unknown) => {
-        ;(btn as HTMLButtonElement).disabled = false
-        btn.textContent = origText
-        toast((err as Error).message, 'error')
-      },
-    )
+    void saveDraft().then(() => {
+      ;(btn as HTMLButtonElement).disabled = false
+      btn.textContent = origText
+    })
   }
   saveDraftBtn.addEventListener('click', () => handleSave(saveDraftBtn))
   saveProdBtn.addEventListener('click', () => handleSave(saveProdBtn))
@@ -340,16 +346,30 @@ function openFollowEditor(state: PopupPageState, fp: FollowPopup): void {
   btnBar.append(btnLeft, btnRight)
   editor.append(btnBar)
 
-  // ── フォーム上部: サムネイル + 配信/名前 ──
+  // ── フォーム上部: 中身（見え方の小さな絵＋「中身を編集」＝Widget編集と同じ画面）+ 配信/名前 ──
   const formTop = el('div', { class: 'ep-form-top' })
-  const thumbWrap = el('div', { class: 'ep-form-thumb' })
-  const presetDef = fp.preset_id !== null ? FOLLOW_PRESETS.find((p) => p.id === fp.preset_id) : null
-  if (presetDef !== null && presetDef !== undefined) {
-    thumbWrap.innerHTML = presetDef.thumbnailSvg
-  } else {
-    thumbWrap.textContent = 'NO IMAGE'
-  }
-  formTop.append(thumbWrap)
+  const presetDef = fp.preset_id !== null ? FOLLOW_PRESETS.find((p) => p.id === fp.preset_id) : undefined
+  const content = popupContentCard({
+    read: () => ({ html: draft.html, css: draft.css }),
+    renderWidth: isCornerPosition(draft.position) ? 360 : 620,
+    ...(presetDef === undefined ? {} : { emptyArt: presetDef.thumbnailSvg }),
+    onEdit: () =>
+      openPopupStudio({
+        html: draft.html,
+        css: draft.css,
+        name: draft.name,
+        frame: isCornerPosition(draft.position) ? 'corner' : 'lp',
+        onSave: (html) => {
+          // CSS は中身の <style> に入った（見本の部品の中）。二重に効かないように CSS の欄は空にする
+          draft.html = html
+          draft.css = ''
+          content.refresh()
+          renderFollowEditorTab(body, draft)
+          return saveDraft()
+        },
+      }),
+  })
+  formTop.append(content.el)
 
   const fields = el('div', { class: 'ep-form-fields' })
 
@@ -402,7 +422,7 @@ function openFollowEditor(state: PopupPageState, fp: FollowPopup): void {
     switch (activeTab) {
       case 'settings': renderFollowSettingsTab(container, d); break
       case 'device': renderFollowDeviceTab(container, d); break
-      case 'html': renderFollowHtmlTab(container, d); break
+      case 'code': renderFollowCodeTab(container, d); break
     }
   }
 }
@@ -477,15 +497,15 @@ function renderFollowDeviceTab(body: HTMLElement, draft: FollowPopup): void {
     body.append(row)
   }
 }
-function renderFollowHtmlTab(body: HTMLElement, draft: FollowPopup): void {
-  type HtmlSubTab = 'html' | 'css' | 'javascript'
+/** コード（中身の HTML は「中身を編集」で直す。ここは CSS と動きの JavaScript） */
+function renderFollowCodeTab(body: HTMLElement, draft: FollowPopup): void {
+  type HtmlSubTab = 'css' | 'javascript'
   const subTabs: { id: HtmlSubTab; label: string }[] = [
-    { id: 'html', label: 'HTML' },
     { id: 'css', label: 'CSS' },
     { id: 'javascript', label: 'JavaScript' },
   ]
 
-  let activeSubTab: HtmlSubTab = 'html'
+  let activeSubTab: HtmlSubTab = 'css'
   const tabBar = el('div', { class: 'ep-html-tabs' })
   const editorArea = el('div')
 
@@ -510,8 +530,7 @@ function renderFollowHtmlTab(body: HTMLElement, draft: FollowPopup): void {
     textarea.value = content
 
     const sync = (): void => {
-      if (activeSubTab === 'html') draft.html = textarea.value
-      else if (activeSubTab === 'css') draft.css = textarea.value
+      if (activeSubTab === 'css') draft.css = textarea.value
       else if (activeSubTab === 'javascript') draft.javascript = textarea.value
       pre.innerHTML = highlight(textarea.value, activeSubTab)
       updateGutter(gutter, textarea.value)

@@ -137,6 +137,9 @@ export function buildPopupSnippet(popup: ExitPopup, device: 'sp' | 'tablet' | 'p
       var t=e.target;
       // 背景 or ×ボタン → 閉じる
       if(t===overlay||(t.classList&&t.classList.contains('ep-close'))){closePopup();return;}
+      // 部品で作った中身の「次の画面へ」（data-nc-go）は、中身のスクリプトが画面を切り替える。
+      // 閉じる・遷移先へ移動するより先に抜ける（Widget編集の画面で作った中身・2026-09-24）
+      if(t.closest&&t.closest('[data-nc-go]'))return;
       // 指示172: 動作=LPに戻る → 中身タップでも閉じて、元のLPの見ていた位置へ戻る（×と同じ）
       if(linkAction==='close'){closePopup();return;}
       if(!epLink)return;

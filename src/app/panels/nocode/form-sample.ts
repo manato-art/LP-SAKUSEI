@@ -88,13 +88,13 @@ export function sampleEditor(options: SampleEditorOptions): SampleEditor {
   head.append(node('span', 'ncf-sample__title', title === '' ? '見本はまだ選ばれていません' : `見本：${title}`))
   const pick = node('button', 'ncf-btn', html === '' ? '見本を選ぶ' : '選び直す')
   pick.type = 'button'
-  pick.disabled = options.pickSample === undefined
   pick.addEventListener('click', () => {
     void options.pickSample?.().then((sample) => {
       if (sample !== null) options.replace(sample)
     })
   })
-  head.append(pick)
+  // 見本の一覧を開けない画面（ポップアップの中身）では出さない（押せないボタンを見せない）
+  if (options.pickSample !== undefined) head.append(pick)
   wrap.append(head)
   /** カードの段ができる前に選ばれた要素（できたら選ぶ） */
   let pendingInner: HTMLElement | null = options.initialInner ?? null

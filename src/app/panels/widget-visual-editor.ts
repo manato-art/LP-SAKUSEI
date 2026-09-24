@@ -38,6 +38,14 @@ import {
   svgToolUndo,
 } from './widget-editor-icons.ts'
 
+/**
+ * 見たまま画面の枠（2026-09-24・ポップアップの中身もこの画面で直すため）。
+ *  - lp: LPと同じ620px（配信の body の幅）
+ *  - overlay: 離脱防止ポップ。暗い地（配信の rgba(0,0,0,.4)）の上に、中身の幅の箱（最大500px＝配信の .ep-content）
+ *  - corner: 画面の角に出る追従型ポップ。白い地の上に、中身の幅の箱
+ */
+export type PreviewFrame = 'lp' | 'overlay' | 'corner'
+
 export interface VisualEditorOptions {
   /**
    * 画像の操作パネル・リンクの吹き出し・並んだ部品の操作ボタンを効かせてよい要素か（2026-09-24・第3弾）。
@@ -50,6 +58,15 @@ export interface VisualEditorOptions {
   readonly alignTarget?: () => AlignTarget | null
   /** ツールバーの「サイズ」。選んだ部品の幅と位置の小窓を出したら true（そのときは画像の操作パネルを出さない） */
   readonly onSizeButton?: (anchor: HTMLElement) => boolean
+  /** 見たまま画面の枠（既定は lp） */
+  readonly previewFrame?: PreviewFrame
+}
+
+/** 枠ごとの、見たまま画面の地の色と中身の箱の大きさ */
+function frameStyle(frame: PreviewFrame): { backdrop: string; box: string } {
+  if (frame === 'overlay') return { backdrop: '#999999', box: 'width:fit-content;max-width:500px;margin:24px auto' }
+  if (frame === 'corner') return { backdrop: '#fff', box: 'width:fit-content;max-width:100%;margin:24px auto' }
+  return { backdrop: '#fff', box: `width:${WIDGET_PREVIEW_WIDTH}px;max-width:none;margin:0 auto` }
 }
 
 export function buildVisualEditor(
@@ -414,9 +431,10 @@ export function buildVisualEditor(
 
   // エディタ本文（本番実測: padding:20px, contenteditable で書式操作を可能に）
   // overflow:auto にして、下の固定幅プレビューが狭いペインでは横スクロールできるようにする。
+  const frame = frameStyle(options.previewFrame ?? 'lp')
   const editorBody = document.createElement('div')
   editorBody.style.cssText =
-    `flex:1;background:#fff;overflow:auto;padding:20px;min-height:0`
+    `flex:1;background:${frame.backdrop};overflow:auto;padding:20px;min-height:0`
   // CSS を style タグとして注入してからHTMLをレンダリング。
   // 空でも必ず1つ置く（あとからコード欄や「要素ごとに編集」の変更をここへ流し込むため）。
   // 表示用に作り直す（保存するCSSはそのまま）: このプレビューの中だけに効かせ（編集画面のボタンや後ろのキャンバスに漏らさない）、
@@ -435,8 +453,9 @@ export function buildVisualEditor(
   // 620px = 配信SSRの body max-width（mock-server/routes/delivery.ts の DELIVERY_WIDTH）。
   // line-height:1.5 は配信LPの section.sb-widget-block と揃える（指示155・WYSIWYG）。
   contentDiv.dataset['widgetPreview'] = 'true'
+  // ポップアップの中身は、配信と同じく中身の幅の箱（frameStyle）
   contentDiv.style.cssText =
-    `outline:none;min-height:100px;width:${WIDGET_PREVIEW_WIDTH}px;max-width:none;margin:0 auto;box-sizing:border-box;line-height:1.5`
+    `outline:none;min-height:100px;${frame.box};box-sizing:border-box;line-height:1.5`
   contentDiv.innerHTML = target.html
   editorBody.append(contentDiv)
   // よくある質問・口コミのように並んでいる部品に「複製・上へ・下へ・消す」を出す（ノーコードでWidgetを作る②）。

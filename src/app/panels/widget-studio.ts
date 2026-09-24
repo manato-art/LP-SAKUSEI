@@ -15,6 +15,7 @@
  *     （見え方は変えない＝余白0・背景なし。文字・画像・ボタンの欄、要素ごとのカード、コードは見本の部品の中）
  * 開き方は4つ（全部ここ）:
  *   ライブラリの「+ ノーコードで作る」／見本のカードの「画面を作って使う」／LPの中のWidgetをクリック／設置済みWidgetのカード
+ * 2026-09-24: 離脱防止ポップ・追従型ポップの中身も、この画面で直す（popup-studio.ts。画面の組み立ては mountStudio で共通）。
  */
 import type Quill from 'quill'
 import { toast } from '../ui.ts'
@@ -31,7 +32,7 @@ import { templateNameOf, visibleTextOf } from './widget-editor-html.ts'
 import { defaultRegisterName } from './nocode/nocode-flow.ts'
 import { closeMediaControl } from './widget-media-control.ts'
 import { RIGHT_PANE_FLEX, buildCodePanels } from './widget-code-panel.ts'
-import { buildVisualEditor } from './widget-visual-editor.ts'
+import { buildVisualEditor, type PreviewFrame } from './widget-visual-editor.ts'
 import { insertWidget } from './widget-creator.ts'
 import { openWidgetLibraryForPick } from './widget-library.ts'
 import { createBuilderSession, type BuilderSession } from './widget-studio-builder.ts'
@@ -64,14 +65,54 @@ function builderStart(source: StudioSource): { data: TemplateData; uid: string }
 }
 
 export function openWidgetStudio(quill: Quill, source: StudioSource): void {
-  // 指示158: フォント選択で確実に見た目が変わるよう、日本語Webフォントを読み込んでおく。
-  loadGoogleFonts()
-  closeWidgetStudio()
-
   const target: WidgetEditTarget =
     source.kind === 'lp' ? source.target : { node: document.createElement('div'), html: '', css: '', index: -1, length: 0 }
   const isInLp = source.kind === 'lp'
-  const start = builderStart(source)
+  mountStudio({
+    target,
+    start: builderStart(source),
+    title: 'Widget編集',
+    primaryLabel: isInLp ? '更新する' : 'LPに入れる',
+    libraryQuill: quill,
+    onPrimary: (html, current) => {
+      if (isInLp) {
+        quill.deleteText(target.index, target.length, 'user')
+        quill.insertEmbed(target.index, 'sbwidget', html, 'user')
+        closeWidgetStudio()
+        toast('Widgetを更新しました')
+        return
+      }
+      const name = current.suggestName()
+      closeWidgetStudio()
+      requestAnimationFrame(() => {
+        insertWidget(quill, html, name)
+        toast(`「${name}」を入れました。LPの中でクリックすると、また直せます`)
+      })
+    },
+  })
+}
+
+/** 画面を組み立てるのに要るもの（LPのWidget・ポップアップの中身で共通） */
+export interface StudioHost {
+  readonly target: WidgetEditTarget
+  readonly start: { data: TemplateData; uid: string }
+  /** ヘッダーのまん中の名前 */
+  readonly title: string
+  /** 右上の青いボタンの文字 */
+  readonly primaryLabel: string
+  /** 右上の青いボタン。書き出したHTML（設定データつき）を渡す */
+  readonly onPrimary: (html: string, session: BuilderSession) => void
+  /** 見本の一覧を開くのに使うLPの編集（無い画面＝ポップアップでは、ライブラリの見本は選ばせない） */
+  readonly libraryQuill: Quill | null
+  /** 見たまま画面の枠（既定はLPと同じ620px） */
+  readonly previewFrame?: PreviewFrame
+}
+
+export function mountStudio(host: StudioHost): void {
+  // 指示158: フォント選択で確実に見た目が変わるよう、日本語Webフォントを読み込んでおく。
+  loadGoogleFonts()
+  closeWidgetStudio()
+  const { target, start } = host
 
   // 画面いっぱい（本人の指示 2026-09-23「カードではなく画面全体で大きく・別ページみたいに」）
   const panel = document.createElement('div')
@@ -96,16 +137,20 @@ export function openWidgetStudio(quill: Quill, source: StudioSource): void {
     panel.style.display = 'flex'
     backdrop.style.display = 'block'
   }
-  const pickSample = (): Promise<{ title: string; html: string } | null> =>
-    new Promise((resolve) => {
-      hide()
-      const finish = (sample: { title: string; html: string } | null): void => {
-        show()
-        if (sample !== null) toast(`「${sample.title}」を部品に入れました`)
-        resolve(sample)
-      }
-      openWidgetLibraryForPick(quill, { onPick: finish, onCancel: () => finish(null) })
-    })
+  const libraryQuill = host.libraryQuill
+  const pickSample =
+    libraryQuill === null
+      ? undefined
+      : (): Promise<{ title: string; html: string } | null> =>
+          new Promise((resolve) => {
+            hide()
+            const finish = (sample: { title: string; html: string } | null): void => {
+              show()
+              if (sample !== null) toast(`「${sample.title}」を部品に入れました`)
+              resolve(sample)
+            }
+            openWidgetLibraryForPick(libraryQuill, { onPick: finish, onCancel: () => finish(null) })
+          })
 
   /* ── 本体（2ペイン） ── */
   const darkContainer = document.createElement('div')
@@ -120,6 +165,7 @@ export function openWidgetStudio(quill: Quill, source: StudioSource): void {
     onClick: (clicked) => session?.onCanvasClick(clicked),
     alignTarget: () => session?.alignTarget() ?? null,
     onSizeButton: (anchor) => session?.onSizeButton(anchor) ?? false,
+    ...(host.previewFrame === undefined ? {} : { previewFrame: host.previewFrame }),
   })
   leftPane.dataset['widgetPane'] = 'visual'
 
@@ -156,7 +202,7 @@ export function openWidgetStudio(quill: Quill, source: StudioSource): void {
     editorBody,
     setPreviewCss,
     tabsHost,
-    pickSample,
+    ...(pickSample === undefined ? {} : { pickSample }),
   })
   const current = session
   const codePanel = buildCodePanels(target, {
@@ -179,8 +225,8 @@ export function openWidgetStudio(quill: Quill, source: StudioSource): void {
     return 'html' in out ? out.html : null
   }
   const header = buildHeader({
-    title: 'Widget編集',
-    primaryLabel: isInLp ? '更新する' : 'LPに入れる',
+    title: host.title,
+    primaryLabel: host.primaryLabel,
     onClose: closeWidgetStudio,
     onRegister: () => {
       const html = readOutput()
@@ -205,19 +251,7 @@ export function openWidgetStudio(quill: Quill, source: StudioSource): void {
     onPrimary: () => {
       const html = readOutput()
       if (html === null) return
-      if (isInLp) {
-        quill.deleteText(target.index, target.length, 'user')
-        quill.insertEmbed(target.index, 'sbwidget', html, 'user')
-        closeWidgetStudio()
-        toast('Widgetを更新しました')
-        return
-      }
-      const name = current.suggestName()
-      closeWidgetStudio()
-      requestAnimationFrame(() => {
-        insertWidget(quill, html, name)
-        toast(`「${name}」を入れました。LPの中でクリックすると、また直せます`)
-      })
+      host.onPrimary(html, current)
     },
   })
 

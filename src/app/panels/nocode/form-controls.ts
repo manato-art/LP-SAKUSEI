@@ -127,7 +127,8 @@ function tileControl(field: SelectField, env: ControlEnv, id: string): HTMLEleme
   group.id = id
   group.setAttribute('role', 'radiogroup')
   group.setAttribute('aria-label', field.label)
-  const known = (v: string): string => (field.options.some((o) => o.value === v) ? v : (field.options[0]?.value ?? ''))
+  const known = (v: string): string =>
+    field.options.some((o) => o.value === v) ? v : (field.fallback ?? field.options[0]?.value ?? '')
   const tiles: HTMLButtonElement[] = []
   const paint = (): void => {
     const current = known(asText(env.read()))
@@ -223,13 +224,16 @@ export function scalarControl(field: ScalarField, env: ControlEnv, id: string): 
       input.max = String(field.max)
       const step = field.unit === 'px' ? 0.5 : 1
       input.step = String(step)
-      // 以前の選び（'l'・'m' など）は表で数に読み替える（読めなければ下限）
+      // 以前の選び（'l'・'m' など）は表で数に読み替える（読めなければ既定の数か下限）。
+      // 値が無いときは既定の数（fallback）を見せる（書き出しと同じ。見本の部品の幅100%が空欄・下限に見えないように）
+      const isMissing = (v: unknown): boolean => v === undefined || v === ''
       const asNumber = (v: unknown): number => {
+        if (isMissing(v) && field.fallback !== undefined) return field.fallback
         const preset = typeof v === 'string' ? field.legacy?.[v] : undefined
         const n = preset ?? (typeof v === 'number' ? v : typeof v === 'string' ? Number(v) : Number.NaN)
-        return Number.isFinite(n) ? n : field.min
+        return Number.isFinite(n) ? n : (field.fallback ?? field.min)
       }
-      const asNumberText = (v: unknown): string => (v === undefined || v === '' ? '' : String(asNumber(v)))
+      const asNumberText = (v: unknown): string => (isMissing(v) && field.fallback === undefined ? '' : String(asNumber(v)))
       input.value = asNumberText(value)
       const slider = makeSlider({ min: field.min, max: field.max, step }, asNumber(value), 'ncf-slider', (n) => {
         input.value = String(n)
@@ -271,7 +275,8 @@ export function scalarControl(field: ScalarField, env: ControlEnv, id: string): 
         opt.value = option.value
         select.append(opt)
       }
-      const known = (v: string): string => (field.options.some((o) => o.value === v) ? v : (field.options[0]?.value ?? ''))
+      const known = (v: string): string =>
+        field.options.some((o) => o.value === v) ? v : (field.fallback ?? field.options[0]?.value ?? '')
       select.value = known(current)
       select.addEventListener('change', () => env.write(select.value))
       followValue(env, select, () => known(asText(env.read())))

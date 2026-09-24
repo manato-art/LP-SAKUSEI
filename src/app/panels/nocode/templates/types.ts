@@ -52,6 +52,8 @@ export type Field =
   | (FieldBase & {
       readonly kind: 'select'
       readonly options: readonly { value: string; label: string; short?: string; icon?: string }[]
+      /** 値が無いときに選んでいるように見せる選択肢（書き出しの既定と同じにする。無ければ最初の選択肢） */
+      readonly fallback?: string
     })
   | (FieldBase & {
       readonly kind: 'number'
@@ -60,6 +62,8 @@ export type Field =
       readonly unit?: string
       /** 以前の選び（大/中/小・s/m/l）を数に読み替える表（古い中身をそのまま開けるように） */
       readonly legacy?: Readonly<Record<string, number>>
+      /** 値が無いときに見せる数（書き出しの既定と同じにする。無ければ欄は空・スライダーは下限） */
+      readonly fallback?: number
     })
   | (FieldBase & { readonly kind: 'datetime' })
   | (FieldBase & { readonly kind: 'toggle' })

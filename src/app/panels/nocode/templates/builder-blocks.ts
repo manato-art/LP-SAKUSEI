@@ -68,11 +68,14 @@ export function widthKeyOf(type: string): string | null {
   return 'boxWidth'
 }
 
-/** 幅と置く位置の入力（どの部品でも、いちばん上に出す＝選んだらすぐ直せる） */
+/**
+ * 幅と置く位置の入力（どの部品でも、いちばん上に出す＝選んだらすぐ直せる）。
+ * 値が無い部品（見本の部品・以前の中身）は、書き出し（layoutCss）と同じ 幅100%・中央 を欄にも見せる
+ */
 function layoutFields(widthKey: string): readonly Field[] {
   return [
-    { kind: 'number', key: widthKey, label: '幅', min: 10, max: 100, unit: '%' },
-    { kind: 'select', key: 'place', label: '置く位置', options: PLACE_OPTIONS },
+    { kind: 'number', key: widthKey, label: '幅', min: 10, max: 100, unit: '%', fallback: 100 },
+    { kind: 'select', key: 'place', label: '置く位置', options: PLACE_OPTIONS, fallback: 'center' },
   ]
 }
 
