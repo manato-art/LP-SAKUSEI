@@ -8,23 +8,15 @@
  * 【取得の粒度】LPごとに account / campaign / adset / ad を選べる。
  * `time_increment=1` で日別に割り、そのまま日次メトリクスへ入れる。
  *
- * 【CVの数え方】Meta の `actions` は action_type ごとの配列で、どれを「CV」と見なすかは
- * 運用で変わる。ここでは購入・リード系の標準的な action_type を合算する（下の CV_ACTION_TYPES）。
- * 実運用と合わなければこの配列を直せば全画面へ反映される。
+ * 【CVの数え方】Meta の `actions` は action_type ごとの配列。purchase と
+ * offsite_conversion.fb_pixel_purchase、lead と offsite_conversion.fb_pixel_lead は
+ * **同じ成果を別の集計軸で返したもの**なので、足すと CV が2倍・CPA が半分に見える（2026-09-24 点検で修正）。
+ * 上部の Meta バナー（lib/meta-client.ts）と同じ優先順で**1つだけ**拾う。
  */
+import { CV_ACTION_PRIORITY } from './lib/meta-client.ts'
 
 /** Graph API のバージョン。上げるときは env で差し替えられるようにしておく。 */
 const GRAPH_VERSION = process.env['META_API_VERSION'] ?? 'v21.0'
-
-/** CVとして数える action_type（購入・リード系の標準的なもの） */
-const CV_ACTION_TYPES: readonly string[] = [
-  'purchase',
-  'offsite_conversion.fb_pixel_purchase',
-  'lead',
-  'offsite_conversion.fb_pixel_lead',
-  'complete_registration',
-  'offsite_conversion.fb_pixel_complete_registration',
-]
 
 export type MetaLevel = 'account' | 'campaign' | 'adset' | 'ad'
 
@@ -60,15 +52,17 @@ function toNumber(value: unknown): number {
   return Number.isFinite(n) ? n : 0
 }
 
-/** actions 配列から CV 相当を合算する */
-function sumConversions(actions: unknown): number {
+/**
+ * actions 配列から CV を数える。重なる種類を足さず、優先順で最初に見つかった1つだけを使う。
+ */
+export function conversionsOf(actions: unknown): number {
   if (!Array.isArray(actions)) return 0
-  let total = 0
-  for (const raw of actions as GraphAction[]) {
-    const type = typeof raw.action_type === 'string' ? raw.action_type : ''
-    if (CV_ACTION_TYPES.includes(type)) total += toNumber(raw.value)
+  const list = actions as GraphAction[]
+  for (const type of CV_ACTION_PRIORITY) {
+    const hit = list.find((raw) => raw.action_type === type)
+    if (hit !== undefined) return toNumber(hit.value)
   }
-  return total
+  return 0
 }
 
 /** `act_123` でも `123` でも受け取れるようにする（account のときだけ act_ を前置） */
@@ -124,7 +118,7 @@ export async function fetchMetaInsights(opts: {
         ad_cost: toNumber(row.spend),
         imp: toNumber(row.impressions),
         media_click: linkClicks > 0 ? linkClicks : toNumber(row.clicks),
-        media_cv: sumConversions(row.actions),
+        media_cv: conversionsOf(row.actions),
       })
     }
     return { ok: true, rows }
