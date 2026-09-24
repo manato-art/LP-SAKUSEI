@@ -27,11 +27,13 @@ export function matchesVisitCount(setting: string, count: number): boolean {
   return true
 }
 
-/** 同じ種類の候補から1つ選ぶ（割合の重み・0%は選ばない・すべて0%なら均等） */
+/**
+ * 同じ種類の候補から1つ選ぶ（割合の重み）。0%は出さない。すべて0%なら何も出さない
+ * （2026-09-24 本人「0%ってやってんだから出さないで」。以前は、すべて0%のときは均等に出していた）
+ */
 function pickOne(group: readonly ExitPopup[], random: () => number): ExitPopup | undefined {
-  if (group.length === 0) return undefined
   const weighted = group.filter((p) => p.ratio > 0)
-  if (weighted.length === 0) return group[Math.min(group.length - 1, Math.floor(random() * group.length))]
+  if (weighted.length === 0) return undefined
   const total = weighted.reduce((sum, p) => sum + p.ratio, 0)
   let ticket = random() * total
   for (const popup of weighted) {

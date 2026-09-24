@@ -2,7 +2,7 @@
  * 編集画面に出ているポップアップの設定が、配信で効くことの機械証明（2026-09-24 監査 26）。
  *
  * - 割合: 1回の表示で出すのは、種類（離脱防止／表示直後）ごとに1つだけ。割合の重みで選ぶ。
- *   0% は出さない。ただし同じ種類がすべて 0% のときは均等に選ぶ（この直しより前に作ったポップアップは割合 0% のまま全員に出ていた）。
+ *   0% は出さない。同じ種類がすべて 0% でも出さない（2026-09-24 本人「0%ってやってんだから出さないで」）。
  * - 訪問回数: 全て／初回のみ／2回目以降／3回目以降。LP ごとの訪問回数を Cookie で数える（同じブラウザを閉じるまでは1回）。
  * - このVersionで配信: Version ごとに OFF にでき、OFF の Version を配信するときはポップアップを出さない。
  * - 位置（9か所）・渦巻アニメ・電話をかける・表示のきっかけ（スクロール／カウントダウン／バックボタン／離脱）。
@@ -45,7 +45,7 @@ describe('割合と訪問回数で、1回の表示に出すポップアップを
   const a = popup({ uid: 'A', ratio: 70 })
   const b = popup({ uid: 'B', ratio: 30 })
   const zero = popup({ uid: 'Z', ratio: 0 })
-  const instant = popup({ uid: 'I', ratio: 0, popup_kind: 'instant' })
+  const instant = popup({ uid: 'I', ratio: 100, popup_kind: 'instant' })
 
   it('種類ごとに1つだけ、割合の重みで選ぶ（0%は出さない）', () => {
     expect(pickPopupsForView([a, b, zero], null, () => 0).map((p) => p.uid)).toEqual(['A'])
@@ -54,10 +54,10 @@ describe('割合と訪問回数で、1回の表示に出すポップアップを
     expect(pickPopupsForView([a, b, zero], null, () => 0.999).map((p) => p.uid)).toEqual(['B'])
   })
 
-  it('同じ種類がすべて0%のときは均等に選ぶ', () => {
+  it('同じ種類がすべて0%なら、どれも出さない（0%は「出さない」）', () => {
     const z2 = popup({ uid: 'Z2', ratio: 0 })
-    expect(pickPopupsForView([zero, z2], null, () => 0.2).map((p) => p.uid)).toEqual(['Z'])
-    expect(pickPopupsForView([zero, z2], null, () => 0.7).map((p) => p.uid)).toEqual(['Z2'])
+    expect(pickPopupsForView([zero, z2], null, () => 0.2)).toEqual([])
+    expect(pickPopupsForView([zero], null, () => 0.7)).toEqual([])
   })
 
   it('離脱防止と表示直後は別々に1つずつ選ぶ', () => {
@@ -66,7 +66,7 @@ describe('割合と訪問回数で、1回の表示に出すポップアップを
 
   it('訪問回数が合わないポップアップは候補から外してから選ぶ', () => {
     const first = popup({ uid: 'F', ratio: 100, visit_count: 'first' })
-    const second = popup({ uid: 'S', ratio: 0, visit_count: '2+' })
+    const second = popup({ uid: 'S', ratio: 100, visit_count: '2+' })
     expect(pickPopupsForView([first, second], 1, () => 0.5).map((p) => p.uid)).toEqual(['F'])
     expect(pickPopupsForView([first, second], 2, () => 0.5).map((p) => p.uid)).toEqual(['S'])
   })
@@ -123,7 +123,8 @@ describe('配信で効く（LPを開く）', () => {
   it('訪問回数: 初めて開いたら「初回のみ」、Cookie の回数が1なら次は「2回目以降」', async () => {
     const page = await newPage()
     await addPublished(page, { html: '<p>MARK-FIRST</p>', visit_count: 'first' })
-    await addPublished(page, { html: '<p>MARK-AGAIN</p>', visit_count: '2+' })
+    // 2つなら合計100%に保たれる（片方を50にするともう片方も50）。0%は出さないので、どちらも1以上にする
+    await addPublished(page, { html: '<p>MARK-AGAIN</p>', visit_count: '2+', ratio: 50 })
 
     const first = await open(page)
     expect(first.html).toContain('MARK-FIRST')
