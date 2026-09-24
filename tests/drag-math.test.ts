@@ -2,7 +2,22 @@
  * 数字をドラッグで変える計算（2026-09-23・Widget編集 第2弾・Canva風）。
  */
 import { describe, expect, it } from 'vitest'
-import { clamp, dragValue, handleKindOf, scrubValue, sliderRange, snapToStep } from '../src/app/panels/drag-math.ts'
+import {
+  clamp,
+  dragValue,
+  handleKindOf,
+  nearestSnap,
+  placeGuideX,
+  placeLeft,
+  scrubValue,
+  sliderRange,
+  snapPlace,
+  snapToStep,
+  widthAtEdge,
+  widthEdgeX,
+  widthGuideXs,
+  widthSnaps,
+} from '../src/app/panels/drag-math.ts'
 
 describe('刻みにそろえる', () => {
   it('小数の刻みでも誤差が出ない', () => {
@@ -93,5 +108,75 @@ describe('CSSの設定をどのハンドルで動かすか', () => {
     expect(handleKindOf(setting({ isVariable: true, property: '--arrow-lift', label: '浮き上がる量' }))).toBeNull()
     expect(handleKindOf(setting({ isVariable: true, property: '--title-size', label: 'title-size' }))).toBe('font')
     expect(handleKindOf(setting({ isVariable: true, property: '--box-width', label: 'box-width' }))).toBe('width')
+  })
+})
+
+/* ── 補助線（2026-09-24・本人「補助線もやって」） ── */
+describe('部品をつかんで横に動かす（左・中央・右へ吸い付く）', () => {
+  const box = { left: 0, right: 400 }
+
+  it('置く位置ごとの左端と補助線の位置', () => {
+    expect(placeLeft('left', 100, box)).toBe(0)
+    expect(placeLeft('center', 100, box)).toBe(150)
+    expect(placeLeft('right', 100, box)).toBe(300)
+    expect(placeGuideX('left', box)).toBe(0)
+    expect(placeGuideX('center', box)).toBe(200)
+    expect(placeGuideX('right', box)).toBe(400)
+  })
+
+  it('近くまで来たら吸い付き、そうでなければ手の位置のまま（離すと一番近い位置に収まる）', () => {
+    expect(snapPlace(146, 100, box)).toEqual({ side: 'center', left: 150, snapped: true })
+    expect(snapPlace(100, 100, box)).toEqual({ side: 'center', left: 100, snapped: false })
+    expect(snapPlace(60, 100, box)).toEqual({ side: 'left', left: 60, snapped: false })
+    expect(snapPlace(5, 100, box)).toEqual({ side: 'left', left: 0, snapped: true })
+    expect(snapPlace(296, 100, box)).toEqual({ side: 'right', left: 300, snapped: true })
+  })
+
+  it('枠の外へは出ない', () => {
+    expect(snapPlace(-80, 100, box)).toEqual({ side: 'left', left: 0, snapped: true })
+    expect(snapPlace(900, 100, box)).toEqual({ side: 'right', left: 300, snapped: true })
+  })
+
+  it('吸い付く距離は変えられる', () => {
+    expect(snapPlace(130, 100, box, 30).snapped).toBe(true)
+    expect(snapPlace(130, 100, box, 10).snapped).toBe(false)
+  })
+})
+
+describe('幅のつまみ（辺の位置と幅%の行き来・吸い付き先）', () => {
+  const box = { left: 100, right: 500 } // 幅 400px
+
+  it('動かす辺の位置（右に置いた部品は左の辺・中央は右の辺）', () => {
+    expect(widthEdgeX(50, 'left', box)).toBe(300)
+    expect(widthEdgeX(50, 'right', box)).toBe(300)
+    expect(widthEdgeX(50, 'center', box)).toBe(400)
+  })
+
+  it('辺の位置から幅%を逆算する（中央はどちらの辺でも同じ幅）', () => {
+    expect(widthAtEdge(300, 'left', box)).toBe(50)
+    expect(widthAtEdge(300, 'right', box)).toBe(50)
+    expect(widthAtEdge(400, 'center', box)).toBe(50)
+    expect(widthAtEdge(200, 'center', box)).toBe(50)
+  })
+
+  it('補助線を引く位置（中央に置いた部品は両側の辺）', () => {
+    expect(widthGuideXs(50, 'left', box)).toEqual([300])
+    expect(widthGuideXs(50, 'right', box)).toEqual([300])
+    expect(widthGuideXs(50, 'center', box)).toEqual([400, 200])
+  })
+
+  it('吸い付き先＝ほかの部品の端に辺がそろう幅＋よく使う幅（範囲の外・重なりは除く）', () => {
+    // 左に置いた部品: 右の辺が x=260（40%）や x=180（20%）にそろう幅。x=100 は 0% なので範囲外
+    expect(widthSnaps('left', box, [260, 180, 100], { min: 10, max: 100 })).toEqual([20, 25, 40, 50, 75, 100])
+    // 中央に置いた部品: 左右どちらの端も同じ幅になる（x=200 と x=400 はどちらも 50%）
+    expect(widthSnaps('center', box, [200, 400], { min: 10, max: 100 })).toEqual([25, 50, 75, 100])
+  })
+
+  it('いまの値から手の動きで一定の距離の内にある、一番近い吸い付き先', () => {
+    const points = [{ value: 25 }, { value: 50 }, { value: 100 }]
+    expect(nearestSnap(48, points, 4)).toEqual({ value: 50 }) // 2% × 4px = 8px
+    expect(nearestSnap(47, points, 4)).toBeNull() // 12px は遠い
+    expect(nearestSnap(26, points, 4, 3)).toBeNull()
+    expect(nearestSnap(70, [], 4)).toBeNull()
   })
 })

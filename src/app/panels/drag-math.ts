@@ -113,3 +113,112 @@ export function handleKindOf(setting: Pick<Setting, 'kind' | 'property' | 'label
   if (/高さ|height|-h$|-h-|-h /i.test(name)) return 'height'
   return null
 }
+
+/* ── 補助線と吸い付き（2026-09-24・本人「補助線もやって」） ──
+ * 部品をつかんで横に動かすと、手の位置のまま動き、左・中央・右に近づくと吸い付いて補助線が出る。
+ * 幅のつまみは、ほかの部品の端に辺がそろう幅と、よく使う幅（25/50/75/100%）に吸い付く。
+ * x はどれも画面の座標（getBoundingClientRect と同じ）。 */
+
+/** 吸い付く距離（画面の px） */
+export const SNAP_PX = 8
+
+/** 部品を置ける横の範囲（中身の左端・右端） */
+export interface Span {
+  readonly left: number
+  readonly right: number
+}
+
+/** 部品を置く位置（builder-blocks.ts の Place と同じ3つ） */
+export type Side = 'left' | 'center' | 'right'
+
+/** 同じ近さなら中央を選ぶ（中央が先） */
+const SIDES: readonly Side[] = ['center', 'left', 'right']
+
+/** よく使う幅（%） */
+const NICE_WIDTHS: readonly number[] = [25, 50, 75, 100]
+
+/** 置く位置ごとの、部品の左端 */
+export function placeLeft(side: Side, width: number, box: Span): number {
+  if (side === 'left') return box.left
+  if (side === 'right') return box.right - width
+  return box.left + (box.right - box.left - width) / 2
+}
+
+/** 置く位置の補助線（左＝左の端・中央＝まん中・右＝右の端） */
+export function placeGuideX(side: Side, box: Span): number {
+  if (side === 'left') return box.left
+  if (side === 'right') return box.right
+  return (box.left + box.right) / 2
+}
+
+/**
+ * 部品をつかんで横に動かしたとき。手の位置（freeLeft＝部品の左端）のまま動かし、
+ * 置く位置のどれかに thresholdPx まで近づいたら吸い付く。side は離したときに収まる位置（一番近いもの）。
+ */
+export function snapPlace(
+  freeLeft: number,
+  width: number,
+  box: Span,
+  thresholdPx = SNAP_PX,
+): { side: Side; left: number; snapped: boolean } {
+  const left = clamp(freeLeft, box.left, Math.max(box.left, box.right - width))
+  let side: Side = 'center'
+  let distance = Number.POSITIVE_INFINITY
+  for (const candidate of SIDES) {
+    const d = Math.abs(placeLeft(candidate, width, box) - left)
+    if (d < distance) {
+      side = candidate
+      distance = d
+    }
+  }
+  const snapped = distance <= thresholdPx
+  return { side, left: snapped ? placeLeft(side, width, box) : left, snapped }
+}
+
+/** 幅%の部品の、つまみで動かす辺（右に置いた部品は左の辺、ほかは右の辺） */
+export function widthEdgeX(value: number, side: Side, box: Span): number {
+  const width = ((box.right - box.left) * value) / 100
+  if (side === 'left') return box.left + width
+  if (side === 'right') return box.right - width
+  return (box.left + box.right) / 2 + width / 2
+}
+
+/** 辺がその位置に来る幅%（中央に置いた部品は、左右どちらの辺でも同じ幅） */
+export function widthAtEdge(x: number, side: Side, box: Span): number {
+  const full = box.right - box.left
+  if (full <= 0) return 100
+  if (side === 'left') return ((x - box.left) / full) * 100
+  if (side === 'right') return ((box.right - x) / full) * 100
+  return ((Math.abs(x - (box.left + box.right) / 2) * 2) / full) * 100
+}
+
+/** 幅がその値のときに補助線を引く位置（中央に置いた部品は両側の辺） */
+export function widthGuideXs(value: number, side: Side, box: Span): number[] {
+  const edge = widthEdgeX(value, side, box)
+  return side === 'center' ? [edge, box.left + box.right - edge] : [edge]
+}
+
+/** 幅のつまみの吸い付き先（%・小さい順）。edges はほかの部品の左右の端 */
+export function widthSnaps(side: Side, box: Span, edges: readonly number[], range: Pick<NumberRange, 'min' | 'max'>): number[] {
+  const values = [...edges.map((x) => Math.round(widthAtEdge(x, side, box))), ...NICE_WIDTHS]
+  return [...new Set(values)].filter((v) => v >= range.min && v <= range.max).sort((a, b) => a - b)
+}
+
+/** いまの値から、手の動きで thresholdPx の内にある一番近い吸い付き先（無ければ null） */
+export function nearestSnap<T extends { readonly value: number }>(
+  value: number,
+  points: readonly T[],
+  pxPerUnit: number,
+  thresholdPx = SNAP_PX,
+): T | null {
+  let best: T | null = null
+  let distance = Number.POSITIVE_INFINITY
+  for (const point of points) {
+    const d = Math.abs(point.value - value) * pxPerUnit
+    if (d <= thresholdPx && d < distance) {
+      best = point
+      distance = d
+    }
+  }
+  return best
+}

@@ -9,14 +9,38 @@
  * つまみ: 右の辺（左に置いた部品は左の辺）＝幅、下の辺＝高さ、右下の角＝文字の大きさ、上下の辺＝Widgetの上下の余白。
  * つかみ所（枠の上のまん中）: つかんで動かすと部品ごと動く（左右で置く位置、上下で並び順。何をするかは呼ぶ側）。
  * 何をどう変えるかは呼ぶ側が渡す。動かしている間は preview（見た目だけ）、離したら commit（確定）。値の計算は drag-math.ts。
+ * 補助線（2026-09-24）: 吸い付いた所にピンクの線、離したら収まる所に点線の影。つまみは snaps の値に吸い付く。
  */
-import { dragValue, type NumberRange } from './drag-math.ts'
+import { dragValue, nearestSnap, type NumberRange, type Span } from './drag-math.ts'
 
 const ACCENT = 'var(--sb-accent, #0091FF)'
 const INK = 'var(--sb-accent-ink, #FFFFFF)'
 const FONT = '"Hiragino Sans",sans-serif'
+/** 補助線の色（選択枠の青と見分ける。デザインの道具でよく使うピンク） */
+const GUIDE = '#E8338A'
 
 export type HandleKind = 'width' | 'widthLeft' | 'height' | 'font' | 'padTop' | 'padBottom'
+
+/** 縦の補助線（画面の x と、線を引く上下の範囲） */
+export interface GuideLine {
+  readonly x: number
+  readonly top: number
+  readonly bottom: number
+}
+
+/** つまみの吸い付き先（その値になったら、lines に補助線を出す） */
+export interface SnapPoint {
+  readonly value: number
+  readonly lines: readonly GuideLine[]
+}
+
+/** 画面の上の四角（getBoundingClientRect と同じ座標） */
+export interface ScreenBox {
+  readonly left: number
+  readonly top: number
+  readonly width: number
+  readonly height: number
+}
 
 export interface SelectionHandle {
   readonly kind: HandleKind
@@ -31,11 +55,14 @@ export interface SelectionHandle {
   readonly preview: (value: number) => void
   /** 離したとき（確定） */
   readonly commit: (value: number) => void
+  /** 吸い付き先（動かし始めたときに1回だけ読む） */
+  readonly snaps?: () => readonly SnapPoint[]
 }
 
 /** 部品ごと動かす（つかみ所・部品そのものをつかんだとき）。動かしている間の説明を返すと吹き出しに出す */
 export interface SelectionMove {
-  readonly update: (clientX: number, clientY: number) => string
+  /** startX・startY は押した所（動かした量＝今 − 押した所） */
+  readonly update: (clientX: number, clientY: number, startX: number, startY: number) => string
   readonly commit: (clientX: number, clientY: number) => void
   readonly cancel: () => void
 }
@@ -55,6 +82,10 @@ export interface SelectionLayer {
   readonly hover: (el: HTMLElement | null, label?: string) => void
   /** 並び替えで入る位置の線（画面の y・左端・幅。null で消す） */
   readonly dropLine: (at: { y: number; left: number; width: number } | null) => void
+  /** 補助線（空で消す） */
+  readonly guides: (lines: readonly GuideLine[]) => void
+  /** 離したら収まる所の点線の影（null で消す） */
+  readonly ghost: (box: ScreenBox | null) => void
   /** 位置を合わせ直す（描き直したあとなど） */
   readonly refresh: () => void
   /** 部品そのものをつかんで動かし始める（呼ぶ側が pointerdown で渡す。少し動いてから動き出す） */
@@ -77,6 +108,22 @@ const MOVE_THRESHOLD = 5
 const MOVE_ICON =
   '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" ' +
   'stroke-linejoin="round" aria-hidden="true"><path d="M12 2v20M2 12h20M12 2l-3 3M12 2l3 3M12 22l-3-3M12 22l3-3M2 12l3-3M2 12l3 3M22 12l-3-3M22 12l-3 3"/></svg>'
+
+/**
+ * 要素の中身の箱（枠線と padding の内側・画面の座標）。
+ * 幅%や左右の置き場所はこの箱が基準（部品を置ける横の範囲）
+ */
+export function contentBoxOf(el: HTMLElement): Span & { readonly top: number; readonly bottom: number } {
+  const r = el.getBoundingClientRect()
+  const cs = getComputedStyle(el)
+  const px = (value: string): number => Number.parseFloat(value) || 0
+  return {
+    left: r.left + px(cs.borderLeftWidth) + px(cs.paddingLeft),
+    right: r.right - px(cs.borderRightWidth) - px(cs.paddingRight),
+    top: r.top + px(cs.borderTopWidth) + px(cs.paddingTop),
+    bottom: r.bottom - px(cs.borderBottomWidth) - px(cs.paddingBottom),
+  }
+}
 
 /** つかみ所・つまみを押して動かす流れ（押す→動かす→離す）。setPointerCapture が使えない環境でも動く */
 function dragLoop(
@@ -160,7 +207,14 @@ export function createSelectionLayer(editorBody: HTMLElement, contentDiv: HTMLEl
   line.style.cssText =
     `position:absolute;display:none;height:3px;border-radius:2px;background:${ACCENT};pointer-events:none;z-index:9998;` +
     `box-shadow:0 0 0 2px rgba(255,255,255,.9)`
-  layer.append(hoverFrame, frame, line)
+  /** 補助線（何本でも）と、収まる所の影。動かし終わったら必ず消す */
+  const guideBox = document.createElement('div')
+  guideBox.style.cssText = 'position:absolute;left:0;top:0;pointer-events:none;z-index:9999'
+  const ghostBox = document.createElement('div')
+  ghostBox.style.cssText =
+    `position:absolute;display:none;pointer-events:none;z-index:9995;box-sizing:border-box;` +
+    `border:1.5px dashed ${ACCENT};background:rgba(0,145,255,.08);border-radius:2px`
+  layer.append(ghostBox, hoverFrame, frame, line, guideBox)
 
   let current: HTMLElement | null = null
   let hovered: HTMLElement | null = null
@@ -208,6 +262,36 @@ export function createSelectionLayer(editorBody: HTMLElement, contentDiv: HTMLEl
   const observer = new ResizeObserver(schedule)
   observer.observe(contentDiv)
 
+  const showGuides = (lines: readonly GuideLine[]): void => {
+    const o = layer.getBoundingClientRect()
+    guideBox.replaceChildren(
+      ...lines.map((g) => {
+        const bar = document.createElement('div')
+        bar.dataset['widgetGuide'] = 'true'
+        bar.style.cssText =
+          `position:absolute;width:1px;background:${GUIDE};left:${Math.round(g.x - o.left) - 0.5}px;` +
+          `top:${g.top - o.top}px;height:${Math.max(0, g.bottom - g.top)}px`
+        return bar
+      }),
+    )
+  }
+  const showGhost = (box: ScreenBox | null): void => {
+    if (box === null) {
+      ghostBox.style.display = 'none'
+      return
+    }
+    const o = layer.getBoundingClientRect()
+    ghostBox.style.display = 'block'
+    ghostBox.style.left = `${box.left - o.left}px`
+    ghostBox.style.top = `${box.top - o.top}px`
+    ghostBox.style.width = `${box.width}px`
+    ghostBox.style.height = `${box.height}px`
+  }
+  const clearGuides = (): void => {
+    showGuides([])
+    showGhost(null)
+  }
+
   const showTip = (text: string, x: number, y: number): void => {
     tip.style.display = text === '' ? 'none' : 'block'
     tip.style.left = `${x}px`
@@ -235,19 +319,24 @@ export function createSelectionLayer(editorBody: HTMLElement, contentDiv: HTMLEl
       const startX = event.clientX
       const startY = event.clientY
       const perUnit = handle.pxPerUnit()
+      const snaps = handle.snaps?.() ?? []
       let value = start
       showTip(`${handle.label} ${value}${handle.unit}`, knob.offsetLeft, knob.offsetTop)
       dragLoop(
         knob,
         event,
         (ev) => {
-          value = dragValue(start, spot.delta(ev.clientX - startX, ev.clientY - startY), perUnit, handle.range)
+          const raw = dragValue(start, spot.delta(ev.clientX - startX, ev.clientY - startY), perUnit, handle.range)
+          const hit = nearestSnap(raw, snaps, perUnit)
+          value = hit?.value ?? raw
+          showGuides(hit?.lines ?? [])
           handle.preview(value)
           place()
           showTip(`${handle.label} ${value}${handle.unit}`, knob.offsetLeft, knob.offsetTop)
         },
         () => {
           showTip('', 0, 0)
+          clearGuides()
           if (value !== start) handle.commit(value)
           schedule()
         },
@@ -273,7 +362,7 @@ export function createSelectionLayer(editorBody: HTMLElement, contentDiv: HTMLEl
         if (!moving && Math.hypot(ev.clientX - startX, ev.clientY - startY) < threshold) return
         moving = true
         grip.style.cursor = 'grabbing'
-        const text = m.update(ev.clientX, ev.clientY)
+        const text = m.update(ev.clientX, ev.clientY, startX, startY)
         const o = origin()
         showTip(text, ev.clientX - o.x, ev.clientY - o.y)
         place()
@@ -281,6 +370,7 @@ export function createSelectionLayer(editorBody: HTMLElement, contentDiv: HTMLEl
       (ev) => {
         grip.style.cursor = 'grab'
         showTip('', 0, 0)
+        clearGuides()
         if (moving && ev !== null) m.commit(ev.clientX, ev.clientY)
         else m.cancel()
         schedule()
@@ -327,6 +417,8 @@ export function createSelectionLayer(editorBody: HTMLElement, contentDiv: HTMLEl
       line.style.left = `${at.left - o.left}px`
       line.style.width = `${at.width}px`
     },
+    guides: showGuides,
+    ghost: showGhost,
     refresh: schedule,
     startMove: (event, m) => {
       const source = event.target instanceof HTMLElement ? event.target : contentDiv

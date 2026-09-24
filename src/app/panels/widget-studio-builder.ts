@@ -24,7 +24,8 @@ import { BUILDER_PADDING, BUILDER_TEMPLATE } from './nocode/templates/builder.ts
 import { ALIGNS, HEADING_SIZES, PLACES, SPACER_SIZES, TEXT_SIZES, blockLabel, sizeOf, widthKeyOf, type Place } from './nocode/templates/builder-blocks.ts'
 import { newUid } from './nocode/templates/kit.ts'
 import { int, items, pick, str, type ItemData, type TemplateData } from './nocode/templates/types.ts'
-import { createSelectionLayer, type SelectionHandle, type SelectionMove } from './selection-layer.ts'
+import { placeGuideX, placeLeft, snapPlace, widthGuideXs, widthSnaps } from './drag-math.ts'
+import { contentBoxOf, createSelectionLayer, type SelectionHandle, type SelectionMove, type SnapPoint } from './selection-layer.ts'
 import { openSizePopover } from './size-popover.ts'
 import { canvasEditTarget } from './widget-canvas-events.ts'
 import { FONT } from './widget-editor-theme.ts'
@@ -147,7 +148,7 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
    * 描き直すときに必ず外す（CSSだけの変化では要素を入れ替えないので、外さないと古い見た目が勝ち続ける）
    */
   const previewed = new Set<HTMLElement>()
-  const PREVIEW_PROPS = ['width', 'margin-left', 'margin-right', 'height', 'font-size', 'padding-top', 'padding-bottom'] as const
+  const PREVIEW_PROPS = ['width', 'height', 'font-size', 'padding-top', 'padding-bottom', 'transform'] as const
   const clearPreviews = (): void => {
     for (const el of previewed) for (const prop of PREVIEW_PROPS) el.style.removeProperty(prop)
     previewed.clear()
@@ -177,12 +178,29 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
   }
   const placeOf2 = (block: ItemData): Place => pick(block, 'place', PLACES, 'center')
 
-  /** 置く位置の左右の余白を、見た目だけ（動かしている間）当てる */
-  const previewPlace = (target: HTMLElement, place: Place): void => {
-    const t = target // eslint-safe alias（no-param-reassign 回避）
-    previewed.add(t)
-    t.style.marginLeft = place === 'left' ? '0' : 'auto'
-    t.style.marginRight = place === 'right' ? '0' : 'auto'
+  /** 同じ画面のほかの部品の、枠を合わせる要素（補助線でそろえる相手） */
+  const otherTargets = (screenIndex: number, exceptIndex: number): HTMLElement[] =>
+    items(items(data, 'screens')[screenIndex] ?? {}, 'blocks').flatMap((block, index) => {
+      if (index === exceptIndex) return []
+      const el = blockElementAt(data, contentDiv, screenIndex, index)
+      return el === null ? [] : [frameTarget(el, str(block, 'type'))]
+    })
+
+  /**
+   * 幅のつまみの吸い付き先: ほかの部品の左右の端に辺がそろう幅と、よく使う幅（25/50/75/100%）。
+   * 補助線は Widget の上から下まで、自分の辺（中央に置いた部品は両側の辺）に引く
+   */
+  const widthSnapPoints = (target: HTMLElement, place: Place, screenIndex: number, blockIndex: number): SnapPoint[] => {
+    const box = contentBoxOf(target.parentElement ?? target)
+    const area = contentDiv.getBoundingClientRect()
+    const edges = otherTargets(screenIndex, blockIndex).flatMap((other) => {
+      const r = other.getBoundingClientRect()
+      return r.width > 0 ? [r.left, r.right] : []
+    })
+    return widthSnaps(place, box, edges, { min: 10, max: 100 }).map((value) => ({
+      value,
+      lines: widthGuideXs(value, place, box).map((x) => ({ x, top: area.top, bottom: area.bottom })),
+    }))
   }
 
   /**
@@ -206,13 +224,17 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
         unit: '%',
         range: { min: 10, max: 100, step: 1 },
         read: () => widthOf(block()),
-        // 中央に置いた部品は両側へ広がるので、手の動きの2倍ぶん幅が変わる
-        pxPerUnit: () => ((target.parentElement?.clientWidth ?? el.clientWidth) / 100 || 1) / (place === 'center' ? 2 : 1),
+        // 幅%は親の中身（padding の内側）に対して。中央に置いた部品は両側へ広がるので、手の動きの2倍ぶん幅が変わる
+        pxPerUnit: () => {
+          const box = contentBoxOf(target.parentElement ?? el)
+          return ((box.right - box.left) / 100 || 1) / (place === 'center' ? 2 : 1)
+        },
         preview: (n) => {
           previewed.add(target)
           target.style.width = `${n}%`
         },
         commit: (n) => commitField(path, key, n),
+        snaps: () => widthSnapPoints(target, place, screenIndex, blockIndex),
       })
     }
     if (type === 'spacer') {
@@ -250,9 +272,10 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
   }
 
   /**
-   * 部品ごと動かす（つかみ所・部品そのものをつかんだとき）。
-   * 左右: 画面の横を3つに分けて、左・中央・右のどこに置くか（幅が100%の部品は変わらない）。
-   * 上下: ほかの部品の間に入れる（入る所に線を出す）。離したら設定データへ書く
+   * 部品ごと動かす（つかみ所・部品そのものをつかんだとき）。部品は手について動く（見た目だけ translate）。
+   * 左右: 左・中央・右に近づくと吸い付いてピンクの補助線。離すと一番近い位置に収まる（収まる所は点線の影で見せる）。
+   * 幅が100%の部品は横に動かない。
+   * 上下: ほかの部品の間に入れる（部品の真ん中がどこまで来たか。入る所に線を出す）。離したら設定データへ書く
    */
   const blockMove = (blockEl: HTMLElement, screenIndex: number, blockIndex: number): SelectionMove => {
     const type = str(blockAt(screenIndex, blockIndex) ?? {}, 'type')
@@ -262,58 +285,83 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
     const canPlace = widthKeyOf(type) !== null
     let startPlace = nowPlace()
     let place = startPlace
-    let started = false
     let insertAt = blockIndex
+    /** 動かし始めたときの四角（動かしている間は translate が乗るので、最初に測っておく）。null＝まだ動かしていない */
+    let from: { target: DOMRect; block: DOMRect } | null = null
     /** この画面の部品の要素（自分を除く並び・元の番号つき） */
     const others = (): { el: HTMLElement; index: number }[] =>
       items(items(data, 'screens')[screenIndex] ?? {}, 'blocks')
         .map((_, index) => ({ el: blockElementAt(data, contentDiv, screenIndex, index), index }))
         .filter((o): o is { el: HTMLElement; index: number } => o.el !== null && o.index !== blockIndex)
+    /** 自分より前にある部品の数（並びを変えていなければ、入る位置はこれ） */
+    const originalAt = (list: readonly { index: number }[]): number => list.filter((o) => o.index < blockIndex).length
     const PLACE_WORDS: Readonly<Record<Place, string>> = { left: '左に置く', center: '中央に置く', right: '右に置く' }
+    const finish = (): void => {
+      from = null
+      selection.dropLine(null)
+      selection.guides([])
+      selection.ghost(null)
+      clearPreviews()
+    }
     return {
-      update: (x, y) => {
-        if (!started) {
-          started = true
+      update: (x, y, startX, startY) => {
+        if (from === null) {
           startPlace = nowPlace()
           place = startPlace
+          target.style.removeProperty('transform')
+          from = { target: target.getBoundingClientRect(), block: blockEl.getBoundingClientRect() }
         }
-        const parent = (target.parentElement ?? blockEl).getBoundingClientRect()
-        if (canPlace && parent.width > 0) {
-          const ratio = (x - parent.left) / parent.width
-          place = ratio < 1 / 3 ? 'left' : ratio > 2 / 3 ? 'right' : 'center'
-          previewPlace(target, place)
+        const start = from.target
+        const box = contentBoxOf(target.parentElement ?? blockEl)
+        const area = contentDiv.getBoundingClientRect()
+        // 横: 手の位置のまま。左・中央・右に近づいたら吸い付く
+        let left = start.left
+        let snapped = false
+        const movable = canPlace && box.right - box.left - start.width >= 1
+        if (movable) {
+          const snap = snapPlace(start.left + x - startX, start.width, box)
+          place = snap.side
+          left = snap.left
+          snapped = snap.snapped
         }
-        // 上下: 自分を除いた並びの中で、真ん中より上にある部品の数＝入る位置
+        previewed.add(target)
+        target.style.transform = `translate(${left - start.left}px,${y - startY}px)`
+        // 上下: 動かしている部品の真ん中より上に真ん中がある部品の数＝入る位置
+        // （手の位置でなく部品の真ん中で見る。つかみ所は部品の上の辺にあるので、手の位置だと動かす前から上の部品を越えてしまう）
+        const middle = from.block.top + from.block.height / 2 + (y - startY)
         const list = others()
-        const before = list.filter((o) => {
+        insertAt = list.filter((o) => {
           const r = o.el.getBoundingClientRect()
-          return r.top + r.height / 2 < y
-        })
-        insertAt = before.length
-        const self = blockEl.getBoundingClientRect()
-        const originalAt = list.filter((o) => o.index < blockIndex).length
-        if (insertAt === originalAt) {
-          selection.dropLine(null)
-        } else {
+          return r.top + r.height / 2 < middle
+        }).length
+        const reorder = insertAt !== originalAt(list)
+        if (reorder) {
           const anchor = list[insertAt]?.el.getBoundingClientRect()
           const last = list[list.length - 1]?.el.getBoundingClientRect()
-          const lineY = anchor !== undefined ? anchor.top - 6 : (last?.bottom ?? self.bottom) + 6
-          const box = contentDiv.getBoundingClientRect()
-          selection.dropLine({ y: lineY, left: box.left + 8, width: box.width - 16 })
+          const lineY = anchor !== undefined ? anchor.top - 6 : (last?.bottom ?? from.block.bottom) + 6
+          selection.dropLine({ y: lineY, left: area.left + 8, width: area.width - 16 })
+        } else {
+          selection.dropLine(null)
         }
+        selection.guides(movable && snapped ? [{ x: placeGuideX(place, box), top: area.top, bottom: area.bottom }] : [])
+        // 吸い付いていないときは、離したら収まる所を点線の影で見せる（並びを変えるときは線の方で見せる）
+        selection.ghost(
+          movable && !snapped && !reorder
+            ? { left: placeLeft(place, start.width, box), top: start.top, width: start.width, height: start.height }
+            : null,
+        )
         const words: string[] = []
-        if (canPlace && place !== startPlace) words.push(PLACE_WORDS[place])
-        if (insertAt !== list.filter((o) => o.index < blockIndex).length) words.push('ここへ移す')
+        if (movable && place !== startPlace) words.push(PLACE_WORDS[place])
+        if (reorder) words.push('ここへ移す')
         return words.join('・')
       },
       commit: () => {
-        started = false
-        selection.dropLine(null)
+        if (from === null) return
+        finish()
         const list = others()
-        const originalAt = list.filter((o) => o.index < blockIndex).length
         let next = data
         if (canPlace && place !== startPlace) next = setAt(next, [...pathOf(screenIndex, blockIndex), 'place'], place)
-        if (insertAt !== originalAt) {
+        if (insertAt !== originalAt(list)) {
           next = moveTo(next, ['screens', screenIndex, 'blocks'], blockIndex, insertAt)
           form.load(next, screenIndex, insertAt)
           return
@@ -327,9 +375,9 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
         paint()
       },
       cancel: () => {
-        started = false
-        selection.dropLine(null)
-        clearPreviews()
+        // 動かす前に離した（ただ押しただけ）なら何もしない
+        if (from === null) return
+        finish()
         showSelection()
       },
     }
@@ -572,7 +620,7 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
         suppressClickUntil = Date.now() + 400
         move.commit(x, y)
       },
-      cancel: () => undefined,
+      cancel: move.cancel,
     })
   })
   // 画像を掴んだときにブラウザが画像そのものを運ぼうとするのを止める（部品の位置は上で動かす）
