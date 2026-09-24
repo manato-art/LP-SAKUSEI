@@ -7,7 +7,8 @@
 import { currentTeamId } from './current-team.ts'
 import { makeUid } from './ids.ts'
 import { toDateKey } from './metrics.ts'
-import type { Conversion, State, Task, TaskNotify, TaskReportSpan, TaskSchedule } from './types.ts'
+import type { Conversion, DeviceKind, State, Task, TaskNotify, TaskReportSpan, TaskSchedule } from './types.ts'
+import { bumpDeviceMetric } from './device-metrics.ts'
 import { nowTs, freshUid } from './actions-shared.ts'
 import { DEFAULT_REPORT_ITEMS, type ReportItems } from '../report-items.ts'
 
@@ -63,7 +64,14 @@ export function updateTask(
 // ── コンバージョン（CV速報が積む・§10-9「ダミーの流入が乗ると数値が付く」）──
 export function recordConversion(
   state: State,
-  input: { ab_test_uid: string; version_uid: string; media_id: number | null; amount: number },
+  input: {
+    ab_test_uid: string
+    version_uid: string
+    media_id: number | null
+    amount: number
+    /** 成果を送ってきた端末（2026-09-24・点検29）。分からなければ端末ごとには数えない */
+    device?: DeviceKind
+  },
 ): { state: State; conversion: Conversion } {
   const id = state.nextId
   const conversion: Conversion = {
@@ -84,11 +92,24 @@ export function recordConversion(
     input.version_uid === ''
       ? pageMetrics
       : bumpMetric({ ...state, metrics: pageMetrics }, input.version_uid, 'version', date, delta)
+  const device = input.device
+  const deviceMetrics =
+    device === undefined
+      ? state.deviceMetrics
+      : [
+          { entity_uid: input.ab_test_uid, scope: 'ab_test' as const },
+          ...(input.version_uid === '' ? [] : [{ entity_uid: input.version_uid, scope: 'version' as const }]),
+        ].reduce(
+          (list, key) => bumpDeviceMetric(list, { ...key, date, device }, delta),
+          state.deviceMetrics,
+        )
   return {
     state: {
       ...state,
       conversions: [conversion, ...state.conversions],
       metrics,
+      deviceMetrics,
+      deviceRecordedSince: device === undefined ? state.deviceRecordedSince : (state.deviceRecordedSince ?? date),
       nextId: id + 1,
     },
     conversion,

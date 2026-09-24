@@ -21,7 +21,12 @@ import {
 } from './report-dom.ts'
 import { defaultRange, toRangeQuery, type DateRange } from './report-period.ts'
 import { sortVersions, type HeatmapSortKey } from './heatmap-sort.ts'
-import { renderHeatmapColumns, type ColumnSpec, type HeatmapMetric } from './heatmap-columns.ts'
+import {
+  renderHeatmapColumns,
+  type ColumnSpec,
+  type HeatmapDeviceData,
+  type HeatmapMetric,
+} from './heatmap-columns.ts'
 import { columnKeyOf, expandColumnKeys, paramsForVersion } from './heatmap-params.ts'
 import { fetchHeatmapLpSources, type HeatmapLpSources } from './heatmap-lp-sources.ts'
 import { wireAbTestTabs, setupHorizTabs, setupBreadcrumb } from './tab-nav.ts'
@@ -99,6 +104,30 @@ export async function renderHeatmap(
   /** ソートモーダルで選ばれた並び順（採取物の9択の文字） */
   let columnOrder = ''
 
+  /**
+   * SP / PC ぶんの記録（2026-09-24・点検29）。列の SP / PC を押したときに1回だけ取りに行き、列どうしで使い回す。
+   * 失敗したら覚えずに捨てる（次に押したときに取り直す）。
+   */
+  const deviceCache = new Map<'sp' | 'pc', Promise<HeatmapDeviceData>>()
+  const loadDevice = (device: 'sp' | 'pc'): Promise<HeatmapDeviceData> => {
+    const hit = deviceCache.get(device)
+    if (hit !== undefined) return hit
+    const query = `${toRangeQuery(range)}&device=${device}`
+    const loading = Promise.all([
+      api.heatmapStats(abTestUid, query),
+      api.report(abTestUid, `${query}&archive=all`),
+    ]).then(([deviceStats, deviceReport]) => ({
+      versions: deviceStats.versions,
+      coverage: deviceStats.device_coverage ?? [],
+      since: deviceStats.device_since ?? null,
+      rows: deviceReport.rows,
+      totals: { pv: deviceReport.totals.pv, ctr: deviceReport.totals.ctr, cv: deviceReport.totals.cv },
+    }))
+    deviceCache.set(device, loading)
+    loading.catch(() => deviceCache.delete(device))
+    return loading
+  }
+
   const rebuild = (): void => {
     const specs: ColumnSpec[] = []
     for (const key of expandColumnKeys(selection, paramSelection, duplicates)) {
@@ -124,6 +153,7 @@ export async function renderHeatmap(
       styleCss: lpSources?.styleCss ?? '',
       range: { startDate: range.startDate, endDate: range.endDate },
       fullPage: isFullPageSelected(root),
+      loadDevice,
       onDuplicate: (target) => {
         const key = columnKeyOf({
           versionUid: target.versionUid,

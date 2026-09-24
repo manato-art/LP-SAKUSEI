@@ -9,6 +9,7 @@ import type { ReportDailyRow, ReportKpi, ReportVersionRow } from '../api.ts'
 import type { DateRange } from './report-period.ts'
 import { markSecondaryCells, metricsToggle } from './report-v2-mobile-table.ts'
 import { applyMetricTips } from './report-metric-tips.ts'
+import { deviceColumnLabel } from './report-totals-note.ts'
 import {
   BRANCH_FILTER_DEFAULT,
   filterBranchRows,
@@ -101,6 +102,8 @@ function sortableTh(col: { key: SortKey; label: string; num: boolean }, state: {
 export interface ReportListDeps {
   rows: readonly ReportVersionRow[]
   range: DateRange
+  /** 上の「端末」の絞り込み（行の数字はその端末のぶん・2026-09-24）。省略時は全端末 */
+  device?: '0' | 'sp' | 'tablet' | 'pc'
 }
 
 /** 「レポート一覧」= 2段見出し・並び替え・ページ送り */
@@ -211,8 +214,8 @@ export function buildReportList(deps: ReportListDeps): HTMLElement {
         cell('配信期間', `${deps.range.startDate} 〜 ${deps.range.endDate}`),
         cell('バージョン', row.name),
         cell('アーカイブ', '-'),
-        // 出し分けはVersion側の設定。レポートは端末別に分けていないので「全て」。
-        cell('デバイス', '全て'),
+        // 行の数字がどの端末のぶんか。上の「端末」で絞っていればその端末（2026-09-24 から端末を記録）
+        cell('デバイス', deviceColumnLabel(deps.device ?? '0')),
       )
       for (const c of [...PERF_COLS, ...RESULT_COLS, ...SPEED_COLS]) {
         tr.append(cell(c.label, c.cell(row), true))

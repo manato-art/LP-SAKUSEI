@@ -200,6 +200,8 @@ export interface ReportResponse {
   filtered_by?: ('version' | 'device')[]
   /** アーカイブの絞り込みで表に出していない Version の数（合計には入っている） */
   hidden_rows?: number
+  /** 端末を記録し始めた日（それより前の日は端末で絞ると0）。まだ無ければ null・古いサーバーは返さない */
+  device_since?: string | null
 }
 
 /**
@@ -232,6 +234,20 @@ export interface HeatmapStatsResponse {
   versions: HeatmapVersionStat[]
   /** そのVersionに実際に来た広告パラメータ（PVの多い順）。左のVersion一覧に並べる */
   parameters: HeatmapParameter[]
+  /** device を付けて頼んだとき、端末で絞れたか（広告パラメータと一緒には絞れない） */
+  device_applied?: boolean
+  /** Version ごとの、全端末の PV と端末ごとの PV（端末を記録する前のぶんは all にだけ入る） */
+  device_coverage?: HeatmapDeviceCoverage[]
+  /** 端末を記録し始めた日。まだ無ければ null */
+  device_since?: string | null
+}
+
+export interface HeatmapDeviceCoverage {
+  version_uid: string
+  all: number
+  sp: number
+  tablet: number
+  pc: number
 }
 
 /**

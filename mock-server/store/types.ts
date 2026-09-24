@@ -733,6 +733,33 @@ export interface HeatmapStat {
   clicks: { x: number; y: number }[]
 }
 
+/** 端末の種類（User-Agent から分ける・lib/device.ts） */
+export type DeviceKind = 'sp' | 'tablet' | 'pc'
+
+/**
+ * 端末ごとの LP 側の実測（表示・クリック・CV・売上）。2026-09-24 から記録する（点検29）。
+ * DailyMetric とは別に持つ（DailyMetric を読む集計がこの行まで足して二重に数えないように）。
+ * 配信金額は端末ごとに分からないので持たない。
+ */
+export interface DeviceMetric {
+  entity_uid: string
+  scope: 'ab_test' | 'version' | 'parameter'
+  date: string
+  device: DeviceKind
+  pv: number
+  click: number
+  cv: number
+  sales: number
+}
+
+/**
+ * 端末ごとのスクロールの記録（ヒートマップ）。形は HeatmapStat と同じで、端末が付く（2026-09-24）。
+ * 広告パラメータごとの行は持たない（param は常に ''）。容量を抑えるため。
+ */
+export interface DeviceHeatmapStat extends HeatmapStat {
+  device: DeviceKind
+}
+
 /**
  * 「表示するパラメータ」1行。
  * 採取物（capture/clean/ab_tests__UID__reports/report-settings-modal）の表と同じで、
@@ -1002,6 +1029,12 @@ export interface State {
   metrics: readonly DailyMetric[]
   /** 媒体実績を最後に取り込んだ記録（ページ×出どころで1件・store/media-imports.ts） */
   mediaImports: readonly MediaImportRecord[]
+  /** 端末ごとの LP 側の実測（2026-09-24 から・store/device-metrics.ts） */
+  deviceMetrics: readonly DeviceMetric[]
+  /** 端末ごとのスクロールの記録（2026-09-24 から） */
+  deviceHeatmapStats: readonly DeviceHeatmapStat[]
+  /** 端末を記録し始めた日（JST・YYYY-MM-DD）。まだ1件も無ければ null。これより前のデータには端末が無い */
+  deviceRecordedSince: string | null
   /** HTML設定モーダル（noindex とタグ）。記事ごとに1件。 */
   htmlTags: readonly ArticleHtmlSetting[]
   nextId: number

@@ -10,6 +10,10 @@
  *    ¥0 と言うと「お金をかけずにCVした」ように読めるので、CPA・MCPA・ROAS・ROI も出さない。
  *  - Version を選んで絞ったときは、LP の数字はその Version・配信金額はページ全体のまま。
  *    ページ全体の費用を一部の CV で割ると CPA が狂うので、そのあいだ CPA などは出さない（filtered_by で画面が断る）。
+ *
+ * 【端末で絞る】2026-09-24 から表示・クリック・CV・スクロールを端末ごとにも記録している（点検29）。
+ *  端末で絞ると、行・合計・日別の LP の数字はその端末のぶん（store/device-metrics.ts）。配信金額は端末ごとに
+ *  分からないのでページ全体のまま（CPAは出さない）。記録を始める前の日は0なので device_since を返して画面が断る。
  */
 import { deriveKpi, isWithin, sumPrimary, type DerivedKpi } from '../store/metrics.ts'
 import { dailyKpiSeries } from '../store/report-aggregate.ts'
@@ -18,7 +22,37 @@ import { scrollCounts, scrollCountsForAbTest } from '../store/scroll-counts.ts'
 import { botHitCount } from '../store/bot-hits.ts'
 import { speedSummary } from '../store/page-speed.ts'
 import { parameterNameOf, parameterScopesOf } from '../store/parameter-scopes.ts'
-import type { DailyMetric, State } from '../store/types.ts'
+import { deviceDailyMetrics, withDeviceHeatmap } from '../store/device-metrics.ts'
+import type { DailyMetric, DeviceKind, State } from '../store/types.ts'
+
+/**
+ * LP 側の実測をどこから読むか。全端末なら日次メトリクス、端末で絞れば端末ごとの記録。
+ * スクロールの記録も同じく差し替える（scrollState を scroll-counts.ts にそのまま渡す）。
+ */
+interface LpView {
+  /** その入れ物のうち、期間内・scope が合う行 */
+  metrics: (scope: DailyMetric['scope'], entityUid: (uid: string) => boolean) => DailyMetric[]
+  scrollState: State
+}
+
+function lpViewOf(state: State, device: DeviceKind | null, startDate: string, endDate: string): LpView {
+  if (device === null) {
+    return {
+      metrics: (scope, entityUid) =>
+        state.metrics.filter(
+          (m) => m.scope === scope && entityUid(m.entity_uid) && isWithin(m.date, startDate, endDate),
+        ),
+      scrollState: state,
+    }
+  }
+  return {
+    metrics: (scope, entityUid) =>
+      scope === 'ab_test' || scope === 'version' || scope === 'parameter'
+        ? deviceDailyMetrics(state, { device, scope, start: startDate, end: endDate, entityUid })
+        : [],
+    scrollState: withDeviceHeatmap(state, device),
+  }
+}
 
 /** 配信金額が分からない行（Version・広告）では、費用を使う指標を出さない */
 function withoutCost<T extends DerivedKpi>(kpi: T): T & { cost_known: false } {
@@ -43,6 +77,7 @@ function rowKpi(metrics: readonly DailyMetric[], scroll: ReturnType<typeof scrol
  */
 function parameterRows(
   state: State,
+  view: LpView,
   abTestUid: string,
   versionUid: string,
   startDate: string,
@@ -56,17 +91,14 @@ function parameterRows(
   const prefix = `${versionUid}|`
   const byParam = new Map<string, DailyMetric[]>()
   const keep = (param: string): boolean => shown.has(parameterNameOf(param))
-  for (const metric of state.metrics) {
-    if (metric.scope !== 'parameter') continue
-    if (!metric.entity_uid.startsWith(prefix)) continue
-    if (!isWithin(metric.date, startDate, endDate)) continue
+  for (const metric of view.metrics('parameter', (uid) => uid.startsWith(prefix))) {
     const param = metric.entity_uid.slice(prefix.length)
     if (!keep(param)) continue
     byParam.set(param, [...(byParam.get(param) ?? []), metric])
   }
   // 表示・クリックが記録されていなくても、スクロールの記録だけ来ている広告がある
   // （計測タグは離脱時にまとめて送るので、順番によってはこちらが先に入る）。
-  for (const stat of state.heatmapStats) {
+  for (const stat of view.scrollState.heatmapStats) {
     const param = stat.param ?? ''
     if (param === '' || stat.version_uid !== versionUid) continue
     if (!isWithin(stat.date, startDate, endDate)) continue
@@ -81,7 +113,7 @@ function parameterRows(
       status: '',
       distribution_ratio: 0,
       archived: false,
-      ...rowKpi(metrics, scrollCounts(state, versionUid, startDate, endDate, param)),
+      ...rowKpi(metrics, scrollCounts(view.scrollState, versionUid, startDate, endDate, param)),
     }))
     .sort((a, b) => b.pv - a.pv || a.name.localeCompare(b.name))
 }
@@ -164,33 +196,35 @@ export function reportRows(state: State, uid: string, scope: 'version' | 'lp' | 
   const all = state.versions.filter((v) => articleIds.includes(v.article_id))
   const filter = topFilterOf(query)
   const versions = all.filter((version) => keepVersion(version, filter))
-  const rows = versions.map((version) => {
-    const metrics = state.metrics.filter(
-      (m) => m.entity_uid === version.uid && m.scope === 'version' && isWithin(m.date, startDate, endDate),
-    )
-    return {
-      scope,
-      entity_uid: version.uid,
-      name: version.name,
-      status: version.status,
-      distribution_ratio: version.distribution_ratio,
-      // ヒートマップ／レポートの「アーカイブ」絞り込みに要る（2026-09-15）。
-      archived: version.archived,
-      // Branch Operation の「端末」で絞るのに要る（値は元から持っていた）
-      device_targets: version.device_targets,
-      ...rowKpi(metrics, scrollCounts(state, version.uid, startDate, endDate)),
-      /** そのVersionに来た広告パラメータごとの行（実物はVersionの下にぶら下がる） */
-      children: parameterRows(state, abTest.uid, version.uid, startDate, endDate),
-      /** 読み込みに3秒以上かかった人の割合と人数（store/page-speed.ts・2026-09-16） */
-      speed: speedSummary(state.pageSpeedStats, { versionUids: [version.uid], start: startDate, end: endDate }),
-    }
-  })
+  const view = lpViewOf(state, filter.device === '0' ? null : filter.device, startDate, endDate)
+  const rows = versions.map((version) => ({
+    scope,
+    entity_uid: version.uid,
+    name: version.name,
+    status: version.status,
+    distribution_ratio: version.distribution_ratio,
+    // ヒートマップ／レポートの「アーカイブ」絞り込みに要る（2026-09-15）。
+    archived: version.archived,
+    // Branch Operation の「端末」で絞るのに要る（値は元から持っていた）
+    device_targets: version.device_targets,
+    ...rowKpi(
+      view.metrics('version', (u) => u === version.uid),
+      scrollCounts(view.scrollState, version.uid, startDate, endDate),
+    ),
+    /** そのVersionに来た広告パラメータごとの行（実物はVersionの下にぶら下がる） */
+    children: parameterRows(state, view, abTest.uid, version.uid, startDate, endDate),
+    /** 読み込みに3秒以上かかった人の割合と人数（store/page-speed.ts・2026-09-16） */
+    speed: speedSummary(state.pageSpeedStats, { versionUids: [version.uid], start: startDate, end: endDate }),
+  }))
 
   const pageMetrics = state.metrics.filter(
     (m) => m.entity_uid === abTest.uid && m.scope === 'ab_test' && isWithin(m.date, startDate, endDate),
   )
-  // 本人が選んだ絞り込み（Version）だけが合計の中身を変える。アーカイブの既定は行だけに効く
-  const filteredBy: 'version'[] = filter.version === '' ? [] : ['version']
+  // 本人が選んだ絞り込み（Version・端末）だけが合計の中身を変える。アーカイブの既定は行だけに効く
+  const filteredBy: ('version' | 'device')[] = [
+    ...(filter.version === '' ? [] : ['version' as const]),
+    ...(filter.device === '0' ? [] : ['device' as const]),
+  ]
   const shared = {
     rows,
     /**
@@ -203,8 +237,10 @@ export function reportRows(state: State, uid: string, scope: 'version' | 'lp' | 
     bot_hits: botHitCount(state.botHits, { abTestUids: [abTest.uid], start: startDate, end: endDate }),
     /** 合計の中身を変えた絞り込み（空＝ページ全体） */
     filtered_by: filteredBy,
-    /** アーカイブの絞り込みで表に出していない Version の数（合計には入っている） */
-    hidden_rows: filteredBy.length === 0 ? all.length - versions.length : 0,
+    /** 絞り込みで表に出していない Version の数（Version を選んでいなければ、合計には入っている） */
+    hidden_rows: filter.version === '' ? all.length - versions.length : 0,
+    /** 端末を記録し始めた日（それより前の日は端末で絞ると0）。まだ無ければ null */
+    device_since: state.deviceRecordedSince,
   }
 
   if (filteredBy.length === 0) {
@@ -220,20 +256,23 @@ export function reportRows(state: State, uid: string, scope: 'version' | 'lp' | 
     }
   }
 
-  // Version を選んで絞ったとき: LP の数字はその Version、配信金額はページ全体のまま
+  // 絞り込んだとき: LP の数字は絞ったぶん（Version・端末）、配信金額はページ全体のまま
   const versionUids = new Set(versions.map((v) => v.uid))
-  const lpMetrics = state.metrics.filter(
-    (m) => m.scope === 'version' && versionUids.has(m.entity_uid) && isWithin(m.date, startDate, endDate),
-  )
-  const combined = [...lpMetrics.map((m) => ({ ...m, ad_cost: 0, imp: 0, media_click: 0, media_cv: 0 })), ...pageMetrics.map(mediaOnly)]
+  const lpMetrics =
+    filter.version === ''
+      ? view.metrics('ab_test', (u) => u === abTest.uid)
+      : view.metrics('version', (u) => versionUids.has(u))
+  const scroll =
+    filter.version === ''
+      ? scrollCountsForAbTest(view.scrollState, abTest.uid, startDate, endDate)
+      : sumScrollCounts(view.scrollState, [...versionUids], startDate, endDate)
+  const combined = [
+    ...lpMetrics.map((m) => ({ ...m, ad_cost: 0, imp: 0, media_click: 0, media_cv: 0 })),
+    ...pageMetrics.map(mediaOnly),
+  ]
   return {
     ...shared,
-    totals: withoutCostRatios(
-      deriveKpi({
-        ...sumPrimary(combined),
-        ...sumScrollCounts(state, [...versionUids], startDate, endDate),
-      }),
-    ),
+    totals: withoutCostRatios(deriveKpi({ ...sumPrimary(combined), ...scroll })),
     daily: dailyKpiSeries(combined, startDate, endDate).map(withoutCostRatios),
   }
 }

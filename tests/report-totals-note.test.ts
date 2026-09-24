@@ -25,4 +25,40 @@ describe('合計の断り書き', () => {
   it('古いサーバーの応答（項目なし）は何も出さない', () => {
     expect(totalsNoteLines({})).toEqual([])
   })
+
+  it('端末で絞っていて、期間が記録を始めた日より前からなら、その日付を書く', () => {
+    expect(
+      totalsNoteLines({ filtered_by: ['device'], hidden_rows: 0, device_since: '2026-09-24' }, {
+        startDate: '2026-09-20',
+        endDate: '2026-09-25',
+      }),
+    ).toContain('端末の記録は 9/24 からです。9/24 より前の日は、端末で絞ると0になります。')
+  })
+
+  it('端末の記録がまだ1件も無いときもそう書く', () => {
+    expect(
+      totalsNoteLines({ filtered_by: ['device'], hidden_rows: 0, device_since: null }, {
+        startDate: '2026-09-20',
+        endDate: '2026-09-25',
+      }),
+    ).toContain('端末の記録はまだありません。端末で絞った数字は、記録が始まるまで0です。')
+  })
+
+  it('期間がすべて記録を始めた日より後なら、日付の断りは出さない', () => {
+    const lines = totalsNoteLines({ filtered_by: ['device'], hidden_rows: 0, device_since: '2026-09-01' }, {
+      startDate: '2026-09-20',
+      endDate: '2026-09-25',
+    })
+    expect(lines.some((l) => l.startsWith('端末の記録は'))).toBe(false)
+  })
+})
+
+describe('レポート一覧の「デバイス」列', () => {
+  it('端末で絞っていればその端末名、絞っていなければ「全て」', async () => {
+    const { deviceColumnLabel } = await import('../src/app/pages/report-totals-note.ts')
+    expect(deviceColumnLabel('0')).toBe('全て')
+    expect(deviceColumnLabel('sp')).toBe('スマートフォン')
+    expect(deviceColumnLabel('tablet')).toBe('タブレット')
+    expect(deviceColumnLabel('pc')).toBe('PC')
+  })
 })

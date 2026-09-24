@@ -311,7 +311,7 @@ export async function buildReportBody(deps: ReportBodyDeps): Promise<HTMLElement
     // 数字にボットが入っていないことと、除いた件数（2026-09-16・本人の依頼）
     buildBotNote(deps.report.bot_hits ?? 0),
     // 合計はページ全体・配信金額はページ単位（表の行と合計が合わない理由・2026-09-24）
-    ...[buildTotalsNote(deps.report)].filter((n): n is HTMLElement => n !== null),
+    ...[buildTotalsNote(deps.report, deps.range)].filter((n): n is HTMLElement => n !== null),
     buildKpiCards({ totals: deps.report.totals, daily: deps.report.daily, previous }),
     buildCreativeReport({
       daily: deps.report.daily,
@@ -319,7 +319,7 @@ export async function buildReportBody(deps: ReportBodyDeps): Promise<HTMLElement
       rows: deps.report.rows,
       onDownloadCsv: csv,
     }),
-    buildReportList({ rows: deps.report.rows, range: deps.range }),
+    buildReportList({ rows: deps.report.rows, range: deps.range, device: deps.filter.device }),
     buildDailyTable({ daily: deps.report.daily, totals: deps.report.totals }),
     buildBranchOperation({ rows: deps.report.rows, totals: deps.report.totals, onDownloadCsv: csv }),
     // 実物はBranch Operationの下にファネル、その下にポップアップが並ぶ
