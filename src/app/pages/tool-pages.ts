@@ -19,7 +19,12 @@ import bulkReplacesFragment from '../fragments/articles__bulk_replaces__default.
 import mediaFragment from '../fragments/teams__product_search_forms__default.html?raw'
 import inspectionsFragment from '../fragments/inspections__folders__default.html?raw'
 import { stripGlobalSidebar } from './sidebar-shell.ts'
-import { rewireToolSubnav, stripRemovedSubnavTabs, type ToolPage } from './tool-subnav.ts'
+import {
+  prepareToolLayout,
+  rewireToolSubnav,
+  stripRemovedSubnavTabs,
+  type ToolPage,
+} from './tool-subnav.ts'
 import { renderBulkTagsPage } from './bulk-tags-page.ts'
 import { renderBulkReplacePage } from './bulk-replace-page.ts'
 import { renderMediaPage } from './media-page.ts'
@@ -32,8 +37,14 @@ import { renderInspections, renderInspectionTargets } from './inspections-page.t
  */
 export const INSPECTION_LIST_IDS = ['ts-sortableFolderGroupList', 'ts-sortableFolderList'] as const
 
-/** 共通の土台マウント: サイドバー除去 → 本体挿入 → 出さないタブを外す → サブナビ張り替え。 */
-function mountToolFragment(container: HTMLElement, fragment: string): HTMLElement {
+/**
+ * 共通の土台マウント: サイドバー除去 → 本体挿入 → 出さないタブを外す → サブナビ張り替え
+ * → 中身を描く場所を返す（サブナビの隣の箱）。
+ *
+ * 以前は `.ehppitp0`（サブナビを含む）を描く場所にしていたので、各画面が中身を空にすると
+ * サブナビまで消え、スマホではマジック置換・メディア・審査へ行けなかった（prepareToolLayout）。
+ */
+function mountToolFragment(container: HTMLElement, fragment: string, fullHeight: boolean): HTMLElement {
   container.style.cssText = 'flex:1;min-width:0'
   container.innerHTML = ''
   const root = document.createElement('div')
@@ -41,35 +52,29 @@ function mountToolFragment(container: HTMLElement, fragment: string): HTMLElemen
   container.append(root)
   stripRemovedSubnavTabs(root)
   rewireToolSubnav(root)
-  return root
+  const host = prepareToolLayout(root) ?? root
+  if (host !== root) {
+    // 採取物の箱は中身を真ん中寄せにする flex。機能UIは幅いっぱいに描くのでブロックに戻す
+    host.style.display = 'block'
+    host.style.minWidth = '0'
+  }
+  if (fullHeight) host.style.height = 'calc(100vh - 120px)'
+  return host
 }
 
 // ── 一括タグ（/teams/tags）＝実SB同等の機能実装（一覧＋追加＋設定フォーム） ──
 export function renderToolTags(container: HTMLElement): void {
-  const root = mountToolFragment(container, tagsFragment)
-  // 採取フラグメントの本文領域(.ehppitp0)を機能UIに差し替える。無ければ container 直下へ。
-  const host = root.querySelector<HTMLElement>('.ehppitp0') ?? root
-  if (host !== root) host.style.paddingLeft = '0'
-  void renderBulkTagsPage(host)
+  void renderBulkTagsPage(mountToolFragment(container, tagsFragment, false))
 }
 
 // ── マジック置換（/articles/bulk_replaces）＝実SB同等の機能実装 ──
 export function renderToolBulkReplaces(container: HTMLElement): void {
-  const root = mountToolFragment(container, bulkReplacesFragment)
-  // 採取フラグメントの本文領域を機能UIに差し替える（一括タグと同じやり方）。
-  const host = root.querySelector<HTMLElement>('.ehppitp0') ?? root
-  if (host !== root) host.style.paddingLeft = '0'
-  host.style.height = 'calc(100vh - 120px)'
-  void renderBulkReplacePage(host)
+  void renderBulkReplacePage(mountToolFragment(container, bulkReplacesFragment, true))
 }
 
 // ── メディア（/teams/product_search_forms）＝実SB同等の機能実装 ──
 export function renderToolMedia(container: HTMLElement): void {
-  const root = mountToolFragment(container, mediaFragment)
-  const host = root.querySelector<HTMLElement>('.ehppitp0') ?? root
-  if (host !== root) host.style.paddingLeft = '0'
-  host.style.height = 'calc(100vh - 120px)'
-  void renderMediaPage(host)
+  void renderMediaPage(mountToolFragment(container, mediaFragment, true))
 }
 
 /**
@@ -79,14 +84,12 @@ export function renderToolMedia(container: HTMLElement): void {
  * サイドバーは /inspections を指すので、ハッシュを見て出し分ける。
  */
 export function renderToolInspections(container: HTMLElement): void {
-  const root = mountToolFragment(container, inspectionsFragment)
-  // 実データ行（フォルダグループ一覧）は再現しない。容器の中身を空にする（枠は残す）。
+  const host = mountToolFragment(container, inspectionsFragment, true)
+  // 実データ行（フォルダグループ一覧）は再現しない（中身の箱ごと機能UIに差し替わる）。
+  // 箱が見つからず土台全体に描くときのために、容器の中身も空にしておく（枠は残す）。
   for (const id of INSPECTION_LIST_IDS) {
-    root.querySelector(`#${id}`)?.replaceChildren()
+    container.querySelector(`#${id}`)?.replaceChildren()
   }
-  const host = root.querySelector<HTMLElement>('.ehppitp0') ?? root
-  if (host !== root) host.style.paddingLeft = '0'
-  host.style.height = 'calc(100vh - 120px)'
   const isTargets = location.hash.includes('/inspections/folders')
   void (isTargets ? renderInspectionTargets(host) : renderInspections(host))
 }

@@ -224,7 +224,8 @@ describe('下部タブバー', () => {
     expect(isActiveTab('#/ab_tests/abc/articles', '#/folders')).toBe(true)
     expect(isActiveTab('#/dashboard', '#/folders')).toBe(false)
     expect(isActiveTab('#/dashboard', '#/dashboard')).toBe(true)
-    expect(isActiveTab('#/teams/media', '#/teams/tags')).toBe(true)
+    // ツールの各画面（実在するパス）で「ツール」が今いる場所になる
+    expect(isActiveTab('#/teams/product_search_forms', '#/teams/tags')).toBe(true)
   })
 
   it('LPエディタでは出さない（自前の操作列に重なって押せなくなる）', () => {

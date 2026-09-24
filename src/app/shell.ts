@@ -533,6 +533,7 @@ function labelChildOf(item: HTMLElement): HTMLElement | null {
  * 折りたたみ（アイコンのみ）＋ホバー展開のCSSを1回だけ差し込む。
  * ホバーできる環境（デスクトップ）でのみ展開する。タッチ端末は折りたたみのまま
  * アイコンをタップして遷移する（委譲ハンドラで確実に動く）。
+ * アコーディオン（ツール・外部連携）はタッチ端末では押して開いた状態をそのまま見せる。
  */
 function injectRailStyles(): void {
   if (document.getElementById('sb-rail-styles') !== null) return
@@ -561,6 +562,14 @@ function injectRailStyles(): void {
     `max-height:0;opacity:0;transition:max-height .22s ease,opacity .16s ease}`,
     `@media (hover:hover){`,
     `.${RAIL_CLASS}:hover .sb-accordion-sub.sb-accordion-open{max-height:200px;opacity:1}`,
+    `}`,
+    // タッチの端末（タブレット等）はホバーできないので、押して開いたらそのまま見せる。
+    // レールは細いままなので、項目名は2行に折り返して中央に置く（以前はタッチでは開かず、ツールへ行けなかった）
+    `@media (hover:none){`,
+    `.sb-accordion-sub.sb-accordion-open{max-height:260px;opacity:1}`,
+    `.sb-accordion-item{padding:6px 2px;justify-content:center}`,
+    `.sb-accordion-item::before{display:none}`,
+    `.sb-accordion-item .${RAIL_LABEL_CLASS}{white-space:normal;text-align:center;line-height:1.3;max-width:52px;font-size:10px;opacity:1}`,
     `}`,
     `.sb-accordion-item{display:flex;align-items:center;padding:5px 8px 5px 40px;`,
     `cursor:pointer;font-size:13px;color:var(--sb-c-666666, #666666);white-space:nowrap;overflow:hidden}`,

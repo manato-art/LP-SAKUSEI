@@ -21,6 +21,7 @@
 import { api, type InspectionEntry, type InspectionFolder } from '../api.ts'
 import { toast } from '../ui.ts'
 import { buildToolGuide } from './tool-guide.ts'
+import { INSPECTION_SCREENS } from './tool-subnav.ts'
 import { FAVORITE_STAR_COLOR } from './folders-detail-panel.ts'
 
 type Kind = 'version' | 'popup'
@@ -47,6 +48,7 @@ export async function renderInspectionTargets(host: HTMLElement): Promise<void> 
   host.innerHTML = ''
   const root = h('div', 'ins-page')
   host.append(root)
+  root.append(screenSwitch('#/inspections/folders'))
 
   const guide = buildToolGuide({
     id: 'inspection-targets',
@@ -145,6 +147,8 @@ export async function renderInspections(host: HTMLElement): Promise<void> {
   host.innerHTML = ''
   const root = h('div', 'ins-page')
   host.append(root)
+
+  root.append(screenSwitch('#/inspections'))
 
   let kind: Kind = 'version'
   let status = 'all'
@@ -330,6 +334,24 @@ function openUrlSearch(): void {
 
 /* ── 小さな部品 ── */
 
+/**
+ * 「審査 / 審査対象」の切り替え。2画面とも常に出す。
+ * 以前は審査対象へ行く道が、閉じられる案内帯にしか無かった（閉じると行けなくなった）。
+ */
+function screenSwitch(current: string): HTMLElement {
+  const nav = h('div', 'ins-screens')
+  nav.setAttribute('role', 'tablist')
+  for (const screen of INSPECTION_SCREENS) {
+    const on = screen.hash === current
+    const a = h('a', `ins-screen${on ? ' on' : ''}`, screen.label) as HTMLAnchorElement
+    a.href = screen.hash
+    a.setAttribute('role', 'tab')
+    a.setAttribute('aria-selected', String(on))
+    nav.append(a)
+  }
+  return nav
+}
+
 function h(tag: string, className: string, text?: string): HTMLElement {
   const node = document.createElement(tag)
   node.className = className
@@ -359,6 +381,10 @@ function injectStyles(): void {
   s.textContent = `
     .ins-page{display:flex;flex-direction:column;height:100%;min-height:0;font-size:13px;
       color:var(--sb-c-333333, #333333);padding:14px 18px;box-sizing:border-box;gap:8px}
+    .ins-screens{display:flex;flex-direction:row;gap:4px;flex-shrink:0;border-bottom:1px solid var(--sb-c-eeeeee, #EEEEEE)}
+    .ins-screen{padding:6px 14px;font-size:13px;color:var(--sb-c-666666, #666666);text-decoration:none;
+      border-bottom:2px solid transparent;margin-bottom:-1px}
+    .ins-screen.on{color:var(--sb-c-111111, #111111);font-weight:600;border-bottom-color:var(--sb-accent,#0091FF)}
     .ins-tabs{display:flex;flex-direction:row;justify-content:center;gap:60px;flex-shrink:0}
     .ins-tab{border:none;background:none;font-size:13px;color:var(--sb-c-666666, #666666);cursor:pointer;padding:5px 16px;border-radius:4px}
     .ins-tab.on{background:var(--sb-c-eef0f4, #EEF0F4);color:var(--sb-c-111111, #111111);font-weight:600}

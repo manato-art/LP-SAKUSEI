@@ -7,6 +7,7 @@
  */
 import { T, el } from '../ui.ts'
 import { BOTTOM_NAV_HEIGHT } from './mobile-css.ts'
+import { INSPECTIONS_CANONICAL_ROUTE, TOOL_PAGE_ROUTES } from '../pages/tool-subnav.ts'
 
 const NAV_ID = 'sb-bottom-nav'
 const SHEET_ID = 'sb-more-sheet'
@@ -71,13 +72,21 @@ export function showsBottomNav(hash: string): boolean {
   return !/^\/ab_tests\/[^/]+\/articles/.test(current)
 }
 
+/** 「ツール」タブが受け持つ画面（一括タグ / マジック置換 / メディア / 審査・審査対象） */
+const TOOL_ROUTES: readonly string[] = [...Object.values(TOOL_PAGE_ROUTES), INSPECTIONS_CANONICAL_ROUTE]
+
+/** `current` が `route` そのものか、その下（`/…` `?…`）か */
+function isUnder(current: string, route: string): boolean {
+  return current === route || current.startsWith(`${route}/`) || current.startsWith(`${route}?`)
+}
+
 /** 今のURLが、そのタブの担当か */
 export function isActiveTab(hash: string, href: string): boolean {
   if (href === '') return false
   const route = href.replace(/^#/, '')
   const current = hash.replace(/^#/, '')
   if (route === '/folders') return current === '' || current.startsWith('/folders') || current.startsWith('/ab_tests')
-  if (route === '/teams/tags') return current.startsWith('/teams/tags') || current.startsWith('/teams/bulk_replaces') || current.startsWith('/teams/media') || current.startsWith('/teams/inspections')
+  if (route === '/teams/tags') return TOOL_ROUTES.some((r) => isUnder(current, r))
   return current.startsWith(route)
 }
 
