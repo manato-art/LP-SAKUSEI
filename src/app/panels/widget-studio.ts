@@ -192,7 +192,7 @@ export function mountStudio(host: StudioHost): void {
   const partsPane = document.createElement('div')
   partsPane.dataset['widgetPane'] = 'parts'
   partsPane.style.cssText =
-    `flex:0 0 288px;display:flex;flex-direction:column;min-height:0;min-width:0;overflow:hidden;` +
+    `flex:0 0 320px;display:flex;flex-direction:column;min-height:0;min-width:0;overflow:hidden;` +
     `background:var(--sb-c-ffffff, #FFFFFF);border-right:1px solid var(--sb-c-e3e5e9, #E3E5E9)`
   const partsList = document.createElement('div')
   partsList.className = 'ncf-parts'

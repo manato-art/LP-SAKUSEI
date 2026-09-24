@@ -207,7 +207,8 @@ textarea.ncf-input{resize:vertical;min-height:64px}
 .ncf-parts .ncf-item--selected>.ncf-item__head{background:#E8F3FF}
 .ncf-parts .ncf-item--selected>.ncf-item__head .ncf-item__name{color:#0060B8}
 .ncf-parts .ncf-item__head .ncf-icon-btn{width:26px;height:26px;flex-shrink:0}
-.ncf-parts .ncf-item__copy,.ncf-parts .ncf-item__remove{width:auto;padding:0 6px;font-size:11.5px}
+/* 「複製」「消す」は横書き（上の 26px 四方より強い指定にする。弱いと2文字が縦に折れていた・2026-09-24） */
+.ncf-parts .ncf-item__head .ncf-item__copy,.ncf-parts .ncf-item__head .ncf-item__remove{width:auto;padding:0 8px;font-size:11.5px;white-space:nowrap}
 /* 選んでいない部品の操作ボタンは、乗せたときだけ（細い列に押せないほど並べない） */
 .ncf-parts .ncf-item:not(.ncf-item--selected)>.ncf-item__head:not(:hover):not(:focus-within) .ncf-icon-btn{display:none}
 .ncf-parts__whole{display:block;width:100%;margin-top:8px;padding:8px 10px;border:1px dashed var(--sb-line,#D5D9DF);border-radius:8px;
