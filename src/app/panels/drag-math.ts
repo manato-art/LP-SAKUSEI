@@ -122,6 +122,14 @@ export function handleKindOf(setting: Pick<Setting, 'kind' | 'property' | 'label
 /** 吸い付く距離（画面の px） */
 export const SNAP_PX = 8
 
+/**
+ * 吸い付く距離。Alt（Mac は option）を押しながら動かしているときは 0＝吸い付かない
+ * （50% のすぐ隣の 49% などを、つまみで作れるように。ぴったり重なったときだけ線は出る）
+ */
+export function snapThreshold(isFree: boolean): number {
+  return isFree ? 0 : SNAP_PX
+}
+
 /** 部品を置ける横の範囲（中身の左端・右端） */
 export interface Span {
   readonly left: number

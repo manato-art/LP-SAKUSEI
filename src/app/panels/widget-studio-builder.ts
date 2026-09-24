@@ -24,7 +24,7 @@ import { BUILDER_PADDING, BUILDER_TEMPLATE } from './nocode/templates/builder.ts
 import { ALIGNS, HEADING_SIZES, PLACES, SPACER_SIZES, TEXT_SIZES, blockLabel, sizeOf, widthKeyOf, type Place } from './nocode/templates/builder-blocks.ts'
 import { newUid } from './nocode/templates/kit.ts'
 import { int, items, pick, str, type ItemData, type TemplateData } from './nocode/templates/types.ts'
-import { placeGuideX, placeLeft, snapPlace, widthGuideXs, widthSnaps } from './drag-math.ts'
+import { placeGuideX, placeLeft, snapPlace, snapThreshold, widthGuideXs, widthSnaps } from './drag-math.ts'
 import { contentBoxOf, createSelectionLayer, type SelectionHandle, type SelectionMove, type SnapPoint } from './selection-layer.ts'
 import { openSizePopover } from './size-popover.ts'
 import { canvasEditTarget } from './widget-canvas-events.ts'
@@ -273,7 +273,8 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
 
   /**
    * 部品ごと動かす（つかみ所・部品そのものをつかんだとき）。部品は手について動く（見た目だけ translate）。
-   * 左右: 左・中央・右に近づくと吸い付いてピンクの補助線。離すと一番近い位置に収まる（収まる所は点線の影で見せる）。
+   * 左右: 左・中央・右に近づくと吸い付いてピンクの補助線（Alt・option を押していれば吸い付かない）。
+   * 離すと一番近い位置に収まる（収まる所は点線の影で見せる）。
    * 幅が100%の部品は横に動かない。
    * 上下: ほかの部品の間に入れる（部品の真ん中がどこまで来たか。入る所に線を出す）。離したら設定データへ書く
    */
@@ -304,7 +305,7 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
       clearPreviews()
     }
     return {
-      update: (x, y, startX, startY) => {
+      update: ({ x, y, startX, startY, isFree }) => {
         if (from === null) {
           startPlace = nowPlace()
           place = startPlace
@@ -319,7 +320,7 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
         let snapped = false
         const movable = canPlace && box.right - box.left - start.width >= 1
         if (movable) {
-          const snap = snapPlace(start.left + x - startX, start.width, box)
+          const snap = snapPlace(start.left + x - startX, start.width, box, snapThreshold(isFree))
           place = snap.side
           left = snap.left
           snapped = snap.snapped

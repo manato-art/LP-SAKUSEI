@@ -10,8 +10,9 @@
  * つかみ所（枠の上のまん中）: つかんで動かすと部品ごと動く（左右で置く位置、上下で並び順。何をするかは呼ぶ側）。
  * 何をどう変えるかは呼ぶ側が渡す。動かしている間は preview（見た目だけ）、離したら commit（確定）。値の計算は drag-math.ts。
  * 補助線（2026-09-24）: 吸い付いた所にピンクの線、離したら収まる所に点線の影。つまみは snaps の値に吸い付く。
+ * Alt（Mac は option）を押しながら動かすと吸い付かない。
  */
-import { dragValue, nearestSnap, type NumberRange, type Span } from './drag-math.ts'
+import { dragValue, nearestSnap, snapThreshold, type NumberRange, type Span } from './drag-math.ts'
 
 const ACCENT = 'var(--sb-accent, #0091FF)'
 const INK = 'var(--sb-accent-ink, #FFFFFF)'
@@ -59,10 +60,20 @@ export interface SelectionHandle {
   readonly snaps?: () => readonly SnapPoint[]
 }
 
+/** 動かしている今の手の位置（画面の座標） */
+export interface MovePoint {
+  readonly x: number
+  readonly y: number
+  /** 押した所（動かした量＝今 − 押した所） */
+  readonly startX: number
+  readonly startY: number
+  /** Alt（Mac は option）を押している＝吸い付かない */
+  readonly isFree: boolean
+}
+
 /** 部品ごと動かす（つかみ所・部品そのものをつかんだとき）。動かしている間の説明を返すと吹き出しに出す */
 export interface SelectionMove {
-  /** startX・startY は押した所（動かした量＝今 − 押した所） */
-  readonly update: (clientX: number, clientY: number, startX: number, startY: number) => string
+  readonly update: (point: MovePoint) => string
   readonly commit: (clientX: number, clientY: number) => void
   readonly cancel: () => void
 }
@@ -104,6 +115,9 @@ const HANDLE_PLACE: Readonly<Record<HandleKind, { style: string; cursor: string;
 
 /** 部品そのものをつかんだとき、この距離(px)動いてから動かし始める（ただの押下＝選ぶ、と区別する） */
 const MOVE_THRESHOLD = 5
+
+/** 吸い付きを外すキーの案内（つまみ・つかみ所の説明に添える） */
+const FREE_HINT = 'Alt（Mac は option）を押しながらだと吸い付かない'
 
 const MOVE_ICON =
   '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" ' +
@@ -179,7 +193,7 @@ export function createSelectionLayer(editorBody: HTMLElement, contentDiv: HTMLEl
   grip.dataset['widgetMoveGrip'] = 'true'
   grip.setAttribute('role', 'button')
   grip.setAttribute('aria-label', 'つかんで動かす（左右で置く位置・上下で並び順）')
-  grip.title = 'つかんで動かす（左右で置く位置・上下で並び順）'
+  grip.title = `つかんで動かす（左右で置く位置・上下で並び順）\n${FREE_HINT}`
   grip.innerHTML = MOVE_ICON
   grip.style.cssText =
     `position:absolute;left:50%;top:0;transform:translate(-50%,-50%);display:none;align-items:center;justify-content:center;` +
@@ -305,7 +319,7 @@ export function createSelectionLayer(editorBody: HTMLElement, contentDiv: HTMLEl
     knob.dataset['widgetHandle'] = handle.kind
     knob.setAttribute('role', 'slider')
     knob.setAttribute('aria-label', `${handle.label}をドラッグで変える`)
-    knob.title = `${handle.label}（ドラッグで変える）`
+    knob.title = `${handle.label}（ドラッグで変える）${handle.snaps === undefined ? '' : `\n${FREE_HINT}`}`
     knob.style.cssText =
       `position:absolute;${spot.style};width:12px;height:12px;box-sizing:border-box;transform:translate(-50%,-50%);` +
       `border:2px solid ${ACCENT};background:#fff;border-radius:3px;cursor:${spot.cursor};pointer-events:auto;` +
@@ -327,7 +341,7 @@ export function createSelectionLayer(editorBody: HTMLElement, contentDiv: HTMLEl
         event,
         (ev) => {
           const raw = dragValue(start, spot.delta(ev.clientX - startX, ev.clientY - startY), perUnit, handle.range)
-          const hit = nearestSnap(raw, snaps, perUnit)
+          const hit = nearestSnap(raw, snaps, perUnit, snapThreshold(ev.altKey))
           value = hit?.value ?? raw
           showGuides(hit?.lines ?? [])
           handle.preview(value)
@@ -362,7 +376,7 @@ export function createSelectionLayer(editorBody: HTMLElement, contentDiv: HTMLEl
         if (!moving && Math.hypot(ev.clientX - startX, ev.clientY - startY) < threshold) return
         moving = true
         grip.style.cursor = 'grabbing'
-        const text = m.update(ev.clientX, ev.clientY, startX, startY)
+        const text = m.update({ x: ev.clientX, y: ev.clientY, startX, startY, isFree: ev.altKey })
         const o = origin()
         showTip(text, ev.clientX - o.x, ev.clientY - o.y)
         place()

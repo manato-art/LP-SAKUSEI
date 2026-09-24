@@ -9,9 +9,11 @@ import {
   nearestSnap,
   placeGuideX,
   placeLeft,
+  SNAP_PX,
   scrubValue,
   sliderRange,
   snapPlace,
+  snapThreshold,
   snapToStep,
   widthAtEdge,
   widthEdgeX,
@@ -178,5 +180,21 @@ describe('幅のつまみ（辺の位置と幅%の行き来・吸い付き先）
     expect(nearestSnap(47, points, 4)).toBeNull() // 12px は遠い
     expect(nearestSnap(26, points, 4, 3)).toBeNull()
     expect(nearestSnap(70, [], 4)).toBeNull()
+  })
+})
+
+describe('Alt（Mac は option）を押しながらだと吸い付かない', () => {
+  it('吸い付く距離は、押していれば 0（ぴったり重なったときだけ線）', () => {
+    expect(snapThreshold(false)).toBe(SNAP_PX)
+    expect(snapThreshold(true)).toBe(0)
+  })
+
+  it('距離 0 なら、近くても吸い付かず手の位置のまま', () => {
+    const box = { left: 0, right: 400 }
+    expect(snapPlace(146, 100, box, 0)).toEqual({ side: 'center', left: 146, snapped: false })
+    expect(snapPlace(150, 100, box, 0)).toEqual({ side: 'center', left: 150, snapped: true })
+    const points = [{ value: 50 }]
+    expect(nearestSnap(49, points, 4, 0)).toBeNull()
+    expect(nearestSnap(50, points, 4, 0)).toEqual({ value: 50 })
   })
 })
