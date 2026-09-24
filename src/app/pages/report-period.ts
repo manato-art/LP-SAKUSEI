@@ -56,6 +56,17 @@ function shiftDays(base: Date, days: number): Date {
 }
 
 /**
+ * 「過去N日」＝**今日を含むN日**（today-(N-1) 〜 today）。
+ *
+ * レポートの「過去7日間」とダッシュボードの「過去7日」が別々に数えていて、
+ * ダッシュボードだけ today-7〜today の8日分になっていた（2026-09-24 点検35）。
+ * 「過去N日」はすべてここを通す（数え方を2か所に書かない）。
+ */
+export function lastDaysRange(days: number, today: Date = new Date()): DateRange {
+  return { startDate: toDateKey(shiftDays(today, -(Math.max(1, days) - 1))), endDate: toDateKey(today) }
+}
+
+/**
  * プリセットを実際の日付範囲へ。
  *
  * 「過去N日間」は **今日を含むN日**（`mock-server/lib/query.ts` の既定期間
@@ -71,9 +82,9 @@ export function resolvePreset(preset: string, today: Date = new Date()): DateRan
       return { startDate: yesterday, endDate: yesterday }
     }
     case 'last_three_days':
-      return { startDate: toDateKey(shiftDays(today, -2)), endDate: endToday }
+      return lastDaysRange(3, today)
     case 'last_seven_days':
-      return { startDate: toDateKey(shiftDays(today, -6)), endDate: endToday }
+      return lastDaysRange(7, today)
     default:
       // 'seven_days' を含む。数え方が確認できていないので解決しない。
       return null

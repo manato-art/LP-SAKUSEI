@@ -14,6 +14,7 @@
 import { buildBotNote } from './bot-note-el.ts'
 import { T, el, emptyState } from '../ui.ts'
 import { jstDateKey, jstParts } from '../jst.ts'
+import { lastDaysRange } from './report-period.ts'
 import {
   getJson,
   int,
@@ -55,8 +56,10 @@ const TABS: readonly DashboardTab[] = ['全体', '各ページ']
 /**
  * ダッシュボードの期間。日付は**日本時間**で決める。
  *
- * `days` は 0=今日 / 1=昨日 / N=過去N日 / -1=今月。
+ * `days` は 0=今日 / 1=昨日 / N=過去N日（今日を含むN日） / -1=今月。
  * ブラウザのローカル時刻で組み立てると、日本の朝や月初に1日（1ヶ月）ずれる。
+ * 「過去N日」はレポートの「過去7日間」と同じ `lastDaysRange` を使う
+ * （以前は today-N〜today で N+1 日分になっていた・2026-09-24 点検35）。
  */
 export function dashboardRange(days: number, now: Date = new Date()): {
   startDate: string
@@ -72,7 +75,7 @@ export function dashboardRange(days: number, now: Date = new Date()): {
     const yesterday = jstDateKey(new Date(now.getTime() - 86400000))
     return { startDate: yesterday, endDate: yesterday }
   }
-  return { startDate: jstDateKey(new Date(now.getTime() - days * 86400000)), endDate }
+  return lastDaysRange(days, now)
 }
 
 /** 選ばれているボタンだけ色を付ける（期間ピッカーとタブで共通） */
