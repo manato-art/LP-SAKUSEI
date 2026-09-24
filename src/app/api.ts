@@ -173,6 +173,11 @@ export interface ReportVersionRow extends ReportKpi {
   device_targets?: { sp: boolean; tablet: boolean; pc: boolean }
   /** 読み込みに3秒以上かかった人の割合と、測れた人数（記録が無ければ slow_share は null） */
   speed?: { slow_share: number | null; samples: number }
+  /**
+   * この行の配信金額が分かっているか（2026-09-24）。配信金額はページにしか入らないので、
+   * Version・広告の行はふつう false。false のとき配信金額・CPA・MCPA は「-」で出す（¥0 と言わない）。
+   */
+  cost_known?: boolean
 }
 
 export interface ReportDailyRow extends ReportKpi {
@@ -188,6 +193,13 @@ export interface ReportResponse {
   version_options?: { uid: string; name: string }[]
   /** 期間内に除いたボットの件数（数字には入れていない） */
   bot_hits?: number
+  /**
+   * 合計の中身を変えた絞り込み（空＝ページ全体・2026-09-24）。
+   * 入っているあいだ、配信金額はページ全体の値のままで、CPA・MCPA は出さない。
+   */
+  filtered_by?: ('version' | 'device')[]
+  /** アーカイブの絞り込みで表に出していない Version の数（合計には入っている） */
+  hidden_rows?: number
 }
 
 /**

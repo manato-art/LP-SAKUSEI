@@ -22,6 +22,7 @@ import { buildKpiCards } from './report-v2-kpi.ts'
 import { buildCreativeReport } from './report-v2-chart.ts'
 import { buildBranchOperation, buildDailyTable, buildReportList } from './report-v2-tables.ts'
 import { buildFunnelReport } from './report-funnel-view.ts'
+import { buildTotalsNote } from './report-totals-note.ts'
 
 /** 同じ日数だけ手前にずらした期間（増減の比較対象） */
 export function previousRange(range: DateRange): DateRange {
@@ -242,7 +243,8 @@ function downloadCsv(report: ReportResponse, title: string, range: DateRange): v
     lines.push(
       [
         `"${r.name.replace(/"/g, '""')}"`,
-        r.ad_cost,
+        // 配信金額が分からない行（Version はふつうそう）は空欄（0 と書かない）
+        r.cost_known === false ? '' : r.ad_cost,
         r.pv,
         r.click,
         r.ctr === null ? '' : (r.ctr * 100).toFixed(2),
@@ -308,6 +310,8 @@ export async function buildReportBody(deps: ReportBodyDeps): Promise<HTMLElement
     }),
     // 数字にボットが入っていないことと、除いた件数（2026-09-16・本人の依頼）
     buildBotNote(deps.report.bot_hits ?? 0),
+    // 合計はページ全体・配信金額はページ単位（表の行と合計が合わない理由・2026-09-24）
+    ...[buildTotalsNote(deps.report)].filter((n): n is HTMLElement => n !== null),
     buildKpiCards({ totals: deps.report.totals, daily: deps.report.daily, previous }),
     buildCreativeReport({
       daily: deps.report.daily,

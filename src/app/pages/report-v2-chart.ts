@@ -537,6 +537,8 @@ export function buildCreativeReport(deps: ChartDeps): HTMLElement {
 
 /** 1行ぶんの値を、今見ている指標の書き方で出す */
 function formatKpi(row: ReportVersionRow, key: KpiKey): string {
+  // 配信金額はページにしか入らないので、広告の行ではふつう分からない（¥0 と言わない）
+  if (key === 'ad_cost' && row.cost_known === false) return '-'
   const value = row[key]
   if (value === null) return '-'
   if (key === 'ad_cost' || key === 'cpa' || key === 'mcpa') {

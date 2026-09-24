@@ -49,6 +49,8 @@ export function creativeParameterRows(
         media_cv: base.media_cv + child.media_cv,
         sales: base.sales + child.sales,
         gross_profit: base.gross_profit + child.gross_profit,
+        // どちらかに本当の配信金額があれば「分かる」（どちらも無ければ分からないまま）
+        cost_known: base.cost_known !== false || child.cost_known !== false,
       })
     }
   }
@@ -57,16 +59,20 @@ export function creativeParameterRows(
     .sort((a, b) => b.pv - a.pv || a.name.localeCompare(b.name))
 }
 
-/** 足したあとに率をもう一度出す（率を足すと壊れる） */
+/**
+ * 足したあとに率をもう一度出す（率を足すと壊れる）。
+ * 配信金額が分からない行（広告の行はふつうそう・2026-09-24）は、費用を使う率を出さない（¥0 にしない）。
+ */
 function recalcRatios(row: ReportVersionRow): Partial<ReportKpi> {
+  const isCostKnown = row.cost_known !== false
   return {
     ctr: ratio(row.click, row.pv),
     cvr: ratio(row.cv, row.click),
     ctvr: ratio(row.cv, row.pv),
-    cpa: ratio(row.ad_cost, row.cv),
-    mcpa: ratio(row.ad_cost, row.click),
+    cpa: isCostKnown ? ratio(row.ad_cost, row.cv) : null,
+    mcpa: isCostKnown ? ratio(row.ad_cost, row.click) : null,
     media_ctr: ratio(row.media_click, row.imp),
-    roas: ratio(row.sales, row.ad_cost),
+    roas: isCostKnown ? ratio(row.sales, row.ad_cost) : null,
   }
 }
 
