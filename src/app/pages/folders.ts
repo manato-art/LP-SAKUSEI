@@ -25,7 +25,8 @@
  */
 import substrate from '../fragments/folders__detail.html?raw'
 import { isStale } from '../main.ts'
-import { api, type Folder, type RelationCounts } from '../api.ts'
+import { api, type AbTest, type Folder, type RelationCounts } from '../api.ts'
+import { pageListApi } from '../api-page-list.ts'
 import { T, emptyState, toast } from '../ui.ts'
 import {
   FOLDERS_HOOK,
@@ -34,18 +35,14 @@ import {
   extractFolderRowTemplate,
 } from './folders-substrate.ts'
 import { openCreateFolder, openCreatePage } from './folders-create.ts'
-import { openPeriodPicker } from '../panels/period-picker.ts'
 import { openFolderMenu } from '../panels/folder-menu.ts'
-import { AD_STATUS_LABELS, type PageContext } from './folders-shared.ts'
-import {
-  applyListMetrics,
-  getListRange,
-  setListRange,
-  setPeriodLabel,
-} from './folders-list-metrics.ts'
+import type { PageContext } from './folders-shared.ts'
 import { renderRealList } from './folders-page-list.ts'
+import { wireListControls } from './folders-list-controls.ts'
 import { folderHistoryUids, recordHistory, renderHistoryList } from './folders-history.ts'
 import { updateStarAppearance } from './folders-detail-panel.ts'
+import { listState, updateListState } from './folders-list-state.ts'
+import { UNFILED_FOLDER_NAME, UNFILED_FOLDER_UID } from '../../shared/unfiled-folder.ts'
 
 /** 採取物から切り出したフォルダ1行ぶんのマークアップ（読み込み時に一度だけ） */
 const FOLDER_ROW_TEMPLATE = extractFolderRowTemplate(substrate)
@@ -53,11 +50,6 @@ const FOLDER_ROW_TEMPLATE = extractFolderRowTemplate(substrate)
 /** 現在選ばれているタブ（画面描画をまたいで保持する）。 */
 type TreeTab = 'すべて' | 'お気に入り' | '履歴'
 let activeTreeTab: TreeTab = 'すべて'
-
-
-
-
-
 
 export async function renderFolders(
   container: HTMLElement,
@@ -74,18 +66,21 @@ export async function renderFolders(
   // これが無いと2本の描画が並走し、レイアウトが2枚積まれる。
   if (isStale(generation)) return
 
-  const detail = selectedUid === null ? null : await api.folderDetail(selectedUid)
+  const detail = selectedUid === null ? null : await loadFolderPages(selectedUid)
   // 2本目のAPIのあとにも同じ確認が要る（フォルダを続けて切り替えると並走する）
   if (isStale(generation)) return
 
-  // Version数/ポップアップ数/中間ページ数を取得
-  let relationCounts: RelationCounts[] = []
-  if (detail !== null && detail.ab_tests.length > 0) {
+  // 行のアイコンと右パネルの件数（Version/ステップ/ポップアップ/中間ページ/CV）。
+  // 取れなくても画面は出すが、数字は「-」にして知らせる（採取物の数字を残さない・黙って捨てない）
+  let relationCounts: RelationCounts[] | null = []
+  if (selectedUid !== null && detail !== null && detail.ab_tests.length > 0) {
     const ids = detail.ab_tests.map((t) => t.id)
     try {
-      const rc = await api.relationCounts(selectedUid as string, ids)
-      relationCounts = rc.relation_counts
-    } catch { /* 取得失敗でも画面は出す */ }
+      relationCounts = (await api.relationCounts(selectedUid, ids)).relation_counts
+    } catch (error) {
+      relationCounts = null
+      toast(`Version数などの件数を取得できませんでした: ${(error as Error).message}`, 'error')
+    }
     if (isStale(generation)) return
   }
 
@@ -108,12 +103,13 @@ export async function renderFolders(
   const context: PageContext = {
     folders,
     folder: detail?.folder ?? null,
+    folderUid: selectedUid,
     abTests: detail?.ab_tests ?? [],
     relationCounts,
   }
 
-  // 選択したフォルダを履歴に記録
-  if (selectedUid !== null) {
+  // 選択したフォルダを履歴に記録（フォルダなしはフォルダではないので記録しない）
+  if (selectedUid !== null && selectedUid !== UNFILED_FOLDER_UID) {
     const folderName = context.folder?.name ?? selectedUid
     recordHistory(selectedUid, folderName, 'folder', '閲覧')
   }
@@ -126,6 +122,9 @@ export async function renderFolders(
   } else if (context.abTests.length === 0) {
     // 指示㊿再修正: 空状態メッセージは不要（そのまま何も出さない）
     hidePageListAndDetail(body)
+    // 行が無くても、上の操作（配信ステータス・検索など）のラベルと動きは今の状態に合わせる
+    const main = body.querySelector<HTMLElement>(FOLDERS_HOOK.mainPane)
+    if (main !== null) wireListControls(main, context)
   } else {
     renderRealList(body, context)
   }
@@ -135,6 +134,15 @@ export async function renderFolders(
   wireMainControls(body, context)
   // 指示㊲: リサイズハンドルのドラッグで一覧と詳細パネルの幅を変える
   wireResizeHandle(body)
+}
+
+/**
+ * 選んだフォルダのページ。`unfiled`（フォルダなし）は、フォルダを消したあとに残ったページ
+ * （folder_id が null）を並べる（2026-09-24・本人の決定「フォルダを消してもページは残す」）。
+ */
+async function loadFolderPages(uid: string): Promise<{ folder: Folder | null; ab_tests: AbTest[] }> {
+  if (uid === UNFILED_FOLDER_UID) return { folder: null, ab_tests: await pageListApi.unfiledAbTests() }
+  return api.folderDetail(uid)
 }
 
 // ── 左: フォルダツリー ─────────────────────────────────
@@ -168,8 +176,10 @@ function renderTree(body: HTMLElement, context: PageContext): void {
 
   // タブに応じてフォルダをフィルタリング
   const filtered = filterFoldersByTab(context.folders)
+  // 「すべて」の最後に「フォルダなし」（フォルダを消したページの置き場）を出す
+  const showUnfiled = activeTreeTab === 'すべて' && matchesTreeQuery(UNFILED_FOLDER_NAME)
 
-  if (filtered.length === 0) {
+  if (filtered.length === 0 && !showUnfiled) {
     const msg = document.createElement('div')
     msg.style.cssText = 'padding:24px 16px;color:#999999;font-size:13px;text-align:center'
     msg.textContent =
@@ -186,6 +196,35 @@ function renderTree(body: HTMLElement, context: PageContext): void {
     wrapper.append(folderRow(prototypeRow, folder, rerender))
     rows.append(wrapper)
   }
+  if (showUnfiled) {
+    const wrapper = document.createElement('div')
+    wrapper.append(unfiledRow(prototypeRow))
+    rows.append(wrapper)
+  }
+}
+
+/**
+ * 「フォルダなし」の行。フォルダの行と同じ採取物の見た目で、押すとフォルダを消したページが並ぶ。
+ * フォルダではないので、お気に入り・フォルダ操作（名前変更・削除など）は出さない。
+ */
+function unfiledRow(prototypeRow: HTMLElement): HTMLElement {
+  const row = prototypeRow.cloneNode(true) as HTMLElement
+  row.setAttribute(FOLDER_UID_ATTRIBUTE, UNFILED_FOLDER_UID)
+  row.title = 'フォルダを削除したときに残ったページ'
+  const name = row.querySelector<HTMLElement>(FOLDERS_HOOK.folderRowName)
+  if (name !== null) name.textContent = UNFILED_FOLDER_NAME
+  row.querySelector<HTMLElement>(FOLDERS_HOOK.folderRowActions)?.remove()
+  row.addEventListener('click', () => {
+    const next = `#/folders?uid=${UNFILED_FOLDER_UID}`
+    if (location.hash !== next) location.hash = next
+  })
+  return row
+}
+
+/** フォルダツリーの検索（小文字の部分一致）。検索欄を閉じていれば常に一致 */
+function matchesTreeQuery(name: string): boolean {
+  const query = listState().treeQuery ?? ''
+  return query === '' || name.toLowerCase().includes(query)
 }
 
 /** アクティブタブに応じてフォルダをフィルタリングする。検索クエリがあればさらに絞る。 */
@@ -200,14 +239,9 @@ function filterFoldersByTab(folders: readonly Folder[]): readonly Folder[] {
   } else {
     result = folders
   }
-  // 検索クエリで絞り込み
-  if (searchQuery !== '') {
-    result = result.filter((f) => f.name.toLowerCase().includes(searchQuery))
-  }
-  return result
+  // 検索で絞り込み（検索欄に出ている文字だけが効く）
+  return result.filter((f) => matchesTreeQuery(f.name))
 }
-
-
 
 function folderRowPrototype(): HTMLElement | null {
   if (FOLDER_ROW_TEMPLATE === null) return null
@@ -292,31 +326,6 @@ function hidePageListAndDetail(body: HTMLElement): void {
   if (panelHeader !== null) panelHeader.style.display = 'none'
 }
 
-// ── 中央: beyondページ一覧（採取した実KPI一覧をモックの現実に束ねる）──────
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/** URL発行/コピーの元になる配信URL。モックのbeyondページがあればそれを、無ければパネル表示値を使う。 */
-
-
-
 // ── タブ切り替え（すべて / お気に入り / 履歴）────────────────
 
 /**
@@ -364,18 +373,14 @@ function applyTabStyle(tab: HTMLElement, isActive: boolean): void {
   }
 }
 
-// ── 採取物に在るが、挙動を採取できていないもの ────────────────
+// ── フォルダツリーの検索 と「+ 新規ページを作成」────────────────
 
-// ── 集計期間 と 一覧のKPI列 ───────────────────────────
-
-
-
-
-
-/** フォルダツリーの検索バーを表示/非表示する */
-let searchInput: HTMLInputElement | null = null
-let searchQuery = ''
-
+/**
+ * フォルダツリーの検索。
+ * 以前は検索の文字が、フォルダを押して描き直したあとも見えないまま効き続け、
+ * 次に虫眼鏡を押すと「開く」ではなく「消す」になっていた（2026-09-24）。
+ * 状態は folders-list-state.ts に1つだけ持ち、描き直すたびに欄ごと出し直す。
+ */
 function wireTreeControls(body: HTMLElement, context: PageContext): void {
   const tree = body.querySelector<HTMLElement>(FOLDERS_HOOK.tree)
   if (tree === null) {
@@ -387,40 +392,46 @@ function wireTreeControls(body: HTMLElement, context: PageContext): void {
   if (create === null) console.warn('[folders] 新規フォルダ作成のボタンが土台に見つかりませんでした')
   else create.addEventListener('click', openCreateFolder)
 
-  // 検索ボタン: クリックで検索バーをトグル
+  // 検索ボタン: クリックで検索欄を開く/閉じる
   const searchBtn = tree.querySelector(FOLDERS_HOOK.treeSearchIcon)?.closest('button') ?? null
   if (searchBtn !== null) {
     searchBtn.addEventListener('click', () => {
-      toggleTreeSearch(tree, context)
+      toggleTreeSearch(body, tree, context)
     })
   }
+  // 描き直す前に開いていた検索は、文字ごと出し直す（見えないまま効かせない）
+  if (listState().treeQuery !== null) mountTreeSearch(body, tree, context, false)
 }
 
-function toggleTreeSearch(tree: HTMLElement, context: PageContext): void {
-  if (searchInput !== null) {
-    // 閉じる
-    searchInput.parentElement?.remove()
-    searchInput = null
-    searchQuery = ''
-    renderTree(tree.closest(FOLDERS_HOOK.body) as HTMLElement, context)
+function toggleTreeSearch(body: HTMLElement, tree: HTMLElement, context: PageContext): void {
+  const open = tree.querySelector<HTMLElement>('[data-clone-tree-search]')
+  if (open !== null) {
+    open.remove()
+    updateListState({ treeQuery: null })
+    renderTree(body, context)
     return
   }
-  // 検索バーを挿入（ツリーのリスト容器の直前）
+  updateListState({ treeQuery: '' })
+  mountTreeSearch(body, tree, context, true)
+}
+
+function mountTreeSearch(body: HTMLElement, tree: HTMLElement, context: PageContext, focus: boolean): void {
+  // 検索欄はツリーのリスト容器の直前
   const list = tree.querySelector<HTMLElement>(FOLDERS_HOOK.treeList)
   if (list === null) return
 
   const bar = document.createElement('div')
+  bar.dataset['cloneTreeSearch'] = 'true'
   bar.style.cssText = 'padding:4px 8px'
 
   const input = document.createElement('input')
   input.type = 'text'
   input.placeholder = 'フォルダを検索...'
-  input.value = searchQuery
+  input.value = listState().treeQuery ?? ''
   input.style.cssText = `width:100%;box-sizing:border-box;padding:6px 10px;border:1px solid var(--sb-c-dddddd, #DDDDDD);border-radius:4px;font-size:12px;outline:none;font-family:${T.font}`
   input.addEventListener('input', () => {
-    searchQuery = input.value.trim().toLowerCase()
-    const bodyEl = tree.closest(FOLDERS_HOOK.body) as HTMLElement
-    if (bodyEl !== null) renderTree(bodyEl, context)
+    updateListState({ treeQuery: input.value.trim().toLowerCase() })
+    renderTree(body, context)
   })
   input.addEventListener('focus', () => {
     input.style.borderColor = 'var(--sb-accent, #0091FF)'
@@ -431,10 +442,10 @@ function toggleTreeSearch(tree: HTMLElement, context: PageContext): void {
 
   bar.append(input)
   list.before(bar)
-  searchInput = input
-  requestAnimationFrame(() => input.focus())
+  if (focus) requestAnimationFrame(() => input.focus())
 }
 
+/** 「+ 新規ページを作成」。フォルダ内検索・配信ステータス・並び替え・集計期間は folders-list-controls.ts */
 function wireMainControls(body: HTMLElement, context: PageContext): void {
   const main = body.querySelector<HTMLElement>(FOLDERS_HOOK.mainPane)
   if (main === null) {
@@ -442,7 +453,6 @@ function wireMainControls(body: HTMLElement, context: PageContext): void {
     return
   }
 
-  // 「+ 新規ページを作成」ボタン
   const createPageBtn =
     main.querySelector(FOLDERS_HOOK.createPageIcon)?.closest('button') ?? null
   if (createPageBtn !== null) {
@@ -455,160 +465,6 @@ function wireMainControls(body: HTMLElement, context: PageContext): void {
       void openCreatePage(context.folder)
     })
   }
-
-  // フォルダ内検索: ページタイトルでフィルタ
-  const folderSearchBtn = main.querySelector<HTMLElement>(FOLDERS_HOOK.folderSearchButton)
-  if (folderSearchBtn !== null) {
-    folderSearchBtn.style.cursor = 'pointer'
-    folderSearchBtn.addEventListener('click', () => {
-      togglePageSearch(main, context)
-    })
-  }
-
-  // 配信ステータスフィルタ
-  const statusSelect = main.querySelector<HTMLElement>(FOLDERS_HOOK.adStatusSelect)
-  if (statusSelect !== null) {
-    statusSelect.style.cursor = 'pointer'
-    statusSelect.addEventListener('click', () => {
-      openStatusFilter(statusSelect, main, context)
-    })
-  }
-
-  // 集計期間: 採取物にUIが無いためクローン独自のピッカーを出し、KPI列を実データで更新する。
-  const periodSelect = main.querySelector<HTMLElement>(FOLDERS_HOOK.periodSelect)
-  if (periodSelect !== null) {
-    periodSelect.style.cursor = 'pointer'
-    setPeriodLabel(periodSelect)
-    periodSelect.addEventListener('click', () => {
-      openPeriodPicker(periodSelect, getListRange(), (range) => {
-        setListRange(range)
-        setPeriodLabel(periodSelect)
-        void applyListMetrics(main)
-      })
-    })
-  }
-}
-
-// ── ページ検索（フォルダ内検索）──────────────────────
-let pageSearchInput: HTMLInputElement | null = null
-let pageSearchQuery = ''
-
-function togglePageSearch(main: HTMLElement, context: PageContext): void {
-  if (pageSearchInput !== null) {
-    pageSearchInput.parentElement?.remove()
-    pageSearchInput = null
-    pageSearchQuery = ''
-    refilterPageRows(main, context)
-    return
-  }
-  const container = main.querySelector<HTMLElement>(FOLDERS_HOOK.pageRowList)
-  if (container === null) return
-
-  const bar = document.createElement('div')
-  bar.style.cssText = 'padding:4px 8px'
-
-  const input = document.createElement('input')
-  input.type = 'text'
-  input.placeholder = 'ページを検索...'
-  input.style.cssText = `width:100%;box-sizing:border-box;padding:6px 10px;border:1px solid var(--sb-c-dddddd, #DDDDDD);border-radius:4px;font-size:12px;outline:none;font-family:${T.font}`
-  input.addEventListener('input', () => {
-    pageSearchQuery = input.value.trim().toLowerCase()
-    refilterPageRows(main, context)
-  })
-
-  bar.append(input)
-  container.before(bar)
-  pageSearchInput = input
-  requestAnimationFrame(() => input.focus())
-}
-
-/** ページ行をフィルタ（検索クエリ + ステータスフィルタ） */
-function refilterPageRows(main: HTMLElement, _context: PageContext): void {
-  const container = main.querySelector<HTMLElement>(FOLDERS_HOOK.pageRowList)
-  if (container === null) return
-  const rowWrappers = Array.from(container.children).filter(
-    (child): child is HTMLElement =>
-      child.querySelector('[data-testid="list-menu-item"]') !== null,
-  )
-  for (const wrapper of rowWrappers) {
-    const title = wrapper.querySelector<HTMLElement>(FOLDERS_HOOK.pageTitle)
-    const titleText = (title?.textContent ?? '').toLowerCase()
-    const matchesSearch = pageSearchQuery === '' || titleText.includes(pageSearchQuery)
-
-    // ステータスフィルタ
-    let matchesStatus = true
-    if (activeStatusFilter !== 'all') {
-      const statusEl = wrapper.querySelector<HTMLElement>(FOLDERS_HOOK.pageStatusInline)
-      const statusText = (statusEl?.textContent ?? '').trim()
-      matchesStatus = statusText === AD_STATUS_LABELS[activeStatusFilter]
-    }
-
-    ;(wrapper as HTMLElement).style.display = matchesSearch && matchesStatus ? '' : 'none'
-  }
-}
-
-// ── 配信ステータスフィルタ ──────────────────────
-let activeStatusFilter: string = 'all'
-let statusMenuEl: HTMLElement | null = null
-
-function openStatusFilter(anchor: HTMLElement, main: HTMLElement, context: PageContext): void {
-  if (statusMenuEl !== null) {
-    statusMenuEl.remove()
-    statusMenuEl = null
-    return
-  }
-
-  const menu = document.createElement('div')
-  menu.style.cssText = [
-    'position:fixed;z-index:9999',
-    `background:${T.surface};border-radius:8px`,
-    'box-shadow:0 4px 16px rgba(0,0,0,.15)',
-    'min-width:140px;padding:4px 0',
-    `font-family:${T.font};font-size:13px`,
-  ].join(';')
-
-  const options: { label: string; value: string }[] = [
-    { label: 'すべて', value: 'all' },
-    { label: '準備中', value: 'prepared' },
-    { label: '配信中', value: 'delivered' },
-    { label: '停止中', value: 'stopping' },
-    { label: '終了', value: 'finished' },
-  ]
-
-  for (const opt of options) {
-    const row = document.createElement('div')
-    row.textContent = opt.label
-    row.style.cssText = `padding:8px 16px;cursor:pointer;color:${T.text}${opt.value === activeStatusFilter ? ';font-weight:700' : ''}`
-    row.addEventListener('mouseenter', () => {
-      row.style.background = 'rgba(0,0,0,.04)'
-    })
-    row.addEventListener('mouseleave', () => {
-      row.style.background = 'transparent'
-    })
-    row.addEventListener('click', (e) => {
-      e.stopPropagation()
-      activeStatusFilter = opt.value
-      menu.remove()
-      statusMenuEl = null
-      refilterPageRows(main, context)
-    })
-    menu.append(row)
-  }
-
-  const rect = anchor.getBoundingClientRect()
-  menu.style.top = `${rect.bottom + 4}px`
-  menu.style.left = `${rect.left}px`
-  document.body.append(menu)
-  statusMenuEl = menu
-
-  requestAnimationFrame(() => {
-    const close = (): void => {
-      menu.remove()
-      statusMenuEl = null
-      document.removeEventListener('click', close)
-    }
-    document.addEventListener('click', close)
-  })
 }
 
 /**
@@ -755,14 +611,3 @@ function injectResizeHandleStyles(): void {
   `
   document.head.append(style)
 }
-
-/**
- * 指示㊾: 詳細パネルの各値をカーソルが当たっているページ(abTest)の情報で更新する。
- * 採取物のDOMから「サンプル施策NNN」の文言やURL・ステータスを探して差し替える。
- */
-
-
-
-
-
-

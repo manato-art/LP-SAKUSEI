@@ -5,7 +5,8 @@
 import { api, type DomainEntry, type Folder } from '../api.ts'
 import { T, el, toast } from '../ui.ts'
 import { openCreateFolder } from '../pages/folders-create.ts'
-import { chooseCard } from '../dialog.ts'
+import { chooseCard, confirmCard } from '../dialog.ts'
+import { UNFILED_FOLDER_NAME, UNFILED_FOLDER_UID } from '../../shared/unfiled-folder.ts'
 
 let currentMenu: HTMLElement | null = null
 
@@ -299,62 +300,29 @@ function openRenameDialog(folder: Folder): void {
   })
 }
 
-/** フォルダ削除確認 */
+/**
+ * フォルダ削除の確認。
+ * 本人の決定（2026-09-24）: フォルダを消しても中のページは残す（サーバーは folder_id を null にして残す）。
+ * 以前の確認文は「フォルダ内のbeyondページも削除されます」と逆のことを書いていた。
+ * 残ったページはツリーの「フォルダなし」に並び、そこから別のフォルダへ移せる。
+ */
 function confirmDeleteFolder(folder: Folder): void {
-  const overlay = el('div', {
-    style: 'position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:10000;display:flex;align-items:center;justify-content:center',
+  void confirmCard({
+    title: 'フォルダを削除',
+    message: `「${folder.name}」を削除しますか？`,
+    detail:
+      `フォルダ内のbeyondページは削除されません。「${UNFILED_FOLDER_NAME}」に移り、あとから別のフォルダへ移せます。` +
+      'このフォルダに設定したドメインの設定は消えます。フォルダの削除は取り消せません。',
+    submitLabel: '削除する',
+    danger: true,
+  }).then(async (ok) => {
+    if (!ok) return
+    try {
+      await api.deleteFolder(folder.uid)
+      toast(`フォルダを削除しました。ページは「${UNFILED_FOLDER_NAME}」にあります`)
+      location.hash = `/folders?uid=${UNFILED_FOLDER_UID}`
+    } catch (error) {
+      toast(`削除に失敗しました: ${(error as Error).message}`, 'error')
+    }
   })
-
-  const dialog = el('div', {
-    style: `background:${T.surface};border-radius:12px;padding:24px;min-width:360px;max-width:90vw;font-family:${T.font}`,
-  })
-
-  const title = el('div', {
-    text: 'フォルダを削除',
-    style: `font-size:16px;font-weight:700;color:${T.text};margin-bottom:8px`,
-  })
-
-  const desc = el('div', {
-    text: `「${folder.name}」を削除しますか？フォルダ内のbeyondページも削除されます。この操作は取り消せません。`,
-    style: `font-size:13px;color:${T.sub};line-height:1.7;margin-bottom:16px`,
-  })
-
-  const buttons = el('div', {
-    style: 'display:flex;gap:8px;justify-content:flex-end',
-  })
-
-  const cancelBtn = el('button', {
-    text: 'キャンセル',
-    style: `padding:8px 16px;border:1px solid var(--sb-c-dddddd, #DDDDDD);border-radius:6px;background:${T.surface};cursor:pointer;font-size:13px;font-family:${T.font}`,
-  })
-  cancelBtn.addEventListener('click', () => overlay.remove())
-
-  const deleteBtn = el('button', {
-    text: '削除する',
-    style: 'padding:8px 16px;border:none;border-radius:6px;background:#E53E3E;color:#FFFFFF;cursor:pointer;font-size:13px',
-  })
-  deleteBtn.addEventListener('click', () => {
-    deleteBtn.textContent = '削除中...'
-    deleteBtn.setAttribute('disabled', '')
-    void api.deleteFolder(folder.uid).then(
-      () => {
-        overlay.remove()
-        toast('フォルダを削除しました')
-        location.hash = '/folders'
-      },
-      (err: Error) => {
-        deleteBtn.textContent = '削除する'
-        deleteBtn.removeAttribute('disabled')
-        toast(`削除に失敗しました: ${err.message}`, 'error')
-      },
-    )
-  })
-
-  buttons.append(cancelBtn, deleteBtn)
-  dialog.append(title, desc, buttons)
-  overlay.append(dialog)
-  overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) overlay.remove()
-  })
-  document.body.append(overlay)
 }

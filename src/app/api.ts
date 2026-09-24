@@ -59,11 +59,19 @@ export interface AbTest {
   meta_object_id?: string | null
 }
 
+/** 行のアイコンと右パネルの件数（正本は mock-server/store/relation-counts.ts） */
 export interface RelationCounts {
   id: number
   versions_count: number
-  exit_popups_count: number
+  /** 追加したステップの数（最初のステップは数えない） */
   funnel_steps_count: number
+  exit_popups_count: number
+  follow_popups_count: number
+  /** 離脱防止＋追従型 */
+  popups_count: number
+  redirect_pages_count: number
+  /** CVタグから成果が届いたことがあるか */
+  has_conversion: boolean
   ab_test_uid: string | null
 }
 
