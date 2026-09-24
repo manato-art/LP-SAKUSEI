@@ -10,7 +10,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { createServer, type Server } from 'node:http'
 import { createApp } from '../mock-server/app.ts'
-import { resetState } from '../mock-server/store/store.ts'
+import { resetState, setState } from '../mock-server/store/store.ts'
 import { postJson } from './helpers/server.ts'
 
 let server: Server
@@ -93,13 +93,16 @@ describe('配信割合どおりに配信する（指示173）', () => {
   }, 20000)
 
   it('配信できる割合のVersionが1つも無ければ配信しない（無理に表示しない）', async () => {
-    // Versionがちょうど2件のときは合計100%を保つ自動バランスが効くので両方0%にはできない。
-    // 1件だけのときは0%にできる＝ここが「割合0%なのに表示される」の再現ケース。
+    // 2026-09-24 から画面・APIでは合計をいつも100%にする（Versionが1つなら100%のまま）ので、
+    // 0%だけのステップは画面からは作れない。以前のデータに残っている形を、保存データを直接書いて作る。
     const created = await postJson<Created>(`${baseUrl}/ab_tests`, {
       title: '割合0%のみ',
       media_id: 1,
     })
-    await setRatio(created.json.version.uid, 0)
+    setState((state) => ({
+      ...state,
+      versions: state.versions.map((v) => (v.uid === created.json.version.uid ? { ...v, distribution_ratio: 0 } : v)),
+    }))
 
     const res = await fetch(`${origin}/lp/${created.json.ab_test.uid}`)
     expect(res.status).toBe(404)

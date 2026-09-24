@@ -168,16 +168,17 @@ describe('Version操作（§9-1[2][4]）', () => {
     expect(versions.distribution_warning).toBeNull()
   })
 
-  it('配信割合を変更でき、合計が100%になれば警告が消える', async () => {
+  it('配信割合を変更でき、合計はいつも100%（2026-09-24・本人「合計で100%にして」）', async () => {
     const { articleUid, versionUid } = await setupAbTest()
+    // Versionが1つなら、何を入れても100%のまま
     const changed = await sendJson<{ distribution_total: number; distribution_warning: string | null }>(
       'PATCH',
       `${server.api}/versions/${versionUid}/distribution`,
       { distribution_ratio: 60 },
     )
     expect(changed.status).toBe(200)
-    expect(changed.json.distribution_total).toBe(60)
-    expect(changed.json.distribution_warning).toContain('100%')
+    expect(changed.json.distribution_total).toBe(100)
+    expect(changed.json.distribution_warning).toBeNull()
 
     const added = await postJson<{ version: { uid: string } }>(
       `${server.api}/articles/${articleUid}/versions`,

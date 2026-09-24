@@ -24,6 +24,7 @@ import { checkRatioTotal, optionalNumber, optionalString, validateRatio } from '
 import type { State, Version } from '../store/types.ts'
 import { externalizeDataUrls } from '../lib/uploads.ts'
 import { editorSessionOf } from '../lib/editor-session.ts'
+import { activeVersionsOf, applyRatios, balanceAfterChange } from '../store/ratio-balance.ts'
 import { unwrapLinksInHtml } from '../../src/shared/link-html.ts'
 import { renderPreviewDocument } from './delivery-preview.ts'
 import { buildVisitorContext } from './delivery-targeting.ts'
@@ -283,10 +284,10 @@ versionsRouter.put('/versions/:uid', (req, res) => {
 })
 
 /**
- * 配信割合の更新（§9-1[2]）。
- * 0-100 の範囲外は 422。合計が100%でない場合はエラーにせず warning を返す（保存は通す）。
- * **1〜2バージョン時は自動調整**: アクティブなVersionが2つなら、片方を変えると
- * もう片方が `100 - 新値` に自動で追従し、合計100%を保つ。
+ * 配信割合の更新（§9-1[2]）。0-100 の範囲外は 422。
+ * 合計はいつも100%（2026-09-24・本人「合計で100%にして」）: ほかのVersionを今の比のまま分け直す
+ * （以前は2つのときだけ「もう片方＝100−その値」で、3つ以上は合計がずれたまま保存していた）。
+ * Versionが1つなら100%のまま。分け直したVersionは adjusted_siblings で返す（画面のカードをそろえるため）。
  */
 versionsRouter.patch('/versions/:uid/distribution', (req, res) => {
   const ratio = validateRatio(optionalNumber(req.body, 'distribution_ratio'))
@@ -297,25 +298,25 @@ versionsRouter.patch('/versions/:uid/distribution', (req, res) => {
   let updated: Version | null = null
   const adjustedSiblings: Version[] = []
   setState((state) => {
-    const out = updateVersion(state, req.params.uid, { distribution_ratio: ratio.value })
-    updated = out.version
-    let nextState = out.state
-    // 2バージョン時: もう片方を自動調整して合計100%にする
-    if (updated !== null) {
-      const active = nextState.versions.filter(
-        (v) => v.article_id === updated!.article_id && !v.archived,
-      )
-      if (active.length === 2) {
-        const other = active.find((v) => v.uid !== updated!.uid)
-        if (other !== undefined) {
-          const otherRatio = Math.max(0, Math.min(100, 100 - ratio.value))
-          const out2 = updateVersion(nextState, other.uid, { distribution_ratio: otherRatio })
-          nextState = out2.state
-          if (out2.version !== null) adjustedSiblings.push(out2.version)
-        }
-      }
+    const target = state.versions.find((v) => v.uid === req.params.uid)
+    if (target === undefined) return state
+    if (target.archived === true) {
+      // アーカイブ済みは配信に入らないので、そのまま書く
+      const out = updateVersion(state, target.uid, { distribution_ratio: ratio.value })
+      updated = out.version
+      return out.state
     }
-    return nextState
+    const active = activeVersionsOf(state, target.article_id)
+    const next = balanceAfterChange(
+      active.map((v) => ({ uid: v.uid, ratio: v.distribution_ratio })),
+      target.uid,
+      ratio.value,
+    )
+    const out = applyRatios(state, next)
+    const stamped = updateVersion(out.state, target.uid, {})
+    updated = stamped.version
+    adjustedSiblings.push(...out.changed.filter((v) => v.uid !== target.uid))
+    return stamped.state
   })
   if (updated === null) {
     res.status(404).json(errorEnvelope('not_found', 'Versionが見つかりません。'))

@@ -4,6 +4,7 @@
  * 「作成 → 一覧に出る → 詳細/エディタで開ける」が一貫して繋がるよう、
  * 関連エンティティと非正規化カウントの整合をここで一括して保つ。
  */
+import { normalizeStep } from './ratio-balance.ts'
 import { hashString } from './rng.ts'
 import { nextSeq, nowTs, freshUid } from './actions-shared.ts'
 
@@ -463,15 +464,14 @@ export function deleteVersion(
   if (isDelivering && !siblings.some((v) => !v.archived && v.distribution_ratio >= 1)) {
     return { state, deleted: false, reason: 'need-active' }
   }
-  return {
-    state: {
-      ...state,
-      versions: state.versions.filter((v) => v.uid !== uid),
-      conversions: state.conversions.filter((c) => c.version_uid !== uid),
-      metrics: state.metrics.filter((m) => m.entity_uid !== uid),
-    },
-    deleted: true,
+  const removed: State = {
+    ...state,
+    versions: state.versions.filter((v) => v.uid !== uid),
+    conversions: state.conversions.filter((c) => c.version_uid !== uid),
+    metrics: state.metrics.filter((m) => m.entity_uid !== uid),
   }
+  // 抜けたぶんを残りへ今の比のまま広げ、合計100%を保つ（2026-09-24）
+  return { state: normalizeStep(removed, target.article_id).state, deleted: true }
 }
 
 /**
@@ -635,10 +635,9 @@ export function archiveVersion(
     return { state, version: null, reason: 'need-active' }
   }
   const updated: Version = { ...target, archived: true, distribution_ratio: 0, updated_at: nowTs() }
-  return {
-    state: { ...state, versions: state.versions.map((v) => (v.uid === uid ? updated : v)) },
-    version: updated,
-  }
+  const archived: State = { ...state, versions: state.versions.map((v) => (v.uid === uid ? updated : v)) }
+  // 抜けたぶんを残りへ今の比のまま広げ、合計100%を保つ（2026-09-24）
+  return { state: normalizeStep(archived, target.article_id).state, version: updated }
 }
 
 /** アーカイブを解除して通常一覧へ戻す（アーカイブ一覧の「復元」・指示⑮） */

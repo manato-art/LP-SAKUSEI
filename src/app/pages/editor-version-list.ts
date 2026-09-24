@@ -198,6 +198,42 @@ function buildVersionCardEl(version: Version, isCurrent: boolean): HTMLElement {
   card.append(inner)
   return card
 }
+/**
+ * 配信割合を変えたあとのお知らせ。合計はいつも100%なので、ほかのVersionを合わせたときは何をどう変えたかを書く
+ * （2026-09-24・本人「合計で100%にして」）
+ */
+function ratioChangeMessage(
+  ctx: EditorContext,
+  asked: number | null,
+  updated: Version,
+  adjustedUids: readonly string[],
+): string {
+  if (asked === null) return '更新しました'
+  const active = ctx.versions.filter((v) => v.archived !== true)
+  if (active.length <= 1 && asked !== updated.distribution_ratio) {
+    return 'Versionが1つなので、配信割合は100%です'
+  }
+  // 実際に変えたVersionだけを書く（変わらなかったものまで並べると、何が変わったか分からない）
+  const adjusted = active.filter((v) => adjustedUids.includes(v.uid))
+  if (adjusted.length === 0) return '更新しました'
+  const parts = adjusted.map((v) => `${v.name} を ${String(v.distribution_ratio)}%`)
+  return `合計が100%になるよう、${parts.join('・')} に合わせました`
+}
+
+/** アーカイブ・削除のあと、残りの配信割合をサーバーから読み直す（抜けたぶんが残りへ広がる） */
+async function reloadRatios(ctx: EditorContext): Promise<void> {
+  try {
+    const { versions } = await api.versions(ctx.articleUid)
+    const ratioOf = new Map(versions.map((v) => [v.uid, v.distribution_ratio]))
+    ctx.versions = ctx.versions.map((v) => {
+      const ratio = ratioOf.get(v.uid)
+      return ratio === undefined ? v : { ...v, distribution_ratio: ratio }
+    })
+  } catch (error) {
+    toast(`配信割合を読み直せませんでした: ${(error as Error).message}`, 'error')
+  }
+}
+
 /** 配信割合のプルダウンを今の割合に合わせる（10・50・100 以外は空の行） */
 function syncRatioSelect(select: HTMLSelectElement, ratio: number): void {
   select.value = [10, 50, 100].includes(ratio) ? String(ratio) : ''
@@ -424,6 +460,7 @@ async function bulkArchive(ctx: EditorContext, uids: readonly string[]): Promise
     }
   }
   ctx.selectionMode = false
+  await reloadRatios(ctx)
   const archived = uids.length - failed
   toast(
     failed > 0
@@ -509,6 +546,7 @@ export function wireVersionCard(ctx: EditorContext, card: HTMLElement, version: 
     if (nextName === null && nextRatio === null) return
     try {
       let updated = model
+      let adjustedUids: readonly string[] = []
       if (nextName !== null) {
         await api.saveVersion(model.uid, { name: nextName })
         updated = { ...updated, name: nextName }
@@ -519,6 +557,7 @@ export function wireVersionCard(ctx: EditorContext, card: HTMLElement, version: 
         if (ratio !== null) ratio.value = String(res.version.distribution_ratio)
         syncRatioDisplay()
         // 2バージョン時の自動調整: サーバーが調整した他カードのUIを更新
+        adjustedUids = (res.adjusted_siblings ?? []).map((sib) => sib.uid)
         if (res.adjusted_siblings) {
           for (const sib of res.adjusted_siblings) {
             ctx.versions = ctx.versions.map((v) =>
@@ -539,7 +578,7 @@ export function wireVersionCard(ctx: EditorContext, card: HTMLElement, version: 
       ctx.versions = ctx.versions.map((v) => (v.uid === updated.uid ? updated : v))
       const list = ctx.root.querySelector<HTMLElement>(HOOK.versionList)
       if (list !== null) paintRatioNotice(list, ctx.versions)
-      toast('更新しました')
+      toast(ratioChangeMessage(ctx, nextRatio, updated, adjustedUids))
     } catch (error) {
       toast((error as Error).message, 'error')
     }
@@ -635,17 +674,19 @@ export function wireVersionCard(ctx: EditorContext, card: HTMLElement, version: 
       // 追加分のカードが下に増える。複製先へ切り替える。
       loadVersion(ctx, created.uid)
     },
-    onArchived: (archived) => {
+    onArchived: async (archived) => {
       ctx.versions = ctx.versions.map((v) =>
-        v.uid === archived.uid ? { ...v, archived: true } : v,
+        v.uid === archived.uid ? { ...v, archived: true, distribution_ratio: 0 } : v,
       )
+      await reloadRatios(ctx)
       const next = ctx.versions.find((v) => v.archived !== true)
       if (next !== undefined) loadVersion(ctx, next.uid)
       else renderVersionList(ctx)
     },
-    onDeleted: (deleted) => {
+    onDeleted: async (deleted) => {
       // 一覧から取り除き、残りの先頭（非アーカイブ）へ切り替える。
       ctx.versions = ctx.versions.filter((v) => v.uid !== deleted.uid)
+      await reloadRatios(ctx)
       const next = ctx.versions.find((v) => v.archived !== true) ?? ctx.versions[0]
       if (next !== undefined) loadVersion(ctx, next.uid)
       else renderVersionList(ctx)

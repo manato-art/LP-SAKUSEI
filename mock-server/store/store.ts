@@ -15,6 +15,7 @@ import {
 } from './persistence.ts'
 import type { State } from './types.ts'
 import { repairDuplicateUids } from './uid-repair.ts'
+import { normalizeAllSteps } from './ratio-balance.ts'
 import { externalizeStateImages } from './externalize-images.ts'
 import { migrateFolderDomains } from './folder-domain.ts'
 
@@ -43,6 +44,8 @@ function initialState(): State {
  *   1. 同じ uid が2件以上あれば直す（uid を件数＋1で作っていた頃の不具合）
  *   2. 本文などに埋め込まれた画像・動画（data URL）を別ファイルにする（保存データが102MBあった件）
  *   3. ドメインの項目が無い古いフォルダを「このシステムのドメイン」にする（2026-09-13）
+ *   4. 配信割合の合計が100%でないステップを、今の比のまま100%にそろえる（2026-09-24 本人承認「100%に直す」）。
+ *      配信はもともと「割合÷合計」で配っているので、実際の出方はほぼ変わらない（画面の数字と実際を合わせるだけ）
  * 何か直したときは、直す前の内容を退避へ強制保存し、何をしたかをログに残してから、直した内容を保存し直す。
  */
 function repairOnLoad(persisted: State): State {
@@ -50,7 +53,15 @@ function repairOnLoad(persisted: State): State {
   const externalized = externalizeStateImages(repaired.state)
   // ドメインの項目が無い古いフォルダは、今まで配信URLに使ってきた「このシステムのドメイン」にする
   const folderDomains = migrateFolderDomains(externalized.state)
-  if (repaired.changes.length === 0 && externalized.converted === 0 && folderDomains.changed === 0) return persisted
+  const ratios = normalizeAllSteps(folderDomains.state)
+  if (
+    repaired.changes.length === 0 &&
+    externalized.converted === 0 &&
+    folderDomains.changed === 0 &&
+    ratios.changed.length === 0
+  ) {
+    return persisted
+  }
   archiveBeforeDestruction(persisted)
   for (const change of repaired.changes) {
     console.log(`[store] 同じ uid を付け直しました: ${change.collection} id=${change.id} ${change.from} → ${change.to}`)
@@ -61,8 +72,11 @@ function repairOnLoad(persisted: State): State {
   if (folderDomains.changed > 0) {
     console.log(`[store] フォルダ ${folderDomains.changed} 件のドメインを「このシステムのドメイン」にしました（項目が無い古いデータ）`)
   }
-  schedulePersist(folderDomains.state)
-  return folderDomains.state
+  for (const version of ratios.changed) {
+    console.log(`[store] 配信割合を合計100%にそろえました: ${version.uid} → ${String(version.distribution_ratio)}%`)
+  }
+  schedulePersist(ratios.state)
+  return ratios.state
 }
 
 let current: State = initialState()
