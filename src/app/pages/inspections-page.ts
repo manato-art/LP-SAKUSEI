@@ -12,6 +12,10 @@
  *
  * 実際、審査対象が1つもONでない状態では審査画面のツリーは見出しだけで中身が空だった。
  *
+ * ## 審査は配信に影響しない（本人の決定 2026-09-24）
+ * 審査は「誰かが確認して承認した」の記録。承認していない・非承認のVersionも、配信割合どおりに配信される
+ * （配信 mock-server/routes/delivery.ts は審査の状態を見ていない）。画面の文言もそう書く。
+ *
  * ## 採取・観測できなかったもの（推測で作っていない）
  * 審査対象をONにした状態の /inspections（＝実際に審査するときの右ペイン）は、
  * ユーザーのアカウント設定を書き換えないと見られないため確認していない。
@@ -19,7 +23,9 @@
  * 状態の変更は一覧の行から行う形にしている。
  */
 import { api, type InspectionEntry, type InspectionFolder } from '../api.ts'
+import { toolsApi } from '../api-tools.ts'
 import { toast } from '../ui.ts'
+import { sortInspectionEntries } from './inspection-sort.ts'
 import { buildToolGuide } from './tool-guide.ts'
 import { INSPECTION_SCREENS } from './tool-subnav.ts'
 import { FAVORITE_STAR_COLOR } from './folders-detail-panel.ts'
@@ -53,7 +59,7 @@ export async function renderInspectionTargets(host: HTMLElement): Promise<void> 
   const guide = buildToolGuide({
     id: 'inspection-targets',
     summary:
-      'どのフォルダを審査にかけるかを決める画面です。ここでONにしたフォルダのVersionだけが「審査」に並びます。',
+      'どのフォルダを審査にかけるかを決める画面です。ここでONにしたフォルダのVersionだけが「審査」に並びます。審査は配信には影響しません。',
     steps: [{ label: '審査したいフォルダをONにする' }, { label: '「審査」画面で承認する' }],
     action: {
       label: '審査画面へ →',
@@ -78,8 +84,10 @@ export async function renderInspectionTargets(host: HTMLElement): Promise<void> 
   let asc = true
   sort.addEventListener('click', () => {
     asc = !asc
+    paintSort(sort, asc)
     void draw()
   })
+  paintSort(sort, asc)
   search.addEventListener('input', () => void draw())
 
   async function draw(): Promise<void> {
@@ -156,10 +164,10 @@ export async function renderInspections(host: HTMLElement): Promise<void> {
   const guide = buildToolGuide({
     id: 'inspections',
     summary:
-      '公開前のVersionを承認する画面です。先に「審査対象」でフォルダをONにしないと、ここには何も並びません。',
+      'Versionを確認して、承認 / 非承認を記録する画面です。先に「審査対象」でフォルダをONにしないと、ここには何も並びません。',
     steps: [
       { label: '「審査対象」でフォルダをONにする' },
-      { label: '並んだVersionを承認 / 非承認にする' },
+      { label: '並んだVersionを確認して、承認 / 非承認を記録する' },
     ],
     action: {
       label: '審査対象を設定する →',
@@ -195,8 +203,14 @@ export async function renderInspections(host: HTMLElement): Promise<void> {
 
   const search = searchInput('グループ/フォルダ/ドメイン/beyondページ名')
   const note = h('div', 'ins-note', '※beyondページ名はお気に入りのみ有効')
+  // 案内帯（閉じられる）とは別に、常に出しておく
+  const deliveryNote = h(
+    'div',
+    'ins-delivery-note',
+    '審査は確認と承認の記録です。配信には影響しません（審査待ち・非承認のVersionも配信されます）。',
+  )
   const list = h('div', 'ins-list')
-  root.append(tabs, bar, search, note, list)
+  root.append(tabs, deliveryNote, bar, search, note, list)
 
   for (const [id, label] of STATUS_CHIPS) {
     const c = h('button', `ins-chip s-${id}`, label) as HTMLButtonElement
@@ -209,7 +223,14 @@ export async function renderInspections(host: HTMLElement): Promise<void> {
     chips.append(c)
   }
   search.addEventListener('input', () => void draw())
-  sort.addEventListener('click', () => void draw())
+  // 「↑↓」は名前（ページ名 → Version名）の昇順と降順を入れ替える（以前は描き直すだけだった）
+  let asc = true
+  sort.addEventListener('click', () => {
+    asc = !asc
+    paintSort(sort, asc)
+    void draw()
+  })
+  paintSort(sort, asc)
 
   async function draw(): Promise<void> {
     for (const b of tabs.querySelectorAll('button')) {
@@ -256,7 +277,7 @@ export async function renderInspections(host: HTMLElement): Promise<void> {
       list.append(box)
       return
     }
-    for (const e of data.entries) list.append(entryRow(e))
+    for (const e of sortInspectionEntries(data.entries, asc)) list.append(entryRow(e))
   }
 
   function entryRow(e: InspectionEntry): HTMLElement {
@@ -319,10 +340,19 @@ function openUrlSearch(): void {
       toast('URLかuidを入れてください', 'error')
       return
     }
-    // 実物と同じく、当たったページの審査へ移動する。クローンでは配信URLのuidで探す。
-    const found = /\/ab\/([A-Za-z0-9]+)/.exec(value)?.[1] ?? value
-    location.hash = `#/ab_tests/${found}/articles`
-    overlay.remove()
+    // 配信URL（/lp/…）・プレビューURL（/preview/…）・中間ページURL・uid をサーバーで読んでページを探す。
+    // 見つかったページだけへ移る（以前は /ab/… しか読めず、見当違いのページへ飛んでいた）
+    go.disabled = true
+    void toolsApi.lookupPageByUrl(value).then(
+      (found) => {
+        overlay.remove()
+        location.hash = `#/ab_tests/${encodeURIComponent(found.ab_test_uid)}/articles`
+      },
+      (error: Error) => {
+        go.disabled = false
+        toast(error.message, 'error')
+      },
+    )
   })
   box.append(go)
   overlay.append(box)
@@ -357,6 +387,13 @@ function h(tag: string, className: string, text?: string): HTMLElement {
   node.className = className
   if (text !== undefined) node.textContent = text
   return node
+}
+
+/** 並び替えボタンの向きを見た目と説明に出す */
+function paintSort(btn: HTMLButtonElement, asc: boolean): void {
+  btn.textContent = asc ? '↑' : '↓'
+  btn.title = asc ? '名前の昇順（押すと降順）' : '名前の降順（押すと昇順）'
+  btn.setAttribute('aria-label', btn.title)
 }
 
 function iconButton(text: string, title: string): HTMLButtonElement {
@@ -404,6 +441,7 @@ function injectStyles(): void {
     .ins-search-input{border:1px solid var(--sb-c-dddddd, #DDDDDD);border-radius:4px;padding:6px 10px;font-size:12px;width:100%;
       box-sizing:border-box}
     .ins-note{font-size:11px;color:#999999}
+    .ins-delivery-note{font-size:11.5px;color:var(--sb-c-555555, #555555);line-height:1.7}
     .ins-target-body,.ins-list{flex:1;min-height:0;overflow:auto}
     .ins-box{background:var(--sb-c-f2f3f5, #F2F3F5);border-radius:6px;padding:12px 14px;margin-bottom:14px}
     .ins-box-title{font-size:12px;font-weight:700;margin-bottom:8px}

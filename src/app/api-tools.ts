@@ -33,6 +33,9 @@ export const toolsApi = {
     request<{ account: LinkedMetaAccount }>('POST', '/teams/ad_accounts/meta', { account_id: accountId }),
   unlinkMetaAccount: (accountId: string) =>
     request<void>('DELETE', `/teams/ad_accounts/meta/${encodeURIComponent(accountId)}`),
+  /** 審査の「beyondページURL検索」: 配信 / プレビュー / 中間ページのURL か uid からページを探す */
+  lookupPageByUrl: (url: string) =>
+    request<{ ab_test_uid: string; title: string }>('GET', `/inspections/lookup?url=${encodeURIComponent(url)}`),
 }
 
 /** アクセス管理（ログインの入口を通れるメールアドレス）1件 */
