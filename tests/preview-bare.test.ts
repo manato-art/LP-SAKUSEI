@@ -26,10 +26,12 @@ async function pageWithPopup(): Promise<string> {
     media_id: 1,
   })
   await sendJson('PUT', `${server.api}/versions/${created.json.version.uid}`, { html: '<p>LPの本文です</p>' })
-  await postJson(`${server.api}/ab_tests/${created.json.ab_test.uid}/exit_popups`, {
+  const popup = await postJson<{ exit_popup: { uid: string } }>(`${server.api}/ab_tests/${created.json.ab_test.uid}/exit_popups`, {
     name: 'テストのポップ',
     html: '<div class="pop-marker">ポップの中身</div>',
   })
+  // 作ったポップアップは本番反映するまで出ない（2026-09-24 下書きと本番を分けた）
+  await postJson(`${server.api}/ab_tests/${created.json.ab_test.uid}/exit_popups/${popup.json.exit_popup.uid}/publish`)
   return created.json.version.uid
 }
 

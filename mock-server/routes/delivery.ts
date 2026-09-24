@@ -37,7 +37,7 @@ import { adParamsOf, mergeHeatmapEvent } from './track-heatmap.ts'
 import { attributeConversion, recordTouch, toVisitorId } from '../store/visitor-touches.ts'
 import { buildVisitorContext, pickDeliveryVersion } from './delivery-targeting.ts'
 import { canonicalHost, isServableOnHost } from '../lib/delivery-host.ts'
-import { buildFollowPopupSnippet, buildPopupSnippet } from './delivery-popup-html.ts'
+import { countPopupVisit, renderDraftPopup, renderPopupsForView } from './delivery-popups.ts'
 import {
   escapeHtml,
   renderExcludePage,
@@ -341,21 +341,9 @@ deliveryRouter.get('/lp/:uid', (req, res) => {
   // Widget の外枠に保存された編集画面だけの属性（data-widget-name・contenteditable 等）も、ここで外す。
   const lp = neutralizeWidgetStyles(versionHtml)
 
-  // 離脱防止ポップアップ（指示80）: 有効なポップアップのHTML/JS/CSSをLP末尾に挿入
-  const exitPopups = (state.exitPopups ?? []).filter(
-    (p) => p.ab_test_id === abTest.id && p.enabled,
-  )
-  const popupHtml = exitPopups.length === 0
-    ? ''
-    : exitPopups.map((p) => buildPopupSnippet(p, device)).join('')
-
-  // 追尾型ポップアップ（指示85）: 有効な追従バナーをLP末尾に挿入
-  const followPopups = (state.followPopups ?? []).filter(
-    (p) => p.ab_test_id === abTest.id && p.enabled,
-  )
-  const followHtml = followPopups.length === 0
-    ? ''
-    : followPopups.map((p) => buildFollowPopupSnippet(p, device)).join('')
+  // ポップアップ（離脱防止・表示直後・追従型）: 本番反映した物から、この表示に出す物を選んでLP末尾に入れる
+  // （割合・訪問回数・このVersionで配信・出し分け＝delivery-popups.ts）
+  const popupHtml = renderPopupsForView({ state, abTest, version, device }, countPopupVisit(req, res, abTest.uid))
 
   const html =
     `<!doctype html><html lang="ja"><head><meta charset="utf-8">` +
@@ -367,7 +355,7 @@ deliveryRouter.get('/lp/:uid', (req, res) => {
     `${LP_BASE_CSS}${version.css}${styleCss}${buildAnimCss()}${lp.hasWidget ? WIDGET_RESET_CSS : ''}</style>` +
     externalWidgetLibs(lp.html) +
     headTags +
-    `</head><body>${headerHtml}${withAutoplayVideos(lp.html)}${bodyTags}${popupHtml}${followHtml}` +
+    `</head><body>${headerHtml}${withAutoplayVideos(lp.html)}${bodyTags}${popupHtml}` +
     IMAGE_LINK_SCRIPT +
     // 本文のリンクに、本体と同じく LP のパラメーター・訪問者ID・記事uid を付ける（中間ページへは article_url も）
     buildLpLinkParamsScript(article.uid) +
@@ -722,21 +710,13 @@ deliveryRouter.get('/preview/:versionUid', (req, res) => {
   // 検証用の帯とポップアップは出さない（直しているポップアップの後ろに、同じポップアップや帯が重ならないように）
   const bare = req.query['bare'] === '1'
 
-  // 指示174: プレビューでも離脱防止/表示直後/追尾ポップを発動させる（配信と同じ）。
-  // （従来はプレビューにスニペットを入れておらず、プレビューURLでは一切出なかった）
-  const previewDevice = buildVisitorContext(req).device
-  const previewPopupHtml = abTest === undefined || bare
+  // 指示174: プレビューでも離脱防止/表示直後/追尾ポップを発動させる（配信と同じ・本番反映した物）。
+  // ?popup_draft={uid}: 編集画面の「下書きを確認」。そのポップアップの下書きだけを出す（2026-09-24）
+  const draftUid = typeof req.query['popup_draft'] === 'string' ? req.query['popup_draft'] : ''
+  const target = abTest === undefined ? null : { state, abTest, version, device: buildVisitorContext(req).device }
+  const previewPopupHtml = target === null || bare
     ? ''
-    : (getState().exitPopups ?? [])
-        .filter((p) => p.ab_test_id === abTest.id && p.enabled)
-        .map((p) => buildPopupSnippet(p, previewDevice))
-        .join('')
-  const previewFollowHtml = abTest === undefined || bare
-    ? ''
-    : (getState().followPopups ?? [])
-        .filter((p) => p.ab_test_id === abTest.id && p.enabled)
-        .map((p) => buildFollowPopupSnippet(p, previewDevice))
-        .join('')
+    : draftUid !== '' ? renderDraftPopup(target, draftUid) : renderPopupsForView(target, null)
 
   const html =
     `<!doctype html><html lang="ja"><head><meta charset="utf-8">` +
@@ -765,7 +745,6 @@ deliveryRouter.get('/preview/:versionUid', (req, res) => {
     headerHtml +
     withAutoplayVideos(lp.html) +
     previewPopupHtml +
-    previewFollowHtml +
     buildAnimRuntimeScript() +
     `</body></html>`
 
