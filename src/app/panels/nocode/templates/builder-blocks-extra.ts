@@ -7,9 +7,9 @@
  * 決まりは builder-blocks-more.ts と同じ（いちばん上に幅と置く位置・入力の文字はタグにしない・選ぶ入力には絵）。
  */
 import { isRichEmpty } from '../rich-text.ts'
-import { ALIGN_OPTIONS, layoutFields, telDigits } from './block-kit.ts'
+import { ALIGN_OPTIONS, NO_ACTION, actionOf, layoutFields, telDigits } from './block-kit.ts'
 import { safeImage } from './kit.ts'
-import { BAND_LOOK_ICONS, ORNAMENT_ICONS } from './option-icons.ts'
+import { BAND_LOOK_ICONS, LOADING_ICONS, ORNAMENT_ICONS } from './option-icons.ts'
 import { ACCENT_PRESETS, str, type BlockType, type ItemData } from './types.ts'
 
 const svg = (body: string): string =>
@@ -52,6 +52,34 @@ export function splitRows(text: string, max: number): string[][] {
 export { telDigits } from './block-kit.ts'
 
 export const EXTRA_BLOCK_TYPES: readonly BlockType[] = [
+  {
+    // 2026-09-24・本人「部品にロード中という内容を追加して」（動き＝本人の選択「数秒後に次の画面へ」）
+    type: 'loading',
+    label: 'ロード中',
+    icon: svg('<path d="M12 3a9 9 0 1 1-9 9" /><path d="M12 7v5l3 2"/>'),
+    fields: [
+      ...layoutFields('boxWidth'),
+      {
+        kind: 'select',
+        key: 'look',
+        label: '見た目',
+        options: [
+          { value: 'spinner', label: 'くるくる', icon: LOADING_ICONS.spinner },
+          { value: 'bar', label: 'バー', icon: LOADING_ICONS.bar },
+          { value: 'dots', label: '点々', icon: LOADING_ICONS.dots },
+        ],
+        fallback: 'spinner',
+      },
+      { kind: 'text', key: 'text', label: '下の文字', placeholder: 'あなたに合う内容を診断しています…', maxLength: 60 },
+      { kind: 'number', key: 'seconds', label: '待つ時間', min: 1, max: 10, unit: '秒', step: 0.5, fallback: 3 },
+      { kind: 'color', key: 'color', label: '色', presets: ACCENT_PRESETS },
+      // 終わったら: 画面②③…（＋新しい画面）かリンク。LP上のアクションは出さない（template-form.ts の pressFieldEl）
+      { kind: 'goto', key: 'action', label: '終わったら', section: 'press' },
+      { kind: 'url', key: 'url', label: '開くページ', placeholder: 'https://', showIfItem: (item) => str(item, 'action') === 'link', section: 'press' },
+      { kind: 'toggle', key: 'track', label: 'クリック数をレポートで数える', showIfItem: (item) => str(item, 'action') === 'link', section: 'press' },
+    ],
+    newItem: () => ({ type: 'loading', look: 'spinner', text: 'あなたに合う内容を診断しています…', seconds: 3, color: '#E5573F', ...NO_ACTION }),
+  },
   {
     type: 'band',
     label: '帯見出し',
@@ -242,6 +270,11 @@ export const EXTRA_BLOCK_TYPES: readonly BlockType[] = [
 export function extraBlockProblem(item: ItemData, where: string): string | null {
   const empty = (key: string): boolean => str(item, key).trim() === ''
   switch (str(item, 'type')) {
+    case 'loading': {
+      const action = actionOf(item)
+      if (action === 'link') return str(item, 'url').trim() === '' ? `ロード中の開くページが空です（${where}）。URLを入れてください` : null
+      return action === 'screen' ? null : `ロード中の「終わったら」移る先が選ばれていません（${where}）。画面かリンクを選んでください`
+    }
     case 'band':
       return isRichEmpty(str(item, 'text')) ? `帯見出しの文字が空です（${where}）。文字を書くか、その部品を消してください` : null
     case 'marker':

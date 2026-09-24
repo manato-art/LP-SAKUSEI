@@ -178,3 +178,10 @@ export const SCROLL_ICONS = {
   below: line('<rect x="8" y="3" width="16" height="8" rx="1.5"/><path d="M16 13 V21 M12 17.5 L16 21 L20 17.5"/>'),
   id: line('<path d="M9 9 H24 M8 15 H23 M13 5 L11 19 M20 5 L18 19"/>'),
 } as const
+
+/* ── ロード中の見た目 ── */
+export const LOADING_ICONS = {
+  spinner: svg('<circle cx="16" cy="12" r="7" fill="none" stroke="currentColor" stroke-width="2.4" opacity=".3"/><path d="M16 5 a7 7 0 0 1 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>'),
+  bar: svg('<rect x="3" y="10" width="26" height="5" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="3" y="10" width="15" height="5" rx="2.5" fill="currentColor"/>'),
+  dots: svg('<circle cx="8" cy="12" r="2.6" fill="currentColor" opacity=".45"/><circle cx="16" cy="12" r="2.6" fill="currentColor"/><circle cx="24" cy="12" r="2.6" fill="currentColor" opacity=".45"/>'),
+} as const

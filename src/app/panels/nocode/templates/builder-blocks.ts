@@ -473,7 +473,7 @@ function renderBlockBody(item: ItemData, i: number, s: string, seen: Set<string>
       return { html: `<div class="nc-b nc-b-sample ${cls}">${dedupeSampleAssets(str(item, 'html'), seen)}</div>`, css: '' }
     default: {
       // 増やした部品（builder-blocks-more-render.ts）
-      const more = renderMoreBlock(item, i, s)
+      const more = renderMoreBlock(item, i, s, press)
       if (more !== null) return more
       // 型の部品（型が自分でHTMLとCSSを書き出す。この部品だけのWidgetの名前で、ほかの型とまざらない）
       const template = templateOfBlock(str(item, 'type'))

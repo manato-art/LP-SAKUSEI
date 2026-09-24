@@ -14,6 +14,8 @@
  *  - 押したときは「押す前」（capture）に受け取って止める。見本の部品のボタンは、見本自身のスクリプト
  *    （次の設問へ・ページ移動）も持っているので、画面へ移る指定を先に効かせる
  *  - 中に別の「部品を積んで作る」が入っていたら、その中の切り替えはその持ち主に任せる（idがぶつからない）
+ *  - 部品「ロード中」（data-nc-wait・2026-09-24）は、その画面が出たら（最初の画面は見えたら）数え始め、秒数のあと
+ *    data-nc-then の画面へ移る（リンクなら隠したリンクを押す）。Widget編集の見たまま画面（data-widget-preview）では移らない
  */
 import { SCREEN_ID, ALL_BLOCK_TYPES, actionOf, blockLabel, goTarget, renderBlock, sizeOf, templateOfBlock } from './builder-blocks.ts'
 import { goTargetsIn } from '../sample-model.ts'
@@ -51,6 +53,32 @@ for(var k=0;k<root.children.length;k++)if(root.children[k].hasAttribute('data-nc
 if(!screens.length)return;
 var effect=root.getAttribute('data-nc-transition')||'none';
 var reduce=!!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+var editing=!!(root.closest&&root.closest('[data-widget-preview]'));
+function wait(el,screen){
+if(el.closest('[data-nc-screens]')!==root)return;
+clearTimeout(el.__ncWait);
+el.classList.remove('is-run');void el.offsetWidth;el.classList.add('is-run');
+var ms=parseInt(el.getAttribute('data-nc-wait'),10);if(!(ms>0))ms=3000;
+el.__ncWait=setTimeout(function(){
+if(screen.hidden||editing)return;
+var to=el.getAttribute('data-nc-then');
+if(to){show(to,true);return;}
+var a=el.querySelector('.nc-b-loading__go');if(a)a.click();
+},ms);
+}
+function arm(screen){
+var list=screen.querySelectorAll('[data-nc-wait]');
+for(var w=0;w<list.length;w++)wait(list[w],screen);
+}
+function seen(screen){
+var list=screen.querySelectorAll('[data-nc-wait]');
+if(!list.length)return;
+if(!window.IntersectionObserver){arm(screen);return;}
+var io=new IntersectionObserver(function(es){
+for(var q=0;q<es.length;q++)if(es[q].isIntersecting){io.disconnect();if(!screen.hidden)arm(screen);return;}
+},{threshold:0.3});
+for(var v=0;v<list.length;v++)io.observe(list[v]);
+}
 function videos(screen,on){
 var list=screen.querySelectorAll('video');
 for(var v=0;v<list.length;v++){try{if(on){if(list[v].hasAttribute('autoplay'))list[v].play();}else{list[v].pause();}}catch(e){}}
@@ -60,6 +88,7 @@ var next=null;
 for(var j=0;j<screens.length;j++)if(screens[j].getAttribute('data-nc-screen')===id)next=screens[j];
 if(!next)return;
 for(var n=0;n<screens.length;n++){var on=screens[n]===next;screens[n].hidden=!on;videos(screens[n],on);}
+if(moved)arm(next);else seen(next);
 if(!moved)return;
 if(effect!=='none'&&!reduce&&next.animate){
 next.animate(effect==='slide'?[{opacity:0,transform:'translateX(24px)'},{opacity:1,transform:'none'}]:[{opacity:0},{opacity:1}],{duration:240,easing:'ease-out'});
@@ -365,7 +394,9 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
       (press.flags.has('act') ? popsCss(s) + press.css.join('') : '')
 
     const pops = press.pops.join('') + (press.flags.has('modal') ? MODAL_LAYER : '')
-    const scripts = [...(screens.length > 1 ? [SCREENS_SCRIPT] : []), ...(press.flags.has('act') ? [ACTIONS_SCRIPT] : [])]
+    // 画面の切り替え（2画面以上か、「ロード中」で移るとき）と、LP上のアクション
+    const needsScreens = screens.length > 1 || usedTypes.has('loading')
+    const scripts = [...(needsScreens ? [SCREENS_SCRIPT] : []), ...(press.flags.has('act') ? [ACTIONS_SCRIPT] : [])]
     const attrs =
       ` data-nc-screens="true" data-nc-transition="${transition}"` + (previewStart === null ? '' : ` data-nc-start="${previewStart}"`)
     return wrapWidget({

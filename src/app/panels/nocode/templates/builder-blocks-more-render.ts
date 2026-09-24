@@ -64,7 +64,7 @@ export function renderHotspot(item: ItemData, i: number, s: string, press: Press
 }
 
 /** 増やした部品の HTML と、その部品だけの CSS。増やした部品でなければ null */
-export function renderMoreBlock(item: ItemData, i: number, s: string): Part | null {
+export function renderMoreBlock(item: ItemData, i: number, s: string, press?: PressContext): Part | null {
   const cls = `nc-b-${i}`
   const sel = `${s} .${cls}`
   switch (str(item, 'type')) {
@@ -254,7 +254,7 @@ export function renderMoreBlock(item: ItemData, i: number, s: string): Part | nu
     }
     default:
       // もっと増やした部品（builder-blocks-extra-render.ts）
-      return renderExtraBlock(item, i, s)
+      return renderExtraBlock(item, i, s, press)
   }
 }
 

@@ -4,7 +4,8 @@
  * 入力の文字は esc か richText、色は safeColor、画像は safeImage を通す。
  * 飾りの擬似要素は ::after に置く（::before は見たまま画面の空の案内に使う＝ui-forge pseudo-element-slot-collision）。
  */
-import { ALIGNS } from './block-kit.ts'
+import { ALIGNS, goTarget, hrefOf } from './block-kit.ts'
+import type { PressContext } from './press-actions.ts'
 import { FEATURE_ICONS, splitRows, telDigits } from './builder-blocks-extra.ts'
 import { esc, inkOn, linkAttrs, safeColor, safeImage, shade } from './kit.ts'
 import { richText } from '../rich-text.ts'
@@ -18,10 +19,36 @@ const lineSvg = (body: string): string =>
   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`
 
 /** もっと増やした部品の HTML と、その部品だけの CSS。この部品でなければ null */
-export function renderExtraBlock(item: ItemData, i: number, s: string): Part | null {
+export function renderExtraBlock(item: ItemData, i: number, s: string, press?: PressContext): Part | null {
   const cls = `nc-b-${i}`
   const sel = `${s} .${cls}`
   switch (str(item, 'type')) {
+    case 'loading': {
+      // 決めた秒数のあと、選んだ画面へ（data-nc-then）か、隠したリンクを押して移る（builder.ts の SCREENS_SCRIPT が数える）
+      const look = pick(item, 'look', ['spinner', 'bar', 'dots'] as const, 'spinner')
+      const color = safeColor(str(item, 'color'), '#E5573F')
+      const raw = Number(item['seconds'])
+      const seconds = Number.isFinite(raw) ? Math.min(10, Math.max(1, Math.round(raw * 2) / 2)) : 3
+      const target = press === undefined ? null : goTarget(item, press.screenIds)
+      const href = hrefOf(item)
+      const go =
+        href === null
+          ? ''
+          : `<a class="nc-b-loading__go"${linkAttrs(href, { track: bool(item, 'track'), newTab: false })} hidden tabindex="-1" aria-hidden="true"></a>`
+      const visual =
+        look === 'bar'
+          ? '<span class="nc-b-loading__bar"><i></i></span>'
+          : look === 'dots'
+            ? '<span class="nc-b-loading__dots"><i></i><i></i><i></i></span>'
+            : '<span class="nc-b-loading__spinner"></span>'
+      return {
+        html:
+          `<div class="nc-b nc-b-loading nc-b-loading--${look} ${cls}" data-nc-wait="${seconds * 1000}"${target === null ? '' : ` data-nc-then="${target}"`}>` +
+          `<span class="nc-b-loading__visual" aria-hidden="true">${visual}</span>` +
+          `<p class="nc-b-loading__text" role="status">${esc(str(item, 'text').trim())}</p>${go}</div>`,
+        css: `${sel}{--nc-wait:${seconds}s}${sel} .nc-b-loading__visual{color:${color}}`,
+      }
+    }
     case 'band': {
       const color = safeColor(str(item, 'color'), '#E5573F')
       const look = pick(item, 'look', ['fill', 'ribbon', 'line'] as const, 'fill')
@@ -195,6 +222,23 @@ export function renderExtraBlock(item: ItemData, i: number, s: string): Part | n
 
 /** 部品の形の土台（使っている部品の分だけ、Widgetに1回） */
 export const EXTRA_BASE_CSS: Readonly<Record<string, (s: string) => string>> = {
+  loading: (s) =>
+    `${s} .nc-b-loading{display:flex;flex-direction:column;align-items:center;gap:14px;padding:24px 0;text-align:center}` +
+    `${s} .nc-b-loading__visual{display:flex;justify-content:center;width:100%}` +
+    `${s} .nc-b-loading__text{margin:0;font-size:15px;font-weight:700;line-height:1.6;color:#1F2A37}` +
+    `${s} .nc-b-loading__spinner{display:block;width:44px;height:44px;border-radius:50%;border:4px solid currentColor;` +
+    `border-right-color:transparent;animation:nc-load-spin .9s linear infinite}` +
+    `${s} .nc-b-loading__bar{display:block;width:min(280px,80%);height:8px;border-radius:999px;background:#E6EAF0;overflow:hidden}` +
+    `${s} .nc-b-loading__bar i{display:block;width:0;height:100%;border-radius:inherit;background:currentColor}` +
+    `${s} .nc-b-loading.is-run .nc-b-loading__bar i{animation:nc-load-bar var(--nc-wait,3s) linear forwards}` +
+    `${s} .nc-b-loading__dots{display:flex;gap:8px}` +
+    `${s} .nc-b-loading__dots i{display:block;width:10px;height:10px;border-radius:50%;background:currentColor;animation:nc-load-dot 1s ease-in-out infinite}` +
+    `${s} .nc-b-loading__dots i:nth-child(2){animation-delay:.15s}${s} .nc-b-loading__dots i:nth-child(3){animation-delay:.3s}` +
+    `@keyframes nc-load-spin{to{transform:rotate(360deg)}}` +
+    `@keyframes nc-load-bar{from{width:0}to{width:100%}}` +
+    `@keyframes nc-load-dot{0%,80%,100%{transform:scale(.6);opacity:.4}40%{transform:scale(1);opacity:1}}` +
+    // 動きを減らす設定: くるくるはゆっくり、点々は止める（バーは進み具合を伝えるので残す）
+    `@media (prefers-reduced-motion:reduce){${s} .nc-b-loading__spinner{animation-duration:2.4s}${s} .nc-b-loading__dots i{animation:none;opacity:.8}}`,
   band: (s) =>
     `${s} .nc-b-band{text-align:center}` +
     `${s} .nc-b-band__text{display:block;font-weight:800;line-height:1.45}` +
@@ -300,6 +344,7 @@ export const EXTRA_BASE_CSS: Readonly<Record<string, (s: string) => string>> = {
 
 /** 見たまま画面だけの見え方（空の部品の薄い案内） */
 export const EXTRA_PREVIEW_CSS =
+  '.nc-b-loading__text:empty::before{content:"下の文字を入れてください";opacity:.4}' +
   '.nc-b-band__text:empty::before{content:"帯の文字を入れてください";opacity:.55}' +
   '.nc-b-marker__text:empty::before{content:"マーカーを引く文章を入れてください";opacity:.4}' +
   '.nc-b-iconText__title:empty::before{content:"見出しを入れてください";opacity:.35}' +

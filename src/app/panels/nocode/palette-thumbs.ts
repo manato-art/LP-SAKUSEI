@@ -46,6 +46,7 @@ const THUMB_BLOCKS: Readonly<Record<string, () => readonly ItemData[]>> = {
   tel: () => [{ type: 'tel', number: '0120-000-000', label: 'お電話でのお問い合わせ', hours: '', color: '#0B7A3E', track: false }],
   coupon: () => [{ type: 'coupon', title: '初回限定クーポン', amount: '500円OFF', code: 'WELCOME', note: '', color: '#E5573F' }],
   ornament: () => [{ type: 'ornament', look: 'wave', height: 20, color: '#E5573F' }],
+  loading: () => [{ type: 'loading', look: 'spinner', text: 'あなたに合う内容を診断中…', seconds: 3, color: '#E5573F', action: 'none' }],
 }
 
 /** サムネだけの見え方（まだ無い画像・動画は灰色の箱。余白は点線の枠。移行先は斜線） */

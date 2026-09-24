@@ -398,7 +398,9 @@ export function buildTemplateForm(options: TemplateFormOptions): TemplateForm {
       row.update(next.chips, next.selected, next.warn)
     })
     const wrap = node('div', 'ncf-press')
-    wrap.append(row.el, ...lpPressRows(field, screenIndex, itemPath))
+    // ロード中の「終わったら」は画面かリンクだけ（LP上のアクションは出さない）
+    const isLoading = str(item(), 'type') === 'loading'
+    wrap.append(row.el, ...(isLoading ? [] : lpPressRows(field, screenIndex, itemPath)))
     return wrap
   }
 

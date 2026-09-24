@@ -40,7 +40,7 @@ export const PALETTE_GROUPS: readonly { readonly title: string; readonly types: 
   { title: '文字', types: ['heading', 'text', 'band', 'marker', 'list', 'note', 'accordion'] },
   { title: '伝える・見せる', types: ['speech', 'quote', 'box', 'point', 'iconText', 'profile'] },
   { title: '画像・動画', types: ['image', 'imageText', 'gallery', 'cover', 'beforeAfter', 'video'] },
-  { title: '押す・移る', types: ['button', HOTSPOT_TYPE, 'tel'] },
+  { title: '押す・移る', types: ['button', HOTSPOT_TYPE, 'tel', 'loading'] },
   { title: '数字・評価', types: ['price', 'coupon', 'stat', 'numbers', 'rating', 'ranking', 'badge', 'table'] },
   { title: 'かざり・すき間', types: ['shape', 'divider', 'ornament', 'spacer', 'cue'] },
 ]

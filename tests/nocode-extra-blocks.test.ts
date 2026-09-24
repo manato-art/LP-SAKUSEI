@@ -38,8 +38,8 @@ describe('もっと増やした部品', () => {
     }
   })
 
-  it('部品（型を除く）は35種になった', () => {
-    expect(ALL_BLOCK_TYPES.filter((t) => t.type !== 'sample' && !t.type.startsWith('tpl-')).length).toBe(35)
+  it('部品（型を除く）は36種になった（あとからロード中も足した）', () => {
+    expect(ALL_BLOCK_TYPES.filter((t) => t.type !== 'sample' && !t.type.startsWith('tpl-')).length).toBe(36)
   })
 
   it('入力の文字は、どの部品でも文字として出す（タグにならない）', () => {
