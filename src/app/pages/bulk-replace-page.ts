@@ -679,7 +679,7 @@ function injectStyles(): void {
     .br-tracking{margin-top:12px}
     .br-tracking-title{font-size:11px;font-weight:700;margin-bottom:4px}
     .br-radio{display:flex;flex-direction:row;align-items:center;gap:5px;font-size:11px;color:var(--sb-c-333333, #333333);cursor:pointer;padding:1px 0}
-    .br-result{margin-top:14px;padding:10px 12px;border-radius:4px;background:var(--sb-c-f4f8fd, #F4F8FD)}
+    .br-result{margin-top:14px;padding:10px 12px;border-radius:4px;background:var(--sb-accent-tint, #E6F4FF)}
     .br-result-text{font-size:12px;font-weight:600;color:var(--sb-c-333333, #333333)}
     .br-result-note{font-size:11px;color:var(--sb-c-666666, #666666);margin-top:4px;line-height:1.6}
     .br-undo{margin-top:8px;border:1px solid var(--sb-accent,#0091FF);background:var(--sb-c-ffffff, #FFFFFF);
