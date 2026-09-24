@@ -149,3 +149,41 @@ describe('Versionの削除で配信を止めない（点検42: アーカイブ�
     expect(res.status).toBe(422)
   })
 })
+
+describe('Version複製のリンク設定（点検13）', () => {
+  it('【削除】全てのページ内URL を選ぶと、複製先のリンクを外す（元のVersionはそのまま）', async () => {
+    const { v1 } = await seedTwoVersions()
+    await call('PUT', `/versions/${v1}`, { html: '<p><a href="https://shop.example.test/?sb_tracking=true">買う</a> と <a href="/about">会社</a></p>' })
+    const res = await call<{ version: { uid: string; html: string } }>('POST', `/versions/${v1}/duplicate`, { link_mode: 'remove_links' })
+    expect(res.status).toBe(201)
+    expect(res.json.version.html).toBe('<p>買う と 会社</p>')
+    expect(htmlOf(v1)).toContain('<a href="/about">')
+  })
+
+  it('【削除】トラッキングリンクだけ を選ぶと、計測付きのリンクだけ外す', async () => {
+    const { v1 } = await seedTwoVersions()
+    await call('PUT', `/versions/${v1}`, { html: '<p><a href="https://shop.example.test/?sb_tracking=true">買う</a> と <a href="/about">会社</a></p>' })
+    const res = await call<{ version: { html: string } }>('POST', `/versions/${v1}/duplicate`, { link_mode: 'remove_tracking_links' })
+    expect(res.json.version.html).toBe('<p>買う と <a href="/about">会社</a></p>')
+  })
+
+  it('知らない指定は 422（黙って残さない）', async () => {
+    const { v1 } = await seedTwoVersions()
+    const res = await call('POST', `/versions/${v1}/duplicate`, { link_mode: 'xxx' })
+    expect(res.status).toBe(422)
+  })
+})
+
+describe('履歴の1件の中身（比較モードの「更新履歴・復元」で見比べる・点検17）', () => {
+  it('そのVersionの履歴なら本文を返す。別のVersionを指したら 404', async () => {
+    const { articleUid, v1, v2 } = await seedTwoVersions()
+    await call('POST', `/articles/${articleUid}/histories`, { html: '<p>Version2 のある時点</p>', version_uid: v2 })
+    const list = await call<{ histories: { id: number }[] }>('GET', `/articles/${articleUid}/histories?version_uid=${v2}`)
+    const id = list.json.histories[0]?.id
+    const ok = await call<{ history: { id: number; html: string } }>('GET', `/articles/${articleUid}/histories/${String(id)}?version_uid=${v2}`)
+    expect(ok.status).toBe(200)
+    expect(ok.json.history.html).toBe('<p>Version2 のある時点</p>')
+    const ng = await call('GET', `/articles/${articleUid}/histories/${String(id)}?version_uid=${v1}`)
+    expect(ng.status).toBe(404)
+  })
+})

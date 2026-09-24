@@ -301,6 +301,8 @@ export function addVersion(
 export function duplicateVersion(
   state: State,
   uid: string,
+  /** 複製先の本文の手直し（「リンク設定」でリンクを外すなど）。省略すると元のまま */
+  transformHtml?: (html: string) => string,
 ): { state: State; version: Version | null } {
   const index = state.versions.findIndex((v) => v.uid === uid)
   const source = state.versions[index]
@@ -308,6 +310,7 @@ export function duplicateVersion(
   const id = state.nextId
   const copy: Version = {
     ...source,
+    html: transformHtml === undefined ? source.html : transformHtml(source.html),
     id,
     uid: freshUid(state.versions, id, (n) => makeUid('version', n)),
     name: generateVersionName(state.versions.length + 1),

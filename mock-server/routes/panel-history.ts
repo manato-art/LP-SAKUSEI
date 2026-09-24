@@ -108,6 +108,23 @@ historyRouter.get('/articles/:uid/histories', (req, res) => {
   res.json({ histories: applyEmptyState(req, rows) })
 })
 
+/** 1件の中身（比較モードの「更新履歴・復元」で、その時点の本文を見比べる・2026-09-24 点検17） */
+historyRouter.get('/articles/:uid/histories/:id', (req, res) => {
+  const versionUid = typeof req.query['version_uid'] === 'string' ? req.query['version_uid'] : ''
+  const state = getState()
+  pruneArticleHistories(state)
+  const found = resolve(state, req.params.uid, versionUid === '' ? undefined : versionUid)
+  if (found === null) return articleNotFound(res)
+  const id = Number(req.params.id)
+  const entry = historiesOf(getArticleHistoryState(), found.key, found.version?.uid).find((e) => e.id === id)
+  if (entry === undefined || found.version === undefined) {
+    res.status(404).json(errorEnvelope('not_found', '履歴が見つかりません。'))
+    return
+  }
+  const currentId = currentHistoryOf(getArticleHistoryState(), found.key, found.version.uid)?.id
+  res.json({ history: { ...serializeHistory(entry, entry.id === currentId), html: entry.html } })
+})
+
 /** 現在の本文を記録する。直前と同じ内容なら積まない（`recorded:false`） */
 historyRouter.post('/articles/:uid/histories', (req, res) => {
   const state = getState()

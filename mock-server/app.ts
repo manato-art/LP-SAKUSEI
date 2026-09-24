@@ -32,6 +32,7 @@ import { teamsRouter } from './routes/teams.ts'
 import { usersRouter } from './routes/users.ts'
 import { versionsRouter } from './routes/versions.ts'
 import { deliveryRouter } from './routes/delivery.ts'
+import { previewRouter } from './routes/delivery-preview.ts'
 import { redirectPageTagsRouter } from './routes/redirect-page-tags.ts'
 import { redirectPageDeliveryRouter } from './routes/redirect-page-delivery.ts'
 import { adminAuthRouter, isAdminAuthenticated, render404Page } from './lib/admin-auth.ts'
@@ -176,6 +177,8 @@ export function createApp(): Express {
   // Slackの認可はブラウザ遷移で戻ってくるので、API認証の外に置く
   app.use(slackOauthRouter)
   app.use(deliveryRouter)
+  // プレビュー（/preview/:versionUid）。配信と同じく認証を掛けない（計測はしない）
+  app.use(previewRouter)
   // 中間ページ（中間ページリンクの実体・実パス）。配信ページと同じく認証を掛けない
   app.use(redirectPageDeliveryRouter)
   // LPの画像・動画ファイル（本文に埋め込まれていた data URL を別ファイルにしたもの・lib/uploads.ts）。

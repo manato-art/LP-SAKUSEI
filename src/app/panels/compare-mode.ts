@@ -8,7 +8,6 @@
 import { toast } from '../ui.ts'
 import { renderCompareHeatmap } from './compare-heatmap.ts'
 import {
-  ICON_BENCHMARK,
   ICON_CLOSE,
   ICON_COPY,
   ICON_DOTS,
@@ -22,6 +21,9 @@ import {
   injectStyles,
 } from './compare-mode-styles.ts'
 import { MIN_H, MIN_W } from './compare-mode-metrics.ts'
+import { closeQrPopover, toggleQrPopover } from './compare-qr.ts'
+import { savedPreviewUrl, showInFrame } from './compare-preview-doc.ts'
+import { renderHistoryTab, type CompareHistoryDeps } from './compare-history-tab.ts'
 
 /* ──────────────────── SVG アイコン ──────────────────── */
 
@@ -47,7 +49,7 @@ const TABS: readonly TabDef[] = [
   { label: 'ヒートマップ', icon: ICON_HEATMAP },
   { label: '他のVersion', icon: ICON_VERSION },
   { label: '更新履歴・\n復元', icon: ICON_HISTORY },
-  { label: 'ベンチマーク', icon: ICON_BENCHMARK },
+  // 「ベンチマーク」は「準備中です」と出るだけで、何を見比べる所かも決まっていなかったので置かない（2026-09-24 点検17）
 ]
 
 /* ──────────────────── デバイス定義 ──────────────────── */
@@ -92,7 +94,7 @@ export interface CompareVersionInfo {
   html: string
 }
 
-export interface ComparePanelDeps {
+export interface ComparePanelDeps extends Omit<CompareHistoryDeps, 'getVersionUid' | 'getCurrentHtml'> {
   /** このページ（beyondページ）の UID。ヒートマップの取得に使う */
   abTestUid: string
   /** 現在 Version の HTML 本文を返す */
@@ -122,6 +124,7 @@ export function toggleComparePanel(root: HTMLElement, deps: ComparePanelDeps): v
 }
 
 export function closeComparePanel(): void {
+  closeQrPopover()
   if (cleanupPhoneResize !== null) {
     cleanupPhoneResize()
     cleanupPhoneResize = null
@@ -140,13 +143,11 @@ export function closeComparePanel(): void {
   }
 }
 
-/** Version 切り替え時にプレビューを更新する */
-export function refreshComparePreview(html: string): void {
+/** Version を切り替えた・保存したときにプレビューを更新する（プレビュータブのスマホ枠だけ） */
+export function refreshComparePreview(versionUid: string, html: string): void {
   if (panelEl === null) return
-  const iframe = panelEl.querySelector<HTMLIFrameElement>('[data-cmp-iframe]')
-  if (iframe !== null) {
-    iframe.srcdoc = wrapHtmlForPreview(html)
-  }
+  const iframe = panelEl.querySelector<HTMLIFrameElement>('[data-cmp-iframe][data-cmp-live]')
+  if (iframe !== null) showInFrame(iframe, versionUid, html)
 }
 
 /* ──────────────────── 内部 ──────────────────── */
@@ -399,15 +400,18 @@ function renderTabContent(
     return
   }
 
-  if (tabIndex !== 0) {
-    const tabDef = TABS[tabIndex]
-    const placeholder = document.createElement('div')
-    placeholder.className = 'sb-cmp-placeholder'
-    placeholder.innerHTML = `
-      ${tabDef?.icon ?? ''}
-      <div>${tabDef?.label.replace('\n', '') ?? ''} は準備中です</div>
-    `
-    container.append(placeholder)
+  // 「更新履歴・復元」タブ（index 3）: 今のVersionの履歴と、その時点の見た目（点検17）
+  if (tabIndex === 3) {
+    injectOtherVersionsStyles()
+    const phoneArea = document.createElement('div')
+    phoneArea.className = 'sb-cmp-phone-area'
+    const device = DEVICES[DEFAULT_DEVICE_INDEX] ?? (DEVICES[0] as DeviceDef)
+    renderHistoryTab(
+      container,
+      { articleUid: deps.articleUid, getVersionUid: deps.getVersionUid, getCurrentHtml: deps.getCurrentHtml, applyRestored: deps.applyRestored },
+      (fill) => buildPhoneMockup(fill, device, phoneArea),
+      phoneArea,
+    )
     return
   }
 
@@ -440,17 +444,17 @@ function renderTabContent(
   qrBtn.className = 'sb-cmp-url-btn'
   qrBtn.innerHTML = ICON_QR
   qrBtn.title = 'QRコード'
-  qrBtn.addEventListener('click', () => toast('QRコードは準備中です', 'error'))
+  // プレビューのURLをQRコードに（スマホのカメラで読んで実機で確かめる・点検17）
+  qrBtn.addEventListener('click', () => toggleQrPopover(qrBtn, previewUrl))
 
   const extBtn = document.createElement('button')
   extBtn.className = 'sb-cmp-url-btn'
   extBtn.innerHTML = ICON_EXTERNAL
   extBtn.title = '別タブで開く'
+  // プレビュー（/preview）を別タブで開く。以前はページの番号の所にVersionの番号を入れた画面へ飛び、
+  // 「beyondページが見つかりません」になっていた（点検17）
   extBtn.addEventListener('click', () => {
-    const url =
-      `${location.origin}${location.pathname}` +
-      `#/ab_tests/${versionUid}/articles/${versionUid}/previews`
-    window.open(url, '_blank', 'noopener')
+    window.open(previewUrl, '_blank', 'noopener')
   })
 
   urlBar.append(urlLabel, urlText, copyBtn, qrBtn, extBtn)
@@ -481,7 +485,12 @@ function renderTabContent(
 
   const currentDevice = DEVICES[DEFAULT_DEVICE_INDEX] ?? DEVICES[0]
   if (currentDevice === undefined) return
-  phoneArea.append(buildPhoneMockup(deps.getCurrentHtml(), currentDevice, phoneArea))
+  // いまの本文（まだ保存していないぶんも）を、プレビューと同じ見た目で出す（点検36）
+  const fillLive = (iframe: HTMLIFrameElement): void => {
+    iframe.setAttribute('data-cmp-live', '')
+    showInFrame(iframe, versionUid, deps.getCurrentHtml())
+  }
+  phoneArea.append(buildPhoneMockup(fillLive, currentDevice, phoneArea))
   container.append(phoneArea)
 
   // デバイス変更
@@ -490,7 +499,7 @@ function renderTabContent(
     const dev = DEVICES.find((d) => d.width === w && d.height === h) ?? DEVICES[0]
     if (dev === undefined) return
     phoneArea.innerHTML = ''
-    phoneArea.append(buildPhoneMockup(deps.getCurrentHtml(), dev, phoneArea))
+    phoneArea.append(buildPhoneMockup(fillLive, dev, phoneArea))
   })
 }
 
@@ -551,7 +560,7 @@ function renderOtherVersions(container: HTMLElement, deps: ComparePanelDeps): vo
     const v = versions.find((x) => x.uid === selectedUid)
     if (v === undefined) return
     phoneArea.innerHTML = ''
-    phoneArea.append(buildPhoneMockup(v.html, device, phoneArea))
+    phoneArea.append(buildPhoneMockup((iframe) => showInFrame(iframe, v.uid, v.html), device, phoneArea))
   }
 
   deviceSelect.addEventListener('change', () => {
@@ -578,7 +587,8 @@ function renderOtherVersions(container: HTMLElement, deps: ComparePanelDeps): vo
     tf.setAttribute('scrolling', 'no')
     tf.setAttribute('tabindex', '-1')
     tf.setAttribute('aria-hidden', 'true')
-    tf.srcdoc = wrapHtmlForPreview(v.html)
+    // サムネは保存済みの中身（プレビューと同じ見た目）
+    tf.src = savedPreviewUrl(v.uid)
     thumb.append(tf)
 
     // ラベル（Version名＋配信割合）
@@ -620,7 +630,7 @@ let cleanupPhoneResize: (() => void) | null = null
  * 1:1 で組み立て → CSS transform で全体を縮小 → ResizeObserver でパネルリサイズに追従。
  * 常にスマホ全体が見える（見切れない）。
  */
-function buildPhoneMockup(html: string, device: DeviceDef, phoneArea: HTMLElement): HTMLElement {
+function buildPhoneMockup(fill: (iframe: HTMLIFrameElement) => void, device: DeviceDef, phoneArea: HTMLElement): HTMLElement {
   // 前の Observer を切断
   if (cleanupPhoneResize !== null) {
     cleanupPhoneResize()
@@ -656,7 +666,7 @@ function buildPhoneMockup(html: string, device: DeviceDef, phoneArea: HTMLElemen
   const iframe = document.createElement('iframe')
   iframe.setAttribute('data-cmp-iframe', '')
   iframe.title = 'LPプレビュー'
-  iframe.srcdoc = wrapHtmlForPreview(html)
+  fill(iframe)
   iframe.style.width = `${device.width}px`
   iframe.style.height = `${device.height}px`
   // iframe は 1:1（phone 全体を transform するので個別スケール不要）
@@ -694,30 +704,4 @@ function buildPhoneMockup(html: string, device: DeviceDef, phoneArea: HTMLElemen
   requestAnimationFrame(fitToArea)
 
   return wrapper
-}
-
-/** Quill の HTML 本文をプレビュー用の完全なページに包む */
-function wrapHtmlForPreview(bodyHtml: string): string {
-  // ヘッダー画像コメントを<img>タグに展開
-  let headerHtml = ''
-  let body = bodyHtml
-  const m = bodyHtml.match(/^<!--header-image:(.+?)-->/)
-  if (m !== null) {
-    headerHtml = `<img src="${m[1] ?? ''}" style="display:block;width:100%;object-fit:cover;position:sticky;top:0;z-index:10;max-height:120px" alt="ヘッダー画像">`
-    body = bodyHtml.slice(m[0].length)
-  }
-  return `<!doctype html>
-<html><head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans",sans-serif;
-  font-size:14px;line-height:1.6;color:var(--sb-c-333333, #333333);background:var(--sb-c-ffffff, #FFFFFF)}
-img,video{max-width:100%;height:auto;display:block}
-a{color:#1a73e8}
-</style>
-</head><body>
-${headerHtml}<div class="article-body">${body}</div>
-</body></html>`
 }

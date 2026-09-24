@@ -24,7 +24,7 @@ import { mountWidgetLibrary } from '../panels/widget-library.ts'
 import { wireWidgetClick } from '../panels/widget-editor.ts'
 import { mountWidgetNav } from '../panels/widget-nav.ts'
 import { EXTERNAL_IMAGE_TOOL_INDEX, mountExternalImage } from '../panels/external-image.ts'
-import { toggleComparePanel } from '../panels/compare-mode.ts'
+import { isComparePanelOpen, refreshComparePreview, toggleComparePanel } from '../panels/compare-mode.ts'
 import {
   masterStyleCanvasBackground,
   masterStyleEditorDecls,
@@ -222,6 +222,8 @@ export function mountHeaderExtras(
   compareBtn.addEventListener('click', () => {
     toggleComparePanel(ctx.root, {
       abTestUid: ctx.abTestUid,
+      articleUid: ctx.articleUid,
+      applyRestored: (html, version) => applyRestoredContent(ctx, html, version),
       getCurrentHtml: () => buildFullHtml(ctx),
       getVersionUid: () => ctx.currentUid,
       // 指示138: このページの全 Version を渡す（現在 Version は編集中の最新HTMLを使う）
@@ -423,14 +425,7 @@ export function wireSideToolbar(ctx: EditorContext): void {
         const panel = mountHistory(ctx.root, ctx.articleUid, {
           versionUid: () => ctx.currentUid,
           currentHtml: () => buildFullHtml(ctx),
-          // 戻した中身はサーバーで保存済み。自動保存を起こさずに入れ、中身の版も合わせる（点検3）
-          apply: (html, version) => {
-            showVersionContent(ctx, html)
-            ctx.versions = ctx.versions.map((v) =>
-              v.uid === version.uid ? { ...v, html, content_revision: version.content_revision } : v,
-            )
-            ctx.saveStatus?.set('saved')
-          },
+          apply: (html, version) => applyRestoredContent(ctx, html, version),
         })
         if (panel === null) return
         if (!historyRegistered) {
@@ -531,6 +526,8 @@ export function wireSideToolbar(ctx: EditorContext): void {
         return
       }
       status?.set('saved')
+      // 比較モードのプレビューも、保存した中身に合わせる
+      if (isComparePanelOpen()) refreshComparePreview(saved.versionUid, saved.html)
       try {
         // どのVersionの履歴かを添える（添えないと先頭のVersionの履歴になり、復元で先頭が書き換わっていた・点検3）
         await recordArticleHistory(ctx.articleUid, saved.html, saved.versionUid)
@@ -586,4 +583,14 @@ function watchUnsavedOnLeave(autosave: Autosave): void {
     })
   }
   leaveGuard = autosave
+}
+
+/**
+ * 履歴から戻した中身をエディタへ入れる（右の「履歴」と比較モードの「更新履歴・復元」で共通）。
+ * サーバーで保存済みなので自動保存は起こさず、中身の版も合わせる（点検3）
+ */
+function applyRestoredContent(ctx: EditorContext, html: string, version: { uid: string; content_revision?: number }): void {
+  showVersionContent(ctx, html)
+  ctx.versions = ctx.versions.map((v) => (v.uid === version.uid ? { ...v, html, content_revision: version.content_revision } : v))
+  ctx.saveStatus?.set('saved')
 }

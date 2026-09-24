@@ -254,7 +254,7 @@ export function loadVersion(ctx: EditorContext, uid: string): void {
       })
     }
     // 比較パネルが開いていればプレビューも更新
-    if (isComparePanelOpen()) refreshComparePreview(v.html)
+    if (isComparePanelOpen()) refreshComparePreview(uid, v.html)
   }, 50)
 }
 /** カードの「…」トリガー（採取物のクラス） */

@@ -24,6 +24,9 @@ import { checkRatioTotal, optionalNumber, optionalString, validateRatio } from '
 import type { State, Version } from '../store/types.ts'
 import { externalizeDataUrls } from '../lib/uploads.ts'
 import { editorSessionOf } from '../lib/editor-session.ts'
+import { unwrapLinksInHtml } from '../../src/shared/link-html.ts'
+import { renderPreviewDocument } from './delivery-preview.ts'
+import { buildVisitorContext } from './delivery-targeting.ts'
 
 export const versionsRouter: Router = Router()
 
@@ -63,11 +66,43 @@ versionsRouter.post('/articles/:uid/versions', (req, res) => {
   res.status(201).json({ version: serializeVersion(created) })
 })
 
+/**
+ * 比較モードのプレビュー（2026-09-24 点検36）。まだ保存していない本文や、履歴の本文を、
+ * プレビュー（/preview）と同じ見た目のページにして返す（比較モードだけ別の組み立てで、配信と見た目が違っていた）
+ */
+versionsRouter.post('/versions/:uid/preview_document', (req, res) => {
+  const state = getState()
+  const version = state.versions.find((v) => v.uid === req.params.uid)
+  const html = optionalString(req.body, 'html')
+  const document =
+    version === undefined
+      ? null
+      : renderPreviewDocument(state, version, { html: html === '' ? undefined : html, bare: true, device: buildVisitorContext(req).device })
+  if (document === null) {
+    res.status(404).json(errorEnvelope('not_found', 'Versionが見つかりません。'))
+    return
+  }
+  res.json({ document })
+})
+
+/** Version複製の「リンク設定」（2026-09-24 点検13: 以前は受け取るだけで、どれを選んでもリンクが残っていた） */
+const LINK_MODES = {
+  leave_links: null,
+  remove_links: 'all',
+  remove_tracking_links: 'tracking',
+} as const
+
 /** Version複製（元Versionの直後に新Versionを作る） */
 versionsRouter.post('/versions/:uid/duplicate', (req, res) => {
+  const mode = optionalString(req.body, 'link_mode') || 'leave_links'
+  if (!(mode in LINK_MODES)) {
+    res.status(422).json(errorEnvelope('validation_failed', 'リンク設定の指定が正しくありません。'))
+    return
+  }
+  const unwrap = LINK_MODES[mode as keyof typeof LINK_MODES]
   let created: Version | null = null
   setState((state) => {
-    const out = duplicateVersion(state, req.params.uid)
+    const out = duplicateVersion(state, req.params.uid, unwrap === null ? undefined : (html) => unwrapLinksInHtml(html, unwrap))
     created = out.version
     return out.state
   })

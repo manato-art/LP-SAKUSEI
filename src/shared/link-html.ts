@@ -283,6 +283,30 @@ export function replaceLinksInHtml(
   return out
 }
 
+/**
+ * リンクを外す（`<a>` と対の `</a>` だけを取り、中の文字・画像は残す）。元のHTMLは変更しない。
+ * Version複製の「リンク設定」【削除】に使う（2026-09-24 全体点検13）。
+ * which: 'all' = どのリンクも / 'tracking' = 計測付きのリンクだけ
+ */
+export function unwrapLinksInHtml(html: string, which: 'all' | 'tracking'): string {
+  const tags = findAnchorOpenTags(html)
+  let out = html
+  for (let i = tags.length - 1; i >= 0; i -= 1) {
+    const tag = tags[i]
+    if (tag === undefined) continue
+    const attrs = parseAttributes(tag.attrs)
+    const isTarget =
+      which === 'all' || isTrackingLink(attributeValue(attrs, 'href') ?? '', attributeValue(attrs, TRACKING_ATTRIBUTE))
+    if (!isTarget) continue
+    const closeMatch = /<\/a\s*>/i.exec(out.slice(tag.end))
+    const closeStart = closeMatch === null ? -1 : tag.end + closeMatch.index
+    const inner = closeStart < 0 ? out.slice(tag.end) : out.slice(tag.end, closeStart)
+    const rest = closeStart < 0 || closeMatch === null ? '' : out.slice(closeStart + closeMatch[0].length)
+    out = `${out.slice(0, tag.start)}${inner}${rest}`
+  }
+  return out
+}
+
 /** 実際に置き換わる出現順だけを返す（範囲外の値は数えない） */
 export function replaceableIndexes(html: string, indexes: readonly number[]): number[] {
   const count = findAnchorOpenTags(html).length

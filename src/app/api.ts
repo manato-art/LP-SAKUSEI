@@ -549,8 +549,9 @@ export const api = {
       adjusted_siblings?: ReadonlyArray<{ uid: string; distribution_ratio: number }>
     }>('PATCH', `/versions/${uid}/distribution`, { distribution_ratio: ratio }),
   publish: (uid: string) => request<{ version: Version }>('POST', `/versions/${uid}/publish`),
-  duplicateVersion: (uid: string) =>
-    request<{ version: Version }>('POST', `/versions/${uid}/duplicate`),
+  /** linkMode: 複製先のリンクを残す／全部外す／計測付きだけ外す（Version複製の「リンク設定」） */
+  duplicateVersion: (uid: string, linkMode: 'leave_links' | 'remove_links' | 'remove_tracking_links' = 'leave_links') =>
+    request<{ version: Version }>('POST', `/versions/${uid}/duplicate`, { link_mode: linkMode }),
   duplicateVersionToArticle: (uid: string, targetArticleUid: string) =>
     request<{ version: Version }>('POST', `/versions/${uid}/duplicate_to`, {
       target_article_uid: targetArticleUid,
