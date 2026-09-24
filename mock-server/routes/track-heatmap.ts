@@ -25,6 +25,8 @@ export function mergeHeatmapEvent(
     /** 着地URLの広告パラメータ（`utm_source=fb` の形） */
     params?: unknown
     clicks?: unknown
+    /** 1 ＝ 画面の下端で到達を数えた新しいタグ（2026-09-24）。無ければ古いタグ（スクロールの進み具合） */
+    rb?: unknown
   }
   const bands = typeof hb.bands === 'number' && hb.bands > 0 && hb.bands <= 100 ? hb.bands : 20
   const numArray = (v: unknown, n: number): number[] => {
@@ -48,6 +50,8 @@ export function mergeHeatmapEvent(
       ? Math.floor(hb.offer)
       : undefined
   const params = adParamsOf(hb.params)
+  // 古いタグの送信も受ける（外部LPのブラウザに古いタグが残っていることがある）。数え方の新旧だけ数えておく
+  const isViewportBasis = hb.rb === 1
 
   const clicks = (Array.isArray(hb.clicks) ? hb.clicks : [])
     .slice(0, 300)
@@ -91,6 +95,7 @@ export function mergeHeatmapEvent(
       ...base,
       param,
       pv: base.pv + 1,
+      vb_pv: (base.vb_pv ?? 0) + (isViewportBasis ? 1 : 0),
       // ページの作りで決まる値。届いたら最後のもので上書きする
       fv_bands: fvBands ?? base.fv_bands,
       offer_band: offerBand ?? base.offer_band,

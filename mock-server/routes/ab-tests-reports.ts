@@ -444,10 +444,11 @@ abTestsReportsRouter.get('/ab_tests/:uid/heatmaps/stats', (req, res) => {
     }
     const list = all.filter((row) => row.bands === bands)
     const zero = (): number[] => new Array<number>(bands).fill(0)
-    const sum = { pv: 0, reach: zero(), exit: zero(), dwellMs: zero(), dwellN: zero() }
+    const sum = { pv: 0, vbPv: 0, reach: zero(), exit: zero(), dwellMs: zero(), dwellN: zero() }
     const clicks: { x: number; y: number }[] = []
     for (const row of list) {
       sum.pv += row.pv
+      sum.vbPv += row.vb_pv ?? 0
       for (let i = 0; i < bands; i++) {
         sum.reach[i] = (sum.reach[i] ?? 0) + (row.reach[i] ?? 0)
         sum.exit[i] = (sum.exit[i] ?? 0) + (row.exit[i] ?? 0)
@@ -471,6 +472,8 @@ abTestsReportsRouter.get('/ab_tests/:uid/heatmaps/stats', (req, res) => {
       param: wanted,
       bands,
       pv: sum.pv,
+      /** pv のうち古いタグ（スクロールの進み具合で到達を数えていた）の記録（2026-09-24） */
+      legacy_pv: sum.pv - sum.vbPv,
       arrival: sum.reach.map((n) => ratio(n)),
       exit: sum.exit.map((n) => ratio(n)),
       attention: sum.dwellMs.map((ms, i) => {

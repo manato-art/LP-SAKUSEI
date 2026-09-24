@@ -182,6 +182,8 @@ export interface HeatmapVersionStat {
   param: string
   bands: number
   pv: number
+  /** pv のうち古いタグ（スクロールの進み具合で到達を数えていた）の記録。古いサーバーは返さない */
+  legacy_pv?: number
   /** 到達率（そのバンドまで到達した割合） */
   arrival: (number | null)[]
   /** 離脱率（そのバンドで離脱した割合） */

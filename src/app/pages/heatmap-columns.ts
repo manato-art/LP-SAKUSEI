@@ -15,6 +15,7 @@
 import type { HeatmapVersionStat } from '../api.ts'
 import { buildHeatmapLpDocument } from './heatmap-lp-document.ts'
 import { ALL_PARAMS_LABEL } from './heatmap-params.ts'
+import { reachBasisNote } from './heatmap-notes.ts'
 
 /** 列の指標（左のチェックボックスに対応）。実物は指標ごとに配色が違う。 */
 export type HeatmapMetric = 'exit' | 'click' | 'cv'
@@ -372,7 +373,16 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
   // 左で選んだ指標に合わせた既定にする（以前は常に「到達率」で、3つとも同じ絵になっていた）
   lineSelect.value = defaultModeFor(spec.metric)
   ctrl.append(dev, rangeEl, lineSelect)
-  head.append(ver, met, note, ctrl)
+  head.append(ver, met, note)
+  // 到達の数え方を変えた日より前の記録が混ざっていれば、そう書く（2026-09-24）
+  const basis = stat === null ? null : reachBasisNote(stat)
+  if (basis !== null) {
+    const basisEl = document.createElement('div')
+    basisEl.className = 'hm-col-note'
+    basisEl.textContent = basis
+    head.append(basisEl)
+  }
+  head.append(ctrl)
 
   // 実物のカードにある3つの操作（採取物: `_dupContainer_` / `_optionsContainer_`）。
   //  ・複製      : 同じ設定のカードをもう1枚増やす

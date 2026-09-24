@@ -684,6 +684,12 @@ export interface HeatmapStat {
   fv_bands?: number
   /** 最初の計測リンクが何バンド目か（OARの基準位置）。リンクが無ければ undefined。 */
   offer_band?: number
+  /**
+   * pv のうち、新しいタグ（rb:1＝画面の下端で到達を数えた）から来た数（2026-09-24）。
+   * 古いタグはスクロールの進み具合で数えていた。pv - vb_pv が古い数え方のぶん。
+   * これより前の保存データには無い＝全部古い数え方。
+   */
+  vb_pv?: number
   reach: number[]
   exit: number[]
   dwell_ms: number[]
