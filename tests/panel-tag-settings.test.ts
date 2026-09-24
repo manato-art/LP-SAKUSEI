@@ -69,7 +69,7 @@ describe('タグ設定の取得', () => {
   it('未保存の記事は既定値（noindex ON・タグ0件）を返す', async () => {
     const uid = seedArticle()
     const res = await getJson<HtmlTagResponse>(`${api}/articles/${uid}/html_tags`)
-    expect(res).toEqual({ html_tags: [], noindex: true })
+    expect(res).toEqual({ html_tags: [], noindex: true, bulk_tags: { head: [], body: [] } })
   })
 
   it('存在しない記事は404', async () => {
@@ -229,5 +229,23 @@ describe('Stateのイミュータブル更新（§12）', () => {
     })
     expect(getHtmlSetting(after, uid).noindex).toBe(false)
     expect(getHtmlSetting(after, uid).html_tags).toHaveLength(1)
+  })
+})
+
+describe('一括タグ設定の一覧（2026-09-24 全体点検37: 一括タグが効いていても一覧がいつも空だった）', () => {
+  it('このページに入る一括タグの名前を、HEAD と body に分けて返す（中身が空の側には出さない）', async () => {
+    const articleUid = seedArticle()
+    const teamId = getState().abTests[0]?.team_id ?? 1
+    setState((state) => ({
+      ...state,
+      bulkTags: [
+        { id: 1, uid: 'BT1', team_id: teamId, name: '計測タグ', team_wide: true, folder_group_ids: [], folder_ids: [], asp_account_id: null, asp: null, cv_condition: null, noindex: false, head_js: '<script>a</script>', body_js: '', created_at: 0, updated_at: 0 },
+        { id: 2, uid: 'BT2', team_id: teamId, name: '別フォルダ用', team_wide: false, folder_group_ids: [], folder_ids: [999], asp_account_id: null, asp: null, cv_condition: null, noindex: false, head_js: '<script>b</script>', body_js: '<script>c</script>', created_at: 0, updated_at: 0 },
+        { id: 3, uid: 'BT3', team_id: teamId, name: '', team_wide: true, folder_group_ids: [], folder_ids: [], asp_account_id: null, asp: null, cv_condition: null, noindex: false, head_js: '', body_js: '<script>d</script>', created_at: 0, updated_at: 0 },
+      ],
+    }))
+    const res = await getJson<{ bulk_tags: { head: string[]; body: string[] } }>(`${api}/articles/${articleUid}/html_tags`)
+    expect(res.bulk_tags.head).toEqual(['計測タグ'])
+    expect(res.bulk_tags.body).toEqual(['名前のない一括タグ'])
   })
 })

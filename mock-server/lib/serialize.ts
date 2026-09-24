@@ -86,6 +86,7 @@ export function serializeArticle(article: Article): Record<string, unknown> {
     uid: article.uid,
     ab_test_id: article.ab_test_id,
     memo: article.memo,
+    color: article.color ?? '',
     archived: article.archived,
     style_applied: article.style_applied,
     created_at: article.created_at,

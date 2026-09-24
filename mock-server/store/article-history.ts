@@ -89,6 +89,14 @@ export function articleKey(article: Article): string {
   return key
 }
 
+/**
+ * 記事を名前の変更などで新しいオブジェクトに差し替えたとき、同じ記事として履歴を引き継ぐ
+ * （差し替えるとキーが変わり、履歴が「消えた記事」の分として捨てられてしまうため）
+ */
+export function inheritArticleKey(from: Article, to: Article): void {
+  ARTICLE_KEYS.set(to, articleKey(from))
+}
+
 /** いま実在する記事のキー集合（消えた記事の履歴を捨てるために使う） */
 export function liveArticleKeys(state: State): ReadonlySet<string> {
   return new Set(state.articles.map(articleKey))

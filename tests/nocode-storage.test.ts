@@ -62,3 +62,14 @@ describe('作ったWidgetを保存する', () => {
     expect(loadCreatedWidgets()[0]?.source).toBeUndefined()
   })
 })
+
+describe('Widget作成の「カテゴリー」「説明文」（2026-09-24 全体点検: 入力しても保存されていなかった）', () => {
+  it('カテゴリーと説明文を一緒に残す（入れなかったものは持たない）', () => {
+    saveCreatedWidget('比較表', '<table></table>', undefined, { category: '表', description: '3社比較' })
+    saveCreatedWidget('素のWidget', '<p>x</p>')
+    const [plain, withMeta] = loadCreatedWidgets()
+    expect(withMeta?.category).toBe('表')
+    expect(withMeta?.description).toBe('3社比較')
+    expect(plain).not.toHaveProperty('category')
+  })
+})

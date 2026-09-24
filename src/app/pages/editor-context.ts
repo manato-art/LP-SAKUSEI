@@ -21,7 +21,7 @@ export interface EditorContext {
    * beyondページのファネルステップ（記事）一覧。下部バーの一覧から行き来する。
    * `memo` が実物の「ステップ名」。
    */
-  articles: { uid: string; memo?: string }[]
+  articles: { uid: string; memo?: string; color?: string }[]
   /** いま開いているステップの index（articles 内） */
   stepIndex: number
   versions: Version[]

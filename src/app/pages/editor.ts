@@ -28,6 +28,8 @@ import { mountEditorScrollbar } from '../panels/editor-scrollbar.ts'
 import { editorVersionLinkDeps, mountVersionLinkPopup, toggleVersionLinkPopup } from '../panels/version-link-popup.ts'
 import { mountStepAddModal } from '../panels/step-add-modal.ts'
 import { renderStepList as renderStepListView } from './editor-step-list.ts'
+import { openStepMenu } from './editor-step-actions.ts'
+import { stepsApi } from '../api-steps.ts'
 import { registerMediaBlots } from '../panels/media-blots.ts'
 import { wireMediaDrop } from '../panels/media-insert.ts'
 import { wireImageResize } from '../panels/image-resize.ts'
@@ -310,8 +312,10 @@ export async function renderEditor(
   mountVersionLinkPopup(root, editorVersionLinkDeps(ctx))
   // 下部バーの「+」＝ファネルステップ追加（指示⑮）。作成したら新ステップへ移動する。
   mountStepAddModal(root, {
-    onCreate: async (name) => {
+    onCreate: async (name, color) => {
       const { article } = await api.addArticle(ctx.abTestUid, name)
+      // 選んだ色も残す（以前は選んでも送らず捨てていた）
+      if (color !== '') await stepsApi.update(article.uid, { color })
       const refreshed = (await api.articles(ctx.abTestUid)).articles
       ctx.articles = [...refreshed]
       const index = refreshed.findIndex((a) => a.uid === article.uid)
@@ -537,6 +541,15 @@ function renderStepList(ctx: EditorContext): void {
       }
       void loadStep(ctx, index)
     },
+    onMenu: (index) =>
+      void openStepMenu(ctx, index, {
+        refresh: async () => {
+          ctx.articles = [...(await api.articles(ctx.abTestUid)).articles]
+          ctx.stepIndex = Math.max(0, ctx.articles.findIndex((a) => a.uid === ctx.articleUid))
+          renderStepList(ctx)
+        },
+        open: (target) => loadStep(ctx, target),
+      }),
   })
 }
 

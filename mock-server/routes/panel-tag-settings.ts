@@ -22,6 +22,7 @@ import { applyEmptyState } from '../lib/mock-state.ts'
 import { errorEnvelope } from '../lib/envelope.ts'
 import { optionalBoolean } from '../lib/validate.ts'
 import type { State } from '../store/types.ts'
+import { bulkTagsForFolder } from '../store/bulk-tags.ts'
 
 export const tagSettingsRouter: Router = Router()
 
@@ -109,8 +110,26 @@ tagSettingsRouter.get('/articles/:uid/html_tags', (req, res) => {
   res.json({
     html_tags: applyEmptyState(req, setting.html_tags),
     noindex: setting.noindex,
+    bulk_tags: bulkTagNamesFor(state, req.params.uid),
   })
 })
+
+/**
+ * このページ（記事）に入る一括タグの名前を HEAD / body に分けて返す（2026-09-24 全体点検37）。
+ * 配信（delivery.ts）と同じ bulkTagsForFolder で選ぶ。中身が空の側には出さない。
+ * 以前は一覧を埋める処理が無く、一括タグが効いていても「何も入っていない」ように見えていた。
+ */
+function bulkTagNamesFor(state: State, articleUid: string): { head: string[]; body: string[] } {
+  const article = state.articles.find((a) => a.uid === articleUid)
+  const abTest = article === undefined ? undefined : state.abTests.find((t) => t.id === article.ab_test_id)
+  if (abTest === undefined) return { head: [], body: [] }
+  const tags = bulkTagsForFolder(state, abTest.team_id, abTest.folder_id)
+  const nameOf = (name: string): string => (name.trim() === '' ? '名前のない一括タグ' : name)
+  return {
+    head: tags.filter((t) => t.head_js.trim() !== '').map((t) => nameOf(t.name)),
+    body: tags.filter((t) => t.body_js.trim() !== '').map((t) => nameOf(t.name)),
+  }
+}
 
 /** タグ設定の保存（モーダルヘッダの「保存」） */
 tagSettingsRouter.put('/articles/:uid/html_tags', (req, res) => {

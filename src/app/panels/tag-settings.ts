@@ -31,6 +31,8 @@ interface HtmlTag {
 interface HtmlSettingResponse {
   html_tags: HtmlTag[]
   noindex: boolean
+  /** このページに入る一括タグの名前（HEAD / body）。古いサーバーは返さない */
+  bulk_tags?: { head: string[]; body: string[] }
 }
 
 /** 採取DOM内の目印（実物の data-test / 実クラス名） */
@@ -193,11 +195,32 @@ export async function openTagSettings(articleUid: string): Promise<void> {
 
   const modal = mountModal(MARKUP)
   if (modal === null) return
+  fillBulkTagLists(modal.wrapper, setting.bulk_tags ?? { head: [], body: [] })
   const noindex = wireNoindexToggle(modal.wrapper, setting.noindex)
   const editors = wireScriptEditors(modal.wrapper, setting.html_tags)
 
   modal.wrapper.querySelector<HTMLElement>(HOOK.save)?.addEventListener('click', () => {
     void save(articleUid, modal.wrapper, noindex, editors, modal.close)
+  })
+}
+
+/**
+ * 「一括タグ設定」の HEAD / body 一覧に、このページに入る一括タグの名前を出す（2026-09-24 全体点検37）。
+ * 以前は空の一覧のままで、一括タグが効いていても「何も入っていない」ように見えていた。
+ */
+function fillBulkTagLists(wrapper: HTMLElement, names: { head: readonly string[]; body: readonly string[] }): void {
+  const lists = wrapper.querySelectorAll<HTMLElement>('[class*="_tagLists_"] ul')
+  const groups = [names.head, names.body]
+  lists.forEach((list, index) => {
+    const items = groups[index] ?? []
+    list.replaceChildren(
+      ...(items.length === 0 ? ['なし'] : items).map((name) => {
+        const li = document.createElement('li')
+        li.textContent = name
+        li.style.cssText = `padding:2px 0;font-size:13px;${items.length === 0 ? 'color:var(--sb-c-8a8a8e, #8A8A8E)' : ''}`
+        return li
+      }),
+    )
   })
 }
 

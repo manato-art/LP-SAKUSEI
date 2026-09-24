@@ -146,6 +146,8 @@ export interface Article {
   uid: string
   ab_test_id: number
   memo: string
+  /** 下部バーでの目印の色（#rrggbb）。ステップを作るときに選ぶ。古いデータには無い */
+  color?: string
   archived: boolean
   style_applied: boolean
   created_at: number
