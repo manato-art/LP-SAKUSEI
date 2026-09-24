@@ -63,6 +63,8 @@ export interface VisualEditorOptions {
   readonly alignTarget?: () => AlignTarget | null
   /** ツールバーの「サイズ」。選んだ部品の幅と位置の小窓を出したら true（そのときは画像の操作パネルを出さない） */
   readonly onSizeButton?: (anchor: HTMLElement) => boolean
+  /** ツールバーの消しゴムで、文字を選んでいないとき: 選んでいる部品を消す。消したら true（そのときは書式クリアしない） */
+  readonly onErase?: () => boolean
   /** 見たまま画面の枠（既定は lp） */
   readonly previewFrame?: PreviewFrame
   /** 後ろに敷くLPのプレビュー（ポップアップの「LPの上に重ねて見る」・popup-underlay.ts）。無ければ敷かない */
@@ -445,7 +447,13 @@ export function buildVisualEditor(
     ),
     mkBtn(svgToolMarker(), 'マーカー（蛍光ペン）', () => exec('hiliteColor', '#fff176')),
     mkBtn(svgToolLink(), 'リンク', (btn) => openLinkInput(btn)),
-    mkBtn(svgToolClearFormat(), '書式クリア', () => exec('removeFormat')),
+    // 文字を選んでいれば書式クリア。選んでいなければ、選んでいる部品を消す（2026-09-24・本人の選択「文字の選びで分ける」）
+    mkBtn(svgToolClearFormat(), '書式クリア（文字を選んでいないときは、選んでいる部品を消す）', () => {
+      const sel = document.getSelection()
+      const hasText = sel !== null && !sel.isCollapsed && sel.anchorNode !== null && contentRef?.contains(sel.anchorNode) === true
+      if (!hasText && options.onErase?.() === true) return
+      exec('removeFormat')
+    }),
   )
 
   // エディタ本文（本番実測: padding:20px, contenteditable で書式操作を可能に）

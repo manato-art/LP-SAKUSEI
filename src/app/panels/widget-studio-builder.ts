@@ -34,6 +34,7 @@ import { canvasEditTarget } from './widget-canvas-events.ts'
 import { FONT } from './widget-editor-theme.ts'
 import { runWidgetScripts } from './widget-run-scripts.ts'
 import { attachBlockDrop } from './widget-studio-drop.ts'
+import { attachDeleteKey, type CaretInfo } from './widget-studio-delete-key.ts'
 import { hotspotHandles, hotspotMove, markEmptyHotspotHosts, type HotspotEditDeps } from './widget-studio-hotspot.ts'
 
 export interface BuilderSessionDeps {
@@ -72,6 +73,8 @@ export interface BuilderSession {
   readonly alignTarget: () => AlignTarget | null
   /** 上のツールバーの「サイズ」。選んだ部品の幅と置く位置の小窓を出す。受け持ったら true */
   readonly onSizeButton: (anchor: HTMLElement) => boolean
+  /** 選んでいる部品を消す（上のツールバーの消しゴムで、文字を選んでいないとき）。消したら true */
+  readonly removeSelected: () => boolean
   /** 登録の名前の初期値（「組み立てたWidget（最初の見出し）」） */
   readonly suggestName: () => string
   /** 登録したあと、次に入れる分の名前（CSSのクラス）を付け直す（同じLPに並んでも色がまざらない） */
@@ -642,6 +645,8 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
       form.selectInside(place.screenIndex, place.blockIndex, inner)
       return
     }
+    // 文字を打たない部品を押したら、文字の入力の印を外す（前に押した文字の部品に残ると、Backspace がその文字を消す）
+    if (!isTextEditableBlock(place.block)) document.getSelection()?.removeAllRanges()
     form.select(place.screenIndex, place.blockIndex)
   }
 
@@ -687,6 +692,21 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
 
   // 左の「部品を足す」からドラッグで運んで入れる（移行先は部品の上に被せる）＝widget-studio-drop.ts
   attachBlockDrop({ editorBody, contentDiv, selection, form, data: () => data })
+
+  /** 文字の部品の中に入力の印があれば、その部品が選んでいる部品か・空か（Backspace・Delete で部品を消すか決める） */
+  const caretInfo = (): CaretInfo | null => {
+    const sel = document.getSelection()
+    if (sel === null || sel.rangeCount === 0 || sel.anchorNode === null || !contentDiv.contains(sel.anchorNode)) return null
+    const el = outermostBlock(sel.anchorNode, contentDiv)
+    const place = el === null ? null : placeOf(el)
+    if (el === null || place === null || !isTextEditableBlock(place.block)) return null
+    return { isSelected: place.blockIndex === form.selectedBlock(), isEmpty: (el.textContent ?? '').trim() === '' }
+  }
+  const removeSelected = (): boolean => {
+    const blockIndex = form.selectedBlock()
+    return blockIndex !== null && form.removeBlock(blockIndex)
+  }
+  attachDeleteKey({ editorBody, hasSelected: () => form.selectedBlock() !== null, caret: caretInfo, remove: () => void removeSelected() })
 
   /**
    * 上のツールバーの「配置 ⌄」で変えるもの（見出し・文章は文字の寄せ、ほかは置く位置）。
@@ -766,6 +786,7 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
     toolScope,
     alignTarget,
     onSizeButton,
+    removeSelected,
     suggestName: () => suggestBuilderName(data),
     rekey: () => {
       uid = newUid()

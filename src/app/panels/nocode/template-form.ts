@@ -122,6 +122,8 @@ export interface TemplateForm {
   /** いま開いている画面の at 番目に部品を足して選ぶ（左の「部品を足す」から見たまま画面へドラッグしたとき） */
   /** 部品を at 番目に入れる（見たまま画面へドラッグで運んだとき）。init は足す中身に重ねる値（移行先の位置と大きさ） */
   readonly insertBlock: (type: string, at: number, init?: ItemData) => void
+  /** いま開いている画面の部品を消す（Backspace・Delete・消しゴム。被せた移行先も一緒）。消したら true */
+  readonly removeBlock: (blockIndex: number) => boolean
 }
 
 export function buildTemplateForm(options: TemplateFormOptions): TemplateForm {
@@ -671,6 +673,19 @@ export function buildTemplateForm(options: TemplateFormOptions): TemplateForm {
    * 画面の中の部品の並び。1件ごとに部品の名前と複製・上へ・下へ・消す。頭を押すとその部品だけが広がる
    * （見たまま画面で部品を押したときも同じ）。いちばん下に種類ごとの「足す」
    */
+  /** 部品を消す（被せた移行先も一緒＝「消す」ボタンと同じ）。消したら選ぶのをやめる。消したら true */
+  const removePart = (screenIndex: number, blockIndex: number): boolean => {
+    const field = options.fields.find((f): f is ScreensField => f.kind === 'screens')
+    if (field === undefined) return false
+    const listPath: Path = [field.key, screenIndex, 'blocks']
+    const list = (getAt(data, listPath) as readonly ItemData[] | undefined) ?? []
+    if (list[blockIndex] === undefined || !replace(setAt(data, listPath, removeGroup(list, blockIndex)))) return false
+    selectedBlock = null
+    build()
+    notifySelect()
+    return true
+  }
+
   /** 並びに出す移行先の移る先（「→ 画面②」「→ https://…」） */
   const hotspotDestination = (field: ScreensField, block: ItemData): string => {
     const action = str(block, 'action')
@@ -784,6 +799,12 @@ export function buildTemplateForm(options: TemplateFormOptions): TemplateForm {
       const toggle = (): void => openScreen(screenIndex, selected ? null : index)
       headEl.addEventListener('click', toggle)
       headEl.addEventListener('keydown', (event) => {
+        // 行で Backspace・Delete を押したら、その部品を消す（2026-09-24・本人「バックスペース・デリートで消したい」）
+        if ((event.key === 'Backspace' || event.key === 'Delete') && !event.metaKey && !event.ctrlKey && !event.altKey) {
+          event.preventDefault()
+          removePart(screenIndex, index)
+          return
+        }
         if (event.key !== 'Enter' && event.key !== ' ') return
         event.preventDefault()
         toggle()
@@ -1049,6 +1070,7 @@ export function buildTemplateForm(options: TemplateFormOptions): TemplateForm {
     },
     activeScreen: () => activeScreen,
     selectedBlock: () => selectedBlock,
+    removeBlock: (blockIndex) => removePart(activeScreen, blockIndex),
     insertBlock: (typeName, at, init) => {
       const field = options.fields.find((f): f is ScreensField => f.kind === 'screens')
       const type = field?.types.find((t) => t.type === typeName)

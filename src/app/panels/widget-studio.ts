@@ -179,6 +179,7 @@ export function mountStudio(host: StudioHost): void {
     onClick: (clicked) => session?.onCanvasClick(clicked),
     alignTarget: () => session?.alignTarget() ?? null,
     onSizeButton: (anchor) => session?.onSizeButton(anchor) ?? false,
+    onErase: () => session?.removeSelected() ?? false,
     ...(host.previewFrame === undefined ? {} : { previewFrame: host.previewFrame }),
     ...(host.underlay === undefined ? {} : { underlay: host.underlay }),
     ...(host.underlayStyle === undefined ? {} : { underlayStyle: host.underlayStyle }),
