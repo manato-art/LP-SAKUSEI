@@ -582,7 +582,8 @@ export function buildVisualEditor(
   // 指示146の注意書き: ボタン等の動作確認方法をユーザーに明示する（ツールバーの右端）
   const note = document.createElement('span')
   note.dataset['widgetNote'] = 'true'
-  note.textContent = 'ボタンの動作確認は Ctrl（Windows）/ ⌘（Mac）＋クリック'
+  // 1回押す＝部品を選ぶ・ダブルクリック＝文字を打つ（2026-09-24・本人の選択「Canva式」）
+  note.textContent = '文字はダブルクリックで直す ｜ ボタンの動作確認は Ctrl（Windows）/ ⌘（Mac）＋クリック'
   note.className = 'wtb__note'
   toolbar.append(note)
 

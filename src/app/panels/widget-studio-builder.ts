@@ -34,7 +34,7 @@ import { canvasEditTarget } from './widget-canvas-events.ts'
 import { FONT } from './widget-editor-theme.ts'
 import { runWidgetScripts } from './widget-run-scripts.ts'
 import { attachBlockDrop } from './widget-studio-drop.ts'
-import { attachDeleteKey, type CaretInfo } from './widget-studio-delete-key.ts'
+import { attachPartKeys, type CanvasPart } from './widget-studio-delete-key.ts'
 import { hotspotHandles, hotspotMove, markEmptyHotspotHosts, type HotspotEditDeps } from './widget-studio-hotspot.ts'
 
 export interface BuilderSessionDeps {
@@ -634,6 +634,8 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
   const onCanvasClick = (target: EventTarget | null): void => {
     if (Date.now() < suppressClickUntil) return
     const el = outermostBlock(target, contentDiv)
+    // Canva式: 1回押すと部品を選ぶだけ（文字の入力の印を外す）。打っている途中の部品の中なら、そのまま打てる
+    partKeys.onClick(el)
     const place = el === null ? null : placeOf(el)
     if (el === null || place === null) {
       form.select(form.activeScreen(), null)
@@ -645,8 +647,6 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
       form.selectInside(place.screenIndex, place.blockIndex, inner)
       return
     }
-    // 文字を打たない部品を押したら、文字の入力の印を外す（前に押した文字の部品に残ると、Backspace がその文字を消す）
-    if (!isTextEditableBlock(place.block)) document.getSelection()?.removeAllRanges()
     form.select(place.screenIndex, place.blockIndex)
   }
 
@@ -693,20 +693,21 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
   // 左の「部品を足す」からドラッグで運んで入れる（移行先は部品の上に被せる）＝widget-studio-drop.ts
   attachBlockDrop({ editorBody, contentDiv, selection, form, data: () => data })
 
-  /** 文字の部品の中に入力の印があれば、その部品が選んでいる部品か・空か（Backspace・Delete で部品を消すか決める） */
-  const caretInfo = (): CaretInfo | null => {
-    const sel = document.getSelection()
-    if (sel === null || sel.rangeCount === 0 || sel.anchorNode === null || !contentDiv.contains(sel.anchorNode)) return null
-    const el = outermostBlock(sel.anchorNode, contentDiv)
+  const removeSelected = (): boolean => ((i) => i !== null && form.removeBlock(i))(form.selectedBlock())
+  /** 見たまま画面の部品（1回押す＝選ぶ・ダブルクリック＝文字を打つ・Backspace/Delete＝消す＝widget-studio-delete-key.ts） */
+  const partAt = (el: HTMLElement | null): CanvasPart | null => {
     const place = el === null ? null : placeOf(el)
-    if (el === null || place === null || !isTextEditableBlock(place.block)) return null
-    return { isSelected: place.blockIndex === form.selectedBlock(), isEmpty: (el.textContent ?? '').trim() === '' }
+    if (el === null || place === null) return null
+    const isSelected = place.blockIndex === form.selectedBlock()
+    return { el, editable: isTextEditableBlock(place.block), isSelected, select: () => form.select(place.screenIndex, place.blockIndex) }
   }
-  const removeSelected = (): boolean => {
-    const blockIndex = form.selectedBlock()
-    return blockIndex !== null && form.removeBlock(blockIndex)
-  }
-  attachDeleteKey({ editorBody, hasSelected: () => form.selectedBlock() !== null, caret: caretInfo, remove: () => void removeSelected() })
+  const partKeys = attachPartKeys({
+    editorBody,
+    contentDiv,
+    partOf: (node) => partAt(outermostBlock(node, contentDiv)),
+    selectedPart: () => partAt(((i) => (i === null ? null : blockElementAt(data, contentDiv, form.activeScreen(), i)))(form.selectedBlock())),
+    remove: () => void removeSelected(),
+  })
 
   /**
    * 上のツールバーの「配置 ⌄」で変えるもの（見出し・文章は文字の寄せ、ほかは置く位置）。
