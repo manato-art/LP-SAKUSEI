@@ -6,7 +6,7 @@
  * 実物SquadBeyondで確認した全フローを再現:
  *   - ポップアップ管理パネル（離脱防止/追従型タブ、配信トグル、一覧）
  *   - ＋追加 → プリセット選択モーダル
- *   - ポップアップ編集（5タブ: 基本/表示/位置/出し分け/HTML）
+ *   - ポップアップ編集（5タブ: 基本/表示/位置/出し分け/コード。中身は「中身を編集」＝Widget編集と同じ画面）
  *   - LP上での離脱防止ポップアップ表示
  */
 import { api, type ExitPopup } from '../api.ts'
@@ -525,7 +525,7 @@ function createBlankPopup(state: PopupPageState): void {
       `box-shadow:0 8px 32px rgba(0,0,0,.18);max-width:360px;margin:auto;text-align:center;` +
       `font-family:'Hiragino Sans',sans-serif">` +
       `<p style="font-size:18px;font-weight:700;color:var(--sb-c-333333, #333333);margin:0 0 10px">タイトルを入力してください</p>` +
-      `<p style="font-size:14px;color:var(--sb-c-666666, #666666);line-height:1.7;margin:0 0 20px">本文を入力してください。「デザイン」タブや「HTML」タブから文言・色・ボタンを編集できます。</p>` +
+      `<p style="font-size:14px;color:var(--sb-c-666666, #666666);line-height:1.7;margin:0 0 20px">本文を入力してください。文言・色・ボタンは「中身を編集」から直せます。</p>` +
       `<a href="#" style="display:inline-block;background:#E5532A;color:#FFFFFF;padding:12px 28px;` +
       `border-radius:6px;text-decoration:none;font-weight:700">ボタン</a>` +
       `</div>`,
@@ -540,70 +540,3 @@ function createBlankPopup(state: PopupPageState): void {
     (err: unknown) => toast((err as Error).message, 'error'),
   )
 }
-
-// ─── ポップアップ編集画面 ───────────────────────────
-
-
-
-
-
-// ── 基本タブ ──
-
-
-
-
-
-// ── デザインタブ（HTMLを要素カードに分解して文言・色を編集） ──
-
-
-
-
-
-
-
-
-
-// ── 表示タブ ──
-
-
-
-// ── 位置タブ ──
-
-
-
-
-
-// ── 出し分けタブ ──
-
-
-// ── HTMLタブ ──
-
-
-// ─── プレビュー ─────────────────────────────────────
-
-
-// ─── 追従型ポップアップ ─────────────────────────────
-
-
-
-// ─── 追従型プリセット選択モーダル ─────────────────────
-
-
-
-
-// ─── 追従型ポップアップ編集画面 ─────────────────────
-
-
-
-
-
-
-
-// ─── 追従型プレビュー ──────────────────────────────
-
-
-// ─── ヘルパー ───────────────────────────────────────
-
-
-
-

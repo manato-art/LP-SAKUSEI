@@ -472,28 +472,28 @@ export const PRESETS: readonly PopupPreset[] = [
     defaults: { animation: 'zoomIn', scroll_trigger: true, scroll_position: 95 },
   },
 
-  // ─── 14. 外部呼出し用（画像とリンクはHTMLタブで設定） ───
+  // ─── 14. 外部呼出し用（画像とリンクは「中身を編集」で設定） ───
   {
     id: 'external-call',
-    name: '外部呼出し用（画像とリンクはHTMLタブで設定）',
-    description: '外部リンクから呼び出す用。画像・リンクはHTMLタブで設定',
+    name: '外部呼出し用（画像とリンクは「中身を編集」で設定）',
+    description: '外部リンクから呼び出す用。画像・リンクは「中身を編集」で設定',
     thumbnailSvg: thumbSvg(`
       <rect x="35" y="35" width="130" height="70" rx="6" fill="none" stroke="${C.sub}" stroke-width="2" stroke-dasharray="6,4"/>
       <text x="100" y="66" text-anchor="middle" font-size="8" fill="${C.sub}" font-family="sans-serif">画像とリンクは</text>
-      <text x="100" y="80" text-anchor="middle" font-size="8" fill="${C.sub}" font-family="sans-serif">HTMLタブで設定</text>
+      <text x="100" y="80" text-anchor="middle" font-size="8" fill="${C.sub}" font-family="sans-serif">「中身を編集」で設定</text>
     `),
     defaultHtml: `<div style="background:#fff;border-radius:10px;padding:20px;box-shadow:0 4px 24px rgba(0,0,0,.15);max-width:340px;margin:auto;text-align:center">
-  <div style="border:2px dashed #ccc;border-radius:8px;padding:32px 12px;color:#999;font-size:13px">画像とリンクをHTMLタブで設定してください</div>
+  <div style="border:2px dashed #ccc;border-radius:8px;padding:32px 12px;color:#999;font-size:13px">画像とリンクを「中身を編集」で設定してください</div>
 </div>`,
     defaultJavascript: '',
     defaults: {},
   },
 
-  // ─── 15. キャンペーン誘導（画像はHTMLで指定必須） ───
+  // ─── 15. キャンペーン誘導（画像は「中身を編集」で指定必須） ───
   {
     id: 'campaign',
-    name: 'キャンペーン誘導 ※画像はHTMLで指定必須',
-    description: 'キャンペーンLPへ誘導。画像はHTMLタブで指定',
+    name: 'キャンペーン誘導 ※画像は「中身を編集」で指定必須',
+    description: 'キャンペーンLPへ誘導。画像は「中身を編集」で指定',
     thumbnailSvg: thumbSvg(`
       <rect x="30" y="28" width="140" height="84" rx="6" fill="${C.white}" stroke="${C.border}"/>
       <rect x="40" y="38" width="120" height="40" rx="4" fill="#EEE"/>
@@ -502,7 +502,7 @@ export const PRESETS: readonly PopupPreset[] = [
       <text x="100" y="96" text-anchor="middle" font-size="7" fill="${C.white}" font-family="sans-serif">詳しく見る</text>
     `),
     defaultHtml: `<div style="background:#fff;border-radius:10px;padding:16px;box-shadow:0 4px 24px rgba(0,0,0,.15);max-width:360px;margin:auto;text-align:center">
-  <div style="border:2px dashed #ccc;border-radius:8px;padding:40px 12px;color:#999;font-size:12px;margin-bottom:14px">キャンペーン画像をHTMLタブで指定してください</div>
+  <div style="border:2px dashed #ccc;border-radius:8px;padding:40px 12px;color:#999;font-size:12px;margin-bottom:14px">キャンペーン画像を「中身を編集」で指定してください</div>
   <a class="ep-cta" href="#" style="display:inline-block;background:#FF6B35;color:#fff;padding:12px 32px;border-radius:24px;text-decoration:none;font-weight:bold">詳しく見る</a>
 </div>`,
     defaultJavascript: CTA_PULSE_JS,
@@ -524,7 +524,7 @@ export const PRESETS: readonly PopupPreset[] = [
       <text x="132" y="88" text-anchor="middle" font-size="6" fill="${C.white}" font-family="sans-serif">リンクB</text>
     `),
     defaultHtml: `<div style="background:#fff;border-radius:10px;padding:16px;box-shadow:0 4px 24px rgba(0,0,0,.15);max-width:360px;margin:auto;text-align:center">
-  <div style="border:2px dashed #ccc;border-radius:8px;padding:36px 12px;color:#999;font-size:12px;margin-bottom:14px">画像をHTMLタブで設定してください</div>
+  <div style="border:2px dashed #ccc;border-radius:8px;padding:36px 12px;color:#999;font-size:12px;margin-bottom:14px">画像を「中身を編集」で設定してください</div>
   <div style="display:flex;gap:10px">
     <a href="#" style="flex:1;background:var(--sb-accent, #0091FF);color:#fff;padding:12px 0;border-radius:24px;text-decoration:none;font-weight:bold">リンクA</a>
     <a href="#" style="flex:1;background:#2FA84F;color:#fff;padding:12px 0;border-radius:24px;text-decoration:none;font-weight:bold">リンクB</a>
@@ -548,7 +548,7 @@ export const PRESETS: readonly PopupPreset[] = [
       <text x="100" y="97" text-anchor="middle" font-size="6" fill="${C.white}" font-family="sans-serif">ボタン2</text>
     `),
     defaultHtml: `<div style="position:relative;background:#EEE;border-radius:10px;padding:0;box-shadow:0 4px 24px rgba(0,0,0,.15);max-width:340px;margin:auto;overflow:hidden">
-  <div style="border:2px dashed #bbb;min-height:180px;display:flex;align-items:center;justify-content:center;color:#999;font-size:12px">背景画像をHTMLタブで設定</div>
+  <div style="border:2px dashed #bbb;min-height:180px;display:flex;align-items:center;justify-content:center;color:#999;font-size:12px">背景画像を「中身を編集」で設定</div>
   <div style="position:absolute;left:0;right:0;bottom:16px;display:flex;flex-direction:column;gap:8px;padding:0 24px">
     <a href="#" style="background:#FF6B35;color:#fff;padding:12px 0;border-radius:24px;text-decoration:none;font-weight:bold;text-align:center">ボタン1</a>
     <a href="#" style="background:var(--sb-accent, #0091FF);color:#fff;padding:12px 0;border-radius:24px;text-decoration:none;font-weight:bold;text-align:center">ボタン2</a>
@@ -658,8 +658,8 @@ export const PRESETS: readonly PopupPreset[] = [
     `),
     defaultHtml: `<div style="background:#fff;border-radius:10px;padding:12px;box-shadow:0 4px 24px rgba(0,0,0,.15);max-width:360px;margin:auto">
   <a href="#" style="display:block;position:relative;height:180px;border-radius:8px;overflow:hidden;text-decoration:none">
-    <div class="ep-switch-img" style="position:absolute;inset:0;background:#FFE0D0;display:flex;align-items:center;justify-content:center;color:#FF6B35;font-weight:bold;font-size:15px">画像1（HTMLで設定）</div>
-    <div class="ep-switch-img" style="position:absolute;inset:0;background:#D6ECFF;display:flex;align-items:center;justify-content:center;color:var(--sb-accent, #0091FF);font-weight:bold;font-size:15px">画像2（HTMLで設定）</div>
+    <div class="ep-switch-img" style="position:absolute;inset:0;background:#FFE0D0;display:flex;align-items:center;justify-content:center;color:#FF6B35;font-weight:bold;font-size:15px">画像1（「中身を編集」で設定）</div>
+    <div class="ep-switch-img" style="position:absolute;inset:0;background:#D6ECFF;display:flex;align-items:center;justify-content:center;color:var(--sb-accent, #0091FF);font-weight:bold;font-size:15px">画像2（「中身を編集」で設定）</div>
   </a>
 </div>`,
     defaultJavascript: IMAGE_SWITCH_JS,
@@ -693,7 +693,7 @@ export const PRESETS: readonly PopupPreset[] = [
     <span class="cd-num" style="background:#FF6B35;color:#fff;padding:6px 10px;border-radius:4px">30</span>
   </div>
   <a href="#" style="display:block;text-decoration:none">
-    <div style="border:2px dashed #ccc;border-radius:8px;padding:40px 12px;color:#999;font-size:12px">画像をHTMLタブで設定してください</div>
+    <div style="border:2px dashed #ccc;border-radius:8px;padding:40px 12px;color:#999;font-size:12px">画像を「中身を編集」で設定してください</div>
   </a>
 </div>`,
     defaultJavascript: COUNTDOWN_JS,
@@ -714,7 +714,7 @@ export const PRESETS: readonly PopupPreset[] = [
       <text x="100" y="93" text-anchor="middle" font-size="6" fill="${C.white}" font-family="sans-serif">キャンセル</text>
     `),
     defaultHtml: `<div style="position:relative;border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,.2);max-width:340px;margin:auto;overflow:hidden">
-  <div style="border:2px dashed #bbb;background:#E7E0F5;min-height:200px;display:flex;align-items:center;justify-content:center;color:#999;font-size:12px">背景画像をHTMLタブで設定</div>
+  <div style="border:2px dashed #bbb;background:#E7E0F5;min-height:200px;display:flex;align-items:center;justify-content:center;color:#999;font-size:12px">背景画像を「中身を編集」で設定</div>
   <div style="position:absolute;left:0;right:0;bottom:18px;display:flex;flex-direction:column;gap:8px;padding:0 24px">
     <a href="#" style="background:#2FA84F;color:#fff;padding:12px 0;border-radius:24px;text-decoration:none;font-weight:bold;text-align:center">はい、希望する</a>
     <button class="ep-close" style="background:rgba(255,255,255,.85);color:#666;padding:10px 0;border-radius:24px;border:none;font-weight:bold;cursor:pointer">キャンセル</button>
@@ -761,7 +761,7 @@ export const PRESETS: readonly PopupPreset[] = [
     `),
     defaultHtml: `<div style="background:#000;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.3);max-width:340px;margin:auto;overflow:hidden">
   <a class="ep-cta" href="#" style="display:block;position:relative;height:190px;text-decoration:none">
-    <div style="position:absolute;inset:0;background:linear-gradient(135deg,#333,#111);display:flex;align-items:center;justify-content:center;color:#777;font-size:12px">サムネイル画像をHTMLで設定</div>
+    <div style="position:absolute;inset:0;background:linear-gradient(135deg,#333,#111);display:flex;align-items:center;justify-content:center;color:#777;font-size:12px">サムネイル画像を「中身を編集」で設定</div>
     <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,.92);display:flex;align-items:center;justify-content:center">
       <div style="width:0;height:0;border-left:18px solid #FF6B35;border-top:11px solid transparent;border-bottom:11px solid transparent;margin-left:4px"></div>
     </div>
