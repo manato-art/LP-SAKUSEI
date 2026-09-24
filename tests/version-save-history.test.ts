@@ -129,3 +129,23 @@ describe('同じVersionを2か所で直したときの上書きの検知（E）'
     expect(htmlOf(v1)).toBe('<p>A</p>')
   })
 })
+
+describe('Versionの削除で配信を止めない（点検42: アーカイブには防止があるのに削除には無かった）', () => {
+  it('配信割合が1以上のVersionがほかに無いとき、配信中のVersionは削除できない（422）', async () => {
+    const { v1, v2 } = await seedTwoVersions()
+    // v1=100% / v2=0%（追加したVersionは0%）
+    const res = await call<{ error: { message: string } }>('DELETE', `/versions/${v1}`)
+    expect(res.status).toBe(422)
+    expect(res.json.error.message).toContain('配信割合')
+    expect(getState().versions.some((v) => v.uid === v1)).toBe(true)
+    // 0% の方は消せる
+    const ok = await fetch(`${api}/versions/${v2}`, { method: 'DELETE' })
+    expect(ok.status).toBe(204)
+  })
+
+  it('ページのVersionが1つだけなら削除できない（Versionが無いページになるため）', async () => {
+    const created = await call<{ version: { uid: string } }>('POST', '/ab_tests', { title: '1つだけ', folder_id: null, media_id: null, editor_version: 2 })
+    const res = await call('DELETE', `/versions/${created.json.version.uid}`)
+    expect(res.status).toBe(422)
+  })
+})

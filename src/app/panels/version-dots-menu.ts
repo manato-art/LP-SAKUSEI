@@ -170,7 +170,7 @@ function openMenu(deps: DotsMenuDeps, onClosed: () => void): void {
       void confirmCard({
         title: 'このVersionをアーカイブしますか？',
         message: 'Version一覧から「アーカイブ」タブへ移り、配信されなくなります。',
-        detail: 'あとから復元できます。',
+        detail: 'あとから「アーカイブ済み」の「復元」で戻せます（配信割合は0%に戻ります）。',
         submitLabel: 'アーカイブする',
       }).then((ok) => {
         if (ok) void archive(deps)
@@ -221,7 +221,7 @@ function injectDeleteItem(portal: { root: HTMLElement; close: () => void }, deps
     void confirmCard({
       title: 'このVersionを削除しますか？',
       message: '本文・設定・計測の記録がまとめて消えます。',
-      detail: '削除すると元に戻せません。',
+      detail: '削除すると元に戻せません。配信中のVersionがこれだけのときは削除できません（先に別のVersionの配信割合を上げてください）。',
       submitLabel: '削除する',
       danger: true,
     }).then((ok) => {

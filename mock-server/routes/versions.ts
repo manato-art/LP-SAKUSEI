@@ -316,11 +316,28 @@ versionsRouter.post('/versions/:uid/publish', (req, res) => {
 
 versionsRouter.delete('/versions/:uid', (req, res) => {
   let deleted = false
+  let reason: string | undefined
   setState((state) => {
     const out = deleteVersion(state, req.params.uid)
     deleted = out.deleted
+    reason = out.reason
     return out.state
   })
+  if (reason === 'last-version') {
+    res.status(422).json(errorEnvelope('unprocessable', 'このページのVersionが1つだけなので削除できません。'))
+    return
+  }
+  if (reason === 'need-active') {
+    res
+      .status(422)
+      .json(
+        errorEnvelope(
+          'unprocessable',
+          '配信割合が1以上のVersionがほかに無いため削除できません。先に別のVersionの配信割合を上げてください。',
+        ),
+      )
+    return
+  }
   if (!deleted) {
     res.status(404).json(errorEnvelope('not_found', 'Versionが見つかりません。'))
     return

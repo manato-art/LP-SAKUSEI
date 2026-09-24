@@ -31,7 +31,7 @@ import {
   masterStylePageBackground,
 } from '../master-style.ts'
 import { createAutosave, type Autosave } from './autosave.ts'
-import { DELIVERY_DOMAIN_UNSET_NOTE, deliveryUrlFor } from './basic-info-form.ts'
+import { deliveryUrlFor } from './basic-info-form.ts'
 import { isMobileViewport } from '../mobile/viewport.ts'
 import type { EditorContext } from './editor-context.ts'
 import { HOOK } from './editor-hooks.ts'
@@ -253,9 +253,9 @@ function mountUrlBarInEditor(ctx: EditorContext): HTMLElement | null {
   if (contentWrapper.querySelector('[data-url-bar]') !== null) return null
 
   const testUrl = `${location.origin}/preview/${ctx.currentUid}`
-  // 実物と同じく、配信URLはフォルダのドメインで決まる。未設定ならURLの代わりに案内を出す（2026-09-13）
-  const prodUrl =
-    deliveryUrlFor(ctx.folderDomain, location.origin, ctx.abTestUid) ?? DELIVERY_DOMAIN_UNSET_NOTE
+  // 実物と同じく、配信URLはフォルダのドメインで決まる。未設定なら空にし、URLバーが案内を出してコピーを止める
+  // （案内文をURLとして渡していて、「配信URLをコピーしました」で案内文がコピーされていた・2026-09-24 点検39）
+  const prodUrl = deliveryUrlFor(ctx.folderDomain, location.origin, ctx.abTestUid) ?? ''
 
   const bar = mountUrlBar({ testUrl, prodUrl })
 

@@ -4,6 +4,7 @@
  * 検証用URLと本番用URLをワンクリックでコピーできるバーを
  * キャンバス上部に表示する。旧コンテンツツールバーの位置に挿入する。
  */
+import { DELIVERY_DOMAIN_UNSET_NOTE } from '../pages/basic-info-form.ts'
 import { toast } from '../ui.ts'
 
 /* ── SVG ── */
@@ -130,7 +131,8 @@ export function updateUrlBar(
 
 /* ── internal ── */
 
-const NO_DOMAIN_TEXT = 'ドメインを設定すると使えるようになります'
+/** 配信URLが無いとき（フォルダのドメイン未設定）に出す案内。コピーはさせない */
+const NO_DOMAIN_TEXT = DELIVERY_DOMAIN_UNSET_NOTE
 
 function createUrlGroup(label: string, type: 'test' | 'prod', url: string): HTMLElement {
   const grp = document.createElement('div')

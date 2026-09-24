@@ -25,7 +25,7 @@ import { recordHistory } from './folders-history.ts'
 import { mountVersionListDropdown } from '../panels/version-actions.ts'
 import { mountHeaderImageModal } from '../panels/header-image-modal.ts'
 import { mountEditorScrollbar } from '../panels/editor-scrollbar.ts'
-import { mountVersionLinkPopup, toggleVersionLinkPopup } from '../panels/version-link-popup.ts'
+import { editorVersionLinkDeps, mountVersionLinkPopup, toggleVersionLinkPopup } from '../panels/version-link-popup.ts'
 import { mountStepAddModal } from '../panels/step-add-modal.ts'
 import { renderStepList as renderStepListView } from './editor-step-list.ts'
 import { registerMediaBlots } from '../panels/media-blots.ts'
@@ -307,7 +307,7 @@ export async function renderEditor(
   // モック準拠: 基板DOM要素にモックclass名を付与（CSSが直接適用される）
   applyMockupClasses(root)
   mountHeaderImageModal(root)
-  mountVersionLinkPopup(root, { abTestUid, getCurrentUid: () => ctx.currentUid })
+  mountVersionLinkPopup(root, editorVersionLinkDeps(ctx))
   // 下部バーの「+」＝ファネルステップ追加（指示⑮）。作成したら新ステップへ移動する。
   mountStepAddModal(root, {
     onCreate: async (name) => {
@@ -532,10 +532,7 @@ function renderStepList(ctx: EditorContext): void {
       // いま開いているステップをもう一度押したら Versionリンクの吹き出し
       // （採取物でもこの節がトリガーだった）。別のステップならそこへ移る。
       if (index === ctx.stepIndex) {
-        toggleVersionLinkPopup(ctx.root, {
-          abTestUid: ctx.abTestUid,
-          getCurrentUid: () => ctx.currentUid,
-        })
+        toggleVersionLinkPopup(ctx.root, editorVersionLinkDeps(ctx))
         return
       }
       void loadStep(ctx, index)

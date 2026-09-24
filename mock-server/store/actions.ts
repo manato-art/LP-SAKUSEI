@@ -434,9 +434,23 @@ export function publishVersion(
   }
 }
 
-export function deleteVersion(state: State, uid: string): { state: State; deleted: boolean } {
+/**
+ * Versionを削除する。アーカイブと同じく、配信が止まる削除はしない（2026-09-24 全体点検42）:
+ * - そのページのVersionが1つだけ → 消さない（Versionの無いページになる）
+ * - 配信中（アーカイブしていない・割合1以上）のVersionで、ほかに配信できるVersionが無い → 消さない
+ */
+export function deleteVersion(
+  state: State,
+  uid: string,
+): { state: State; deleted: boolean; reason?: 'notfound' | 'last-version' | 'need-active' } {
   const target = state.versions.find((v) => v.uid === uid)
-  if (target === undefined) return { state, deleted: false }
+  if (target === undefined) return { state, deleted: false, reason: 'notfound' }
+  const siblings = state.versions.filter((v) => v.article_id === target.article_id && v.uid !== uid)
+  if (siblings.length === 0) return { state, deleted: false, reason: 'last-version' }
+  const isDelivering = !target.archived && target.distribution_ratio >= 1
+  if (isDelivering && !siblings.some((v) => !v.archived && v.distribution_ratio >= 1)) {
+    return { state, deleted: false, reason: 'need-active' }
+  }
   return {
     state: {
       ...state,
