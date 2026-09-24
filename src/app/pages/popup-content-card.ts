@@ -19,6 +19,14 @@ export interface PopupContentCardOptions {
 const PAD = 8
 
 /**
+ * 小さな絵に描く中身（<script> は外す）。絵の iframe はスクリプトを動かさない作りなので、
+ * 残すとブラウザが「実行を止めた」とエラーを出し続ける（2026-09-24 実測）
+ */
+export function thumbnailHtml(html: string): string {
+  return html.replace(/<script\b[\s\S]*?<\/script\s*>/gi, '')
+}
+
+/**
  * 枠（target）に、ポップアップの今の中身を縮めて描く（編集画面の左上・一覧のカードで共通）。
  * iframe の中に描く（中身の <style> が外へ漏れない・スクリプトは動かさない）。読み込めたら中身の大きさを測って、
  * 枠いっぱいに収まるよう縮めて真ん中に置く（小さい中身も見えるように）。中身が空なら emptyArt（無ければ「中身なし」）
@@ -48,7 +56,7 @@ export function drawPopupThumb(
   frame.srcdoc =
     `<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;background:transparent}` +
     `body{display:flex;justify-content:center;align-items:flex-start;padding:${PAD}px 0}${content.css}</style></head>` +
-    `<body><div style="width:fit-content;max-width:100%">${content.html}</div></body></html>`
+    `<body><div style="width:fit-content;max-width:100%">${thumbnailHtml(content.html)}</div></body></html>`
   frame.addEventListener('load', () => {
     const box = frame.contentDocument?.body.firstElementChild?.getBoundingClientRect()
     const boxW = t.clientWidth

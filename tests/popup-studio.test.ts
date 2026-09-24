@@ -8,6 +8,7 @@ import { embedBuilderData } from '../src/app/panels/nocode/builder-data.ts'
 import { BUILDER_TEMPLATE } from '../src/app/panels/nocode/templates/builder.ts'
 import { items, str, type TemplateData } from '../src/app/panels/nocode/templates/types.ts'
 import { popupStudioStart } from '../src/app/panels/popup-studio-start.ts'
+import { thumbnailHtml } from '../src/app/pages/popup-content-card.ts'
 import { buildPopupSnippet } from '../mock-server/routes/delivery-popup-html.ts'
 import type { ExitPopup } from '../mock-server/store/types.ts'
 
@@ -92,3 +93,34 @@ describe('編集画面の配線', () => {
     expect(library).toContain('if (preview !== undefined && quill !== null) addUseAsScreens(')
   })
 })
+
+describe('設定画面の「プレビュー」でも中身のスクリプトが動く（「次へ」で画面②へ・本人「やって」2026-09-24）', () => {
+  /** 関数の本文（次の関数の手前まで） */
+  const bodyOf = (source: string, name: string): string => {
+    const start = source.indexOf(`function ${name}(`)
+    const next = source.indexOf('\nfunction ', start + 1)
+    return source.slice(start, next === -1 ? undefined : next)
+  }
+
+  for (const [file, name] of [
+    ['src/app/pages/exit-popup-editor.ts', 'previewPopup'],
+    ['src/app/pages/exit-popup-follow.ts', 'previewFollowPopup'],
+  ] as const) {
+    it(`${name}: 画面に載せてから中身の <script> を動かし、そのあとポップアップの JavaScript`, () => {
+      const body = bodyOf(src(file), name)
+      const appended = body.indexOf('document.body.append(overlay)')
+      const scripts = body.indexOf('runWidgetScripts(frame)')
+      expect(appended).toBeGreaterThan(-1)
+      expect(scripts).toBeGreaterThan(appended)
+      expect(scripts).toBeLessThan(body.indexOf('javascript'))
+    })
+  }
+})
+
+describe('小さな絵（編集画面の左上・一覧のカード）', () => {
+  it('<script> は外して描く（絵の iframe はスクリプトを動かさないので、残すとエラーが出続ける）', () => {
+    const html = '<div data-nc-screens>A</div><script>var x=1</script><p>B</p><SCRIPT type="text/javascript">y()</SCRIPT>'
+    expect(thumbnailHtml(html)).toBe('<div data-nc-screens>A</div><p>B</p>')
+  })
+})
+

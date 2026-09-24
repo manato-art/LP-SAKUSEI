@@ -20,6 +20,7 @@ import { injectPositionGridCss } from './exit-popup-styles.ts'
 import { makeCheckboxRow, makeSuffixField, makeTextField, updateGutter } from './exit-popup-fields.ts'
 import { openPopupStudio } from '../panels/popup-studio.ts'
 import { popupContentCard } from './popup-content-card.ts'
+import { runWidgetScripts } from '../panels/widget-run-scripts.ts'
 
 type EditorTab = 'basic' | 'display' | 'position' | 'device' | 'code'
 const EDITOR_TABS: readonly { id: EditorTab; label: string }[] = [
@@ -638,6 +639,9 @@ export function previewPopup(popup: ExitPopup | Partial<ExitPopup>): void {
     styleEl.remove()
   })
   document.body.append(overlay)
+  // 中身の <script> を動かす（innerHTML では動かない。部品で作った「次へ」で画面②へ移る・見本の動き）。
+  // 配信と同じ順番: 中身のスクリプト → ポップアップの動き（下）
+  runWidgetScripts(frame)
 
   // ポップアップのJavaScriptを実行（delivery.ts と同じスコープ変数を提供）
   if (popup.javascript) {

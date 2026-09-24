@@ -16,6 +16,7 @@ import type { PopupPageState } from './exit-popup-state.ts'
 import { makeNumberField, updateGutter } from './exit-popup-fields.ts'
 import { openPopupStudio } from '../panels/popup-studio.ts'
 import { drawPopupThumb, popupContentCard } from './popup-content-card.ts'
+import { runWidgetScripts } from '../panels/widget-run-scripts.ts'
 
 export function renderFollowCard(state: PopupPageState, fp: FollowPopup): HTMLElement {
   const card = el('div', { class: 'ep-card' })
@@ -616,6 +617,9 @@ function previewFollowPopup(fp: FollowPopup | Partial<FollowPopup>): void {
     overlay.remove()
   })
   document.body.append(overlay)
+  // 中身の <script> を動かす（innerHTML では動かない。部品で作った「次へ」で画面②へ移る・見本の動き）。
+  // 配信と同じ順番: 中身のスクリプト → 追従型の動き（下）
+  runWidgetScripts(frame)
 
   // JavaScriptを実行
   if (fp.javascript) {
