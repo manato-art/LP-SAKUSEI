@@ -14,6 +14,7 @@
  *
  * DOM を使わない（テストは tests/nocode-builder-data.test.ts）。
  */
+import { sampleScreens } from './sample-to-screens.ts'
 import type { Path } from './form-state.ts'
 import { plainTextOfRich } from './rich-text.ts'
 import { items, str, type ItemData, type TemplateData } from './templates/types.ts'
@@ -146,15 +147,36 @@ export function blockSnippet(block: ItemData): string {
  * 設定データを持たないWidget（自作の見本・手で書いたHTML・以前の部品Widget）を、
  * 「見本の部品1つ」の設定データにする（2026-09-24・第3弾＝どのWidgetも同じ画面で直す）。
  * 見え方を変えないよう、Widget全体の余白は 0・背景は「なし」にする。
+ *
+ * ボタンを押して設問①②③…と移るWidget（中に画面の入れ物 data-nc-screens がある）は、
+ * 設問ごとの部品にして画面①②③へ分ける（2026-09-24・本人「ボタンを押して移行するから、画面①②③に分けて」）。
+ * 以前は「画面を作って使う」から開いたときだけ分けていて、LPに入れてから開くと1つの部品のままだった。
+ * 見本の切り替わり方（ふわっと・横に流れる）も引き継ぐ。
  */
-export function wrapHtmlAsBuilder(html: string, title: string, defaults: TemplateData): TemplateData {
+export function wrapHtmlAsBuilder(
+  html: string,
+  title: string,
+  defaults: TemplateData,
+  parse?: (html: string) => Element,
+): TemplateData {
+  // 画面を持たないWidgetは読み込まずにそのまま（ほとんどのWidgetはこちら）
+  const screens = html.includes('data-nc-screens')
+    ? sampleScreens({ title, html }, parse)
+    : [{ id: 's1', name: '画面①', blocks: [{ type: 'sample' as const, title, html }] }]
+  const holderTag = screens.length > 1 ? SCREENS_HOLDER_TAG.exec(html)?.[0] : undefined
+  const transition = holderTag === undefined ? undefined : SAMPLE_TRANSITION.exec(holderTag)?.[1]
   return {
     ...defaults,
     padding: 0,
     background: 'none',
-    screens: [{ id: 's1', name: '画面①', blocks: [{ type: 'sample', title, html }] }],
+    ...(transition === undefined ? {} : { transition }),
+    screens,
   }
 }
+
+/** 見本の画面の入れ物の開きタグと、その切り替わり方（builder の transition と同じ3つ・属性の順番は問わない） */
+const SCREENS_HOLDER_TAG = /<[a-z][a-z0-9]*\b[^>]*\bdata-nc-screens\b[^>]*>/i
+const SAMPLE_TRANSITION = /\bdata-nc-transition="(none|fade|slide)"/
 
 const STYLE_BLOCK = /<style\b[^>]*>[\s\S]*?<\/style\s*>/gi
 

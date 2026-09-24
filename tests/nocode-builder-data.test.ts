@@ -3,6 +3,7 @@
  * LPに入れたあとも「部品」として開き直せるための土台。
  */
 import { describe, expect, it } from 'vitest'
+import { parseHTML } from 'linkedom'
 import {
   blockNumberOf,
   blockPathAt,
@@ -161,5 +162,49 @@ describe('設定データを持たないWidgetを見本の部品1つにする（
 
   it('飾りつきの文字の呼び名は飾りを外す', () => {
     expect(blockSnippet({ type: 'heading', text: '請求も<span style="color:red">ひとつ</span>で' })).toBe('請求もひとつで')
+  })
+})
+
+describe('LPに入れた画面①②③のWidgetを開くと、画面①②③に分ける（2026-09-24・本人「ボタンを押して移行するから画面①②③に分けて」）', () => {
+  // linkedom で「見本を入れた箱」を作る（ブラウザの DOMParser と同じ役目）
+  const parse = (html: string): Element => {
+    const { document } = parseHTML(`<!doctype html><html><body><div id="r">${html}</div></body></html>`)
+    return document.getElementById('r') as unknown as Element
+  }
+  const survey =
+    '<style>.q{color:red}</style>' +
+    '<div class="nc nc-sample nc-aaaaaaaa" data-nocode="sample" data-nc-screens="" data-nc-transition="fade">' +
+    '<div class="nc-screen" data-nc-screen="s1" data-nc-name="設問①"><p>Q1</p><button data-nc-go="s2">はい</button></div>' +
+    '<div class="nc-screen" data-nc-screen="s2" data-nc-name="設問②" hidden=""><p>Q2</p><button data-nc-go="s3">はい</button>' +
+    '<button data-nc-go="s1">前の質問にもどる</button></div>' +
+    '<div class="nc-screen" data-nc-screen="s3" data-nc-name="お礼" hidden=""><p>ありがとうございました</p></div>' +
+    '</div><script>/* data-nc-screens の切り替え */</script>'
+
+  it('設問ごとに画面①②③へ分け、ボタンの移る先（もどるも）をその画面にする', () => {
+    const wrapped = wrapHtmlAsBuilder(survey, 'はい／いいえ', BUILDER_TEMPLATE.defaults(NOW), parse)
+    const screens = wrapped['screens'] as { id: string; name: string; blocks: { type: string; html: string }[] }[]
+    expect(screens.map((s) => s.name)).toEqual(['画面①', '画面②', '画面③'])
+    expect(screens.every((s) => s.blocks.length === 1 && s.blocks[0]?.type === 'sample')).toBe(true)
+    expect(screens[0]?.blocks[0]?.html).toContain('data-nc-go="s2"')
+    expect(screens[1]?.blocks[0]?.html).toContain('data-nc-go="s1"')
+    // 見本の中の画面の入れ物と切り替えのスクリプトは外す（画面の切り替えは画面①②③が受け持つ）
+    expect(screens[1]?.blocks[0]?.html).not.toContain('data-nc-screens')
+    expect(screens[1]?.blocks[0]?.html).not.toContain('hidden')
+  })
+
+  it('見本の切り替わり方（ふわっと等）と、見え方を変えない余白0・背景なしはそのまま', () => {
+    const wrapped = wrapHtmlAsBuilder(survey, 'はい／いいえ', BUILDER_TEMPLATE.defaults(NOW), parse)
+    expect(wrapped['transition']).toBe('fade')
+    expect(wrapped['padding']).toBe(0)
+    expect(wrapped['background']).toBe('none')
+    expect(BUILDER_TEMPLATE.validate(wrapped, NOW)).toBeNull()
+  })
+
+  it('画面を持たないWidgetは今までどおり画面①に1つ（読み込みの箱も作らない）', () => {
+    const plain = '<div class="x"><p>ふつうのWidget</p></div>'
+    const wrapped = wrapHtmlAsBuilder(plain, 'ふつう', BUILDER_TEMPLATE.defaults(NOW), () => {
+      throw new Error('画面を持たないWidgetは読み込まない')
+    })
+    expect(wrapped['screens']).toEqual([{ id: 's1', name: '画面①', blocks: [{ type: 'sample', title: 'ふつう', html: plain }] }])
   })
 })
