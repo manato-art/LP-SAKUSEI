@@ -499,7 +499,7 @@ export const api = {
   updateAbTest: (uid: string, patch: Record<string, unknown>) =>
     request<{ ab_test: AbTest }>('PUT', `/ab_tests/${uid}`, patch),
   articles: (abTestUid: string) =>
-    request<{ articles: { uid: string }[] }>('GET', `/ab_tests/${abTestUid}/articles`),
+    request<{ articles: { uid: string; memo?: string; archived?: boolean }[] }>('GET', `/ab_tests/${abTestUid}/articles`),
   addArticle: (abTestUid: string, name?: string) =>
     request<{ article: { uid: string } }>('POST', `/ab_tests/${abTestUid}/articles`, {
       ...(name === undefined ? {} : { name }),

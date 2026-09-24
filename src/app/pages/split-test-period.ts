@@ -5,6 +5,18 @@
  */
 
 import { api, type Version } from '../api.ts'
+import { toast } from '../ui.ts'
+
+/**
+ * 保存して、できたか・できなかったかを知らせる（2026-09-24）。
+ * 以前は黙って送るだけで、失敗しても画面は保存できたように見えていた。
+ */
+function saveTargeting(version: Version, patch: Record<string, unknown>, what: string): void {
+  api.setVersionTargeting(version.uid, patch).then(
+    () => toast(`${version.name}: ${what}を保存しました`),
+    (error: Error) => toast(`${version.name}: ${what}を保存できませんでした（${error.message}）`, 'error'),
+  )
+}
 /**
  * 時間別/日付別: 行内の追加ボタン（時間設定を追加 / ＋AddBoxIcon）を機能させ、
  * 「開始〜終了（＋配信する/しない）」の行を足せるようにして、版ごとに time_ranges / date_periods を保存する。
@@ -29,7 +41,7 @@ export function wirePeriodRow(row: HTMLElement, version: Version, kind: 'time' |
           to: e.querySelector<HTMLInputElement>('[data-to]')?.value ?? '',
         }))
         .filter((r) => r.from !== '' || r.to !== '')
-      void api.setVersionTargeting(version.uid, { time_ranges: ranges })
+      saveTargeting(version, { time_ranges: ranges }, '時間帯')
     } else {
       const periods = editors
         .map((e) => ({
@@ -38,7 +50,7 @@ export function wirePeriodRow(row: HTMLElement, version: Version, kind: 'time' |
           mode: (e.querySelector<HTMLSelectElement>('[data-mode]')?.value as 'on' | 'off') ?? 'on',
         }))
         .filter((p) => p.from !== '' || p.to !== '')
-      void api.setVersionTargeting(version.uid, { date_periods: periods })
+      saveTargeting(version, { date_periods: periods }, '配信期間')
     }
   }
 
