@@ -201,7 +201,8 @@ export function parseCsvLine(line: string): string[] {
 
 /** CSV本文 → 商品の入力。見出し行は読み飛ばす。名前が空の行は捨てる。 */
 export function parseProductCsv(csv: string): Omit<Product, 'id' | 'uid' | 'team_id'>[] {
-  const lines = csv.split(/\r?\n/).filter((l) => l.trim() !== '')
+  // Excel で「CSV UTF-8」保存すると先頭に BOM が付く。残すと見出し行を商品として登録してしまう
+  const lines = csv.replace(/^\uFEFF/, '').split(/\r?\n/).filter((l) => l.trim() !== '')
   const body = lines.length > 0 && (lines[0] ?? '').startsWith('名前') ? lines.slice(1) : lines
   return body
     .map((line) => {
@@ -219,6 +220,8 @@ export function parseProductCsv(csv: string): Omit<Product, 'id' | 'uid' | 'team
 }
 
 mediaRouter.get('/teams/products/sample_csv', (_req, res) => {
+  // 画面の「サンプルCSV」がファイルとして保存できるように、保存名を付けて返す
+  res.setHeader('Content-Disposition', 'attachment; filename="product-sample.csv"')
   res.type('text/csv; charset=utf-8').send(
     `${PRODUCT_CSV_HEADER}\n商品A,1980,4,https://example.test/a,説明文のサンプルです\n`,
   )

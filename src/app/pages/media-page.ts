@@ -20,6 +20,7 @@
 import { api, type Media, type MediaField, type Product } from '../api.ts'
 import { toast } from '../ui.ts'
 import { buildToolGuide } from './tool-guide.ts'
+import { downloadFile } from '../download.ts'
 
 type Tab = 'media' | 'product'
 
@@ -151,9 +152,13 @@ export async function renderMediaPage(host: HTMLElement): Promise<void> {
       const csv = h('div', 'md-csv')
       const sample = h('button', 'md-btn-ghost', 'サンプルCSV') as HTMLButtonElement
       sample.type = 'button'
+      sample.title = '名前,価格(税抜),評価(1~5),サイトURL,説明文 の順の見本を保存します'
       sample.addEventListener('click', () => {
-        // 取り込み用の見出しと1行を、そのままコピーできる形で出す
-        toast('名前,価格(税抜),評価(1~5),サイトURL,説明文 の順で作ってください')
+        // サーバーの見本（見出し＋1行）をファイルとして保存する
+        void downloadFile('/api/v1/teams/products/sample_csv', 'product-sample.csv').then(
+          () => toast('サンプルCSVを保存しました'),
+          (e: unknown) => toast((e as Error).message, 'error'),
+        )
       })
       const file = document.createElement('input')
       file.type = 'file'
