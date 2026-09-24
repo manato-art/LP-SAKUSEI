@@ -12,6 +12,7 @@ import { findAlerts, notifyList } from './alerts.ts'
 import { sendNotification } from './notify.ts'
 import { runLinkChecks } from './link-check-runner.ts'
 import { runScheduledSwitches } from './scheduled-switch-runner.ts'
+import { runMetaAutoImport } from './meta-auto-import.ts'
 import { buildTaskReport } from './task-report.ts'
 import { normalizeReportItems } from './report-items.ts'
 import { getState, setState } from './store/store.ts'
@@ -140,17 +141,22 @@ export function startTaskRunner(): void {
   if (timer !== null) return
   // 分の判定なので30秒間隔で見る（1分ちょうどだと、ずれた分を丸ごと逃す）
   timer = setInterval(() => {
-    void tick().catch(() => {
-      /* 1回失敗しても見張り自体は止めない */
+    // 1回失敗しても見張り自体は止めない（理由はサーバーのログに残す）
+    void tick().catch((error: unknown) => {
+      console.error('[task-runner] タスクの見張りが失敗しました', error)
     })
-    void runAlerts().catch(() => {
-      /* 同上 */
+    void runAlerts().catch((error: unknown) => {
+      console.error('[task-runner] 異常のお知らせの見張りが失敗しました', error)
     })
-    void runLinkChecks().catch(() => {
-      /* 同上 */
+    void runLinkChecks().catch((error: unknown) => {
+      console.error('[task-runner] リンク切れの見張りが失敗しました', error)
     })
-    void runScheduledSwitches().catch(() => {
-      /* 同上 */
+    void runScheduledSwitches().catch((error: unknown) => {
+      console.error('[task-runner] 配信の切り替え予約が失敗しました', error)
+    })
+    // Meta の配信金額の自動取り込み（1時間に1回・ページごとの失敗は取り込み記録に残る）
+    void runMetaAutoImport().catch((error: unknown) => {
+      console.error('[meta-auto-import] 見張りが失敗しました', error)
     })
   }, 30_000)
   timer.unref?.()

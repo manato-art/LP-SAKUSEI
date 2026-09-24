@@ -15,6 +15,9 @@
  */
 import { CV_ACTION_PRIORITY } from './lib/meta-client.ts'
 
+/** 1回の問い合わせを待つ上限 */
+const FETCH_TIMEOUT_MS = 30_000
+
 /** Graph API のバージョン。上げるときは env で差し替えられるようにしておく。 */
 const GRAPH_VERSION = process.env['META_API_VERSION'] ?? 'v21.0'
 
@@ -99,7 +102,11 @@ export async function fetchMetaInsights(opts: {
 
   try {
     // トークンはクエリではなくヘッダで送る（URLはログや履歴に残りやすいため）
-    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+    // 応答が返らないまま待ち続けると、自動取り込みがそのページで止まる（30秒で諦めて失敗として残す）
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    })
     if (!res.ok) {
       const body = (await res.text()).slice(0, 300)
       // ここに token は含めない

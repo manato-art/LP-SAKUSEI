@@ -23,6 +23,8 @@ export async function syncMetaMedia(input: {
   trigger: 'manual' | 'auto'
   /** テストで外へ取りに行かないために差し替える */
   fetcher?: typeof fetchMetaInsights
+  /** 取り込んだ時刻として残す値（UNIXミリ秒）。省略時は今 */
+  at?: number
 }): Promise<MetaSyncResult> {
   const abTest = getState().abTests.find((t) => t.uid === input.abTestUid)
   const level = abTest?.meta_level
@@ -32,7 +34,7 @@ export async function syncMetaMedia(input: {
   }
   const fetcher = input.fetcher ?? fetchMetaInsights
   const result: MetaFetchResult = await fetcher({ level, objectId, since: input.since, until: input.until })
-  const at = Date.now()
+  const at = input.at ?? Date.now()
   if (!result.ok) {
     setState((s) => ({
       ...s,
