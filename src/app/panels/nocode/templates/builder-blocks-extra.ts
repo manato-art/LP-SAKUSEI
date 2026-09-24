@@ -7,7 +7,7 @@
  * 決まりは builder-blocks-more.ts と同じ（いちばん上に幅と置く位置・入力の文字はタグにしない・選ぶ入力には絵）。
  */
 import { isRichEmpty } from '../rich-text.ts'
-import { ALIGN_OPTIONS, layoutFields } from './block-kit.ts'
+import { ALIGN_OPTIONS, layoutFields, telDigits } from './block-kit.ts'
 import { safeImage } from './kit.ts'
 import { BAND_LOOK_ICONS, ORNAMENT_ICONS } from './option-icons.ts'
 import { ACCENT_PRESETS, str, type BlockType, type ItemData } from './types.ts'
@@ -48,12 +48,8 @@ export function splitRows(text: string, max: number): string[][] {
     .map((line) => line.split(/[|｜]/).map((cell) => cell.trim()))
 }
 
-/** 電話番号の数字（と先頭の +）だけ。tel: に使う */
-export function telDigits(number: string): string {
-  const half = number.replace(/[０-９＋]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0))
-  const plus = half.trim().startsWith('+') ? '+' : ''
-  return plus + half.replace(/[^0-9]/g, '')
-}
+// 電話番号の数字だけ（tel:）は、押したときの「電話をかける」と同じものを使う
+export { telDigits } from './block-kit.ts'
 
 export const EXTRA_BLOCK_TYPES: readonly BlockType[] = [
   {

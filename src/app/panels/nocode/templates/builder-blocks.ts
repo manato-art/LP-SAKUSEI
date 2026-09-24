@@ -17,6 +17,7 @@ import { TEMPLATES } from './list.ts'
 import { MORE_BLOCK_TYPES } from './builder-blocks-more.ts'
 import { EXTRA_BLOCK_TYPES } from './builder-blocks-extra.ts'
 import { renderMoreBlock } from './builder-blocks-more-render.ts'
+import { pressAttrs, pressContext, type PressContext } from './press-actions.ts'
 import { ACCENT_PRESETS, bool, int, pick, str, type BlockType, type ItemData, type NocodeTemplate } from './types.ts'
 import {
   ALIGN_OPTIONS,
@@ -25,11 +26,10 @@ import {
   PLACES,
   actionFields,
   actionOf,
-  goAttrs,
-  goTarget,
   layoutFields,
   placeMargins,
   sizeOf,
+  hrefOf,
   withLink,
 } from './block-kit.ts'
 
@@ -286,12 +286,12 @@ export function blockLabel(type: string): string {
 }
 
 /**
- * 型の部品で「画面へ移る」を選んだとき、型が書き出したHTMLの最初のリンクに移る先を付ける
+ * 型の部品で「画面へ移る」やLP上のアクションを選んだとき、型が書き出したHTMLの最初のリンクに印を付ける
  * （ボタンの型など、押す所が1つの型だけ。リンクが無ければ何もしない）。
  */
-function withGoIn(html: string, target: string | null): string {
-  if (target === null || !/<a\s/.test(html)) return html
-  return html.replace(/<a\s/, `<a data-nc-go="${target}" `)
+function withActIn(html: string, attrs: string): string {
+  if (attrs === '' || !/<a\s/.test(html)) return html
+  return html.replace(/<a\s/, `<a${attrs} `)
 }
 
 /** 選択肢のボタン（白地に色の枠。押すと少し沈む） */
@@ -347,22 +347,19 @@ export function renderBlock(
   s: string,
   screenIds: ReadonlySet<string>,
   seen: Set<string> = new Set<string>(),
+  press: PressContext = pressContext(screenIds, s.slice(1)),
 ): { html: string; css: string } {
-  const part = renderBlockBody(item, i, s, screenIds, seen)
+  const part = renderBlockBody(item, i, s, seen, press)
   const layout = layoutCss(s, `nc-b-${i}`, item)
   return layout === '' ? part : { html: part.html, css: part.css + layout }
 }
 
-function renderBlockBody(
-  item: ItemData,
-  i: number,
-  s: string,
-  screenIds: ReadonlySet<string>,
-  seen: Set<string>,
-): { html: string; css: string } {
+function renderBlockBody(item: ItemData, i: number, s: string, seen: Set<string>, press: PressContext): { html: string; css: string } {
   const cls = `nc-b-${i}`
   const align = pick(item, 'align', ALIGNS, 'left')
-  const target = goTarget(item, screenIds)
+  /** 押したときの印（画面へ移る・LP上のアクション）。ボタン・リンクの中なら isControl */
+  const act = (isControl: boolean): string => pressAttrs(item, i, press, isControl)
+  const href = hrefOf(item)
   switch (str(item, 'type')) {
     case 'heading': {
       const size = sizeOf(item, 'size', HEADING_SIZES, 12, 48, 21)
@@ -385,12 +382,13 @@ function renderBlockBody(
       const look = pick(item, 'look', ['cta', 'choice'] as const, 'cta')
       const aClass = `nc-b-button__a nc-b-button__a--${look}`
       const label = `<span class="nc-b-button__label">${richText(str(item, 'label'))}</span>${look === 'cta' ? ARROW_SVG : ''}`
-      const action = actionOf(item)
+      // リンク（URL・電話）は <a href>、画面へ移る・LP上のアクションは <a href="#" 印>、なしは <span>
+      const onPress = href === null ? act(true) : ''
       const anchor =
-        action === 'link'
-          ? `<a class="${aClass}"${linkAttrs(str(item, 'url'), { track: bool(item, 'track'), newTab: false })}>${label}</a>`
-          : target !== null
-            ? `<a class="${aClass}" href="#"${goAttrs(target, true)}>${label}</a>`
+        href !== null
+          ? `<a class="${aClass}"${linkAttrs(href, { track: bool(item, 'track'), newTab: false })}>${label}</a>`
+          : onPress !== ''
+            ? `<a class="${aClass}" href="#"${onPress}>${label}</a>`
             : `<span class="${aClass}">${label}</span>`
       const sel = `${s} .${cls} .nc-b-button__a`
       return {
@@ -403,7 +401,7 @@ function renderBlockBody(
       const round = bool(item, 'round') ? ' nc-b-image--round' : ''
       const picture = image === '' ? '' : `<img src="${image}" alt="${esc(str(item, 'alt').trim())}">`
       return {
-        html: `<figure class="nc-b nc-b-image${round} ${cls}"${goAttrs(target, false)}>${withLink(item, 'nc-b-image__link', picture)}</figure>`,
+        html: `<figure class="nc-b nc-b-image${round} ${cls}"${act(false)}>${withLink(item, 'nc-b-image__link', picture)}</figure>`,
         css: '',
       }
     }
@@ -414,9 +412,9 @@ function renderBlockBody(
       const inner = text === '' ? '' : `<span class="nc-b-shape__text">${text}</span>`
       const shapeClass = `nc-b nc-b-shape nc-b-shape--${shape} ${cls}`
       const html =
-        actionOf(item) === 'link' && str(item, 'url').trim() !== ''
-          ? `<a class="${shapeClass}"${linkAttrs(str(item, 'url'), { track: bool(item, 'track'), newTab: false })}>${inner}</a>`
-          : `<div class="${shapeClass}"${goAttrs(target, false)}>${inner}</div>`
+        href !== null
+          ? `<a class="${shapeClass}"${linkAttrs(href, { track: bool(item, 'track'), newTab: false })}>${inner}</a>`
+          : `<div class="${shapeClass}"${act(false)}>${inner}</div>`
       return { html, css: `${s} .${cls}{background:${color};color:${inkOn(color)}}` }
     }
     case 'video': {
@@ -426,7 +424,7 @@ function renderBlockBody(
       const controls = actionOf(item) === 'none' ? ' controls' : ''
       const player = video === '' ? '' : `<video class="nc-b-video__v" src="${video}" playsinline preload="metadata"${autoplay}${controls}></video>`
       return {
-        html: `<div class="nc-b nc-b-video ${cls}"${goAttrs(target, false)}>${withLink(item, 'nc-b-video__link', player)}</div>`,
+        html: `<div class="nc-b nc-b-video ${cls}"${act(false)}>${withLink(item, 'nc-b-video__link', player)}</div>`,
         css: '',
       }
     }
@@ -458,7 +456,7 @@ function renderBlockBody(
         (heading === '' ? '' : `<h3 class="nc-b-imageText__heading">${heading}</h3>`) +
         `<p class="nc-b-imageText__text">${richText(str(item, 'text'))}</p></div>`
       return {
-        html: `<div class="nc-b nc-b-imageText nc-b-imageText--${side} ${cls}"${goAttrs(target, false)}>${withLink(item, 'nc-b-imageText__link', inner)}</div>`,
+        html: `<div class="nc-b nc-b-imageText nc-b-imageText--${side} ${cls}"${act(false)}>${withLink(item, 'nc-b-imageText__link', inner)}</div>`,
         css: '',
       }
     }
@@ -482,7 +480,7 @@ function renderBlockBody(
       if (template === undefined) return { html: '', css: '' }
       const sub = /^nc-[a-z0-9]{8}$/.test(str(item, 'uid')) ? str(item, 'uid') : `${s.slice(1)}t${i}`
       const inner = template.render(item, sub)
-      return { html: `<div class="nc-b nc-b-tpl ${cls}">${withGoIn(inner, target)}</div>`, css: '' }
+      return { html: `<div class="nc-b nc-b-tpl ${cls}">${withActIn(inner, act(true))}</div>`, css: '' }
     }
   }
 }

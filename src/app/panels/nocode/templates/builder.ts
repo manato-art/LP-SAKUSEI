@@ -23,6 +23,7 @@ import { isRichEmpty } from '../rich-text.ts'
 import { TRANSITION_ICONS } from './option-icons.ts'
 import { moreBlockProblem } from './builder-blocks-more.ts'
 import { moreBaseCss, renderHotspot } from './builder-blocks-more-render.ts'
+import { ACTIONS_SCRIPT, MODAL_LAYER, lpActionProblem, popsCss, pressContext } from './press-actions.ts'
 import { coveredIndexOf, isHotspot } from '../hotspot-model.ts'
 
 export { ALL_BLOCK_TYPES, BLOCK_TYPES } from './builder-blocks.ts'
@@ -214,6 +215,9 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
         if ((type === 'heading' || type === 'text' || type === 'list') && isRichEmpty(str(item, 'text'))) {
           return `文字が空です（${where}）。文字を書くか、その部品を消してください`
         }
+        // LP上のアクション（画像・クーポン・小窓・場所へ移動・コピー・電話）の中身
+        const lp = lpActionProblem(item, where, ids)
+        if (lp !== null) return lp
         if (actionOf(item) === 'screen' && goTarget(item, ids) === null) {
           return `移る先の画面が選ばれていません（${where}）。「移る先の画面」を選んでください`
         }
@@ -253,6 +257,8 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
     /** 使っている部品の種類（増やした部品の形の土台は、使っている分だけ出す） */
     const usedTypes = new Set<string>()
     const names = new Map(screens.map((screen, index) => [str(screen, 'id'), screenName(screen, index)]))
+    /** LP上のアクション（小窓の中身・使ったアクション）を集める */
+    const press = pressContext(ids, uid)
     const screenHtml = screens
       .map((screen, index) => {
         const blocks: string[] = []
@@ -265,8 +271,7 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
             // 移行先は、被せる部品の中（閉じるタグの前）に入れる。被せる部品が無い・中に入れられない部品なら出さない（保存の前に知らせる）
             const host = cover === null ? undefined : blocks[cover.at]
             if (cover === null || host === undefined) continue
-            const target = goTarget(item, ids)
-            const part = renderHotspot(item, counter, s, target, target === null ? '' : (names.get(target) ?? ''))
+            const part = renderHotspot(item, counter, s, press, names.get(str(item, 'target')) ?? '')
             const inside = insertIntoBlock(host, part.html)
             if (inside === null) continue
             blocks[cover.at] = inside
@@ -279,7 +284,7 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
             }
             continue
           }
-          const part = renderBlock(item, counter, s, ids, seenAssets)
+          const part = renderBlock(item, counter, s, ids, seenAssets, press)
           blockCss.push(part.css)
           blocks.push(part.html)
           usedTypes.add(str(item, 'type'))
@@ -355,17 +360,22 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
       `@media (max-width:480px){${s} .nc-b-imageText,${s} .nc-b-imageText__link{grid-template-columns:minmax(0,1fr)}` +
       `${s} .nc-b-imageText--right .nc-b-imageText__img{order:0}}` +
       moreBaseCss(usedTypes, s) +
-      blockCss.join('')
+      blockCss.join('') +
+      // LP上のアクションの小窓（使っているWidgetだけ）
+      (press.flags.has('act') ? popsCss(s) + press.css.join('') : '')
 
+    const pops = press.pops.join('') + (press.flags.has('modal') ? MODAL_LAYER : '')
+    const scripts = [...(screens.length > 1 ? [SCREENS_SCRIPT] : []), ...(press.flags.has('act') ? [ACTIONS_SCRIPT] : [])]
     const attrs =
       ` data-nc-screens="true" data-nc-transition="${transition}"` + (previewStart === null ? '' : ` data-nc-start="${previewStart}"`)
     return wrapWidget({
       uid,
       type: 'builder',
       css,
-      body: screenHtml,
+      // 小窓の中身（画像・クーポン・動画）と、画面を出す小窓は、画面の後ろに隠して置く
+      body: screenHtml + (pops === '' ? '' : `<div class="nc-pops">${pops}</div>`),
       attrs,
-      script: screens.length > 1 ? SCREENS_SCRIPT : undefined,
+      script: scripts.length === 0 ? undefined : scripts.join('\n'),
     })
   },
 }

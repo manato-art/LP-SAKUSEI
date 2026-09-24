@@ -45,6 +45,7 @@ import {
 } from './screens-state.ts'
 import { SCREEN_ID, isTemplateBlock, templateOfBlock } from './templates/builder-blocks.ts'
 import { createPalette } from './palette.ts'
+import { LP_PRESS_CHIPS, buildLpPressRows } from './lp-press-rows.ts'
 import { HOTSPOT_TYPE, coveredIndexOf, duplicateGroup, groupEndOf, groupStep, isHotspot, moveGroupBefore, removeGroup } from './hotspot-model.ts'
 import { items, str, type BlockType, type Field, type ItemData, type ScreensField, type TemplateData } from './templates/types.ts'
 
@@ -396,8 +397,23 @@ export function buildTemplateForm(options: TemplateFormOptions): TemplateForm {
       const next = state()
       row.update(next.chips, next.selected, next.warn)
     })
-    return row.el
+    const wrap = node('div', 'ncf-press')
+    wrap.append(row.el, ...lpPressRows(field, screenIndex, itemPath))
+    return wrap
   }
+
+  /** 押したときの「LPの上で」と「小窓に出す画面」の段（lp-press-rows.ts） */
+  const lpPressRows = (field: ScreensField, screenIndex: number, itemPath: Path): HTMLElement[] =>
+    buildLpPressRows({
+      field,
+      screenIndex,
+      itemPath,
+      data: () => data,
+      replace,
+      restructure: (next) => restructure(next),
+      refreshAll,
+      onRefresh: (fn) => refreshers.push(fn),
+    })
 
   /** 部品の「この部品を出す画面」（押すと、その画面のいちばん下へ移る。「＋新しい画面」は画面を足して移す） */
   const placeFieldEl = (field: ScreensField, screenIndex: number, blockIndex: number, noun: string): HTMLElement => {
@@ -435,7 +451,9 @@ export function buildTemplateForm(options: TemplateFormOptions): TemplateForm {
   /** 部品の下の「◯◯を開いて編集する →」（押したら移る部品だけ。移る先の画面を開く） */
   const gotoEl = (itemPath: Path): HTMLElement => {
     const targetIndex = (): number => {
-      const target = pressOf((getAt(data, itemPath) as ItemData | undefined) ?? {})
+      const item = (getAt(data, itemPath) as ItemData | undefined) ?? {}
+      // 小窓で見せる画面も、ここから開いて中身を直せる
+      const target = str(item, 'action') === 'modal' ? str(item, 'target') : pressOf(item)
       return SCREEN_ID.test(target) ? items(data, screensKey).findIndex((screen) => str(screen, 'id') === target) : -1
     }
     const b = textButton('', 'ncf-goto', () => {
@@ -655,7 +673,9 @@ export function buildTemplateForm(options: TemplateFormOptions): TemplateForm {
   const hotspotDestination = (field: ScreensField, block: ItemData): string => {
     const action = str(block, 'action')
     if (action === 'link') return str(block, 'url').trim() === '' ? '開くページが未入力' : `→ ${str(block, 'url').trim()}`
-    if (action !== 'screen') return '移る先が未設定'
+    const lp = LP_PRESS_CHIPS.find((chip) => chip.value === action)
+    if (lp !== undefined && action !== 'modal') return `→ ${lp.label}`
+    if (action !== 'screen' && action !== 'modal') return '移る先が未設定'
     const screens = items(data, field.key)
     const at = screens.findIndex((screen) => str(screen, 'id') === str(block, 'target'))
     return at < 0 ? '移る先の画面が未選択' : `→ ${screenNameAt(screens[at], at)}`

@@ -11,6 +11,7 @@ import { goTargetsIn } from './sample-model.ts'
 import { groupEndOf, removeGroup } from './hotspot-model.ts'
 import { applyScreenIds } from './sample-to-screens.ts'
 import { SCREEN_ID } from './templates/builder-blocks.ts'
+import { LP_ACTIONS } from './templates/block-kit.ts'
 import { items, str, type ItemData, type TemplateData } from './templates/types.ts'
 
 const CIRCLED = '①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳'
@@ -41,7 +42,9 @@ export function incomingCount(data: TemplateData, screenId: string): number {
   return items(data, 'screens')
     .flatMap((screen) => items(screen, 'blocks'))
     .reduce((count, block) => {
-      if (str(block, 'action') === 'screen' && str(block, 'target') === screenId) return count + 1
+      // 画面へ移る・小窓で見せる（2026-09-24）のどちらでも、その画面を開ける
+      const action = str(block, 'action')
+      if ((action === 'screen' || action === 'modal') && str(block, 'target') === screenId) return count + 1
       return count + goTargetsIn(str(block, 'html')).filter((target) => target === screenId).length
     }, 0)
 }
@@ -71,10 +74,11 @@ export function goChoices(
   return own !== undefined && selected !== null && own.id === selected ? [...others, { id: own.id, label: `${own.label}（この画面）` }] : others
 }
 
-/** 部品の「押したとき」の今の選び: なし・リンク・移る先の画面のid */
+/** 部品の「押したとき」の今の選び: なし・リンク・移る先の画面のid・LP上のアクション（image・coupon・modal など） */
 export function pressOf(item: ItemData): string {
   const action = str(item, 'action')
   if (action === 'link') return 'link'
+  if ((LP_ACTIONS as readonly string[]).includes(action)) return action
   const target = str(item, 'target')
   return action === 'screen' && SCREEN_ID.test(target) ? target : 'none'
 }
@@ -82,7 +86,13 @@ export function pressOf(item: ItemData): string {
 /** 部品の「押したとき」を選び直した中身（value は なし・リンク・画面のid） */
 export function withPress(data: TemplateData, itemPath: Path, value: string): TemplateData {
   if (SCREEN_ID.test(value)) return setAt(setAt(data, [...itemPath, 'action'], 'screen'), [...itemPath, 'target'], value)
+  if ((LP_ACTIONS as readonly string[]).includes(value)) return setAt(data, [...itemPath, 'action'], value)
   return setAt(data, [...itemPath, 'action'], value === 'link' ? 'link' : 'none')
+}
+
+/** 「小窓で見せる」の画面を選ぶ（押したときを小窓にして、出す画面を id にする） */
+export function withModalTarget(data: TemplateData, itemPath: Path, screenId: string): TemplateData {
+  return setAt(setAt(data, [...itemPath, 'action'], 'modal'), [...itemPath, 'target'], screenId)
 }
 
 /** いちばん右に足す空の画面（足せなければ null） */

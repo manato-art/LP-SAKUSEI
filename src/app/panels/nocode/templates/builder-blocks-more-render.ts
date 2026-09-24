@@ -6,7 +6,8 @@
  * - 入力の文字は esc か richText を通す（タグにしない）。色は safeColor、画像は safeImage を通す
  * - 移行先（renderHotspot）は builder.ts が、被せる部品の中（閉じるタグの前）に入れる
  */
-import { goAttrs, PLACES, actionOf } from './block-kit.ts'
+import { PLACES, hrefOf } from './block-kit.ts'
+import { pressAttrs, pressLabel, type PressContext } from './press-actions.ts'
 import { esc, inkOn, linkAttrs, safeColor, safeImage, shade } from './kit.ts'
 import { richText } from '../rich-text.ts'
 import { hotspotRect } from '../hotspot-model.ts'
@@ -42,20 +43,22 @@ function scoreOf(item: ItemData): number {
   return Number.isFinite(n) ? Math.min(5, Math.max(0, Math.round(n * 10) / 10)) : 5
 }
 
-/** 移行先（被せた部品の中に入る、透明な押せる範囲） */
-export function renderHotspot(item: ItemData, i: number, s: string, target: string | null, targetName: string): Part {
+/**
+ * 移行先（被せた部品の中に入る、透明な押せる範囲）。screenName は移る先・小窓に出す画面の名前（読み上げ用）。
+ * リンク（URL・電話）は <a href>、画面へ移る・LP上のアクションは <span 印>
+ */
+export function renderHotspot(item: ItemData, i: number, s: string, press: PressContext, screenName: string): Part {
   const cls = `nc-b-${i}`
   const { x, y, w, h } = hotspotRect(item)
   const css = `${s} .${cls}{left:${x}%;top:${y}%;width:${w}%;height:${h}%}`
-  const url = str(item, 'url').trim()
-  if (actionOf(item) === 'link' && url !== '') {
-    const attrs = linkAttrs(url, { track: bool(item, 'track'), newTab: false })
-    return { html: `<a class="nc-b nc-b-hotspot ${cls}"${attrs} aria-label="リンクを開く"></a>`, css }
+  const label = esc(pressLabel(item, screenName))
+  const href = hrefOf(item)
+  if (href !== null) {
+    const attrs = linkAttrs(href, { track: bool(item, 'track'), newTab: false })
+    return { html: `<a class="nc-b nc-b-hotspot ${cls}"${attrs} aria-label="${label}"></a>`, css }
   }
-  if (target !== null) {
-    const label = esc(`${targetName}へ`)
-    return { html: `<span class="nc-b nc-b-hotspot ${cls}"${goAttrs(target, false)} aria-label="${label}"></span>`, css }
-  }
+  const attrs = pressAttrs(item, i, press, false)
+  if (attrs !== '') return { html: `<span class="nc-b nc-b-hotspot ${cls}"${attrs} aria-label="${label}"></span>`, css }
   // 移る先がまだ無い（保存の前に知らせる。見たまま画面では「移る先が未設定」と出す）
   return { html: `<span class="nc-b nc-b-hotspot ${cls}" aria-hidden="true"></span>`, css }
 }

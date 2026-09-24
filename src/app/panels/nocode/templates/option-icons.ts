@@ -171,3 +171,10 @@ export const ORNAMENT_ICONS = {
   dots: svg('<circle cx="6" cy="12" r="1.8" fill="currentColor"/><circle cx="12" cy="12" r="1.8" fill="currentColor"/><circle cx="18" cy="12" r="1.8" fill="currentColor"/><circle cx="24" cy="12" r="1.8" fill="currentColor"/>'),
   slant: fill('<path d="M3 17 L29 7 V17 Z"/>'),
 } as const
+
+/* ── LPの中の場所へ移動（押したとき） ── */
+export const SCROLL_ICONS = {
+  top: line('<path d="M6 5 H26 M16 20 V9 M11 14 L16 9 L21 14"/>'),
+  below: line('<rect x="8" y="3" width="16" height="8" rx="1.5"/><path d="M16 13 V21 M12 17.5 L16 21 L20 17.5"/>'),
+  id: line('<path d="M9 9 H24 M8 15 H23 M13 5 L11 19 M20 5 L18 19"/>'),
+} as const

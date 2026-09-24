@@ -191,3 +191,17 @@
   - 被せた部品の文字・見本の中身を見たまま画面から読み戻すときは、移行先を外して読む（canvas-sync.ts `withoutHotspots`）。移行先を押したら移行先を選ぶ（`outermostBlock`）
   - 移行先だけが入っている空の部品には、見たまま画面だけ `data-nc-empty` を付けて「画像を選んでください」などの案内を残す（`:empty` では空に見えなくなり、高さ0で移行先も見えなくなっていた）
 
+## 押したときの「LPの上で」（2026-09-24）
+
+本人「LP上アクションをできるように。例えば画像を表示したりクーポンみたいな」。選んでもらったこと: 画像を大きく表示・クーポンを表示・小窓で見せる（中身は画面で作る）・
+LPの中の場所へ移動＋ほかにも色々（文字をコピー・動画を大きく再生・電話をかける・閉じる）。**押せる部品すべて**（ボタン・画像・図形・動画・画像と文章・移行先・押せる型）で使える。
+
+- 右の欄の「押したとき」の下に「LPの上で」の段（template-form.ts `lpPressRows`）。上の段（画面へ移る・リンク）と同じ1つを選ぶ。小窓で見せるなら「小窓に出す画面」の段（＋新しい画面も）
+- 入力欄は block-kit.ts の `actionFields`（選んだアクションの分だけ出す＝showIfItem）。データは action＋act*（actImage・actVideo・actTitle/actAmount/actCode/actNote・actScroll/actAnchor・actCopy・actTel）
+- 書き出し（press-actions.ts）: 押す要素に印（`data-nc-pop`・`data-nc-modal`・`data-nc-scroll`・`data-nc-copy`・`data-nc-close`）。画像・動画・クーポンの小窓の中身は Widget の中に隠して置く（`.nc-pops`）。
+  小窓で見せるは、選んだ画面を小窓へ移して出し、閉じると元の場所へ戻す。電話をかけるは `tel:` のリンク（block-kit.ts `hrefOf`）
+- スクリプト `ACTIONS_SCRIPT`（使っているWidgetだけ・1回）: 押す前（capture）に受け取る。× ・背景・Esc で閉じ、開いたら × に、閉じたら押した所に入力の印を戻す。コピーは「コピーしました」を出す。
+  閉じるは、入っている小窓・離脱防止ポップ（`.ep-close` を押す）・追従型（`.fp-close`）を閉じる
+- 小窓は Widget の中に `position:fixed` で置く（Widgetだけに効くCSSのまま出すため）。LPの親に transform があると、その中に収まる
+- 確かめ方: アプリの画面は body の高さが固定でスクロールしない・隠れたタブはクリップボードを許さない → ページの中に普通の文書（iframe）を作り、書き出したHTMLを入れて押す
+
