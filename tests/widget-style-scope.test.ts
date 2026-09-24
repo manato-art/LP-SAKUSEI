@@ -108,7 +108,7 @@ describe('Widget／LP の写しを画面に置く箇所は、CSS を入れ物の
     const source = readFileSync('src/app/panels/widget-visual-editor.ts', 'utf8')
     expect(source).toContain('markStyleScope(contentDiv)')
     // 幅は PC／スマホ で変わる（2026-09-24。@media をその幅で判定する）
-    expect(source).toContain('widgetPreviewCss(css, previewScope, previewWidth)')
+    expect(source).toContain('widgetPreviewCss(PREVIEW_LEAK_RESET + css, previewScope, previewWidth)')
   })
 
   it('LP編集画面のキャンバスは、元の <style> を止めて範囲づけした写しで表示する', () => {

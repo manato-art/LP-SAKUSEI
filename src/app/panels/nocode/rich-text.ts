@@ -145,6 +145,55 @@ export function plainToRich(text: string): string {
   return escapeText(text)
 }
 
+/**
+ * 右の欄で直した素の文字を、飾りつきの文字に当てる（2026-09-24・右の欄で直すと飾りが消えていた）。
+ * 前と後の素の文字を比べて、変わった所だけを差し替える（前後で同じ所の飾りは残す）。
+ * 打ち足した文字は、すぐ前の文字の飾りの中に入る（見たまま画面で打ち足したときと同じ）。
+ * 消した所にあったタグは残す（飾りの境目をまたいで消しても、タグの組が壊れない）。
+ */
+export function applyPlainEdit(oldRich: string, newPlain: string): string {
+  // 飾りつきの文字を、素の文字1つずつ（HTMLの中の始まりと終わり）に分ける。タグは素の文字に数えない
+  const starts: number[] = []
+  const ends: number[] = []
+  let plain = ''
+  const token = /<br\s*\/?>|<[^<>]*>|&(?:#x[0-9a-fA-F]+|#\d+|[a-zA-Z]+);|[\s\S]/gi
+  for (const m of oldRich.matchAll(token)) {
+    const t = m[0]
+    const at = m.index ?? 0
+    const isBr = /^<br/i.test(t)
+    if (!isBr && t.startsWith('<') && t.length > 1) continue
+    const ch = isBr ? '\n' : plainTextOfRich(t)
+    for (let k = 0; k < ch.length; k++) {
+      starts.push(at)
+      ends.push(at + t.length)
+    }
+    plain += ch
+  }
+  // 読み取れない形（前の素の文字とずれる）なら、今までどおり素の文字にする
+  if (plain !== plainTextOfRich(oldRich)) return plainToRich(newPlain)
+  let p = 0
+  while (p < plain.length && p < newPlain.length && plain[p] === newPlain[p]) p++
+  let q = 0
+  while (q < plain.length - p && q < newPlain.length - p && plain[plain.length - 1 - q] === newPlain[newPlain.length - 1 - q]) q++
+  const removedEnd = plain.length - q
+  const inserted = newPlain
+    .slice(p, newPlain.length - q)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\r?\n/g, '<br>')
+  if (removedEnd <= p) {
+    if (inserted === '') return oldRich
+    // 打ち足し: すぐ前の文字の後ろ（先頭なら最初の文字の前）
+    const at = p > 0 ? (ends[p - 1] ?? oldRich.length) : (starts[0] ?? oldRich.length)
+    return oldRich.slice(0, at) + inserted + oldRich.slice(at)
+  }
+  const from = starts[p] ?? oldRich.length
+  const to = ends[removedEnd - 1] ?? oldRich.length
+  const keptTags = (oldRich.slice(from, to).match(/<(?!br\b)[^<>]*>/gi) ?? []).join('')
+  return oldRich.slice(0, from) + inserted + keptTags + oldRich.slice(to)
+}
+
 /** 飾りつきの文字が空か（<br> や空白だけも空） */
 export function isRichEmpty(html: string): boolean {
   return plainTextOfRich(html).trim() === ''

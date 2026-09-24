@@ -23,18 +23,18 @@ import { buildTemplateForm } from './nocode/template-form.ts'
 import { hotspotRect, isHotspot, moveGroupBefore } from './nocode/hotspot-model.ts'
 import { MORE_PREVIEW_CSS } from './nocode/templates/builder-blocks-more-render.ts'
 import { BUILDER_PADDING, BUILDER_TEMPLATE } from './nocode/templates/builder.ts'
-import { ALIGNS, HEADING_SIZES, PLACES, SPACER_SIZES, TEXT_SIZES, blockLabel, sizeOf, widthKeyOf, type Place } from './nocode/templates/builder-blocks.ts'
+import { HEADING_SIZES, PLACES, SPACER_SIZES, TEXT_SIZES, blockLabel, sizeOf, widthKeyOf, type Place } from './nocode/templates/builder-blocks.ts'
 import { newUid } from './nocode/templates/kit.ts'
 import { int, items, pick, str, type ItemData, type TemplateData } from './nocode/templates/types.ts'
 import { placeGuideX, placeLeft, snapPlace, snapThreshold, widthGuideXs, widthSnaps } from './drag-math.ts'
 import { contentBoxOf, createSelectionLayer, type SelectionHandle, type SelectionMove, type SnapPoint } from './selection-layer.ts'
-import type { AlignTarget } from './align-menu.ts'
-import { openSizePopover } from './size-popover.ts'
 import { canvasEditTarget } from './widget-canvas-events.ts'
 import { FONT } from './widget-editor-theme.ts'
 import { runWidgetScripts } from './widget-run-scripts.ts'
 import { attachBlockDrop } from './widget-studio-drop.ts'
 import { attachPartKeys, type CanvasPart } from './widget-studio-delete-key.ts'
+import { attachUndoKeys, createHistory } from './widget-studio-history.ts'
+import { createToolbarHooks, type ToolbarHooks } from './widget-studio-toolbar.ts'
 import { hotspotHandles, hotspotMove, markEmptyHotspotHosts, type HotspotEditDeps } from './widget-studio-hotspot.ts'
 
 export interface BuilderSessionDeps {
@@ -69,10 +69,11 @@ export interface BuilderSession {
   readonly onCanvasClick: (target: EventTarget | null) => void
   /** 左の道具（画像の操作パネル・リンクの吹き出し・並んだ部品の操作）を効かせてよい要素か＝見本の部品の中 */
   readonly toolScope: (el: Element) => boolean
-  /** 上のツールバーの「配置 ⌄」で変える、選んだ部品の置く位置・文字の寄せ（受け持たないときは null） */
-  readonly alignTarget: () => AlignTarget | null
-  /** 上のツールバーの「サイズ」。選んだ部品の幅と置く位置の小窓を出す。受け持ったら true */
-  readonly onSizeButton: (anchor: HTMLElement) => boolean
+  /** 上のツールバーのうち、部品で受け持つもの（配置・サイズ・文字の飾り・リンク・画像＝widget-studio-toolbar.ts） */
+  readonly toolbar: ToolbarHooks
+  /** 元に戻す・やり直す（部品の操作も含む。戻せなければ false＝widget-studio-history.ts） */
+  readonly undo: () => boolean
+  readonly redo: () => boolean
   /** 選んでいる部品を消す（上のツールバーの消しゴムで、文字を選んでいないとき）。消したら true */
   readonly removeSelected: () => boolean
   /** 登録の名前の初期値（「組み立てたWidget（最初の見出し）」） */
@@ -135,6 +136,10 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
   ensureNocodeFormCss()
   const { contentDiv, editorBody } = deps
   let data = deps.data
+  /** 元に戻す・やり直す（中身の変わり目を順に覚える。戻している間は覚えない） */
+  const history = createHistory(deps.data, { mergeMs: 700, limit: 100 })
+  const track = (): void => history.record(data)
+  let restoring = false
   let uid = deps.uid
   let paintTimer = 0
   let rebuildTimer = 0
@@ -187,6 +192,7 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
   /** 部品の1つの値を書いて、入力欄と見え方をそろえる（選択枠のつまみ・ツールバー・大きさの小窓から） */
   const commitField = (path: Path, key: string, value: number | string): void => {
     data = setAt(data, [...path, key], value)
+    track()
     form.setData(data)
     paint()
   }
@@ -410,6 +416,7 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
           return
         }
         data = next
+        track()
         form.setData(data)
         paint()
       },
@@ -447,6 +454,7 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
     commit: (next) => {
       const path = pathOf(screenIndex, blockIndex)
       for (const [key, value] of Object.entries(next)) data = setAt(data, [...path, key], value)
+      track()
       form.setData(data)
       paint()
     },
@@ -522,6 +530,7 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
     data,
     onChange: (next) => {
       data = next
+      if (!restoring) track()
       schedulePaint()
     },
     onScreenChange: () => paint(),
@@ -622,6 +631,7 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
     const synced = syncCanvasBlock(data, el, contentDiv)
     if (synced === null) return
     data = synced.data
+    track()
     form.setData(data)
     selection.refresh()
     // 見本の部品の入力欄は中身から作っているので、少し待ってから読み直す
@@ -666,14 +676,14 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
    * 文字を打つ部品以外（画像・動画・図形・余白・区切り線・型の部品）は、部品そのものをつかんで動かせる
    * （少し動かすと動き出す。そのまま離せば、ただ選ぶだけ）。文字の部品・見本は、つかみ所（枠の上のまん中）で動かす
    */
-  // 見たまま画面で文字を打てない部品（画像・動画・余白・区切り線・型・2026-09-24 に増やした部品・移行先）と図形
-  const isDirectMove = (block: ItemData): boolean => str(block, 'type') === 'shape' || !isTextEditableBlock(block)
+  // どの部品も本体をつかんで動かせる（Canva式・2026-09-24）。文字を打っている途中の部品と、見本の部品（中の要素を選ぶ）は除く
+  const isDirectMove = (block: ItemData, el: HTMLElement): boolean => str(block, 'type') !== 'sample' && !partKeys.isEditing(el)
   contentDiv.addEventListener('pointerdown', (event) => {
     if (event.button !== 0 || event.ctrlKey || event.metaKey) return
     const el = outermostBlock(event.target, contentDiv)
     const place = el === null ? null : placeOf(el)
     if (el === null || place === null) return
-    if (!isDirectMove(place.block)) return
+    if (!isDirectMove(place.block, el)) return
     if (form.selectedBlock() !== place.blockIndex) form.select(place.screenIndex, place.blockIndex)
     const move = isHotspot(place.block)
       ? hotspotMove(el, hotspotDeps(place.screenIndex, place.blockIndex))
@@ -709,43 +719,34 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
     remove: () => void removeSelected(),
   })
 
-  /**
-   * 上のツールバーの「配置 ⌄」で変えるもの（見出し・文章は文字の寄せ、ほかは置く位置）。
-   * 見本の中・何も選んでいない・幅の無い部品（余白）は null＝選んだ文字の寄せ
-   */
-  const alignTarget = (): AlignTarget | null => {
-    const blockIndex = form.selectedBlock()
-    if (blockIndex === null) return null
-    const screenIndex = form.activeScreen()
-    const block = blockAt(screenIndex, blockIndex)
-    if (block === undefined) return null
-    const type = str(block, 'type')
-    const path = pathOf(screenIndex, blockIndex)
-    if (type === 'heading' || type === 'text') {
-      return { kind: 'text', value: pick(block, 'align', ALIGNS, 'left'), set: (v) => commitField(path, 'align', v) }
-    }
-    if (type === 'sample' || widthKeyOf(type) === null) return null
-    return { kind: 'place', value: placeOf2(block), set: (v) => commitField(path, 'place', v) }
-  }
+  /** 上のツールバーのうち、部品で受け持つもの（widget-studio-toolbar.ts） */
+  const toolbar = createToolbarHooks({
+    data: () => data,
+    selected: () => {
+      const blockIndex = form.selectedBlock()
+      const screenIndex = form.activeScreen()
+      const block = blockIndex === null ? undefined : blockAt(screenIndex, blockIndex)
+      if (blockIndex === null || block === undefined) return null
+      return { screenIndex, blockIndex, block, el: blockElementAt(data, contentDiv, screenIndex, blockIndex) }
+    },
+    commit: commitField,
+    insertBlock: (type, at, init) => form.insertBlock(type, at, init),
+    inspector: () => panel,
+  })
 
-  /** 上のツールバーの「サイズ」（選んだ部品の幅と置く位置の小窓）。見本の中・何も選んでいないときは受け持たない */
-  const onSizeButton = (anchor: HTMLElement): boolean => {
-    const blockIndex = form.selectedBlock()
-    if (blockIndex === null) return false
-    const screenIndex = form.activeScreen()
-    const block = blockAt(screenIndex, blockIndex)
-    if (block === undefined || str(block, 'type') === 'sample') return false
-    const key = widthKeyOf(str(block, 'type'))
-    if (key === null) return false
-    const path = pathOf(screenIndex, blockIndex)
-    openSizePopover(anchor, {
-      width: widthOf(block),
-      place: placeOf2(block),
-      onWidth: (n) => commitField(path, key, n),
-      onPlace: (p) => commitField(path, 'place', p),
-    })
+  /** 覚えた中身に戻す（戻せなければ false）。画面は今の画面のまま（無ければ最後の画面） */
+  const restore = (next: TemplateData | null): boolean => {
+    if (next === null) return false
+    restoring = true
+    form.load(next, Math.min(form.activeScreen(), Math.max(0, items(next, 'screens').length - 1)), null)
+    restoring = false
+    paint()
     return true
   }
+  attachUndoKeys([editorBody, panel, ...(deps.partsHost === undefined ? [] : [deps.partsHost.list, deps.partsHost.palette])], {
+    undo: () => restore(history.undo()),
+    redo: () => restore(history.redo()),
+  })
 
   const toolScope = (el: Element): boolean => {
     const block = outermostBlock(el, contentDiv)
@@ -785,8 +786,9 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
     },
     onCanvasClick,
     toolScope,
-    alignTarget,
-    onSizeButton,
+    toolbar,
+    undo: () => restore(history.undo()),
+    redo: () => restore(history.redo()),
     removeSelected,
     suggestName: () => suggestBuilderName(data),
     rekey: () => {

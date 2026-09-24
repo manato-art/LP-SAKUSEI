@@ -53,6 +53,8 @@ export interface PartKeysDeps {
 export interface PartKeys {
   /** 見たまま画面を1回押したとき（部品を選ぶ前に呼ぶ）。打っている途中の部品の中なら、そのまま打てる */
   readonly onClick: (el: HTMLElement | null) => void
+  /** その部品の文字を打っている途中か（途中なら、本体をつかんでも動かさない＝文字を選ぶ） */
+  readonly isEditing: (el: HTMLElement) => boolean
 }
 
 /** 部品の文字の入れ物（ボタンの文字・図形の中の文字など。無ければ部品そのもの） */
@@ -148,5 +150,6 @@ export function attachPartKeys(deps: PartKeysDeps): PartKeys {
       editing = null
       clear()
     },
+    isEditing: (el) => el === editing,
   }
 }

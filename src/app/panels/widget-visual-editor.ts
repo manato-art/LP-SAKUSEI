@@ -9,7 +9,7 @@ import { COLOR, FONT, WIDGET_PREVIEW_WIDTH, type WidgetEditTarget } from './widg
 import { notifyCanvasEdit } from './widget-canvas-events.ts'
 import { closeMediaControl, openMediaControl, pickImageDataUrl } from './widget-media-control.ts'
 import { toast } from '../ui.ts'
-import { markStyleScope, widgetPreviewCss } from './widget-style-scope.ts'
+import { PREVIEW_LEAK_RESET, markStyleScope, widgetPreviewCss } from './widget-style-scope.ts'
 import {
   TOOLBAR_FONT_FAMILIES,
   cssFontFamilyValue,
@@ -65,6 +65,17 @@ export interface VisualEditorOptions {
   readonly onSizeButton?: (anchor: HTMLElement) => boolean
   /** ツールバーの消しゴムで、文字を選んでいないとき: 選んでいる部品を消す。消したら true（そのときは書式クリアしない） */
   readonly onErase?: () => boolean
+  /** 選んでいる部品の文字の入れ物（文字を選んでいないとき、飾りを部品の文字全体に効かせる＝Canva式）。無ければ null */
+  readonly partText?: () => HTMLElement[] | null
+  /** 文字を選んでいないときのサイズ−／＋（見出し・文章は部品の文字の大きさ）。受け持ったら新しい大きさ、無ければ null */
+  readonly fontSizeStep?: (delta: number) => number | null
+  /** リンク: 部品の「押したとき」をリンクにする（見本の部品でなければ）。受け持ったら true */
+  readonly onLink?: () => boolean
+  /** 画像（PCから追加）: 画像の部品として足す（見本の部品でなければ）。受け持ったら true */
+  readonly onImage?: (dataUrl: string) => boolean
+  /** 元に戻す・やり直す（部品の操作も含む）。戻せたら true */
+  readonly onUndo?: () => boolean
+  readonly onRedo?: () => boolean
   /** 見たまま画面の枠（既定は lp） */
   readonly previewFrame?: PreviewFrame
   /** 後ろに敷くLPのプレビュー（ポップアップの「LPの上に重ねて見る」・popup-underlay.ts）。無ければ敷かない */
@@ -211,7 +222,7 @@ export function buildVisualEditor(
           sel.removeAllRanges()
           sel.addRange(savedRange)
         }
-        document.execCommand(cmd, false, hex)
+        onText(() => document.execCommand(cmd, false, hex))
         syncContentToCode()
       },
       // Widget編集のツールバーは常時表示なので、開閉状態を持たせる必要がない
@@ -225,9 +236,33 @@ export function buildVisualEditor(
   let savedRange: Range | null = null
   const saveSelection = (): void => {
     const sel = window.getSelection()
-    if (sel !== null && sel.rangeCount > 0 && contentRef !== null && contentRef.contains(sel.anchorNode)) {
-      savedRange = sel.getRangeAt(0).cloneRange()
+    // 見たまま画面の中に選んだ文字が無ければ、前に覚えた範囲は捨てる（前に選んだ別の文字に効いてしまうため）
+    savedRange =
+      sel !== null && sel.rangeCount > 0 && contentRef !== null && contentRef.contains(sel.anchorNode) ? sel.getRangeAt(0).cloneRange() : null
+  }
+
+  /**
+   * 文字の飾り: 文字を選んでいればそこへ。選んでいなければ（部品を選んだだけ＝Canva式・2026-09-24）、
+   * 選んでいる部品の文字全体を選んでから効かせ、選びを外す（部品を選んだ状態に戻る）
+   */
+  const onText = (run: () => void): void => {
+    const sel = window.getSelection()
+    const hasText = sel !== null && !sel.isCollapsed && sel.anchorNode !== null && contentRef?.contains(sel.anchorNode) === true
+    const holders = hasText ? null : (options.partText?.() ?? null)
+    const first = holders?.[0]
+    const last = holders?.[holders.length - 1]
+    if (sel === null || first === undefined || last === undefined) {
+      run()
+      return
     }
+    const range = document.createRange()
+    range.setStart(first, 0)
+    range.setEnd(last, last.childNodes.length)
+    contentRef?.focus({ preventScroll: true })
+    sel.removeAllRanges()
+    sel.addRange(range)
+    run()
+    sel.removeAllRanges()
   }
   const restoreSelection = (): void => {
     contentRef?.focus()
@@ -249,8 +284,10 @@ export function buildVisualEditor(
     // 指示158: styleWithCSS=true で font-family をインラインstyleとして当てる。
     // 既定の execCommand('fontName') は <font face> を出すが、Widget/親のCSSに font-family が
     // あると打ち消されて「変化ない」ため、インラインstyle（詳細度最強）にして確実に効かせる。
-    document.execCommand('styleWithCSS', false, 'true')
-    document.execCommand('fontName', false, cssFontFamilyValue(font))
+    onText(() => {
+      document.execCommand('styleWithCSS', false, 'true')
+      document.execCommand('fontName', false, cssFontFamilyValue(font))
+    })
     syncContentToCode()
   }
 
@@ -360,44 +397,59 @@ export function buildVisualEditor(
   // サイズ表示
   const sizeNum = mkSizeNum('19')
 
+  /** 今の文字の大きさ（選んだ文字、無ければ選んだ部品の文字）をサイズの数字に出す */
+  const refreshSizeNum = (): void => {
+    const sel = window.getSelection()
+    const node = sel !== null && sel.rangeCount > 0 && contentRef?.contains(sel.anchorNode) === true ? sel.anchorNode : null
+    const el = node instanceof Element ? node : (node?.parentElement ?? options.partText?.()?.[0] ?? null)
+    if (el !== null) sizeNum.textContent = String(Math.round(Number.parseFloat(getComputedStyle(el).fontSize)))
+  }
+  /**
+   * サイズ−／＋: 今の大きさから1pxずつ（以前は数字が19から始まり、21pxの見出しで「＋」が小さくしていた）。
+   * 文字を選んでいなければ、見出し・文章は部品の文字の大きさ、ほかの部品は文字全体
+   */
+  const stepSize = (delta: number): void => {
+    const sel = window.getSelection()
+    const hasText = sel !== null && !sel.isCollapsed && contentRef?.contains(sel.anchorNode) === true
+    const whole = hasText ? null : (options.fontSizeStep?.(delta) ?? null)
+    if (whole !== null) {
+      sizeNum.textContent = String(whole)
+      return
+    }
+    onText(() => {
+      const node = window.getSelection()?.anchorNode ?? null
+      const el = node instanceof Element ? node : (node?.parentElement ?? null)
+      if (el === null || contentRef === null || window.getSelection()?.isCollapsed !== false) return
+      const next = Math.min(72, Math.max(8, Math.round(Number.parseFloat(getComputedStyle(el).fontSize)) + delta))
+      document.execCommand('styleWithCSS', false, 'false')
+      document.execCommand('fontSize', false, '7')
+      for (const f of contentRef.querySelectorAll<HTMLElement>('font[size="7"]')) {
+        f.removeAttribute('size')
+        f.style.fontSize = `${next}px`
+      }
+      // 大きさを書き換えたので、部品の文字へ読み戻す（execCommand の input は書き換える前の形）
+      contentRef.dispatchEvent(new Event('input', { bubbles: true }))
+      sizeNum.textContent = String(next)
+    })
+  }
+
   // ツールバーアイテム配置（本番の順序を再現 + 実動作接続）
   toolbar.append(
-    mkBtn(svgToolUndo(), '元に戻す', () => exec('undo'), 'round'),
-    mkBtn(svgToolRedo(), 'やり直す', () => exec('redo'), 'round'),
+    mkBtn(svgToolUndo(), '元に戻す', () => {
+      if (options.onUndo?.() === true) return
+      exec('undo')
+    }, 'round'),
+    mkBtn(svgToolRedo(), 'やり直す', () => {
+      if (options.onRedo?.() === true) return
+      exec('redo')
+    }, 'round'),
     mkSep(),
     mkFontSelect(),
-    mkSizeGroup(
-    mkBtn(svgToolSizeMinus(), 'サイズ−', () => {
-      const cur = parseInt(sizeNum.textContent ?? '19', 10)
-      const next = Math.max(8, cur - 1)
-      exec('fontSize', '3')
-      // fontSize command uses 1-7 scale; use inline style for exact px
-      const sel = window.getSelection()
-      if (sel !== null && sel.rangeCount > 0) {
-        const range = sel.getRangeAt(0)
-        const span = range.commonAncestorContainer.parentElement
-        if (span !== null) span.style.fontSize = `${next}px`
-      }
-      sizeNum.textContent = String(next)
-    }),
-    sizeNum,
-    mkBtn(svgToolSizePlus(), 'サイズ+', () => {
-      const cur = parseInt(sizeNum.textContent ?? '19', 10)
-      const next = Math.min(72, cur + 1)
-      exec('fontSize', '5')
-      const sel = window.getSelection()
-      if (sel !== null && sel.rangeCount > 0) {
-        const range = sel.getRangeAt(0)
-        const span = range.commonAncestorContainer.parentElement
-        if (span !== null) span.style.fontSize = `${next}px`
-      }
-      sizeNum.textContent = String(next)
-    }),
-    ),
+    mkSizeGroup(mkBtn(svgToolSizeMinus(), 'サイズ−', () => stepSize(-1)), sizeNum, mkBtn(svgToolSizePlus(), 'サイズ+', () => stepSize(1))),
     mkSep(),
-    mkBtn(svgToolBold(), '太字', () => exec('bold')),
-    mkBtn(svgToolUnderline(), '下線', () => exec('underline')),
-    mkBtn(svgToolStrikethrough(), '取り消し線', () => exec('strikeThrough')),
+    mkBtn(svgToolBold(), '太字', () => onText(() => exec('bold'))),
+    mkBtn(svgToolUnderline(), '下線', () => onText(() => exec('underline'))),
+    mkBtn(svgToolStrikethrough(), '取り消し線', () => onText(() => exec('strikeThrough'))),
     mkBtn(
       svgToolAlign(),
       '配置（選んだ部品は置く位置・文字は寄せ）',
@@ -414,12 +466,14 @@ export function buildVisualEditor(
       },
       'menu',
     ),
-    mkBtn(svgToolItalic(), '斜体', () => exec('italic')),
+    mkBtn(svgToolItalic(), '斜体', () => onText(() => exec('italic'))),
     mkBtn(svgToolTextColor(), '文字色', (btn) => pickColor(btn, 'foreColor', '文字色')),
     mkBtn(svgToolBgColor(), '背景色', (btn) => pickColor(btn, 'hiliteColor', '背景色')),
     mkBtn(svgToolImage(), '画像（PCから追加）', () => {
       void pickImageDataUrl().then((dataUrl) => {
         if (dataUrl === null) return
+        // 部品で作ったWidgetでは、画像の部品として足す（部品の文字の中には画像を持てない）
+        if (options.onImage?.(dataUrl) === true) return
         contentRef?.focus()
         document.execCommand('insertImage', false, dataUrl)
       })
@@ -445,8 +499,12 @@ export function buildVisualEditor(
         openMediaControl(target, contentRef)
       },
     ),
-    mkBtn(svgToolMarker(), 'マーカー（蛍光ペン）', () => exec('hiliteColor', '#fff176')),
-    mkBtn(svgToolLink(), 'リンク', (btn) => openLinkInput(btn)),
+    mkBtn(svgToolMarker(), 'マーカー（蛍光ペン）', () => onText(() => exec('hiliteColor', '#fff176'))),
+    // 部品で作ったWidgetでは、部品の「押したとき」をリンクにする（見出し・文章はリンクの移行先を被せる）
+    mkBtn(svgToolLink(), 'リンク', (btn) => {
+      if (options.onLink?.() === true) return
+      openLinkInput(btn)
+    }),
     // 文字を選んでいれば書式クリア。選んでいなければ、選んでいる部品を消す（2026-09-24・本人の選択「文字の選びで分ける」）
     mkBtn(svgToolClearFormat(), '書式クリア（文字を選んでいないときは、選んでいる部品を消す）', () => {
       const sel = document.getSelection()
@@ -477,7 +535,7 @@ export function buildVisualEditor(
   let lastCss = target.css
   const setPreviewCss = (css: string): void => {
     lastCss = css
-    styleTag.textContent = widgetPreviewCss(css, previewScope, previewWidth)
+    styleTag.textContent = widgetPreviewCss(PREVIEW_LEAK_RESET + css, previewScope, previewWidth)
   }
   setPreviewCss(target.css)
   contentDiv.setAttribute('contenteditable', 'true')
@@ -486,6 +544,8 @@ export function buildVisualEditor(
   // 620px = 配信SSRの body max-width（mock-server/routes/delivery.ts の DELIVERY_WIDTH）。
   // line-height:1.5 は配信LPの section.sb-widget-block と揃える（指示155・WYSIWYG）。
   contentDiv.dataset['widgetPreview'] = 'true'
+  // サイズの数字を、今の文字（無ければ選んだ部品）の大きさにそろえる（部品を選ぶ click の後で読む）
+  for (const type of ['mouseup', 'keyup'] as const) contentDiv.addEventListener(type, () => window.setTimeout(refreshSizeNum, 0))
   contentDiv.dataset['darkRuntime'] = 'skip'
   // ポップアップの中身は、配信と同じく中身の幅の箱（frameStyle）。
   // 文字は配信と同じ黒（ダークの html は color-scheme:dark なので、何もしないと継いだ文字が白くなり白い紙に消える）

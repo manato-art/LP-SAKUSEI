@@ -27,7 +27,7 @@ import { node, scalarControl, type ControlEnv, type Scalar, type ScalarField } f
 import { addAt, duplicateAt, getAt, moveAt, moveTo, removeAt, setAt, type Path } from './form-state.ts'
 import { sampleEditor } from './form-sample.ts'
 import { chipRow, type Chip } from './press-chips.ts'
-import { plainTextOfRich, plainToRich } from './rich-text.ts'
+import { applyPlainEdit, plainTextOfRich } from './rich-text.ts'
 import { splitSampleScreens } from './sample-to-screens.ts'
 import type { SelectionHandle } from '../selection-layer.ts'
 import {
@@ -191,14 +191,18 @@ export function buildTemplateForm(options: TemplateFormOptions): TemplateForm {
   const fieldEl = (field: ScalarField, path: Path, itemPath?: Path): HTMLElement => {
     const wrap = node('div', 'ncf-field')
     const id = nextId()
-    // 飾りつきの文字（見出しなど）は、入力欄では飾りを外して出し、打ち直したら素の文字にする
+    // 飾りつきの文字（見出しなど）は、入力欄では飾りを外して出す。打ち直したら、変わった所だけを差し替える
+    // （見たまま画面で付けた太字・色・大きさを消さない＝2026-09-24）
     const rich = (field.kind === 'text' || field.kind === 'textarea') && field.rich === true
     const env: ControlEnv = {
       read: () => {
         const value = getAt(data, path)
         return rich && typeof value === 'string' ? plainTextOfRich(value) : value
       },
-      write: (value) => write(path, rich && typeof value === 'string' ? plainToRich(value) : value),
+      write: (value) => {
+        const before = getAt(data, path)
+        write(path, rich && typeof value === 'string' ? applyPlainEdit(typeof before === 'string' ? before : '', value) : value)
+      },
       data: () => data,
       onRefresh: (refresh) => refreshers.push(refresh),
     }

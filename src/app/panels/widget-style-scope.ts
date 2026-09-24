@@ -148,6 +148,14 @@ export function markStyleScope(container: HTMLElement): string {
 }
 
 /**
+ * 見たまま画面に漏れるアプリ（管理画面）のCSSを、ブラウザの標準に戻す（2026-09-24・点検で見つけた食い違い）。
+ * アプリのCSS（取り込んだ管理画面のCSS）の `i { margin-right: 10px; font-size: 30px; }` と `label { display: block; }` が、
+ * Widget の中の斜体・下向きの矢印・ロード中の点々・見本のラベルに効き、配信のLP（効かない）と見え方が違った。
+ * Widget のCSSより前に置く（widgetPreviewCss で見たまま画面の中だけに効かせる。Widget 自身の指定が勝つ）
+ */
+export const PREVIEW_LEAK_RESET = 'i{margin-right:0;font-size:inherit}label{display:inline}'
+
+/**
  * Widget編集のプレビュー用。scope を Widget の外枠とみなし、配信と同じ「Widget の見た目に要る土台」を付けて書き出す。
  * 土台は Widget 自身の指定より前に置く（同じ強さなら Widget 自身の指定が勝つ＝配信と同じ）。
  */

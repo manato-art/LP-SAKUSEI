@@ -13,8 +13,9 @@ const darkSrc = read('dark-runtime-css.ts')
 describe('書式ツールバーの見た目', () => {
   it('角の丸い白い帯。元に戻す・やり直すは丸い灰色、文字の大きさは1つの枠', () => {
     expect(visualSrc).toContain("toolbar.className = 'wtb'")
-    expect(visualSrc).toContain("exec('undo'), 'round')")
-    expect(visualSrc).toContain("exec('redo'), 'round')")
+    // 元に戻す・やり直すは丸い形（2026-09-24 から部品の操作も戻す＝押したときの中身は複数行）
+    expect(visualSrc).toMatch(/mkBtn\(svgToolUndo\(\), '元に戻す', \(\) => \{[\s\S]*?\}, 'round'\)/)
+    expect(visualSrc).toMatch(/mkBtn\(svgToolRedo\(\), 'やり直す', \(\) => \{[\s\S]*?\}, 'round'\)/)
     expect(visualSrc).toContain('mkSizeGroup(')
     expect(toolbarCss).toContain('border-radius:14px')
     expect(toolbarCss).toContain('.wtb__btn--round{border-radius:50%;background:#F3F4F6}')

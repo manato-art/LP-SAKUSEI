@@ -34,7 +34,7 @@ describe('見たまま画面に幅を渡す', () => {
   it('ヘッダーの切り替えで、見たまま画面の幅と @media の判定を変える', () => {
     expect(src('panels/widget-studio.ts')).toContain('setPreviewDevice(device)')
     const visual = src('panels/widget-visual-editor.ts')
-    expect(visual).toContain('widgetPreviewCss(css, previewScope, previewWidth)')
+    expect(visual).toContain('widgetPreviewCss(PREVIEW_LEAK_RESET + css, previewScope, previewWidth)')
     expect(visual).toContain("previewWidth = device === 'sp' ? SP_WIDTH : LP_WIDTH")
   })
 })
