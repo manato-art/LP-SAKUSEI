@@ -148,9 +148,8 @@ function buildFilters(deps: FilterDeps): HTMLElement {
     if (preset.value === '') return
     const range = resolvePreset(preset.value)
     if (range === null) {
-      // 「7日間」だけは数え方が採取物から判別できない（今日を含むか不明）。黙って何もしない
-      // のではなく、そう伝える（推測で埋めない）。
-      toast('「7日間」の数え方が実物から確認できていません。日付で指定してください', 'error')
+      // 選択肢はすべて解決できる。ここに来るのは知らない値だけ（黙って何もしないのではなく伝える）
+      toast('この期間は選べません。日付で指定してください', 'error')
       preset.value = ''
       return
     }
