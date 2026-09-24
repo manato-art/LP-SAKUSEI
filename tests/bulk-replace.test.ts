@@ -176,7 +176,7 @@ describe('マジック置換のAPI', () => {
           replacement: 'いいい',
         },
       )
-      expect(done).toEqual({ replaced: 1, versions: 1 })
+      expect(done).toMatchObject({ replaced: 1, versions: 1 })
 
       // 置換された1件は一覧から消え、残り1件だけになる
       const again = await call<{ pages: { rows: unknown[] }[] }>(

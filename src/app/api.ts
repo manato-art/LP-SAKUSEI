@@ -435,7 +435,10 @@ export const api = {
     targets: { version_uid: string; value: string; indexes?: number[] }[]
     replacement: string
     tracking?: string
-  }) => request<{ replaced: number; versions: number }>('POST', '/articles/bulk_replaces', body),
+  }) => request<{ replaced: number; versions: number; undo_id: string | null }>('POST', '/articles/bulk_replaces', body),
+  /** 直前の「置換する」を元に戻す（置換した直後のままのVersionだけ戻る） */
+  undoBulkReplace: (undoId: string) =>
+    request<{ restored: number; skipped: number }>('POST', `/articles/bulk_replaces/${encodeURIComponent(undoId)}/undo`),
   createFolder: (name: string) => request<{ folder: Folder }>('POST', '/folders', { name }),
   /** フォルダのドメインを変える（'' ＝未設定 / 'system' ＝このシステムのドメイン / ホスト名） */
   setFolderDomain: (uid: string, domain: string) =>
