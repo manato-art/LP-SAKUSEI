@@ -3,10 +3,11 @@
  * 本番ドメインは登場させない（§3-2）。
  */
 import type { MasterStyleSheet } from './master-style.ts'
+import { LIST_PAGE_SIZE, fetchAllPages, type PageInfo } from './api-paging.ts'
 
 const BASE = '/api/v1'
 
-async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+export async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     method,
     headers: { 'Content-Type': 'application/json' },
@@ -366,7 +367,13 @@ export interface InspectionEntry {
 }
 
 export const api = {
-  folders: () => request<{ folders: Folder[] }>('GET', '/folders?per_page=200'),
+  // 全ページを取る（1回200件で打ち切ると、201件目からが黙って消える）
+  folders: () =>
+    fetchAllPages(
+      (page) =>
+        request<{ folders: Folder[]; pagination: PageInfo }>('GET', `/folders?per_page=${LIST_PAGE_SIZE}&page=${page}`),
+      (res) => res.folders,
+    ).then((folders) => ({ folders })),
   // 計測ツール・ASPアカウント一覧（一括タグ/基本情報で使う）
   aspAccounts: () =>
     request<{ asp_accounts: { id: number; asp_name: string }[] }>('GET', '/teams/asp_accounts'),
@@ -448,7 +455,12 @@ export const api = {
   toggleFavorite: (uid: string, isFavorite: boolean) =>
     request<{ folder: Folder }>('PATCH', `/folders/${uid}/favorite`, { is_favorite: isFavorite }),
 
-  abTests: () => request<{ ab_tests: AbTest[] }>('GET', '/ab_tests?per_page=200'),
+  abTests: () =>
+    fetchAllPages(
+      (page) =>
+        request<{ ab_tests: AbTest[]; pagination: PageInfo }>('GET', `/ab_tests?per_page=${LIST_PAGE_SIZE}&page=${page}`),
+      (res) => res.ab_tests,
+    ).then((ab_tests) => ({ ab_tests })),
   /**
    * 広告費の取り込み（このシステムだけの入口）。
    * 媒体が返すのは日別の絶対値なので、同じ日は上書きされる（二重計上しない）。
