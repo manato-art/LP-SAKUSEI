@@ -1,7 +1,9 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
 import { readFileSync } from 'node:fs'
 import {
+  ACCENT_PRESETS,
   DEFAULT_ACCENT,
+  darkTint,
   darken,
   isHexColor,
   readableInk,
@@ -38,6 +40,35 @@ describe('アクセント色から派生する色', () => {
   it('薄い地は元より明るくなる', () => {
     expect(Number.parseInt(tint('#0091FF').slice(1, 3), 16)).toBeGreaterThan(0x00)
     expect(tint('#000000')).not.toBe('#000000')
+  })
+
+  it('ダーク用の薄い地は暗い地（ダークの明るい文字が読める）。ライト用の薄い地は今までと同じ', () => {
+    /** WCAG の相対輝度 */
+    const luminance = (color: string): number => {
+      const m = /rgb\((\d+), (\d+), (\d+)\)/.exec(color)
+      const [r, g, b] = m === null ? [0, 0, 0] : [Number(m[1]), Number(m[2]), Number(m[3])]
+      const ch = (n: number): number => (n / 255 <= 0.03928 ? n / 255 / 12.92 : ((n / 255 + 0.055) / 1.055) ** 2.4)
+      return 0.2126 * ch(r) + 0.7152 * ch(g) + 0.0722 * ch(b)
+    }
+    // ダークの文字（実行時の上書きで明るくなった #151515 = rgb(232, 232, 232)）との差
+    const textOnDark = luminance('rgb(232, 232, 232)')
+    for (const { value } of ACCENT_PRESETS) {
+      const dark = darkTint(value)
+      expect(dark, value).toMatch(/^rgb\(/)
+      expect((textOnDark + 0.05) / (luminance(dark) + 0.05), value).toBeGreaterThan(7)
+    }
+    expect(tint('#0091FF')).toBe('#E6F4FF')
+  })
+
+  it('--sb-accent-tint はライト／ダークで切り替わる（テーマカラーはライト用・ダーク用の2つを流し込む）', () => {
+    const src = readFileSync('src/app/theme-color.ts', 'utf8')
+    expect(src).toContain("root.style.setProperty('--sb-accent-tint-light', tint(color))")
+    expect(src).toContain("root.style.setProperty('--sb-accent-tint-dark', darkTint(color))")
+    // html に直接書くと、ダーク用の定義（index.html）より強くなってしまう
+    expect(src).not.toContain("setProperty('--sb-accent-tint',")
+    const html = readFileSync('src/index.html', 'utf8')
+    expect(html).toContain('--sb-accent-tint: var(--sb-accent-tint-light, #E6F4FF);')
+    expect(html).toContain(`--sb-accent-tint: var(--sb-accent-tint-dark, ${darkTint(DEFAULT_ACCENT)});`)
   })
 
   it('暗い色の上は白文字、明るい色の上は濃い文字にする（読めなくしない）', () => {

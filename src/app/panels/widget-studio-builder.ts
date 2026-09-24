@@ -117,7 +117,7 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
   const panel = document.createElement('div')
   panel.dataset['ncTab'] = 'studio'
   panel.dataset['ncfScroll'] = 'true'
-  panel.style.cssText = `flex:1;min-height:0;overflow-y:auto;padding:12px 16px 28px;background:#fff;box-sizing:border-box;font-family:${FONT}`
+  panel.style.cssText = `flex:1;min-height:0;overflow-y:auto;padding:12px 16px 28px;background:var(--sb-c-ffffff, #FFFFFF);box-sizing:border-box;font-family:${FONT}`
 
   const selection = createSelectionLayer(editorBody, contentDiv)
 

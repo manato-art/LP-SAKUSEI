@@ -29,8 +29,8 @@ export function openSizePopover(anchor: HTMLElement, options: SizePopoverOptions
   box.setAttribute('role', 'dialog')
   box.setAttribute('aria-label', '幅と置く位置')
   box.style.cssText =
-    `position:fixed;z-index:9600;background:#fff;border:1px solid #ddd;border-radius:10px;box-shadow:0 6px 22px rgba(0,0,0,.16);` +
-    `padding:12px 14px;display:flex;flex-direction:column;gap:10px;font:12px/1.4 ${FONT};color:#333;min-width:250px`
+    `position:fixed;z-index:9600;background:var(--sb-c-ffffff, #FFFFFF);border:1px solid var(--sb-c-dddddd, #DDDDDD);border-radius:10px;box-shadow:0 6px 22px rgba(0,0,0,.16);` +
+    `padding:12px 14px;display:flex;flex-direction:column;gap:10px;font:12px/1.4 ${FONT};color:var(--sb-c-333333, #333333);min-width:250px`
   box.addEventListener('mousedown', (e) => e.stopPropagation())
 
   // 幅
@@ -38,7 +38,7 @@ export function openSizePopover(anchor: HTMLElement, options: SizePopoverOptions
   widthRow.style.cssText = 'display:flex;align-items:center;gap:8px'
   const widthLabel = document.createElement('span')
   widthLabel.textContent = '幅'
-  widthLabel.style.cssText = 'flex-shrink:0;color:#555;min-width:28px'
+  widthLabel.style.cssText = 'flex-shrink:0;color:var(--sb-c-555555, #555555);min-width:28px'
   const slider = document.createElement('input')
   slider.type = 'range'
   slider.min = '10'
@@ -61,16 +61,16 @@ export function openSizePopover(anchor: HTMLElement, options: SizePopoverOptions
   placeRow.style.cssText = 'display:flex;align-items:center;gap:6px'
   const placeLabel = document.createElement('span')
   placeLabel.textContent = '位置'
-  placeLabel.style.cssText = 'flex-shrink:0;color:#555;min-width:28px'
+  placeLabel.style.cssText = 'flex-shrink:0;color:var(--sb-c-555555, #555555);min-width:28px'
   placeRow.append(placeLabel)
   const buttons: HTMLButtonElement[] = []
   const paint = (current: Place): void => {
     for (const b of buttons) {
       const on = b.dataset['place'] === current
       b.setAttribute('aria-pressed', String(on))
-      b.style.borderColor = on ? ACCENT : '#DDDDDD'
-      b.style.background = on ? 'var(--sb-accent-tint, #E6F4FF)' : '#FFFFFF'
-      b.style.color = on ? ACCENT : '#6B7480'
+      b.style.borderColor = on ? ACCENT : 'var(--sb-c-dddddd, #DDDDDD)'
+      b.style.background = on ? 'var(--sb-accent-tint, #E6F4FF)' : 'var(--sb-c-ffffff, #FFFFFF)'
+      b.style.color = on ? ACCENT : 'var(--sb-c-6b7480, #6B7480)'
     }
   }
   const PLACE_LABELS: Readonly<Record<Place, string>> = { left: '左に置く', center: '中央に置く', right: '右に置く' }
@@ -82,8 +82,8 @@ export function openSizePopover(anchor: HTMLElement, options: SizePopoverOptions
     b.title = PLACE_LABELS[place]
     b.setAttribute('aria-label', PLACE_LABELS[place])
     b.style.cssText =
-      'flex:1;display:flex;align-items:center;justify-content:center;height:34px;border:1px solid #DDD;border-radius:6px;' +
-      'background:#fff;cursor:pointer;padding:0'
+      'flex:1;display:flex;align-items:center;justify-content:center;height:34px;border:1px solid var(--sb-c-dddddd, #DDDDDD);border-radius:6px;' +
+      'background:var(--sb-c-ffffff, #FFFFFF);cursor:pointer;padding:0'
     b.addEventListener('click', () => {
       paint(place)
       options.onPlace(place)

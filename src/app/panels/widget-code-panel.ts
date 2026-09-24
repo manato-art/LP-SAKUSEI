@@ -91,12 +91,12 @@ export function buildCodePanels(target: WidgetEditTarget, options: CodePanelOpti
     viewBtn.title = label
     viewBtn.setAttribute('aria-label', label)
     viewBtn.setAttribute('aria-pressed', String(codeOnly))
-    viewBtn.style.background = codeOnly ? 'var(--sb-accent-tint, #E6F4FF)' : '#FFFFFF'
-    viewBtn.style.borderColor = codeOnly ? 'var(--sb-accent, #0091FF)' : '#D5DAE0'
-    viewBtn.style.color = codeOnly ? 'var(--sb-accent, #0091FF)' : '#555555'
+    viewBtn.style.background = codeOnly ? 'var(--sb-accent-tint, #E6F4FF)' : 'var(--sb-c-ffffff, #FFFFFF)'
+    viewBtn.style.borderColor = codeOnly ? 'var(--sb-accent, #0091FF)' : 'var(--sb-c-d5dae0, #D5DAE0)'
+    viewBtn.style.color = codeOnly ? 'var(--sb-accent, #0091FF)' : 'var(--sb-c-555555, #555555)'
   }
   viewBtn.style.cssText =
-    `width:30px;height:28px;margin-left:8px;border:1px solid #D5DAE0;border-radius:6px;cursor:pointer;` +
+    `width:30px;height:28px;margin-left:8px;border:1px solid var(--sb-c-d5dae0, #D5DAE0);border-radius:6px;cursor:pointer;` +
     `display:flex;align-items:center;justify-content:center;padding:0;flex-shrink:0;transition:border-color .15s,color .15s`
   viewBtn.addEventListener('mouseenter', () => {
     if (view === 'split') viewBtn.style.borderColor = 'var(--sb-accent, #0091FF)'

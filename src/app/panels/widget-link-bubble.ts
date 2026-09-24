@@ -31,7 +31,7 @@ function button(text: string, primary: boolean): HTMLButtonElement {
   b.textContent = text
   b.style.cssText = primary
     ? `border:none;background:${COLOR.brand};color:#fff;border-radius:6px;padding:5px 10px;cursor:pointer;font:12px ${FONT};flex-shrink:0`
-    : `border:1px solid #d5d5d5;background:#fff;color:#333;border-radius:6px;padding:4px 10px;cursor:pointer;font:12px ${FONT};flex-shrink:0`
+    : `border:1px solid var(--sb-c-d5d5d5, #D5D5D5);background:var(--sb-c-ffffff, #FFFFFF);color:var(--sb-c-333333, #333333);border-radius:6px;padding:4px 10px;cursor:pointer;font:12px ${FONT};flex-shrink:0`
   return b
 }
 
@@ -53,14 +53,14 @@ export function openLinkBubble(anchor: HTMLAnchorElement, onChange: () => void):
   box.setAttribute('role', 'dialog')
   box.setAttribute('aria-label', 'リンク先')
   box.style.cssText =
-    `position:fixed;z-index:9600;background:#fff;border:1px solid #ddd;border-radius:8px;` +
+    `position:fixed;z-index:9600;background:var(--sb-c-ffffff, #FFFFFF);border:1px solid var(--sb-c-dddddd, #DDDDDD);border-radius:8px;` +
     `box-shadow:0 4px 18px rgba(0,0,0,.18);padding:8px 10px;display:flex;flex-wrap:wrap;gap:6px 8px;` +
-    `align-items:center;max-width:min(380px,calc(100vw - 16px));font:12px/1.5 ${FONT};color:#333`
+    `align-items:center;max-width:min(380px,calc(100vw - 16px));font:12px/1.5 ${FONT};color:var(--sb-c-333333, #333333)`
   // 吹き出しの中を押しても、見たまま画面の選択や「外を押したら閉じる」に拾わせない
   box.addEventListener('mousedown', (e) => e.stopPropagation())
 
   const label = document.createElement('span')
-  label.style.cssText = 'color:#6B7480;flex-shrink:0'
+  label.style.cssText = 'color:var(--sb-c-6b7480, #6B7480);flex-shrink:0'
 
   const go = anchor.getAttribute('data-nc-go')
   if (go !== null) {
@@ -76,7 +76,7 @@ export function openLinkBubble(anchor: HTMLAnchorElement, onChange: () => void):
       const value = document.createElement('span')
       value.textContent = placeholder ? '（まだ入っていません）' : href
       value.title = href
-      value.style.cssText = 'min-width:0;flex:1 1 140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#1F2A37'
+      value.style.cssText = 'min-width:0;flex:1 1 140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--sb-c-1f2a37, #1F2A37)'
       const parts: HTMLElement[] = [label, value]
       if (placeholder) {
         const pill = document.createElement('span')

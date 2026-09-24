@@ -10,6 +10,8 @@
  * 食い違ったらサーバー側を正とする（設定画面で変えた値が本体）。
  */
 
+import { mapDarkDeclaration } from '../shared/dark-color.ts'
+
 /** 既定のアクセント色（採取した実物の青） */
 export const DEFAULT_ACCENT = '#0091FF'
 
@@ -74,6 +76,16 @@ export function tint(hex: string, amount = 0.9): string {
 }
 
 /**
+ * ダーク用の薄い地（選択中の行やバッジの地）。ライト用の薄い地をダークの規則（src/shared/dark-color.ts
+ * 「彩度のある薄い地は暗い地に置き換える」）で写したもの。実行時の上書きが直の色（#E6F4FF 等）に当てるのと同じ値になる。
+ * ライト用の薄い地のままだと、ダークで明るくなった文字が薄い地の上で読めない（2026-09-24・Widget編集の右の欄で実測）。
+ */
+export function darkTint(hex: string): string {
+  const light = tint(hex)
+  return mapDarkDeclaration('background-color', light) ?? light
+}
+
+/**
  * その色を背景にしたとき、白と濃色のどちらの文字が読めるか。
  * 明るい色を選ばれたときに白文字のままだと読めなくなるので、ここで切り替える。
  * 相対輝度は WCAG の定義に従う。
@@ -99,7 +111,10 @@ export function applyAccent(hex: string): void {
   const root = document.documentElement
   root.style.setProperty('--sb-accent', color)
   root.style.setProperty('--sb-accent-dark', darken(color))
-  root.style.setProperty('--sb-accent-tint', tint(color))
+  // 薄い地はライト用・ダーク用の2つを流し込み、どちらを使うかは index.html の --sb-accent-tint が決める
+  // （html に --sb-accent-tint を直に書くと、ダーク用の定義より強くなってしまう）
+  root.style.setProperty('--sb-accent-tint-light', tint(color))
+  root.style.setProperty('--sb-accent-tint-dark', darkTint(color))
   root.style.setProperty('--sb-accent-ink', readableInk(color))
 }
 

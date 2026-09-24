@@ -13,13 +13,19 @@ import { darkRule, parseDeclarations } from '../shared/dark-css.ts'
 const OVERRIDE_ID = 'sb-dark-runtime'
 
 /**
- * その `<style>` を読む対象にするか（自分が作ったもの・外部CSS・`data-dark-runtime="skip"` を付けたものは除く。
- * skip は、周りがインラインstyleでダークにならない画面の中の部品が、そこだけ黒く浮かないように付ける）
+ * 上書きを作らない `<style>` か。自分か祖先に `data-dark-runtime="skip"` が付いていれば作らない。
+ * 付けるのは、LPに入る中身をアプリの中で見せる所（Widget編集の見たまま画面＝プレビューのCSSと、Widget自身の <style>）。
+ * 配信されるLPは白いままなので、ここを暗くすると見え方が配信とずれる（2026-09-24）。
  */
+export function isRuntimeDarkSkipped(node: Element): boolean {
+  return node.closest('[data-dark-runtime="skip"]') !== null
+}
+
+/** その `<style>` を読む対象にするか（自分が作ったもの・外部CSS・上書きを作らない印の付いたものは除く） */
 function isTarget(sheet: CSSStyleSheet): boolean {
   const node = sheet.ownerNode
   if (!(node instanceof HTMLStyleElement)) return false
-  return node.id !== OVERRIDE_ID && node.dataset['darkRuntime'] !== 'skip'
+  return node.id !== OVERRIDE_ID && !isRuntimeDarkSkipped(node)
 }
 
 /** ルール（入れ子の @media も）から上書きを作る */

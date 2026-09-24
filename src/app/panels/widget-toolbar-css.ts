@@ -4,8 +4,8 @@
  * 角の丸い白い帯（細い枠と薄い影）の中に、元に戻す・やり直す（丸い灰色）｜フォント・文字の大きさ（枠つき）｜
  * 書式のボタン（地なし・乗せると灰色）｜注意書き、を1行に並べる。
  * `<style>` で入れる（:hover と、幅が足りないとき注意書きを次の行へ回す @container のため）。
- * ダークでも白のまま（周りの見たまま画面・ヘッダーはインラインstyleでダークにならないので、帯だけ黒いと浮く。
- * 以前の帯もインラインstyleで白のままだった）→ dark-runtime-css.ts の上書きの対象から外す。
+ * ダークではヘッダー・右の欄と一緒に暗くなる（dark-runtime-css.ts が他の画面と同じ規則で上書きを作る。
+ * 2026-09-24・本人の決定「周りだけ暗く・Widgetは白」）。
  * スマホは mobile-css.ts が1行の横スクロールにし、左右の余白を外す。
  */
 import { FONT } from './widget-editor-theme.ts'
@@ -57,7 +57,6 @@ export function ensureWidgetToolbarCss(): void {
   if (document.getElementById(STYLE_ID) !== null) return
   const style = document.createElement('style')
   style.id = STYLE_ID
-  style.dataset['darkRuntime'] = 'skip'
   style.textContent = CSS
   document.head.append(style)
 }

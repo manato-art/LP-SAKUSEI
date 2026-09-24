@@ -66,15 +66,15 @@ export function openAlignMenu(anchor: HTMLElement, target: AlignTarget | null, o
   box.setAttribute('role', 'dialog')
   box.setAttribute('aria-label', title)
   box.style.cssText =
-    `position:fixed;z-index:9600;background:#fff;border:1px solid #E3E5E9;border-radius:10px;box-shadow:0 6px 22px rgba(0,0,0,.14);` +
-    `padding:8px 10px 10px;display:flex;flex-direction:column;gap:6px;font:12px/1.4 ${FONT};color:#555`
+    `position:fixed;z-index:9600;background:var(--sb-c-ffffff, #FFFFFF);border:1px solid var(--sb-c-e3e5e9, #E3E5E9);border-radius:10px;box-shadow:0 6px 22px rgba(0,0,0,.14);` +
+    `padding:8px 10px 10px;display:flex;flex-direction:column;gap:6px;font:12px/1.4 ${FONT};color:var(--sb-c-555555, #555555)`
   box.addEventListener('mousedown', (e) => {
     e.preventDefault() // 選んだ文字を外さない
     e.stopPropagation()
   })
   const head = document.createElement('div')
   head.textContent = title
-  head.style.cssText = 'color:#6B7480;font-size:11px'
+  head.style.cssText = 'color:var(--sb-c-6b7480, #6B7480);font-size:11px'
   const row = document.createElement('div')
   row.setAttribute('role', 'radiogroup')
   row.setAttribute('aria-label', title)
@@ -91,7 +91,7 @@ export function openAlignMenu(anchor: HTMLElement, target: AlignTarget | null, o
     b.innerHTML = choice.icon
     b.style.cssText =
       `display:flex;align-items:center;justify-content:center;width:46px;height:36px;padding:0;border-radius:7px;cursor:pointer;` +
-      `border:1px solid ${on ? ACCENT : '#DDDDDD'};background:${on ? 'var(--sb-accent-tint, #E6F4FF)' : '#fff'};color:${on ? ACCENT : '#6B7480'}`
+      `border:1px solid ${on ? ACCENT : 'var(--sb-c-dddddd, #DDDDDD)'};background:${on ? 'var(--sb-accent-tint, #E6F4FF)' : 'var(--sb-c-ffffff, #FFFFFF)'};color:${on ? ACCENT : 'var(--sb-c-6b7480, #6B7480)'}`
     b.addEventListener('click', () => {
       close()
       if (target === null) onFreeText(choice.value)

@@ -78,7 +78,7 @@ export function openMediaControl(media: HTMLElement, contentDiv: HTMLElement): v
 
   const box = document.createElement('div')
   box.style.cssText =
-    `position:fixed;z-index:9500;background:#fff;border:1px solid #ddd;border-radius:8px;` +
+    `position:fixed;z-index:9500;background:var(--sb-c-ffffff, #FFFFFF);border:1px solid var(--sb-c-dddddd, #DDDDDD);border-radius:8px;` +
     `box-shadow:0 4px 18px rgba(0,0,0,.18);padding:10px 12px;display:flex;flex-direction:column;` +
     `gap:8px;font:12px/1.4 ${FONT};min-width:236px`
   box.addEventListener('click', (e) => e.stopPropagation())
@@ -108,7 +108,7 @@ export function openMediaControl(media: HTMLElement, contentDiv: HTMLElement): v
   row.style.cssText = 'display:flex;align-items:center;gap:8px'
   const lbl = document.createElement('span')
   lbl.textContent = 'サイズ' // 指示154: 「幅」ではなく「サイズ」
-  lbl.style.color = '#555'
+  lbl.style.color = 'var(--sb-c-555555, #555555)'
   const slider = document.createElement('input')
   slider.type = 'range'
   slider.min = '10'
@@ -118,7 +118,7 @@ export function openMediaControl(media: HTMLElement, contentDiv: HTMLElement): v
   slider.style.flex = '1'
   const num = document.createElement('span')
   num.textContent = `${curPct}%`
-  num.style.cssText = 'min-width:40px;text-align:right;color:#333;font-variant-numeric:tabular-nums'
+  num.style.cssText = 'min-width:40px;text-align:right;color:var(--sb-c-333333, #333333);font-variant-numeric:tabular-nums'
   slider.addEventListener('input', () => {
     const v = slider.value
     applyMediaWidth(media, Number(v)) // 指示154: サイズ変更時に中央寄せ
@@ -132,7 +132,7 @@ export function openMediaControl(media: HTMLElement, contentDiv: HTMLElement): v
   closeBtn.type = 'button'
   closeBtn.textContent = '閉じる'
   closeBtn.style.cssText =
-    `border:1px solid #ddd;background:#fff;color:#555;border-radius:6px;padding:6px 10px;` +
+    `border:1px solid var(--sb-c-dddddd, #DDDDDD);background:var(--sb-c-ffffff, #FFFFFF);color:var(--sb-c-555555, #555555);border-radius:6px;padding:6px 10px;` +
     `cursor:pointer;font:12px/1 ${FONT}`
   closeBtn.addEventListener('click', closeMediaControl)
   box.append(closeBtn)

@@ -62,11 +62,15 @@ export interface VisualEditorOptions {
   readonly previewFrame?: PreviewFrame
 }
 
-/** 枠ごとの、見たまま画面の地の色と中身の箱の大きさ */
+/**
+ * 枠ごとの、見たまま画面の地の色と中身の箱の大きさ。
+ * LPの枠は、620pxの箱を白い紙にして地は透かす（地はWidget編集の地の色＝ダークでは暗い。ライトはどちらも白で今までと同じ）。
+ * ポップアップの枠の地は配信の見え方そのもの（離脱防止＝LPにかぶせる暗い地・追従型＝後ろのLPの白）なので、ダークでも変えない。
+ */
 function frameStyle(frame: PreviewFrame): { backdrop: string; box: string } {
   if (frame === 'overlay') return { backdrop: '#999999', box: 'width:fit-content;max-width:500px;margin:24px auto' }
   if (frame === 'corner') return { backdrop: '#fff', box: 'width:fit-content;max-width:100%;margin:24px auto' }
-  return { backdrop: '#fff', box: `width:${WIDGET_PREVIEW_WIDTH}px;max-width:none;margin:0 auto` }
+  return { backdrop: 'transparent', box: `width:${WIDGET_PREVIEW_WIDTH}px;max-width:none;margin:0 auto;background:#fff` }
 }
 
 export function buildVisualEditor(
@@ -440,6 +444,8 @@ export function buildVisualEditor(
   // 表示用に作り直す（保存するCSSはそのまま）: このプレビューの中だけに効かせ（編集画面のボタンや後ろのキャンバスに漏らさない）、
   // SquadBeyond のプレビュー用CSSを除き、@media は LPの幅（620px）で判定し、配信と同じ土台を付ける。
   const styleTag = document.createElement('style')
+  // LPに入る中身なので、ダークでも上書きを作らない（配信されるLPは白いまま。Widget自身の <style> も contentDiv の印で外れる）
+  styleTag.dataset['darkRuntime'] = 'skip'
   editorBody.append(styleTag)
   const contentDiv = document.createElement('div')
   const previewScope = markStyleScope(contentDiv)
@@ -453,9 +459,11 @@ export function buildVisualEditor(
   // 620px = 配信SSRの body max-width（mock-server/routes/delivery.ts の DELIVERY_WIDTH）。
   // line-height:1.5 は配信LPの section.sb-widget-block と揃える（指示155・WYSIWYG）。
   contentDiv.dataset['widgetPreview'] = 'true'
-  // ポップアップの中身は、配信と同じく中身の幅の箱（frameStyle）
+  contentDiv.dataset['darkRuntime'] = 'skip'
+  // ポップアップの中身は、配信と同じく中身の幅の箱（frameStyle）。
+  // 文字は配信と同じ黒（ダークの html は color-scheme:dark なので、何もしないと継いだ文字が白くなり白い紙に消える）
   contentDiv.style.cssText =
-    `outline:none;min-height:100px;${frame.box};box-sizing:border-box;line-height:1.5`
+    `outline:none;min-height:100px;${frame.box};box-sizing:border-box;line-height:1.5;color:#000;color-scheme:light`
   contentDiv.innerHTML = target.html
   editorBody.append(contentDiv)
   // よくある質問・口コミのように並んでいる部品に「複製・上へ・下へ・消す」を出す（ノーコードでWidgetを作る②）。

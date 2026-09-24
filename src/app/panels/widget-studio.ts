@@ -122,13 +122,13 @@ export function mountStudio(host: StudioHost): void {
   panel.dataset['widgetEditor'] = 'true'
   panel.style.cssText =
     `position:fixed;inset:0;z-index:200;` +
-    `display:flex;flex-direction:column;background:#fff;` +
+    `display:flex;flex-direction:column;background:var(--sb-c-ffffff, #FFFFFF);` +
     `overflow:hidden;font-family:${FONT}`
 
   // 後ろのLPを触らせない下敷き（画面いっぱいのパネルの下に敷くだけで、見た目には出ない）
   const backdrop = document.createElement('div')
   backdrop.dataset['widgetBackdrop'] = 'true'
-  backdrop.style.cssText = `position:fixed;inset:0;z-index:199;background:#FFFFFF`
+  backdrop.style.cssText = `position:fixed;inset:0;z-index:199;background:var(--sb-c-ffffff, #FFFFFF)`
   document.body.append(backdrop, panel)
 
   /** 見本を選んでいる間だけ、この画面を隠す（入力中の中身は残る） */
@@ -155,7 +155,7 @@ export function mountStudio(host: StudioHost): void {
   const darkContainer = document.createElement('div')
   darkContainer.dataset['widgetPanes'] = 'true'
   // 地は白（以前の濃い地 #2B2B2B は仕切りの帯として見えていた）
-  darkContainer.style.cssText = `flex:1;display:flex;background:#FFFFFF;overflow:hidden;min-height:0`
+  darkContainer.style.cssText = `flex:1;display:flex;background:var(--sb-c-ffffff, #FFFFFF);overflow:hidden;min-height:0`
 
   // 左: 見たまま画面（書式のツールバーつき）
   let session: BuilderSession | null = null
@@ -171,14 +171,14 @@ export function mountStudio(host: StudioHost): void {
   // 右: 上に画面のタブ、その下に「部品」とコード
   const rightPane = document.createElement('div')
   rightPane.dataset['widgetPane'] = 'code'
-  rightPane.style.cssText = `flex:${RIGHT_PANE_FLEX};display:flex;flex-direction:column;min-width:0;min-height:0;background:#fff`
+  rightPane.style.cssText = `flex:${RIGHT_PANE_FLEX};display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--sb-c-ffffff, #FFFFFF)`
 
   // 仕切り: 白地に細い線＋真ん中のつまみ。乗せると青くなる・ドラッグで幅・ダブルクリックで元の幅（pane-divider.ts）
   const divider = buildPaneDivider({ rightPane, container: darkContainer, defaultFlex: RIGHT_PANE_FLEX })
   divider.dataset['widgetDivider'] = 'true'
   const tabsHost = document.createElement('div')
   tabsHost.dataset['widgetTabs'] = 'true'
-  tabsHost.style.cssText = `flex-shrink:0;display:none;flex-direction:column;background:#fff;border-bottom:1px solid #E3E6EA`
+  tabsHost.style.cssText = `flex-shrink:0;display:none;flex-direction:column;background:var(--sb-c-ffffff, #FFFFFF);border-bottom:1px solid var(--sb-c-e3e6ea, #E3E6EA)`
   // タブは中身があるときだけ見せる
   new MutationObserver(() => {
     tabsHost.style.display = tabsHost.childElementCount > 0 ? 'flex' : 'none'
@@ -273,18 +273,18 @@ function buildHeader(options: {
   const header = document.createElement('div')
   // スマホCSSの目印（PCでは属性が増えるだけ）。クラス名は採取物と衝突するので data 属性を使う
   header.dataset['widgetHeader'] = 'true'
-  header.style.cssText = `display:flex;align-items:center;padding:12px;border-bottom:1px solid #f4f4f4;flex-shrink:0`
+  header.style.cssText = `display:flex;align-items:center;padding:12px;border-bottom:1px solid var(--sb-c-f4f4f4, #F4F4F4);flex-shrink:0`
 
   // 閉じる（本番実測: fontSize:12px, color:rgb(128,128,128), padding:0 8px）
   const closeBtn = document.createElement('button')
   closeBtn.type = 'button'
   closeBtn.textContent = '閉じる'
-  closeBtn.style.cssText = `border:none;background:none;color:rgb(128,128,128);font:12px/1 ${FONT};cursor:pointer;padding:0 8px`
+  closeBtn.style.cssText = `border:none;background:none;color:var(--sb-sub, #808080);font:12px/1 ${FONT};cursor:pointer;padding:0 8px`
   closeBtn.addEventListener('click', options.onClose)
 
   const title = document.createElement('div')
   title.textContent = options.title
-  title.style.cssText = `flex:1;text-align:center;font:600 15px/1.4 ${FONT};color:#333`
+  title.style.cssText = `flex:1;text-align:center;font:600 15px/1.4 ${FONT};color:var(--sb-c-333333, #333333)`
 
   const rightBtns = document.createElement('div')
   rightBtns.style.cssText = 'display:flex;gap:8px;align-items:center'

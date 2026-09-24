@@ -194,6 +194,8 @@ textarea.ncf-input{resize:vertical;min-height:64px}
 .ncf-item--dragging{opacity:.4}
 .ncf-item--drop-before{box-shadow:inset 0 3px 0 var(--sb-accent,#0091FF)}
 .ncf-item--drop-after{box-shadow:inset 0 -3px 0 var(--sb-accent,#0091FF)}
+/* ダークの赤い文字: #C0392B は暗い地の上で読めない（実行時の上書きは彩度のある文字の色を変えないので、ここで明示する） */
+html[data-theme="dark"] :is(.ncf-item__remove,.ncf-btn.ncf-danger,.ncf-error,.ncf-warn,.ncf-listhead .ncf-reset){color:#FF8A7A}
 `
 
 export function ensureNocodeFormCss(): void {

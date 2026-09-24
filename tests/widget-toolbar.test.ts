@@ -30,8 +30,9 @@ describe('書式ツールバーの見た目', () => {
     expect(visualSrc).not.toContain('onAlignButton')
   })
 
-  it('ダークでも帯は白のまま（周りの見たまま画面・ヘッダーは白のままなので、帯だけ黒いと浮く）', () => {
-    expect(toolbarCss).toContain("style.dataset['darkRuntime'] = 'skip'")
-    expect(darkSrc).toContain("node.dataset['darkRuntime'] !== 'skip'")
+  it('ダークでは帯も周り（ヘッダー・右の欄）と一緒に暗くなる（2026-09-24・本人の決定「周りだけ暗く・Widgetは白」）', () => {
+    expect(toolbarCss).not.toContain("style.dataset['darkRuntime'] = 'skip'")
+    // 印の付いた所（見たまま画面）は、実行時の上書きの対象から外れたまま
+    expect(darkSrc).toContain('[data-dark-runtime="skip"]')
   })
 })
