@@ -29,7 +29,7 @@ const CSS =
   `${s} .x-point svg{flex:0 0 16px;width:16px;height:16px;margin-top:5px;color:${ACCENT}}` +
   `${s} .x-btn{display:flex;width:100%;max-width:560px;margin:24px auto 0;align-items:center;` +
   `justify-content:center;min-height:64px;padding:17px 22px;border-radius:12px;background:${ACCENT};` +
-  `color:#FFFFFF;font:800 18px/1.4 inherit;text-decoration:none;text-shadow:0 1px 2px rgba(0,0,0,.2);` +
+  `color:#FFFFFF;font-weight:800;font-size:18px;line-height:1.4;font-family:inherit;text-decoration:none;text-shadow:0 1px 2px rgba(0,0,0,.2);` +
   `box-shadow:0 5px 0 ${ACCENT_EDGE},0 12px 20px rgba(0,0,0,.12);` +
   `transition:transform .14s ease,box-shadow .14s ease;-webkit-tap-highlight-color:transparent}` +
   `${s} .x-btn:active{transform:translateY(4px);box-shadow:0 1px 0 ${ACCENT_EDGE},0 5px 10px rgba(0,0,0,.1)}` +

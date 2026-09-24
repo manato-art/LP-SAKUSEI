@@ -28,7 +28,7 @@ const CSS =
   `font-size:13.5px;line-height:1.7;text-align:left}` +
   `${s} .r-feat svg{flex:0 0 15px;width:15px;height:15px;margin-top:4px;color:${ACCENT}}` +
   `${s} .r-btn{display:flex;align-items:center;justify-content:center;min-height:50px;margin-top:16px;` +
-  `padding:12px 16px;border-radius:10px;background:${ACCENT};color:#FFFFFF;font:800 15px/1.4 inherit;` +
+  `padding:12px 16px;border-radius:10px;background:${ACCENT};color:#FFFFFF;font-weight:800;font-size:15px;line-height:1.4;font-family:inherit;` +
   `text-decoration:none;box-shadow:0 3px 0 #B83A26}` +
   `${s} .r-btn--quiet{background:#FFFFFF;color:${ACCENT};box-shadow:none;border:1.5px solid ${ACCENT}}` +
   `${s} .r-btn:active{transform:translateY(2px);box-shadow:none}` +

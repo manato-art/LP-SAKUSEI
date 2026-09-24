@@ -21,7 +21,7 @@ const CSS =
   // 選択肢（A・B・Cの丸い印つき）
   `${s} .t-choice{display:flex;width:100%;max-width:520px;align-items:center;gap:14px;min-height:64px;` +
   `padding:14px 16px;margin:0 auto 10px;border:1.5px solid ${LINE};border-radius:10px;background:#FFFFFF;` +
-  `color:${INK};font:700 16px/1.6 inherit;text-align:left;cursor:pointer;` +
+  `color:${INK};font-weight:700;font-size:16px;line-height:1.6;font-family:inherit;text-align:left;cursor:pointer;` +
   `-webkit-tap-highlight-color:transparent;transition:border-color .12s ease,background .12s ease}` +
   `${s} .t-choice:hover{border-color:${ACCENT};background:#F5F9FF}` +
   `${s} .t-choice:active{transform:translateY(1px)}` +
@@ -41,7 +41,7 @@ const CSS =
   `${s} .t-rec svg{flex:0 0 17px;width:17px;height:17px;margin-top:5px;color:${ACCENT}}` +
   `${s} .t-cta{display:flex;width:100%;max-width:520px;margin:0 auto;align-items:center;justify-content:center;` +
   `gap:10px;min-height:60px;padding:16px 24px;border-radius:10px;background:${ACCENT};color:#FFFFFF;` +
-  `font:800 18px/1.4 inherit;text-decoration:none;box-shadow:0 4px 0 #185FB0;` +
+  `font-weight:800;font-size:18px;line-height:1.4;font-family:inherit;text-decoration:none;box-shadow:0 4px 0 #185FB0;` +
   `transition:transform .12s ease,box-shadow .12s ease}` +
   `${s} .t-cta:active{transform:translateY(3px);box-shadow:0 1px 0 #185FB0}` +
   `${s} .t-cta:focus-visible{outline:3px solid #14508F;outline-offset:3px}` +

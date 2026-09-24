@@ -25,7 +25,7 @@ const CSS =
   `${s} .k-after{max-width:520px;margin:0 auto 22px;font-size:14px;line-height:1.85;color:${INK_SUB}}` +
   `${s} .k-btn{display:flex;width:100%;max-width:520px;margin:0 auto;align-items:center;justify-content:center;` +
   `gap:10px;min-height:66px;padding:18px 24px;border-radius:12px;background:${ACCENT};color:#FFFFFF;` +
-  `font:800 19px/1.35 inherit;text-decoration:none;text-shadow:0 1px 2px rgba(0,0,0,.2);` +
+  `font-weight:800;font-size:19px;line-height:1.35;font-family:inherit;text-decoration:none;text-shadow:0 1px 2px rgba(0,0,0,.2);` +
   `box-shadow:0 5px 0 ${ACCENT_EDGE},0 12px 20px rgba(0,0,0,.12);` +
   `transition:transform .14s ease,box-shadow .14s ease;-webkit-tap-highlight-color:transparent}` +
   `${s} .k-btn:active{transform:translateY(4px);box-shadow:0 1px 0 ${ACCENT_EDGE},0 5px 10px rgba(0,0,0,.1)}` +

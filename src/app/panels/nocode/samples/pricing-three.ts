@@ -30,7 +30,7 @@ const CSS =
   `${s} .q-feat{display:flex;align-items:flex-start;gap:8px;margin:0 0 9px;font-size:13.5px;line-height:1.7}` +
   `${s} .q-feat svg{flex:0 0 15px;width:15px;height:15px;margin-top:4px;color:${ACCENT}}` +
   `${s} .q-btn{display:flex;align-items:center;justify-content:center;min-height:50px;margin-top:16px;` +
-  `padding:12px 14px;border-radius:10px;background:${ACCENT};color:#FFFFFF;font:800 15px/1.4 inherit;` +
+  `padding:12px 14px;border-radius:10px;background:${ACCENT};color:#FFFFFF;font-weight:800;font-size:15px;line-height:1.4;font-family:inherit;` +
   `text-decoration:none;box-shadow:0 4px 0 ${ACCENT_EDGE};transition:transform .12s ease,box-shadow .12s ease}` +
   `${s} .q-btn--quiet{background:#FFFFFF;color:${ACCENT};border:1.5px solid ${ACCENT};box-shadow:0 3px 0 #C6DCF5;` +
   `font-size:14px;min-height:46px}` +

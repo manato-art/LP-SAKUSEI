@@ -19,7 +19,7 @@ const CSS =
   `${s} .g-tag{display:inline-block;margin:0 0 16px;padding:5px 14px;border-radius:8px;` +
   `border:1.5px solid ${ACCENT};color:${ACCENT};font-size:12.5px;font-weight:800;letter-spacing:.06em}` +
   `${s} .g-btn{display:flex;align-items:center;justify-content:center;gap:10px;min-height:64px;padding:17px 22px;` +
-  `border-radius:12px;background:${ACCENT};color:#FFFFFF;font:800 18px/1.4 inherit;text-decoration:none;` +
+  `border-radius:12px;background:${ACCENT};color:#FFFFFF;font-weight:800;font-size:18px;line-height:1.4;font-family:inherit;text-decoration:none;` +
   `text-shadow:0 1px 2px rgba(0,0,0,.25);box-shadow:0 5px 0 ${ACCENT_EDGE},0 12px 20px rgba(0,0,0,.12);` +
   `transition:transform .14s ease,box-shadow .14s ease;-webkit-tap-highlight-color:transparent}` +
   `${s} .g-btn:active{transform:translateY(4px);box-shadow:0 1px 0 ${ACCENT_EDGE},0 5px 10px rgba(0,0,0,.1)}` +

@@ -27,14 +27,14 @@ const CSS =
   `${s} .y-pair{display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:520px;margin:0 auto}` +
   `${s} .y-btn{display:flex;align-items:center;justify-content:center;gap:8px;min-height:64px;` +
   `padding:16px 10px;border:1.5px solid ${LINE};border-radius:10px;background:#FFFFFF;color:${INK};` +
-  `font:800 17px/1.5 inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;` +
+  `font-weight:800;font-size:17px;line-height:1.5;font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;` +
   `transition:border-color .12s ease,background .12s ease}` +
   `${s} .y-btn:hover{border-color:${ACCENT};background:#F5F9FF}` +
   `${s} .y-btn:active{transform:translateY(1px)}` +
   `${s} .y-btn:focus-visible{outline:3px solid ${ACCENT};outline-offset:2px}` +
   // もどる
   `${s} .y-back{display:inline-flex;align-items:center;gap:6px;min-height:44px;max-width:520px;margin:10px auto 0;` +
-  `padding:10px 6px;border:0;background:none;color:${INK_SUB};font:700 13px/1.4 inherit;cursor:pointer}` +
+  `padding:10px 6px;border:0;background:none;color:${INK_SUB};font-weight:700;font-size:13px;line-height:1.4;font-family:inherit;cursor:pointer}` +
   `${s} .y-back:hover{color:${INK}}` +
   `${s} .y-back svg{width:14px;height:14px}` +
   `${s} .y-backrow{display:flex;justify-content:center}` +
@@ -44,7 +44,7 @@ const CSS =
   `max-width:520px;margin:0 auto 22px}` +
   `${s} .y-cta{display:flex;width:100%;max-width:520px;margin:0 auto;align-items:center;justify-content:center;` +
   `gap:10px;min-height:60px;padding:16px 24px;border-radius:10px;background:${ACCENT};color:#FFFFFF;` +
-  `font:800 18px/1.4 inherit;text-decoration:none;box-shadow:0 4px 0 #185FB0;` +
+  `font-weight:800;font-size:18px;line-height:1.4;font-family:inherit;text-decoration:none;box-shadow:0 4px 0 #185FB0;` +
   `transition:transform .12s ease,box-shadow .12s ease}` +
   `${s} .y-cta:active{transform:translateY(3px);box-shadow:0 1px 0 #185FB0}` +
   `${s} .y-cta:focus-visible{outline:3px solid #14508F;outline-offset:3px}` +

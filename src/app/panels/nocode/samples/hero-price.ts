@@ -27,7 +27,7 @@ const CSS =
   `${s} .d-unit{font-size:17px;font-weight:800}` +
   `${s} .d-cond{margin:8px 0 0;font-size:12.5px;line-height:1.7;color:${INK_SUB}}` +
   `${s} .d-btn{display:block;width:100%;max-width:440px;margin:20px auto 0;min-height:62px;` +
-  `padding:18px 22px;border-radius:12px;background:${ACCENT};color:#FFFFFF;font:800 17px/1.5 inherit;` +
+  `padding:18px 22px;border-radius:12px;background:${ACCENT};color:#FFFFFF;font-weight:800;font-size:17px;line-height:1.5;font-family:inherit;` +
   `text-decoration:none;box-shadow:0 5px 0 ${ACCENT_EDGE};transition:transform .14s ease,box-shadow .14s ease}` +
   `${s} .d-btn:active{transform:translateY(4px);box-shadow:0 1px 0 ${ACCENT_EDGE}}` +
   `${s} .d-btn:focus-visible{outline:3px solid ${ACCENT_EDGE};outline-offset:4px}` +

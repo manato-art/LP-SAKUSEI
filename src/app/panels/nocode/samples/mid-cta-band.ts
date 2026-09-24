@@ -18,7 +18,7 @@ const CSS =
   `${s} .b-head{font-size:16px;font-weight:800;line-height:1.6;color:${INK};margin:0 0 3px}` +
   `${s} .b-sub{font-size:13px;line-height:1.7;color:${INK_SUB}}` +
   `${s} .b-btn{flex:0 0 auto;display:flex;align-items:center;justify-content:center;gap:8px;min-height:52px;` +
-  `padding:13px 22px;border-radius:10px;background:${ACCENT};color:#FFFFFF;font:800 15.5px/1.4 inherit;` +
+  `padding:13px 22px;border-radius:10px;background:${ACCENT};color:#FFFFFF;font-weight:800;font-size:15.5px;line-height:1.4;font-family:inherit;` +
   `text-decoration:none;box-shadow:0 3px 0 #B83A26;transition:transform .12s ease,box-shadow .12s ease}` +
   `${s} .b-btn:active{transform:translateY(2px);box-shadow:0 1px 0 #B83A26}` +
   `${s} .b-btn:focus-visible{outline:3px solid #B83A26;outline-offset:3px}` +

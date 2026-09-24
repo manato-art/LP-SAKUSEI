@@ -20,7 +20,7 @@ const CSS =
   `${s} .h-lead{font-size:15px;line-height:1.9;color:${INK_SUB};margin:0 0 24px}` +
   `${s} .h-btn{display:flex;width:100%;max-width:460px;margin:0 auto;align-items:center;justify-content:center;` +
   `gap:10px;min-height:64px;padding:16px 24px;border-radius:12px;background:${ACCENT};color:#FFFFFF;` +
-  `font:800 18px/1.4 inherit;text-decoration:none;box-shadow:0 5px 0 ${ACCENT_EDGE};` +
+  `font-weight:800;font-size:18px;line-height:1.4;font-family:inherit;text-decoration:none;box-shadow:0 5px 0 ${ACCENT_EDGE};` +
   `transition:transform .14s ease,box-shadow .14s ease}` +
   `${s} .h-btn:active{transform:translateY(4px);box-shadow:0 1px 0 ${ACCENT_EDGE}}` +
   `${s} .h-btn:focus-visible{outline:3px solid ${ACCENT_EDGE};outline-offset:4px}` +

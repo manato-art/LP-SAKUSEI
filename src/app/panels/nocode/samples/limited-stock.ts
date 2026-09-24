@@ -26,7 +26,7 @@ const CSS =
   `${s} .n-text{font-size:14px;line-height:1.9;color:${INK_SUB}}` +
   `${s} .n-foot{max-width:620px;margin:20px auto 0;text-align:center}` +
   `${s} .n-btn{display:inline-flex;align-items:center;justify-content:center;min-height:54px;` +
-  `padding:14px 34px;border-radius:10px;background:${ACCENT};color:#FFFFFF;font:800 16px/1.4 inherit;` +
+  `padding:14px 34px;border-radius:10px;background:${ACCENT};color:#FFFFFF;font-weight:800;font-size:16px;line-height:1.4;font-family:inherit;` +
   `text-decoration:none;transition:opacity .14s ease}` +
   `${s} .n-btn:hover{opacity:.88}` +
   `${s} .n-btn:focus-visible{outline:3px solid ${ACCENT};outline-offset:4px}` +

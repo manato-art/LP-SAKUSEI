@@ -21,7 +21,7 @@ const CSS =
   // 2つの行き先（縦に大きく2つ）
   `${s} .n-pick{display:flex;width:100%;max-width:520px;align-items:center;gap:12px;min-height:68px;` +
   `padding:16px 18px;margin:0 auto 12px;border:1.5px solid ${LINE};border-radius:10px;background:#FFFFFF;` +
-  `color:${INK};font:800 16.5px/1.6 inherit;text-align:left;cursor:pointer;` +
+  `color:${INK};font-weight:800;font-size:16.5px;line-height:1.6;font-family:inherit;text-align:left;cursor:pointer;` +
   `-webkit-tap-highlight-color:transparent;transition:border-color .12s ease,background .12s ease}` +
   `${s} .n-pick:hover{border-color:${ACCENT};background:#F5F9FF}` +
   `${s} .n-pick:active{transform:translateY(1px)}` +
@@ -39,7 +39,7 @@ const CSS =
   `${s} .n-list svg{flex:0 0 17px;width:17px;height:17px;margin-top:5px;color:${ACCENT}}` +
   `${s} .n-cta{display:flex;width:100%;max-width:520px;margin:0 auto;align-items:center;justify-content:center;` +
   `gap:10px;min-height:60px;padding:16px 24px;border-radius:10px;background:${ACCENT};color:#FFFFFF;` +
-  `font:800 17.5px/1.45 inherit;text-decoration:none;box-shadow:0 4px 0 #185FB0;` +
+  `font-weight:800;font-size:17.5px;line-height:1.45;font-family:inherit;text-decoration:none;box-shadow:0 4px 0 #185FB0;` +
   `transition:transform .12s ease,box-shadow .12s ease}` +
   `${s} .n-cta:active{transform:translateY(3px);box-shadow:0 1px 0 #185FB0}` +
   `${s} .n-cta:focus-visible{outline:3px solid #14508F;outline-offset:3px}` +

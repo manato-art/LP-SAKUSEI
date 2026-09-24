@@ -28,7 +28,7 @@ const CSS =
   `${s} .y-d{margin:3px 0 0;font-size:13.5px;line-height:1.85;color:${INK_SUB}}` +
   `${s} .y-btn{display:flex;width:100%;max-width:440px;margin:24px auto 0;align-items:center;` +
   `justify-content:center;gap:9px;min-height:58px;padding:16px 22px;border-radius:10px;` +
-  `background:${ACCENT};color:#FFFFFF;font:800 16.5px/1.4 inherit;text-decoration:none;` +
+  `background:${ACCENT};color:#FFFFFF;font-weight:800;font-size:16.5px;line-height:1.4;font-family:inherit;text-decoration:none;` +
   `transition:opacity .14s ease}` +
   `${s} .y-btn:hover{opacity:.88}` +
   `${s} .y-btn:focus-visible{outline:3px solid ${ACCENT};outline-offset:4px}` +

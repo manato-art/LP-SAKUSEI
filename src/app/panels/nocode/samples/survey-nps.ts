@@ -20,7 +20,7 @@ const CSS =
   `${s} .p-scale{display:grid;grid-template-columns:repeat(11,1fr);gap:6px;max-width:560px;margin:0 auto}` +
   `${s} .p-num{display:flex;align-items:center;justify-content:center;min-height:52px;padding:6px 2px;` +
   `border:1.5px solid ${LINE};border-radius:8px;background:#FFFFFF;color:${INK};` +
-  `font:800 16px/1.2 inherit;font-variant-numeric:tabular-nums;cursor:pointer;` +
+  `font-weight:800;font-size:16px;line-height:1.2;font-family:inherit;font-variant-numeric:tabular-nums;cursor:pointer;` +
   `-webkit-tap-highlight-color:transparent;transition:border-color .12s ease,background .12s ease,color .12s ease}` +
   `${s} .p-num:hover{border-color:${ACCENT};background:#F5F9FF;color:${ACCENT}}` +
   `${s} .p-num:active{transform:translateY(1px)}` +
@@ -35,7 +35,7 @@ const CSS =
   `max-width:520px;margin:0 auto 22px}` +
   `${s} .p-cta{display:flex;width:100%;max-width:520px;margin:0 auto;align-items:center;justify-content:center;` +
   `gap:10px;min-height:60px;padding:16px 24px;border-radius:10px;background:${ACCENT};color:#FFFFFF;` +
-  `font:800 18px/1.4 inherit;text-decoration:none;box-shadow:0 4px 0 #185FB0;` +
+  `font-weight:800;font-size:18px;line-height:1.4;font-family:inherit;text-decoration:none;box-shadow:0 4px 0 #185FB0;` +
   `transition:transform .12s ease,box-shadow .12s ease}` +
   `${s} .p-cta:active{transform:translateY(3px);box-shadow:0 1px 0 #185FB0}` +
   `${s} .p-cta:focus-visible{outline:3px solid #14508F;outline-offset:3px}` +

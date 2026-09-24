@@ -23,7 +23,7 @@ const CSS =
   `${s} .m-help-text{max-width:460px;margin:0 auto 16px;font-size:13.5px;line-height:1.85;color:${INK_SUB}}` +
   `${s} .m-btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:52px;` +
   `padding:14px 26px;border:2px solid ${ACCENT};border-radius:10px;background:#FFFFFF;color:${ACCENT};` +
-  `font:800 15.5px/1.4 inherit;text-decoration:none;transition:background .14s ease}` +
+  `font-weight:800;font-size:15.5px;line-height:1.4;font-family:inherit;text-decoration:none;transition:background .14s ease}` +
   `${s} .m-btn:hover{background:#E9F1FC}` +
   `${s} .m-btn:focus-visible{outline:3px solid ${ACCENT};outline-offset:3px}` +
   `${s} .m-btn svg{flex:0 0 16px;width:16px;height:16px}` +

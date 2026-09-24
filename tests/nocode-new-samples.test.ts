@@ -81,6 +81,16 @@ describe('新しい見本（自作）', () => {
     }
   })
 
+  // 2026-09-25 本人「他のウィジェットも確認して」: 27本のボタン・申し込みボタンが `font:800 17px/1.5 inherit` と書かれていた。
+  // 字体の名前の所に inherit は書けない（ブラウザがこの宣言まるごとを捨てる）ので、太さ・大きさが効かず、
+  // ボタンは既定の細い13px、リンクのボタンは周りの字のままだった（ライブラリ・LP・Widget編集のどこでも）
+  it('文字の見た目をまとめて書く font: に inherit を混ぜない（宣言ごと捨てられて太さ・大きさが効かない）', () => {
+    for (const sample of NEW_SAMPLES) {
+      // `font:inherit` だけ（全部を親から受け継ぐ）は正しい書き方なので対象外
+      expect(sample.html, sample.id).not.toMatch(/font:\s*[^;}]*\S\s+inherit\b/)
+    }
+  })
+
   it('画面①②…を持つ見本は、最初の画面だけ見えていて、移る先が全部ある', () => {
     for (const sample of NEW_SAMPLES) {
       const root = parse(sample.html)

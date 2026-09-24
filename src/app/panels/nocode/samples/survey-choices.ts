@@ -28,7 +28,7 @@ const CSS =
   // 選択肢（白地・細い枠。押すと少し沈む）
   `${s} .q-choice{display:flex;width:100%;align-items:center;gap:12px;min-height:60px;padding:14px 16px;` +
   `margin:0 0 10px;border:1.5px solid ${LINE};border-radius:10px;background:#FFFFFF;color:${INK};` +
-  `font:800 16px/1.55 inherit;text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent;` +
+  `font-weight:800;font-size:16px;line-height:1.55;font-family:inherit;text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent;` +
   `transition:border-color .12s ease,background .12s ease}` +
   `${s} .q-choice:hover{border-color:${ACCENT};background:#F5F9FF}` +
   `${s} .q-choice:active{transform:translateY(1px)}` +
@@ -37,7 +37,7 @@ const CSS =
   `${s} .q-choice__go{flex:0 0 18px;width:18px;height:18px;color:${ACCENT}}` +
   // もどる
   `${s} .q-back{display:inline-flex;align-items:center;gap:6px;margin:6px 0 0;padding:8px 0;border:0;` +
-  `background:none;color:${INK_SUB};font:700 13px/1.4 inherit;cursor:pointer}` +
+  `background:none;color:${INK_SUB};font-weight:700;font-size:13px;line-height:1.4;font-family:inherit;cursor:pointer}` +
   `${s} .q-back:hover{color:${INK}}` +
   `${s} .q-back svg{width:14px;height:14px}` +
   // お礼の画面
@@ -45,7 +45,7 @@ const CSS =
   `${s} .q-done-note{font-size:14.5px;line-height:1.85;color:${INK_SUB};margin:0 0 22px}` +
   `${s} .q-cta{display:flex;width:100%;max-width:520px;margin:0 auto;align-items:center;justify-content:center;` +
   `gap:10px;min-height:60px;padding:16px 24px;border-radius:10px;background:${ACCENT};color:#FFFFFF;` +
-  `font:800 18px/1.4 inherit;text-decoration:none;box-shadow:0 4px 0 #185FB0;` +
+  `font-weight:800;font-size:18px;line-height:1.4;font-family:inherit;text-decoration:none;box-shadow:0 4px 0 #185FB0;` +
   `transition:transform .12s ease,box-shadow .12s ease}` +
   `${s} .q-cta:active{transform:translateY(3px);box-shadow:0 1px 0 #185FB0}` +
   `${s} .q-cta:focus-visible{outline:3px solid #14508F;outline-offset:3px}` +

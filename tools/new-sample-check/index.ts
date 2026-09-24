@@ -63,6 +63,10 @@ function checkOne(sample: NewSample, file: string, uids: Map<string, string>): s
   if (/@import|url\((?!['"]?data:)/i.test(html)) say('@import か url(…) で外を読んでいる')
   if (EMOJI_RE.test(html)) say('絵文字がある（印は固定のSVGにする）')
   if (/\sid="/.test(html)) say('id 属性がある（同じLPに2つ入れると重なる。クラスにする）')
+  // font:800 17px/1.5 inherit は字体の所に inherit を書けず、宣言まるごと捨てられる（太さ・大きさが効かない・2026-09-25）
+  if (/font:\s*[^;}]*\S\s+inherit\b/.test(html)) {
+    say('font: の中に inherit がある（宣言ごと捨てられる）。font-weight・font-size・line-height・font-family:inherit に分けて書く')
+  }
 
   const screens = [...html.matchAll(/<div class="nc-screen" data-nc-screen="(s\d{1,4})"[^>]*>/g)]
   if (html.includes('data-nc-screens')) {

@@ -21,7 +21,7 @@ const CSS =
   `text-wrap:balance}` +
   `${s} .f-lead{max-width:560px;margin:0 auto 22px;font-size:15px;line-height:1.9;color:${INK_SUB}}` +
   `${s} .f-btn{display:block;width:100%;max-width:440px;margin:0 auto;min-height:62px;padding:18px 22px;` +
-  `border-radius:12px;background:${ACCENT};color:#FFFFFF;font:800 17px/1.5 inherit;text-decoration:none;` +
+  `border-radius:12px;background:${ACCENT};color:#FFFFFF;font-weight:800;font-size:17px;line-height:1.5;font-family:inherit;text-decoration:none;` +
   `box-shadow:0 5px 0 ${ACCENT_EDGE};transition:transform .14s ease,box-shadow .14s ease}` +
   `${s} .f-btn:active{transform:translateY(4px);box-shadow:0 1px 0 ${ACCENT_EDGE}}` +
   `${s} .f-btn:focus-visible{outline:3px solid ${ACCENT_EDGE};outline-offset:4px}` +

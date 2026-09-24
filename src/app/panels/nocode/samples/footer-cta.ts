@@ -16,7 +16,7 @@ const CSS =
   `${s} .fe-lead{font-size:14px;line-height:1.85;color:#C6CDD6;margin:0 0 22px}` +
   `${s} .fe-btn{display:flex;width:100%;max-width:460px;margin:0 auto;align-items:center;justify-content:center;` +
   `gap:10px;min-height:62px;padding:16px 24px;border-radius:12px;background:${ACCENT};color:#FFFFFF;` +
-  `font:800 18px/1.4 inherit;text-decoration:none;box-shadow:0 4px 0 #B83A26;` +
+  `font-weight:800;font-size:18px;line-height:1.4;font-family:inherit;text-decoration:none;box-shadow:0 4px 0 #B83A26;` +
   `transition:transform .14s ease,box-shadow .14s ease}` +
   `${s} .fe-btn:active{transform:translateY(3px);box-shadow:0 1px 0 #B83A26}` +
   `${s} .fe-btn:focus-visible{outline:3px solid #FFFFFF;outline-offset:3px}` +

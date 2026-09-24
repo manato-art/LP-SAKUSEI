@@ -19,7 +19,7 @@ const CSS =
   `${s} .y-head{font-size:17px;font-weight:800;line-height:1.55}` +
   `${s} .y-sub{margin-top:3px;font-size:12.5px;line-height:1.7;color:rgba(255,255,255,.8)}` +
   `${s} .y-btn{flex:0 0 auto;display:flex;align-items:center;justify-content:center;gap:8px;min-height:52px;` +
-  `padding:14px 24px;border-radius:10px;background:#FFFFFF;color:${ACCENT};font:800 16px/1.4 inherit;` +
+  `padding:14px 24px;border-radius:10px;background:#FFFFFF;color:${ACCENT};font-weight:800;font-size:16px;line-height:1.4;font-family:inherit;` +
   `text-decoration:none;box-shadow:0 4px 0 rgba(0,0,0,.3);` +
   `transition:transform .12s ease,box-shadow .12s ease;-webkit-tap-highlight-color:transparent}` +
   `${s} .y-btn:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(0,0,0,.3)}` +
