@@ -84,7 +84,8 @@ describe('見本カードの「画面を作って使う」（Widget編集の部�
     ])
     expect(screens[0]?.blocks).toHaveLength(1)
     expect(screens[0]?.blocks[0]?.type).toBe('sample')
-    expect(screens[0]?.blocks[0]?.title).toBe('アンケート')
+    // 部品の名前の頭に、その画面の呼び名（設問①…）を付ける（2026-09-24・どの画面も同じ名前だと見分けられない）
+    expect(screens[0]?.blocks[0]?.title).toBe('設問①：アンケート')
     expect(screens[0]?.blocks[0]?.html).toContain('data-nc-go="s2"')
     expect(screens[1]?.blocks[0]?.html).toContain('data-nc-go="s3"')
     expect(screens[1]?.blocks[0]?.html).toContain('data-nc-go="s1"')

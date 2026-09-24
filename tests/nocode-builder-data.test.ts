@@ -184,6 +184,12 @@ describe('LPに入れた画面①②③のWidgetを開くと、画面①②③�
     const wrapped = wrapHtmlAsBuilder(survey, 'はい／いいえ', BUILDER_TEMPLATE.defaults(NOW), parse)
     const screens = wrapped['screens'] as { id: string; name: string; blocks: { type: string; html: string }[] }[]
     expect(screens.map((s) => s.name)).toEqual(['画面①', '画面②', '画面③'])
+    // 部品の名前の頭に、その画面が何か（見本の画面の呼び名）を付ける
+    expect(screens.map((s) => (s.blocks[0] as unknown as { title: string }).title)).toEqual([
+      '設問①：はい／いいえ',
+      '設問②：はい／いいえ',
+      'お礼：はい／いいえ',
+    ])
     expect(screens.every((s) => s.blocks.length === 1 && s.blocks[0]?.type === 'sample')).toBe(true)
     expect(screens[0]?.blocks[0]?.html).toContain('data-nc-go="s2"')
     expect(screens[1]?.blocks[0]?.html).toContain('data-nc-go="s1"')

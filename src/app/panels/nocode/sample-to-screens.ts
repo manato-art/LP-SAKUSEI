@@ -47,14 +47,15 @@ export function splitSampleScreens(html: string, parse: (html: string) => Elemen
     // 画面ごとに元のHTMLから作り直す（前の回で外した所が残らない）
     const copy = index === 0 ? first : parse(html)
     const box = copy.querySelector('[data-nc-screens]')
-    const parent = box?.parentNode ?? null
     const keep = box === null ? undefined : screensIn(box)[index]
-    if (box === null || parent === null || keep === undefined) return html
+    if (box === null || keep === undefined) return html
     removeScreensScript(box)
-    // 画面の中身を入れ物のあった所に出し、入れ物と画面の枠は外す
-    keep.removeAttribute('hidden')
-    while (keep.firstChild !== null) parent.insertBefore(keep.firstChild, box)
-    box.remove()
+    // 入れ物は外さずに残し、中身をこの画面の中身だけにする（画面の枠 .nc-screen は外す）。
+    // 自作の見本は入れ物そのものが見本の外枠（名前 nc-xxxxxxxx の付いた箱）で、見本のCSSはこの箱の中だけに効く。
+    // 以前は入れ物ごと外していて、分けた画面のCSSが何も効かなかった（2026-09-24 本人「バグってるよ」）
+    box.removeAttribute('data-nc-screens')
+    box.removeAttribute('data-nc-transition')
+    box.replaceChildren(...Array.from(keep.childNodes))
     for (const el of Array.from(copy.querySelectorAll('[data-nc-go]'))) {
       const to = ids.indexOf(el.getAttribute('data-nc-go') ?? '')
       if (to < 0) el.removeAttribute('data-nc-go')
@@ -62,6 +63,12 @@ export function splitSampleScreens(html: string, parse: (html: string) => Elemen
     }
     return copy.innerHTML
   })
+}
+
+/** 見本の画面ごとの呼び名（data-nc-name・設問①・お礼…）。無ければ空 */
+function screenLabels(html: string, parse: (html: string) => Element): readonly string[] {
+  const holder = parse(html).querySelector('[data-nc-screens]')
+  return holder === null ? [] : screensIn(holder).map((screen) => (screen.getAttribute('data-nc-name') ?? '').trim())
 }
 
 /** 分けた部品の移る先（`@0`…）に、本当の画面のidを入れる。足りない番号は移る先を外す */
@@ -85,9 +92,14 @@ export function sampleScreens(
   const parts = splitSampleScreens(sample.html, parse)
   const ids = parts.map((_, index) => `s${index + 1}`)
   const circled = Array.from('①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳')
-  return parts.map((part, index) => ({
-    id: ids[index] ?? `s${index + 1}`,
-    name: `画面${circled[index] ?? String(index + 1)}`,
-    blocks: [{ type: 'sample', title: sample.title, html: applyScreenIds(part, ids) }],
-  }))
+  // 分けたときは、部品の名前の頭にその画面が何か（設問①・お礼…）を付ける（どの画面も同じ名前だと見分けられない）
+  const labels = parts.length < 2 ? [] : screenLabels(sample.html, parse)
+  return parts.map((part, index) => {
+    const label = labels[index] ?? ''
+    return {
+      id: ids[index] ?? `s${index + 1}`,
+      name: `画面${circled[index] ?? String(index + 1)}`,
+      blocks: [{ type: 'sample', title: label === '' ? sample.title : `${label}：${sample.title}`, html: applyScreenIds(part, ids) }],
+    }
+  })
 }
