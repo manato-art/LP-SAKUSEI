@@ -12,6 +12,8 @@ import { AD_STATUS_LABELS, DELIVERY_DOMAIN_UNSET_NOTE, deliveryUrlFor } from '..
 import { defaultRange, toRangeQuery } from '../pages/report-period.ts'
 import { cardDetailMetrics, cardMetrics } from './page-card.ts'
 import { openCreateFolder, openCreatePage } from '../pages/folders-create.ts'
+import { pageListApi } from '../api-page-list.ts'
+import { UNFILED_FOLDER_NAME, UNFILED_FOLDER_UID } from '../../shared/unfiled-folder.ts'
 
 /** 配信ステータスの色（実物の配色に合わせる） */
 const STATUS_COLOR: Readonly<Record<string, string>> = {
@@ -110,10 +112,8 @@ export async function renderMobileFolders(container: HTMLElement): Promise<void>
   body.append(area)
 
   const { folders } = await api.folders().catch(() => ({ folders: [] as Folder[] }))
-  if (folders.length === 0) {
-    body.append(emptyState('フォルダがありません。'))
-    return
-  }
+  // フォルダが無くても「フォルダなし」は出す（全部のフォルダを消したあとも、ページにたどり着けるように）
+  if (folders.length === 0) body.insertBefore(emptyState('フォルダがありません。'), area)
   for (const folder of folders) {
     const tile = el('button', {
       class: 'sb-mobile-tap',
@@ -136,11 +136,33 @@ export async function renderMobileFolders(container: HTMLElement): Promise<void>
     })
     area.append(tile)
   }
+  // フォルダを消したページの置き場（PCのフォルダツリーの「フォルダなし」と同じ）
+  const unfiled = el('button', {
+    class: 'sb-mobile-tap',
+    style: [
+      `background:${T.surface};border:1px dashed ${T.line};border-radius:12px`,
+      'padding:14px 12px;display:flex;flex-direction:column;gap:6px;align-items:flex-start',
+      `cursor:pointer;font-family:${T.font};text-align:left`,
+    ].join(';'),
+  })
+  unfiled.type = 'button'
+  unfiled.append(
+    el('div', { text: UNFILED_FOLDER_NAME, style: `font-size:14px;font-weight:600;color:${T.text}` }),
+    el('div', { text: 'フォルダを消したページ', style: `font-size:12px;color:${T.sub}` }),
+  )
+  unfiled.addEventListener('click', () => {
+    location.hash = `/folders?uid=${UNFILED_FOLDER_UID}`
+  })
+  area.append(unfiled)
 }
 
 /* ────────────── 2. そのフォルダのページ（カード） ────────────── */
 
 export async function renderMobilePages(container: HTMLElement, folderUid: string): Promise<void> {
+  if (folderUid === UNFILED_FOLDER_UID) {
+    await renderMobileUnfiled(container)
+    return
+  }
   const body = screen(container)
   const detail = await api.folderDetail(folderUid).catch(() => null)
   if (detail === null) {
@@ -166,8 +188,28 @@ export async function renderMobilePages(container: HTMLElement, folderUid: strin
   }
 }
 
+/** フォルダなし（フォルダを消したページ）。フォルダが無いので、ここではページを作れない */
+async function renderMobileUnfiled(container: HTMLElement): Promise<void> {
+  const body = screen(container)
+  body.append(backBar(UNFILED_FOLDER_NAME, () => { location.hash = '/folders' }))
+  let pages: AbTest[]
+  try {
+    pages = await pageListApi.unfiledAbTests()
+  } catch (error) {
+    body.append(emptyState(`ページを読み込めませんでした（${(error as Error).message}）。`))
+    return
+  }
+  const area = listArea()
+  body.append(area)
+  if (pages.length === 0) {
+    area.append(emptyState('フォルダの無いページはありません。'))
+    return
+  }
+  for (const abTest of pages) area.append(pageCard(abTest, null))
+}
+
 /** ページ1件のカード。指標は開いたあとに読み込む（一覧の表示を待たせない） */
-function pageCard(abTest: AbTest, folder: Folder): HTMLElement {
+function pageCard(abTest: AbTest, folder: Folder | null): HTMLElement {
   const box = card()
   const head = el('div', { style: 'display:flex;align-items:flex-start;gap:8px' })
   head.append(
@@ -209,7 +251,7 @@ function pageCard(abTest: AbTest, folder: Folder): HTMLElement {
 }
 
 /** カードの操作。使う順に並べる（編集がいちばん上） */
-function pageActions(abTest: AbTest, folder: Folder): HTMLElement {
+function pageActions(abTest: AbTest, folder: Folder | null): HTMLElement {
   const row = el('div', { style: 'display:grid;grid-template-columns:1fr 1fr;gap:8px' })
   const make = (label: string, onClick: () => void, primary = false): HTMLElement => {
     const btn = el('button', {
@@ -235,8 +277,8 @@ function pageActions(abTest: AbTest, folder: Folder): HTMLElement {
   return row
 }
 
-async function copyDeliveryUrl(abTest: AbTest, folder: Folder): Promise<void> {
-  const url = deliveryUrlFor(folder.domain, location.origin, abTest.uid)
+async function copyDeliveryUrl(abTest: AbTest, folder: Folder | null): Promise<void> {
+  const url = deliveryUrlFor(folder?.domain, location.origin, abTest.uid)
   if (url === null) {
     toast(DELIVERY_DOMAIN_UNSET_NOTE, 'error')
     return

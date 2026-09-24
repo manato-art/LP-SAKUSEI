@@ -56,3 +56,11 @@ describe('パンくずのフォルダ名は、そのフォルダを選んだペ�
     expect(links[1]?.text).toBe('フォルダなし')
   })
 })
+
+describe('スマホでも「フォルダなし」を開ける（パンくずがそこへ飛ぶため）', () => {
+  const mobile = readFileSync('src/app/mobile/pages-mobile.ts', 'utf8')
+  it('一覧に「フォルダなし」を出し、開くとフォルダの無いページを並べる', () => {
+    expect(mobile).toContain('UNFILED_FOLDER_UID')
+    expect(mobile).toContain('pageListApi.unfiledAbTests()')
+  })
+})
