@@ -13,6 +13,7 @@ import { NO_ACTION, actionFields, layoutFields } from './block-kit.ts'
 import { safeImage } from './kit.ts'
 import { BADGE_LOOK_ICONS, BOX_LOOK_ICONS, SIDE_ICONS } from './option-icons.ts'
 import { ACCENT_PRESETS, str, type BlockType, type ItemData } from './types.ts'
+import { extraBlockProblem } from './builder-blocks-extra.ts'
 
 const svg = (body: string): string =>
   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`
@@ -279,6 +280,7 @@ export function moreBlockProblem(item: ItemData, where: string): string | null {
         ? `開いて読むの文字が空です（${where}）。押す所の文字と開いたときの文章を書くか、その部品を消してください`
         : null
     default:
-      return null
+      // もっと増やした部品（builder-blocks-extra.ts）
+      return extraBlockProblem(item, where)
   }
 }

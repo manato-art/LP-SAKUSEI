@@ -12,6 +12,7 @@ import { richText } from '../rich-text.ts'
 import { hotspotRect } from '../hotspot-model.ts'
 import { tableRows } from './builder-blocks-more.ts'
 import { bool, int, pick, str, type ItemData } from './types.ts'
+import { EXTRA_BASE_CSS, EXTRA_PREVIEW_CSS, renderExtraBlock } from './builder-blocks-extra-render.ts'
 
 type Part = { html: string; css: string }
 
@@ -249,7 +250,8 @@ export function renderMoreBlock(item: ItemData, i: number, s: string): Part | nu
       }
     }
     default:
-      return null
+      // もっと増やした部品（builder-blocks-extra-render.ts）
+      return renderExtraBlock(item, i, s)
   }
 }
 
@@ -363,7 +365,7 @@ const BASE_CSS: Readonly<Record<string, (s: string) => string>> = {
 
 /** 使っている部品の形の土台 */
 export function moreBaseCss(types: ReadonlySet<string>, s: string): string {
-  return Object.entries(BASE_CSS)
+  return Object.entries({ ...BASE_CSS, ...EXTRA_BASE_CSS })
     .filter(([type]) => types.has(type))
     .map(([, css]) => css(s))
     .join('')
@@ -385,4 +387,5 @@ export const MORE_PREVIEW_CSS =
   '.nc-b-point__heading:empty::before{content:"見出しを入れてください";opacity:.35}' +
   '.nc-b-point__text:empty::before{content:"文章を入れてください";opacity:.35}' +
   '.nc-b-accordion__body:empty::before{content:"開いたときの文章を入れてください";opacity:.4}' +
-  '.nc-b-gallery__cell:empty{min-height:96px;background:#EEF0F3;border-radius:8px}'
+  '.nc-b-gallery__cell:empty{min-height:96px;background:#EEF0F3;border-radius:8px}' +
+  EXTRA_PREVIEW_CSS

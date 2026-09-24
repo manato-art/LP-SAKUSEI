@@ -15,6 +15,7 @@ import { richText } from '../rich-text.ts'
 import { BUTTON_LOOK_ICONS, DIVIDER_ICONS, MARKER_ICONS, SHAPE_ICONS, SIDE_ICONS } from './option-icons.ts'
 import { TEMPLATES } from './list.ts'
 import { MORE_BLOCK_TYPES } from './builder-blocks-more.ts'
+import { EXTRA_BLOCK_TYPES } from './builder-blocks-extra.ts'
 import { renderMoreBlock } from './builder-blocks-more-render.ts'
 import { ACCENT_PRESETS, bool, int, pick, str, type BlockType, type ItemData, type NocodeTemplate } from './types.ts'
 import {
@@ -278,7 +279,7 @@ const TEMPLATE_BLOCKS: readonly BlockType[] = TEMPLATES.map((template) => ({
 }))
 
 /** 積める部品（ふつうの部品＋増やした部品＋型の部品） */
-export const ALL_BLOCK_TYPES: readonly BlockType[] = [...BLOCK_TYPES, ...MORE_BLOCK_TYPES, ...TEMPLATE_BLOCKS]
+export const ALL_BLOCK_TYPES: readonly BlockType[] = [...BLOCK_TYPES, ...MORE_BLOCK_TYPES, ...EXTRA_BLOCK_TYPES, ...TEMPLATE_BLOCKS]
 
 export function blockLabel(type: string): string {
   return ALL_BLOCK_TYPES.find((t) => t.type === type)?.label ?? '部品'

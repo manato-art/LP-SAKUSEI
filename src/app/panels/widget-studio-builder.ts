@@ -661,34 +661,14 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
    * 文字を打つ部品以外（画像・動画・図形・余白・区切り線・型の部品）は、部品そのものをつかんで動かせる
    * （少し動かすと動き出す。そのまま離せば、ただ選ぶだけ）。文字の部品・見本は、つかみ所（枠の上のまん中）で動かす
    */
-  const DIRECT_MOVE: ReadonlySet<string> = new Set([
-    'image',
-    'video',
-    'shape',
-    'spacer',
-    'divider',
-    // 2026-09-24 に増やした部品（文字は右の欄で直す）と、移行先（被せた部品の中で動かす）
-    'hotspot',
-    'speech',
-    'price',
-    'box',
-    'note',
-    'table',
-    'rating',
-    'badge',
-    'gallery',
-    'point',
-    'stat',
-    'accordion',
-    'cue',
-  ])
+  // 見たまま画面で文字を打てない部品（画像・動画・余白・区切り線・型・2026-09-24 に増やした部品・移行先）と図形
+  const isDirectMove = (block: ItemData): boolean => str(block, 'type') === 'shape' || !isTextEditableBlock(block)
   contentDiv.addEventListener('pointerdown', (event) => {
     if (event.button !== 0 || event.ctrlKey || event.metaKey) return
     const el = outermostBlock(event.target, contentDiv)
     const place = el === null ? null : placeOf(el)
     if (el === null || place === null) return
-    const type = str(place.block, 'type')
-    if (!DIRECT_MOVE.has(type) && !type.startsWith('tpl-')) return
+    if (!isDirectMove(place.block)) return
     if (form.selectedBlock() !== place.blockIndex) form.select(place.screenIndex, place.blockIndex)
     const move = isHotspot(place.block)
       ? hotspotMove(el, hotspotDeps(place.screenIndex, place.blockIndex))

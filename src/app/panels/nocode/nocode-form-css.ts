@@ -261,6 +261,14 @@ textarea.ncf-input{resize:vertical;min-height:64px}
 .ncf-cat__thumb{height:84px;overflow:hidden;display:flex;align-items:safe center;justify-content:center;background:#FFFFFF;
   border-bottom:1px solid #EEF0F2}
 .ncf-cat__name{display:flex;align-items:center;gap:6px;min-width:0;padding:7px 8px;font-size:12px;font-weight:600}
+/* もっと見るの間は、左の列を横に広げて3列（本人「横に広げて3列で表示」）。スマホは積む画面なので広げない。
+   2列の .ncf-cat__grid より後ろに置く（同じ強さなので後ろが勝つ） */
+@media (min-width:769px){
+  [data-widget-pane="parts"]{transition:flex-basis .18s ease}
+  [data-widget-pane="parts"]:has([data-ncf-catalog]){flex-basis:496px !important}
+  .ncf-cat__grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media (prefers-reduced-motion:reduce){[data-widget-pane="parts"]{transition:none}}
 /* 並び: 移行先は、被せた部品（すぐ上）の下に一段下げる */
 .ncf-parts .ncf-item--hotspot>.ncf-item__head[role="button"]{position:relative;padding-left:26px}
 .ncf-parts .ncf-item--hotspot>.ncf-item__head[role="button"]::before{content:"";position:absolute;left:12px;top:8px;width:8px;height:11px;

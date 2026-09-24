@@ -36,6 +36,16 @@ const THUMB_BLOCKS: Readonly<Record<string, () => readonly ItemData[]>> = {
   accordion: () => [{ type: 'accordion', title: '詳しい条件を見る', text: '初回のみ・お一人様1回まで', open: true, color: '#1F2A37' }],
   gallery: () => [{ type: 'gallery', image1: '', image2: '', image3: '', gap: 8, round: true }],
   cue: () => [{ type: 'cue', text: '詳しくはこちら', color: '#E5573F', move: false }],
+  band: () => [{ type: 'band', text: '今だけの特典', look: 'fill', size: 20, color: '#E5573F' }],
+  marker: () => [{ type: 'marker', text: 'ここがいちばん大事なところです', color: '#FFE45C', size: 18, bold: true, align: 'center' }],
+  iconText: () => [{ type: 'iconText', icon: 'truck', title: '最短翌日にお届け', text: '15時までのご注文で当日発送', color: '#1F7AE0' }],
+  quote: () => [{ type: 'quote', stars: 5, text: '毎日続けられるのがうれしいです。', name: '30代・女性', photo: '' }],
+  profile: () => [{ type: 'profile', photo: '', role: '監修', name: '山田 花子', text: '管理栄養士。食と暮らしの専門家。', color: '#1F7AE0' }],
+  cover: () => [{ type: 'cover', image: '', heading: '見出しを重ねる', text: '画像の上に文字', align: 'center', shade: 35, height: 180 }],
+  beforeAfter: () => [{ type: 'beforeAfter', before: '', after: '', beforeLabel: 'Before', afterLabel: 'After', color: '#E5573F' }],
+  tel: () => [{ type: 'tel', number: '0120-000-000', label: 'お電話でのお問い合わせ', hours: '', color: '#0B7A3E', track: false }],
+  coupon: () => [{ type: 'coupon', title: '初回限定クーポン', amount: '500円OFF', code: 'WELCOME', note: '', color: '#E5573F' }],
+  ornament: () => [{ type: 'ornament', look: 'wave', height: 20, color: '#E5573F' }],
 }
 
 /** サムネだけの見え方（まだ無い画像・動画は灰色の箱。余白は点線の枠。移行先は斜線） */

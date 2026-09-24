@@ -23,8 +23,8 @@ describe('部品を足す', () => {
     expect([...grouped].sort()).toEqual([...parts].sort())
   })
 
-  it('部品（型を除く）は増えて、全部で23種になった', () => {
-    expect(ALL_BLOCK_TYPES.filter((t) => t.type !== 'sample' && !isTemplateBlock(t.type)).length).toBe(23)
+  it('部品（型を除く）は増えて、全部で35種になった', () => {
+    expect(ALL_BLOCK_TYPES.filter((t) => t.type !== 'sample' && !isTemplateBlock(t.type)).length).toBe(35)
   })
 })
 
@@ -68,5 +68,26 @@ describe('もっと見るの間は、左の列を一覧だけにする（2026-09
     expect(studio).toContain("tabsHost.dataset['widgetTabs'] = 'true'")
     expect(studio).toContain("partsList.dataset['widgetPartsList'] = 'true'")
     expect(studio).toContain('partsPane.append(tabsHost, partsList, partsPalette)')
+  })
+})
+
+describe('もっと見るは、左の列を横に広げて3列（2026-09-24・本人「横に広げて3列で表示」）', () => {
+  const css = readFileSync(new URL('../src/app/panels/nocode/nocode-form-css.ts', import.meta.url), 'utf8')
+  const desktop = /@media \(min-width:769px\)\{([\s\S]*?)\n\}/.exec(css)?.[1] ?? ''
+
+  it('PCでは、もっと見るの間だけ左の列を広げ、サムネを3列に並べる', () => {
+    expect(desktop).toContain('[data-widget-pane="parts"]:has([data-ncf-catalog]){flex-basis:496px !important}')
+    expect(desktop).toContain('.ncf-cat__grid{grid-template-columns:repeat(3,minmax(0,1fr))}')
+  })
+
+  it('3列の指定は、2列のもとの指定より後ろ（同じ強さなので後ろが勝つ。前に置くと2列のままだった）', () => {
+    const base = css.indexOf('.ncf-cat__grid{display:grid')
+    const three = css.indexOf('.ncf-cat__grid{grid-template-columns:repeat(3,')
+    expect(base).toBeGreaterThan(-1)
+    expect(three).toBeGreaterThan(base)
+  })
+
+  it('スマホ（積む画面）では広げない＝広げる指定は PC の中だけ', () => {
+    expect(css.replace(desktop, '')).not.toContain('flex-basis:496px')
   })
 })

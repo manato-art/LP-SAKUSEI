@@ -156,3 +156,18 @@ export const BADGE_LOOK_ICONS = {
   circle: fill('<circle cx="16" cy="12" r="9"/>'),
   tag: fill('<path d="M4 7 H22 L28 12 L22 17 H4 Z"/>'),
 } as const
+
+/* ── 帯見出しの見た目（2026-09-24・部品をもっと増やした） ── */
+export const BAND_LOOK_ICONS = {
+  fill: fill('<rect x="3" y="7" width="26" height="10" rx="2"/>'),
+  ribbon: fill('<path d="M3 7 H29 L26 12 L29 17 H3 L6 12 Z"/>'),
+  line: svg('<path d="M8 10 H24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M6 16 H26" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>'),
+} as const
+
+/* ── 飾りの区切り ── */
+export const ORNAMENT_ICONS = {
+  wave: line('<path d="M3 13 q3.25 -5 6.5 0 t6.5 0 t6.5 0 t6.5 0"/>'),
+  zigzag: line('<path d="M3 15 L7 9 L11 15 L15 9 L19 15 L23 9 L27 15"/>'),
+  dots: svg('<circle cx="6" cy="12" r="1.8" fill="currentColor"/><circle cx="12" cy="12" r="1.8" fill="currentColor"/><circle cx="18" cy="12" r="1.8" fill="currentColor"/><circle cx="24" cy="12" r="1.8" fill="currentColor"/>'),
+  slant: fill('<path d="M3 17 L29 7 V17 Z"/>'),
+} as const

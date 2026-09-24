@@ -37,15 +37,16 @@ export const PALETTE_FIRST: readonly string[] = [
 
 /** もっと見るの並び（種類ごと）。型の部品（まとまった型）は入れない＝別の段 */
 export const PALETTE_GROUPS: readonly { readonly title: string; readonly types: readonly string[] }[] = [
-  { title: '文字', types: ['heading', 'text', 'list', 'speech', 'box', 'note', 'point', 'accordion'] },
-  { title: '画像・動画', types: ['image', 'imageText', 'gallery', 'video'] },
-  { title: '押す・移る', types: ['button', HOTSPOT_TYPE] },
-  { title: '数字・評価', types: ['price', 'stat', 'rating', 'badge', 'table'] },
-  { title: 'かざり・すき間', types: ['shape', 'divider', 'spacer', 'cue'] },
+  { title: '文字', types: ['heading', 'text', 'band', 'marker', 'list', 'note', 'accordion'] },
+  { title: '伝える・見せる', types: ['speech', 'quote', 'box', 'point', 'iconText', 'profile'] },
+  { title: '画像・動画', types: ['image', 'imageText', 'gallery', 'cover', 'beforeAfter', 'video'] },
+  { title: '押す・移る', types: ['button', HOTSPOT_TYPE, 'tel'] },
+  { title: '数字・評価', types: ['price', 'coupon', 'stat', 'numbers', 'rating', 'ranking', 'badge', 'table'] },
+  { title: 'かざり・すき間', types: ['shape', 'divider', 'ornament', 'spacer', 'cue'] },
 ]
 
-/** サムネの枠の幅（左の列 320px の2列） */
-const THUMB_WIDTH = 136
+/** サムネの枠の幅（もっと見るは左の列を広げて3列＝nocode-form-css.ts の .ncf-cat__grid） */
+const THUMB_WIDTH = 144
 
 const MORE_ICON =
   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">' +
