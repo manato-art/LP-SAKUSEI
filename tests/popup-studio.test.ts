@@ -79,7 +79,16 @@ describe('編集画面の配線', () => {
     expect(followEditor).not.toContain("{ id: 'html', label: 'HTML' }")
   })
 
-  it('ポップアップの画面にはLPの編集が無いので、ライブラリの見本は選ばせない（「見本」の足すボタンも出さない）', () => {
-    expect(src('src/app/panels/nocode/template-form.ts')).toContain("type.type === 'sample' && options.pickSample === undefined")
+  it('ポップアップでもライブラリの見本を選べる（本人「やって」2026-09-24。LPの編集が無くても見本の一覧は開く）', () => {
+    const studio = src('src/app/panels/widget-studio.ts')
+    expect(studio).toContain('openWidgetLibraryForPick(host.libraryQuill,')
+    expect(studio).not.toContain('libraryQuill === null')
+    expect(src('src/app/panels/widget-library.ts')).toContain('export function openWidgetLibraryForPick(quill: Quill | null,')
+  })
+
+  it('LPの無い画面で開いたライブラリには、LPへ入れる・新しく作る入口を出さない（見本を選ぶだけ）', () => {
+    const library = src('src/app/panels/widget-library.ts')
+    expect(library).toContain('if (quill !== null) addLpEntries(')
+    expect(library).toContain('if (preview !== undefined && quill !== null) addUseAsScreens(')
   })
 })

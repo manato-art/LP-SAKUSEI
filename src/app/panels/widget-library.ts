@@ -89,7 +89,7 @@ let currentPortal: Portal | null = null
  * Widget編集の「見本」の部品のために、ライブラリを開いて見本を選んでもらう（2026-09-23・統合）。
  * 「追加」を押した見本は LP には入れず onPick へ渡す。選ばずに閉じたら onCancel。
  */
-export function openWidgetLibraryForPick(quill: Quill, handlers: { onPick: SamplePick; onCancel: () => void }): void {
+export function openWidgetLibraryForPick(quill: Quill | null, handlers: { onPick: SamplePick; onCancel: () => void }): void {
   let done = false
   const finish = (sample: { title: string; html: string } | null): void => {
     if (done) return
@@ -104,7 +104,9 @@ export function openWidgetLibraryForPick(quill: Quill, handlers: { onPick: Sampl
     finish(null)
     return
   }
-  showLibraryHint(currentPortal.root, '部品にしたい見本の「追加」を押してください（LPにはまだ入りません）', () => finish(null))
+  // LPの無い画面（ポップアップの中身）では「LPにはまだ入りません」は言わない（入れる先がポップアップのため）
+  const hint = quill === null ? '部品にしたい見本の「追加」を押してください' : '部品にしたい見本の「追加」を押してください（LPにはまだ入りません）'
+  showLibraryHint(currentPortal.root, hint, () => finish(null))
 }
 
 export function mountWidgetLibrary(root: HTMLElement, quill: Quill): void {
@@ -122,7 +124,7 @@ export function mountWidgetLibrary(root: HTMLElement, quill: Quill): void {
   })
 }
 
-function open(quill: Quill, extra: { onClose?: () => void } = {}): void {
+function open(quill: Quill | null, extra: { onClose?: () => void } = {}): void {
   if (isOpen) return
   ensureWhiteBase()
   const portal = openPortal(rawLibrary, HOOK.dialog, () => {
@@ -204,7 +206,7 @@ function injectWidgetGridCss(): void {
   document.head.append(style)
 }
 
-function patchPortalLayout(root: HTMLElement, quill: Quill, close: () => void): void {
+function patchPortalLayout(root: HTMLElement, quill: Quill | null, close: () => void): void {
   /* ---- 0. カード一覧を3列表示にする（要望: 3つ横並び。実物は2列） ---- */
   injectWidgetGridCss()
   // 紙の幅を画面に収めるCSS（injectWidgetGridCss 内）の目印
@@ -261,55 +263,9 @@ function patchPortalLayout(root: HTMLElement, quill: Quill, close: () => void): 
     }
   }
 
-  /* ---- 6. 「+ Widgetを作成」ボタン挿入 ---- */
+  /* ---- 6. 「+ Widgetを作成」「+ ノーコードで作る」（LPへ入れる入口。LPの無い画面＝ポップアップでは出さない） ---- */
   const sidebar = root.querySelector<HTMLElement>('.css-xnrh4c')
-  if (sidebar !== null) {
-    const createBtn = document.createElement('button')
-    createBtn.type = 'button'
-    createBtn.textContent = '+ Widgetを作成'
-    createBtn.style.cssText =
-      'display:block;width:100%;padding:8px 16px;margin-bottom:12px;' +
-      'border:1px solid #1976d2;border-radius:4px;background:#fff;' +
-      'color:#1976d2;font:600 14px/1.4 "Hiragino Sans",sans-serif;' +
-      'cursor:pointer;text-align:center;transition:background .15s'
-    createBtn.addEventListener('mouseenter', () => {
-      createBtn.style.background = '#e3f2fd'
-    })
-    createBtn.addEventListener('mouseleave', () => {
-      createBtn.style.background = '#fff'
-    })
-    createBtn.addEventListener('click', () => {
-      openWidgetCreator(root, quill, close)
-    })
-    // ノーコードで作る（2026-09-22・本人の依頼）。コードで書く「＋ Widgetを作成」はそのまま残す。
-    // 2026-09-23: Widget編集と1つの画面になった（本人の決定 D1）。ライブラリを閉じて、その画面を開く
-    const nocodeBtn = document.createElement('button')
-    nocodeBtn.type = 'button'
-    nocodeBtn.textContent = '+ ノーコードで作る'
-    nocodeBtn.dataset['nocodeEntry'] = 'true'
-    nocodeBtn.style.cssText =
-      'display:block;width:100%;padding:8px 16px;margin-bottom:12px;' +
-      'border:none;border-radius:4px;background:var(--sb-accent, #1976d2);' +
-      'color:var(--sb-accent-ink, #fff);font:600 14px/1.4 "Hiragino Sans",sans-serif;' +
-      'cursor:pointer;text-align:center'
-    nocodeBtn.addEventListener('click', () => {
-      if (isSamplePickArmed()) {
-        toast('いまは部品にする見本を選んでいます。使いたい見本の「追加」を押してください', 'error')
-        return
-      }
-      close()
-      // 白紙から始め、右に「何から作りますか？」を出す（以前は毎回アンケートの例が入っていて、選べず・消しにくかった）
-      requestAnimationFrame(() => openWidgetStudio(quill, { kind: 'new', data: blankBuilderData(new Date()), uid: newUid() }))
-    })
-    // ヘッダー（「カテゴリー」見出し）の前に挿入
-    const catHeader = sidebar.querySelector<HTMLElement>('.css-iorjen')
-    if (catHeader !== null) {
-      sidebar.insertBefore(createBtn, catHeader)
-      sidebar.insertBefore(nocodeBtn, catHeader)
-    } else {
-      sidebar.prepend(createBtn, nocodeBtn)
-    }
-  }
+  if (quill !== null) addLpEntries(root, sidebar, quill, close)
 
   /* ---- 7. 検索をサイドバーに移動 ---- */
   const searchForm = root.querySelector<HTMLElement>('form.css-1bvc4cc')
@@ -351,7 +307,7 @@ function createCategoryButton(label: string): HTMLButtonElement {
  *  カテゴリー選択
  * ================================================================ */
 
-function wireCategories(root: HTMLElement, quill: Quill, close: () => void): void {
+function wireCategories(root: HTMLElement, quill: Quill | null, close: () => void): void {
   const categories = [...root.querySelectorAll<HTMLElement>(HOOK.category)]
   for (const cat of categories) {
     cat.addEventListener('click', () => {
@@ -414,7 +370,7 @@ function gridMessage(text: string): HTMLElement {
  * `.MuiCardActions-root` の「プレビュー」「追加」）にして、配線は `wireCards` にそのまま任せる
  * （「画面を作って使う」・部品への受け渡し・仮のリンクの知らせも同じ動きになる）。
  */
-function renderNewSamples(root: HTMLElement, quill: Quill, close: () => void, category?: SampleCategory): void {
+function renderNewSamples(root: HTMLElement, quill: Quill | null, close: () => void, category?: SampleCategory): void {
   const grid = root.querySelector<HTMLElement>(HOOK.grid)
   if (grid === null) return
   grid.replaceChildren(gridMessage('読み込み中…'))
@@ -495,7 +451,7 @@ function newSampleCard(sample: NewSample): HTMLElement {
  * ================================================================ */
 
 /** 「作成したWidget」カテゴリー: localStorage の自作Widgetをカードで描画する。 */
-function renderCreatedWidgets(root: HTMLElement, quill: Quill, close: () => void): void {
+function renderCreatedWidgets(root: HTMLElement, quill: Quill | null, close: () => void): void {
   const grid = root.querySelector<HTMLElement>(HOOK.grid)
   if (grid === null) return
   const list = loadCreatedWidgets()
@@ -550,6 +506,8 @@ function renderCreatedWidgets(root: HTMLElement, quill: Quill, close: () => void
       e.stopPropagation()
       // 「部品を積んで作る」で見本を選んでいるときは、LPへは入れずに部品として渡す
       if (handOverToBuilder(w.name, rekeyUid(w.html, newUid()))) return
+      // LPの無い画面（ポップアップの中身）で開いたときは、上で必ず渡している（ここへは来ない）
+      if (quill === null) return
       close()
       requestAnimationFrame(() => {
         // 型から作ったWidgetは入れるたびにCSSのクラスを付け直す（同じLPで片方の色を変えても、もう片方は変わらない）
@@ -565,7 +523,7 @@ function renderCreatedWidgets(root: HTMLElement, quill: Quill, close: () => void
 }
 
 /** 「お気に入り」カテゴリー: localStorage のお気に入りWidgetをカードで描画する（指示157）。 */
-function renderFavoriteWidgets(root: HTMLElement, quill: Quill, close: () => void): void {
+function renderFavoriteWidgets(root: HTMLElement, quill: Quill | null, close: () => void): void {
   const grid = root.querySelector<HTMLElement>(HOOK.grid)
   if (grid === null) return
   const list = loadFavorites()
@@ -620,6 +578,8 @@ function renderFavoriteWidgets(root: HTMLElement, quill: Quill, close: () => voi
       e.stopPropagation()
       // 「部品を積んで作る」で見本を選んでいるときは、LPへは入れずに部品として渡す
       if (handOverToBuilder(w.name, rekeyUid(w.html, newUid()))) return
+      // LPの無い画面（ポップアップの中身）で開いたときは、上で必ず渡している（ここへは来ない）
+      if (quill === null) return
       close()
       requestAnimationFrame(() => {
         // 型から作ったWidgetは入れるたびにCSSのクラスを付け直す（同じLPで片方の色を変えても、もう片方は変わらない）
@@ -654,11 +614,64 @@ function applySearchFilter(root: HTMLElement): void {
   }
 }
 
+/**
+ * サイドバーの「+ Widgetを作成」「+ ノーコードで作る」。どちらもLPへ入れる入口なので、LPの編集がある画面だけで出す
+ * （ポップアップの中身で見本を選ぶために開いたときは出さない＝2026-09-24）
+ */
+function addLpEntries(root: HTMLElement, sidebar: HTMLElement | null, quill: Quill, close: () => void): void {
+  if (sidebar === null) return
+  const createBtn = document.createElement('button')
+  createBtn.type = 'button'
+  createBtn.textContent = '+ Widgetを作成'
+  createBtn.style.cssText =
+    'display:block;width:100%;padding:8px 16px;margin-bottom:12px;' +
+    'border:1px solid #1976d2;border-radius:4px;background:#fff;' +
+    'color:#1976d2;font:600 14px/1.4 "Hiragino Sans",sans-serif;' +
+    'cursor:pointer;text-align:center;transition:background .15s'
+  createBtn.addEventListener('mouseenter', () => {
+    createBtn.style.background = '#e3f2fd'
+  })
+  createBtn.addEventListener('mouseleave', () => {
+    createBtn.style.background = '#fff'
+  })
+  createBtn.addEventListener('click', () => {
+    openWidgetCreator(root, quill, close)
+  })
+  // ノーコードで作る（2026-09-22・本人の依頼）。コードで書く「＋ Widgetを作成」はそのまま残す。
+  // 2026-09-23: Widget編集と1つの画面になった（本人の決定 D1）。ライブラリを閉じて、その画面を開く
+  const nocodeBtn = document.createElement('button')
+  nocodeBtn.type = 'button'
+  nocodeBtn.textContent = '+ ノーコードで作る'
+  nocodeBtn.dataset['nocodeEntry'] = 'true'
+  nocodeBtn.style.cssText =
+    'display:block;width:100%;padding:8px 16px;margin-bottom:12px;' +
+    'border:none;border-radius:4px;background:var(--sb-accent, #1976d2);' +
+    'color:var(--sb-accent-ink, #fff);font:600 14px/1.4 "Hiragino Sans",sans-serif;' +
+    'cursor:pointer;text-align:center'
+  nocodeBtn.addEventListener('click', () => {
+    if (isSamplePickArmed()) {
+      toast('いまは部品にする見本を選んでいます。使いたい見本の「追加」を押してください', 'error')
+      return
+    }
+    close()
+    // 白紙から始め、右に「何から作りますか？」を出す（以前は毎回アンケートの例が入っていて、選べず・消しにくかった）
+    requestAnimationFrame(() => openWidgetStudio(quill, { kind: 'new', data: blankBuilderData(new Date()), uid: newUid() }))
+  })
+  // ヘッダー（「カテゴリー」見出し）の前に挿入
+  const catHeader = sidebar.querySelector<HTMLElement>('.css-iorjen')
+  if (catHeader !== null) {
+    sidebar.insertBefore(createBtn, catHeader)
+    sidebar.insertBefore(nocodeBtn, catHeader)
+  } else {
+    sidebar.prepend(createBtn, nocodeBtn)
+  }
+}
+
 /* ================================================================
  *  カード操作（プレビュー / 追加）
  * ================================================================ */
 
-function wireCards(root: HTMLElement, quill: Quill, close: () => void): void {
+function wireCards(root: HTMLElement, quill: Quill | null, close: () => void): void {
   for (const card of root.querySelectorAll<HTMLElement>(HOOK.card)) {
     const title = (card.querySelector(HOOK.cardTitle)?.textContent ?? 'Widget').trim()
     const buttons = [...card.querySelectorAll<HTMLElement>('.MuiCardActions-root button')]
@@ -668,7 +681,8 @@ function wireCards(root: HTMLElement, quill: Quill, close: () => void): void {
       event.stopPropagation()
       openLargePreview(card, title)
     })
-    if (preview !== undefined) addUseAsScreens(card, preview, title, quill, close)
+    // 「画面を作って使う」はLPへ入れる入口（LPの無い画面では出さない）
+    if (preview !== undefined && quill !== null) addUseAsScreens(card, preview, title, quill, close)
     add?.addEventListener('click', (event) => {
       event.stopPropagation()
       const raw = widgetBodyHtml(card)
@@ -676,6 +690,8 @@ function wireCards(root: HTMLElement, quill: Quill, close: () => void): void {
       const bodyHtml = raw === null ? null : rekeyUid(raw, newUid())
       // 「部品を積んで作る」で見本を選んでいるときは、LPへは入れずに部品として渡す
       if (handOverToBuilder(title, bodyHtml)) return
+      // LPの無い画面（ポップアップの中身）で開いたときは、上で必ず渡している（ここへは来ない）
+      if (quill === null) return
       close()
       requestAnimationFrame(() => {
         insertWidget(quill, bodyHtml, title)

@@ -102,7 +102,10 @@ export interface StudioHost {
   readonly primaryLabel: string
   /** 右上の青いボタン。書き出したHTML（設定データつき）を渡す */
   readonly onPrimary: (html: string, session: BuilderSession) => void
-  /** 見本の一覧を開くのに使うLPの編集（無い画面＝ポップアップでは、ライブラリの見本は選ばせない） */
+  /**
+   * 見本の一覧（ライブラリ）を開くのに使うLPの編集。無い画面（ポップアップ）は null＝見本を選ぶだけ
+   * （LPへ入れる・新しく作る入口はライブラリに出さない）
+   */
   readonly libraryQuill: Quill | null
   /** 見たまま画面の枠（既定はLPと同じ620px） */
   readonly previewFrame?: PreviewFrame
@@ -137,20 +140,16 @@ export function mountStudio(host: StudioHost): void {
     panel.style.display = 'flex'
     backdrop.style.display = 'block'
   }
-  const libraryQuill = host.libraryQuill
-  const pickSample =
-    libraryQuill === null
-      ? undefined
-      : (): Promise<{ title: string; html: string } | null> =>
-          new Promise((resolve) => {
-            hide()
-            const finish = (sample: { title: string; html: string } | null): void => {
-              show()
-              if (sample !== null) toast(`「${sample.title}」を部品に入れました`)
-              resolve(sample)
-            }
-            openWidgetLibraryForPick(libraryQuill, { onPick: finish, onCancel: () => finish(null) })
-          })
+  const pickSample = (): Promise<{ title: string; html: string } | null> =>
+    new Promise((resolve) => {
+      hide()
+      const finish = (sample: { title: string; html: string } | null): void => {
+        show()
+        if (sample !== null) toast(`「${sample.title}」を部品に入れました`)
+        resolve(sample)
+      }
+      openWidgetLibraryForPick(host.libraryQuill, { onPick: finish, onCancel: () => finish(null) })
+    })
 
   /* ── 本体（2ペイン） ── */
   const darkContainer = document.createElement('div')
@@ -202,7 +201,7 @@ export function mountStudio(host: StudioHost): void {
     editorBody,
     setPreviewCss,
     tabsHost,
-    ...(pickSample === undefined ? {} : { pickSample }),
+    pickSample,
   })
   const current = session
   const codePanel = buildCodePanels(target, {
