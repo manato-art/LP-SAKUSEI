@@ -265,6 +265,10 @@ export function injectReportStyles(): void {
       border:0; background:transparent; color:#98a2b3; cursor:pointer; font-size:14px;
       line-height:1; padding:2px 6px;
     }
+    /* 行末「⋮」のメニュー（中身は列のチップの「並び替え」と同じ部品・右端に寄せて開く） */
+    .rv2-rowmenu-wrap { position:relative; display:inline-flex; }
+    .rv2-rowmenu-wrap .rv2-sortmenu { left:auto; right:0; min-width:210px; }
+    .rv2-rowmenu-wrap.open .rv2-sortmenu { display:block; }
     .rv2-search {
       display:flex; align-items:center; gap:6px; border:1px solid var(--rv2-line);
       border-radius:8px; padding:7px 10px; background:var(--sb-c-ffffff, #FFFFFF); min-width:190px;

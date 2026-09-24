@@ -318,7 +318,13 @@ export async function buildReportBody(deps: ReportBodyDeps): Promise<HTMLElement
       rows: deps.report.rows,
       onDownloadCsv: csv,
     }),
-    buildReportList({ rows: deps.report.rows, range: deps.range, device: deps.filter.device }),
+    buildReportList({
+      rows: deps.report.rows,
+      range: deps.range,
+      device: deps.filter.device,
+      abTestUid: deps.abTestUid,
+      onPickVersion: (versionUid) => deps.onFilterChange({ ...deps.filter, version: versionUid }),
+    }),
     buildDailyTable({ daily: deps.report.daily, totals: deps.report.totals }),
     buildBranchOperation({ rows: deps.report.rows, totals: deps.report.totals, onDownloadCsv: csv }),
     // 実物はBranch Operationの下にファネル、その下にポップアップが並ぶ

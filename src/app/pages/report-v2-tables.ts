@@ -10,6 +10,7 @@ import type { DateRange } from './report-period.ts'
 import { markSecondaryCells, metricsToggle } from './report-v2-mobile-table.ts'
 import { applyMetricTips } from './report-metric-tips.ts'
 import { deviceColumnLabel } from './report-totals-note.ts'
+import { buildRowMenu } from './report-row-menu.ts'
 import {
   BRANCH_FILTER_DEFAULT,
   filterBranchRows,
@@ -104,6 +105,10 @@ export interface ReportListDeps {
   range: DateRange
   /** 上の「端末」の絞り込み（行の数字はその端末のぶん・2026-09-24）。省略時は全端末 */
   device?: '0' | 'sp' | 'tablet' | 'pc'
+  /** 行末「⋮」の近道に使う（無ければ ⋮ を出さない） */
+  abTestUid?: string
+  /** 「このVersionだけで絞る」 */
+  onPickVersion?: (versionUid: string) => void
 }
 
 /** 「レポート一覧」= 2段見出し・並び替え・ページ送り */
@@ -213,7 +218,7 @@ export function buildReportList(deps: ReportListDeps): HTMLElement {
       tr.append(
         cell('配信期間', `${deps.range.startDate} 〜 ${deps.range.endDate}`),
         cell('バージョン', row.name),
-        cell('アーカイブ', '-'),
+        cell('アーカイブ', row.archived === true ? 'アーカイブ済み' : '-'),
         // 行の数字がどの端末のぶんか。上の「端末」で絞っていればその端末（2026-09-24 から端末を記録）
         cell('デバイス', deviceColumnLabel(deps.device ?? '0')),
       )
@@ -221,12 +226,12 @@ export function buildReportList(deps: ReportListDeps): HTMLElement {
         tr.append(cell(c.label, c.cell(row), true))
       }
       const last = document.createElement('td')
-      const btn = document.createElement('button')
-      btn.type = 'button'
-      btn.className = 'rv2-rowmenu'
-      btn.textContent = '⋮'
-      btn.title = 'この行の操作（未実装）'
-      last.append(btn)
+      // 行末「⋮」＝ほかの画面にある操作への近道（2026-09-24・report-row-menu.ts）
+      if (deps.abTestUid !== undefined) {
+        last.append(
+          buildRowMenu({ abTestUid: deps.abTestUid, versionUid: row.entity_uid, onPickVersion: deps.onPickVersion }),
+        )
+      }
       tr.append(last)
       tbody.append(tr)
     }

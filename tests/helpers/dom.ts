@@ -35,5 +35,7 @@ export function installDom(): Document {
   g['window'] = window
   g['HTMLElement'] = window.HTMLElement
   g['Event'] = window.Event
+  // 画面が組み立てる URL（プレビューなど）の元になる場所
+  g['location'] = new URL('http://localhost:5180/')
   return document as unknown as Document
 }
