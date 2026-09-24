@@ -4,10 +4,11 @@
  */
 import type { MasterStyleSheet } from './master-style.ts'
 import { editorSessionHeaders } from './editor-session.ts'
+import { LIST_PAGE_SIZE, fetchAllPages, type PageInfo } from './api-paging.ts'
 
 const BASE = '/api/v1'
 
-async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+export async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     method,
     headers: { 'Content-Type': 'application/json', ...editorSessionHeaders() },
@@ -59,11 +60,19 @@ export interface AbTest {
   meta_object_id?: string | null
 }
 
+/** 行のアイコンと右パネルの件数（正本は mock-server/store/relation-counts.ts） */
 export interface RelationCounts {
   id: number
   versions_count: number
-  exit_popups_count: number
+  /** 追加したステップの数（最初のステップは数えない） */
   funnel_steps_count: number
+  exit_popups_count: number
+  follow_popups_count: number
+  /** 離脱防止＋追従型 */
+  popups_count: number
+  redirect_pages_count: number
+  /** CVタグから成果が届いたことがあるか */
+  has_conversion: boolean
   ab_test_uid: string | null
 }
 
@@ -369,7 +378,13 @@ export interface InspectionEntry {
 }
 
 export const api = {
-  folders: () => request<{ folders: Folder[] }>('GET', '/folders?per_page=200'),
+  // 全ページを取る（1回200件で打ち切ると、201件目からが黙って消える）
+  folders: () =>
+    fetchAllPages(
+      (page) =>
+        request<{ folders: Folder[]; pagination: PageInfo }>('GET', `/folders?per_page=${LIST_PAGE_SIZE}&page=${page}`),
+      (res) => res.folders,
+    ).then((folders) => ({ folders })),
   // 計測ツール・ASPアカウント一覧（一括タグ/基本情報で使う）
   aspAccounts: () =>
     request<{ asp_accounts: { id: number; asp_name: string }[] }>('GET', '/teams/asp_accounts'),
@@ -451,7 +466,12 @@ export const api = {
   toggleFavorite: (uid: string, isFavorite: boolean) =>
     request<{ folder: Folder }>('PATCH', `/folders/${uid}/favorite`, { is_favorite: isFavorite }),
 
-  abTests: () => request<{ ab_tests: AbTest[] }>('GET', '/ab_tests?per_page=200'),
+  abTests: () =>
+    fetchAllPages(
+      (page) =>
+        request<{ ab_tests: AbTest[]; pagination: PageInfo }>('GET', `/ab_tests?per_page=${LIST_PAGE_SIZE}&page=${page}`),
+      (res) => res.ab_tests,
+    ).then((ab_tests) => ({ ab_tests })),
   /**
    * 広告費の取り込み（このシステムだけの入口）。
    * 媒体が返すのは日別の絶対値なので、同じ日は上書きされる（二重計上しない）。
@@ -482,7 +502,7 @@ export const api = {
   updateAbTest: (uid: string, patch: Record<string, unknown>) =>
     request<{ ab_test: AbTest }>('PUT', `/ab_tests/${uid}`, patch),
   articles: (abTestUid: string) =>
-    request<{ articles: { uid: string }[] }>('GET', `/ab_tests/${abTestUid}/articles`),
+    request<{ articles: { uid: string; memo?: string; archived?: boolean }[] }>('GET', `/ab_tests/${abTestUid}/articles`),
   addArticle: (abTestUid: string, name?: string) =>
     request<{ article: { uid: string } }>('POST', `/ab_tests/${abTestUid}/articles`, {
       ...(name === undefined ? {} : { name }),

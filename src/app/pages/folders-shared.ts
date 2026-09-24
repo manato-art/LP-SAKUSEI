@@ -8,9 +8,11 @@ import type { AbTest, Folder, RelationCounts } from '../api.ts'
 export interface PageContext {
   folders: readonly Folder[]
   folder: Folder | null
+  /** URLで選んでいるフォルダ（`unfiled`＝フォルダなし）。未選択は null */
+  folderUid: string | null
   abTests: readonly AbTest[]
-  /** Version数/ポップアップ数/中間ページ数（relation_counts API） */
-  relationCounts: readonly RelationCounts[]
+  /** 行のアイコン・右パネルの件数（relation_counts API）。取れなかったら null（「-」で出す） */
+  relationCounts: readonly RelationCounts[] | null
 }
 /** 配信ステータスの表示名（正本は `mock-server/store/types.ts`） */
 export const AD_STATUS_LABELS: Readonly<Record<string, string>> = {

@@ -6,6 +6,7 @@
  */
 import { tabHashRoutes } from './basic-info-form.ts'
 import { splitTestSettingsHash, redirectPagesHash } from './beyond-nav.ts'
+import { UNFILED_FOLDER_NAME, UNFILED_FOLDER_UID } from '../../shared/unfiled-folder.ts'
 
 export type TabId = 'info' | 'version' | 'popup' | 'report' | 'split-test' | 'redirect'
 
@@ -164,7 +165,7 @@ export function setupBreadcrumb(
   root: HTMLElement,
   folderName: string,
   title: string,
-  _folderUid?: string,
+  folderUid?: string,
 ): HTMLElement | null {
   if (root.querySelector('.sb-breadcrumb-row') !== null) return root.querySelector('.sb-breadcrumb-row-right')
 
@@ -182,8 +183,10 @@ export function setupBreadcrumb(
   const crumb = document.createElement('div')
   crumb.className = 'sb-breadcrumb breadcrumb'
 
-  // 戻るボタン（フォルダ一覧へ）
-  const backHref = '#/folders'
+  // 戻るボタン（このページのフォルダを選んだ一覧へ。以前は何も選ばれていない一覧へ戻していた）
+  // フォルダの無いページ（フォルダを消したページ）は「フォルダなし」を選ぶ
+  const hasFolder = folderUid !== undefined && folderUid !== ''
+  const backHref = `#/folders?uid=${encodeURIComponent(hasFolder ? folderUid : UNFILED_FOLDER_UID)}`
   const back = document.createElement('a')
   back.style.cssText = 'cursor:pointer;color:#888888;font-size:16px;text-decoration:none;line-height:1;margin-right:4px'
   back.textContent = '←'
@@ -199,7 +202,7 @@ export function setupBreadcrumb(
   folderLink.append(folderIconSpan)
   const folderLabel = document.createElement('span')
   folderLabel.className = 'sb-breadcrumb-name'
-  folderLabel.textContent = folderName || '板名'
+  folderLabel.textContent = folderName !== '' ? folderName : UNFILED_FOLDER_NAME
   folderLink.append(folderLabel)
   crumb.append(folderLink)
 

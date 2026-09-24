@@ -88,7 +88,10 @@ export function wireParamRow(row: HTMLElement, version: Version): void {
     const n = nameInput.value.trim()
     const v = valInput.value.trim()
     const rules = v === '' ? [] : [{ name: n, match: matchSel.value, value: v }]
-    void api.setVersionTargeting(version.uid, { param_rules: rules }).then(() => toast('流入元の条件を保存しました'))
+    api.setVersionTargeting(version.uid, { param_rules: rules }).then(
+      () => toast('流入元の条件を保存しました'),
+      (error: Error) => toast(`流入元の条件を保存できませんでした（${error.message}）`, 'error'),
+    )
   }
   for (const el of [nameInput, valInput]) {
     el.addEventListener('input', renderPreview)

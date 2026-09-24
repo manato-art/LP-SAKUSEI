@@ -15,7 +15,36 @@ import { openTrackingTagModal } from '../panels/tracking-tag-modal.ts'
 import { openMetaLinkModal } from '../panels/meta-link-modal.ts'
 import { AD_STATUS_LABELS, type PageContext } from './folders-shared.ts'
 import { jstParts } from '../jst.ts'
-import { DELIVERY_DOMAIN_UNSET_NOTE, deliveryUrlFor, folderDomainLabel } from './basic-info-form.ts'
+import { DELIVERY_DOMAIN_UNSET_NOTE, DELIVERY_TYPE_LABELS, deliveryUrlFor, folderDomainLabel } from './basic-info-form.ts'
+
+/**
+ * パネルに最後に出したページ（2026-09-24）。保存のあと一覧を描き直しても、同じページを出し続ける。
+ * 画面をまたいで1つだけ持つ（フォルダを切り替えて、そのページが無ければ先頭に戻る）。
+ */
+let lastShownAbTestUid: string | null = null
+
+/**
+ * 採取物のパネルで値が入る要素。ふつうは `dd > 器 > [鉛筆, 値(.e1sl92wo4)]`、
+ * 配信ステータスだけ `dd > … > 値(.e1sl92wo4) > … > 器 > [鉛筆, 札(.e12ubcjt1)]` と入れ子が逆。
+ * 鉛筆を含む要素の文字を書き換えると鉛筆ごと消えるので、鉛筆を含まない方に書く。
+ */
+const PANEL_VALUE = '.e12ubcjt1, .e1sl92wo4'
+const PENCIL = '[data-testid="pencil-icon"]'
+
+function panelValueIn(root: Element): HTMLElement | null {
+  const found = [...root.querySelectorAll<HTMLElement>(PANEL_VALUE)].find((node) => node.querySelector(PENCIL) === null)
+  return found ?? null
+}
+
+/** 描き直しの前にパネルに出していたページ（今の一覧に在るときだけ） */
+export function rememberedPanelAbTest(context: PageContext): AbTest | undefined {
+  return context.abTests.find((t) => t.uid === lastShownAbTestUid)
+}
+
+/** 保存のあと、一覧をサーバーの値で描き直す（行の配信ステータスなどもそろう） */
+function redrawList(): void {
+  dispatchEvent(new HashChangeEvent('hashchange'))
+}
 
 /**
  * 指示60→65: 詳細パネルの「閉じる »」ボタン。
@@ -146,7 +175,10 @@ function colorSectionHeaders(panel: HTMLElement): void {
  * 右の詳細パネル（採取した実マークアップ）の操作を配線する。
  * - 「パラメータ付きURLの発行」→ クローンのURL発行モーダル（実物と同じ入力項目）。
  * - 「コピー」→ 配信URLをクリップボードへ。
- * パネルの各値は採取物のまま（見た目は実物どおり）。
+ *
+ * どのボタンも、押したときに「いまパネルに出ているページ」を引く（2026-09-24）。
+ * 以前は配線したときに1件目のURLを控えていたので、2件目を見ていても1件目のURLがコピーされ、
+ * 鉛筆は1件目のページを書き換えていた。
  */
 export function wireRealDetailPanel(body: HTMLElement, context: PageContext): void {
   const panel = body.querySelector<HTMLElement>(FOLDERS_HOOK.detailPanel)
@@ -154,8 +186,6 @@ export function wireRealDetailPanel(body: HTMLElement, context: PageContext): vo
 
   // 指示60: ホバー時のみ「閉じる >>」ボタンを表示
   wireDetailPanelCloseButton(panel)
-
-  const baseUrl = paramUrlBase(panel, context)
 
   // 採取フラグメント内の配信URLリンク（テキスト・href とも旧形式 /ab/ のまま）を実パス /lp/ へ書き換える。
   // context.abTests はフォルダ未選択時に空なので、UID に依存せずテキストを置換する。
@@ -172,11 +202,9 @@ export function wireRealDetailPanel(body: HTMLElement, context: PageContext): vo
   if (paramButton !== null) {
     paramButton.style.cursor = 'pointer'
     paramButton.addEventListener('click', () => {
-      if (baseUrl === '') {
-        toast(DELIVERY_DOMAIN_UNSET_NOTE, 'error')
-        return
-      }
-      openParamUrlModal(baseUrl)
+      const url = currentDeliveryUrl(panel, context)
+      if (url === null) return
+      openParamUrlModal(url)
     })
 
     // 外部LP計測タグの発行（クローン独自機能）。別アカウントで配信中のLPに貼ると、その
@@ -191,15 +219,8 @@ export function wireRealDetailPanel(body: HTMLElement, context: PageContext): vo
       tagButton.style.marginTop = '8px'
       // 配線時ではなくクリック時に「今パネルが見ているLP」を引く（先頭LP固定にしない）
       tagButton.addEventListener('click', () => {
-        const current = currentPanelAbTest(panel, context)
-        const url =
-          current === null
-            ? baseUrl
-            : (deliveryUrlFor(context.folder?.domain, location.origin, current.uid) ?? '')
-        if (url === '') {
-          toast(DELIVERY_DOMAIN_UNSET_NOTE, 'error')
-          return
-        }
+        const url = currentDeliveryUrl(panel, context)
+        if (url === null) return
         openTrackingTagModal(url)
       })
       paramButton.insertAdjacentElement('afterend', tagButton)
@@ -225,9 +246,11 @@ export function wireRealDetailPanel(body: HTMLElement, context: PageContext): vo
   for (const copy of panel.querySelectorAll<HTMLElement>('[aria-label="コピー"]')) {
     copy.addEventListener('click', (event) => {
       event.stopPropagation()
-      void navigator.clipboard?.writeText(baseUrl).then(
+      const url = currentDeliveryUrl(panel, context)
+      if (url === null) return
+      void navigator.clipboard.writeText(url).then(
         () => toast('配信URLをコピーしました'),
-        () => toast('コピーできませんでした', 'error'),
+        (error: Error) => toast(`コピーできませんでした: ${error.message}`, 'error'),
       )
     })
   }
@@ -249,20 +272,19 @@ export function wireRealDetailPanel(body: HTMLElement, context: PageContext): vo
  * クリック → ページ名のテキストが input に変わり、Enter/blur で API 更新。
  */
 function wireHeaderPencil(body: HTMLElement, context: PageContext): void {
-  const abTest = context.abTests[0]
-  if (abTest === undefined) return
-
   // パネル外のすべての鉛筆を探し、パネル内に無いものを対象にする
   const panel = body.querySelector<HTMLElement>(FOLDERS_HOOK.detailPanel)
+  if (panel === null) return
   const allPencils = body.querySelectorAll<SVGElement>('[data-testid="pencil-icon"]')
   for (const pencilSvg of allPencils) {
-    if (panel !== null && panel.contains(pencilSvg)) continue
-    // ヘッダーの鉛筆 → ページ名の編集
+    if (panel.contains(pencilSvg)) continue
+    // ヘッダーの鉛筆 → ページ名の編集（押したときに、いまパネルに出ているページを引く）
     const clickTarget = pencilSvg.closest<HTMLElement>('.css-fbr94v') ?? (pencilSvg.parentElement as HTMLElement)
     clickTarget.style.cursor = 'pointer'
     clickTarget.addEventListener('click', (e) => {
       e.stopPropagation()
-      openInlineEdit(pencilSvg, { key: 'title', type: 'text' }, abTest.uid)
+      const current = currentPanelAbTest(panel, context)
+      if (current !== null) openInlineEdit(pencilSvg, { key: 'title', type: 'text' }, current.uid)
     })
   }
 }
@@ -299,9 +321,6 @@ function wireAccordionSections(panel: HTMLElement): void {
  * 鉛筆をクリック → 値テキストが input/select に変わる → 確定で PUT /ab_tests/:uid → DOM更新。
  */
 function wirePencilIcons(panel: HTMLElement, context: PageContext): void {
-  const abTest = context.abTests[0]
-  if (abTest === undefined) return
-
   const pencils = [...panel.querySelectorAll<SVGElement>('[data-testid="pencil-icon"]')]
 
   /**
@@ -310,7 +329,8 @@ function wirePencilIcons(panel: HTMLElement, context: PageContext): void {
    */
   const fields: PencilField[] = [
     { key: 'ad_status', type: 'select', options: ['準備中', '配信中', '停止中', '終了'] },
-    { key: 'delivery_type', type: 'select', options: ['同一URL配信', '異なるURL配信'] },
+    // 配信タイプは「同一URL配信」しか分かっていない（別の値を作らない）。変えられる項目にしない
+    { key: 'delivery_type', type: 'text', readonly: true },
     { key: 'media_id', type: 'text', readonly: true },
     { key: 'conversion_condition', type: 'select', options: ['クリック', 'アクセス'] },
     { key: 'conversion_unit_price', type: 'text', inputType: 'number' },
@@ -324,7 +344,9 @@ function wirePencilIcons(panel: HTMLElement, context: PageContext): void {
     clickTarget.style.cursor = 'pointer'
     clickTarget.addEventListener('click', (e) => {
       e.stopPropagation()
-      openInlineEdit(pencilSvg, field, abTest.uid)
+      // 押したときに、いまパネルに出ているページを引く（配線したときの1件目に固定しない）
+      const current = currentPanelAbTest(panel, context)
+      if (current !== null) openInlineEdit(pencilSvg, field, current.uid)
     })
   }
 }
@@ -409,11 +431,9 @@ function openInlineEdit(
     void api.updateAbTest(abTestUid, body).then(
       () => {
         popover.remove()
-        // DOM上の表示テキストを更新
-        if (valueContainer !== null) {
-          valueContainer.textContent = newValue
-        }
         toast('更新しました')
+        // 行（配信ステータス等）とパネルを、保存した値で描き直す（パネルは同じページのまま）
+        redrawList()
       },
       (err: Error) => {
         saveBtn.textContent = '保存'
@@ -458,6 +478,10 @@ function openInlineEdit(
 }
 /** 鉛筆SVGの隣にある値テキストの要素を探す */
 function findValueContainer(pencilSvg: SVGElement): HTMLElement | null {
+  // 採取物のパネルは `鉛筆の器(.css-fbr94v) > [鉛筆, 値(.e1sl92wo4)]` の形
+  const wrapper = pencilSvg.closest('.css-fbr94v')
+  const captured = wrapper === null ? null : panelValueIn(wrapper)
+  if (captured !== null) return captured
   // パターン1: 鉛筆が <dd> 内にある → <dd> の中で SVG/div.css-fbr94v 以外のテキストノード
   const dd = pencilSvg.closest('dd')
   if (dd !== null) {
@@ -518,15 +542,19 @@ function currentPanelAbTest(
   const first = context.abTests[0]
   return first === undefined ? null : { uid: first.uid, title: first.title }
 }
-function paramUrlBase(panel: HTMLElement, context: PageContext): string {
+/**
+ * いまパネルに出ているページの配信URL。
+ * 実物と同じく、配信URLはフォルダのドメインで決まる（未設定なら出さずに案内する・2026-09-13）。
+ */
+function currentDeliveryUrl(panel: HTMLElement, context: PageContext): string | null {
   const current = currentPanelAbTest(panel, context)
-  // 実物と同じく、配信URLはフォルダのドメインで決まる（未設定なら空＝配信URLを出さない・2026-09-13）
-  if (current !== null) return deliveryUrlFor(context.folder?.domain, location.origin, current.uid) ?? ''
-  const shown = Array.from(panel.querySelectorAll<HTMLElement>('a, div')).find((node) =>
-    /^\/(?:ab|lp)\//.test((node.textContent ?? '').trim()),
-  )
-  const path = (shown?.textContent ?? '/lp/UID').trim().replace(/^\/ab\//, '/lp/')
-  return `${location.origin}${path}`
+  if (current === null) {
+    toast('beyondページを選んでから押してください', 'error')
+    return null
+  }
+  const url = deliveryUrlFor(context.folder?.domain, location.origin, current.uid)
+  if (url === null) toast(DELIVERY_DOMAIN_UNSET_NOTE, 'error')
+  return url
 }
 /** 子孫から、指定文字列と完全一致するテキストだけを持つ最小要素を探す（アイコン等を巻き込まない）。 */
 function findByText(root: HTMLElement, text: string): HTMLElement | null {
@@ -559,9 +587,10 @@ function conversionConditionName(c: string | undefined): string {
 export function updateDetailPanelForAbTest(body: HTMLElement, abTest: AbTest, context: PageContext): void {
   const panel = body.querySelector<HTMLElement>(FOLDERS_HOOK.detailPanel)
   if (panel === null) return
-  // 計測タグ発行 / Meta連携がクリック時に「今どのLPを見ているか」を引けるようにする
+  // コピー・URL発行・鉛筆・計測タグ発行 / Meta連携が、クリック時に「今どのLPを見ているか」を引けるようにする
   panel.dataset['abTestUid'] = abTest.uid
   panel.dataset['abTestTitle'] = abTest.title
+  lastShownAbTestUid = abTest.uid
 
   // ── ヘッダーのページ名（パネル外の見出し） ──
   const headerTitle = body.querySelector<HTMLElement>('.efy50tl4 .efy50tl3')
@@ -610,16 +639,17 @@ export function updateDetailPanelForAbTest(body: HTMLElement, abTest: AbTest, co
   const editorDd = findDdByDtText(panel, '編集タイプ')
   if (editorDd !== null) setDdText(editorDd, editorTypeName(abTest.editor_version))
 
-  // relation_counts から Version数/ポップアップ数/中間ページ数を取得
-  const rc = context.relationCounts.find((r) => r.id === abTest.id)
+  // relation_counts から Version数/ポップアップ数（離脱防止＋追従型）/中間ページ数。取れなかったら「-」
+  const rc = context.relationCounts?.find((r) => r.id === abTest.id)
+  const count = (pick: (r: NonNullable<typeof rc>) => number): string => (rc === undefined ? '-' : String(pick(rc)))
   const versionDd = findDdByDtText(panel, 'バージョン数')
-  if (versionDd !== null) setDdText(versionDd, String(rc?.versions_count ?? 0))
+  if (versionDd !== null) setDdText(versionDd, count((r) => r.versions_count))
 
   const popupDd = findDdByDtText(panel, 'ポップアップ数')
-  if (popupDd !== null) setDdText(popupDd, String(rc?.exit_popups_count ?? 0))
+  if (popupDd !== null) setDdText(popupDd, count((r) => r.popups_count))
 
   const redirectDd = findDdByDtText(panel, '中間ページ数')
-  if (redirectDd !== null) setDdText(redirectDd, String(rc?.funnel_steps_count ?? 0))
+  if (redirectDd !== null) setDdText(redirectDd, count((r) => r.redirect_pages_count))
 
   // ── 配信情報セクション ──
   const status = AD_STATUS_LABELS[abTest.ad_status] ?? abTest.ad_status
@@ -627,7 +657,11 @@ export function updateDetailPanelForAbTest(body: HTMLElement, abTest: AbTest, co
   if (statusDd !== null) setDdText(statusDd, status)
 
   const deliveryTypeDd = findDdByDtText(panel, '配信タイプ')
-  if (deliveryTypeDd !== null) setDdText(deliveryTypeDd, abTest.delivery_type ?? '同一URL配信')
+  if (deliveryTypeDd !== null) {
+    // 生の値（same_url）ではなく表示名。知らない値はそのまま出す（名前を作らない）
+    const type = abTest.delivery_type ?? ''
+    setDdText(deliveryTypeDd, DELIVERY_TYPE_LABELS[type] ?? (type === '' ? '-' : type))
+  }
 
   const mediaDd = findDdByDtText(panel, '広告媒体')
   if (mediaDd !== null) setDdText(mediaDd, abTest.media?.name ?? '-')
@@ -673,8 +707,17 @@ function findDdByDtText(panel: HTMLElement, dtText: string): HTMLElement | null 
   }
   return null
 }
-/** dd の中のテキストを更新（鉛筆アイコン等は残す） */
+/**
+ * dd の中のテキストを更新（鉛筆アイコン等は残す）。
+ * 採取物の値の要素があればそこへ書く。以前は鉛筆の器を飛ばして先頭に文字を足していたので、
+ * 採取物の値（例: 同一URL配信・準備中）が後ろに残り「same_url同一URL配信」のように2つ並んでいた。
+ */
 function setDdText(dd: HTMLElement, text: string): void {
+  const captured = panelValueIn(dd)
+  if (captured !== null) {
+    captured.textContent = text
+    return
+  }
   for (const child of dd.childNodes) {
     if (child.nodeType === Node.TEXT_NODE && (child.textContent ?? '').trim() !== '') {
       child.textContent = text

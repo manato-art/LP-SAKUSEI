@@ -7,9 +7,11 @@
  * 実物の基本情報タブはフォーム全体を送るが、部分更新でも壊れないようにする
  * （キーが無いのに `null` を patch に入れると、フォルダや媒体が黙って消える）。
  */
-import type { AbTest, ConversionCondition } from './types.ts'
+import type { AbTest, AdStatus, ConversionCondition } from './types.ts'
+import { AD_STATUS_LABELS } from './types.ts'
 import type { AbTestUpdatePatch } from './actions.ts'
 import type { ValidationResult } from '../lib/validate.ts'
+import { parseRecordOnlyFields } from './ab-test-patch-record.ts'
 
 /**
  * 更新できる項目。`editor_version` は実機で「後から変更できません」なので含めない。
@@ -30,6 +32,13 @@ export type AbTestPatch = Partial<
     | 'gender'
     | 'age_from'
     | 'age_to'
+    | 'start_date'
+    | 'deadline_date'
+    | 'end_date'
+    | 'conversion_limit_days'
+    | 'super_reload_count'
+    | 'media_listing'
+    | 'measurement_method'
   >
 > & {
   conversion_setting?: { conversion_condition: ConversionCondition }
@@ -39,6 +48,13 @@ export type AbTestPatch = Partial<
 const TITLE_MAX_LENGTH = 50
 
 const CONVERSION_CONDITIONS: readonly ConversionCondition[] = ['click', 'access']
+
+/** 配信ステータスとして受け付ける値（正本は types.ts の AD_STATUS_LABELS） */
+const AD_STATUSES = Object.keys(AD_STATUS_LABELS) as readonly AdStatus[]
+
+function isAdStatus(raw: unknown): raw is AdStatus {
+  return typeof raw === 'string' && (AD_STATUSES as readonly string[]).includes(raw)
+}
 
 function has(body: Record<string, unknown>, key: string): boolean {
   return Object.prototype.hasOwnProperty.call(body, key)
@@ -91,6 +107,17 @@ export function parseAbTestPatch(input: unknown): ValidationResult<AbTestPatch> 
     const raw = body['memo']
     if (typeof raw !== 'string') return { ok: false, message: 'メモは文字列で指定してください。' }
     patch = { ...patch, memo: raw }
+  }
+
+  // 配信ステータス。一覧の「ステータスを終了にする」と詳細パネルの鉛筆が送る。
+  // 以前は分岐が無く、200 を返しながら黙って捨てていた（2026-09-24）。
+  // 配信ステータスは配信そのものには効かない（SquadBeyond 本体と同じ・記録と絞り込み用）。
+  if (has(body, 'ad_status')) {
+    const raw = body['ad_status']
+    if (!isAdStatus(raw)) {
+      return { ok: false, message: '配信ステータスは 準備中・配信中・停止中・終了 のいずれかを指定してください。' }
+    }
+    patch = { ...patch, ad_status: raw }
   }
 
   if (has(body, 'delivery_type')) {
@@ -146,6 +173,10 @@ export function parseAbTestPatch(input: unknown): ValidationResult<AbTestPatch> 
     if (value === undefined) return { ok: false, message: '性別は文字列で指定してください。' }
     patch = { ...patch, gender: value }
   }
+
+  const recordOnly = parseRecordOnlyFields(body)
+  if (!recordOnly.ok) return recordOnly
+  patch = { ...patch, ...recordOnly.value }
 
   return { ok: true, value: patch }
 }

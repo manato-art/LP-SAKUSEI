@@ -33,8 +33,11 @@ import { applyLightTheme } from './report-dom.ts'
 import { stripShellFromFragment } from './report-substrate.ts'
 import { wireAbTestTabs, setupHorizTabs, setupBreadcrumb } from './tab-nav.ts'
 import { toast } from '../ui.ts'
+import { confirmCard } from '../dialog.ts'
 import { wirePeriodRow } from './split-test-period.ts'
 import { renameParamTab, wireParamRow } from './split-test-params.ts'
+import { loadStepVersions, stepChooser } from './split-test-steps.ts'
+import { newlyUncoveredVisitors } from './split-test-coverage.ts'
 
 
 /** タブ → 採取した土台。ルートで受け取ったタブに対応する断片を選ぶ。 */
@@ -113,6 +116,67 @@ function setSwitch(sw: HTMLElement, on: boolean): void {
   if (input !== null) input.checked = on
 }
 
+/**
+ * この画面で扱っているステップの Version（保存できたら差し替える）。
+ * 1つのスイッチの変更で「どの Version も出せない端末」ができるかは、同じステップの全 Version を見て決める。
+ */
+interface VersionsOnScreen {
+  get: () => readonly Version[]
+  replace: (version: Version) => void
+}
+
+function versionsOnScreen(initial: readonly Version[]): VersionsOnScreen {
+  let current = initial
+  return {
+    get: () => current,
+    replace: (version) => {
+      current = current.map((v) => (v.uid === version.uid ? version : v))
+    },
+  }
+}
+
+/**
+ * 1つのスイッチを保存する（デバイス別・OS別・キャリア別で共通）。
+ *   1. その変更で「どの Version も出せない端末」が新しくできるなら、確かめてから進む
+ *      （その端末で開いた人には「配信できるVersionがありません」が出る）
+ *   2. 保存に失敗したら、スイッチを元に戻して理由を出す（以前は失敗を見ておらず、切り替わったままだった）
+ */
+async function saveSwitch(options: {
+  sw: HTMLElement
+  on: boolean
+  versionName: string
+  onScreen: VersionsOnScreen
+  next: Version
+  save: () => Promise<{ version: Version }>
+  doneMessage: string
+}): Promise<boolean> {
+  const { sw, on, onScreen, next } = options
+  const after = onScreen.get().map((v) => (v.uid === next.uid ? next : v))
+  const lost = newlyUncoveredVisitors(onScreen.get(), after)
+  if (lost.length > 0) {
+    const ok = await confirmCard({
+      title: '配信できない端末ができます',
+      message: `この変更で、${lost.join('・')} から開いた人には「配信できるVersionがありません」と表示されます。`,
+      detail: 'どの Version もその端末に配信しない設定になるためです。ほかの Version をその端末でオンにするか、配信割合を見直してください。',
+      submitLabel: 'このまま変更する',
+      danger: true,
+    })
+    if (!ok) return false
+  }
+  setSwitch(sw, on)
+  try {
+    const { version } = await options.save()
+    onScreen.replace(version)
+    toast(options.doneMessage)
+    return true
+  } catch (error) {
+    // revert: 保存できなかったので、スイッチを元の位置へ戻す
+    setSwitch(sw, !on)
+    toast(`${options.versionName}: 保存できませんでした（${(error as Error).message}）`, 'error')
+    return false
+  }
+}
+
 const DEVICE_KEYS: readonly ('sp' | 'tablet' | 'pc')[] = ['sp', 'tablet', 'pc']
 const DEVICE_LABELS = { sp: 'スマートフォン', tablet: 'タブレット', pc: 'デスクトップ' } as const
 const VERSION_NAME_CELL = '.css-10qqjzd'
@@ -138,19 +202,19 @@ async function wireDeviceTargets(root: HTMLElement, abTestUid: string): Promise<
   const templateRow = [...container.children].find((c) => c.contains(nameCell))
   if (!(templateRow instanceof HTMLElement)) return
 
-  const { articles } = await api.articles(abTestUid)
-  const articleUid = articles[0]?.uid
-  if (articleUid === undefined) return
-  const { versions } = await api.versions(articleUid)
-  const alive = versions.filter((v) => v.archived !== true)
+  const loaded = await loadStepVersions(abTestUid)
+  if (loaded === null) return
+  stepChooser(abTestUid, loaded, container)
+  const alive = loaded.versions
   if (alive.length === 0) return
+  const onScreen = versionsOnScreen(alive)
 
   const pristine = templateRow.cloneNode(true) as HTMLElement
   templateRow.remove()
   for (let i = 0; i < alive.length; i++) {
     const version = alive[i]!
     const row = pristine.cloneNode(true) as HTMLElement
-    wireDeviceRow(row, version)
+    wireDeviceRow(row, version, onScreen)
     // 指示69: 版行を詰めて表示（実物のように行をコンパクトに並べる）
     // 採取CSSの .css-1q0mywx は min-height:300px を持ち、各行が巨大になる。
     // また .css-1r20ns4 の padding-bottom:20px が名前欄を間延びさせる。
@@ -167,12 +231,7 @@ async function wireDeviceTargets(root: HTMLElement, abTestUid: string): Promise<
 }
 
 /** 版行1つ：Ver名・配信割合を差し込み、3スイッチをその版の device_targets に配線する */
-function wireDeviceRow(row: HTMLElement, version: {
-  uid: string
-  name: string
-  distribution_ratio: number
-  device_targets?: { sp: boolean; tablet: boolean; pc: boolean }
-}): void {
+function wireDeviceRow(row: HTMLElement, version: Version, onScreen: VersionsOnScreen): void {
   const nameCell = row.querySelector<HTMLElement>(VERSION_NAME_CELL)
   const ratioCell = row.querySelector<HTMLElement>(VERSION_RATIO_CELL)
   if (nameCell !== null) {
@@ -190,7 +249,8 @@ function wireDeviceRow(row: HTMLElement, version: {
   // 指示㊼: 版行全体の幅を制限
   row.style.maxWidth = '100%'
 
-  const targets = {
+  // 保存できた値だけを持つ（失敗したら元のまま＝スイッチも戻す）
+  let saved = {
     sp: version.device_targets?.sp !== false,
     tablet: version.device_targets?.tablet !== false,
     pc: version.device_targets?.pc !== false,
@@ -199,17 +259,23 @@ function wireDeviceRow(row: HTMLElement, version: {
   switches.forEach((sw, index) => {
     const key = DEVICE_KEYS[index]
     if (key === undefined) return
-    setSwitch(sw, targets[key])
+    setSwitch(sw, saved[key])
     sw.addEventListener('click', (event) => {
       event.preventDefault()
-      targets[key] = !targets[key]
-      setSwitch(sw, targets[key])
-      void api.setDeviceTargets(version.uid, targets).then(() => {
-        toast(
-          targets[key]
-            ? `${version.name}: ${DEVICE_LABELS[key]}へ配信します`
-            : `${version.name}: ${DEVICE_LABELS[key]}では配信しません（他Versionを表示）`,
-        )
+      const next = { ...saved, [key]: !saved[key] }
+      const current = onScreen.get().find((v) => v.uid === version.uid) ?? version
+      void saveSwitch({
+        sw,
+        on: next[key],
+        versionName: version.name,
+        onScreen,
+        next: { ...current, device_targets: next },
+        save: () => api.setDeviceTargets(version.uid, next),
+        doneMessage: next[key]
+          ? `${version.name}: ${DEVICE_LABELS[key]}へ配信します`
+          : `${version.name}: ${DEVICE_LABELS[key]}では配信しません（他Versionを表示）`,
+      }).then((ok) => {
+        if (ok) saved = next
       })
     })
   })
@@ -228,9 +294,9 @@ async function wireSplitTestToggles(
   tab: SplitTestTab,
 ): Promise<void> {
   // ── 版行を全版ぶん描き、版ごとに設定を保存する配線を付ける ──
-  await wireTabVersionRows(root, abTestUid, (row, version) => {
-    if (tab === 'oses') wireToggleRow(row, version, ['android', 'ios'], 'os_targets')
-    else if (tab === 'carriers') wireToggleRow(row, version, ['docomo', 'au', 'softbank'], 'carrier_targets')
+  await wireTabVersionRows(root, abTestUid, (row, version, onScreen) => {
+    if (tab === 'oses') wireToggleRow(row, version, ['android', 'ios'], 'os_targets', onScreen)
+    else if (tab === 'carriers') wireToggleRow(row, version, ['docomo', 'au', 'softbank'], 'carrier_targets', onScreen)
     else if (tab === 'params') wireParamRow(row, version)
     else if (tab === 'hours') wirePeriodRow(row, version, 'time')
     else if (tab === 'periods') wirePeriodRow(row, version, 'date')
@@ -254,22 +320,31 @@ function wireToggleRow(
   version: Version,
   keys: readonly string[],
   field: 'os_targets' | 'carrier_targets',
+  onScreen: VersionsOnScreen,
 ): void {
   const switches = [...row.querySelectorAll<HTMLElement>('.MuiSwitch-root')]
-  const saved = (version[field] ?? null) as Record<string, boolean> | null
-  const state: Record<string, boolean> = {}
-  for (const k of keys) state[k] = saved?.[k] ?? false
+  const stored = (version[field] ?? null) as Record<string, boolean> | null
+  // 保存できた値だけを持つ（失敗したら元のまま＝スイッチも戻す）
+  let saved: Record<string, boolean> = Object.fromEntries(keys.map((k) => [k, stored?.[k] ?? false]))
   switches.forEach((sw, i) => {
     const key = keys[i]
     if (key === undefined) return
-    setSwitchVisual(sw, state[key] ?? false)
+    setSwitchVisual(sw, saved[key] ?? false)
     sw.addEventListener('click', (event) => {
       event.preventDefault()
-      state[key] = !(state[key] ?? false)
-      setSwitchVisual(sw, state[key] ?? false)
-      void api.setVersionTargeting(version.uid, { [field]: { ...state } }).then(() => {
-        const label = TOGGLE_LABELS[key] ?? key
-        toast(state[key] ? `${version.name}: ${label} をオンにしました` : `${version.name}: ${label} をオフにしました`)
+      const next = { ...saved, [key]: !(saved[key] ?? false) }
+      const label = TOGGLE_LABELS[key] ?? key
+      const current = onScreen.get().find((v) => v.uid === version.uid) ?? version
+      void saveSwitch({
+        sw,
+        on: next[key] ?? false,
+        versionName: version.name,
+        onScreen,
+        next: { ...current, [field]: next },
+        save: () => api.setVersionTargeting(version.uid, { [field]: next }),
+        doneMessage: next[key] ? `${version.name}: ${label} をオンにしました` : `${version.name}: ${label} をオフにしました`,
+      }).then((ok) => {
+        if (ok) saved = next
       })
     })
   })
@@ -312,7 +387,7 @@ function findRatioCell(row: HTMLElement, nameCell: HTMLElement): HTMLElement | n
 async function wireTabVersionRows(
   root: HTMLElement,
   abTestUid: string,
-  onRow?: (row: HTMLElement, version: Version) => void,
+  onRow?: (row: HTMLElement, version: Version, onScreen: VersionsOnScreen) => void,
 ): Promise<void> {
   const nameCell = findVersionNameCell(root)
   if (nameCell === null) return
@@ -353,12 +428,12 @@ async function wireTabVersionRows(
   }
   if (container === null || templateRow === null) return
 
-  const { articles } = await api.articles(abTestUid)
-  const articleUid = articles[0]?.uid
-  if (articleUid === undefined) return
-  const { versions } = await api.versions(articleUid)
-  const alive = versions.filter((v) => v.archived !== true)
+  const loaded = await loadStepVersions(abTestUid)
+  if (loaded === null) return
+  stepChooser(abTestUid, loaded, container)
+  const alive = loaded.versions
   if (alive.length === 0) return
+  const onScreen = versionsOnScreen(alive)
 
   const pristine = templateRow.cloneNode(true) as HTMLElement
   templateRow.remove()
@@ -390,16 +465,9 @@ async function wireTabVersionRows(
     if (nameWrapper !== null) nameWrapper.style.paddingBottom = '0'
     row.dataset['cloneVersionUid'] = version.uid
     container.append(row)
-    if (onRow !== undefined) onRow(row, version)
+    if (onRow !== undefined) onRow(row, version, onScreen)
   }
 }
-
-
-
-
-
-
-
 
 /**
  * 指示123: Versionオプション設定ページの Emotion 直書きダーク背景を白基調に上書き。

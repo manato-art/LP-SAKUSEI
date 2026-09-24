@@ -19,6 +19,28 @@ export async function getJson<T>(path: string): Promise<T | null> {
   }
 }
 
+/** 読み込みの結果。失敗したときは理由（サーバーの文言・状態コード・つながらない理由）を持つ */
+export type JsonResult<T> = { ok: true; data: T } | { ok: false; message: string }
+
+/**
+ * getJson の理由つき版（2026-09-24）。getJson は失敗を null にするので、
+ * 画面が「0件」と見分けられず、理由も出せなかった。既存の呼び出し側はそのまま残し、
+ * 失敗を画面に出したいところだけこちらを使う。
+ */
+export async function getJsonResult<T>(path: string): Promise<JsonResult<T>> {
+  let res: Response
+  try {
+    res = await fetch(`${API}${path}`)
+  } catch (error) {
+    return { ok: false, message: (error as Error).message }
+  }
+  if (!res.ok) {
+    const detail = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
+    return { ok: false, message: detail?.error?.message ?? `読み込みに失敗しました（${res.status}）` }
+  }
+  return { ok: true, data: (await res.json()) as T }
+}
+
 export async function postJson<T>(path: string, body: unknown): Promise<T | null> {
   try {
     const res = await fetch(`${API}${path}`, {
