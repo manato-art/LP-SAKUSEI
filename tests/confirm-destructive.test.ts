@@ -3,7 +3,8 @@
  *
  * 以前は次の操作が押した瞬間に実行されていた（誤タップで設定やデータが消えた）:
  *   メディア / 商品の削除、レポート除外の削除、Slackの連携解除、
- *   チャットワーク・LINE のトークン削除、異常のお知らせの送り先の「消す」
+ *   チャットワーク・LINE のトークン削除、異常のお知らせの送り先の「消す」、
+ *   アクセス管理の許可メールアドレスの削除（チームメンバーの削除も同じ）
  * ソースを読んで、実行する呼び出しの直前に確認カードがあることを見張る。
  */
 import { readFileSync } from 'node:fs'
@@ -16,6 +17,8 @@ const CASES: readonly { file: string; marker: string }[] = [
   { file: 'src/app/panels/notify-target.ts', marker: 'api.disconnectSlack(' },
   { file: 'src/app/panels/notify-target.ts', marker: 'api.clearIntegration(' },
   { file: 'src/app/pages/alert-settings-section.ts', marker: 'rows.splice(' },
+  { file: 'src/app/pages/account-settings.ts', marker: 'accountApi.deleteAllowedEmail(' },
+  { file: 'src/app/pages/team-members.ts', marker: 'accountApi.deleteMember(' },
 ]
 
 /** marker の直前（同じ操作の中）に confirmCard と danger: true があるか */

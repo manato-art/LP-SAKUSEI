@@ -34,3 +34,42 @@ export const toolsApi = {
   unlinkMetaAccount: (accountId: string) =>
     request<void>('DELETE', `/teams/ad_accounts/meta/${encodeURIComponent(accountId)}`),
 }
+
+/** アクセス管理（ログインの入口を通れるメールアドレス）1件 */
+export interface AllowedEmailEntry {
+  id: number
+  email: string
+  created_at: number
+}
+
+/** チームメンバー1人 */
+export interface TeamMember {
+  id: number
+  uid: string
+  name: string
+  email: string
+  /** admin / team-owner / member / viewer。ログインの仕組み上、操作は制限しない（目印） */
+  role: string
+  team_id: number
+}
+
+export const accountApi = {
+  /** ログアウト。ログインしていたならログインの入口（redirect）が返る */
+  logout: async (): Promise<{ ok: boolean; redirect?: string }> => {
+    const res = await fetch('/__auth/logout', { method: 'POST' })
+    if (!res.ok) throw new Error(`ログアウトに失敗しました (${res.status})`)
+    return (await res.json()) as { ok: boolean; redirect?: string }
+  },
+  allowedEmails: () =>
+    request<{ allowed_emails: AllowedEmailEntry[]; admin_path: string }>('GET', '/allowed_emails'),
+  addAllowedEmail: (email: string) =>
+    request<{ allowed_email: AllowedEmailEntry }>('POST', '/allowed_emails', { email }),
+  /** 最後の1件は400で断られる（理由のメッセージが投げられる） */
+  deleteAllowedEmail: (id: number) => request<{ ok: boolean }>('DELETE', `/allowed_emails/${id}`),
+  members: () => request<{ members: TeamMember[] }>('GET', '/teams/members'),
+  addMember: (input: { name: string; email: string; role: string; allow_login: boolean }) =>
+    request<{ member: TeamMember; allowed_email_added: boolean }>('POST', '/teams/members', input),
+  updateMemberRole: (uid: string, role: string) =>
+    request<{ member: TeamMember }>('PUT', `/teams/members/${encodeURIComponent(uid)}`, { role }),
+  deleteMember: (uid: string) => request<void>('DELETE', `/teams/members/${encodeURIComponent(uid)}`),
+}

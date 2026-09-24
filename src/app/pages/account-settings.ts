@@ -4,11 +4,13 @@
  * 1画面にまとめる（実物は複数画面に分かれているが、採取していないので自作する）。
  */
 import { api } from '../api.ts'
-import { table } from './data-ui.ts'
+import { accountApi, type AllowedEmailEntry } from '../api-tools.ts'
 import { T, el, emptyState, toast } from '../ui.ts'
+import { confirmCard } from '../dialog.ts'
 import { buildThemeColorSection } from '../panels/theme-color-section.ts'
 import { jstDateKey } from '../jst.ts'
 import { mountAlertSettings } from './alert-settings-section.ts'
+import { renderMembers } from './team-members.ts'
 
 export async function renderAccountSettings(
   container: HTMLElement,
@@ -34,12 +36,15 @@ export async function renderAccountSettings(
     `color:#E4432B;cursor:pointer;font-size:13px;font-family:${T.font}`,
   ].join(';')
   logoutBtn.addEventListener('click', () => {
-    void fetch('/__auth/logout', { method: 'POST' })
-      .then(() => {
-        // ログアウト後はルートへ（メールゲートか404が出る）
-        location.href = '/'
-      })
-      .catch(() => toast('ログアウトに失敗しました', 'error'))
+    // 行き先はサーバーが返す（ログインの入口）。`/` は未ログインだと404なので決め打ちしない。
+    // 返ってこない＝もともとログインしていない（開発中など）ときは、今の画面を読み直す
+    void accountApi.logout().then(
+      (res) => {
+        if (res.redirect !== undefined) location.assign(res.redirect)
+        else location.reload()
+      },
+      (error: Error) => toast(error.message, 'error'),
+    )
   })
   header.append(logoutBtn)
 
@@ -253,44 +258,7 @@ async function renderNotifications(content: HTMLElement): Promise<void> {
   await mountAlertSettings(content)
 }
 
-async function renderMembers(content: HTMLElement): Promise<void> {
-  const data = await api.teamMembers()
-  const members = data.members
-
-  if (members.length === 0) {
-    content.append(emptyState('チームメンバーはまだいません。'))
-    return
-  }
-
-  const roleLabels: Record<string, string> = {
-    'admin': '管理者',
-    'team-owner': 'オーナー',
-    'member': 'メンバー',
-    'viewer': 'ゲスト',
-  }
-
-  // 共通の表部品を使う。スマホでは「1行＝1カード（列名 値）」に組み替わる（mobile-css.ts）。
-  // 手組みのgridのままだと、390pxで1列77pxになりメールが3行に割れていた（2026-09-14 実測）。
-  content.append(
-    table(
-      members,
-      [
-        { head: '名前', cell: (m) => m.name },
-        { head: 'メール', cell: (m) => m.email },
-        { head: '権限', cell: (m) => roleLabels[m.role] ?? m.role, width: '100px' },
-      ],
-      'チームメンバーがいません。',
-    ),
-  )
-}
-
 // ── アクセス管理タブ（メールゲート） ─────────────────────────
-
-interface AllowedEmailEntry {
-  id: number
-  email: string
-  created_at: number
-}
 
 async function renderAccessManagement(content: HTMLElement): Promise<void> {
   // 共有リンク表示エリア（admin_path を取得後に埋める）
@@ -336,10 +304,12 @@ async function renderAccessManagement(content: HTMLElement): Promise<void> {
   const desc = el('div', {
     style: `font-size:13px;color:${T.sub};line-height:1.7;margin-bottom:20px`,
   })
-  desc.innerHTML = [
-    'ここに登録したメールアドレスの人だけが、上記リンクからログイン画面へ進めます。',
-    '登録が0件のときは上記リンクも404を返します（パスワード画面は表示されません）。',
-  ].join('<br>')
+  desc.append(
+    el('div', { text: 'ここに登録したメールアドレスの人だけが、上記リンクからログイン画面へ進めます。' }),
+    el('div', {
+      text: '0件になるとリンクが開かなくなり誰もログインできなくなるため、最後の1件は削除できません。',
+    }),
+  )
   content.append(desc)
 
   // 追加フォーム
@@ -364,17 +334,14 @@ async function renderAccessManagement(content: HTMLElement): Promise<void> {
 
   async function loadEmails(): Promise<void> {
     try {
-      const res = await fetch('/api/v1/allowed_emails')
-      if (!res.ok) throw new Error(`${res.status}`)
-      const data = (await res.json()) as { allowed_emails: AllowedEmailEntry[]; admin_path?: string }
+      const data = await accountApi.allowedEmails()
       emails = data.allowed_emails
-      // 共有リンクを更新
-      const adminPath = data.admin_path ?? '/__admin'
-      shareUrlText.textContent = `${location.origin}${adminPath}`
-    } catch {
+      shareUrlText.textContent = `${location.origin}${data.admin_path}`
+    } catch (error) {
+      // 入口のパスが分からないときに、違うリンクを見せない
       emails = []
-      shareUrlText.textContent = `${location.origin}/__admin`
-      toast('許可メールの読み込みに失敗しました', 'error')
+      shareUrlText.textContent = '読み込めませんでした'
+      toast(`許可メールの読み込みに失敗しました: ${(error as Error).message}`, 'error')
     }
     renderList()
   }
@@ -384,7 +351,7 @@ async function renderAccessManagement(content: HTMLElement): Promise<void> {
     if (emails.length === 0) {
       listArea.append(
         el('div', {
-          text: 'メールアドレスが登録されていません。共有リンクは404を返します。',
+          text: 'メールアドレスが登録されていません。共有リンクは開かず、誰もログインできません。',
           style: `padding:20px;text-align:center;font-size:13px;color:${T.sub}`,
         }),
       )
@@ -406,8 +373,22 @@ async function renderAccessManagement(content: HTMLElement): Promise<void> {
       removeBtn.textContent = '削除'
       removeBtn.style.cssText =
         `padding:6px 14px;border:1px solid #E4432B;border-radius:6px;background:transparent;color:#E4432B;cursor:pointer;font-size:12px;font-family:${T.font}`
+      const isLast = emails.length === 1
+      if (isLast) {
+        // 最後の1件は消せない。押せない理由をそのまま見せる
+        removeBtn.disabled = true
+        removeBtn.style.opacity = '.4'
+        removeBtn.style.cursor = 'not-allowed'
+        removeBtn.title = '最後の1件は削除できません（0件になると誰もログインできなくなります）'
+        left.append(
+          el('div', {
+            text: '最後の1件は削除できません。先に別のメールアドレスを追加してください。',
+            style: `font-size:11px;color:${T.sub};margin-top:2px`,
+          }),
+        )
+      }
       removeBtn.addEventListener('click', () => {
-        void removeEmail(entry.id)
+        void removeEmail(entry)
       })
       row.append(left, removeBtn)
       listArea.append(row)
@@ -423,15 +404,7 @@ async function renderAccessManagement(content: HTMLElement): Promise<void> {
     addBtn.textContent = '追加中...'
     addBtn.setAttribute('disabled', '')
     try {
-      const res = await fetch('/api/v1/allowed_emails', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      })
-      if (!res.ok) {
-        const data = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
-        throw new Error(data?.error?.message ?? '追加に失敗しました')
-      }
+      await accountApi.addAllowedEmail(email)
       emailInput.value = ''
       toast('メールアドレスを追加しました')
       await loadEmails()
@@ -443,13 +416,22 @@ async function renderAccessManagement(content: HTMLElement): Promise<void> {
     }
   }
 
-  async function removeEmail(id: number): Promise<void> {
+  async function removeEmail(entry: AllowedEmailEntry): Promise<void> {
+    const ok = await confirmCard({
+      title: 'メールアドレスを削除します',
+      message: `${entry.email} を削除します。この人は次から共有リンクを通れなくなります。`,
+      detail:
+        'この端末でのログインはそのまま続きます。次にログインするときは、残っているメールアドレスのどれかを入力します。',
+      submitLabel: '削除する',
+      danger: true,
+    })
+    if (!ok) return
     try {
-      const res = await fetch(`/api/v1/allowed_emails/${id}`, { method: 'DELETE' })
-      if (!res.ok) throw new Error('削除に失敗しました')
+      await accountApi.deleteAllowedEmail(entry.id)
       toast('メールアドレスを削除しました')
       await loadEmails()
     } catch (error) {
+      // 最後の1件などはサーバーが理由を返す。その理由をそのまま出す
       toast((error as Error).message, 'error')
     }
   }
