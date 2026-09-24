@@ -9,11 +9,12 @@
  */
 import { buildBotNote } from './bot-note-el.ts'
 import { api, type ReportKpi, type ReportResponse } from '../api.ts'
-import { toast } from '../ui.ts'
+import { T, el, toast } from '../ui.ts'
 import {
   DATE_PRESET_LABELS,
   DATE_PRESET_VALUES,
   resolvePreset,
+  toDateKey,
   toRangeQuery,
   type DateRange,
 } from './report-period.ts'
@@ -82,6 +83,44 @@ export const REPORT_FILTER_DEFAULT: ReportFilter = {
   version: '',
   archive: 'except_archived',
   device: '0',
+}
+
+/** 絞り込みをクエリ文字列にする（既定値は載せない＝URLを短く保つ） */
+export function filterToQuery(filter: ReportFilter): string {
+  const parts: string[] = []
+  if (filter.version !== '') parts.push(`version=${encodeURIComponent(filter.version)}`)
+  if (filter.archive !== REPORT_FILTER_DEFAULT.archive) parts.push(`archive=${filter.archive}`)
+  if (filter.device !== REPORT_FILTER_DEFAULT.device) parts.push(`device=${filter.device}`)
+  return parts.join('&')
+}
+
+/**
+ * 前期間の問い合わせ。上の絞り込みも同じものを付ける（2026-09-24）。
+ * 以前は期間だけで問い合わせていて、「スマホだけの今」と「全端末の前」を比べていた。
+ */
+export function previousQuery(range: DateRange, filter: ReportFilter): string {
+  return [toRangeQuery(previousRange(range)), filterToQuery(filter)].filter((p) => p !== '').join('&')
+}
+
+/** `2026-09-24` → `9/24` */
+function shortDate(key: string): string {
+  const [, m, d] = key.split('-')
+  return `${Number(m)}/${Number(d)}`
+}
+
+/**
+ * 期間に今日（まだ途中）が入るときの断り（2026-09-24）。
+ *
+ * 表示・クリックは日ごとにしか記録していない（時刻を持たない）ので、「昨日の同じ時刻まで」とは比べられない。
+ * 途中の今日を、前期間のまる1日と比べていることを書く（数字が下がって見える理由を隠さない）。
+ */
+export function comparisonNote(range: DateRange, now: Date = new Date()): string | null {
+  const today = toDateKey(now)
+  if (range.endDate !== today) return null
+  const previous = previousRange(range)
+  if (range.startDate === today) return '今日はまだ途中です。増減は昨日（まる1日分）と比べています。'
+  const days = Math.round((Date.parse(`${previous.endDate}T00:00:00Z`) - Date.parse(`${previous.startDate}T00:00:00Z`)) / 86_400_000) + 1
+  return `期間に今日（まだ途中）が入っています。増減は ${shortDate(previous.startDate)}〜${shortDate(previous.endDate)} のまる${days}日分と比べています。`
 }
 
 interface FilterDeps {
@@ -287,13 +326,16 @@ export interface ReportBodyDeps {
 export async function buildReportBody(deps: ReportBodyDeps): Promise<HTMLElement> {
   injectReportStyles()
 
+  // 増減が出ないだけなので、読めなくても画面は出す。読めなかったことはカードに書く（黙らない）
   let previous: ReportKpi | null = null
+  let previousError: string | null = null
   try {
-    const prev = await api.report(deps.abTestUid, toRangeQuery(previousRange(deps.range)))
+    const prev = await api.report(deps.abTestUid, previousQuery(deps.range, deps.filter))
     previous = prev.totals
-  } catch {
-    /* 増減が出ないだけなので、画面は出す */
+  } catch (error) {
+    previousError = error instanceof Error ? error.message : '通信エラー'
   }
+  const compareNote = comparisonNote(deps.range)
 
   const root = document.createElement('div')
   root.className = 'rv2'
@@ -311,7 +353,10 @@ export async function buildReportBody(deps: ReportBodyDeps): Promise<HTMLElement
     buildBotNote(deps.report.bot_hits ?? 0),
     // 合計はページ全体・配信金額はページ単位（表の行と合計が合わない理由・2026-09-24）
     ...[buildTotalsNote(deps.report, deps.range)].filter((n): n is HTMLElement => n !== null),
-    buildKpiCards({ totals: deps.report.totals, daily: deps.report.daily, previous }),
+    buildKpiCards({ totals: deps.report.totals, daily: deps.report.daily, previous, previousError }),
+    ...(compareNote === null
+      ? []
+      : [el('div', { text: compareNote, style: `font-size:12px;color:${T.sub};line-height:1.7;margin:-4px 0 12px` })]),
     buildCreativeReport({
       daily: deps.report.daily,
       range: deps.range,

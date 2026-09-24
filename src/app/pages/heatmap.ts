@@ -30,6 +30,7 @@ import {
 import { columnKeyOf, expandColumnKeys, paramsForVersion } from './heatmap-params.ts'
 import { fetchHeatmapLpSources, type HeatmapLpSources } from './heatmap-lp-sources.ts'
 import { wireAbTestTabs, setupHorizTabs, setupBreadcrumb } from './tab-nav.ts'
+import { mountMediaImportSummary } from './report-media-imports.ts'
 
 export async function renderHeatmap(
   container: HTMLElement,
@@ -72,6 +73,8 @@ export async function renderHeatmap(
   wireCapturedDropdowns(root, abTestUid, () => {
     void renderHeatmap(container, abTestUid, generation, range)
   })
+  // 「広告データ取得日時」に、最後に取り込んだ時刻を入れる（採取物の「データなし」のままだった・2026-09-24）
+  void mountMediaImportSummary(root, abTestUid)
 
   // 実物は「Version × 指標(離脱/CLICK/CV)」でチェックした数だけ右に列が増える。
   // 選択状態をここで持ち、変わるたびに列を組み直す。
