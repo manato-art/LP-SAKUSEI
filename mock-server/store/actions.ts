@@ -202,6 +202,14 @@ export type AbTestUpdatePatch = Partial<
     | 'gender'
     | 'age_from'
     | 'age_to'
+    | 'page_title'
+    | 'start_date'
+    | 'deadline_date'
+    | 'end_date'
+    | 'conversion_limit_days'
+    | 'super_reload_count'
+    | 'media_listing'
+    | 'measurement_method'
   >
 >
 

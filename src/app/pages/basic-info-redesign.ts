@@ -5,11 +5,12 @@
  *   左 = アイコン付きセクション（基本情報 / トラッキング項目 / その他の項目 / メディア）
  *   右 = 「設定内容の確認」ライブ要約パネル（左の入力に追従）
  *
- * 方針（ユーザー確認済み「見た目であとでAPI渡す」）:
- *   - バックエンド（モックAPI）に実在する項目は保存まで配線する。
- *   - 参照デザインにあるがモックAPIに無い項目（開始/締切/終了・コンバージョン期限・
- *     スーパーリロード回数・メディア掲載・成果測定方法）は**見た目だけ**用意し、
- *     いまは保存しない（後でAPIを渡す前提）。data-bi-ui 属性で識別できるようにしておく。
+ * 方針:
+ *   - 画面の項目はすべて保存まで配線する。
+ *   - 開始/締切/終了・コンバージョン期限・スーパーリロード回数・メディア掲載・成果測定方法は
+ *     **記録するだけ**（2026-09-24）。以前は入力できて「更新しました」と出るのに保存していなかった。
+ *     配信（出す・止める・出し分け）には使わないので、画面にもそう書く。
+ *   - 動作タイプ（editor_version）は作成後に変えられない（サーバーも受け付けない）ので、選べない表示にする。
  *
  * ナビ（6タブ・パンくず）は既存の共通配線を流用する（採取DOMは本文には使わない）。
  */
@@ -19,7 +20,10 @@ import { openParamUrlModal } from '../panels/param-url-modal.ts'
 import { basicInfoApi, type MediaOption } from './basic-info-api.ts'
 import { setupHorizTabs, setupBreadcrumb } from './tab-nav.ts'
 import { recordHistory } from './folders-history.ts'
-import { AD_STATUS_LABELS, CONVERSION_CONDITION_LABELS, DELIVERY_TYPE_LABELS, EDITOR_VERSION_LABELS, buildUpdatePayload, validateBasicInfo, type AbTestForEdit, type BasicInfoValues, DELIVERY_DOMAIN_UNSET_NOTE, deliveryUrlFor } from './basic-info-form.ts'
+import { CONVERSION_CONDITION_LABELS, DELIVERY_TYPE_LABELS, EDITOR_VERSION_LABELS, buildUpdatePayload, toRecordFormValues, validateBasicInfo, type AbTestForEdit, type BasicInfoValues, DELIVERY_DOMAIN_UNSET_NOTE, deliveryUrlFor } from './basic-info-form.ts'
+
+/** 開始・締切・終了などが配信を変えないことの注記（配信は Version の配信割合と配信の切り替え予約で決まる） */
+const RECORD_ONLY_NOTE = '記録のみ（配信の開始・停止には使いません）'
 
 const AGE_CHOICES: readonly number[] = [15, 18, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70]
 const UNSET = '未設定'
@@ -100,10 +104,14 @@ function buildPage(
   const gBasic = grid2(secBasic.body)
   const fTitle = field('キャンペーン名', true)
   fTitle.append(textInput('bi-title', abTest.title, 'キャンペーン名を入力'))
-  const fEditor = field('動作タイプ', true)
-  fEditor.append(selectInput('bi-editor',
+  const fEditor = field('動作タイプ', true, '作成後は変更できません')
+  const editorSelect = selectInput('bi-editor',
     Object.entries(EDITOR_VERSION_LABELS).map(([v, l]) => ({ value: v, label: l })),
-    String(abTest.editor_version)))
+    String(abTest.editor_version))
+  // 作成後は変えられない（サーバーも受け付けない）。選べるように見せない。
+  editorSelect.disabled = true
+  fEditor.append(editorSelect)
+  appendHint(fEditor)
   gBasic.append(fTitle, fEditor)
 
   const fUrl = field('配信URL', true)
@@ -143,11 +151,13 @@ function buildPage(
   const gTrack2 = grid2(secTrack.body)
   const fPrice = field('コンバージョン単価', false)
   fPrice.append(numInput('bi-price', String(abTest.conversion_unit_price)))
-  const fMethod = field('成果測定方法', false)
+  const recorded = toRecordFormValues(abTest)
+  const fMethod = field('成果測定方法', false, '記録のみ（計測のしかたは変わりません）')
   fMethod.append(selectInput('bi-method', [
     { value: 'none', label: '無効／バリデーションなし' },
     { value: 'strict', label: '厳格モード' },
-  ], 'none', true))
+  ], recorded.measurement_method))
+  appendHint(fMethod)
   gTrack2.append(fPrice, fMethod)
 
   // ── 左: その他の項目 ──
@@ -166,12 +176,19 @@ function buildPage(
   const fAgeTo = field('年齢（歳以下）', false)
   fAgeTo.append(selectInput('bi-age-to', ageOptions(), abTest.age_to === null ? '' : String(abTest.age_to)))
   gOther.append(fGender, fAgeFrom, fAgeTo)
-  // 参照デザインの日付・期限（あとでAPI渡す＝いまは見た目だけ）
+  // 日付・期限・回数は記録するだけ（配信には使わない）。注記を1つ添える。
   const gDates = grid3(secOther.body)
-  gDates.append(uiField('開始', dateInput('bi-start')), uiField('締切', dateInput('bi-deadline')), uiField('終了', dateInput('bi-end')))
+  gDates.append(
+    recordField('開始', dateInput('bi-start', recorded.start_date)),
+    recordField('締切', dateInput('bi-deadline', recorded.deadline_date)),
+    recordField('終了', dateInput('bi-end', recorded.end_date)),
+  )
   const gExtra = grid2(secOther.body)
-  gExtra.append(uiField('コンバージョン期限（日）', numInput('bi-cv-limit', '0', true)),
-    uiField('スーパーリロード回数', numInput('bi-reload', '0', true)))
+  gExtra.append(recordField('コンバージョン期限（日）', numInput('bi-cv-limit', recorded.conversion_limit_days)),
+    recordField('スーパーリロード回数', numInput('bi-reload', recorded.super_reload_count)))
+  const recordNote = h('div', 'bi-hint')
+  recordNote.textContent = `開始・締切・終了・コンバージョン期限・スーパーリロード回数は${RECORD_ONLY_NOTE}`
+  secOther.body.append(recordNote)
 
   // ── 左: メディア ──
   const secMedia = section('media', 'メディア', 'メディア掲載に関する設定です。')
@@ -182,7 +199,7 @@ function buildPage(
   fMedia.append(selectInput('bi-media',
     [{ value: '', label: '指定なし' }, ...medias.map((m) => ({ value: String(m.id), label: m.name }))],
     abTest.media_id === null ? '' : String(abTest.media_id)))
-  const fMediaOn = uiField('メディア掲載', toggleInput('bi-media-on'))
+  const fMediaOn = recordField('メディア掲載', toggleInput('bi-media-on', recorded.media_listing))
   gMedia.append(fMedia, fMediaOn)
   // 未使用変数の握り（mediaName は summary 用に後で読む）
   void mediaName
@@ -257,6 +274,13 @@ function collect(ctx: WireCtx): BasicInfoValues {
     gender: val('bi-gender'),
     age_from: val('bi-age-from'),
     age_to: val('bi-age-to'),
+    start_date: val('bi-start'),
+    deadline_date: val('bi-deadline'),
+    end_date: val('bi-end'),
+    conversion_limit_days: val('bi-cv-limit'),
+    super_reload_count: val('bi-reload'),
+    media_listing: ctx.root.querySelector<HTMLInputElement>('#bi-media-on')?.checked ?? false,
+    measurement_method: val('bi-method'),
   }
 }
 
@@ -298,6 +322,8 @@ function renderSummary(ctx: WireCtx): void {
         ['開始', or(val('bi-start'))],
         ['締切', or(val('bi-deadline'))],
         ['終了', or(val('bi-end'))],
+        ['コンバージョン期限', v.conversion_limit_days === undefined || v.conversion_limit_days === '' ? UNSET : `${v.conversion_limit_days}日`],
+        ['スーパーリロード回数', or(val('bi-reload'))],
       ],
     },
     {
@@ -363,7 +389,6 @@ async function save(ctx: WireCtx, submit: HTMLButtonElement): Promise<void> {
     submit.dataset['busy'] = 'false'
     submit.style.opacity = '1'
   }
-  void AD_STATUS_LABELS // ステータス表示は将来ヘッダーで使う
 }
 
 // ── 小さなDOMヘルパー ────────────────────────────────────
@@ -421,13 +446,12 @@ function appendHint(f: HTMLElement): HTMLElement {
   return f
 }
 
-/** 参照デザインにあるがモックAPIに無い項目（保存しない・あとでAPI渡す） */
-function uiField(label: string, input: HTMLElement): HTMLElement {
+/** 記録するだけの項目（配信には使わない）の欄 */
+function recordField(label: string, input: HTMLElement): HTMLElement {
   const f = h('div', 'bi-field')
   const l = h('label', 'bi-label')
   l.textContent = label
   f.append(l, input)
-  f.dataset['biUi'] = 'true'
   return f
 }
 
@@ -441,23 +465,22 @@ function textInput(id: string, value: string, placeholder: string): HTMLInputEle
   return i
 }
 
-function numInput(id: string, value: string, ui = false): HTMLInputElement {
+function numInput(id: string, value: string): HTMLInputElement {
   const i = document.createElement('input')
   i.id = id
   i.type = 'number'
   i.className = 'bi-input'
   i.value = value
   i.min = '0'
-  if (ui) i.dataset['biUi'] = 'true'
   return i
 }
 
-function dateInput(id: string): HTMLInputElement {
+function dateInput(id: string, value: string): HTMLInputElement {
   const i = document.createElement('input')
   i.id = id
   i.type = 'date'
   i.className = 'bi-input'
-  i.dataset['biUi'] = 'true'
+  i.value = value
   return i
 }
 
@@ -472,7 +495,7 @@ function textArea(id: string, value: string, placeholder: string): HTMLTextAreaE
 }
 
 interface Opt { value: string; label: string }
-function selectInput(id: string, options: readonly Opt[], selected: string, ui = false): HTMLSelectElement {
+function selectInput(id: string, options: readonly Opt[], selected: string): HTMLSelectElement {
   const s = document.createElement('select')
   s.id = id
   s.className = 'bi-input bi-select'
@@ -483,16 +506,15 @@ function selectInput(id: string, options: readonly Opt[], selected: string, ui =
     if (o.value === selected) opt.selected = true
     s.append(opt)
   }
-  if (ui) s.dataset['biUi'] = 'true'
   return s
 }
 
-function toggleInput(id: string): HTMLElement {
+function toggleInput(id: string, checked: boolean): HTMLElement {
   const wrap = h('label', 'bi-toggle')
   const input = document.createElement('input')
   input.id = id
   input.type = 'checkbox'
-  input.dataset['biUi'] = 'true'
+  input.checked = checked
   const track = h('span', 'bi-toggle-track')
   wrap.append(input, track)
   return wrap
@@ -566,6 +588,7 @@ function injectStyles(): void {
     .bi-input { width:100%; box-sizing:border-box; padding:9px 12px; font-size:13.5px; color:var(--sb-c-1a2233, #1A2233);
       border:1px solid #d6dae1; border-radius:8px; background:var(--sb-c-ffffff, #FFFFFF); outline:none; transition:border-color .12s,box-shadow .12s; font-family:inherit; }
     .bi-input:focus { border-color:var(--sb-accent, #0091FF); box-shadow:0 0 0 3px rgba(0,145,255,.12); }
+    .bi-input:disabled { background:var(--sb-c-f5f7fa, #F5F7FA); color:var(--sb-c-5b6577, #5B6577); cursor:not-allowed; }
     .bi-input:read-only { background:var(--sb-c-f5f7fa, #F5F7FA); color:var(--sb-c-5b6577, #5B6577); }
     .bi-textarea { resize:vertical; min-height:64px; }
     .bi-select { appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238a94a6' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 12px center; padding-right:32px; cursor:pointer; }

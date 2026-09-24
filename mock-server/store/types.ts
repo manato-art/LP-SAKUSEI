@@ -136,10 +136,31 @@ export interface AbTest {
    * ヒートマップの背景に実LPを敷くためだけに使う。クエリ・ハッシュは含めない。
    */
   external_url?: string
+  /**
+   * 基本情報「その他の項目」「トラッキング項目」「メディア」の、**記録するだけ**の項目（2026-09-24）。
+   * どれも配信（出す・止める・出し分け）には使っていない。項目が無い古いデータは未設定として読む。
+   */
+  /** 開始（YYYY-MM-DD・JSTの日付）。null＝未設定 */
+  start_date?: string | null
+  /** 締切（YYYY-MM-DD） */
+  deadline_date?: string | null
+  /** 終了（YYYY-MM-DD） */
+  end_date?: string | null
+  /** コンバージョン期限（日）。null＝未設定 */
+  conversion_limit_days?: number | null
+  /** スーパーリロード回数。null＝未設定 */
+  super_reload_count?: number | null
+  /** メディア掲載（する / しない） */
+  media_listing?: boolean
+  /** 成果測定方法（none＝無効／バリデーションなし・strict＝厳格モード） */
+  measurement_method?: MeasurementMethod
   created_at: number
   updated_at: number
   creator_member_id: number
 }
+
+/** 基本情報「成果測定方法」の値 */
+export type MeasurementMethod = 'none' | 'strict'
 
 export interface Article {
   id: number

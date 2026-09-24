@@ -77,6 +77,16 @@ export function serializeAbTest(state: State, abTest: AbTest): Record<string, un
     meta_object_id: abTest.meta_object_id ?? null,
     // 計測タグが知らせてきた外部LPの所在。どのLPを測っているかを画面で確認できるようにする。
     external_url: abTest.external_url ?? null,
+    // タブ表示名。返していなかったため、基本情報を開き直して保存すると空で上書きしていた（2026-09-24）
+    page_title: abTest.page_title ?? '',
+    // 基本情報の「記録するだけ」の項目（配信には使わない・項目が無い古いデータは未設定）
+    start_date: abTest.start_date ?? null,
+    deadline_date: abTest.deadline_date ?? null,
+    end_date: abTest.end_date ?? null,
+    conversion_limit_days: abTest.conversion_limit_days ?? null,
+    super_reload_count: abTest.super_reload_count ?? null,
+    media_listing: abTest.media_listing ?? false,
+    measurement_method: abTest.measurement_method ?? 'none',
   }
 }
 

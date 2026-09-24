@@ -25,6 +25,28 @@ export interface AbTestForEdit {
   media: { id: number; name: string } | null
   /** domain＝配信URLに使うドメイン（'' ＝未設定 / 'system' ＝このシステムのドメイン / ホスト名） */
   folder: { uid: string; name: string; domain?: string } | null
+  /**
+   * 以下は**記録するだけ**の項目（配信には使わない・2026-09-24）。
+   * 古いサーバーの応答には無いことがあるので省略可。
+   */
+  start_date?: string | null
+  deadline_date?: string | null
+  end_date?: string | null
+  conversion_limit_days?: number | null
+  super_reload_count?: number | null
+  media_listing?: boolean
+  measurement_method?: string
+}
+
+/** 記録するだけの項目の入力値（日付は YYYY-MM-DD・空は未設定） */
+export interface RecordFormValues {
+  start_date: string
+  deadline_date: string
+  end_date: string
+  conversion_limit_days: string
+  super_reload_count: string
+  media_listing: boolean
+  measurement_method: string
 }
 
 /**
@@ -47,6 +69,14 @@ export interface BasicInfoValues {
   gender?: string
   age_from?: string
   age_to?: string
+  /** 記録するだけの項目。未指定（undefined）なら送らない＝保存済みの値のまま */
+  start_date?: string
+  deadline_date?: string
+  end_date?: string
+  conversion_limit_days?: string
+  super_reload_count?: string
+  media_listing?: boolean
+  measurement_method?: string
 }
 
 export type BasicInfoValidation = { ok: true } | { ok: false; message: string }
@@ -91,6 +121,39 @@ export function toFormValues(abTest: AbTestForEdit): BasicInfoValues {
   }
 }
 
+/** 記録するだけの項目を、入力欄の初期値にする（未設定は空欄） */
+export function toRecordFormValues(abTest: AbTestForEdit): RecordFormValues {
+  const count = (n: number | null | undefined): string => (n === null || n === undefined ? '' : String(n))
+  return {
+    start_date: abTest.start_date ?? '',
+    deadline_date: abTest.deadline_date ?? '',
+    end_date: abTest.end_date ?? '',
+    conversion_limit_days: count(abTest.conversion_limit_days),
+    super_reload_count: count(abTest.super_reload_count),
+    media_listing: abTest.media_listing ?? false,
+    measurement_method: abTest.measurement_method ?? 'none',
+  }
+}
+
+/** 記録するだけの項目のうち、入力されたもの（undefined でないもの）だけをリクエストの形にする */
+function recordOnlyPayload(input: BasicInfoValues): Record<string, unknown> {
+  const dateOrNull = (raw: string): string | null => (raw.trim() === '' ? null : raw.trim())
+  const countOrNull = (raw: string): number | null => (raw.trim() === '' ? null : Number(raw.trim()))
+  return {
+    ...(input.start_date === undefined ? {} : { start_date: dateOrNull(input.start_date) }),
+    ...(input.deadline_date === undefined ? {} : { deadline_date: dateOrNull(input.deadline_date) }),
+    ...(input.end_date === undefined ? {} : { end_date: dateOrNull(input.end_date) }),
+    ...(input.conversion_limit_days === undefined
+      ? {}
+      : { conversion_limit_days: countOrNull(input.conversion_limit_days) }),
+    ...(input.super_reload_count === undefined
+      ? {}
+      : { super_reload_count: countOrNull(input.super_reload_count) }),
+    ...(input.media_listing === undefined ? {} : { media_listing: input.media_listing }),
+    ...(input.measurement_method === undefined ? {} : { measurement_method: input.measurement_method }),
+  }
+}
+
 /**
  * 更新リクエストの本体。
  * 打ち込める欄は入力値から、選択系は読み込んだレコードの値から組む
@@ -120,7 +183,16 @@ export function buildUpdatePayload(
     gender: input.gender !== undefined ? (input.gender === '' ? null : input.gender) : abTest.gender,
     age_from: numOrNull(input.age_from, abTest.age_from),
     age_to: numOrNull(input.age_to, abTest.age_to),
+    // 動作タイプ（editor_version）は作成後に変えられないので送らない
+    ...recordOnlyPayload(input),
   }
+}
+
+/** 空欄か、0以上の整数か */
+function isEmptyOrCount(raw: string | undefined): boolean {
+  if (raw === undefined || raw.trim() === '') return true
+  const n = Number(raw.trim())
+  return Number.isInteger(n) && n >= 0
 }
 
 export function validateBasicInfo(input: BasicInfoValues): BasicInfoValidation {
@@ -133,6 +205,12 @@ export function validateBasicInfo(input: BasicInfoValues): BasicInfoValidation {
   const price = raw === '' ? 0 : Number(raw)
   if (!Number.isFinite(price) || price < 0) {
     return { ok: false, message: 'コンバージョン単価は0以上の数値で入力してください。' }
+  }
+  if (!isEmptyOrCount(input.conversion_limit_days)) {
+    return { ok: false, message: 'コンバージョン期限は0以上の整数で入力してください。' }
+  }
+  if (!isEmptyOrCount(input.super_reload_count)) {
+    return { ok: false, message: 'スーパーリロード回数は0以上の整数で入力してください。' }
   }
   return { ok: true }
 }
