@@ -814,11 +814,16 @@ describe('スマホの2段組み・3段組み画面', () => {
 describe('スマホの設定画面（チームメンバー）', () => {
   const src = readFileSync('src/app/pages/account-settings.ts', 'utf8')
 
-  it('チームメンバーは共通の表部品を使う（手組みgridだと1列77pxでメールが3行に割れる）', () => {
-    expect(src).toContain("from './data-ui.ts'")
-    expect(src).toContain('table(')
+  it('チームメンバーは共通の表の目印を使う（手組みgridだと1列77pxでメールが3行に割れる）', () => {
+    // 権限の選択や削除ボタンを行に置くため、表は team-members.ts で組む。
+    // スマホで「1行＝1カード（列名 値）」に組み替わる共通の目印と、セルごとの列名は必ず付ける
+    const members = readFileSync('src/app/pages/team-members.ts', 'utf8')
+    expect(src).toContain("from './team-members.ts'")
+    expect(members).toContain('class: DATA_TABLE_CLASS')
+    expect(members).toContain('class: DATA_ROW_CLASS')
+    expect(members).toContain("dataset['label']")
     // 手組みの3列gridに戻さない
-    expect(src).not.toContain('grid-template-columns:1fr 1fr 100px')
+    expect(members).not.toContain('grid-template-columns:1fr 1fr 100px')
   })
 
   it('画面の枠はスマホ用の目印を持つ（左右24〜28pxの余白を外すため）', () => {
