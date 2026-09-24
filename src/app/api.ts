@@ -731,10 +731,17 @@ export const api = {
   deleteAbTest: (uid: string) => request<void>('DELETE', `/ab_tests/${uid}`),
   /** 通知設定取得 */
   notificationSettings: (scope: string) =>
-    request<{ settings: NotificationSetting | null }>('GET', `/settings/internal_notifications/${scope}`),
+    request<{ settings: NotificationSetting | null; runs?: NotificationRuns }>(
+      'GET',
+      `/settings/internal_notifications/${scope}`,
+    ),
   /** 通知設定更新 */
   updateNotificationSettings: (scope: string, patch: Partial<NotificationSetting>) =>
-    request<{ settings: NotificationSetting | null }>('PUT', `/settings/internal_notifications/${scope}`, patch),
+    request<{ settings: NotificationSetting | null; runs?: NotificationRuns }>(
+      'PUT',
+      `/settings/internal_notifications/${scope}`,
+      patch,
+    ),
   /** 現在のユーザー */
   currentUser: () => request<{ user: User | null }>('GET', '/users/me'),
   /** ユーザー更新 */
@@ -1017,9 +1024,24 @@ export interface User {
 /** 通知設定 */
 export interface NotificationSetting {
   scope: string
+  /** 以前のスイッチ（保存されるだけで何もしていなかった・画面には出さない） */
   cv_notify: boolean
   daily_report: boolean
   ad_alert: boolean
+  /** CV発生通知（15分に1通までにまとめて送る・2026-09-24〜）。既定オフ */
+  cv_digest?: boolean
+  /** デイリーレポート（毎朝9時に前日ぶん・2026-09-24〜）。既定オフ */
+  daily_digest?: boolean
+}
+
+/** CV発生通知・デイリーレポートを送った記録 */
+export interface NotificationRuns {
+  cv_max_id: number | null
+  /** UNIX秒 */
+  cv_last_sent_at: number | null
+  cv_last_error: string | null
+  daily_sent_for: string | null
+  daily_last_error: string | null
 }
 
 /** タスク */

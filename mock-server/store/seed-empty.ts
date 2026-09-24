@@ -131,9 +131,16 @@ export function createEmptyState(): State {
     },
     alertSentSlots: [],
     notificationSettings: [
-      { scope: 'member', cv_notify: true, daily_report: false, ad_alert: true },
-      { scope: 'team', cv_notify: true, daily_report: true, ad_alert: true },
+      { scope: 'member', cv_notify: true, daily_report: false, ad_alert: true, cv_digest: false, daily_digest: false },
+      { scope: 'team', cv_notify: true, daily_report: true, ad_alert: true, cv_digest: false, daily_digest: false },
     ],
+    notificationRuns: {
+      cv_max_id: null,
+      cv_last_sent_at: null,
+      cv_last_error: null,
+      daily_sent_for: null,
+      daily_last_error: null,
+    },
 
     // ── ベンダー側カタログ ──
     permissions: PERMISSION_CATALOG,

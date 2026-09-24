@@ -13,6 +13,7 @@ import { sendNotification } from './notify.ts'
 import { runLinkChecks } from './link-check-runner.ts'
 import { runScheduledSwitches } from './scheduled-switch-runner.ts'
 import { runMetaAutoImport } from './meta-auto-import.ts'
+import { runNotificationDigests } from './notify-runner.ts'
 import { buildTaskReport } from './task-report.ts'
 import { normalizeReportItems } from './report-items.ts'
 import { getState, setState } from './store/store.ts'
@@ -153,6 +154,10 @@ export function startTaskRunner(): void {
     })
     void runScheduledSwitches().catch((error: unknown) => {
       console.error('[task-runner] 配信の切り替え予約が失敗しました', error)
+    })
+    // 通知設定の CV発生通知（15分に1通まで）・デイリーレポート（毎朝9時）
+    void runNotificationDigests().catch((error: unknown) => {
+      console.error('[task-runner] CV発生通知・デイリーレポートの見張りが失敗しました', error)
     })
     // Meta の配信金額の自動取り込み（1時間に1回・ページごとの失敗は取り込み記録に残る）
     void runMetaAutoImport().catch((error: unknown) => {

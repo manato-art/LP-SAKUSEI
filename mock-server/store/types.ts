@@ -860,9 +860,33 @@ export interface User {
 
 export interface NotificationSetting {
   scope: 'member' | 'team'
+  /** 以前のスイッチ（保存されるだけで何もしていなかった）。値は残すが読まない（2026-09-24） */
   cv_notify: boolean
+  /** 以前のスイッチ（同上） */
   daily_report: boolean
+  /** 以前のスイッチ（同上）。広告の異常は「異常のお知らせ」（alertSetting）に一本化した */
   ad_alert: boolean
+  /**
+   * CV発生通知（2026-09-24 から実際に送る・notify-digest.ts）。既定オフ。
+   * 以前の cv_notify は既定で入っていたが何もしていなかったので引き継がない（急に送り始めて LINE の枠を使わない）。
+   */
+  cv_digest?: boolean
+  /** デイリーレポート（毎朝9時に前日ぶん・2026-09-24 から）。既定オフ */
+  daily_digest?: boolean
+}
+
+/** CV発生通知・デイリーレポートの送った記録（notify-runner.ts） */
+export interface NotificationRuns {
+  /** ここまでの id の CV は知らせた（または知らせない扱いにした）。null ＝まだ動いていない */
+  cv_max_id: number | null
+  /** 最後に CV発生通知を送った時刻（UNIX秒） */
+  cv_last_sent_at: number | null
+  /** 最後の CV発生通知が送れなかった理由（送れたら null） */
+  cv_last_error: string | null
+  /** デイリーレポートを送った日（JST・YYYY-MM-DD） */
+  daily_sent_for: string | null
+  /** 最後のデイリーレポートが送れなかった理由（送れたら null） */
+  daily_last_error: string | null
 }
 
 /** 異常のお知らせの設定 */
@@ -1015,6 +1039,8 @@ export interface State {
   /** 訪問者の目印ごとの「見た・押した」記録（CVをVersion別に数えるため。1日分だけ持つ・store/visitor-touches.ts） */
   visitorTouches: readonly VisitorTouch[]
   notificationSettings: readonly NotificationSetting[]
+  /** CV発生通知・デイリーレポートの送った記録（2026-09-24） */
+  notificationRuns: NotificationRuns
   /**
    * 異常のお知らせ（このシステムだけの機能）。
    * 条件に当たったらSlack/チャットワーク/LINEへ1通送る。
