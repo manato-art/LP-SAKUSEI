@@ -26,6 +26,7 @@ import { newUid } from './nocode/templates/kit.ts'
 import { int, items, pick, str, type ItemData, type TemplateData } from './nocode/templates/types.ts'
 import { placeGuideX, placeLeft, snapPlace, snapThreshold, widthGuideXs, widthSnaps } from './drag-math.ts'
 import { contentBoxOf, createSelectionLayer, type SelectionHandle, type SelectionMove, type SnapPoint } from './selection-layer.ts'
+import type { AlignTarget } from './align-menu.ts'
 import { openSizePopover } from './size-popover.ts'
 import { canvasEditTarget } from './widget-canvas-events.ts'
 import { FONT } from './widget-editor-theme.ts'
@@ -58,8 +59,8 @@ export interface BuilderSession {
   readonly onCanvasClick: (target: EventTarget | null) => void
   /** 左の道具（画像の操作パネル・リンクの吹き出し・並んだ部品の操作）を効かせてよい要素か＝見本の部品の中 */
   readonly toolScope: (el: Element) => boolean
-  /** 上のツールバーの「配置」。選んだ部品の位置（見出し・文章は文字の寄せ）を 左→中央→右 と回す。受け持ったら true */
-  readonly onAlignButton: () => boolean
+  /** 上のツールバーの「配置 ⌄」で変える、選んだ部品の置く位置・文字の寄せ（受け持たないときは null） */
+  readonly alignTarget: () => AlignTarget | null
   /** 上のツールバーの「サイズ」。選んだ部品の幅と置く位置の小窓を出す。受け持ったら true */
   readonly onSizeButton: (anchor: HTMLElement) => boolean
   /** 登録の名前の初期値（「組み立てたWidget（最初の見出し）」） */
@@ -627,24 +628,23 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
   // 画像を掴んだときにブラウザが画像そのものを運ぼうとするのを止める（部品の位置は上で動かす）
   contentDiv.addEventListener('dragstart', (event) => event.preventDefault())
 
-  /** 上のツールバーの「配置」（選んだ部品を 左→中央→右。見出し・文章は文字の寄せ）。見本の中は受け持たない */
-  const onAlignButton = (): boolean => {
+  /**
+   * 上のツールバーの「配置 ⌄」で変えるもの（見出し・文章は文字の寄せ、ほかは置く位置）。
+   * 見本の中・何も選んでいない・幅の無い部品（余白）は null＝選んだ文字の寄せ
+   */
+  const alignTarget = (): AlignTarget | null => {
     const blockIndex = form.selectedBlock()
-    if (blockIndex === null) return false
+    if (blockIndex === null) return null
     const screenIndex = form.activeScreen()
     const block = blockAt(screenIndex, blockIndex)
-    if (block === undefined) return false
+    if (block === undefined) return null
     const type = str(block, 'type')
-    if (type === 'sample') return false
     const path = pathOf(screenIndex, blockIndex)
-    const cycle = <T extends string>(all: readonly T[], now: T): T => all[(all.indexOf(now) + 1) % all.length] ?? now
     if (type === 'heading' || type === 'text') {
-      commitField(path, 'align', cycle(ALIGNS, pick(block, 'align', ALIGNS, 'left')))
-      return true
+      return { kind: 'text', value: pick(block, 'align', ALIGNS, 'left'), set: (v) => commitField(path, 'align', v) }
     }
-    if (widthKeyOf(type) === null) return true
-    commitField(path, 'place', cycle(PLACES, placeOf2(block)))
-    return true
+    if (type === 'sample' || widthKeyOf(type) === null) return null
+    return { kind: 'place', value: placeOf2(block), set: (v) => commitField(path, 'place', v) }
   }
 
   /** 上のツールバーの「サイズ」（選んだ部品の幅と置く位置の小窓）。見本の中・何も選んでいないときは受け持たない */
@@ -704,7 +704,7 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
     },
     onCanvasClick,
     toolScope,
-    onAlignButton,
+    alignTarget,
     onSizeButton,
     suggestName: () => suggestBuilderName(data),
     rekey: () => {

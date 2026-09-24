@@ -12,11 +12,14 @@ import { darkRule, parseDeclarations } from '../shared/dark-css.ts'
 
 const OVERRIDE_ID = 'sb-dark-runtime'
 
-/** その `<style>` を読む対象にするか（自分が作ったものと、外部CSSは除く） */
+/**
+ * その `<style>` を読む対象にするか（自分が作ったもの・外部CSS・`data-dark-runtime="skip"` を付けたものは除く。
+ * skip は、周りがインラインstyleでダークにならない画面の中の部品が、そこだけ黒く浮かないように付ける）
+ */
 function isTarget(sheet: CSSStyleSheet): boolean {
   const node = sheet.ownerNode
   if (!(node instanceof HTMLStyleElement)) return false
-  return node.id !== OVERRIDE_ID
+  return node.id !== OVERRIDE_ID && node.dataset['darkRuntime'] !== 'skip'
 }
 
 /** ルール（入れ子の @media も）から上書きを作る */

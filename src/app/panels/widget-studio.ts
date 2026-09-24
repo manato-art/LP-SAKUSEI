@@ -118,7 +118,7 @@ export function openWidgetStudio(quill: Quill, source: StudioSource): void {
   const { pane: leftPane, contentDiv, editorBody, setPreviewCss } = buildVisualEditor(target, {
     toolScope: (el) => session?.toolScope(el) ?? false,
     onClick: (clicked) => session?.onCanvasClick(clicked),
-    onAlignButton: () => session?.onAlignButton() ?? false,
+    alignTarget: () => session?.alignTarget() ?? null,
     onSizeButton: (anchor) => session?.onSizeButton(anchor) ?? false,
   })
   leftPane.dataset['widgetPane'] = 'visual'

@@ -18,6 +18,8 @@ import {
 import { openColorPicker } from './toolbar/color-picker.ts'
 import { attachItemToolbar } from './nocode/item-toolbar.ts'
 import { openLinkBubble } from './widget-link-bubble.ts'
+import { closeAlignMenu, openAlignMenu, type AlignTarget } from './align-menu.ts'
+import { ensureWidgetToolbarCss } from './widget-toolbar-css.ts'
 import {
   svgToolAlign,
   svgToolBgColor,
@@ -44,8 +46,8 @@ export interface VisualEditorOptions {
   readonly toolScope?: (el: Element) => boolean
   /** 見たまま画面を（動作確認の Ctrl/⌘ なしで）押したとき。部品を選ぶのに使う */
   readonly onClick?: (target: EventTarget | null) => void
-  /** ツールバーの「配置」。選んだ部品の位置を変えたら true（そのときは文字の寄せをしない） */
-  readonly onAlignButton?: () => boolean
+  /** ツールバーの「配置 ⌄」で変える、選んだ部品の置く位置・文字の寄せ。null なら選んだ文字の寄せ */
+  readonly alignTarget?: () => AlignTarget | null
   /** ツールバーの「サイズ」。選んだ部品の幅と位置の小窓を出したら true（そのときは画像の操作パネルを出さない） */
   readonly onSizeButton?: (anchor: HTMLElement) => boolean
 }
@@ -67,35 +69,30 @@ export function buildVisualEditor(
   // 画面いっぱいになったので、左（見え方）が残り全部を取る。620pxのプレビューは中央に置かれる
   pane.style.cssText = `flex:1 1 auto;display:flex;flex-direction:column;min-width:560px`
 
-  // ── ツールバー（本番実測: 1行 flex-wrap, height:64px, 20項目, 1px×16pxセパレータ） ──
+  // ── ツールバー（2026-09-24 本人が見せたデザイン: 角の丸い白い帯。見た目は widget-toolbar-css.ts） ──
+  ensureWidgetToolbarCss()
   const toolbar = document.createElement('div')
   toolbar.dataset['widgetToolbar'] = 'true'
-  toolbar.style.cssText =
-    `background:#fff;border-bottom:1px solid #ddd;flex-shrink:0;height:64px;box-sizing:border-box;` +
-    `display:flex;flex-wrap:wrap;gap:2px;padding:6px 10px;align-items:center`
+  toolbar.className = 'wtb'
 
   /** contentDiv への参照（ツールバーからの書式操作に使用） */
   let contentRef: HTMLElement | null = null
   // 指示154: ツールバーの「画像サイズ」で対象にする、直近クリックした画像/動画。
   let lastMedia: HTMLElement | null = null
 
-  /** ツールバーアイコンボタンを生成 */
+  /** ツールバーアイコンボタンを生成（variant: round＝丸い灰色の地・menu＝下向きの印つきで少し広い） */
   const mkBtn = (
     innerHtml: string,
     title: string,
     action?: (btn: HTMLButtonElement) => void,
-    wide?: boolean,
+    variant?: 'round' | 'menu',
   ): HTMLButtonElement => {
     const btn = document.createElement('button')
     btn.type = 'button'
     btn.innerHTML = innerHtml
     btn.title = title
-    btn.style.cssText =
-      `border:none;background:none;padding:4px;color:#555;cursor:pointer;` +
-      `display:flex;align-items:center;justify-content:center;gap:2px;` +
-      `min-width:${wide === true ? '80' : '28'}px;height:28px;border-radius:2px`
-    btn.addEventListener('mouseenter', () => { btn.style.background = '#f0f0f0' })
-    btn.addEventListener('mouseleave', () => { btn.style.background = 'none' })
+    btn.setAttribute('aria-label', title)
+    btn.className = variant === undefined ? 'wtb__btn' : `wtb__btn wtb__btn--${variant}`
     btn.addEventListener('mousedown', (e) => { e.preventDefault() }) // 選択を維持
     if (action !== undefined) {
       btn.addEventListener('click', () => { action(btn); syncContentToCode() })
@@ -121,10 +118,10 @@ export function buildVisualEditor(
     notifyCanvasEdit(contentRef, anchor)
   }
 
-  /** ツールバーセパレータ（本番実測: 1px × 16px） */
+  /** ツールバーの区切りの縦線 */
   const mkSep = (): HTMLElement => {
     const s = document.createElement('div')
-    s.style.cssText = 'width:1px;height:16px;background:#ddd;margin:0 4px;flex-shrink:0'
+    s.className = 'wtb__sep'
     return s
   }
 
@@ -132,10 +129,16 @@ export function buildVisualEditor(
   const mkSizeNum = (value: string): HTMLElement => {
     const el = document.createElement('span')
     el.textContent = value
-    el.style.cssText =
-      `display:flex;align-items:center;justify-content:center;min-width:28px;height:24px;` +
-      `border:1px solid #ddd;border-radius:2px;font:12px/1 ${FONT};color:#555;padding:0 4px`
+    el.className = 'wtb__size-num'
     return el
+  }
+
+  /** 文字の大きさ −／数字／+ を1つの枠にまとめる */
+  const mkSizeGroup = (...children: HTMLElement[]): HTMLElement => {
+    const group = document.createElement('div')
+    group.className = 'wtb__size'
+    group.append(...children)
+    return group
   }
 
   /** execCommand ラッパー */
@@ -224,11 +227,9 @@ export function buildVisualEditor(
     trigger.type = 'button'
     trigger.title = 'フォント'
     trigger.innerHTML =
-      `<span style="font:12px/1 ${FONT};white-space:nowrap">フォント</span>` +
-      `<svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-left:4px"><path d="M2 3l2 2 2-2"/></svg>`
-    trigger.style.cssText =
-      `height:28px;border:1px solid #ddd;border-radius:2px;background:#fff;color:#555;` +
-      `padding:0 8px;cursor:pointer;display:inline-flex;align-items:center`
+      `<span>フォント</span>` +
+      `<svg width="10" height="10" viewBox="0 0 8 8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3l2 2 2-2"/></svg>`
+    trigger.className = 'wtb__font'
     trigger.addEventListener('mousedown', (e) => { e.preventDefault(); saveSelection() })
     trigger.addEventListener('click', () => {
       if (document.querySelector('[data-widget-font-menu]') !== null) { closeFontMenu(); return }
@@ -318,20 +319,16 @@ export function buildVisualEditor(
     setTimeout(() => document.addEventListener('mousedown', onOutside, true), 0)
   }
 
-  // 整列サイクル
-  const ALIGNS = ['left', 'center', 'right', 'justifyFull'] as const
-  let alignIdx = 0
-
   // サイズ表示
   const sizeNum = mkSizeNum('19')
 
   // ツールバーアイテム配置（本番の順序を再現 + 実動作接続）
   toolbar.append(
-    mkBtn(svgToolUndo(), '元に戻す', () => exec('undo')),
-    mkBtn(svgToolRedo(), 'やり直す', () => exec('redo')),
+    mkBtn(svgToolUndo(), '元に戻す', () => exec('undo'), 'round'),
+    mkBtn(svgToolRedo(), 'やり直す', () => exec('redo'), 'round'),
     mkSep(),
     mkFontSelect(),
-    mkSep(),
+    mkSizeGroup(
     mkBtn(svgToolSizeMinus(), 'サイズ−', () => {
       const cur = parseInt(sizeNum.textContent ?? '19', 10)
       const next = Math.max(8, cur - 1)
@@ -358,17 +355,27 @@ export function buildVisualEditor(
       }
       sizeNum.textContent = String(next)
     }),
+    ),
     mkSep(),
     mkBtn(svgToolBold(), '太字', () => exec('bold')),
     mkBtn(svgToolUnderline(), '下線', () => exec('underline')),
     mkBtn(svgToolStrikethrough(), '取り消し線', () => exec('strikeThrough')),
-    mkBtn(svgToolAlign(), '配置（選んだ部品は 左→中央→右）', () => {
-      // 部品を選んでいれば、その部品の位置（見出し・文章は文字の寄せ）を回す
-      if (options.onAlignButton?.() === true) return
-      alignIdx = (alignIdx + 1) % ALIGNS.length
-      const a = ALIGNS[alignIdx] ?? 'left'
-      exec(`justify${a.charAt(0).toUpperCase()}${a.slice(1)}`)
-    }),
+    mkBtn(
+      svgToolAlign(),
+      '配置（選んだ部品は置く位置・文字は寄せ）',
+      (btn) => {
+        if (document.querySelector('[data-align-menu]') !== null) {
+          closeAlignMenu()
+          return
+        }
+        // 部品を選んでいれば、その部品の置く位置（見出し・文章は文字の寄せ）。選んでいなければ選んだ文字の寄せ
+        openAlignMenu(btn, options.alignTarget?.() ?? null, (value) => {
+          exec(`justify${value.charAt(0).toUpperCase()}${value.slice(1)}`)
+          syncContentToCode()
+        })
+      },
+      'menu',
+    ),
     mkBtn(svgToolItalic(), '斜体', () => exec('italic')),
     mkBtn(svgToolTextColor(), '文字色', (btn) => pickColor(btn, 'foreColor', '文字色')),
     mkBtn(svgToolBgColor(), '背景色', (btn) => pickColor(btn, 'hiliteColor', '背景色')),
@@ -507,7 +514,7 @@ export function buildVisualEditor(
   const note = document.createElement('span')
   note.dataset['widgetNote'] = 'true'
   note.textContent = 'ボタンの動作確認は Ctrl（Windows）/ ⌘（Mac）＋クリック'
-  note.style.cssText = `margin-left:auto;color:#999;font:11px/1.4 ${FONT};white-space:nowrap`
+  note.className = 'wtb__note'
   toolbar.append(note)
 
   // Widget全体の上下の余白は、右の「Widget全体の設定」か左の選択枠の上下の辺で直す（2026-09-24・第3弾で余白の欄は外した）。

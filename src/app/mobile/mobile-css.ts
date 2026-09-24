@@ -199,6 +199,8 @@ export function mobileCss(): string {
     `html body [data-widget-toolbar]{flex-wrap:nowrap !important;overflow-x:auto;scrollbar-width:none}`,
     `html body [data-widget-toolbar]::-webkit-scrollbar{display:none}`,
     `html body [data-widget-toolbar]>*{flex:0 0 auto}`,
+    // PCは角の丸い浮いた帯（widget-toolbar-css.ts）。スマホは画面の端から端まで（左右の余白を作らない）
+    `html body [data-widget-toolbar]{margin:0 !important;border-radius:0 !important;border-width:0 0 1px !important;box-shadow:none !important}`,
     // プレビューは配信と同じ620px。中央寄せ(margin:0 auto)のままだと、狭い画面で左へはみ出した分に
     // 横スクロールで届かない（左側の余白は掴めない）ので、左端から始めて右へ流す
     `html body [data-widget-preview]{margin:0 !important}`,
