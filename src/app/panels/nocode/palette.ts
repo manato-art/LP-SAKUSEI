@@ -2,8 +2,10 @@
  * 左の列の「部品を足す」（2026-09-24 画面の作り直し・本人「ドラッグ&ドロップで追加できるように」。
  * 同日「ここに表示するのは11個＋もっと見る。もっと見るを押したら、同じ左のツールバーのままでサムネ付きで全部表示」）。
  *
- * - ふだん: よく使う11個のタイル＋「もっと見る」。下に「ライブラリの見本から選ぶ」
- * - もっと見る: 同じ場所で、全部の部品を種類ごとにサムネ付きで並べる（型の部品＝まとまった型もここ）。「戻る」でふだんへ
+ * - ふだん: よく使う11個のタイル＋「もっと見る」。その下に「まとまった型」（2列）、いちばん下に「ライブラリの見本から選ぶ」
+ * - もっと見る: 同じ場所で、全部の部品を種類ごとにサムネ付きで並べる。「戻る」でふだんへ
+ * - まとまった型は部品とは別の機能（本人「部品とまとまった型は違う機能として考えている」）。もっと見るには入れず、
+ *   ふだんも、もっと見るを開いているときも、部品の下に別の段で出す
  * - どれも、押すとその画面のいちばん下に入る。つかんで見たまま画面の好きな所へ運ぶと、そこに入る（NC_BLOCK_MIME）
  *   移行先は部品の上に被せて使うので、運んでいる間はそれと分かる目印（NC_HOTSPOT_MIME）も付ける
  */
@@ -33,7 +35,7 @@ export const PALETTE_FIRST: readonly string[] = [
   'divider',
 ]
 
-/** もっと見るの並び（種類ごと）。型の部品は「まとまった型」にまとめて最後 */
+/** もっと見るの並び（種類ごと）。型の部品（まとまった型）は入れない＝別の段 */
 export const PALETTE_GROUPS: readonly { readonly title: string; readonly types: readonly string[] }[] = [
   { title: '文字', types: ['heading', 'text', 'list', 'speech', 'box', 'note', 'point', 'accordion'] },
   { title: '画像・動画', types: ['image', 'imageText', 'gallery', 'video'] },
@@ -122,6 +124,13 @@ export function createPalette(): Palette {
     return b
   }
 
+  /** まとまった型の段（2列）。部品とは別の機能なので、どちらの状態でも部品の下に出す */
+  const templateSection = (field: ScreensField, full: boolean, host: PaletteHost): HTMLElement[] => {
+    const grid = node('div', 'ncf-palette__tpl')
+    for (const type of field.types) if (isTemplateBlock(type.type)) grid.append(tile(type, full, field.blockMax, host))
+    return grid.children.length === 0 ? [] : [node('span', 'ncf-palette__title ncf-palette__title--sub', 'まとまった型'), grid]
+  }
+
   const libraryButton = (field: ScreensField, full: boolean, host: PaletteHost): HTMLElement | null => {
     const sample = field.types.find((t) => t.type === 'sample')
     if (sample === undefined || !host.canPickSample) return null
@@ -156,7 +165,7 @@ export function createPalette(): Palette {
     moreIcon.innerHTML = MORE_ICON
     more.append(moreIcon, node('span', 'ncf-palette__label', 'もっと見る'))
     grid.append(more)
-    wrap.append(head, grid)
+    wrap.append(head, grid, ...templateSection(field, full, host))
     const library = libraryButton(field, full, host)
     if (library !== null) wrap.append(library)
     return wrap
@@ -177,7 +186,7 @@ export function createPalette(): Palette {
     )
     back.innerHTML = `${BACK_ICON}<span>戻る</span>`
     back.title = 'よく使う部品に戻る'
-    const shown = field.types.filter((t) => t.type !== 'sample')
+    const shown = field.types.filter((t) => t.type !== 'sample' && !isTemplateBlock(t.type))
     head.append(back, node('span', 'ncf-palette__title', `すべての部品（${shown.length}）`))
     wrap.append(head)
     if (full) wrap.append(node('p', 'ncf-palette__hint', `部品は1画面に${field.blockMax}こまでです`))
@@ -193,10 +202,9 @@ export function createPalette(): Palette {
       for (const t of types) listed.add(t.type)
       section(group.title, types)
     }
-    section('まとまった型', shown.filter((t) => isTemplateBlock(t.type)))
-    for (const t of shown) if (isTemplateBlock(t.type)) listed.add(t.type)
     // 分類に入っていない部品（これから足した部品）も、どこかには必ず出す
     section('そのほか', shown.filter((t) => !listed.has(t.type)))
+    wrap.append(...templateSection(field, full, host))
     const library = libraryButton(field, full, host)
     if (library !== null) wrap.append(library)
     return wrap
