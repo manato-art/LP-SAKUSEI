@@ -64,8 +64,21 @@ function safeEqual(a: string, b: string): boolean {
 
 /** リクエストが有効な管理セッションCookieを持っているか */
 export function isAdminAuthenticated(req: Request): boolean {
-  const value = parseCookies(req.headers['cookie'])[ADMIN_SESSION_COOKIE]
+  return isAdminCookieHeader(req.headers['cookie'])
+}
+
+/**
+ * Cookie ヘッダーだけで管理画面のログイン済みかを見る。
+ * WebSocket（/cable）の接続は Express を通らないので、生の Cookie ヘッダーで確かめる（2026-09-24）。
+ */
+export function isAdminCookieHeader(header: string | undefined): boolean {
+  const value = parseCookies(header)[ADMIN_SESSION_COOKIE]
   return value !== undefined && safeEqual(value, EXPECTED_TOKEN)
+}
+
+/** テスト用: ログイン済みの Cookie の値（パスワードそのものは出さない） */
+export function adminSessionTokenForTest(): string {
+  return EXPECTED_TOKEN
 }
 
 /** メールゲートを通過済みか（email_gate Cookieの検証） */
