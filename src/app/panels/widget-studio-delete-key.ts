@@ -9,7 +9,9 @@
  * - 打っている途中の Backspace・Delete は文字を消す。空になった部品でもう一度押すと部品ごと消す
  * - ⌘/Ctrl/Alt と一緒のとき（行ごと・単語ごとに消す）はブラウザに任せる。右の欄の入力欄では、ここは動かない
  * 並びの行（左）で押したときは template-form.ts、上のツールバーの消しゴムは widget-visual-editor.ts が消す
+ * ⌘C・⌘V・⌘D・矢印・打ち始め（点検の残り7〜9）は widget-studio-part-ops.ts の割り当てで、ここから呼ぶ
  */
+import { partKeyAction, type PartOps } from './widget-studio-part-ops.ts'
 
 /** 文字の部品の中に入力の印があるとき、その部品が選んでいる部品か・空か */
 export interface CaretInfo {
@@ -36,6 +38,7 @@ export interface CanvasPart {
   readonly el: HTMLElement
   /** 見たまま画面で文字を打てる部品か */
   readonly editable: boolean
+  readonly isHotspot: boolean
   readonly isSelected: boolean
   /** この部品を選ぶ */
   readonly select: () => void
@@ -48,6 +51,10 @@ export interface PartKeysDeps {
   /** 選んでいる部品（無ければ null） */
   readonly selectedPart: () => CanvasPart | null
   readonly remove: () => void
+  /** ⌘C・⌘V・⌘D・↑↓・⌥↑↓・移行先の矢印 */
+  readonly ops: PartOps
+  /** 見たまま画面のほかに、部品のキー操作を受け取る所（左の並び） */
+  readonly extraRoots: readonly HTMLElement[]
 }
 
 export interface PartKeys {
@@ -117,9 +124,48 @@ export function attachPartKeys(deps: PartKeysDeps): PartKeys {
     startTyping(part.el, range !== null && part.el.contains(range.startContainer) ? range : endOf(textHolderOf(part.el)))
   })
 
+  /** ⌘C・⌘V・⌘D・矢印・打ち始め。受け持ったら true（既定の動きは、打ち始めのときだけ止めない＝押した文字が入る） */
+  const partKey = (event: KeyboardEvent, canStartTyping: boolean): boolean => {
+    const target = event.target
+    if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) return false
+    const part = deps.selectedPart()
+    const action = partKeyAction(event, {
+      hasSelected: part !== null,
+      isTyping: editing !== null && caret() !== null,
+      selectedIsHotspot: part?.isHotspot === true,
+      selectedIsText: part?.editable === true,
+    })
+    if (action === 'none') return false
+    if (action === 'startTyping') {
+      if (!canStartTyping || part === null) return false
+      startTyping(part.el, endOf(textHolderOf(part.el)))
+      return true
+    }
+    const step = event.shiftKey ? 10 : 1
+    const done =
+      action === 'copy'
+        ? deps.ops.copy()
+        : action === 'paste'
+          ? deps.ops.paste()
+          : action === 'duplicate'
+            ? deps.ops.duplicate()
+            : action === 'prev' || action === 'next'
+              ? deps.ops.step(action === 'prev' ? -1 : 1)
+              : action === 'moveUp' || action === 'moveDown'
+                ? deps.ops.move(action === 'moveUp' ? -1 : 1)
+                : deps.ops.nudge(event.key === 'ArrowLeft' ? -step : event.key === 'ArrowRight' ? step : 0, event.key === 'ArrowUp' ? -step : event.key === 'ArrowDown' ? step : 0)
+    if (done) {
+      event.preventDefault()
+      event.stopPropagation()
+    }
+    return done
+  }
+  for (const root of deps.extraRoots) root.addEventListener('keydown', (event) => void partKey(event, false), true)
+
   deps.editorBody.addEventListener(
     'keydown',
     (event) => {
+      if (partKey(event, true)) return
       const plain = !event.metaKey && !event.ctrlKey && !event.altKey
       if (event.key === 'Escape' && editing !== null) {
         event.preventDefault()

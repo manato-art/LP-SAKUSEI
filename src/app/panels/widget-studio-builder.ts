@@ -33,6 +33,8 @@ import { FONT } from './widget-editor-theme.ts'
 import { runWidgetScripts } from './widget-run-scripts.ts'
 import { attachBlockDrop } from './widget-studio-drop.ts'
 import { attachPartKeys, type CanvasPart } from './widget-studio-delete-key.ts'
+import { emptyHint, suggestBuilderName } from './widget-studio-helpers.ts'
+import { createPartOps } from './widget-studio-part-ops.ts'
 import { attachUndoKeys, createHistory } from './widget-studio-history.ts'
 import { createToolbarHooks, type ToolbarHooks } from './widget-studio-toolbar.ts'
 import { hotspotHandles, hotspotMove, markEmptyHotspotHosts, type HotspotEditDeps } from './widget-studio-hotspot.ts'
@@ -107,30 +109,8 @@ const REBUILD_DELAY_MS = 600
 /** 改行を入れられる部品（見出し・ボタンの文字は1行） */
 const MULTILINE: ReadonlySet<string> = new Set(['text', 'list', 'imageText'])
 
-/** 登録するときの名前の初期値（「組み立てたWidget（最初の見出し）」。見本1つなら見本の名前） */
-function suggestBuilderName(data: TemplateData): string {
-  const blocks = items(data, 'screens').flatMap((screen) => items(screen, 'blocks'))
-  const only = blocks.length === 1 ? blocks[0] : undefined
-  if (only !== undefined && str(only, 'type') === 'sample' && str(only, 'title').trim() !== '') return str(only, 'title').trim()
-  const firstHeading = blocks.find((block) => str(block, 'type') === 'heading')
-  const hint = str(firstHeading ?? {}, 'text')
-    .replace(/<[^>]*>/g, '')
-    .trim()
-    .slice(0, 20)
-  return hint === '' ? BUILDER_TEMPLATE.name : `${BUILDER_TEMPLATE.name}（${hint}）`
-}
-
-/** 部品が1つも無いときの左の案内 */
-function emptyHint(): HTMLElement {
-  const hint = document.createElement('div')
-  hint.dataset['widgetEmpty'] = 'true'
-  hint.setAttribute('contenteditable', 'false')
-  hint.textContent = '左の「部品を足す」から部品をここへ運ぶか、右の「何から作りますか？」から選ぶと、ここに出ます'
-  hint.style.cssText =
-    `margin:24px 16px;padding:40px 16px;border:1.5px dashed #C9CFD6;border-radius:10px;text-align:center;` +
-    `color:#6B7480;font:14px/1.8 ${FONT};user-select:none`
-  return hint
-}
+/** 1画面に置ける部品の数（「画面と部品」の欄の決まり） */
+const BUILDER_BLOCK_MAX = ((f) => (f?.kind === 'screens' ? f.blockMax : 30))(BUILDER_TEMPLATE.fields.find((f) => f.kind === 'screens'))
 
 export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
   ensureNocodeFormCss()
@@ -709,7 +689,8 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
     const place = el === null ? null : placeOf(el)
     if (el === null || place === null) return null
     const isSelected = place.blockIndex === form.selectedBlock()
-    return { el, editable: isTextEditableBlock(place.block), isSelected, select: () => form.select(place.screenIndex, place.blockIndex) }
+    const select = (): void => form.select(place.screenIndex, place.blockIndex)
+    return { el, editable: isTextEditableBlock(place.block), isHotspot: isHotspot(place.block), isSelected, select }
   }
   const partKeys = attachPartKeys({
     editorBody,
@@ -717,6 +698,17 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
     partOf: (node) => partAt(outermostBlock(node, contentDiv)),
     selectedPart: () => partAt(((i) => (i === null ? null : blockElementAt(data, contentDiv, form.activeScreen(), i)))(form.selectedBlock())),
     remove: () => void removeSelected(),
+    // ⌘C・⌘V・⌘D・↑↓・⌥↑↓・移行先の矢印（左の並びでも）＝widget-studio-part-ops.ts
+    ops: createPartOps({
+      data: () => data,
+      screen: () => form.activeScreen(),
+      selected: () => form.selectedBlock(),
+      load: (next, screenIndex, blockIndex) => form.load(next, screenIndex, blockIndex),
+      select: (screenIndex, blockIndex) => form.select(screenIndex, blockIndex),
+      blockMax: BUILDER_BLOCK_MAX,
+      toast: (message) => toast(message, 'error'),
+    }),
+    extraRoots: deps.partsHost === undefined ? [] : [deps.partsHost.list],
   })
 
   /** 上のツールバーのうち、部品で受け持つもの（widget-studio-toolbar.ts） */

@@ -7,6 +7,7 @@
  *   （被せたボタンを動かしたら、移行先も付いていく。別の部品に被さり直さない）
  * - 移行先そのものを動かしたときは1つだけ動き、動かした先の上の部品に被さり直す
  */
+import { newUid } from './templates/kit.ts'
 import type { ItemData } from './templates/types.ts'
 
 export const HOTSPOT_TYPE = 'hotspot'
@@ -80,6 +81,14 @@ export function groupStep(
   return next >= blocks.length ? null : moveGroupBefore(blocks, index, groupEndOf(blocks, next))
 }
 
+/**
+ * 複製した部品（型の部品は、部品の名前＝uid を付け直す。同じ名前のままだと、CSS がまざって色などが元の部品にも効く）
+ */
+export function freshCopy(item: ItemData): ItemData {
+  const uid = item['uid']
+  return typeof uid === 'string' && /^nc-[a-z0-9]{8}$/.test(uid) ? { ...item, uid: newUid() } : item
+}
+
 /** まとまりを、そのすぐ下に複製する（入りきらなければ null）。index は複製した方の番号 */
 export function duplicateGroup(
   blocks: readonly ItemData[],
@@ -88,7 +97,7 @@ export function duplicateGroup(
 ): { list: readonly ItemData[]; index: number } | null {
   if (blocks[index] === undefined) return null
   const end = groupEndOf(blocks, index)
-  const group = blocks.slice(index, end)
+  const group = blocks.slice(index, end).map(freshCopy)
   if (blocks.length + group.length > max) return null
   return { list: [...blocks.slice(0, end), ...group, ...blocks.slice(end)], index: end }
 }
