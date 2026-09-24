@@ -19,7 +19,8 @@ import { refreshComparePreview, isComparePanelOpen } from '../panels/compare-mod
 import type { EditorContext } from './editor-context.ts'
 import { ACTIVE_CARD_CLASS, injectVersionCardCss } from './editor-styles.ts'
 import { HOOK } from './editor-hooks.ts'
-import { buildFullHtml, isEffectivelyEmptyHtml, restoreHeaderImage, splitHeaderFromHtml } from './editor-html.ts'
+import { showVersionContent, splitHeaderFromHtml } from './editor-html.ts'
+import { saveHtml } from './editor-save.ts'
 import { containWidgetStyles } from '../panels/widget-style-scope.ts'
 
 /**
@@ -230,13 +231,8 @@ export function loadVersion(ctx: EditorContext, uid: string): void {
   // 重い DOM 更新をマクロタスクに回してオーバーレイを先に描画させる
   setTimeout(() => {
     ctx.currentUid = uid
-    // ヘッダー画像とQuill本文を分離
-    const { headerSrc, body } = splitHeaderFromHtml(v.html)
-    ctx.quill.root.innerHTML = body
-    // ヘッダー画像を復元
-    if (headerSrc !== null) {
-      restoreHeaderImage(ctx.root, headerSrc)
-    }
+    // ヘッダー画像と本文をこのVersionのものへ（自動保存は起こさない・戻す履歴も空にする）
+    showVersionContent(ctx, v.html)
     renderVersionList(ctx)
     overlay?.remove()
     // URLバーを新しい Version UID で更新
@@ -642,20 +638,4 @@ export function findUpdateButton(card: HTMLElement): HTMLElement | null {
     if ((button.textContent ?? '').trim().startsWith('更新')) return button
   }
   return null
-}
-export async function saveHtml(ctx: EditorContext): Promise<void> {
-  if (ctx.currentUid === '') return
-  const html = buildFullHtml(ctx)
-  const v = ctx.versions.find((x) => x.uid === ctx.currentUid)
-  // 🚨データ損失防止: いま中身のあるVersionを「空」で上書きしない。
-  const bodyOnly = splitHeaderFromHtml(html).body
-  if (v !== undefined && isEffectivelyEmptyHtml(bodyOnly) && !isEffectivelyEmptyHtml(splitHeaderFromHtml(v.html).body)) {
-    console.warn(
-      '[editor] 空の本文で既存Versionを上書きしようとしたため保存を中止しました:',
-      ctx.currentUid,
-    )
-    return
-  }
-  await api.saveVersion(ctx.currentUid, { html })
-  if (v !== undefined) v.html = html
 }

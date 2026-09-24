@@ -111,6 +111,8 @@ export function serializeVersion(version: Version): Record<string, unknown> {
     date_periods: version.date_periods ?? [],
     html: version.html,
     css: version.css,
+    /** 中身の版（保存がぶつかったかを見るのに使う・古いデータは 0） */
+    content_revision: version.content_revision ?? 0,
     thumbnail_url: version.thumbnail_url,
     created_at: version.created_at,
     updated_at: version.updated_at,

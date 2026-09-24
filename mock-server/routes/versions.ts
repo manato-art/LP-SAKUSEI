@@ -23,6 +23,7 @@ import { serializeVersion, serializeVersions } from '../lib/serialize.ts'
 import { checkRatioTotal, optionalNumber, optionalString, validateRatio } from '../lib/validate.ts'
 import type { State, Version } from '../store/types.ts'
 import { externalizeDataUrls } from '../lib/uploads.ts'
+import { editorSessionOf } from '../lib/editor-session.ts'
 
 export const versionsRouter: Router = Router()
 
@@ -188,21 +189,48 @@ versionsRouter.patch('/versions/:uid/targeting', (req, res) => {
   res.json({ version: serializeVersion(updated) })
 })
 
-/** LP保存（コード編集の保存・§9-1[4]） */
+/**
+ * LP保存（コード編集の保存・§9-1[4]）。
+ *
+ * `base_revision`（エディタが開いたとき・最後に保存したときの中身の版）を添えると、
+ * そのあと別の人・別のタブが中身を保存していたら 409 で止め、相手の中身を返す（2026-09-24）。
+ * 自分のタブ（X-Editor-Session が同じ）で進めたぶんは止めない。添えなければ今までどおり上書きする。
+ */
 versionsRouter.put('/versions/:uid', (req, res) => {
   try {
     // 埋め込み画像（data URL）は別ファイルにしてから保存する（保存データとLPを軽くする・lib/uploads.ts）
     const html = externalizeDataUrls(optionalString(req.body, 'html')).text
     const css = externalizeDataUrls(optionalString(req.body, 'css')).text
     const name = optionalString(req.body, 'name')
+    const writer = editorSessionOf(req)
+    const baseRevision = optionalNumber(req.body, 'base_revision')
     console.log(`[versions] PUT /versions/${req.params.uid} html=${html.length}bytes css=${css.length}bytes name="${name}"`)
+    const current = getState().versions.find((v) => v.uid === req.params.uid)
+    if (
+      current !== undefined &&
+      baseRevision !== undefined &&
+      (html !== '' || css !== '') &&
+      (current.content_revision ?? 0) !== baseRevision &&
+      (current.content_writer ?? '') !== writer
+    ) {
+      res.status(409).json({
+        ...errorEnvelope('conflict', 'ほかの人（または別のタブ）が、このVersionを先に保存しました。'),
+        version: serializeVersion(current),
+      })
+      return
+    }
     let updated: Version | null = null
     setState((state) => {
-      const out = updateVersion(state, req.params.uid, {
-        ...(html !== '' ? { html } : {}),
-        ...(css !== '' ? { css } : {}),
-        ...(name !== '' ? { name } : {}),
-      })
+      const out = updateVersion(
+        state,
+        req.params.uid,
+        {
+          ...(html !== '' ? { html } : {}),
+          ...(css !== '' ? { css } : {}),
+          ...(name !== '' ? { name } : {}),
+        },
+        writer,
+      )
       updated = out.version
       return out.state
     })
@@ -213,8 +241,9 @@ versionsRouter.put('/versions/:uid', (req, res) => {
     }
     res.json({ version: serializeVersion(updated) })
   } catch (err) {
+    // 中の事情は記録にだけ残す（画面へは出さない）
     console.error(`[versions] PUT /versions/${req.params.uid} → 500:`, (err as Error).message, (err as Error).stack)
-    res.status(500).json(errorEnvelope('internal_server_error', `保存エラー: ${(err as Error).message}`))
+    res.status(500).json(errorEnvelope('internal_server_error', '保存できませんでした。時間をおいてもう一度お試しください。'))
   }
 })
 

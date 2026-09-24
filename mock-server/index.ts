@@ -9,6 +9,11 @@ import { createApp } from './app.ts'
 import { MOCK_PORT, PREFIX } from './config.ts'
 import { attachCable } from './ws/cable.ts'
 import { startTaskRunner } from './task-runner.ts'
+import { startArticleHistoryPersistence } from './store/article-history-file.ts'
+import { getState } from './store/store.ts'
+
+// 変更・復元履歴を読み戻し、以後はファイルにも書く（DATA_DIR があるときだけ。デプロイで消えていた）
+startArticleHistoryPersistence(getState())
 
 const app = createApp()
 const server = createServer(app)

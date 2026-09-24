@@ -30,14 +30,15 @@ import {
   masterStyleEditorDecls,
   masterStylePageBackground,
 } from '../master-style.ts'
-import { createAutosave } from './autosave.ts'
+import { createAutosave, type Autosave } from './autosave.ts'
 import { DELIVERY_DOMAIN_UNSET_NOTE, deliveryUrlFor } from './basic-info-form.ts'
 import { isMobileViewport } from '../mobile/viewport.ts'
 import type { EditorContext } from './editor-context.ts'
 import { HOOK } from './editor-hooks.ts'
-import { buildFullHtml } from './editor-html.ts'
-import { findUpdateButton, saveHtml } from './editor-version-list.ts'
-import { jstHhmm } from '../jst.ts'
+import { buildFullHtml, showVersionContent } from './editor-html.ts'
+import { askAgainAboutConflict, saveHtml } from './editor-save.ts'
+import { createSaveStatus } from './editor-save-status.ts'
+import { EDITOR_CHANGE_EVENT } from '../panels/editor-change.ts'
 import {
   injectCardSeamStyles,
   injectHeaderExtrasCss,
@@ -184,24 +185,9 @@ export function mountHeaderExtras(
   const spacer = document.createElement('div')
   spacer.style.flex = '1'
 
-  // ── 保存ステータス（指示97: 実際の保存時刻を表示） ──
-  const saveStatus = document.createElement('span')
-  saveStatus.className = 'sb-header-save-status save-status'
-  saveStatus.setAttribute('data-header-save-status', 'true')
-  const timeSpan = document.createElement('span')
-  timeSpan.style.cssText = 'font-size:10px;color:#B0B0B0'
-  timeSpan.setAttribute('data-save-time', 'true')
-  // 初期表示: 現在時刻を「読み込み時刻」として表示
-  const initialTime = new Date()
-  timeSpan.textContent = formatSaveTime(initialTime)
-  timeSpan.dataset['savedAt'] = String(initialTime.getTime())
-  saveStatus.innerHTML = `<span style="color:#00b341">✓</span><span>保存済み</span>`
-  saveStatus.append(timeSpan)
-  // 1分ごとに相対時刻を更新
-  setInterval(() => {
-    const ts = Number(timeSpan.dataset['savedAt'] ?? '0')
-    if (ts > 0) timeSpan.textContent = formatSaveTime(new Date(ts))
-  }, 60_000)
+  // ── 保存ステータス（未保存・保存中・保存済み・失敗を出す。点検11） ──
+  const saveStatus = createSaveStatus(() => ctx.retrySave?.())
+  ctx.saveStatus = saveStatus
 
   // ── セパレータ ──
   const sep1 = document.createElement('span')
@@ -221,7 +207,11 @@ export function mountHeaderExtras(
       if (win !== null && !win.closed) win.location.href = url
       else window.open(url, '_blank') // フォールバック（ハンドルが取れなかった場合）
     }
-    void saveHtml(ctx).then(go).catch(go)
+    void saveHtml(ctx).then(go).catch((error: Error) => {
+      // 保存できなかったときに古い中身のプレビューを開かない（点検11）
+      win?.close()
+      toast(`保存できなかったので、プレビューを開きませんでした: ${error.message}`, 'error')
+    })
   })
 
   // ── 指示93: 比較するボタン（公開するボタンを置換） ──
@@ -247,7 +237,7 @@ export function mountHeaderExtras(
 
   // パンくず行に追加（既存の breadcrumb + filter の後ろにスペーサー+ボタン群）
   // 指示96: 右端の4アイコン（⋮ / 編集 / 設定 / モニター）は削除
-  breadcrumbRow.append(spacer, saveStatus, sep1, previewBtn, compareBtn)
+  breadcrumbRow.append(spacer, saveStatus.el, sep1, previewBtn, compareBtn)
 }
 /**
  * コンテンツ上部にURLコピーバーを挿入する。
@@ -430,7 +420,18 @@ export function wireSideToolbar(ctx: EditorContext): void {
     if (index === 1) {
       let historyRegistered = false
       icon.addEventListener('click', () => {
-        const panel = mountHistory(ctx.root, ctx.articleUid)
+        const panel = mountHistory(ctx.root, ctx.articleUid, {
+          versionUid: () => ctx.currentUid,
+          currentHtml: () => buildFullHtml(ctx),
+          // 戻した中身はサーバーで保存済み。自動保存を起こさずに入れ、中身の版も合わせる（点検3）
+          apply: (html, version) => {
+            showVersionContent(ctx, html)
+            ctx.versions = ctx.versions.map((v) =>
+              v.uid === version.uid ? { ...v, html, content_revision: version.content_revision } : v,
+            )
+            ctx.saveStatus?.set('saved')
+          },
+        })
         if (panel === null) return
         if (!historyRegistered) {
           panels.register('履歴', panel)
@@ -438,7 +439,7 @@ export function wireSideToolbar(ctx: EditorContext): void {
         }
         panels.toggle('履歴')
         if (panel.classList.contains('_open_x4j8w_84')) {
-          refreshHistory(ctx.root, panel)
+          refreshHistory(panel)
         }
       })
       continue
@@ -515,100 +516,74 @@ export function wireSideToolbar(ctx: EditorContext): void {
   // 本文の自動保存。実物のエディタは自動保存が走る
   // （docs/findings-live-observation.md「エディタは『開くだけで自動保存』が走る」・DOMに _saveAnimation_）。
   // これが無いと、打った内容がサーバーに残らない。
-  /** 「更新」ボタンの色で保存状態を示す: 青=保存済み / オレンジ=未保存あり */
-  function findCurrentUpdateButton(): HTMLElement | null {
-    const cards = ctx.root.querySelectorAll<HTMLElement>('[data-id]')
-    for (const card of cards) {
-      const btn = findUpdateButton(card)
-      if (btn !== null) return btn
-    }
-    return null
-  }
-
-  function markUnsaved(): void {
-    const btn = findCurrentUpdateButton()
-    if (btn === null) return
-    btn.textContent = '未保存'
-    btn.style.transition = 'background-color 0.3s'
-    btn.style.backgroundColor = '#f59e0b'
-    btn.style.color = '#fff'
-  }
-
-  /** 指示83: 保存中スピナー表示 */
-  function markSaving(): void {
-    const btn = findCurrentUpdateButton()
-    if (btn === null) return
-    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="animation:ep-spin .7s linear infinite;vertical-align:middle;margin-right:4px"><circle cx="7" cy="7" r="5.5" stroke="#fff" stroke-width="2" stroke-dasharray="20 12" stroke-linecap="round"/></svg>保存中`
-    btn.style.transition = 'background-color 0.3s'
-    btn.style.backgroundColor = '#f59e0b'
-    btn.style.color = '#fff'
-    // スピナーのkeyframeを1回だけ注入
-    if (document.getElementById('ep-spin-kf') === null) {
-      const s = document.createElement('style')
-      s.id = 'ep-spin-kf'
-      s.textContent = '@keyframes ep-spin{to{transform:rotate(360deg)}}'
-      document.head.append(s)
-    }
-  }
-
-  function markSaved(): void {
-    // ヘッダーの保存時刻を常に更新（ボタンの有無に依存しない）
-    updateSaveTimestamp()
-    const btn = findCurrentUpdateButton()
-    if (btn === null) return
-    btn.textContent = '保存済み'
-    btn.style.transition = 'background-color 0.3s'
-    btn.style.backgroundColor = ''
-    btn.style.color = ''
-  }
-
+  const status = ctx.saveStatus
   const autosave = createAutosave({
     // 変更のたびに保存し、同時に履歴スナップショットを積む（指示⑪・サーバー側で最新100件に丸め）。
     save: async () => {
-      markSaving()
-      await saveHtml(ctx)
-      markSaved()
+      status?.set('saving')
+      const saved = await saveHtml(ctx)
+      if (saved.result === 'skipped-empty') {
+        status?.set('empty')
+        return
+      }
+      if (saved.result === 'conflict') {
+        status?.set('conflict')
+        return
+      }
+      status?.set('saved')
       try {
-        await recordArticleHistory(ctx.articleUid, ctx.quill.root.innerHTML)
-      } catch {
+        // どのVersionの履歴かを添える（添えないと先頭のVersionの履歴になり、復元で先頭が書き換わっていた・点検3）
+        await recordArticleHistory(ctx.articleUid, saved.html, saved.versionUid)
+      } catch (error) {
         // 履歴記録の失敗で編集は止めない（保存自体は済んでいる）。
+        console.warn('[editor] 履歴を記録できませんでした', error)
       }
     },
     delayMs: AUTOSAVE_DELAY_MS,
-    onError: (error) => toast(`保存できませんでした: ${error.message}`, 'error'),
+    onError: (error) => {
+      // 失敗が続く間は、お知らせは最初の1回だけ（見出しの表示は出し続ける）
+      if (status?.state() !== 'error') toast(`保存できませんでした: ${error.message}`, 'error')
+      status?.set('error')
+    },
   })
+  ctx.retrySave = () => {
+    // 「ほかの人が先に保存しました」を押したら、どちらを残すかをもう一度聞く
+    if (status?.state() === 'conflict' && askAgainAboutConflict(ctx)) return
+    void autosave.flush()
+  }
+  const changed = (): void => {
+    status?.set('dirty')
+    autosave.schedule()
+  }
   ctx.quill.on('text-change', (_delta, _old, source) => {
     // 画面を切り替えた直後の再描画で保存が走ると、古い内容を書き戻してしまう。
-    if (source === 'user') {
-      markUnsaved()
-      autosave.schedule()
-    }
+    if (source === 'user') changed()
   })
+  // Quill の外の変更（ヘッダー画像・文字間隔・行間など）も保存する（点検11）
+  ctx.root.addEventListener(EDITOR_CHANGE_EVENT, changed)
+  watchUnsavedOnLeave(autosave)
 
   // 保存（実物にはショートカットが無いが、作業用に足している）
   ctx.root.addEventListener('keydown', (e) => {
     if ((e.metaKey || e.ctrlKey) && e.key === 's') {
       e.preventDefault()
-      void autosave.flush().then(() => toast('保存しました'))
+      // 失敗したときは「保存しました」を出さない（失敗のお知らせは onError が出す）
+      void autosave.flush().then((ok) => {
+        if (ok && status?.state() === 'saved') toast('保存しました')
+      })
     }
   })
 }
-/** Date → 「たった今」「N分前」「N時間前」「HH:MM」形式 */
-export function formatSaveTime(saved: Date): string {
-  const diff = Math.floor((Date.now() - saved.getTime()) / 1000)
-  if (diff < 30) return 'たった今'
-  if (diff < 60) return `${diff}秒前`
-  const mins = Math.floor(diff / 60)
-  if (mins < 60) return `${mins}分前`
-  const hours = Math.floor(mins / 60)
-  if (hours < 12) return `${hours}時間前`
-  return jstHhmm(saved)
-}
-/** ヘッダーの保存時刻表示を「今」に更新 */
-function updateSaveTimestamp(): void {
-  const el = document.querySelector<HTMLElement>('[data-save-time]')
-  if (el === null) return
-  const now = new Date()
-  el.dataset['savedAt'] = String(now.getTime())
-  el.textContent = formatSaveTime(now)
+
+/** いま開いているエディタの自動保存（ページを閉じる前に、保存していない変更があれば知らせる） */
+let leaveGuard: Autosave | null = null
+function watchUnsavedOnLeave(autosave: Autosave): void {
+  if (leaveGuard === null) {
+    addEventListener('beforeunload', (event) => {
+      if (leaveGuard?.isPending() !== true) return
+      // これだけで「このページを離れますか？」が出る（今のブラウザは preventDefault だけで足りる）
+      event.preventDefault()
+    })
+  }
+  leaveGuard = autosave
 }

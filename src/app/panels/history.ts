@@ -13,6 +13,7 @@
  * リンク置換パネル（link-replace.ts）が置換の前後でスナップショットを積むのに使う。
  * 依存の向きは link-replace.ts → history.ts の一方向だけ（循環させない）。
  */
+import { editorSessionHeaders } from '../editor-session.ts'
 import { toast } from '../ui.ts'
 import { ensureWhiteBase } from '../white-base.ts'
 
@@ -90,7 +91,7 @@ export function findLpBody(root: HTMLElement): HTMLElement | null {
 async function requestJson<T>(method: string, path: string, body?: unknown): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     method,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...editorSessionHeaders() },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   })
   if (!res.ok) {
@@ -100,26 +101,41 @@ async function requestJson<T>(method: string, path: string, body?: unknown): Pro
   return (await res.json()) as T
 }
 
+/** そのVersionの履歴（Versionを添えないと先頭のVersionの履歴になる・2026-09-24 点検3） */
 export function fetchArticleHistories(
   articleUid: string,
+  versionUid: string,
 ): Promise<{ histories: ArticleHistoryRow[] }> {
-  return requestJson('GET', `/articles/${articleUid}/histories`)
+  return requestJson('GET', `/articles/${articleUid}/histories?version_uid=${encodeURIComponent(versionUid)}`)
 }
 
-/** いまの本文をスナップショットとして積む（直前と同じ内容なら積まれない） */
+/** いまの本文をそのVersionのスナップショットとして積む（直前と同じ内容なら積まれない） */
 export function recordArticleHistory(
   articleUid: string,
   html: string,
+  versionUid: string,
 ): Promise<{ history: ArticleHistoryRow; recorded: boolean }> {
-  return requestJson('POST', `/articles/${articleUid}/histories`, { html })
+  return requestJson('POST', `/articles/${articleUid}/histories`, { html, version_uid: versionUid })
 }
 
 export function restoreArticleHistory(
   articleUid: string,
   id: number,
-): Promise<{ html: string; css: string; restored_from: number }> {
-  return requestJson('POST', `/articles/${articleUid}/histories/${id}/restore`)
+  versionUid: string,
+): Promise<{ html: string; css: string; restored_from: number; version: { uid: string; content_revision?: number } }> {
+  return requestJson('POST', `/articles/${articleUid}/histories/${id}/restore?version_uid=${encodeURIComponent(versionUid)}`)
 }
+
+/** 履歴パネルがエディタから受け取るもの（いま開いているVersion・その中身・戻した中身の入れ方） */
+export interface HistoryHooks {
+  readonly versionUid: () => string
+  /** 保存するのと同じ中身（ヘッダー画像込み） */
+  readonly currentHtml: () => string
+  /** 戻した中身をエディタへ入れる（サーバーは保存済み。自動保存はしない） */
+  readonly apply: (html: string, version: { uid: string; content_revision?: number }) => void
+}
+
+const HOOKS = new WeakMap<HTMLElement, HistoryHooks>()
 
 /* ────────────────────────────────────────────────────────────
  * パネル本体
@@ -130,7 +146,7 @@ export function restoreArticleHistory(
  * 採取DOMの中に土台があればそれを使い、無いときだけ採取済みmarkupを差し込む。
  * 開閉は呼び出し側の PanelGroup.toggle() に委ねる。
  */
-export function mountHistory(root: HTMLElement, articleUid: string): HTMLElement | null {
+export function mountHistory(root: HTMLElement, articleUid: string, hooks: HistoryHooks): HTMLElement | null {
   // 指示126: エディタページでも白基調CSSを確実にロードする（履歴パネルの文字色修正に必須）
   ensureWhiteBase()
   const panel = resolvePanel(root)
@@ -139,10 +155,11 @@ export function mountHistory(root: HTMLElement, articleUid: string): HTMLElement
     return null
   }
   panel.setAttribute('data-clone-article-uid', articleUid)
+  HOOKS.set(panel, hooks)
 
   if (panel.getAttribute('data-clone-panel') !== 'history') {
     panel.setAttribute('data-clone-panel', 'history')
-    wire(root, panel)
+    wire(panel)
   }
 
   if (panel.getAttribute('style') === null) panel.setAttribute('style', OPEN_STYLE)
@@ -150,8 +167,8 @@ export function mountHistory(root: HTMLElement, articleUid: string): HTMLElement
 }
 
 /** パネルが開いた後に履歴データを読み込む（editor.ts の toggle 後に呼ぶ） */
-export function refreshHistory(root: HTMLElement, panel: HTMLElement): void {
-  void refresh(root, panel)
+export function refreshHistory(panel: HTMLElement): void {
+  void refresh(panel)
 }
 
 function resolvePanel(root: HTMLElement): HTMLElement | null {
@@ -216,7 +233,7 @@ export function cleanupDropdownHost(host: HTMLElement): void {
   }
 }
 
-function wire(root: HTMLElement, panel: HTMLElement): void {
+function wire(panel: HTMLElement): void {
   // 指示㊺: パネル内のクリックが親（サイドバーアイコン等）へ伝播してパネルが閉じるのを防ぐ
   panel.addEventListener('click', (e) => e.stopPropagation())
 
@@ -239,18 +256,19 @@ function wire(root: HTMLElement, panel: HTMLElement): void {
     const articleUid = panel.getAttribute('data-clone-article-uid') ?? ''
     const id = Number(panel.getAttribute('data-clone-selected') ?? '')
     if (articleUid === '' || !Number.isInteger(id)) return
-    void applyRestore(root, panel, articleUid, id)
+    void applyRestore(panel, articleUid, id)
   })
 }
 
-async function refresh(root: HTMLElement, panel: HTMLElement): Promise<void> {
+async function refresh(panel: HTMLElement): Promise<void> {
   const articleUid = panel.getAttribute('data-clone-article-uid') ?? ''
-  if (articleUid === '') return
-  const body = findLpBody(root)
+  const hooks = HOOKS.get(panel)
+  if (articleUid === '' || hooks === undefined) return
+  const versionUid = hooks.versionUid()
   try {
     // いま編集中の本文を `現行版` として先に積む（内容が同じなら積まれない）
-    if (body !== null) await recordArticleHistory(articleUid, body.innerHTML)
-    const { histories } = await fetchArticleHistories(articleUid)
+    await recordArticleHistory(articleUid, hooks.currentHtml(), versionUid)
+    const { histories } = await fetchArticleHistories(articleUid, versionUid)
     renderRows(panel, histories)
   } catch (error) {
     toast((error as Error).message, 'error')
@@ -317,20 +335,18 @@ function updateRestoreVisibility(panel: HTMLElement): void {
 }
 
 async function applyRestore(
-  root: HTMLElement,
   panel: HTMLElement,
   articleUid: string,
   id: number,
 ): Promise<void> {
-  const body = findLpBody(root)
-  if (body === null) {
-    toast('LP本文が見つからないため復元できませんでした', 'error')
-    return
-  }
+  const hooks = HOOKS.get(panel)
+  if (hooks === undefined) return
+  // 押した時点のVersionへ戻す（戻す先は、この一覧を出したVersion＝いま開いているVersion）
+  const versionUid = hooks.versionUid()
   try {
-    const restored = await restoreArticleHistory(articleUid, id)
-    body.innerHTML = restored.html
-    const { histories } = await fetchArticleHistories(articleUid)
+    const restored = await restoreArticleHistory(articleUid, id, versionUid)
+    hooks.apply(restored.html, restored.version)
+    const { histories } = await fetchArticleHistories(articleUid, versionUid)
     renderRows(panel, histories)
     toast('選択したバージョンに戻しました')
   } catch (error) {

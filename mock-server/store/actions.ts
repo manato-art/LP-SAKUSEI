@@ -392,11 +392,19 @@ export function updateVersion(
   state: State,
   uid: string,
   patch: Partial<Pick<Version, 'name' | 'html' | 'css' | 'distribution_ratio' | 'status'>>,
+  /** 中身を書いたエディタの印（X-Editor-Session）。サーバーの一括置換などは空 */
+  writer = '',
 ): { state: State; version: Version | null } {
   const target = state.versions.find((v) => v.uid === uid)
   if (target === undefined) return { state, version: null }
   const safePatch = guardEmptyHtmlOverwrite(target, patch)
-  const updated: Version = { ...target, ...safePatch, updated_at: nowTs() }
+  const touchesContent = safePatch.html !== undefined || safePatch.css !== undefined
+  const updated: Version = {
+    ...target,
+    ...safePatch,
+    ...(touchesContent ? { content_revision: (target.content_revision ?? 0) + 1, content_writer: writer } : {}),
+    updated_at: nowTs(),
+  }
   return {
     state: { ...state, versions: state.versions.map((v) => (v.uid === uid ? updated : v)) },
     version: updated,

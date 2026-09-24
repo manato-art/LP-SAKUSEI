@@ -24,6 +24,7 @@
  *
  * 「計測機能付きリンク」の意味と置換ロジックは src/shared/link-html.ts（実 Quill Link blot 準拠）。
  */
+import { editorSessionHeaders } from '../editor-session.ts'
 import { toast } from '../ui.ts'
 import { ensureWhiteBase, stripDarkThemeClasses } from '../white-base.ts'
 import { cleanupDropdownHost, findLpBody } from './history.ts'
@@ -120,7 +121,7 @@ interface LinkReplaceResult {
 async function requestJson<T>(method: string, path: string, body?: unknown): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     method,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...editorSessionHeaders() },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   })
   if (!res.ok) {
