@@ -160,6 +160,25 @@ export interface ReportKpi {
   oar: number | null
 }
 
+/** 媒体実績の4つの値（出どころごとの内訳に使う） */
+export interface MediaFigures {
+  ad_cost: number
+  imp: number
+  media_click: number
+  media_cv: number
+}
+
+/** 媒体実績を最後に取り込んだ記録（ページ×出どころで1件） */
+export interface MediaImportRecord {
+  source: 'meta' | 'csv'
+  /** UNIXミリ秒 */
+  last_attempt_at: number
+  last_success_at: number | null
+  last_error: string | null
+  last_days: number
+  trigger: 'manual' | 'auto'
+}
+
 export interface ReportVersionRow extends ReportKpi {
   scope: string
   entity_uid: string
@@ -173,14 +192,27 @@ export interface ReportVersionRow extends ReportKpi {
    * 実物の Branch Operation は Version の行の下にこれがぶら下がる。
    */
   children?: ReportVersionRow[]
+  /** クリエイティブレポートの広告の一覧の材料（レポート設定の「クリエイティブ」で絞ったもの・2026-09-24） */
+  creative_children?: ReportVersionRow[]
+  /** LP側の日別（表示・クリック・CVがあった日だけ）。クリエイティブの「配信中 / 停止中」でグラフを足し直すのに使う */
+  daily_lp?: { date: string; pv: number; click: number; cv: number; sales: number }[]
   /** 端末の出し分け設定（Branch Operation の「端末」で絞るのに使う） */
   device_targets?: { sp: boolean; tablet: boolean; pc: boolean }
+  /** コントロールのVersionか（Versionの差の判定の基準・2026-09-24） */
+  is_control?: boolean
   /** 読み込みに3秒以上かかった人の割合と、測れた人数（記録が無ければ slow_share は null） */
   speed?: { slow_share: number | null; samples: number }
+  /**
+   * この行の配信金額が分かっているか（2026-09-24）。配信金額はページにしか入らないので、
+   * Version・広告の行はふつう false。false のとき配信金額・CPA・MCPA は「-」で出す（¥0 と言わない）。
+   */
+  cost_known?: boolean
 }
 
 export interface ReportDailyRow extends ReportKpi {
   date: string
+  /** 配信金額が分かっているか（Version だけを足し直した日別では false・2026-09-24） */
+  cost_known?: boolean
 }
 
 export interface ReportResponse {
@@ -192,6 +224,15 @@ export interface ReportResponse {
   version_options?: { uid: string; name: string }[]
   /** 期間内に除いたボットの件数（数字には入れていない） */
   bot_hits?: number
+  /**
+   * 合計の中身を変えた絞り込み（空＝ページ全体・2026-09-24）。
+   * 入っているあいだ、配信金額はページ全体の値のままで、CPA・MCPA は出さない。
+   */
+  filtered_by?: ('version' | 'device')[]
+  /** アーカイブの絞り込みで表に出していない Version の数（合計には入っている） */
+  hidden_rows?: number
+  /** 端末を記録し始めた日（それより前の日は端末で絞ると0）。まだ無ければ null・古いサーバーは返さない */
+  device_since?: string | null
 }
 
 /**
@@ -205,6 +246,8 @@ export interface HeatmapVersionStat {
   param: string
   bands: number
   pv: number
+  /** pv のうち古いタグ（スクロールの進み具合で到達を数えていた）の記録。古いサーバーは返さない */
+  legacy_pv?: number
   /** 到達率（そのバンドまで到達した割合） */
   arrival: (number | null)[]
   /** 離脱率（そのバンドで離脱した割合） */
@@ -222,6 +265,20 @@ export interface HeatmapStatsResponse {
   versions: HeatmapVersionStat[]
   /** そのVersionに実際に来た広告パラメータ（PVの多い順）。左のVersion一覧に並べる */
   parameters: HeatmapParameter[]
+  /** device を付けて頼んだとき、端末で絞れたか（広告パラメータと一緒には絞れない） */
+  device_applied?: boolean
+  /** Version ごとの、全端末の PV と端末ごとの PV（端末を記録する前のぶんは all にだけ入る） */
+  device_coverage?: HeatmapDeviceCoverage[]
+  /** 端末を記録し始めた日。まだ無ければ null */
+  device_since?: string | null
+}
+
+export interface HeatmapDeviceCoverage {
+  version_uid: string
+  all: number
+  sp: number
+  tablet: number
+  pc: number
 }
 
 /**
@@ -488,12 +545,23 @@ export const api = {
     ).then((ab_tests) => ({ ab_tests })),
   /**
    * 広告費の取り込み（このシステムだけの入口）。
-   * 媒体が返すのは日別の絶対値なので、同じ日は上書きされる（二重計上しない）。
+   * 出どころ csv として入る。同じ日を入れ直すと csv のぶんだけ置き換わる（Meta の値は残る）。
+   * 行に無い値は前の値のまま。`legacy` は出どころ不明の古い値を置き換えるか（既定は残して足す）。
    */
   importAdCosts: (
     abTestUid: string,
-    rows: readonly { date: string; ad_cost: number; imp: number; media_click: number; media_cv: number }[],
-  ) => request<{ ok: true; days: number }>('POST', `/ab_tests/${abTestUid}/ad_costs`, { rows }),
+    rows: readonly { date: string; ad_cost: number; imp?: number; media_click?: number; media_cv?: number }[],
+    legacy: 'keep' | 'replace' = 'keep',
+  ) => request<{ ok: true; days: number }>('POST', `/ab_tests/${abTestUid}/ad_costs`, { rows, legacy }),
+  /** 日ごとの媒体実績の出どころの内訳（読むだけ） */
+  mediaSources: (abTestUid: string, query: string) =>
+    request<{ days: { date: string; sources: Partial<Record<'meta' | 'csv' | 'legacy', MediaFigures>> }[] }>(
+      'GET',
+      `/ab_tests/${abTestUid}/media_sources?${query}`,
+    ),
+  /** 最後に媒体実績を取り込んだ記録（レポートの「広告データ取得日時」） */
+  mediaImports: (abTestUid: string) =>
+    request<{ imports: MediaImportRecord[] }>('GET', `/ab_tests/${abTestUid}/media_imports`),
   createAbTest: (input: {
     title: string
     folder_id: number | null
@@ -695,10 +763,17 @@ export const api = {
   deleteAbTest: (uid: string) => request<void>('DELETE', `/ab_tests/${uid}`),
   /** 通知設定取得 */
   notificationSettings: (scope: string) =>
-    request<{ settings: NotificationSetting | null }>('GET', `/settings/internal_notifications/${scope}`),
+    request<{ settings: NotificationSetting | null; runs?: NotificationRuns }>(
+      'GET',
+      `/settings/internal_notifications/${scope}`,
+    ),
   /** 通知設定更新 */
   updateNotificationSettings: (scope: string, patch: Partial<NotificationSetting>) =>
-    request<{ settings: NotificationSetting | null }>('PUT', `/settings/internal_notifications/${scope}`, patch),
+    request<{ settings: NotificationSetting | null; runs?: NotificationRuns }>(
+      'PUT',
+      `/settings/internal_notifications/${scope}`,
+      patch,
+    ),
   /** 現在のユーザー */
   currentUser: () => request<{ user: User | null }>('GET', '/users/me'),
   /** ユーザー更新 */
@@ -931,9 +1006,24 @@ export interface User {
 /** 通知設定 */
 export interface NotificationSetting {
   scope: string
+  /** 以前のスイッチ（保存されるだけで何もしていなかった・画面には出さない） */
   cv_notify: boolean
   daily_report: boolean
   ad_alert: boolean
+  /** CV発生通知（15分に1通までにまとめて送る・2026-09-24〜）。既定オフ */
+  cv_digest?: boolean
+  /** デイリーレポート（毎朝9時に前日ぶん・2026-09-24〜）。既定オフ */
+  daily_digest?: boolean
+}
+
+/** CV発生通知・デイリーレポートを送った記録 */
+export interface NotificationRuns {
+  cv_max_id: number | null
+  /** UNIX秒 */
+  cv_last_sent_at: number | null
+  cv_last_error: string | null
+  daily_sent_for: string | null
+  daily_last_error: string | null
 }
 
 /** タスク */

@@ -9,6 +9,8 @@ import type { ReportDailyRow, ReportKpi, ReportVersionRow } from '../api.ts'
 import type { DateRange } from './report-period.ts'
 import { markSecondaryCells, metricsToggle } from './report-v2-mobile-table.ts'
 import { applyMetricTips } from './report-metric-tips.ts'
+import { deviceColumnLabel } from './report-totals-note.ts'
+import { buildRowMenu } from './report-row-menu.ts'
 import {
   BRANCH_FILTER_DEFAULT,
   filterBranchRows,
@@ -20,6 +22,12 @@ const yen = (v: number | null): string =>
   v === null ? '-' : `¥ ${Math.round(v).toLocaleString('ja-JP')}`
 const int = (v: number | null): string => (v === null ? '-' : Math.round(v).toLocaleString('ja-JP'))
 const pct = (v: number | null): string => (v === null ? '-' : `${(v * 100).toFixed(2)}%`)
+/**
+ * 行の配信金額。配信金額はページにしか入らないので、Version・広告の行では分からない（2026-09-24）。
+ * ¥0 と出すと「お金をかけずにCVした」ように読めるので「-」。
+ */
+export const costYen = (row: { ad_cost: number; cost_known?: boolean }): string =>
+  row.cost_known === false ? '-' : yen(row.ad_cost)
 
 type SortKey = 'name' | 'ad_cost' | 'pv' | 'click' | 'ctr' | 'cv' | 'cvr' | 'cpa' | 'slow'
 
@@ -28,7 +36,7 @@ function sortValue(row: ReportVersionRow, key: SortKey): number | string {
     case 'name':
       return row.name
     case 'ad_cost':
-      return row.ad_cost
+      return row.cost_known === false ? -1 : row.ad_cost
     case 'pv':
       return row.pv
     case 'click':
@@ -54,7 +62,7 @@ interface Col {
 }
 
 const PERF_COLS: readonly Col[] = [
-  { key: 'ad_cost', label: '配信金額', num: true, cell: (r) => yen(r.ad_cost) },
+  { key: 'ad_cost', label: '配信金額', num: true, cell: (r) => costYen(r) },
   { key: 'pv', label: 'PV', num: true, cell: (r) => int(r.pv) },
   { key: 'click', label: 'CLICK', num: true, cell: (r) => int(r.click) },
   { key: 'ctr', label: 'CTR', num: true, cell: (r) => pct(r.ctr) },
@@ -95,6 +103,12 @@ function sortableTh(col: { key: SortKey; label: string; num: boolean }, state: {
 export interface ReportListDeps {
   rows: readonly ReportVersionRow[]
   range: DateRange
+  /** 上の「端末」の絞り込み（行の数字はその端末のぶん・2026-09-24）。省略時は全端末 */
+  device?: '0' | 'sp' | 'tablet' | 'pc'
+  /** 行末「⋮」の近道に使う（無ければ ⋮ を出さない） */
+  abTestUid?: string
+  /** 「このVersionだけで絞る」 */
+  onPickVersion?: (versionUid: string) => void
 }
 
 /** 「レポート一覧」= 2段見出し・並び替え・ページ送り */
@@ -204,20 +218,20 @@ export function buildReportList(deps: ReportListDeps): HTMLElement {
       tr.append(
         cell('配信期間', `${deps.range.startDate} 〜 ${deps.range.endDate}`),
         cell('バージョン', row.name),
-        cell('アーカイブ', '-'),
-        // 出し分けはVersion側の設定。レポートは端末別に分けていないので「全て」。
-        cell('デバイス', '全て'),
+        cell('アーカイブ', row.archived === true ? 'アーカイブ済み' : '-'),
+        // 行の数字がどの端末のぶんか。上の「端末」で絞っていればその端末（2026-09-24 から端末を記録）
+        cell('デバイス', deviceColumnLabel(deps.device ?? '0')),
       )
       for (const c of [...PERF_COLS, ...RESULT_COLS, ...SPEED_COLS]) {
         tr.append(cell(c.label, c.cell(row), true))
       }
       const last = document.createElement('td')
-      const btn = document.createElement('button')
-      btn.type = 'button'
-      btn.className = 'rv2-rowmenu'
-      btn.textContent = '⋮'
-      btn.title = 'この行の操作（未実装）'
-      last.append(btn)
+      // 行末「⋮」＝ほかの画面にある操作への近道（2026-09-24・report-row-menu.ts）
+      if (deps.abTestUid !== undefined) {
+        last.append(
+          buildRowMenu({ abTestUid: deps.abTestUid, versionUid: row.entity_uid, onPickVersion: deps.onPickVersion }),
+        )
+      }
       tr.append(last)
       tbody.append(tr)
     }
@@ -267,7 +281,7 @@ export /**
  * 絞り込んだ行の合計を出す。比率・単価は足し算できないので、必ず素の値から出し直す
  * （足した比率を足すと必ず狂う）。
  */
-type TotalsRow = Pick<
+type TotalsRow = { cost_known?: boolean } & Pick<
   ReportKpi,
   | 'ad_cost'
   | 'pv'
@@ -291,9 +305,12 @@ function sumRows(rows: readonly ReportVersionRow[]): TotalsRow {
   const click = sum((r) => r.click)
   const cv = sum((r) => r.cv)
   const adCost = sum((r) => r.ad_cost)
+  // 配信金額が分かっている行が1つも無ければ、合計の配信金額も「分からない」
+  const isCostKnown = rows.some((r) => r.cost_known !== false)
   const ratio = (numerator: number, denominator: number): number | null =>
     denominator === 0 ? null : numerator / denominator
   return {
+    cost_known: isCostKnown,
     ad_cost: adCost,
     pv,
     click,
@@ -301,8 +318,8 @@ function sumRows(rows: readonly ReportVersionRow[]): TotalsRow {
     ctr: ratio(click, pv),
     cvr: ratio(cv, click),
     ctvr: ratio(cv, pv),
-    cpa: ratio(adCost, cv),
-    mcpa: ratio(adCost, click),
+    cpa: isCostKnown ? ratio(adCost, cv) : null,
+    mcpa: isCostKnown ? ratio(adCost, click) : null,
     // スクロールの記録は行に載っていないので、絞り込み中の合計では出さない（「-」）
     fver: null,
     sver: null,
@@ -351,7 +368,7 @@ function branchLine(row: ReportVersionRow, nested: boolean): HTMLElement {
   if (nested) line.className = 'rv2-sub'
   const values = [
     row.name,
-    yen(row.ad_cost),
+    costYen(row),
     int(row.pv),
     int(row.click),
     pct(row.ctr),
@@ -541,7 +558,7 @@ export function buildBranchOperation(deps: BranchDeps): HTMLElement {
     totalLabel.textContent = '合計'
     totalTr.append(totalLabel)
     const totalValues = [
-      yen(shownTotals.ad_cost),
+      costYen(shownTotals),
       int(shownTotals.pv),
       int(shownTotals.click),
       pct(shownTotals.ctr),

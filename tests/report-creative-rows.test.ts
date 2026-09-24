@@ -31,12 +31,13 @@ function row(name: string, patch: Partial<ReportVersionRow> = {}): ReportVersion
   }
 }
 
+// クリエイティブの一覧の材料は creative_children（レポート設定の「クリエイティブ」で絞ったもの・2026-09-24）
 const versions: ReportVersionRow[] = [
   row('Ver.1', {
-    children: [row('utm_source=fb', { pv: 10, click: 4, ad_cost: 300 }), row('utm_source=ig', { pv: 3, ad_cost: 100 })],
+    creative_children: [row('utm_source=fb', { pv: 10, click: 4, ad_cost: 300 }), row('utm_source=ig', { pv: 3, ad_cost: 100 })],
   }),
   row('Ver.2', {
-    children: [row('utm_source=fb', { pv: 5, click: 1, ad_cost: 200 })],
+    creative_children: [row('utm_source=fb', { pv: 5, click: 1, ad_cost: 200 })],
   }),
 ]
 

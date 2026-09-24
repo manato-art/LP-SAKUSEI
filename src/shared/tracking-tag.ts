@@ -8,10 +8,12 @@
  * 収集するもの:
  *   pv      : 表示ごとに1（着地URLの広告パラメータ params を添える）
  *   click   : 「計測機能付きリンク」(`sb_tracking=true`)のクリック（同上）
- *   heatmap : ページを20バンドに割った 到達 / 滞在(ms) / 離脱位置 / クリック座標 /
+ *   heatmap : ページを100バンドに割った 到達 / 滞在(ms) / 離脱位置 / クリック座標 /
  *             画面1枚ぶんの幅(fv) / 最初の計測リンクの位置(offer) /
  *             着地URLの広告パラメータ(params・utm_* のみ)
  *             ＝ FVER・SVER・FSVER・OAR の材料（2026-09-15）
+ *             到達と離脱位置は「画面の下端がページの何割まで来たか」で数える（rb:1・2026-09-24）。
+ *             rb が無い送信は古いタグ（スクロールの進み具合で数えていた）
  *   load    : ヒートマップに添える、読み込み完了までの時間 { ms, done }（表示が遅い人の割合・2026-09-16）
  *   wd      : 自動操作中のブラウザ（navigator.webdriver）のときだけ 1。サーバーはボットとして数えない（2026-09-16）
  *   vid     : pv / click に付ける訪問者の目印（Cookie _sb_tu、押したリンクに付いた squadbeyond_uid）。
@@ -87,7 +89,14 @@ export function buildTrackingScriptBody(endpoint: string, versionUid?: string): 
   var reach=new Array(B).fill(0),dwell=new Array(B).fill(0),clicks=[];
   var lastT=Date.now(),maxBand=0,sent=false;
   function docH(){return Math.max(1,document.documentElement.scrollHeight-window.innerHeight)}
-  function curBand(){return Math.max(0,Math.min(B-1,Math.floor((window.scrollY/docH())*B)))}
+  /* 到達の物差しは「画面の下端がページの何割まで来たか」（2026-09-24）。
+     リンクの位置・FV・滞在・クリックと同じ「ページ上の位置」でそろえる。
+     以前はスクロールの進み具合（scrollY/(ページ-画面)）だったので、最初の画面にあるリンクでも
+     スクロールしないと「到達していない」ことになっていた。送る中身に rb:1 を付けて新旧を見分ける。 */
+  function curBand(){
+    var full=docH()+window.innerHeight;
+    return Math.max(0,Math.min(B-1,Math.ceil(((window.scrollY+window.innerHeight)/full)*B)-1));
+  }
   function tick(){
     var now=Date.now(),b=curBand(),full=docH()+window.innerHeight;
     var from=Math.max(0,Math.floor((window.scrollY/full)*B));
@@ -146,7 +155,7 @@ export function buildTrackingScriptBody(endpoint: string, versionUid?: string): 
     if(sent)return; sent=true; tick();
     for(var i=0;i<=maxBand;i++)reach[i]=1;
     var body={event:'heatmap',bands:B,reach:reach,dwell:dwell,exit_band:curBand(),
-      fv:fvBands(),offer:offerBand(),params:PRM,clicks:clicks};
+      fv:fvBands(),offer:offerBand(),params:PRM,clicks:clicks,rb:1};
     var ld=loadInfo();
     if(ld)body.load=ld;
     post(body);

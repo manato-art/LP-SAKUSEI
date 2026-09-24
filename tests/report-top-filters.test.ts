@@ -83,12 +83,14 @@ describe('Versionで絞る', () => {
 })
 
 describe('アーカイブで絞る', () => {
-  it('既定はアーカイブ済みを除く', async () => {
+  // 2026-09-24 点検22: アーカイブの絞り込みは「行」だけに効かせる。合計はページ全体のまま
+  // （以前は合計が Version の数字だけに切り替わり、ページにしか無い配信金額・外部LPの計測が消えていた）。
+  it('既定はアーカイブ済みの行を除く（合計はページ全体のまま）', async () => {
     const { uid, second } = await setup()
     await postJson(`${server.api}/versions/${second}/archive`, {})
     const out = await getJson<Report>(`${server.api}/ab_tests/${uid}/reports?${RANGE}`)
     expect(out.rows.map((r) => r.entity_uid)).not.toContain(second)
-    expect(out.totals.pv).toBe(2)
+    expect(out.totals.pv).toBe(3)
   })
 
   it('アーカイブ済みを含めると戻る', async () => {

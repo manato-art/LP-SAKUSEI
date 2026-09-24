@@ -220,8 +220,9 @@ async function fetchInsightRows(
  * ⚠ purchase 系は omni_purchase / web_in_store_purchase 等の**同義が多数**返るので、合算すると
  * 同じCVを多重計上して激増する。また onsite_conversion.post_save/like 等の**エンゲージメント**は
  * CVではない。→ 正規のコンバージョン1種だけを優先順で拾う。
+ * 媒体実績の取り込み（meta-insights.ts）も同じ優先順を使う（バナーとレポートで CV の定義を分けない）。
  */
-const CV_ACTION_PRIORITY: readonly string[] = [
+export const CV_ACTION_PRIORITY: readonly string[] = [
   'offsite_conversion.fb_pixel_purchase',
   'purchase',
   'omni_purchase',

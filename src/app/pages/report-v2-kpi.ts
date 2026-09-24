@@ -147,9 +147,20 @@ function sparkline(values: readonly number[]): SVGSVGElement | null {
  * 増減の表示。前期間が無い・0のときは出さない
  * （0からの増加を「+∞%」や「+100%」と書くと数字として意味を持たないため）。
  */
-function deltaEl(current: number | null, previous: number | null, higherIsBetter: boolean): HTMLElement {
+function deltaEl(
+  current: number | null,
+  previous: number | null,
+  higherIsBetter: boolean,
+  previousError: string | null,
+): HTMLElement {
   const el = document.createElement('span')
   el.className = 'rv2-delta flat'
+  if (previousError !== null) {
+    // 前期間を読めなかったのに「前期間なし」と書くと、データが無いように読める（2026-09-24）
+    el.textContent = '前期間を読めませんでした'
+    el.title = previousError
+    return el
+  }
   if (current === null || previous === null || previous === 0) {
     el.textContent = '前期間なし'
     return el
@@ -169,6 +180,8 @@ export interface KpiInput {
   daily: readonly ReportDailyRow[]
   /** 同じ日数の直前の期間。取得できなければ null（増減を出さない） */
   previous: ReportKpi | null
+  /** 前期間を読めなかった理由（読めたら null）。省略時は null */
+  previousError?: string | null
 }
 
 /** KPIカード7枚を組み立てる */
@@ -201,6 +214,7 @@ export function buildKpiCards(input: KpiInput): HTMLElement {
         valueOf(input.totals, def.key),
         input.previous === null ? null : valueOf(input.previous, def.key),
         def.higherIsBetter,
+        input.previousError ?? null,
       ),
     )
     const spark = sparkline(seriesOf(input.daily, def.key))

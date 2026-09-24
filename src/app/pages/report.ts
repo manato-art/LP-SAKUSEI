@@ -23,8 +23,9 @@ import {
 } from './report-dom.ts'
 import { recordHistory } from './folders-history.ts'
 import { defaultRange, toRangeQuery, type DateRange } from './report-period.ts'
-import { buildReportBody, REPORT_FILTER_DEFAULT, type ReportFilter } from './report-v2.ts'
+import { buildReportBody, filterToQuery, type ReportFilter } from './report-v2.ts'
 import { wireAbTestTabs, setupHorizTabs, setupBreadcrumb } from './tab-nav.ts'
+import { mountMediaImportSummary } from './report-media-imports.ts'
 import { mountMetaSummary } from './report-meta.ts'
 
 /** ハッシュのクエリから期間を読む。未指定は採取物と同じ「当日のみ」 */
@@ -45,14 +46,8 @@ export function filterFromParams(params: URLSearchParams): ReportFilter {
   }
 }
 
-/** 絞り込みをクエリ文字列にする（既定値は載せない＝URLを短く保つ） */
-export function filterToQuery(filter: ReportFilter): string {
-  const parts: string[] = []
-  if (filter.version !== '') parts.push(`version=${encodeURIComponent(filter.version)}`)
-  if (filter.archive !== REPORT_FILTER_DEFAULT.archive) parts.push(`archive=${filter.archive}`)
-  if (filter.device !== REPORT_FILTER_DEFAULT.device) parts.push(`device=${filter.device}`)
-  return parts.join('&')
-}
+// 絞り込みをクエリ文字列にする処理は、前期間の問い合わせでも使うので report-v2.ts に置いた
+export { filterToQuery }
 
 function reportHash(abTestUid: string, range: DateRange, filter: ReportFilter): string {
   const query = [toRangeQuery(range), filterToQuery(filter)].filter((p) => p !== '').join('&')
@@ -103,8 +98,13 @@ export async function renderReport(
   setupBreadcrumb(root, folderName, ab_test.title, folder?.uid)
   applyLightTheme(root)
   wireThemeToggle(root)
-  // 「広告データ取得日時」「パラメーター設定」の小さな面を押して開けるようにする
-  wireCapturedDropdowns(root, abTestUid)
+  // 「広告データ取得日時」「パラメーター設定」の小さな面を押して開けるようにする。
+  // 設定を変えて閉じたら、その設定で一覧を組み直す（2026-09-24）
+  wireCapturedDropdowns(root, abTestUid, () => {
+    void renderReport(container, abTestUid, params, generation)
+  })
+  // 「広告データ取得日時」に、最後に取り込んだ時刻を入れる（採取物の「データなし」のままだった・2026-09-24）
+  void mountMediaImportSummary(root, abTestUid)
 
   const alert = root.querySelector<HTMLElement>('.MuiAlert-message')
   if (alert !== null) replaceBakedPageName(alert, ab_test.title)

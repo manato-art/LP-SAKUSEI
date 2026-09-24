@@ -115,6 +115,10 @@ export function createEmptyState(): State {
     scheduledSwitches: [],
     htmlParts: [],
     metrics: [],
+    mediaImports: [],
+    deviceMetrics: [],
+    deviceHeatmapStats: [],
+    deviceRecordedSince: null,
 
     // ── 設定系は「既定値が入った状態」で存在する（0件ではない）──
     // 異常のお知らせ。既定は切（送り先を決めるまで鳴らさない）
@@ -127,9 +131,16 @@ export function createEmptyState(): State {
     },
     alertSentSlots: [],
     notificationSettings: [
-      { scope: 'member', cv_notify: true, daily_report: false, ad_alert: true },
-      { scope: 'team', cv_notify: true, daily_report: true, ad_alert: true },
+      { scope: 'member', cv_notify: true, daily_report: false, ad_alert: true, cv_digest: false, daily_digest: false },
+      { scope: 'team', cv_notify: true, daily_report: true, ad_alert: true, cv_digest: false, daily_digest: false },
     ],
+    notificationRuns: {
+      cv_max_id: null,
+      cv_last_sent_at: null,
+      cv_last_error: null,
+      daily_sent_for: null,
+      daily_last_error: null,
+    },
 
     // ── ベンダー側カタログ ──
     permissions: PERMISSION_CATALOG,

@@ -179,7 +179,11 @@ export function injectReportStyles(): void {
       display:flex; align-items:center; justify-content:space-between; gap:12px;
       padding:9px 14px; font-size:12px; border-bottom:1px solid var(--rv2-rule);
     }
-    .rv2-creative-param-name { color:var(--rv2-ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .rv2-creative-param-name { color:var(--rv2-ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; min-width:0; }
+    /* 「比較」の印（押すと右の比較の枠に並ぶ・2026-09-24） */
+    .rv2-creative-param-pick { display:inline-flex; align-items:center; gap:4px; font-size:11px; color:var(--rv2-sub); cursor:pointer; flex-shrink:0; }
+    .rv2-compare th, .rv2-compare td { font-size:11px; }
+    .rv2-legend span + span { margin-left:8px; font-variant-numeric:tabular-nums; }
     .rv2-creative-param-value { color:var(--rv2-ink); font-variant-numeric:tabular-nums; flex-shrink:0; }
     .rv2-readmore {
       border:0; background:transparent; color:var(--rv2-accent); font:inherit; font-size:12px;
@@ -265,6 +269,10 @@ export function injectReportStyles(): void {
       border:0; background:transparent; color:#98a2b3; cursor:pointer; font-size:14px;
       line-height:1; padding:2px 6px;
     }
+    /* 行末「⋮」のメニュー（中身は列のチップの「並び替え」と同じ部品・右端に寄せて開く） */
+    .rv2-rowmenu-wrap { position:relative; display:inline-flex; }
+    .rv2-rowmenu-wrap .rv2-sortmenu { left:auto; right:0; min-width:210px; }
+    .rv2-rowmenu-wrap.open .rv2-sortmenu { display:block; }
     .rv2-search {
       display:flex; align-items:center; gap:6px; border:1px solid var(--rv2-line);
       border-radius:8px; padding:7px 10px; background:var(--sb-c-ffffff, #FFFFFF); min-width:190px;

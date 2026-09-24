@@ -28,9 +28,19 @@ settingsRouter.get('/settings/internal_notifications/:scope', (req, res) => {
     res.status(404).json(errorEnvelope('not_found', '設定が見つかりません。'))
     return
   }
-  const setting = getState().notificationSettings.find((s) => s.scope === scope)
-  res.json({ settings: setting ?? null })
+  const state = getState()
+  const setting = state.notificationSettings.find((s) => s.scope === scope)
+  res.json({
+    settings: setting === undefined ? null : withDigestDefaults(setting),
+    /** CV発生通知・デイリーレポートを送った記録（送れなかった理由を画面に出す・2026-09-24） */
+    runs: state.notificationRuns,
+  })
 })
+
+/** 動くスイッチ（2026-09-24〜）は、保存に無ければ切（以前の値 cv_notify などは引き継がない） */
+function withDigestDefaults<T extends { cv_digest?: boolean; daily_digest?: boolean }>(setting: T): T {
+  return { ...setting, cv_digest: setting.cv_digest === true, daily_digest: setting.daily_digest === true }
+}
 
 settingsRouter.put('/settings/internal_notifications/:scope', (req, res) => {
   const scope = req.params.scope
@@ -47,11 +57,15 @@ settingsRouter.put('/settings/internal_notifications/:scope', (req, res) => {
             cv_notify: optionalBoolean(req.body, 'cv_notify') ?? s.cv_notify,
             daily_report: optionalBoolean(req.body, 'daily_report') ?? s.daily_report,
             ad_alert: optionalBoolean(req.body, 'ad_alert') ?? s.ad_alert,
+            // 実際に送るスイッチ（notify-runner.ts が読む・2026-09-24）
+            cv_digest: optionalBoolean(req.body, 'cv_digest') ?? s.cv_digest === true,
+            daily_digest: optionalBoolean(req.body, 'daily_digest') ?? s.daily_digest === true,
           }
         : s,
     ),
   }))
-  res.json({ settings: getState().notificationSettings.find((s) => s.scope === scope) ?? null })
+  const saved = getState().notificationSettings.find((s) => s.scope === scope)
+  res.json({ settings: saved === undefined ? null : withDigestDefaults(saved), runs: getState().notificationRuns })
 })
 
 /* ── 異常のお知らせ（このシステムだけの機能） ── */

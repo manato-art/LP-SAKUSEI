@@ -96,10 +96,23 @@ describe('CPAが上がりすぎた', () => {
     expect(alerts).toEqual([])
   })
 
-  it('CVが0のときは出さない（CPAが出ないだけで、跳ねたのではない）', () => {
+  // 2026-09-24 点検32: 以前は CV0件を判定しなかったので、配信金額だけ積み上がっても一度も鳴らなかった。
+  // CV0件で配信金額が上限を超えたら、CPAは実質「無限大」＝上限超えとして知らせる。
+  it('CVが0件でも、配信金額が上限を超えたら知らせる（CPAは実質無限大）', () => {
     const alerts = findAlerts(
       input({
         metrics: [{ entity_uid: 'AB1', date: '2026-09-15', ad_cost: 30000, cv: 0 }],
+      }),
+    )
+    expect(alerts.map((a) => a.kind)).toEqual(['cpa_over'])
+    expect(alerts[0]?.message).toContain('CV 0件')
+    expect(alerts[0]?.message).toContain('30,000')
+  })
+
+  it('CVが0件でも、配信金額が上限以下なら知らせない（まだCPAが上限を超えたとは言えない）', () => {
+    const alerts = findAlerts(
+      input({
+        metrics: [{ entity_uid: 'AB1', date: '2026-09-15', ad_cost: 10000, cv: 0 }],
       }),
     )
     expect(alerts.map((a) => a.kind)).not.toContain('cpa_over')

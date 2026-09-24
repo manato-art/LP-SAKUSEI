@@ -411,6 +411,42 @@ export interface DailyMetric {
   media_click?: number
   /** 媒体が計測したCV */
   media_cv?: number
+  /**
+   * 媒体実績の出どころごとの内訳（2026-09-24）。上の ad_cost / imp / media_click / media_cv はこの合計。
+   * 以前は Meta と CSV が互いに丸ごと上書きしていたので分けた（store/media-sources.ts）。
+   * これより前の保存データには無い。その値は出どころ不明（legacy）として読む。
+   */
+  media_sources?: Partial<Record<MediaSource, MediaFigures>>
+}
+
+/** 媒体実績の出どころ。legacy ＝ 出どころを記録する前に入った値 */
+export type MediaSource = 'meta' | 'csv' | 'legacy'
+
+/** 媒体実績の4つの値 */
+export interface MediaFigures {
+  ad_cost: number
+  imp: number
+  media_click: number
+  media_cv: number
+}
+
+/**
+ * 媒体実績を最後に取り込んだ記録（ページ×出どころで1件・2026-09-24）。
+ * レポートの「広告データ取得日時」に出す。自動の取り込みが失敗したときの理由もここに残す（黙って失敗しない）。
+ */
+export interface MediaImportRecord {
+  ab_test_uid: string
+  source: Exclude<MediaSource, 'legacy'>
+  /** 最後に取り込もうとした時刻（UNIXミリ秒） */
+  last_attempt_at: number
+  /** 最後に取り込めた時刻（UNIXミリ秒）。一度も取り込めていなければ null */
+  last_success_at: number | null
+  /** 最後の取り込みが失敗した理由。成功したら null に戻す */
+  last_error: string | null
+  /** 最後に取り込めた日数 */
+  last_days: number
+  /** 手で取り込んだか、見張りが自動で取り込んだか */
+  trigger: 'manual' | 'auto'
 }
 
 /**
@@ -748,11 +784,44 @@ export interface HeatmapStat {
   fv_bands?: number
   /** 最初の計測リンクが何バンド目か（OARの基準位置）。リンクが無ければ undefined。 */
   offer_band?: number
+  /**
+   * pv のうち、新しいタグ（rb:1＝画面の下端で到達を数えた）から来た数（2026-09-24）。
+   * 古いタグはスクロールの進み具合で数えていた。pv - vb_pv が古い数え方のぶん。
+   * これより前の保存データには無い＝全部古い数え方。
+   */
+  vb_pv?: number
   reach: number[]
   exit: number[]
   dwell_ms: number[]
   dwell_n: number[]
   clicks: { x: number; y: number }[]
+}
+
+/** 端末の種類（User-Agent から分ける・lib/device.ts） */
+export type DeviceKind = 'sp' | 'tablet' | 'pc'
+
+/**
+ * 端末ごとの LP 側の実測（表示・クリック・CV・売上）。2026-09-24 から記録する（点検29）。
+ * DailyMetric とは別に持つ（DailyMetric を読む集計がこの行まで足して二重に数えないように）。
+ * 配信金額は端末ごとに分からないので持たない。
+ */
+export interface DeviceMetric {
+  entity_uid: string
+  scope: 'ab_test' | 'version' | 'parameter'
+  date: string
+  device: DeviceKind
+  pv: number
+  click: number
+  cv: number
+  sales: number
+}
+
+/**
+ * 端末ごとのスクロールの記録（ヒートマップ）。形は HeatmapStat と同じで、端末が付く（2026-09-24）。
+ * 広告パラメータごとの行は持たない（param は常に ''）。容量を抑えるため。
+ */
+export interface DeviceHeatmapStat extends HeatmapStat {
+  device: DeviceKind
 }
 
 /**
@@ -855,9 +924,33 @@ export interface User {
 
 export interface NotificationSetting {
   scope: 'member' | 'team'
+  /** 以前のスイッチ（保存されるだけで何もしていなかった）。値は残すが読まない（2026-09-24） */
   cv_notify: boolean
+  /** 以前のスイッチ（同上） */
   daily_report: boolean
+  /** 以前のスイッチ（同上）。広告の異常は「異常のお知らせ」（alertSetting）に一本化した */
   ad_alert: boolean
+  /**
+   * CV発生通知（2026-09-24 から実際に送る・notify-digest.ts）。既定オフ。
+   * 以前の cv_notify は既定で入っていたが何もしていなかったので引き継がない（急に送り始めて LINE の枠を使わない）。
+   */
+  cv_digest?: boolean
+  /** デイリーレポート（毎朝9時に前日ぶん・2026-09-24 から）。既定オフ */
+  daily_digest?: boolean
+}
+
+/** CV発生通知・デイリーレポートの送った記録（notify-runner.ts） */
+export interface NotificationRuns {
+  /** ここまでの id の CV は知らせた（または知らせない扱いにした）。null ＝まだ動いていない */
+  cv_max_id: number | null
+  /** 最後に CV発生通知を送った時刻（UNIX秒） */
+  cv_last_sent_at: number | null
+  /** 最後の CV発生通知が送れなかった理由（送れたら null） */
+  cv_last_error: string | null
+  /** デイリーレポートを送った日（JST・YYYY-MM-DD） */
+  daily_sent_for: string | null
+  /** 最後のデイリーレポートが送れなかった理由（送れたら null） */
+  daily_last_error: string | null
 }
 
 /** 異常のお知らせの設定 */
@@ -1010,6 +1103,8 @@ export interface State {
   /** 訪問者の目印ごとの「見た・押した」記録（CVをVersion別に数えるため。1日分だけ持つ・store/visitor-touches.ts） */
   visitorTouches: readonly VisitorTouch[]
   notificationSettings: readonly NotificationSetting[]
+  /** CV発生通知・デイリーレポートの送った記録（2026-09-24） */
+  notificationRuns: NotificationRuns
   /**
    * 異常のお知らせ（このシステムだけの機能）。
    * 条件に当たったらSlack/チャットワーク/LINEへ1通送る。
@@ -1022,6 +1117,14 @@ export interface State {
   introductions: readonly Introduction[]
   permissions: readonly Permission[]
   metrics: readonly DailyMetric[]
+  /** 媒体実績を最後に取り込んだ記録（ページ×出どころで1件・store/media-imports.ts） */
+  mediaImports: readonly MediaImportRecord[]
+  /** 端末ごとの LP 側の実測（2026-09-24 から・store/device-metrics.ts） */
+  deviceMetrics: readonly DeviceMetric[]
+  /** 端末ごとのスクロールの記録（2026-09-24 から） */
+  deviceHeatmapStats: readonly DeviceHeatmapStat[]
+  /** 端末を記録し始めた日（JST・YYYY-MM-DD）。まだ1件も無ければ null。これより前のデータには端末が無い */
+  deviceRecordedSince: string | null
   /** HTML設定モーダル（noindex とタグ）。記事ごとに1件。 */
   htmlTags: readonly ArticleHtmlSetting[]
   nextId: number

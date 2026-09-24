@@ -21,10 +21,16 @@ import {
 } from './report-dom.ts'
 import { defaultRange, toRangeQuery, type DateRange } from './report-period.ts'
 import { sortVersions, type HeatmapSortKey } from './heatmap-sort.ts'
-import { renderHeatmapColumns, type ColumnSpec, type HeatmapMetric } from './heatmap-columns.ts'
+import {
+  renderHeatmapColumns,
+  type ColumnSpec,
+  type HeatmapDeviceData,
+  type HeatmapMetric,
+} from './heatmap-columns.ts'
 import { columnKeyOf, expandColumnKeys, paramsForVersion } from './heatmap-params.ts'
 import { fetchHeatmapLpSources, type HeatmapLpSources } from './heatmap-lp-sources.ts'
 import { wireAbTestTabs, setupHorizTabs, setupBreadcrumb } from './tab-nav.ts'
+import { mountMediaImportSummary } from './report-media-imports.ts'
 
 export async function renderHeatmap(
   container: HTMLElement,
@@ -39,7 +45,9 @@ export async function renderHeatmap(
   const range: DateRange = requestedRange ?? defaultRange()
   const [{ ab_test }, report, { heatmaps }, { folders }, stats, externalPage] = await Promise.all([
     api.abTest(abTestUid),
-    api.report(abTestUid, toRangeQuery(range)),
+    // 左の一覧の「アーカイブ有り／無し」はこの画面で絞る。サーバーの既定（アーカイブ済みを除く）のままだと
+    // アーカイブ済みの行が最初から届かず、「アーカイブ有り」にしても何も増えなかった（2026-09-24）
+    api.report(abTestUid, `${toRangeQuery(range)}&archive=all`),
     api.heatmaps(abTestUid),
     api.folders(),
     api.heatmapStats(abTestUid, toRangeQuery(range)),
@@ -60,8 +68,13 @@ export async function renderHeatmap(
   setupBreadcrumb(root, folder?.name ?? '', ab_test.title, folder?.uid)
   applyLightTheme(root)
   wireThemeToggle(root)
-  // 「広告データ取得日時」「パラメーター設定」の小さな面を押して開けるようにする
-  wireCapturedDropdowns(root, abTestUid)
+  // 「広告データ取得日時」「パラメーター設定」の小さな面を押して開けるようにする。
+  // 設定（ヒートマップに出す広告）を変えて閉じたら、その設定で描き直す（2026-09-24）
+  wireCapturedDropdowns(root, abTestUid, () => {
+    void renderHeatmap(container, abTestUid, generation, range)
+  })
+  // 「広告データ取得日時」に、最後に取り込んだ時刻を入れる（採取物の「データなし」のままだった・2026-09-24）
+  void mountMediaImportSummary(root, abTestUid)
 
   // 実物は「Version × 指標(離脱/CLICK/CV)」でチェックした数だけ右に列が増える。
   // 選択状態をここで持ち、変わるたびに列を組み直す。
@@ -99,6 +112,30 @@ export async function renderHeatmap(
   /** ソートモーダルで選ばれた並び順（採取物の9択の文字） */
   let columnOrder = ''
 
+  /**
+   * SP / PC ぶんの記録（2026-09-24・点検29）。列の SP / PC を押したときに1回だけ取りに行き、列どうしで使い回す。
+   * 失敗したら覚えずに捨てる（次に押したときに取り直す）。
+   */
+  const deviceCache = new Map<'sp' | 'pc', Promise<HeatmapDeviceData>>()
+  const loadDevice = (device: 'sp' | 'pc'): Promise<HeatmapDeviceData> => {
+    const hit = deviceCache.get(device)
+    if (hit !== undefined) return hit
+    const query = `${toRangeQuery(range)}&device=${device}`
+    const loading = Promise.all([
+      api.heatmapStats(abTestUid, query),
+      api.report(abTestUid, `${query}&archive=all`),
+    ]).then(([deviceStats, deviceReport]) => ({
+      versions: deviceStats.versions,
+      coverage: deviceStats.device_coverage ?? [],
+      since: deviceStats.device_since ?? null,
+      rows: deviceReport.rows,
+      totals: { pv: deviceReport.totals.pv, ctr: deviceReport.totals.ctr, cv: deviceReport.totals.cv },
+    }))
+    deviceCache.set(device, loading)
+    loading.catch(() => deviceCache.delete(device))
+    return loading
+  }
+
   const rebuild = (): void => {
     const specs: ColumnSpec[] = []
     for (const key of expandColumnKeys(selection, paramSelection, duplicates)) {
@@ -124,6 +161,7 @@ export async function renderHeatmap(
       styleCss: lpSources?.styleCss ?? '',
       range: { startDate: range.startDate, endDate: range.endDate },
       fullPage: isFullPageSelected(root),
+      loadDevice,
       onDuplicate: (target) => {
         const key = columnKeyOf({
           versionUid: target.versionUid,

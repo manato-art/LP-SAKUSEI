@@ -2,14 +2,14 @@
  * レポート／ヒートマップの期間指定。
  *
  * プリセットの値は**採取した実 `<select>` の option value** そのまま。
- * 数え方が採取物から判別できないものは解決せず `null` を返す（推測で埋めない）。
+ * 知らない値は解決せず `null` を返す。
  */
 
 /** 採取物にある option value（`日付` は value 無し＝プリセット解除） */
 export const DATE_PRESET_VALUES = [
   'today',
   'yesterday',
-  /** 「7日間」。今日を含むのか、直近7日の別の数え方なのかが採取物から判別できない */
+  /** 「7日間」＝昨日までのまる7日間（今日を含まない・2026-09-24） */
   'seven_days',
   'last_three_days',
   'last_seven_days',
@@ -56,10 +56,24 @@ function shiftDays(base: Date, days: number): Date {
 }
 
 /**
+ * 「過去N日」＝**今日を含むN日**（today-(N-1) 〜 today）。
+ *
+ * レポートの「過去7日間」とダッシュボードの「過去7日」が別々に数えていて、
+ * ダッシュボードだけ today-7〜today の8日分になっていた（2026-09-24 点検35）。
+ * 「過去N日」はすべてここを通す（数え方を2か所に書かない）。
+ */
+export function lastDaysRange(days: number, today: Date = new Date()): DateRange {
+  return { startDate: toDateKey(shiftDays(today, -(Math.max(1, days) - 1))), endDate: toDateKey(today) }
+}
+
+/**
  * プリセットを実際の日付範囲へ。
  *
  * 「過去N日間」は **今日を含むN日**（`mock-server/lib/query.ts` の既定期間
  * `start = today - (DEFAULT_RANGE_DAYS - 1)` と同じ数え方に揃えた）。
+ * 「7日間」は **昨日までのまる7日間**（今日を含まない・2026-09-24）。
+ * 採取物からは数え方が分からずエラーにしていたが、「過去7日間」と別の選択肢として並んでいるので、
+ * 途中の今日を混ぜずに7日ぶんそろえて見る期間とした（本人へ報告済みの決め事）。
  */
 export function resolvePreset(preset: string, today: Date = new Date()): DateRange | null {
   const endToday = toDateKey(today)
@@ -71,11 +85,12 @@ export function resolvePreset(preset: string, today: Date = new Date()): DateRan
       return { startDate: yesterday, endDate: yesterday }
     }
     case 'last_three_days':
-      return { startDate: toDateKey(shiftDays(today, -2)), endDate: endToday }
+      return lastDaysRange(3, today)
     case 'last_seven_days':
-      return { startDate: toDateKey(shiftDays(today, -6)), endDate: endToday }
+      return lastDaysRange(7, today)
+    case 'seven_days':
+      return lastDaysRange(7, shiftDays(today, -1))
     default:
-      // 'seven_days' を含む。数え方が確認できていないので解決しない。
       return null
   }
 }

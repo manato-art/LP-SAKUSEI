@@ -7,7 +7,8 @@
 import { currentTeamId } from './current-team.ts'
 import { makeUid } from './ids.ts'
 import { toDateKey } from './metrics.ts'
-import type { Conversion, State, Task, TaskNotify, TaskReportSpan, TaskSchedule } from './types.ts'
+import type { Conversion, DeviceKind, State, Task, TaskNotify, TaskReportSpan, TaskSchedule } from './types.ts'
+import { bumpDeviceMetric } from './device-metrics.ts'
 import { nowTs, freshUid } from './actions-shared.ts'
 import { DEFAULT_REPORT_ITEMS, type ReportItems } from '../report-items.ts'
 
@@ -81,7 +82,14 @@ export function deleteTask(state: State, uid: string): { state: State; removed: 
 // ── コンバージョン（CV速報が積む・§10-9「ダミーの流入が乗ると数値が付く」）──
 export function recordConversion(
   state: State,
-  input: { ab_test_uid: string; version_uid: string; media_id: number | null; amount: number },
+  input: {
+    ab_test_uid: string
+    version_uid: string
+    media_id: number | null
+    amount: number
+    /** 成果を送ってきた端末（2026-09-24・点検29）。分からなければ端末ごとには数えない */
+    device?: DeviceKind
+  },
 ): { state: State; conversion: Conversion } {
   const id = state.nextId
   const conversion: Conversion = {
@@ -102,62 +110,31 @@ export function recordConversion(
     input.version_uid === ''
       ? pageMetrics
       : bumpMetric({ ...state, metrics: pageMetrics }, input.version_uid, 'version', date, delta)
+  const device = input.device
+  const deviceMetrics =
+    device === undefined
+      ? state.deviceMetrics
+      : [
+          { entity_uid: input.ab_test_uid, scope: 'ab_test' as const },
+          ...(input.version_uid === '' ? [] : [{ entity_uid: input.version_uid, scope: 'version' as const }]),
+        ].reduce(
+          (list, key) => bumpDeviceMetric(list, { ...key, date, device }, delta),
+          state.deviceMetrics,
+        )
   return {
     state: {
       ...state,
       conversions: [conversion, ...state.conversions],
       metrics,
+      deviceMetrics,
+      deviceRecordedSince: device === undefined ? state.deviceRecordedSince : (state.deviceRecordedSince ?? date),
       nextId: id + 1,
     },
     conversion,
   }
 }
-/**
- * 媒体実績（配信金額/IMP/媒体Click/媒体CV）を**上書き**する。
- *
- * Meta広告APIが返すのはその日の**絶対値**なので、加算(bumpMetric)ではなく置き換えでないと
- * 取り込みを再実行するたびに二重計上になる。LP側の実測(pv/click/cv/sales)には触らない。
- */
-export function setMediaMetrics(
-  state: State,
-  entityUid: string,
-  scope: 'ab_test' | 'version' | 'parameter',
-  date: string,
-  media: { ad_cost: number; imp: number; media_click: number; media_cv: number },
-): State['metrics'] {
-  const index = state.metrics.findIndex(
-    (m) => m.entity_uid === entityUid && m.scope === scope && m.date === date,
-  )
-  if (index === -1) {
-    return [
-      ...state.metrics,
-      {
-        entity_uid: entityUid,
-        scope,
-        date,
-        pv: 0,
-        click: 0,
-        cv: 0,
-        sales: 0,
-        ad_cost: media.ad_cost,
-        imp: media.imp,
-        media_click: media.media_click,
-        media_cv: media.media_cv,
-      },
-    ]
-  }
-  return state.metrics.map((m, i) =>
-    i === index
-      ? {
-          ...m,
-          ad_cost: media.ad_cost,
-          imp: media.imp,
-          media_click: media.media_click,
-          media_cv: media.media_cv,
-        }
-      : m,
-  )
-}
+// 媒体実績（配信金額など）の書き込みは出どころごとに分けた（store/media-sources.ts・2026-09-24）
+export { setMediaMetrics } from './media-sources.ts'
 /** 日次メトリクスに加算（無ければ作る）。一次値だけを持ち、派生は metrics.ts の恒等式で算出する。 */
 export function bumpMetric(
   state: State,

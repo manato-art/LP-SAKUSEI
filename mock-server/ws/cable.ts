@@ -8,7 +8,8 @@
  */
 import { WebSocketServer, type WebSocket } from 'ws'
 import type { Server } from 'node:http'
-import { CABLE_PING_MS, PREFIX } from '../config.ts'
+import { CABLE_PING_MS, PREFIX, SERVE_DIST } from '../config.ts'
+import { isAdminCookieHeader } from '../lib/admin-auth.ts'
 
 const CONVERSIONS_CHANNEL = JSON.stringify({ channel: 'ConversionsChannel' })
 
@@ -53,8 +54,22 @@ export interface CableHandle {
   close: () => void
 }
 
-export function attachCable(server: Server): CableHandle {
-  const wss = new WebSocketServer({ server, path: PREFIX.cable })
+export function attachCable(
+  server: Server,
+  /**
+   * requireAuth: 管理画面のログイン（Cookie）が無い接続を断る。
+   * 既定は API と同じ＝本番（SERVE_DIST あり）だけ要る。以前は誰でもつなげて、届いた CV
+   * （ページ名・Version名・金額）を受け取れた（2026-09-24）。
+   */
+  options: { requireAuth?: boolean } = {},
+): CableHandle {
+  const requireAuth = options.requireAuth ?? SERVE_DIST !== undefined
+  const wss = new WebSocketServer({
+    server,
+    path: PREFIX.cable,
+    verifyClient: (info: { req: { headers: { cookie?: string } } }) =>
+      !requireAuth || isAdminCookieHeader(info.req.headers.cookie),
+  })
   const clients = new Set<CableClient>()
 
   wss.on('connection', (socket) => {

@@ -8,7 +8,7 @@ import { accountApi, type AllowedEmailEntry } from '../api-tools.ts'
 import { T, el, emptyState, toast } from '../ui.ts'
 import { confirmCard } from '../dialog.ts'
 import { buildThemeColorSection } from '../panels/theme-color-section.ts'
-import { jstDateKey } from '../jst.ts'
+import { jstDateKey, jstHhmm } from '../jst.ts'
 import { mountAlertSettings } from './alert-settings-section.ts'
 import { renderMembers } from './team-members.ts'
 
@@ -190,6 +190,12 @@ async function renderAccount(content: HTMLElement): Promise<void> {
   content.append(form, buildThemeColorSection())
 }
 
+/** UNIX秒 → `2026-09-24 10:15`（日本時間） */
+function jstStamp(seconds: number): string {
+  const at = new Date(seconds * 1000)
+  return `${jstDateKey(at)} ${jstHhmm(at)}`
+}
+
 async function renderNotifications(content: HTMLElement): Promise<void> {
   const data = await api.notificationSettings('member')
   const settings = data.settings
@@ -199,15 +205,44 @@ async function renderNotifications(content: HTMLElement): Promise<void> {
   }
 
   const desc = el('div', {
-    text: 'CV発生やレポート配信の通知を設定します。Squad Beyondからのメール・Slack通知の受信を制御できます。',
+    text:
+      'CVの知らせと毎朝のレポートを、Slack・チャットワーク・LINEへ送ります。' +
+      '送り先は下の「異常のお知らせ」で決めた送り先と同じです（送り先が無いあいだは送りません）。' +
+      '広告の異常（CVが止まった・CPAが上限を超えた）の知らせも、下の「異常のお知らせ」で入り切りします。',
     style: `font-size:13px;color:${T.sub};line-height:1.7;margin-bottom:20px`,
   })
   content.append(desc)
 
-  const toggles: { label: string; desc: string; key: 'cv_notify' | 'daily_report' | 'ad_alert' }[] = [
-    { label: 'CV発生通知', desc: 'コンバージョンが発生したらメール/Slackで通知', key: 'cv_notify' },
-    { label: 'デイリーレポート', desc: '毎日のレポートをメールで受け取る', key: 'daily_report' },
-    { label: '広告アラート', desc: '広告の異常（停止・予算超過等）を通知', key: 'ad_alert' },
+  // 2026-09-24（点検28）: 以前の3つのスイッチは保存されるだけで何もしていなかった。
+  // CV発生通知・デイリーレポートは実際に送るようにし（新しい値・既定オフ＝入れるまで送らない）、
+  // 広告アラートは下の「異常のお知らせ」と同じことなので1つにまとめた（何もしないスイッチを残さない）。
+  // 古いサーバーは runs を返さない。そのときは「前回」の行を出さない
+  const runs = data.runs ?? null
+  const toggles: { label: string; desc: string; key: 'cv_digest' | 'daily_digest'; status: string | null }[] = [
+    {
+      label: 'CV発生通知',
+      desc:
+        '新しいCVがあったら知らせます。送りすぎないよう15分に1通までにまとめ、ページごとの件数を書きます。' +
+        'LINEは無料枠が月200通なので、CVが多い日は枠を使い切ることがあります。',
+      key: 'cv_digest',
+      status:
+        runs !== null && runs.cv_last_error !== null
+          ? `前回送れませんでした（${runs.cv_last_error}）`
+          : runs !== null && runs.cv_last_sent_at !== null
+            ? `前回送った時刻: ${jstStamp(runs.cv_last_sent_at)}`
+            : null,
+    },
+    {
+      label: 'デイリーレポート',
+      desc: '毎朝9時（日本時間）に、前日のPV・CLICK・CV・CVR・配信金額をページごとに1通で送ります（数字があったページだけ）。',
+      key: 'daily_digest',
+      status:
+        runs !== null && runs.daily_last_error !== null
+          ? `前回送れませんでした（${runs.daily_last_error}）`
+          : runs !== null && runs.daily_sent_for !== null
+            ? `最後に確かめた日: ${runs.daily_sent_for}`
+            : null,
+    },
   ]
 
   for (const toggle of toggles) {
@@ -215,16 +250,19 @@ async function renderNotifications(content: HTMLElement): Promise<void> {
       style: 'display:flex;justify-content:space-between;align-items:center;padding:16px 0;border-bottom:1px solid var(--sb-c-f2f2f2, #F2F2F2)',
     })
 
-    const left = el('div', { style: '' }, [
+    const left = el('div', { style: 'min-width:0;flex:1 1 220px' }, [
       el('div', { text: toggle.label, style: `font-size:14px;font-weight:500;color:${T.text}` }),
-      el('div', { text: toggle.desc, style: `font-size:12px;color:${T.sub};margin-top:2px` }),
+      el('div', { text: toggle.desc, style: `font-size:12px;color:${T.sub};margin-top:2px;line-height:1.7` }),
+      ...(toggle.status === null
+        ? []
+        : [el('div', { text: toggle.status, style: `font-size:12px;color:${T.sub};margin-top:4px` })]),
     ])
 
     const switchEl = document.createElement('label')
     switchEl.style.cssText = 'position:relative;display:inline-block;width:44px;height:24px;cursor:pointer'
     const checkbox = document.createElement('input')
     checkbox.type = 'checkbox'
-    checkbox.checked = settings[toggle.key]
+    checkbox.checked = settings[toggle.key] === true
     checkbox.style.cssText = 'opacity:0;width:0;height:0'
     const slider = el('span', {
       style: [

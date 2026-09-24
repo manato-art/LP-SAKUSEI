@@ -16,7 +16,7 @@ import { getState, setState } from '../store/store.ts'
 import { getMasterStyleSheet } from '../store/master-style-sheet.ts'
 import { getHtmlSetting } from '../store/html-tags.ts'
 import { bulkTagsForFolder } from '../store/bulk-tags.ts'
-import { bumpMetric, recordConversion } from '../store/actions.ts'
+import { recordConversion } from '../store/actions.ts'
 import { shouldExclude } from '../store/exclusions.ts'
 import type { RequestLogEntry } from '../store/types.ts'
 import { broadcastConversion, type ConversionPush } from '../ws/cable.ts'
@@ -34,6 +34,8 @@ import { buildCvScriptBody, buildKeepUidScriptBody, buildTrackingScriptBody } fr
 import { isBotAccess } from '../lib/bot-detect.ts'
 import { recordBotHit } from '../store/bot-hits.ts'
 import { adParamsOf, mergeHeatmapEvent } from './track-heatmap.ts'
+import { deviceOfUserAgent } from '../lib/device.ts'
+import { countPvOrClick } from './track-counts.ts'
 import { attributeConversion, recordTouch, toVisitorId } from '../store/visitor-touches.ts'
 import { buildVisitorContext, pickDeliveryVersion } from './delivery-targeting.ts'
 import { canonicalHost, isServableOnHost } from '../lib/delivery-host.ts'
@@ -499,6 +501,8 @@ deliveryRouter.post('/lp/:uid/__track', (req, res) => {
   const versionUid = typeof body.version === 'string' ? body.version : ''
   const vid = toVisitorId(body.vid)
   const date = toDateKey(new Date())
+  // 端末（スマホ / タブレット / PC）。表示・クリック・CV・スクロールを端末ごとにも数える（2026-09-24・点検29）
+  const device = deviceOfUserAgent(req.get('user-agent') ?? '')
 
   /**
    * レポート除外の判定は**すべての計測より先**に行う。
@@ -554,7 +558,7 @@ deliveryRouter.post('/lp/:uid/__track', (req, res) => {
       const versionOfCv = matched.touch.version_uid
       const out = recordConversion(
         { ...s, visitorTouches: matched.touches },
-        { ab_test_uid: abTest.uid, version_uid: versionOfCv, media_id: abTest.media_id, amount },
+        { ab_test_uid: abTest.uid, version_uid: versionOfCv, media_id: abTest.media_id, amount, device },
       )
       const media = out.state.media.find((m) => m.id === abTest.media_id)
       const version = out.state.versions.find((v) => v.uid === versionOfCv)
@@ -577,7 +581,7 @@ deliveryRouter.post('/lp/:uid/__track', (req, res) => {
   // ── ヒートマップ（実測）: 計測タグが離脱時にまとめて送る位置情報 ──
   // 回数ではなく「ページのどこか」を積む。到達率/離脱率/滞在時間/クリック数の材料。
   if (body.event === 'heatmap') {
-    setState((s) => mergeHeatmapEvent(s, { abTestUid: abTest.uid, versionUid, date, body }))
+    setState((s) => mergeHeatmapEvent(s, { abTestUid: abTest.uid, versionUid, date, body, device }))
     res.json({ ok: true })
     return
   }
@@ -594,16 +598,8 @@ deliveryRouter.post('/lp/:uid/__track', (req, res) => {
   const adParams = adParamsOf((body as { params?: unknown }).params)
 
   setState((s) => {
-    let next: State = { ...s, metrics: bumpMetric(s, abTest.uid, 'ab_test', date, delta) }
-    if (versionUid !== '') {
-      next = { ...next, metrics: bumpMetric(next, versionUid, 'version', date, delta) }
-      for (const param of adParams) {
-        next = {
-          ...next,
-          metrics: bumpMetric(next, `${versionUid}|${param}`, 'parameter', date, delta),
-        }
-      }
-    }
+    // ページ全体・Version・Version×広告に数え、端末ごとにも同じだけ数える（track-counts.ts）
+    let next: State = countPvOrClick(s, { abTestUid: abTest.uid, versionUid, adParams, date, device, delta })
     // 目印があれば「見た・押した」記録を残す（CVタグから成果が届いたとき、どのVersionの成果かを照らし合わせる）
     if (vid !== null) {
       next = {

@@ -41,6 +41,81 @@ export async function getJsonResult<T>(path: string): Promise<JsonResult<T>> {
   return { ok: true, data: (await res.json()) as T }
 }
 
+/**
+ * 読み込み。失敗したら理由つきで投げる（2026-09-24）。
+ *
+ * getJson は失敗を null にするので、CV速報やランキングは読み込めなかったときも「0件」と同じ表示になっていた。
+ * 画面が「読めなかった」と言えるように、こちらはサーバーの言い分（error.message）かHTTPの番号を持って投げる。
+ */
+export async function requestJson<T>(path: string): Promise<T> {
+  const res = await fetch(`${API}${path}`)
+  if (!res.ok) {
+    const body = (await res.json().catch(() => null)) as { error?: { message?: unknown } } | null
+    const message = body?.error?.message
+    throw new Error(typeof message === 'string' && message !== '' ? message : `読み込めませんでした（HTTP ${res.status}）`)
+  }
+  return (await res.json()) as T
+}
+
+/**
+ * ページを最後までたどって全部集める（CSV に期間の全件を入れるため）。
+ * @param fetchPage 1 から始まるページ番号で1ページぶんを返す
+ */
+export async function fetchAllPages<T>(
+  fetchPage: (page: number) => Promise<{ items: readonly T[]; totalPages: number }>,
+): Promise<T[]> {
+  const out: T[] = []
+  for (let page = 1; ; page += 1) {
+    const { items, totalPages } = await fetchPage(page)
+    out.push(...items)
+    if (page >= totalPages || items.length === 0) return out
+  }
+}
+
+/** 「51 ~ 100件を表示中（全120件）」。0件は実物どおり「1 ~ 0件を表示中」 */
+export function pageRangeLabel(input: { page: number; perPage: number; shown: number; total: number }): string {
+  if (input.total === 0) return '1 ~ 0件を表示中'
+  const from = (input.page - 1) * input.perPage + 1
+  return `${from} ~ ${from + input.shown - 1}件を表示中（全${input.total.toLocaleString('ja-JP')}件）`
+}
+
+/** ページ送り（‹ 1 2 3 ›）。ページが1つなら何も出さない */
+export function pager(current: number, totalPages: number, onPage: (page: number) => void): HTMLElement {
+  const bar = el('div', { style: 'display:flex;gap:4px;align-items:center;flex-wrap:wrap' })
+  if (totalPages <= 1) return bar
+  const button = (label: string, page: number, disabled: boolean, isCurrent = false): HTMLButtonElement => {
+    const b = smallBtn(label, isCurrent ? 'var(--sb-accent, #0091FF)' : T.neutral, isCurrent ? '#FFF' : T.text)
+    b.style.padding = '4px 10px'
+    b.disabled = disabled
+    if (isCurrent) b.setAttribute('aria-current', 'page')
+    b.addEventListener('click', () => onPage(page))
+    return b
+  }
+  bar.append(button('‹', current - 1, current <= 1))
+  // ページが多いときは前後2つずつと両端だけ出す
+  const shown = new Set([1, totalPages, current - 2, current - 1, current, current + 1, current + 2])
+  let last = 0
+  for (let page = 1; page <= totalPages; page += 1) {
+    if (!shown.has(page)) continue
+    if (page - last > 1) bar.append(el('span', { text: '…', style: `color:${T.sub};font-size:12px` }))
+    bar.append(button(String(page), page, false, page === current))
+    last = page
+  }
+  bar.append(button('›', current + 1, current >= totalPages))
+  return bar
+}
+
+/** 読み込めなかったときの表示（0件と見分けがつくように、理由と「もう一度」を出す） */
+export function loadErrorBox(message: string, onRetry: () => void): HTMLElement {
+  const box = el('div', {
+    style: `padding:20px;text-align:center;font-size:13px;color:${T.text};line-height:1.8`,
+  })
+  const retry = smallBtn('もう一度読み込む', T.neutral, T.text)
+  retry.addEventListener('click', onRetry)
+  box.append(el('div', { text: `読み込めませんでした（${message}）` }), retry)
+  return box
+}
+
 export async function postJson<T>(path: string, body: unknown): Promise<T | null> {
   try {
     const res = await fetch(`${API}${path}`, {

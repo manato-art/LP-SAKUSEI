@@ -12,9 +12,24 @@
  * 数値は計測タグ由来の実測（`GET /ab_tests/:uid/heatmaps/stats`）。
  * まだ計測が無いバンドは色を塗らず「-」にする（0と「データ無し」を混ぜない）。
  */
-import type { HeatmapVersionStat } from '../api.ts'
+import type { HeatmapDeviceCoverage, HeatmapVersionStat, ReportVersionRow } from '../api.ts'
 import { buildHeatmapLpDocument } from './heatmap-lp-document.ts'
 import { ALL_PARAMS_LABEL } from './heatmap-params.ts'
+import { deviceNoteLines, reachBasisNote } from './heatmap-notes.ts'
+
+/** SP / PC の切り替えで読む、その端末ぶんの記録（2026-09-24・点検29） */
+export interface HeatmapDeviceData {
+  /** その端末の記録だけで集計したヒートマップ */
+  versions: readonly HeatmapVersionStat[]
+  /** Version ごとの、全端末と端末ごとの PV */
+  coverage: readonly HeatmapDeviceCoverage[]
+  /** 端末を記録し始めた日 */
+  since: string | null
+  /** その端末で絞ったレポートの行（見出しの PV / CTR / CV に使う） */
+  rows: readonly ReportVersionRow[]
+  /** 外部LP（Versionに紐づかない計測）の合計 */
+  totals: { pv: number; ctr: number | null; cv: number }
+}
 
 /** 列の指標（左のチェックボックスに対応）。実物は指標ごとに配色が違う。 */
 export type HeatmapMetric = 'exit' | 'click' | 'cv'
@@ -249,6 +264,11 @@ export interface ColumnDeps {
   onDuplicate?: (spec: ColumnSpec) => void
   /** カードの「非表示にする」（実物の `_optionsContainer_` の2つめ） */
   onHide?: (spec: ColumnSpec) => void
+  /**
+   * SP / PC を押したときに、その端末ぶんの記録を読む（2026-09-24）。
+   * 渡されなければ、SP / PC は枠の幅だけを変える（数字は全端末のまま）。
+   */
+  loadDevice?: (device: 'sp' | 'pc') => Promise<HeatmapDeviceData>
 }
 
 /** LPを見せる枠の幅（スマホ／PC） */
@@ -301,14 +321,15 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
   // Version一致が無ければ version無しの集計にフォールバックする。
   // これが無いと、タグを貼っても列が永久に「まだありません」のままになる。
   // 広告パラメータで絞った列は、その広告ぶんの集計を見る（無ければ合算）
-  const pool = deps.statsByParam?.get(spec.param ?? '') ?? deps.stats
-  const exact = pool.find((s) => s.version_uid === spec.versionUid) ?? null
-  const shared = pool.find((s) => s.version_uid === '') ?? null
-  const stat = exact ?? shared
+  const pickStat = (pool: readonly HeatmapVersionStat[]): HeatmapVersionStat | null =>
+    pool.find((s) => s.version_uid === spec.versionUid) ?? pool.find((s) => s.version_uid === '') ?? null
+  let stat = pickStat(deps.statsByParam?.get(spec.param ?? '') ?? deps.stats)
   // 「外部LPの数字を見ている列か」は、行き着いた集計が version無しかどうかで決める。
   // 外部LPの行（entity_uid='')を直接選んだ場合も exact 一致するので、
   // 「フォールバックしたか」では判定できない。
-  const isShared = stat !== null && stat.version_uid === ''
+  let isShared = stat !== null && stat.version_uid === ''
+  /** 見出しの PV / CTR / CV の出どころ（端末で切り替えたら、その端末で絞ったレポートの数字） */
+  let headSource: { spec: typeof spec; totals: ColumnDeps['totals'] } = { spec, totals: deps.totals }
 
   const col = document.createElement('div')
   col.className = 'hm-col'
@@ -326,16 +347,19 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
   const metName = document.createElement('b')
   metName.textContent = METRIC_LABEL[spec.metric]
   const metStats = document.createElement('span')
-  const shown = columnHeaderStats(spec, { isShared, totals: deps.totals, stat })
-  metStats.textContent =
-    `PV: ${shown.pv}  CTR: ${shown.ctr === null ? '-' : `${(shown.ctr * 100).toFixed(2)}%`}  CV: ${shown.cv ?? '-'}`
+  const paintHeadStats = (): void => {
+    const shown = columnHeaderStats(headSource.spec, { isShared, totals: headSource.totals, stat })
+    metStats.textContent =
+      `PV: ${shown.pv}  CTR: ${shown.ctr === null ? '-' : `${(shown.ctr * 100).toFixed(2)}%`}  CV: ${shown.cv ?? '-'}`
+  }
+  paintHeadStats()
   met.append(metName, metStats)
   const note = document.createElement('div')
   note.className = 'hm-col-note'
   // このカードが何を合算しているかを名乗る場所（実物の `_noParam_`）。
   // 広告パラメータで絞っていればその広告名、絞っていなければ「全パラメータ合算」。
   const scope = spec.param === undefined || spec.param === '' ? ALL_PARAMS_LABEL : spec.param
-  const scopeNote = isShared ? `${scope}・外部LP（Version区別なし）` : scope
+  let scopeNote = isShared ? `${scope}・外部LP（Version区別なし）` : scope
   note.textContent = scopeNote
 
   const ctrl = document.createElement('div')
@@ -355,6 +379,8 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
       pc.classList.toggle('on', b === pc)
       lp.style.width = `${b === pc ? PC_WIDTH : SP_WIDTH}px`
       applyScale()
+      // 枠の幅だけでなく、数字もその端末の記録に切り替える（2026-09-24・点検29）
+      void switchDevice(b === pc ? 'pc' : 'sp')
     })
   }
   dev.append(sp, pc)
@@ -372,7 +398,21 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
   // 左で選んだ指標に合わせた既定にする（以前は常に「到達率」で、3つとも同じ絵になっていた）
   lineSelect.value = defaultModeFor(spec.metric)
   ctrl.append(dev, rangeEl, lineSelect)
-  head.append(ver, met, note, ctrl)
+  // 到達の数え方を変えた日より前の記録・端末の記録が無いぶんがあれば、そう書く（2026-09-24）
+  const extraNotes = document.createElement('div')
+  const paintExtraNotes = (deviceLines: readonly string[]): void => {
+    const basis = stat === null ? null : reachBasisNote(stat)
+    extraNotes.replaceChildren(
+      ...[...(basis === null ? [] : [basis]), ...deviceLines].map((text) => {
+        const line = document.createElement('div')
+        line.className = 'hm-col-note'
+        line.textContent = text
+        return line
+      }),
+    )
+  }
+  paintExtraNotes([])
+  head.append(ver, met, note, extraNotes, ctrl)
 
   // 実物のカードにある3つの操作（採取物: `_dupContainer_` / `_optionsContainer_`）。
   //  ・複製      : 同じ設定のカードをもう1枚増やす
@@ -485,9 +525,11 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
     // 消さずに描き足すと、行を押すたびに層が積み重なって濃くなる。
     for (const old of canvas.querySelectorAll('.hm-heat')) old.remove()
     const mode = lineSelect.value as LineMode
-    if (stat === null || stat.pv === 0) return
+    // SP / PC の切り替えで差し替わるので、描くあいだは手元に固定する
+    const shownStat = stat
+    if (shownStat === null || shownStat.pv === 0) return
     if (mode === 'none') return
-    const bands = stat.bands
+    const bands = shownStat.bands
 
     // 熱の色。LPが読めなくなるので薄く敷く（実物もLPの絵柄がはっきり見える）。
     // 面は行（5%刻み21段）より**細かく**出す。行は読むための目盛りで、
@@ -496,7 +538,7 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
     // そのLPに実際に出ている最小〜最大へ色相を目一杯割り当てる。
     // こうしないと「26%〜74%しか無いLP」で色がほとんど変化せず、
     // 一面が同じ色に見えてどこが読まれたのか分からない。
-    const raw = Array.from({ length: bands }, (_, i) => bandValue(stat, mode, i))
+    const raw = Array.from({ length: bands }, (_, i) => bandValue(shownStat, mode, i))
     const present = raw.filter((v): v is NonNullable<typeof v> => v !== null).map((v) => v.strength)
     const lo = present.length > 0 ? Math.min(...present) : 0
     const hi = present.length > 0 ? Math.max(...present) : 1
@@ -518,7 +560,7 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
     }
 
     for (let row = 0; row < ROW_COUNT; row++) {
-      const v = bandValue(stat, mode, bandIndexOf(row, bands))
+      const v = bandValue(shownStat, mode, bandIndexOf(row, bands))
       if (v === null) continue
       const top = ROW_TOP + row * ROW_STEP
       const pill = document.createElement('button')
@@ -549,7 +591,7 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
 
     // クリック数モードのときは実際の座標も打つ（帯だけだと横位置が分からない）
     if (mode === 'elementClick') {
-      for (const c of stat.clicks.slice(-400)) {
+      for (const c of shownStat.clicks.slice(-400)) {
         const dot = document.createElement('div')
         dot.className = 'hm-dot'
         dot.style.left = `${c.x * 100}%`
@@ -563,9 +605,14 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
   lineSelect.addEventListener('change', drawOverlay)
 
   col.append(head, body)
-  if (stat === null || stat.pv === 0) {
-    const empty = document.createElement('div')
-    empty.className = 'hm-empty'
+  const empty = document.createElement('div')
+  empty.className = 'hm-empty'
+  empty.style.whiteSpace = 'pre-line'
+  const paintEmpty = (): void => {
+    if (stat !== null && stat.pv > 0) {
+      empty.remove()
+      return
+    }
     // PVがあるのに空だと「壊れている」と読めてしまう。実際の理由は
     // 「位置の記録は離脱時に1回だけ送られる」ため、それ以前のPVには位置が無いこと。
     // 自前配信のLPには計測タグが最初から入っているので「タグを貼れ」とは言わない。
@@ -584,8 +631,42 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
             ? `これまでの ${seen} PV はその記録より前のぶんです。次の閲覧から貯まります。`
             : 'まだ誰も見ていません。',
         ].join('\n')
-    empty.style.whiteSpace = 'pre-line'
     body.prepend(empty)
+  }
+  paintEmpty()
+
+  /**
+   * SP / PC の切り替え（2026-09-24・点検29）。その端末の記録を読み直して、面・見出し・断り書きを描き直す。
+   * 広告で絞った列は端末ごとの記録が無いので、数字は変えずにそうと書く。
+   */
+  const switchDevice = async (device: 'sp' | 'pc'): Promise<void> => {
+    const param = spec.param ?? ''
+    if (deps.loadDevice === undefined) return
+    if (param !== '') {
+      paintExtraNotes(deviceNoteLines({ device, param, coverage: null, since: null }))
+      return
+    }
+    try {
+      const data = await deps.loadDevice(device)
+      stat = pickStat(data.versions)
+      isShared = stat !== null && stat.version_uid === ''
+      scopeNote = isShared ? `${scope}・外部LP（Version区別なし）` : scope
+      const row = data.rows.find((r) => r.entity_uid === spec.versionUid)
+      headSource = {
+        spec: { ...spec, pv: row?.pv ?? 0, ctr: row?.ctr ?? null, cv: row?.cv ?? 0 },
+        totals: data.totals,
+      }
+      const coverage = data.coverage.find((c) => c.version_uid === (isShared ? '' : spec.versionUid)) ?? null
+      paintHeadStats()
+      paintExtraNotes(deviceNoteLines({ device, param, coverage, since: data.since }))
+      paintEmpty()
+      drawOverlay()
+    } catch (error) {
+      // 読めなかったことを隠さない（全端末の数字のまま、そうと書く）
+      paintExtraNotes([
+        `${device === 'sp' ? 'SP' : 'PC'}の記録を読み込めませんでした（${error instanceof Error ? error.message : '通信エラー'}）。全端末の数字のままです。`,
+      ])
+    }
   }
 
   // 背景タブでは requestAnimationFrame が発火しないので、rAFに依存しない。
@@ -597,6 +678,8 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
   refresh()
   setTimeout(refresh, 0)
   window.addEventListener('resize', refresh)
+  // 最初に選ばれているのは SP（採取物のまま）。数字も SP の記録で出す
+  void switchDevice('sp')
   return col
 }
 

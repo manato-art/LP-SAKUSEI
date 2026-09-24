@@ -66,7 +66,8 @@ describe('CSVダウンロード', () => {
 })
 
 describe('画面の配線', () => {
-  const src = readFileSync('src/app/pages/sidebar-data.ts', 'utf8')
+  // CV速報は2026-09-24に cv-flash-page.ts へ分けた（ページ送り・CSV全件・自動更新を足したため）
+  const src = readFileSync('src/app/pages/cv-flash-page.ts', 'utf8')
 
   it('実物にある見出しと操作を揃える', () => {
     for (const label of ['コンバージョン', '通知設定', 'CSVダウンロード', '速報を検索']) {
