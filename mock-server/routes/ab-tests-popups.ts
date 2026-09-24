@@ -11,6 +11,8 @@ import { applyEmptyState } from '../lib/mock-state.ts'
 import { errorEnvelope } from '../lib/envelope.ts'
 import { findAbTest, notFound } from './ab-tests-shared.ts'
 import { externalizeDataUrls } from '../lib/uploads.ts'
+import { freshUid } from '../store/actions-shared.ts'
+import { makeUid } from '../store/ids.ts'
 
 export const abTestsPopupsRouter: Router = Router()
 
@@ -35,7 +37,8 @@ abTestsPopupsRouter.post('/ab_tests/:uid/exit_popups', (req, res) => {
   const body = req.body as Record<string, unknown>
   const created = {
     id: state.nextId,
-    uid: `EXITPOPUP_${String(state.exitPopups.length + 1).padStart(4, '0')}`,
+    // uid は増えるだけの通し番号から作る（件数＋1だと削除のあとに既存と重なる・2026-09-24）
+    uid: freshUid(state.exitPopups, state.nextId, (n) => makeUid('exitPopup', n)),
     ab_test_id: abTest.id,
     name: name.value,
     ratio: typeof body.ratio === 'number' ? body.ratio : 0,
@@ -197,7 +200,7 @@ abTestsPopupsRouter.post('/ab_tests/:uid/follow_popups', (req, res) => {
   const body = req.body as Record<string, unknown>
   const created = {
     id: state.nextId,
-    uid: `FOLLOWPOPUP_${String(state.followPopups.length + 1).padStart(4, '0')}`,
+    uid: freshUid(state.followPopups, state.nextId, (n) => makeUid('followPopup', n)),
     ab_test_id: abTest.id,
     name: name.value,
     enabled: true,

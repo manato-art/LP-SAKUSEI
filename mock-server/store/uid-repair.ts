@@ -8,6 +8,11 @@
  * 直し方: 同じ uid の中で id が一番小さい（一番古い）1件は uid をそのまま残し、ほかの物に新しい uid を付け直す。
  * 新しい uid は増えるだけの通し番号（state.nextId）から作る（actions-shared.ts の freshUid と同じ決め方）。
  * 日次の数値やヒートマップは uid で記録しているので、付け直す前の分は残した1件のものとして扱われる（どちらの分か分けられない）。
+ *
+ * 2026-09-24: ポップアップ（離脱防止・表示直後＝exitPopups、追従型＝followPopups）も同じ不具合があったので対象に足した。
+ * ポップアップの uid を保存しているのは審査の記録（inspectionEntries の kind='popup'）だけ
+ * （配信の目印 `exit-popup-{uid}` は配信のたびに作る・リンク置換は一覧を読むだけ）。
+ * 直す前は2件とも同じ記録を見ていたので、付け直した方にも同じ記録を足す（残す方の記録は消さない＝足すだけ）。
  */
 import { freshUid } from './actions-shared.ts'
 import { makeAbTestUid, makeUid } from './ids.ts'
@@ -24,6 +29,8 @@ type UidCollection =
   | 'conversions'
   | 'productSearchForms'
   | 'products'
+  | 'exitPopups'
+  | 'followPopups'
 
 /** 付け直した1件 */
 export interface UidRepair {
@@ -44,6 +51,8 @@ const UID_FORMATS: Readonly<Record<UidCollection, (n: number) => string>> = {
   conversions: (n) => makeUid('conversion', n),
   productSearchForms: (n) => makeUid('productSearchForm', n),
   products: (n) => makeUid('product', n),
+  exitPopups: (n) => makeUid('exitPopup', n),
+  followPopups: (n) => makeUid('followPopup', n),
 }
 
 interface Identified {
@@ -78,8 +87,30 @@ function repairCollection(
   }, initial)
 }
 
+/**
+ * 付け直した離脱防止ポップアップにも、元の uid の審査の記録を写す（同じ記録が既にあれば足さない）。
+ * 審査画面に並ぶのは離脱防止ポップアップ（exitPopups）だけなので、追従型は対象にしない。
+ */
+function copyPopupInspections(state: State, renamed: readonly UidRepair[]): State {
+  const added = renamed
+    .filter((r) => r.collection === 'exitPopups')
+    .flatMap((r) =>
+      state.inspectionEntries
+        .filter((e) => e.kind === 'popup' && e.target_uid === r.from)
+        .filter(() => !state.inspectionEntries.some((x) => x.kind === 'popup' && x.target_uid === r.to))
+        .map((e) => ({ ...e, target_uid: r.to })),
+    )
+  return added.length === 0 ? state : { ...state, inspectionEntries: [...state.inspectionEntries, ...added] }
+}
+
 /** 同じ uid が2件以上ある物を直す。直す物が無ければ、渡された state をそのまま返す */
 export function repairDuplicateUids(state: State): { state: State; changes: readonly UidRepair[] } {
+  const repaired = renameDuplicates(state)
+  if (repaired.changes.length === 0) return repaired
+  return { state: copyPopupInspections(repaired.state, repaired.changes), changes: repaired.changes }
+}
+
+function renameDuplicates(state: State): { state: State; changes: readonly UidRepair[] } {
   return (Object.keys(UID_FORMATS) as UidCollection[]).reduce(
     (acc, collection) => {
       const out = repairCollection(acc.state[collection], acc.state.nextId, UID_FORMATS[collection])
