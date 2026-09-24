@@ -12,7 +12,7 @@
 import { ARROW_SVG, pressButtonCss } from './cta.ts'
 import { esc, inkOn, linkAttrs, newUid, safeColor, safeImage, safeVideo, shade } from './kit.ts'
 import { richText } from '../rich-text.ts'
-import { ALIGN_ICONS, BUTTON_LOOK_ICONS, DIVIDER_ICONS, MARKER_ICONS, SHAPE_ICONS, SIDE_ICONS } from './option-icons.ts'
+import { ALIGN_ICONS, BUTTON_LOOK_ICONS, DIVIDER_ICONS, MARKER_ICONS, PLACE_ICONS, SHAPE_ICONS, SIDE_ICONS } from './option-icons.ts'
 import { TEMPLATES } from './list.ts'
 import { ACCENT_PRESETS, bool, int, pick, str, type BlockType, type Field, type ItemData, type NocodeTemplate } from './types.ts'
 
@@ -41,11 +41,40 @@ export const HEADING_SIZES: Readonly<Record<string, number>> = { l: 26, m: 21, s
 export const TEXT_SIZES: Readonly<Record<string, number>> = { m: 15, s: 12.5 }
 export const SPACER_SIZES: Readonly<Record<string, number>> = { s: 16, m: 32, l: 56 }
 
-const ALIGNS = ['left', 'center'] as const
+export const ALIGNS = ['left', 'center', 'right'] as const
 const ALIGN_OPTIONS = [
   { value: 'left', label: '左に寄せる', short: '左', icon: ALIGN_ICONS.left },
   { value: 'center', label: '真ん中', short: '真ん中', icon: ALIGN_ICONS.center },
+  { value: 'right', label: '右に寄せる', short: '右', icon: ALIGN_ICONS.right },
 ]
+
+/**
+ * 部品を置く位置（2026-09-24・本人「部品ごとに中央揃えや左右へ。サイズも変えられるように」）。
+ * どの部品にも「幅（%）」と「置く位置」がある。幅の欄の名前は部品によって違う（widthKeyOf）
+ */
+export const PLACES = ['left', 'center', 'right'] as const
+export type Place = (typeof PLACES)[number]
+const PLACE_OPTIONS = [
+  { value: 'left', label: '左に置く', short: '左', icon: PLACE_ICONS.left },
+  { value: 'center', label: '中央に置く', short: '中央', icon: PLACE_ICONS.center },
+  { value: 'right', label: '右に置く', short: '右', icon: PLACE_ICONS.right },
+]
+
+/** 部品の「幅」の欄の名前（画像・動画は width、図形は size、ほかは boxWidth）。余白は幅を持たない＝null */
+export function widthKeyOf(type: string): string | null {
+  if (type === 'spacer') return null
+  if (type === 'image' || type === 'video') return 'width'
+  if (type === 'shape') return 'size'
+  return 'boxWidth'
+}
+
+/** 幅と置く位置の入力（どの部品でも、いちばん上に出す＝選んだらすぐ直せる） */
+function layoutFields(widthKey: string): readonly Field[] {
+  return [
+    { kind: 'number', key: widthKey, label: '幅', min: 10, max: 100, unit: '%' },
+    { kind: 'select', key: 'place', label: '置く位置', options: PLACE_OPTIONS },
+  ]
+}
 
 /**
  * 図形の形（2026-09-24・本人「文字ではなく形で選べるように。種類をもっと多く」で4種→11種）。
@@ -94,7 +123,7 @@ export const BLOCK_TYPES: readonly BlockType[] = [
     type: 'sample',
     label: '見本',
     icon: svg('<rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><path d="M17 14v6M14 17h6"/>'),
-    fields: [{ kind: 'sample', key: 'html', label: '見本' }],
+    fields: [...layoutFields('boxWidth'), { kind: 'sample', key: 'html', label: '見本' }],
     newItem: () => ({ type: 'sample', title: '', html: '' }),
   },
   {
@@ -102,10 +131,11 @@ export const BLOCK_TYPES: readonly BlockType[] = [
     label: '見出し',
     icon: svg('<path d="M6 5v14M18 5v14M6 12h12"/>'),
     fields: [
+      ...layoutFields('boxWidth'),
       { kind: 'text', key: 'text', label: '文字', placeholder: 'はじめての方へ', rich: true },
       // 大きさは数で持つ（以前の 大/中/小 は 26/21/17px として読める）。左の選択枠の角でもドラッグできる
       { kind: 'number', key: 'size', label: '文字の大きさ', min: 12, max: 48, unit: 'px', legacy: HEADING_SIZES },
-      { kind: 'select', key: 'align', label: '寄せ', options: ALIGN_OPTIONS },
+      { kind: 'select', key: 'align', label: '文字の寄せ', options: ALIGN_OPTIONS },
       { kind: 'color', key: 'color', label: '文字の色', presets: TEXT_PRESETS },
     ],
     newItem: () => ({ type: 'heading', text: '', size: 21, align: 'center', color: '#1F2A37' }),
@@ -115,10 +145,11 @@ export const BLOCK_TYPES: readonly BlockType[] = [
     label: '文章',
     icon: svg('<path d="M4 6h16M4 10h16M4 14h16M4 18h10"/>'),
     fields: [
+      ...layoutFields('boxWidth'),
       { kind: 'textarea', key: 'text', label: '文章', rows: 4, rich: true },
       // 数で持つ（以前の 標準/小さめ は 15/12.5px として読める）。14px未満は注意書きの見た目（薄い色）
       { kind: 'number', key: 'size', label: '文字の大きさ', min: 10, max: 24, unit: 'px', legacy: TEXT_SIZES },
-      { kind: 'select', key: 'align', label: '寄せ', options: ALIGN_OPTIONS },
+      { kind: 'select', key: 'align', label: '文字の寄せ', options: ALIGN_OPTIONS },
     ],
     newItem: () => ({ type: 'text', text: '', size: 15, align: 'left' }),
   },
@@ -127,6 +158,7 @@ export const BLOCK_TYPES: readonly BlockType[] = [
     label: 'ボタン',
     icon: svg('<rect x="3" y="8" width="18" height="8" rx="4"/><path d="M13 12h4"/>'),
     fields: [
+      ...layoutFields('boxWidth'),
       { kind: 'text', key: 'label', label: 'ボタンの文字', placeholder: '今すぐ申し込む', maxLength: 40, rich: true },
       {
         kind: 'select',
@@ -146,11 +178,11 @@ export const BLOCK_TYPES: readonly BlockType[] = [
     type: 'image',
     label: '画像',
     icon: svg('<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/>'),
+    // 幅は数で持つ（10〜100%。以前の「横いっぱい／8割／6割」の選びは 100・80・60 として読める）
     fields: [
+      ...layoutFields('width'),
       { kind: 'image', key: 'image', label: '画像' },
       { kind: 'text', key: 'alt', label: '画像の説明（読み上げ用）' },
-      // 幅は数で持つ（10〜100%。以前の「横いっぱい／8割／6割」の選びは 100・80・60 として読める）
-      { kind: 'number', key: 'width', label: '幅', min: 10, max: 100, unit: '%' },
       { kind: 'toggle', key: 'round', label: '角を丸くする' },
       ...actionFields(),
     ],
@@ -160,15 +192,15 @@ export const BLOCK_TYPES: readonly BlockType[] = [
     type: 'shape',
     label: '図形',
     icon: svg('<rect x="3" y="4" width="8" height="8" rx="1.5"/><circle cx="17" cy="8" r="4"/><rect x="4" y="15" width="16" height="5" rx="2.5"/>'),
+    // 幅は数で持つ（10〜100%。以前の「横いっぱい／8割／6割／4割」の選びは 100・80・60・40 として読める）
     fields: [
+      ...layoutFields('size'),
       {
         kind: 'select',
         key: 'shape',
         label: '形',
         options: SHAPE_KINDS.map((kind) => ({ value: kind, label: SHAPE_LABELS[kind], icon: SHAPE_ICONS[kind] })),
       },
-      // 幅は数で持つ（10〜100%。以前の「横いっぱい／8割／6割／4割」の選びは 100・80・60・40 として読める）
-      { kind: 'number', key: 'size', label: '幅', min: 10, max: 100, unit: '%' },
       { kind: 'color', key: 'color', label: '色', presets: SHAPE_PRESETS },
       { kind: 'text', key: 'text', label: '中の文字（任意）', rich: true },
       ...actionFields(),
@@ -180,17 +212,19 @@ export const BLOCK_TYPES: readonly BlockType[] = [
     label: '動画',
     icon: svg('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9.5v5l4.5-2.5z"/>'),
     fields: [
+      ...layoutFields('width'),
       { kind: 'video', key: 'video', label: '動画（mp4・webm、30MBまで）' },
       { kind: 'toggle', key: 'autoplay', label: '自動で再生する（音なし・くり返し）' },
       ...actionFields(),
     ],
-    newItem: () => ({ type: 'video', video: '', autoplay: true, ...NO_ACTION }),
+    newItem: () => ({ type: 'video', video: '', autoplay: true, width: 100, ...NO_ACTION }),
   },
   {
     type: 'list',
     label: '箇条書き',
     icon: svg('<path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/>'),
     fields: [
+      ...layoutFields('boxWidth'),
       { kind: 'textarea', key: 'text', label: '1行に1つ書きます', rows: 4, rich: true },
       {
         kind: 'select',
@@ -210,6 +244,7 @@ export const BLOCK_TYPES: readonly BlockType[] = [
     label: '画像と文章',
     icon: svg('<rect x="3" y="6" width="8" height="12" rx="1.5"/><path d="M14 8h7M14 12h7M14 16h5"/>'),
     fields: [
+      ...layoutFields('boxWidth'),
       { kind: 'image', key: 'image', label: '画像' },
       { kind: 'text', key: 'heading', label: '見出し（任意）', rich: true },
       { kind: 'textarea', key: 'text', label: '文章', rows: 3, rich: true },
@@ -239,6 +274,7 @@ export const BLOCK_TYPES: readonly BlockType[] = [
     label: '区切り線',
     icon: svg('<path d="M3 12h18"/>'),
     fields: [
+      ...layoutFields('boxWidth'),
       {
         kind: 'select',
         key: 'style',
@@ -274,8 +310,8 @@ const TEMPLATE_BLOCKS: readonly BlockType[] = TEMPLATES.map((template) => ({
   type: `${TEMPLATE_PREFIX}${template.id}`,
   label: template.name,
   icon: template.icon,
-  // 押したときは、型の中の最初のボタン（リンク）に効かせる（ボタンの型など）
-  fields: template.partPress === true ? [...template.fields, ...actionFields()] : template.fields,
+  // 押したときは、型の中の最初のボタン（リンク）に効かせる（ボタンの型など）。幅と置く位置は、どの部品とも同じくいちばん上
+  fields: [...layoutFields('boxWidth'), ...(template.partPress === true ? [...template.fields, ...actionFields()] : template.fields)],
   newItem: () => ({ type: `${TEMPLATE_PREFIX}${template.id}`, uid: newUid(), ...template.defaults(new Date()) }),
 }))
 
@@ -346,6 +382,30 @@ function dedupeSampleAssets(html: string, seen: Set<string>): string {
   })
 }
 
+/** 左・中央・右 に置く左右の余白 */
+function placeMargins(place: Place): string {
+  if (place === 'left') return 'margin-left:0;margin-right:auto'
+  if (place === 'right') return 'margin-left:auto;margin-right:0'
+  return 'margin-left:auto;margin-right:auto'
+}
+
+/**
+ * 部品の幅と置く位置のCSS（その部品だけ）。
+ * 画像・動画は中の絵に、図形はそれ自体に、ほかは部品の外枠に効かせる。
+ * 外枠に効かせる部品は、幅が100%なら何も書かない（見本の左右いっぱいの見え方などを変えない）
+ */
+export function layoutCss(s: string, cls: string, item: ItemData): string {
+  const type = str(item, 'type')
+  const key = widthKeyOf(type)
+  if (key === null) return ''
+  const width = int(item, key, 10, 100, 100)
+  const margins = placeMargins(pick(item, 'place', PLACES, 'center'))
+  if (type === 'image') return `${s} .${cls} img{width:${width}%;${margins}}`
+  if (type === 'video') return `${s} .${cls} .nc-b-video__v{width:${width}%;${margins}}`
+  if (type === 'shape') return `${s} .${cls}{width:${width}%;${margins}}`
+  return width >= 100 ? '' : `${s} .${cls}{width:${width}%;${margins}}`
+}
+
 /** 1つの部品のHTMLと、その部品だけのCSS（i は Widget 全体で通しの番号。seen は見本の重なりを消すのに使う） */
 export function renderBlock(
   item: ItemData,
@@ -353,6 +413,18 @@ export function renderBlock(
   s: string,
   screenIds: ReadonlySet<string>,
   seen: Set<string> = new Set<string>(),
+): { html: string; css: string } {
+  const part = renderBlockBody(item, i, s, screenIds, seen)
+  const layout = layoutCss(s, `nc-b-${i}`, item)
+  return layout === '' ? part : { html: part.html, css: part.css + layout }
+}
+
+function renderBlockBody(
+  item: ItemData,
+  i: number,
+  s: string,
+  screenIds: ReadonlySet<string>,
+  seen: Set<string>,
 ): { html: string; css: string } {
   const cls = `nc-b-${i}`
   const align = pick(item, 'align', ALIGNS, 'left')
@@ -394,17 +466,15 @@ export function renderBlock(
     }
     case 'image': {
       const image = safeImage(str(item, 'image'))
-      const width = int(item, 'width', 10, 100, 100)
       const round = bool(item, 'round') ? ' nc-b-image--round' : ''
       const picture = image === '' ? '' : `<img src="${image}" alt="${esc(str(item, 'alt').trim())}">`
       return {
         html: `<figure class="nc-b nc-b-image${round} ${cls}"${goAttrs(target, false)}>${withLink(item, 'nc-b-image__link', picture)}</figure>`,
-        css: `${s} .${cls} img{width:${width}%}`,
+        css: '',
       }
     }
     case 'shape': {
       const shape = pick(item, 'shape', SHAPE_KINDS, 'round')
-      const size = int(item, 'size', 10, 100, 100)
       const color = safeColor(str(item, 'color'), '#1F7AE0')
       const text = richText(str(item, 'text'))
       const inner = text === '' ? '' : `<span class="nc-b-shape__text">${text}</span>`
@@ -413,7 +483,7 @@ export function renderBlock(
         actionOf(item) === 'link' && str(item, 'url').trim() !== ''
           ? `<a class="${shapeClass}"${linkAttrs(str(item, 'url'), { track: bool(item, 'track'), newTab: false })}>${inner}</a>`
           : `<div class="${shapeClass}"${goAttrs(target, false)}>${inner}</div>`
-      return { html, css: `${s} .${cls}{background:${color};color:${inkOn(color)};width:${size}%}` }
+      return { html, css: `${s} .${cls}{background:${color};color:${inkOn(color)}}` }
     }
     case 'video': {
       const video = safeVideo(str(item, 'video'))

@@ -92,6 +92,8 @@ export interface TemplateForm {
   readonly select: (screenIndex: number, blockIndex: number | null) => void
   /** 見本の部品の中の要素を選ぶ（その部品を広げ、カードの段でその要素のカードを出す） */
   readonly selectInside: (screenIndex: number, blockIndex: number, target: HTMLElement) => void
+  /** 中身を入れ替えて組み立て直し、その部品を選ぶ（左で部品をつかんで並べ替えたとき） */
+  readonly load: (next: TemplateData, screenIndex: number, blockIndex: number | null) => void
   readonly activeScreen: () => number
   readonly selectedBlock: () => number | null
 }
@@ -430,7 +432,8 @@ export function buildTemplateForm(options: TemplateFormOptions): TemplateForm {
     selectedBlock = items(items(data, field.key)[screenIndex] ?? {}, 'blocks').length - 1
     build()
     notifySelect()
-    root.querySelector<HTMLElement>('.ncf-item--selected')?.querySelector<HTMLElement>('input,textarea,select')?.focus()
+    // 入力の印は中身の文字の欄へ（いちばん上の「幅」ではなく）。文字の欄が無い部品は置かない
+    root.querySelector<HTMLElement>('.ncf-item--selected')?.querySelector<HTMLElement>('input[type="text"],input[type="url"],textarea')?.focus()
   }
 
   /** 部品を1つ、その画面のいちばん下に足す（見本は先に見本の一覧で選んでもらう） */
@@ -823,6 +826,13 @@ export function buildTemplateForm(options: TemplateFormOptions): TemplateForm {
       pendingInner = { key, target }
       openScreen(screenIndex, blockIndex)
       root.querySelector<HTMLElement>('.ncf-item--selected')?.scrollIntoView({ block: 'nearest' })
+    },
+    load: (next, screenIndex, blockIndex) => {
+      replace(next)
+      activeScreen = screenIndex
+      selectedBlock = blockIndex
+      build()
+      notifySelect()
     },
     activeScreen: () => activeScreen,
     selectedBlock: () => selectedBlock,

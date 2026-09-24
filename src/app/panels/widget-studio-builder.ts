@@ -17,14 +17,15 @@
 import { toast } from '../ui.ts'
 import { embedBuilderData, splitStyles } from './nocode/builder-data.ts'
 import { blockElementAt, isTextEditableBlock, outermostBlock, syncCanvasBlock } from './nocode/canvas-sync.ts'
-import { getAt, setAt, type Path } from './nocode/form-state.ts'
+import { getAt, moveTo, setAt, type Path } from './nocode/form-state.ts'
 import { ensureNocodeFormCss } from './nocode/nocode-form-css.ts'
 import { buildTemplateForm } from './nocode/template-form.ts'
 import { BUILDER_PADDING, BUILDER_TEMPLATE } from './nocode/templates/builder.ts'
-import { HEADING_SIZES, SPACER_SIZES, TEXT_SIZES, blockLabel, sizeOf } from './nocode/templates/builder-blocks.ts'
+import { ALIGNS, HEADING_SIZES, PLACES, SPACER_SIZES, TEXT_SIZES, blockLabel, sizeOf, widthKeyOf, type Place } from './nocode/templates/builder-blocks.ts'
 import { newUid } from './nocode/templates/kit.ts'
-import { int, items, str, type ItemData, type TemplateData } from './nocode/templates/types.ts'
-import { createSelectionLayer, type SelectionHandle } from './selection-layer.ts'
+import { int, items, pick, str, type ItemData, type TemplateData } from './nocode/templates/types.ts'
+import { createSelectionLayer, type SelectionHandle, type SelectionMove } from './selection-layer.ts'
+import { openSizePopover } from './size-popover.ts'
 import { canvasEditTarget } from './widget-canvas-events.ts'
 import { FONT } from './widget-editor-theme.ts'
 import { runWidgetScripts } from './widget-run-scripts.ts'
@@ -56,6 +57,10 @@ export interface BuilderSession {
   readonly onCanvasClick: (target: EventTarget | null) => void
   /** 左の道具（画像の操作パネル・リンクの吹き出し・並んだ部品の操作）を効かせてよい要素か＝見本の部品の中 */
   readonly toolScope: (el: Element) => boolean
+  /** 上のツールバーの「配置」。選んだ部品の位置（見出し・文章は文字の寄せ）を 左→中央→右 と回す。受け持ったら true */
+  readonly onAlignButton: () => boolean
+  /** 上のツールバーの「サイズ」。選んだ部品の幅と置く位置の小窓を出す。受け持ったら true */
+  readonly onSizeButton: (anchor: HTMLElement) => boolean
   /** 登録の名前の初期値（「組み立てたWidget（最初の見出し）」） */
   readonly suggestName: () => string
   /** 登録したあと、次に入れる分の名前（CSSのクラス）を付け直す（同じLPに並んでも色がまざらない） */
@@ -137,90 +142,196 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
     return null
   }
 
-  /** 部品の1つの値を書いて、入力欄と見え方をそろえる（選択枠のつまみから） */
-  const commitField = (path: Path, key: string, value: number): void => {
+  /**
+   * 動かしている間だけ要素に直に当てた見た目（幅・余白・高さ・文字の大きさ）。
+   * 描き直すときに必ず外す（CSSだけの変化では要素を入れ替えないので、外さないと古い見た目が勝ち続ける）
+   */
+  const previewed = new Set<HTMLElement>()
+  const PREVIEW_PROPS = ['width', 'margin-left', 'margin-right', 'height', 'font-size', 'padding-top', 'padding-bottom'] as const
+  const clearPreviews = (): void => {
+    for (const el of previewed) for (const prop of PREVIEW_PROPS) el.style.removeProperty(prop)
+    previewed.clear()
+  }
+
+  /** 部品の1つの値を書いて、入力欄と見え方をそろえる（選択枠のつまみ・ツールバー・大きさの小窓から） */
+  const commitField = (path: Path, key: string, value: number | string): void => {
     data = setAt(data, [...path, key], value)
     form.setData(data)
     paint()
   }
 
+  /** 部品の場所 */
+  const pathOf = (screenIndex: number, blockIndex: number): Path => ['screens', screenIndex, 'blocks', blockIndex]
+
+  /** 枠を合わせる要素（画像・動画は中の絵そのもの。ほかは部品の外枠） */
+  const frameTarget = (el: HTMLElement, type: string): HTMLElement => {
+    if (type === 'image') return el.querySelector<HTMLElement>('img') ?? el
+    if (type === 'video') return el.querySelector<HTMLElement>('video') ?? el
+    return el
+  }
+
+  /** 部品の幅（%）と置く位置 */
+  const widthOf = (block: ItemData): number => {
+    const key = widthKeyOf(str(block, 'type'))
+    return key === null ? 100 : int(block, key, 10, 100, 100)
+  }
+  const placeOf2 = (block: ItemData): Place => pick(block, 'place', PLACES, 'center')
+
+  /** 置く位置の左右の余白を、見た目だけ（動かしている間）当てる */
+  const previewPlace = (target: HTMLElement, place: Place): void => {
+    const t = target // eslint-safe alias（no-param-reassign 回避）
+    previewed.add(t)
+    t.style.marginLeft = place === 'left' ? '0' : 'auto'
+    t.style.marginRight = place === 'right' ? '0' : 'auto'
+  }
+
   /**
-   * 部品の選択枠に付けるつまみ（Canva風・第2弾）。
-   * 画像・図形＝幅%（右の辺）、余白＝高さ（下の辺）、見出し・文章＝文字の大きさ（右下の角）。
+   * 部品の選択枠に付けるつまみ（Canva風）。
+   * どの部品も幅%（右の辺。右に置いた部品は左の辺）。余白＝高さ（下の辺）、見出し・文章＝文字の大きさ（右下の角）。
    * 動かしている間は要素の style だけ変え（軽い）、離したら設定データへ書いて描き直す
    */
   const blockHandles = (blockEl: HTMLElement, screenIndex: number, blockIndex: number): SelectionHandle[] => {
     const el = blockEl // eslint-safe alias（no-param-reassign 回避。動かしている間は style を直に書く）
-    const path: Path = ['screens', screenIndex, 'blocks', blockIndex]
+    const path = pathOf(screenIndex, blockIndex)
     const block = (): ItemData => blockAt(screenIndex, blockIndex) ?? {}
-    const pct = (): number => el.clientWidth / 100 || 1
-    switch (str(block(), 'type')) {
-      case 'image':
-        return [
-          {
-            kind: 'width',
-            label: '幅',
-            unit: '%',
-            range: { min: 10, max: 100, step: 1 },
-            read: () => int(block(), 'width', 10, 100, 100),
-            pxPerUnit: pct,
-            preview: (n) => {
-              const img = el.querySelector<HTMLElement>('img')
-              if (img !== null) img.style.width = `${n}%`
-            },
-            commit: (n) => commitField(path, 'width', n),
-          },
-        ]
-      case 'shape':
-        return [
-          {
-            kind: 'width',
-            label: '幅',
-            unit: '%',
-            range: { min: 10, max: 100, step: 1 },
-            read: () => int(block(), 'size', 10, 100, 100),
-            pxPerUnit: () => (el.parentElement?.clientWidth ?? el.clientWidth) / 100 || 1,
-            preview: (n) => {
-              el.style.width = `${n}%`
-            },
-            commit: (n) => commitField(path, 'size', n),
-          },
-        ]
-      case 'spacer':
-        return [
-          {
-            kind: 'height',
-            label: '高さ',
-            unit: 'px',
-            range: { min: 0, max: 160, step: 1 },
-            read: () => sizeOf(block(), 'size', SPACER_SIZES, 0, 160, 32),
-            pxPerUnit: () => 1,
-            preview: (n) => {
-              el.style.height = `${n}px`
-            },
-            commit: (n) => commitField(path, 'size', n),
-          },
-        ]
-      case 'heading':
-      case 'text': {
-        const isHeading = str(block(), 'type') === 'heading'
-        return [
-          {
-            kind: 'font',
-            label: '文字の大きさ',
-            unit: 'px',
-            range: isHeading ? { min: 12, max: 48, step: 1 } : { min: 10, max: 24, step: 0.5 },
-            read: () => (isHeading ? sizeOf(block(), 'size', HEADING_SIZES, 12, 48, 21) : sizeOf(block(), 'size', TEXT_SIZES, 10, 24, 15)),
-            pxPerUnit: () => 3,
-            preview: (n) => {
-              el.style.fontSize = `${n}px`
-            },
-            commit: (n) => commitField(path, 'size', n),
-          },
-        ]
-      }
-      default:
-        return []
+    const type = str(block(), 'type')
+    const handles: SelectionHandle[] = []
+    const key = widthKeyOf(type)
+    if (key !== null) {
+      const target = frameTarget(el, type)
+      const place = placeOf2(block())
+      handles.push({
+        kind: place === 'right' ? 'widthLeft' : 'width',
+        label: '幅',
+        unit: '%',
+        range: { min: 10, max: 100, step: 1 },
+        read: () => widthOf(block()),
+        // 中央に置いた部品は両側へ広がるので、手の動きの2倍ぶん幅が変わる
+        pxPerUnit: () => ((target.parentElement?.clientWidth ?? el.clientWidth) / 100 || 1) / (place === 'center' ? 2 : 1),
+        preview: (n) => {
+          previewed.add(target)
+          target.style.width = `${n}%`
+        },
+        commit: (n) => commitField(path, key, n),
+      })
+    }
+    if (type === 'spacer') {
+      handles.push({
+        kind: 'height',
+        label: '高さ',
+        unit: 'px',
+        range: { min: 0, max: 160, step: 1 },
+        read: () => sizeOf(block(), 'size', SPACER_SIZES, 0, 160, 32),
+        pxPerUnit: () => 1,
+        preview: (n) => {
+          previewed.add(el)
+          el.style.height = `${n}px`
+        },
+        commit: (n) => commitField(path, 'size', n),
+      })
+    }
+    if (type === 'heading' || type === 'text') {
+      const isHeading = type === 'heading'
+      handles.push({
+        kind: 'font',
+        label: '文字の大きさ',
+        unit: 'px',
+        range: isHeading ? { min: 12, max: 48, step: 1 } : { min: 10, max: 24, step: 0.5 },
+        read: () => (isHeading ? sizeOf(block(), 'size', HEADING_SIZES, 12, 48, 21) : sizeOf(block(), 'size', TEXT_SIZES, 10, 24, 15)),
+        pxPerUnit: () => 3,
+        preview: (n) => {
+          previewed.add(el)
+          el.style.fontSize = `${n}px`
+        },
+        commit: (n) => commitField(path, 'size', n),
+      })
+    }
+    return handles
+  }
+
+  /**
+   * 部品ごと動かす（つかみ所・部品そのものをつかんだとき）。
+   * 左右: 画面の横を3つに分けて、左・中央・右のどこに置くか（幅が100%の部品は変わらない）。
+   * 上下: ほかの部品の間に入れる（入る所に線を出す）。離したら設定データへ書く
+   */
+  const blockMove = (blockEl: HTMLElement, screenIndex: number, blockIndex: number): SelectionMove => {
+    const type = str(blockAt(screenIndex, blockIndex) ?? {}, 'type')
+    const target = frameTarget(blockEl, type)
+    // 置く位置は動かし始めた時点の値（ツールバーや小窓で変えたあとでも、今の値から始める）
+    const nowPlace = (): Place => placeOf2(blockAt(screenIndex, blockIndex) ?? {})
+    const canPlace = widthKeyOf(type) !== null
+    let startPlace = nowPlace()
+    let place = startPlace
+    let started = false
+    let insertAt = blockIndex
+    /** この画面の部品の要素（自分を除く並び・元の番号つき） */
+    const others = (): { el: HTMLElement; index: number }[] =>
+      items(items(data, 'screens')[screenIndex] ?? {}, 'blocks')
+        .map((_, index) => ({ el: blockElementAt(data, contentDiv, screenIndex, index), index }))
+        .filter((o): o is { el: HTMLElement; index: number } => o.el !== null && o.index !== blockIndex)
+    const PLACE_WORDS: Readonly<Record<Place, string>> = { left: '左に置く', center: '中央に置く', right: '右に置く' }
+    return {
+      update: (x, y) => {
+        if (!started) {
+          started = true
+          startPlace = nowPlace()
+          place = startPlace
+        }
+        const parent = (target.parentElement ?? blockEl).getBoundingClientRect()
+        if (canPlace && parent.width > 0) {
+          const ratio = (x - parent.left) / parent.width
+          place = ratio < 1 / 3 ? 'left' : ratio > 2 / 3 ? 'right' : 'center'
+          previewPlace(target, place)
+        }
+        // 上下: 自分を除いた並びの中で、真ん中より上にある部品の数＝入る位置
+        const list = others()
+        const before = list.filter((o) => {
+          const r = o.el.getBoundingClientRect()
+          return r.top + r.height / 2 < y
+        })
+        insertAt = before.length
+        const self = blockEl.getBoundingClientRect()
+        const originalAt = list.filter((o) => o.index < blockIndex).length
+        if (insertAt === originalAt) {
+          selection.dropLine(null)
+        } else {
+          const anchor = list[insertAt]?.el.getBoundingClientRect()
+          const last = list[list.length - 1]?.el.getBoundingClientRect()
+          const lineY = anchor !== undefined ? anchor.top - 6 : (last?.bottom ?? self.bottom) + 6
+          const box = contentDiv.getBoundingClientRect()
+          selection.dropLine({ y: lineY, left: box.left + 8, width: box.width - 16 })
+        }
+        const words: string[] = []
+        if (canPlace && place !== startPlace) words.push(PLACE_WORDS[place])
+        if (insertAt !== list.filter((o) => o.index < blockIndex).length) words.push('ここへ移す')
+        return words.join('・')
+      },
+      commit: () => {
+        started = false
+        selection.dropLine(null)
+        const list = others()
+        const originalAt = list.filter((o) => o.index < blockIndex).length
+        let next = data
+        if (canPlace && place !== startPlace) next = setAt(next, [...pathOf(screenIndex, blockIndex), 'place'], place)
+        if (insertAt !== originalAt) {
+          next = moveTo(next, ['screens', screenIndex, 'blocks'], blockIndex, insertAt)
+          form.load(next, screenIndex, insertAt)
+          return
+        }
+        if (next === data) {
+          showSelection()
+          return
+        }
+        data = next
+        form.setData(data)
+        paint()
+      },
+      cancel: () => {
+        started = false
+        selection.dropLine(null)
+        clearPreviews()
+        showSelection()
+      },
     }
   }
 
@@ -234,6 +345,7 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
       read: () => sizeOf(data, 'padding', BUILDER_PADDING, 0, 120, 40),
       pxPerUnit: () => 1,
       preview: (n) => {
+        previewed.add(root)
         root.style.paddingTop = `${n}px`
         root.style.paddingBottom = `${n}px`
       },
@@ -252,7 +364,14 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
     const screenIndex = form.activeScreen()
     const el = blockElementAt(data, contentDiv, screenIndex, blockIndex)
     const block = blockAt(screenIndex, blockIndex)
-    selection.select(el, block === undefined ? '' : blockLabel(str(block, 'type')), el === null ? [] : blockHandles(el, screenIndex, blockIndex))
+    if (el === null || block === undefined) {
+      selection.select(null)
+      return
+    }
+    const type = str(block, 'type')
+    selection.select(frameTarget(el, type), blockLabel(type), blockHandles(el, screenIndex, blockIndex), {
+      move: blockMove(el, screenIndex, blockIndex),
+    })
   }
 
   /** 文字を打てない部品には、見たまま画面で文字を打てないようにする（左の中身は保存しないので目印を付けてよい） */
@@ -272,9 +391,11 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
     const html = BUILDER_TEMPLATE.render(previewData, uid, screen === undefined ? undefined : { screen })
     const { css, body } = splitStyles(html)
     deps.setPreviewCss(css)
-    // CSSだけの変化（カードのスライダーなど）は中身を入れ替えない（要素が入れ替わると、開いているカードや選択枠がずれる）
+    clearPreviews()
+    // CSSだけの変化（カードのスライダーなど）は中身を入れ替えない（要素が入れ替わると、開いているカードや選択枠がずれる）。
+    // 枠とつまみは今の値で作り直す（置く位置で幅のつまみの側が変わる）
     if (body === lastBody) {
-      selection.refresh()
+      showSelection()
       return
     }
     lastBody = body
@@ -399,7 +520,11 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
     if (str(synced.block, 'type') === 'sample') scheduleRebuild()
   })
 
+  /** つかんで動かした直後の click（離したときに出る）は、選び直しに使わない */
+  let suppressClickUntil = 0
+
   const onCanvasClick = (target: EventTarget | null): void => {
+    if (Date.now() < suppressClickUntil) return
     const el = outermostBlock(target, contentDiv)
     const place = el === null ? null : placeOf(el)
     if (el === null || place === null) {
@@ -413,6 +538,83 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
       return
     }
     form.select(place.screenIndex, place.blockIndex)
+  }
+
+  /* ── マウスを乗せた部品に薄い枠（どれを触るか、押す前に分かる） ── */
+  contentDiv.addEventListener('mousemove', (event) => {
+    const el = outermostBlock(event.target, contentDiv)
+    const place = el === null ? null : placeOf(el)
+    if (el === null || place === null) {
+      selection.hover(null)
+      return
+    }
+    selection.hover(frameTarget(el, str(place.block, 'type')), blockLabel(str(place.block, 'type')))
+  })
+  contentDiv.addEventListener('mouseleave', () => selection.hover(null))
+
+  /*
+   * 文字を打つ部品以外（画像・動画・図形・余白・区切り線・型の部品）は、部品そのものをつかんで動かせる
+   * （少し動かすと動き出す。そのまま離せば、ただ選ぶだけ）。文字の部品・見本は、つかみ所（枠の上のまん中）で動かす
+   */
+  const DIRECT_MOVE: ReadonlySet<string> = new Set(['image', 'video', 'shape', 'spacer', 'divider'])
+  contentDiv.addEventListener('pointerdown', (event) => {
+    if (event.button !== 0 || event.ctrlKey || event.metaKey) return
+    const el = outermostBlock(event.target, contentDiv)
+    const place = el === null ? null : placeOf(el)
+    if (el === null || place === null) return
+    const type = str(place.block, 'type')
+    if (!DIRECT_MOVE.has(type) && !type.startsWith('tpl-')) return
+    if (form.selectedBlock() !== place.blockIndex) form.select(place.screenIndex, place.blockIndex)
+    const move = blockMove(el, place.screenIndex, place.blockIndex)
+    selection.startMove(event, {
+      update: move.update,
+      commit: (x, y) => {
+        suppressClickUntil = Date.now() + 400
+        move.commit(x, y)
+      },
+      cancel: () => undefined,
+    })
+  })
+  // 画像を掴んだときにブラウザが画像そのものを運ぼうとするのを止める（部品の位置は上で動かす）
+  contentDiv.addEventListener('dragstart', (event) => event.preventDefault())
+
+  /** 上のツールバーの「配置」（選んだ部品を 左→中央→右。見出し・文章は文字の寄せ）。見本の中は受け持たない */
+  const onAlignButton = (): boolean => {
+    const blockIndex = form.selectedBlock()
+    if (blockIndex === null) return false
+    const screenIndex = form.activeScreen()
+    const block = blockAt(screenIndex, blockIndex)
+    if (block === undefined) return false
+    const type = str(block, 'type')
+    if (type === 'sample') return false
+    const path = pathOf(screenIndex, blockIndex)
+    const cycle = <T extends string>(all: readonly T[], now: T): T => all[(all.indexOf(now) + 1) % all.length] ?? now
+    if (type === 'heading' || type === 'text') {
+      commitField(path, 'align', cycle(ALIGNS, pick(block, 'align', ALIGNS, 'left')))
+      return true
+    }
+    if (widthKeyOf(type) === null) return true
+    commitField(path, 'place', cycle(PLACES, placeOf2(block)))
+    return true
+  }
+
+  /** 上のツールバーの「サイズ」（選んだ部品の幅と置く位置の小窓）。見本の中・何も選んでいないときは受け持たない */
+  const onSizeButton = (anchor: HTMLElement): boolean => {
+    const blockIndex = form.selectedBlock()
+    if (blockIndex === null) return false
+    const screenIndex = form.activeScreen()
+    const block = blockAt(screenIndex, blockIndex)
+    if (block === undefined || str(block, 'type') === 'sample') return false
+    const key = widthKeyOf(str(block, 'type'))
+    if (key === null) return false
+    const path = pathOf(screenIndex, blockIndex)
+    openSizePopover(anchor, {
+      width: widthOf(block),
+      place: placeOf2(block),
+      onWidth: (n) => commitField(path, key, n),
+      onPlace: (p) => commitField(path, 'place', p),
+    })
+    return true
   }
 
   const toolScope = (el: Element): boolean => {
@@ -453,6 +655,8 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
     },
     onCanvasClick,
     toolScope,
+    onAlignButton,
+    onSizeButton,
     suggestName: () => suggestBuilderName(data),
     rekey: () => {
       uid = newUid()

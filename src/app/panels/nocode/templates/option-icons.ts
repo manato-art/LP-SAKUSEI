@@ -28,10 +28,23 @@ export const SHAPE_ICONS = {
   ribbon: fill('<path d="M1 5 H31 L26 12 L31 19 H1 L6 12 Z"/>'),
 } as const
 
-/* ── 寄せ ── */
+/* ── 文字の寄せ ── */
 export const ALIGN_ICONS = {
   left: line('<path d="M5 6 H27 M5 12 H19 M5 18 H23"/>'),
   center: line('<path d="M5 6 H27 M10 12 H22 M7 18 H25"/>'),
+  right: line('<path d="M5 6 H27 M13 12 H27 M9 18 H27"/>'),
+} as const
+
+/* ── 部品を置く位置（枠の中で左・中央・右） ── */
+const placeIcon = (x: number): string =>
+  svg(
+    `<path d="M2 3 V21 M30 3 V21" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".5"/>` +
+      `<rect x="${x}" y="7" width="12" height="10" rx="2" fill="currentColor"/>`,
+  )
+export const PLACE_ICONS = {
+  left: placeIcon(4),
+  center: placeIcon(10),
+  right: placeIcon(16),
 } as const
 
 /* ── ボタンの見た目（目立つ・選択肢） ── */

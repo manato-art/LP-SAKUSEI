@@ -44,6 +44,10 @@ export interface VisualEditorOptions {
   readonly toolScope?: (el: Element) => boolean
   /** 見たまま画面を（動作確認の Ctrl/⌘ なしで）押したとき。部品を選ぶのに使う */
   readonly onClick?: (target: EventTarget | null) => void
+  /** ツールバーの「配置」。選んだ部品の位置を変えたら true（そのときは文字の寄せをしない） */
+  readonly onAlignButton?: () => boolean
+  /** ツールバーの「サイズ」。選んだ部品の幅と位置の小窓を出したら true（そのときは画像の操作パネルを出さない） */
+  readonly onSizeButton?: (anchor: HTMLElement) => boolean
 }
 
 export function buildVisualEditor(
@@ -358,7 +362,9 @@ export function buildVisualEditor(
     mkBtn(svgToolBold(), '太字', () => exec('bold')),
     mkBtn(svgToolUnderline(), '下線', () => exec('underline')),
     mkBtn(svgToolStrikethrough(), '取り消し線', () => exec('strikeThrough')),
-    mkBtn(svgToolAlign(), '配置', () => {
+    mkBtn(svgToolAlign(), '配置（選んだ部品は 左→中央→右）', () => {
+      // 部品を選んでいれば、その部品の位置（見出し・文章は文字の寄せ）を回す
+      if (options.onAlignButton?.() === true) return
       alignIdx = (alignIdx + 1) % ALIGNS.length
       const a = ALIGNS[alignIdx] ?? 'left'
       exec(`justify${a.charAt(0).toUpperCase()}${a.slice(1)}`)
@@ -376,8 +382,10 @@ export function buildVisualEditor(
     // 指示154: 画像サイズ変更を上のツールバーからも開ける。直近クリックした画像、無ければ唯一の画像を対象にする。
     mkBtn(
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:16px;height:16px"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-      '画像サイズ',
-      () => {
+      'サイズ（選んだ部品の幅と位置）',
+      (btn) => {
+        // 部品を選んでいれば、その部品の幅と置く位置の小窓を出す
+        if (options.onSizeButton?.(btn) === true) return
         if (contentRef === null) return
         let target: HTMLElement | null =
           lastMedia !== null && contentRef.contains(lastMedia) ? lastMedia : null

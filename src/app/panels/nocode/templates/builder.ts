@@ -238,6 +238,7 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
       `text-align:left;font-weight:400;letter-spacing:normal}` +
       `${s} .nc-b+.nc-b{margin-top:14px}` +
       `${s} .nc-b--center{text-align:center}` +
+      `${s} .nc-b--right{text-align:right}` +
       `${s} [data-nc-go]{cursor:pointer;-webkit-tap-highlight-color:transparent}` +
       `${s} [data-nc-go][role="button"]:focus-visible{outline:3px solid ${shade(accent, -0.3)};outline-offset:3px}` +
       `${s} .nc-b-heading{font-weight:800;line-height:1.45}` +
