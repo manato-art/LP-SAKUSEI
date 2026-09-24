@@ -6,7 +6,7 @@
  *
  * 見張るのは2つだけ:
  *  - CVが止まった（決めた時間ずっと0件。**もともと来ていたページだけ**）
- *  - その日のCPAが上限を超えた
+ *  - その日のCPAが上限を超えた（CV0件の日は配信金額が上限を超えたら・2026-09-24）
  * どちらもSlack・チャットワーク・LINEへ1通送る。送り先を決めるまでは鳴らさない。
  * 同じページの同じ理由は1日1通まで（2026-09-15に1時間に1回から変更・LINEの無料枠が月200通のため）。
  *
@@ -134,7 +134,7 @@ export async function mountAlertSettings(content: HTMLElement): Promise<void> {
   section.append(
     row(
       'CPAが上限を超えたら知らせる',
-      'その日のCPAがこの金額を超えたら知らせます。0にすると見ません。',
+      'その日のCPA（配信金額÷CV）がこの金額を超えたら知らせます。CVが0件の日は、配信金額がこの金額を超えた時点で知らせます。0にすると見ません。',
       numberField(settings.cpa_limit, { min: 0, suffix: '円' }, (value) =>
         save({ cpa_limit: value }),
       ),

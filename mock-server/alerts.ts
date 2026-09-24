@@ -151,22 +151,22 @@ export function findAlerts(input: AlertInput): Alert[] {
       )
       const adCost = today.reduce((sum, m) => sum + m.ad_cost, 0)
       const cv = today.reduce((sum, m) => sum + m.cv, 0)
-      // CVが0のときはCPAが出ないだけ（跳ねたのではない）ので出さない
-      if (cv > 0) {
-        const cpa = adCost / cv
-        if (cpa > setting.cpa_limit) {
-          const slot = slotOf(input.now, page.uid, 'cpa_over')
-          if (!sent.has(slot)) {
-            out.push({
-              ab_test_uid: page.uid,
-              kind: 'cpa_over',
-              slot,
-              message:
-                `【CPAが上限を超えました】${page.title}｜本日のCPA ${yen(cpa)}` +
-                `（上限 ${yen(setting.cpa_limit)}・配信金額 ${yen(adCost)} / CV ${cv}件）`,
-            })
-          }
-        }
+      // CVが0件のときは、配信金額が上限を超えた時点でCPAは実質「無限大」＝上限超え（2026-09-24 点検32）。
+      // 以前は CV0件を判定しなかったので、費用だけ積み上がっている一番まずい状態で鳴らなかった。
+      const isOver = cv > 0 ? adCost / cv > setting.cpa_limit : adCost > setting.cpa_limit
+      const slot = slotOf(input.now, page.uid, 'cpa_over')
+      if (isOver && !sent.has(slot)) {
+        out.push({
+          ab_test_uid: page.uid,
+          kind: 'cpa_over',
+          slot,
+          message:
+            cv > 0
+              ? `【CPAが上限を超えました】${page.title}｜本日のCPA ${yen(adCost / cv)}` +
+                `（上限 ${yen(setting.cpa_limit)}・配信金額 ${yen(adCost)} / CV ${cv}件）`
+              : `【CPAが上限を超えました】${page.title}｜本日は CV 0件のまま配信金額 ${yen(adCost)} が` +
+                `上限 ${yen(setting.cpa_limit)} を超えています`,
+        })
       }
     }
   }
