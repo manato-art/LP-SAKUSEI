@@ -222,7 +222,7 @@ export function scalarControl(field: ScalarField, env: ControlEnv, id: string): 
       input.inputMode = 'decimal'
       input.min = String(field.min)
       input.max = String(field.max)
-      const step = field.unit === 'px' ? 0.5 : 1
+      const step = field.step ?? (field.unit === 'px' ? 0.5 : 1)
       input.step = String(step)
       // 以前の選び（'l'・'m' など）は表で数に読み替える（読めなければ既定の数か下限）。
       // 値が無いときは既定の数（fallback）を見せる（書き出しと同じ。見本の部品の幅100%が空欄・下限に見えないように）

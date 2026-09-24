@@ -44,15 +44,24 @@ import {
   withPress,
 } from './screens-state.ts'
 import { SCREEN_ID, isTemplateBlock, templateOfBlock } from './templates/builder-blocks.ts'
+import { createPalette } from './palette.ts'
+import { HOTSPOT_TYPE, coveredIndexOf, duplicateGroup, groupEndOf, groupStep, isHotspot, moveGroupBefore, removeGroup } from './hotspot-model.ts'
 import { items, str, type BlockType, type Field, type ItemData, type ScreensField, type TemplateData } from './templates/types.ts'
 
 type ListField = Extract<Field, { kind: 'list' }>
+type HeadKind = 'copy' | 'up' | 'down' | 'remove'
+/** 並びの頭の操作（操作のあとの中身と、選び直す番号。できないときは null） */
+interface HeadOps {
+  readonly copy: () => { data: TemplateData; index: number } | null
+  readonly up: () => { data: TemplateData; index: number } | null
+  readonly down: () => { data: TemplateData; index: number } | null
+  readonly remove: () => TemplateData
+}
 
 const ICON_UP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 15 12 9 18 15"/></svg>'
 const ICON_DOWN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>'
 
-/** 「部品を足す」からドラッグで運ぶときの目印（見たまま画面が受け取る。中身は部品の種類） */
-export const NC_BLOCK_MIME = 'application/x-nc-block'
+export { NC_BLOCK_MIME, NC_HOTSPOT_MIME } from './palette.ts'
 
 let idSeq = 0
 const nextId = (): string => `ncf-${(idSeq += 1)}`
@@ -110,7 +119,8 @@ export interface TemplateForm {
   readonly activeScreen: () => number
   readonly selectedBlock: () => number | null
   /** いま開いている画面の at 番目に部品を足して選ぶ（左の「部品を足す」から見たまま画面へドラッグしたとき） */
-  readonly insertBlock: (type: string, at: number) => void
+  /** 部品を at 番目に入れる（見たまま画面へドラッグで運んだとき）。init は足す中身に重ねる値（移行先の位置と大きさ） */
+  readonly insertBlock: (type: string, at: number, init?: ItemData) => void
 }
 
 export function buildTemplateForm(options: TemplateFormOptions): TemplateForm {
@@ -235,34 +245,54 @@ export function buildTemplateForm(options: TemplateFormOptions): TemplateForm {
     return b
   }
 
-  /** 1件ごとの頭（名前・複製・上へ・下へ・消す） */
+  /** 1件ごとの頭（名前・複製・上へ・下へ・消す）。ops があれば並びの変え方はそれに任せる（部品の並び＝移行先ごと動かす） */
   const itemHead = (
     name: HTMLElement,
     listPath: Path,
     index: number,
     count: number,
     limits: { min: number; max: number; noun: string },
-    onRestructured?: (next: TemplateData, kind: 'copy' | 'up' | 'down' | 'remove') => void,
+    onRestructured?: (next: TemplateData, kind: HeadKind, selectIndex?: number) => void,
+    ops?: HeadOps,
   ): HTMLElement => {
     const head = node('div', 'ncf-item__head')
-    const canCopy = count < limits.max
+    const canCopy = ops !== undefined ? ops.copy() !== null : count < limits.max
     const canRemove = count > limits.min
-    const apply = (next: TemplateData, kind: 'copy' | 'up' | 'down' | 'remove'): void => {
-      if (onRestructured !== undefined) onRestructured(next, kind)
+    const apply = (next: TemplateData, kind: HeadKind, selectIndex?: number): void => {
+      if (onRestructured !== undefined) onRestructured(next, kind, selectIndex)
       else restructure(next)
     }
-    const copy = textButton('複製', 'ncf-icon-btn ncf-item__copy', () => apply(duplicateAt(data, listPath, index, limits.max), 'copy'), canCopy)
+    const run = (kind: 'copy' | 'up' | 'down', fallback: () => TemplateData) => (): void => {
+      const done = ops?.[kind]()
+      if (ops === undefined) apply(fallback(), kind)
+      else if (done !== null && done !== undefined) apply(done.data, kind, done.index)
+    }
+    const copy = textButton('複製', 'ncf-icon-btn ncf-item__copy', run('copy', () => duplicateAt(data, listPath, index, limits.max)), canCopy)
     copy.title = canCopy ? `この${limits.noun}をすぐ下に複製` : `${limits.max}つまでです`
-    const remove = textButton('消す', 'ncf-icon-btn ncf-item__remove', () => apply(removeAt(data, listPath, index, limits.min), 'remove'), canRemove)
+    const removeNext = (): TemplateData => (ops !== undefined ? ops.remove() : removeAt(data, listPath, index, limits.min))
+    const remove = textButton('消す', 'ncf-icon-btn ncf-item__remove', () => apply(removeNext(), 'remove'), canRemove)
     remove.title = canRemove ? `この${limits.noun}を消す` : `${limits.min}つより少なくはできません`
     head.append(
       name,
       copy,
-      iconButton(ICON_UP, '上へ', () => apply(moveAt(data, listPath, index, -1), 'up'), index > 0),
-      iconButton(ICON_DOWN, '下へ', () => apply(moveAt(data, listPath, index, 1), 'down'), index < count - 1),
+      iconButton(ICON_UP, '上へ', run('up', () => moveAt(data, listPath, index, -1)), ops !== undefined ? ops.up() !== null : index > 0),
+      iconButton(ICON_DOWN, '下へ', run('down', () => moveAt(data, listPath, index, 1)), ops !== undefined ? ops.down() !== null : index < count - 1),
       remove,
     )
     return head
+  }
+
+  /** 部品の並びの変え方（被せた移行先ごと動かす・複製する・消す＝hotspot-model.ts） */
+  const blockOps = (listPath: Path, index: number, max: number): HeadOps => {
+    const list = (): readonly ItemData[] => (getAt(data, listPath) as readonly ItemData[] | undefined) ?? []
+    const put = (moved: { list: readonly ItemData[]; index: number } | null): { data: TemplateData; index: number } | null =>
+      moved === null ? null : { data: setAt(data, listPath, moved.list), index: moved.index }
+    return {
+      copy: () => put(duplicateGroup(list(), index, max)),
+      up: () => put(groupStep(list(), index, -1)),
+      down: () => put(groupStep(list(), index, 1)),
+      remove: () => setAt(data, listPath, removeGroup(list(), index)),
+    }
   }
 
   /** 並び（よくある質問の1問など）。型の部品の中の並びでも使う（basePath＝その部品の場所） */
@@ -390,8 +420,10 @@ export function buildTemplateForm(options: TemplateFormOptions): TemplateForm {
           toast(`移せませんでした（1画面に${field.blockMax}こまでです）`, 'error')
           return
         }
-        // 移した部品を、移した先の画面で選んだままにする（いちばん下に入る）
-        const movedIndex = items(items(moved.data, field.key)[moved.index] ?? {}, 'blocks').length - 1
+        // 移した部品を、移した先の画面で選んだままにする（いちばん下に入る。被せた移行先ごと移るので、その分だけ上）
+        const blocks = items(items(data, field.key)[screenIndex] ?? {}, 'blocks')
+        const carried = groupEndOf(blocks, blockIndex) - blockIndex
+        const movedIndex = items(items(moved.data, field.key)[moved.index] ?? {}, 'blocks').length - carried
         if (replace(moved.data)) openScreen(moved.index, movedIndex)
         toast(`${noun}を「${screenNameAt(items(data, field.key)[moved.index], moved.index)}」のいちばん下へ移しました`)
       },
@@ -426,7 +458,13 @@ export function buildTemplateForm(options: TemplateFormOptions): TemplateForm {
     type: BlockType,
   ): { layout: HTMLElement[]; content: HTMLElement[]; press: HTMLElement[] } => {
     const itemPath: Path = [field.key, screenIndex, 'blocks', index]
-    const parts = { layout: [placeFieldEl(field, screenIndex, index, type.label)], content: [] as HTMLElement[], press: [] as HTMLElement[] }
+    // 移行先は被せた部品と同じ画面にしか置けない（「この部品を出す画面」は出さない。部品を移すと一緒に移る）
+    const block = (getAt(data, [field.key, screenIndex, 'blocks', index]) as ItemData | undefined) ?? {}
+    const parts = {
+      layout: isHotspot(block) ? [] : [placeFieldEl(field, screenIndex, index, type.label)],
+      content: [] as HTMLElement[],
+      press: [] as HTMLElement[],
+    }
     for (const sub of type.fields) {
       if (sub.kind === 'screens') continue
       const el =
@@ -502,9 +540,32 @@ export function buildTemplateForm(options: TemplateFormOptions): TemplateForm {
     scope?.querySelector<HTMLElement>('input[type="text"],input[type="url"],textarea')?.focus()
   }
 
-  /** 部品を1つ、その画面のいちばん下（at があればその位置）に足す（見本は先に見本の一覧で選んでもらう） */
-  const addBlockOfType = (field: ScreensField, screenIndex: number, type: BlockType, at?: number): void => {
+  /**
+   * 移行先を足す（部品の上に被せて使う）。at があればその位置（見たまま画面で部品の上に落としたとき）。
+   * 押しただけなら、選んでいる部品（移行先を選んでいたら、その被せ先）に、無ければいちばん下の部品に被せる
+   */
+  const addHotspot = (field: ScreensField, screenIndex: number, type: BlockType, at?: number, init: ItemData = {}): void => {
     const listPath: Path = [field.key, screenIndex, 'blocks']
+    const blocks = items(items(data, field.key)[screenIndex] ?? {}, 'blocks')
+    const selected = selectedBlock === null || blocks[selectedBlock] === undefined ? null : selectedBlock
+    const chosen = selected === null ? null : isHotspot(blocks[selected]) ? coveredIndexOf(blocks, selected) : selected
+    const lastPart = [...blocks.keys()].reverse().find((i) => !isHotspot(blocks[i]))
+    const cover = chosen ?? lastPart ?? null
+    if (at === undefined && cover === null) {
+      toast('移行先は、ボタンや画像などの部品の上に被せて使います。先に部品を置いてください', 'error')
+      return
+    }
+    const where = at ?? (cover === null ? blocks.length : groupEndOf(blocks, cover))
+    addSelected(field, screenIndex, addAt(data, listPath, { ...type.newItem(), ...init }, field.blockMax), where)
+  }
+
+  /** 部品を1つ、その画面のいちばん下（at があればその位置）に足す（見本は先に見本の一覧で選んでもらう） */
+  const addBlockOfType = (field: ScreensField, screenIndex: number, type: BlockType, at?: number, init: ItemData = {}): void => {
+    const listPath: Path = [field.key, screenIndex, 'blocks']
+    if (type.type === HOTSPOT_TYPE) {
+      addHotspot(field, screenIndex, type, at, init)
+      return
+    }
     // 見本は、先に見本の一覧で選んでもらい、選んだら部品として入れる（やめたら何も足さない）
     if (type.type === 'sample' && options.pickSample !== undefined) {
       void options.pickSample().then((sample) => {
@@ -522,7 +583,7 @@ export function buildTemplateForm(options: TemplateFormOptions): TemplateForm {
       })
       return
     }
-    addSelected(field, screenIndex, addAt(data, listPath, type.newItem(), field.blockMax), at)
+    addSelected(field, screenIndex, addAt(data, listPath, { ...type.newItem(), ...init }, field.blockMax), at)
   }
 
   /** 部品が1つも無く、画面も1つだけ（白紙） */
@@ -590,6 +651,16 @@ export function buildTemplateForm(options: TemplateFormOptions): TemplateForm {
    * 画面の中の部品の並び。1件ごとに部品の名前と複製・上へ・下へ・消す。頭を押すとその部品だけが広がる
    * （見たまま画面で部品を押したときも同じ）。いちばん下に種類ごとの「足す」
    */
+  /** 並びに出す移行先の移る先（「→ 画面②」「→ https://…」） */
+  const hotspotDestination = (field: ScreensField, block: ItemData): string => {
+    const action = str(block, 'action')
+    if (action === 'link') return str(block, 'url').trim() === '' ? '開くページが未入力' : `→ ${str(block, 'url').trim()}`
+    if (action !== 'screen') return '移る先が未設定'
+    const screens = items(data, field.key)
+    const at = screens.findIndex((screen) => str(screen, 'id') === str(block, 'target'))
+    return at < 0 ? '移る先の画面が未選択' : `→ ${screenNameAt(screens[at], at)}`
+  }
+
   const blockListEl = (field: ScreensField, screenIndex: number): HTMLElement => {
     const wrap = node('div', 'ncf-field')
     const listPath: Path = [field.key, screenIndex, 'blocks']
@@ -628,6 +699,8 @@ export function buildTemplateForm(options: TemplateFormOptions): TemplateForm {
       const selected = index === selectedBlock
       const itemEl = node('div', selected ? 'ncf-item ncf-item--selected' : 'ncf-item')
       itemEl.dataset['ncfBlock'] = String(index)
+      // 移行先は、被せた部品（すぐ上）の下に一段下げて並べる
+      if (isHotspot(block)) itemEl.classList.add('ncf-item--hotspot')
       itemEl.addEventListener('dragover', (event) => {
         if (dragFrom === null || dragFrom === index) return
         event.preventDefault()
@@ -643,10 +716,10 @@ export function buildTemplateForm(options: TemplateFormOptions): TemplateForm {
         clearDropMarks()
         const from = dragFrom
         dragFrom = null
-        let to = index + (after ? 1 : 0)
-        if (from < to) to -= 1
-        if (!replace(moveTo(data, listPath, from, to))) return
-        selectedBlock = to
+        // 部品は被せた移行先ごと動かす（ほかの部品と移行先の間には入らない）
+        const moved = moveGroupBefore(list, from, index + (after ? 1 : 0))
+        if (moved === null || !replace(setAt(data, listPath, moved.list))) return
+        selectedBlock = moved.index
         build()
         notifySelect()
       })
@@ -655,16 +728,18 @@ export function buildTemplateForm(options: TemplateFormOptions): TemplateForm {
       icon.innerHTML = type.icon
       const snippet = node('span', 'ncf-item__snippet')
       refreshers.push(() => {
-        snippet.textContent = blockSnippet((getAt(data, [...listPath, index]) as ItemData | undefined) ?? {})
+        const current = (getAt(data, [...listPath, index]) as ItemData | undefined) ?? {}
+        snippet.textContent = isHotspot(current) ? hotspotDestination(field, current) : blockSnippet(current)
       })
       name.append(icon, node('span', '', type.label), snippet)
       // 複製・上下・消す のあとも、同じ部品を選んだままにする（消したら選ぶのをやめる）
-      const headEl = itemHead(name, listPath, index, list.length, { min: 0, max: field.blockMax, noun: type.label }, (next, kind) => {
+      const limits = { min: 0, max: field.blockMax, noun: type.label }
+      const headEl = itemHead(name, listPath, index, list.length, limits, (next, kind, selectIndex) => {
         if (!replace(next)) return
-        selectedBlock = kind === 'remove' ? null : kind === 'copy' ? index + 1 : kind === 'up' ? index - 1 : kind === 'down' ? index + 1 : index
+        selectedBlock = kind === 'remove' ? null : (selectIndex ?? index)
         build()
         notifySelect()
-      })
+      }, blockOps(listPath, index, field.blockMax))
       headEl.setAttribute('role', 'button')
       headEl.tabIndex = 0
       headEl.setAttribute('aria-expanded', String(selected))
@@ -726,54 +801,13 @@ export function buildTemplateForm(options: TemplateFormOptions): TemplateForm {
     return wrap
   }
 
-  /**
-   * 左の列の「部品を足す」（2026-09-24 画面の作り直し・本人「ドラッグ&ドロップで追加できるように」）。
-   * つかんで見たまま画面の好きな所へ運ぶと、そこに入る（受け取りは見たまま画面＝NC_BLOCK_MIME）。押すだけなら、いちばん下。
-   * ふつうの部品はタイル、型の部品（まとまった型）は2列、見本はライブラリから選ぶボタン
-   */
-  const paletteEl = (field: ScreensField, screenIndex: number): HTMLElement => {
-    const count = items(items(data, field.key)[screenIndex] ?? {}, 'blocks').length
-    const full = count >= field.blockMax
-    const wrap = node('div', 'ncf-palette')
-    const head = node('div', 'ncf-palette__head')
-    head.append(
-      node('span', 'ncf-palette__title', full ? `部品は1画面に${field.blockMax}こまでです` : '部品を足す'),
-      node('span', 'ncf-palette__hint', 'つかんで好きな所へ'),
-    )
-    const grid = node('div', 'ncf-palette__grid')
-    const templates = node('div', 'ncf-palette__tpl')
-    let sampleType: BlockType | undefined
-    for (const type of field.types) {
-      if (type.type === 'sample') {
-        sampleType = type
-        continue
-      }
-      const isTemplate = isTemplateBlock(type.type)
-      const b = textButton('', isTemplate ? 'ncf-palette__chip' : 'ncf-palette__tile', () => addBlockOfType(field, screenIndex, type), !full)
-      const icon = node('span', 'ncf-palette__icon')
-      icon.innerHTML = type.icon
-      b.append(icon, node('span', 'ncf-palette__label', type.label))
-      b.title = full ? `部品は1画面に${field.blockMax}こまでです` : `${type.label}（つかんで好きな所へ。押すと、いちばん下に入ります）`
-      b.draggable = !full
-      b.addEventListener('dragstart', (event) => {
-        const transfer = event.dataTransfer
-        if (transfer === null) return
-        transfer.setData(NC_BLOCK_MIME, type.type)
-        transfer.setData('text/plain', type.label)
-        transfer.effectAllowed = 'copy'
-        b.classList.add('ncf-palette--dragging')
-      })
-      b.addEventListener('dragend', () => b.classList.remove('ncf-palette--dragging'))
-      ;(isTemplate ? templates : grid).append(b)
-    }
-    wrap.append(head, grid)
-    if (templates.children.length > 0) wrap.append(node('span', 'ncf-palette__title ncf-palette__title--sub', 'まとまった型'), templates)
-    const sample = sampleType
-    if (sample !== undefined && options.pickSample !== undefined) {
-      wrap.append(textButton('ライブラリの見本から選ぶ', 'ncf-palette__library', () => addBlockOfType(field, screenIndex, sample), !full))
-    }
-    return wrap
-  }
+  /** 左の列の「部品を足す」（よく使う11個＋もっと見る・palette.ts）。開き具合（もっと見る）は組み立て直しても残す */
+  const palette = createPalette()
+  const paletteEl = (field: ScreensField, screenIndex: number): HTMLElement =>
+    palette.render(field, items(items(data, field.key)[screenIndex] ?? {}, 'blocks').length, {
+      add: (type) => addBlockOfType(field, screenIndex, type),
+      canPickSample: options.pickSample !== undefined,
+    })
 
   /** 畳める段（開き具合は組み立て直しても残す） */
   const foldable = (title: string, isOpen: () => boolean, setOpen: (open: boolean) => void, body: readonly HTMLElement[]): HTMLElement => {
@@ -993,7 +1027,7 @@ export function buildTemplateForm(options: TemplateFormOptions): TemplateForm {
     },
     activeScreen: () => activeScreen,
     selectedBlock: () => selectedBlock,
-    insertBlock: (typeName, at) => {
+    insertBlock: (typeName, at, init) => {
       const field = options.fields.find((f): f is ScreensField => f.kind === 'screens')
       const type = field?.types.find((t) => t.type === typeName)
       if (field === undefined || type === undefined) return
@@ -1001,7 +1035,7 @@ export function buildTemplateForm(options: TemplateFormOptions): TemplateForm {
         toast(`部品は1画面に${field.blockMax}こまでです`, 'error')
         return
       }
-      addBlockOfType(field, activeScreen, type, at)
+      addBlockOfType(field, activeScreen, type, at, init)
     },
   }
 }

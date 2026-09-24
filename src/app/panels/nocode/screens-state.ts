@@ -6,8 +6,9 @@
  * - どの部品からも移ってこない画面は、見ている人がたどり着けない（画面に知らせを出すのに使う）
  * テストは tests/nocode-screens-state.test.ts。
  */
-import { addAt, getAt, removeAt, setAt, type Path } from './form-state.ts'
+import { addAt, getAt, setAt, type Path } from './form-state.ts'
 import { goTargetsIn } from './sample-model.ts'
+import { groupEndOf, removeGroup } from './hotspot-model.ts'
 import { applyScreenIds } from './sample-to-screens.ts'
 import { SCREEN_ID } from './templates/builder-blocks.ts'
 import { items, str, type ItemData, type TemplateData } from './templates/types.ts'
@@ -121,11 +122,15 @@ export function moveBlockToScreen(
   blockMax: number,
 ): TemplateData {
   if (fromScreen === toScreen) return data
-  const block = getAt(data, [screensKey, fromScreen, 'blocks', blockIndex]) as ItemData | undefined
+  const from = items((getAt(data, [screensKey, fromScreen]) as ItemData | undefined) ?? {}, 'blocks')
   const target = getAt(data, [screensKey, toScreen]) as ItemData | undefined
-  if (block === undefined || target === undefined || items(target, 'blocks').length >= blockMax) return data
-  const removed = removeAt(data, [screensKey, fromScreen, 'blocks'], blockIndex, 0)
-  return addAt(removed, [screensKey, toScreen, 'blocks'], block, blockMax)
+  if (from[blockIndex] === undefined || target === undefined) return data
+  // 被せた移行先も一緒に移す（移した先で別の部品に被さらないように。hotspot-model.ts）
+  const group = from.slice(blockIndex, groupEndOf(from, blockIndex))
+  const into = items(target, 'blocks')
+  if (into.length + group.length > blockMax) return data
+  const removed = setAt(data, [screensKey, fromScreen, 'blocks'], removeGroup(from, blockIndex))
+  return setAt(removed, [screensKey, toScreen, 'blocks'], [...into, ...group])
 }
 
 /**

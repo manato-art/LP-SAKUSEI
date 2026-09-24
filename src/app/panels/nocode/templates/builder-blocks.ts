@@ -12,71 +12,46 @@
 import { ARROW_SVG, pressButtonCss } from './cta.ts'
 import { esc, inkOn, linkAttrs, newUid, safeColor, safeImage, safeVideo, shade } from './kit.ts'
 import { richText } from '../rich-text.ts'
-import { ALIGN_ICONS, BUTTON_LOOK_ICONS, DIVIDER_ICONS, MARKER_ICONS, PLACE_ICONS, SHAPE_ICONS, SIDE_ICONS } from './option-icons.ts'
+import { BUTTON_LOOK_ICONS, DIVIDER_ICONS, MARKER_ICONS, SHAPE_ICONS, SIDE_ICONS } from './option-icons.ts'
 import { TEMPLATES } from './list.ts'
-import { ACCENT_PRESETS, bool, int, pick, str, type BlockType, type Field, type ItemData, type NocodeTemplate } from './types.ts'
+import { MORE_BLOCK_TYPES } from './builder-blocks-more.ts'
+import { renderMoreBlock } from './builder-blocks-more-render.ts'
+import { ACCENT_PRESETS, bool, int, pick, str, type BlockType, type ItemData, type NocodeTemplate } from './types.ts'
+import {
+  ALIGN_OPTIONS,
+  ALIGNS,
+  NO_ACTION,
+  PLACES,
+  actionFields,
+  actionOf,
+  goAttrs,
+  goTarget,
+  layoutFields,
+  placeMargins,
+  sizeOf,
+  withLink,
+} from './block-kit.ts'
+
+// 以前からここを読んでいる所のために、共通の小道具をここからも出す
+export { ALIGNS, PLACES, SCREEN_ID, actionOf, goTarget, sizeOf, type Place } from './block-kit.ts'
 
 /** 文字の色の候補（本文にも使えるよう、暗い色だけ） */
 const TEXT_PRESETS: readonly string[] = ['#1F2A37', '#B83A26', '#A8264F', '#155BB0', '#0B7A3E', '#8A6414']
 /** 図形の色の候補（地の色） */
 const SHAPE_PRESETS: readonly string[] = ['#E5573F', '#F2A516', '#06C755', '#1F7AE0', '#1F2A37', '#F4F1EC']
 
-/** 画面のid（s1, s2…）。これ以外は移る先にしない */
-export const SCREEN_ID = /^s\d{1,4}$/
-
-/**
- * 大きさの数（px・%）。以前の「大/中/小」「s/m/l」の選びは presets で数に読み替える
- * （2026-09-23・Canva風に数字でドラッグできるようにした。古い中身もそのまま読める）。
- * 範囲の外は端に、読めない値は fallback。0.5 刻み
- */
-export function sizeOf(item: ItemData, key: string, presets: Readonly<Record<string, number>>, min: number, max: number, fallback: number): number {
-  const value = item[key]
-  const preset = typeof value === 'string' ? presets[value] : undefined
-  const n = preset ?? (typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : Number.NaN)
-  return Number.isFinite(n) ? Math.min(max, Math.max(min, Math.round(n * 2) / 2)) : fallback
-}
-
 /** 以前の選び（大/中/小・s/m/l）を px に読み替える表 */
 export const HEADING_SIZES: Readonly<Record<string, number>> = { l: 26, m: 21, s: 17 }
 export const TEXT_SIZES: Readonly<Record<string, number>> = { m: 15, s: 12.5 }
 export const SPACER_SIZES: Readonly<Record<string, number>> = { s: 16, m: 32, l: 56 }
 
-export const ALIGNS = ['left', 'center', 'right'] as const
-const ALIGN_OPTIONS = [
-  { value: 'left', label: '左に寄せる', short: '左', icon: ALIGN_ICONS.left },
-  { value: 'center', label: '真ん中', short: '真ん中', icon: ALIGN_ICONS.center },
-  { value: 'right', label: '右に寄せる', short: '右', icon: ALIGN_ICONS.right },
-]
-
-/**
- * 部品を置く位置（2026-09-24・本人「部品ごとに中央揃えや左右へ。サイズも変えられるように」）。
- * どの部品にも「幅（%）」と「置く位置」がある。幅の欄の名前は部品によって違う（widthKeyOf）
- */
-export const PLACES = ['left', 'center', 'right'] as const
-export type Place = (typeof PLACES)[number]
-const PLACE_OPTIONS = [
-  { value: 'left', label: '左に置く', short: '左', icon: PLACE_ICONS.left },
-  { value: 'center', label: '中央に置く', short: '中央', icon: PLACE_ICONS.center },
-  { value: 'right', label: '右に置く', short: '右', icon: PLACE_ICONS.right },
-]
-
 /** 部品の「幅」の欄の名前（画像・動画は width、図形は size、ほかは boxWidth）。余白は幅を持たない＝null */
 export function widthKeyOf(type: string): string | null {
-  if (type === 'spacer') return null
+  // 余白と移行先（被せた部品に対する位置と大きさを持つ）は、幅と置く位置を持たない
+  if (type === 'spacer' || type === 'hotspot') return null
   if (type === 'image' || type === 'video') return 'width'
   if (type === 'shape') return 'size'
   return 'boxWidth'
-}
-
-/**
- * 幅と置く位置の入力（どの部品でも、いちばん上に出す＝選んだらすぐ直せる）。
- * 値が無い部品（見本の部品・以前の中身）は、書き出し（layoutCss）と同じ 幅100%・中央 を欄にも見せる
- */
-function layoutFields(widthKey: string): readonly Field[] {
-  return [
-    { kind: 'number', key: widthKey, label: '幅', min: 10, max: 100, unit: '%', fallback: 100, section: 'layout' },
-    { kind: 'select', key: 'place', label: '置く位置', options: PLACE_OPTIONS, fallback: 'center', section: 'layout' },
-  ]
 }
 
 /**
@@ -97,8 +72,6 @@ const SHAPE_LABELS: Readonly<Record<(typeof SHAPE_KINDS)[number], string>> = {
   down: '下向き（次へ）',
   ribbon: 'リボン',
 }
-const ACTIONS = ['none', 'screen', 'link'] as const
-type Action = (typeof ACTIONS)[number]
 
 const svg = (body: string): string =>
   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`
@@ -106,20 +79,6 @@ const svg = (body: string): string =>
 const CHECK_MARK =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7" fill="none" stroke="currentColor" ' +
   'stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>'
-
-/**
- * 「押したとき」の入力（ボタン・画像・図形・動画・画像と文章）。
- * なし・画面②③…・＋新しい画面・リンクを開く をボタンで選ぶ（本人の依頼「画面2・3・4・5…として簡単に設定」）
- */
-function actionFields(): readonly Field[] {
-  return [
-    { kind: 'goto', key: 'action', label: '押したとき', section: 'press' },
-    { kind: 'url', key: 'url', label: '開くページ', placeholder: 'https://', showIfItem: (item) => str(item, 'action') === 'link', section: 'press' },
-    { kind: 'toggle', key: 'track', label: 'クリック数をレポートで数える', showIfItem: (item) => str(item, 'action') === 'link', section: 'press' },
-  ]
-}
-
-const NO_ACTION = { action: 'none', target: '', url: '', track: true }
 
 export const BLOCK_TYPES: readonly BlockType[] = [
   {
@@ -318,27 +277,11 @@ const TEMPLATE_BLOCKS: readonly BlockType[] = TEMPLATES.map((template) => ({
   newItem: () => ({ type: `${TEMPLATE_PREFIX}${template.id}`, uid: newUid(), ...template.defaults(new Date()) }),
 }))
 
-/** 積める部品（ふつうの部品＋型の部品） */
-export const ALL_BLOCK_TYPES: readonly BlockType[] = [...BLOCK_TYPES, ...TEMPLATE_BLOCKS]
+/** 積める部品（ふつうの部品＋増やした部品＋型の部品） */
+export const ALL_BLOCK_TYPES: readonly BlockType[] = [...BLOCK_TYPES, ...MORE_BLOCK_TYPES, ...TEMPLATE_BLOCKS]
 
 export function blockLabel(type: string): string {
   return ALL_BLOCK_TYPES.find((t) => t.type === type)?.label ?? '部品'
-}
-
-export function actionOf(item: ItemData): Action {
-  return pick(item, 'action', ACTIONS, 'none')
-}
-
-/** 押したら移る先（今ある画面だけ。無ければ null） */
-export function goTarget(item: ItemData, screenIds: ReadonlySet<string>): string | null {
-  const target = str(item, 'target')
-  return actionOf(item) === 'screen' && SCREEN_ID.test(target) && screenIds.has(target) ? target : null
-}
-
-/** 押したら移る印（ボタン・リンク以外には「押せる」印と、キーボードで選べる印も付ける） */
-function goAttrs(target: string | null, isControl: boolean): string {
-  if (target === null) return ''
-  return ` data-nc-go="${target}"${isControl ? '' : ' role="button" tabindex="0"'}`
 }
 
 /**
@@ -348,12 +291,6 @@ function goAttrs(target: string | null, isControl: boolean): string {
 function withGoIn(html: string, target: string | null): string {
   if (target === null || !/<a\s/.test(html)) return html
   return html.replace(/<a\s/, `<a data-nc-go="${target}" `)
-}
-
-/** リンクで包む（「リンクを開く」のとき） */
-function withLink(item: ItemData, className: string, inner: string): string {
-  if (actionOf(item) !== 'link' || str(item, 'url').trim() === '') return inner
-  return `<a class="${className}"${linkAttrs(str(item, 'url'), { track: bool(item, 'track'), newTab: false })}>${inner}</a>`
 }
 
 /** 選択肢のボタン（白地に色の枠。押すと少し沈む） */
@@ -383,13 +320,6 @@ function dedupeSampleAssets(html: string, seen: Set<string>): string {
     seen.add(block)
     return block
   })
-}
-
-/** 左・中央・右 に置く左右の余白 */
-function placeMargins(place: Place): string {
-  if (place === 'left') return 'margin-left:0;margin-right:auto'
-  if (place === 'right') return 'margin-left:auto;margin-right:0'
-  return 'margin-left:auto;margin-right:auto'
 }
 
 /**
@@ -543,6 +473,9 @@ function renderBlockBody(
       // ライブラリの見本（採取した見本のHTML。style・script ごとそのまま）。中身は入力の画面で直してある
       return { html: `<div class="nc-b nc-b-sample ${cls}">${dedupeSampleAssets(str(item, 'html'), seen)}</div>`, css: '' }
     default: {
+      // 増やした部品（builder-blocks-more-render.ts）
+      const more = renderMoreBlock(item, i, s)
+      if (more !== null) return more
       // 型の部品（型が自分でHTMLとCSSを書き出す。この部品だけのWidgetの名前で、ほかの型とまざらない）
       const template = templateOfBlock(str(item, 'type'))
       if (template === undefined) return { html: '', css: '' }

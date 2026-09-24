@@ -20,14 +20,28 @@ const SKIP_TAGS: ReadonlySet<string> = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', '
 /**
  * 見たまま画面の要素から、いちばん外の部品（.nc-b で通し番号のあるもの）。
  * 見本の部品の中に別の部品（登録したWidgetを見本にした など）があっても、外のものを返す。
+ * 移行先（被せた部品の中に入っている押せる範囲）を押したときは、被せた部品ではなく移行先を返す
+ * （見本の中の、別のWidgetの移行先は見本の一部＝外の部品）
  */
 export function outermostBlock(target: EventTarget | null, contentDiv: HTMLElement): HTMLElement | null {
   let found: HTMLElement | null = null
+  let hotspot: HTMLElement | null = null
   let cur: HTMLElement | null = target instanceof HTMLElement ? target : target instanceof Node ? target.parentElement : null
   for (; cur !== null && cur !== contentDiv; cur = cur.parentElement) {
-    if (cur.classList.contains('nc-b') && blockNumberOf(cur.className) !== null) found = cur
+    if (!cur.classList.contains('nc-b') || blockNumberOf(cur.className) === null) continue
+    if (found === null && cur.classList.contains('nc-b-hotspot')) hotspot = cur
+    found = cur
   }
-  return found
+  return hotspot !== null && hotspot.parentElement === found ? hotspot : found
+}
+
+/** 部品の要素から、中に入れた移行先を外した写し（部品の文字・見本の中身を読み戻すときに、移行先を混ぜない） */
+function withoutHotspots(el: HTMLElement): HTMLElement {
+  const copy = el.cloneNode(true) as HTMLElement
+  for (const hot of copy.querySelectorAll('.nc-b-hotspot')) {
+    if (hot.parentElement === copy) hot.remove()
+  }
+  return copy
 }
 
 /** 要素の中の文字。<br> と塊の要素の切れ目は改行。script・style・svg の中は見ない */
@@ -75,7 +89,8 @@ export function richTextOf(el: Element): string {
 const oneLine = (text: string): string => text.replace(/\s*(?:<br>|\n)\s*/g, ' ').trim()
 
 /** 部品の要素から、その部品の文字の欄を読み戻した中身（飾りつき）。読み戻せない部品は null */
-export function readBlockFromCanvas(el: HTMLElement, block: ItemData): ItemData | null {
+export function readBlockFromCanvas(original: HTMLElement, block: ItemData): ItemData | null {
+  const el = withoutHotspots(original)
   const pick = (selector: string): Element | null => el.querySelector(selector)
   switch (str(block, 'type')) {
     case 'heading':

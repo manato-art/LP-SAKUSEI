@@ -141,3 +141,18 @@ export const RATING_ICONS = {
   '3': stars(3),
   none: line('<path d="M8 6 L24 18 M24 6 L8 18"/>', 1.8),
 } as const
+
+/* ── 囲み枠の見た目（2026-09-24・部品を増やした） ── */
+export const BOX_LOOK_ICONS = {
+  soft: svg('<rect x="3" y="4" width="26" height="16" rx="3" fill="currentColor" opacity=".35"/><path d="M8 10 H24 M8 14 H20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>'),
+  line: line('<rect x="3" y="4" width="26" height="16" rx="3"/><path d="M8 10 H24 M8 14 H20"/>', 1.8),
+  label: svg('<rect x="3" y="4" width="26" height="16" rx="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3 7 a3 3 0 0 1 3 -3 H26 a3 3 0 0 1 3 3 V9 H3 Z" fill="currentColor"/><path d="M8 14 H24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>'),
+} as const
+
+/* ── バッジの形（2026-09-24・部品を増やした） ── */
+export const BADGE_LOOK_ICONS = {
+  pill: fill('<rect x="4" y="7" width="24" height="10" rx="5"/>'),
+  ribbon: fill('<path d="M3 7 H29 L26 12 L29 17 H3 L6 12 Z"/>'),
+  circle: fill('<circle cx="16" cy="12" r="9"/>'),
+  tag: fill('<path d="M4 7 H22 L28 12 L22 17 H4 Z"/>'),
+} as const

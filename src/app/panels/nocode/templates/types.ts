@@ -65,6 +65,8 @@ export type Field =
       readonly min: number
       readonly max: number
       readonly unit?: string
+      /** 1回の増減（無ければ px は 0.5・ほかは 1。星の評価の 4.8 点などは 0.1） */
+      readonly step?: number
       /** 以前の選び（大/中/小・s/m/l）を数に読み替える表（古い中身をそのまま開けるように） */
       readonly legacy?: Readonly<Record<string, number>>
       /** 値が無いときに見せる数（書き出しの既定と同じにする。無ければ欄は空・スライダーは下限） */

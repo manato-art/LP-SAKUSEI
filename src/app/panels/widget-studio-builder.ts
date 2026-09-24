@@ -17,9 +17,11 @@
 import { toast } from '../ui.ts'
 import { embedBuilderData, splitStyles } from './nocode/builder-data.ts'
 import { blockElementAt, isTextEditableBlock, outermostBlock, syncCanvasBlock } from './nocode/canvas-sync.ts'
-import { getAt, moveTo, setAt, type Path } from './nocode/form-state.ts'
+import { getAt, setAt, type Path } from './nocode/form-state.ts'
 import { ensureNocodeFormCss } from './nocode/nocode-form-css.ts'
-import { NC_BLOCK_MIME, buildTemplateForm } from './nocode/template-form.ts'
+import { buildTemplateForm } from './nocode/template-form.ts'
+import { hotspotRect, isHotspot, moveGroupBefore } from './nocode/hotspot-model.ts'
+import { MORE_PREVIEW_CSS } from './nocode/templates/builder-blocks-more-render.ts'
 import { BUILDER_PADDING, BUILDER_TEMPLATE } from './nocode/templates/builder.ts'
 import { ALIGNS, HEADING_SIZES, PLACES, SPACER_SIZES, TEXT_SIZES, blockLabel, sizeOf, widthKeyOf, type Place } from './nocode/templates/builder-blocks.ts'
 import { newUid } from './nocode/templates/kit.ts'
@@ -31,6 +33,8 @@ import { openSizePopover } from './size-popover.ts'
 import { canvasEditTarget } from './widget-canvas-events.ts'
 import { FONT } from './widget-editor-theme.ts'
 import { runWidgetScripts } from './widget-run-scripts.ts'
+import { attachBlockDrop } from './widget-studio-drop.ts'
+import { hotspotHandles, hotspotMove, markEmptyHotspotHosts, type HotspotEditDeps } from './widget-studio-hotspot.ts'
 
 export interface BuilderSessionDeps {
   readonly data: TemplateData
@@ -79,13 +83,14 @@ export interface BuilderSession {
  * 見たまま画面だけ、薄い字で入れる物を出す（プレビューのCSSにだけ足す。保存する中身には入らない）
  */
 const EMPTY_PLACEHOLDER_CSS =
-  '.nc-b-heading:empty::before{content:"見出しを入れてください";opacity:.35}' +
-  '.nc-b-text:empty::before{content:"文章を入れてください";opacity:.35}' +
+  // [data-nc-empty] は、移行先だけが入っている空の部品（widget-studio-hotspot.ts の markEmptyHotspotHosts）
+  '.nc-b-heading:empty::before,.nc-b-heading[data-nc-empty]::before{content:"見出しを入れてください";opacity:.35}' +
+  '.nc-b-text:empty::before,.nc-b-text[data-nc-empty]::before{content:"文章を入れてください";opacity:.35}' +
   // 画像・動画は、まだ選んでいないと何も出ない → 灰色の箱に「選んでください」
-  '.nc-b-image:empty,.nc-b-video:empty{min-height:120px;display:flex;align-items:center;justify-content:center;' +
-  'background:#EEF0F3;border-radius:8px;color:#5F6673;font-size:13px}' +
-  '.nc-b-image:empty::before{content:"画像を選んでください（右の設定から）"}' +
-  '.nc-b-video:empty::before{content:"動画を選んでください（右の設定から）"}' +
+  '.nc-b-image:empty,.nc-b-video:empty,.nc-b-image[data-nc-empty],.nc-b-video[data-nc-empty]{min-height:120px;display:flex;' +
+  'align-items:center;justify-content:center;background:#EEF0F3;border-radius:8px;color:#5F6673;font-size:13px}' +
+  '.nc-b-image:empty::before,.nc-b-image[data-nc-empty]::before{content:"画像を選んでください（右の設定から）"}' +
+  '.nc-b-video:empty::before,.nc-b-video[data-nc-empty]::before{content:"動画を選んでください（右の設定から）"}' +
   // 画像と文章: 画像の欄は灰色の箱、文章は薄い字
   '.nc-b-imageText__img:empty{min-height:90px;background:#EEF0F3;border-radius:8px}' +
   '.nc-b-imageText__text:empty::before{content:"文章を入れてください";opacity:.35}'
@@ -170,7 +175,7 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
    * 描き直すときに必ず外す（CSSだけの変化では要素を入れ替えないので、外さないと古い見た目が勝ち続ける）
    */
   const previewed = new Set<HTMLElement>()
-  const PREVIEW_PROPS = ['width', 'height', 'font-size', 'padding-top', 'padding-bottom', 'transform'] as const
+  const PREVIEW_PROPS = ['width', 'height', 'font-size', 'padding-top', 'padding-bottom', 'transform', 'left', 'top'] as const
   const clearPreviews = (): void => {
     for (const el of previewed) for (const prop of PREVIEW_PROPS) el.style.removeProperty(prop)
     previewed.clear()
@@ -312,9 +317,10 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
     /** 動かし始めたときの四角（動かしている間は translate が乗るので、最初に測っておく）。null＝まだ動かしていない */
     let from: { target: DOMRect; block: DOMRect } | null = null
     /** この画面の部品の要素（自分を除く並び・元の番号つき） */
+    // 移行先は被せた部品の中にあるので、並びの目安にしない（部品は移行先ごと動く）
     const others = (): { el: HTMLElement; index: number }[] =>
       items(items(data, 'screens')[screenIndex] ?? {}, 'blocks')
-        .map((_, index) => ({ el: blockElementAt(data, contentDiv, screenIndex, index), index }))
+        .map((block, index) => ({ el: isHotspot(block) ? null : blockElementAt(data, contentDiv, screenIndex, index), index }))
         .filter((o): o is { el: HTMLElement; index: number } => o.el !== null && o.index !== blockIndex)
     /** 自分より前にある部品の数（並びを変えていなければ、入る位置はこれ） */
     const originalAt = (list: readonly { index: number }[]): number => list.filter((o) => o.index < blockIndex).length
@@ -385,8 +391,15 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
         let next = data
         if (canPlace && place !== startPlace) next = setAt(next, [...pathOf(screenIndex, blockIndex), 'place'], place)
         if (insertAt !== originalAt(list)) {
-          next = moveTo(next, ['screens', screenIndex, 'blocks'], blockIndex, insertAt)
-          form.load(next, screenIndex, insertAt)
+          // 入る所の次の部品の前へ（無ければいちばん下）。被せた移行先も一緒に動く
+          const listPath = ['screens', screenIndex, 'blocks']
+          const blocks = items(items(next, 'screens')[screenIndex] ?? {}, 'blocks')
+          const moved = moveGroupBefore(blocks, blockIndex, list[insertAt]?.index ?? blocks.length)
+          if (moved === null) {
+            showSelection()
+            return
+          }
+          form.load(setAt(next, listPath, moved.list), screenIndex, moved.index)
           return
         }
         if (next === data) {
@@ -423,6 +436,19 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
       commit: (n) => commitField([], 'padding', n),
     }))
 
+  /** 移行先を見たまま画面で直すときの、読み書き（位置と大きさは被せた部品に対する %） */
+  const hotspotDeps = (screenIndex: number, blockIndex: number): HotspotEditDeps => ({
+    selection,
+    previewed,
+    rect: () => hotspotRect(blockAt(screenIndex, blockIndex) ?? {}),
+    commit: (next) => {
+      const path = pathOf(screenIndex, blockIndex)
+      for (const [key, value] of Object.entries(next)) data = setAt(data, [...path, key], value)
+      form.setData(data)
+      paint()
+    },
+  })
+
   /** 左の選択枠を、右で選んでいる部品に合わせる（何も選んでいなければ Widget全体を薄い枠で） */
   const showSelection = (): void => {
     const blockIndex = form.selectedBlock()
@@ -440,6 +466,11 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
       return
     }
     const type = str(block, 'type')
+    if (isHotspot(block)) {
+      const deps = hotspotDeps(screenIndex, blockIndex)
+      selection.select(el, '移行先（つかんで動かす・四辺で大きさ）', hotspotHandles(el, deps), { move: hotspotMove(el, deps) })
+      return
+    }
     selection.select(frameTarget(el, type), blockLabel(type), blockHandles(el, screenIndex, blockIndex), {
       move: blockMove(el, screenIndex, blockIndex),
     })
@@ -461,7 +492,7 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
     const screen = activeScreenId()
     const html = BUILDER_TEMPLATE.render(previewData, uid, screen === undefined ? undefined : { screen })
     const { css, body } = splitStyles(html)
-    deps.setPreviewCss(css + EMPTY_PLACEHOLDER_CSS)
+    deps.setPreviewCss(css + EMPTY_PLACEHOLDER_CSS + MORE_PREVIEW_CSS)
     clearPreviews()
     // CSSだけの変化（カードのスライダーなど）は中身を入れ替えない（要素が入れ替わると、開いているカードや選択枠がずれる）。
     // 枠とつまみは今の値で作り直す（置く位置で幅のつまみの側が変わる）
@@ -473,6 +504,7 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
     contentDiv.innerHTML = body
     runWidgetScripts(contentDiv)
     markNonEditable()
+    markEmptyHotspotHosts(contentDiv)
     // 部品が1つも無いときは、左に案内を出す（見たまま画面の中身は保存しないので、置いてよい）
     if (items(data, 'screens').every((s) => items(s, 'blocks').length === 0)) contentDiv.append(emptyHint())
     showSelection()
@@ -583,6 +615,7 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
     const changed = canvasEditTarget(event)
     const el = changed !== undefined ? outermostBlock(changed, contentDiv) : (selectionBlock()?.el ?? null)
     if (el === null) return
+    el.removeAttribute('data-nc-empty') // 打ったので、もう空ではない（案内の文字を消す）
     const synced = syncCanvasBlock(data, el, contentDiv)
     if (synced === null) return
     data = synced.data
@@ -628,7 +661,27 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
    * 文字を打つ部品以外（画像・動画・図形・余白・区切り線・型の部品）は、部品そのものをつかんで動かせる
    * （少し動かすと動き出す。そのまま離せば、ただ選ぶだけ）。文字の部品・見本は、つかみ所（枠の上のまん中）で動かす
    */
-  const DIRECT_MOVE: ReadonlySet<string> = new Set(['image', 'video', 'shape', 'spacer', 'divider'])
+  const DIRECT_MOVE: ReadonlySet<string> = new Set([
+    'image',
+    'video',
+    'shape',
+    'spacer',
+    'divider',
+    // 2026-09-24 に増やした部品（文字は右の欄で直す）と、移行先（被せた部品の中で動かす）
+    'hotspot',
+    'speech',
+    'price',
+    'box',
+    'note',
+    'table',
+    'rating',
+    'badge',
+    'gallery',
+    'point',
+    'stat',
+    'accordion',
+    'cue',
+  ])
   contentDiv.addEventListener('pointerdown', (event) => {
     if (event.button !== 0 || event.ctrlKey || event.metaKey) return
     const el = outermostBlock(event.target, contentDiv)
@@ -637,7 +690,9 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
     const type = str(place.block, 'type')
     if (!DIRECT_MOVE.has(type) && !type.startsWith('tpl-')) return
     if (form.selectedBlock() !== place.blockIndex) form.select(place.screenIndex, place.blockIndex)
-    const move = blockMove(el, place.screenIndex, place.blockIndex)
+    const move = isHotspot(place.block)
+      ? hotspotMove(el, hotspotDeps(place.screenIndex, place.blockIndex))
+      : blockMove(el, place.screenIndex, place.blockIndex)
     selection.startMove(event, {
       update: move.update,
       commit: (x, y) => {
@@ -650,58 +705,8 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
   // 画像を掴んだときにブラウザが画像そのものを運ぼうとするのを止める（部品の位置は上で動かす）
   contentDiv.addEventListener('dragstart', (event) => event.preventDefault())
 
-  /*
-   * 左の「部品を足す」からドラッグで運んで入れる（2026-09-24 画面の作り直し・本人「ドラッグ&ドロップで追加できるように」）。
-   * 運んでいる間は、入る所に青い線（部品の真ん中より上か下か）。離すとその位置に足して選ぶ（form.insertBlock）。
-   * 紙の外（灰色の地）で離しても、高さで入る位置を決める。文字として貼り付かないよう、既定の動きは止める
-   */
-  let dropAt: number | null = null
-  const isBlockDrag = (event: DragEvent): boolean => event.dataTransfer?.types.includes(NC_BLOCK_MIME) === true
-  const insertPointAt = (y: number): { index: number; lineY: number } => {
-    const screenIndex = form.activeScreen()
-    const rects = items(items(data, 'screens')[screenIndex] ?? {}, 'blocks')
-      .map((_, index) => blockElementAt(data, contentDiv, screenIndex, index)?.getBoundingClientRect() ?? null)
-      .filter((r): r is DOMRect => r !== null)
-    const index = rects.filter((r) => r.top + r.height / 2 < y).length
-    const before = rects[index - 1]
-    const after = rects[index]
-    const box = contentDiv.getBoundingClientRect()
-    const lineY =
-      before !== undefined && after !== undefined
-        ? (before.bottom + after.top) / 2
-        : after !== undefined
-          ? after.top - 4
-          : before !== undefined
-            ? before.bottom + 4
-            : box.top + 24
-    return { index, lineY }
-  }
-  const clearDrop = (): void => {
-    dropAt = null
-    selection.dropLine(null)
-  }
-  editorBody.addEventListener('dragover', (event) => {
-    if (!isBlockDrag(event)) return
-    event.preventDefault()
-    const transfer = event.dataTransfer
-    if (transfer !== null) transfer.dropEffect = 'copy'
-    const point = insertPointAt(event.clientY)
-    dropAt = point.index
-    const box = contentDiv.getBoundingClientRect()
-    selection.dropLine({ y: point.lineY, left: box.left + 8, width: box.width - 16 })
-  })
-  editorBody.addEventListener('dragleave', (event) => {
-    if (event.relatedTarget instanceof Node && editorBody.contains(event.relatedTarget)) return
-    clearDrop()
-  })
-  editorBody.addEventListener('drop', (event) => {
-    if (!isBlockDrag(event)) return
-    event.preventDefault()
-    const type = event.dataTransfer?.getData(NC_BLOCK_MIME) ?? ''
-    const at = dropAt ?? insertPointAt(event.clientY).index
-    clearDrop()
-    if (type !== '') form.insertBlock(type, at)
-  })
+  // 左の「部品を足す」からドラッグで運んで入れる（移行先は部品の上に被せる）＝widget-studio-drop.ts
+  attachBlockDrop({ editorBody, contentDiv, selection, form, data: () => data })
 
   /**
    * 上のツールバーの「配置 ⌄」で変えるもの（見出し・文章は文字の寄せ、ほかは置く位置）。

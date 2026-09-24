@@ -450,6 +450,16 @@ describe('どの部品も幅と置く位置を持つ（2026-09-24・本人「部
         expect(keys.some(([, key]) => key === 'place'), type.type).toBe(false)
         continue
       }
+      // 移行先（2026-09-24）は、被せた部品に対する位置と大きさ（左から・上から・幅・高さ）を持つ
+      if (type.type === 'hotspot') {
+        expect(type.fields.slice(0, 4).map((f) => [f.kind, f.key])).toEqual([
+          ['number', 'x'],
+          ['number', 'y'],
+          ['number', 'w'],
+          ['number', 'h'],
+        ])
+        continue
+      }
       expect(keys[1], type.type).toEqual(['select', 'place'])
       expect(keys[0]?.[0], type.type).toBe('number')
     }
@@ -457,7 +467,7 @@ describe('どの部品も幅と置く位置を持つ（2026-09-24・本人「部
 
   it('値が無い部品（見本の部品・以前の中身）は、欄にも書き出しの既定（幅100%・中央）を見せる', () => {
     for (const type of ALL_BLOCK_TYPES) {
-      if (type.type === 'spacer') continue
+      if (type.type === 'spacer' || type.type === 'hotspot') continue
       const [width, place] = type.fields
       expect(width?.kind === 'number' ? width.fallback : null, type.type).toBe(100)
       expect(place?.kind === 'select' ? place.fallback : null, type.type).toBe('center')

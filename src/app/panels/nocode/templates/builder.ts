@@ -21,6 +21,9 @@ import { baseCss, esc, safeColor, safeImage, safeVideo, shade, wrapWidget } from
 import { ACCENT_PRESETS, items, pick, str, type ItemData, type NocodeTemplate } from './types.ts'
 import { isRichEmpty } from '../rich-text.ts'
 import { TRANSITION_ICONS } from './option-icons.ts'
+import { moreBlockProblem } from './builder-blocks-more.ts'
+import { moreBaseCss, renderHotspot } from './builder-blocks-more-render.ts'
+import { coveredIndexOf, isHotspot } from '../hotspot-model.ts'
 
 export { ALL_BLOCK_TYPES, BLOCK_TYPES } from './builder-blocks.ts'
 
@@ -130,6 +133,32 @@ function screenName(screen: ItemData, index: number): string {
   return name === '' ? `画面${index + 1}` : name
 }
 
+/**
+ * 部品のHTMLの閉じるタグの前に入れる（移行先を被せる部品の中へ）。
+ * 閉じるタグの無い部品（区切り線の <hr>）と、リンクそのものの部品にリンクを入れるとき（<a> の中の <a>）は入れられない＝null
+ */
+function insertIntoBlock(host: string, inner: string): string | null {
+  const close = /<\/([a-z][a-z0-9]*)>\s*$/i.exec(host)
+  if (close === null) return null
+  if (close[1]?.toLowerCase() === 'a' && inner.startsWith('<a ')) return null
+  return host.slice(0, close.index) + inner + host.slice(close.index)
+}
+
+/** 移行先の確かめ（被せる部品があるか・移る先を選んだか）。問題が無ければ null */
+function hotspotProblem(blocks: readonly ItemData[], index: number, item: ItemData, where: string): string | null {
+  const cover = coveredIndexOf(blocks, index)
+  if (cover === null) return `移行先を被せる部品がありません（${where}）。移行先は、すぐ上の部品に被さります。被せたい部品の下へ動かしてください`
+  const coverType = str(blocks[cover] ?? {}, 'type')
+  if (coverType === 'divider') return `区切り線には移行先を被せられません（${where}）。ほかの部品の下へ動かしてください`
+  if (coverType === 'shape' && actionOf(blocks[cover] ?? {}) === 'link' && actionOf(item) === 'link') {
+    return `リンクを開く図形には、リンクを開く移行先を被せられません（${where}）。図形の「押したとき」を使ってください`
+  }
+  const action = actionOf(item)
+  if (action === 'none') return `移行先の移る先が選ばれていません（${where}）。「押したとき」で画面かリンクを選んでください`
+  if (action === 'link' && str(item, 'url').trim() === '') return `移行先の開くページが空です（${where}）。URLを入れてください`
+  return null
+}
+
 export const BUILDER_TEMPLATE: NocodeTemplate = {
   id: 'builder',
   name: '組み立てたWidget',
@@ -168,9 +197,15 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
       const name = screenName(screen, index)
       const blocks = items(screen, 'blocks')
       if (blocks.length === 0) return `「${name}」に部品がありません。部品を足すか、その画面を消してください`
-      for (const item of blocks) {
+      for (const [blockIndex, item] of blocks.entries()) {
         const type = str(item, 'type')
         const where = `「${name}」の${blockLabel(type)}`
+        if (isHotspot(item)) {
+          const problem = hotspotProblem(blocks, blockIndex, item, where)
+          if (problem !== null) return problem
+        }
+        const more = moreBlockProblem(item, where)
+        if (more !== null) return more
         if (type === 'button' && isRichEmpty(str(item, 'label'))) return `ボタンの文字が空です（${where}）。文字を書くか、その部品を消してください`
         if ((type === 'image' || type === 'imageText') && safeImage(str(item, 'image')) === '') {
           return `画像が選ばれていません（${where}）。画像を選ぶか、その部品を消してください`
@@ -215,14 +250,41 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
     const blockCss: string[] = []
     // 同じ見本を分けた部品の <style>・<script> は1回だけ出す（見本のスクリプトが画面の数だけ動かないように）
     const seenAssets = new Set<string>()
+    /** 使っている部品の種類（増やした部品の形の土台は、使っている分だけ出す） */
+    const usedTypes = new Set<string>()
+    const names = new Map(screens.map((screen, index) => [str(screen, 'id'), screenName(screen, index)]))
     const screenHtml = screens
       .map((screen, index) => {
-        const blocks = items(screen, 'blocks').map((item) => {
+        const blocks: string[] = []
+        /** 移行先が被さる部品（直前の、移行先でない部品）の、blocks の中の位置と通し番号 */
+        let cover: { at: number; n: number } | null = null
+        const covered = new Set<number>()
+        for (const item of items(screen, 'blocks')) {
           counter += 1
+          if (isHotspot(item)) {
+            // 移行先は、被せる部品の中（閉じるタグの前）に入れる。被せる部品が無い・中に入れられない部品なら出さない（保存の前に知らせる）
+            const host = cover === null ? undefined : blocks[cover.at]
+            if (cover === null || host === undefined) continue
+            const target = goTarget(item, ids)
+            const part = renderHotspot(item, counter, s, target, target === null ? '' : (names.get(target) ?? ''))
+            const inside = insertIntoBlock(host, part.html)
+            if (inside === null) continue
+            blocks[cover.at] = inside
+            blockCss.push(part.css)
+            usedTypes.add('hotspot')
+            // 被せた部品は、移行先の位置の基準（中の重なりはその部品の中で閉じる）
+            if (!covered.has(cover.n)) {
+              covered.add(cover.n)
+              blockCss.push(`${s} .nc-b-${cover.n}{position:relative;isolation:isolate}`)
+            }
+            continue
+          }
           const part = renderBlock(item, counter, s, ids, seenAssets)
           blockCss.push(part.css)
-          return part.html
-        })
+          blocks.push(part.html)
+          usedTypes.add(str(item, 'type'))
+          cover = { at: blocks.length - 1, n: counter }
+        }
         const id = str(screen, 'id')
         const hidden = id === start ? '' : ' hidden'
         return `<div class="nc-screen" data-nc-screen="${id}" data-nc-name="${esc(screenName(screen, index))}"${hidden}>${blocks.join('')}</div>`
@@ -292,6 +354,7 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
       // 狭い画面では画像と文章を縦に並べる（画像が上）
       `@media (max-width:480px){${s} .nc-b-imageText,${s} .nc-b-imageText__link{grid-template-columns:minmax(0,1fr)}` +
       `${s} .nc-b-imageText--right .nc-b-imageText__img{order:0}}` +
+      moreBaseCss(usedTypes, s) +
       blockCss.join('')
 
     const attrs =

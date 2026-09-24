@@ -237,6 +237,29 @@ textarea.ncf-input{resize:vertical;min-height:64px}
   border:1.5px solid var(--sb-accent,#0074D9);border-radius:10px;background:#FFF;color:#0060B8;font:700 12.5px/1.3 inherit;cursor:pointer}
 .ncf-palette__library::after{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);flex-shrink:0}
 .ncf-palette__library:disabled{opacity:.4;cursor:default}
+/* 部品を足す: 11個＋もっと見る（2026-09-24・本人「11個＋もっと見る。押したら同じ左の列でサムネ付きで全部」） */
+.ncf-palette__tile--more{border-style:dashed;border-color:#D5D9DF;background:transparent;color:var(--sb-sub,#5F6673);cursor:pointer}
+.ncf-palette__tile--more .ncf-palette__icon{color:var(--sb-sub,#5F6673)}
+.ncf-palette__tile--more:hover .ncf-palette__icon{color:var(--sb-accent,#0091FF)}
+.ncf-cat__head{display:flex;align-items:center;gap:8px;padding:0 2px 2px}
+.ncf-cat__back{height:28px;display:inline-flex;align-items:center;gap:2px;padding:0 10px 0 4px;border:1px solid #E3E5E9;border-radius:8px;
+  background:transparent;color:#3F4450;font:inherit;font-size:12px;cursor:pointer}
+.ncf-cat__back svg{width:16px;height:16px}
+.ncf-cat__back:hover{border-color:var(--sb-accent,#0091FF);color:var(--sb-accent,#0091FF)}
+.ncf-cat__back:focus-visible,.ncf-cat__card:focus-visible{outline:2px solid var(--sb-accent,#0091FF);outline-offset:2px}
+.ncf-cat__grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.ncf-cat__card{display:flex;flex-direction:column;min-width:0;padding:0;border:1px solid #E3E6EA;border-radius:10px;background:transparent;
+  overflow:hidden;cursor:grab;font:inherit;color:#3F4450;text-align:left}
+.ncf-cat__card:hover:not(:disabled){border-color:var(--sb-accent,#0091FF)}
+.ncf-cat__card:disabled{opacity:.4;cursor:default}
+/* サムネは LP の見た目のまま（白い紙）。中身は shadow root（palette-thumbs.ts） */
+.ncf-cat__thumb{height:84px;overflow:hidden;display:flex;align-items:safe center;justify-content:center;background:#FFFFFF;
+  border-bottom:1px solid #EEF0F2}
+.ncf-cat__name{display:flex;align-items:center;gap:6px;min-width:0;padding:7px 8px;font-size:12px;font-weight:600}
+/* 並び: 移行先は、被せた部品（すぐ上）の下に一段下げる */
+.ncf-parts .ncf-item--hotspot>.ncf-item__head[role="button"]{position:relative;padding-left:26px}
+.ncf-parts .ncf-item--hotspot>.ncf-item__head[role="button"]::before{content:"";position:absolute;left:12px;top:8px;width:8px;height:11px;
+  border-left:1.5px solid #C4C9D1;border-bottom:1.5px solid #C4C9D1;border-bottom-left-radius:4px}
 /* 右の設定: 選んだ部品の名前と段（レイアウト・中身・押したとき） */
 .ncf-inspector__head{display:flex;align-items:center;gap:8px;padding:2px 0 12px;border-bottom:1px solid #EEF0F2}
 .ncf-inspector__icon{width:30px;height:30px;flex-shrink:0;border-radius:8px;background:#F1F2F4;display:flex;align-items:center;justify-content:center;color:#3F4450}
