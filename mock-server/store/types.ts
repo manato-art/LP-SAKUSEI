@@ -356,6 +356,42 @@ export interface DailyMetric {
   media_click?: number
   /** 媒体が計測したCV */
   media_cv?: number
+  /**
+   * 媒体実績の出どころごとの内訳（2026-09-24）。上の ad_cost / imp / media_click / media_cv はこの合計。
+   * 以前は Meta と CSV が互いに丸ごと上書きしていたので分けた（store/media-sources.ts）。
+   * これより前の保存データには無い。その値は出どころ不明（legacy）として読む。
+   */
+  media_sources?: Partial<Record<MediaSource, MediaFigures>>
+}
+
+/** 媒体実績の出どころ。legacy ＝ 出どころを記録する前に入った値 */
+export type MediaSource = 'meta' | 'csv' | 'legacy'
+
+/** 媒体実績の4つの値 */
+export interface MediaFigures {
+  ad_cost: number
+  imp: number
+  media_click: number
+  media_cv: number
+}
+
+/**
+ * 媒体実績を最後に取り込んだ記録（ページ×出どころで1件・2026-09-24）。
+ * レポートの「広告データ取得日時」に出す。自動の取り込みが失敗したときの理由もここに残す（黙って失敗しない）。
+ */
+export interface MediaImportRecord {
+  ab_test_uid: string
+  source: Exclude<MediaSource, 'legacy'>
+  /** 最後に取り込もうとした時刻（UNIXミリ秒） */
+  last_attempt_at: number
+  /** 最後に取り込めた時刻（UNIXミリ秒）。一度も取り込めていなければ null */
+  last_success_at: number | null
+  /** 最後の取り込みが失敗した理由。成功したら null に戻す */
+  last_error: string | null
+  /** 最後に取り込めた日数 */
+  last_days: number
+  /** 手で取り込んだか、見張りが自動で取り込んだか */
+  trigger: 'manual' | 'auto'
 }
 
 /**
@@ -964,6 +1000,8 @@ export interface State {
   introductions: readonly Introduction[]
   permissions: readonly Permission[]
   metrics: readonly DailyMetric[]
+  /** 媒体実績を最後に取り込んだ記録（ページ×出どころで1件・store/media-imports.ts） */
+  mediaImports: readonly MediaImportRecord[]
   /** HTML設定モーダル（noindex とタグ）。記事ごとに1件。 */
   htmlTags: readonly ArticleHtmlSetting[]
   nextId: number

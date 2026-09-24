@@ -6,12 +6,17 @@
  * Google / Yahoo / X などの管理画面から落とした日別の実績を貼り付けて入れる。
  * 採取した画面には手を入れず、その**下に足す**（実物のUIは変えない）。
  *
- * 入れた値は Meta連携と同じ置き場所（日別の媒体実績）に**上書き**で入る。
- * 同じ日を入れ直しても二重計上しない。
+ * 入れた値は出どころ「CSV」として入る（2026-09-24・点検7）。
+ *  - 同じ日を入れ直すと、CSVで入れたぶんだけ上書きする（二重計上しない）
+ *  - Metaから取り込んだ値は消さない（足して出す）
+ *  - CSVに無い列（表示回数など）は前の値のまま
+ *  - 書く前に「どのページの・どの日に書くか」を確認カードで見せる。入れ先は本人が選ぶ
+ *  - 出どころの記録が無い古い値が残っている日は、置き換えるか足すかを本人に選んでもらう
  */
 import { T, el, toast } from '../ui.ts'
-import { api, type AbTest } from '../api.ts'
-import { parseAdCostCsv } from './ad-cost-csv.ts'
+import { api, type AbTest, type MediaFigures } from '../api.ts'
+import { chooseCard, confirmCard } from '../dialog.ts'
+import { describeImportDates, parseAdCostCsv, type AdCostRow } from './ad-cost-csv.ts'
 
 const SAMPLE = `日付,配信金額,表示回数,クリック,CV
 2026-09-15,12000,4500,180,6
@@ -36,10 +41,17 @@ function heading(): HTMLElement {
   return box
 }
 
-/** beyondページの選択 */
+/** 選んでいないときの値（先頭のページを黙って使わない・2026-09-24） */
+const NO_PAGE = ''
+
+/** beyondページの選択。最初は「選んでください」で、本人が選ぶまで取り込まない */
 function pageSelect(pages: readonly AbTest[]): HTMLSelectElement {
   const select = document.createElement('select')
   select.style.cssText = `padding:8px 10px;border:1px solid var(--sb-c-dddddd, #DDDDDD);border-radius:6px;font-size:13px;font-family:${T.font};min-width:220px;max-width:100%`
+  const placeholder = document.createElement('option')
+  placeholder.value = NO_PAGE
+  placeholder.textContent = '入れ先のページを選んでください'
+  select.append(placeholder)
   for (const page of pages) {
     const option = document.createElement('option')
     option.value = page.uid
@@ -94,7 +106,8 @@ export async function mountAdCostImport(host: HTMLElement): Promise<void> {
   const hint = el('div', {
     text:
       '1行目は見出し（日付・配信金額が必須。表示回数・クリック・CVは任意）。' +
-      'スプレッドシートからそのまま貼り付けられます。同じ日を入れ直すと上書きします。',
+      'スプレッドシートからそのまま貼り付けられます。同じ日を入れ直すと、CSVで入れたぶんを上書きします。' +
+      'Metaから取り込んだ値は消えずに足されます。見出しに無い列は前の値のまま変わりません。',
     style: `font-size:11px;color:${T.sub};margin:6px 0 12px;line-height:1.7`,
   })
   section.append(hint)
@@ -117,6 +130,13 @@ export async function mountAdCostImport(host: HTMLElement): Promise<void> {
   section.append(actions, result)
 
   run.addEventListener('click', () => {
+    const page = pages.find((p) => p.uid === select.value)
+    if (select.value === NO_PAGE || page === undefined) {
+      result.textContent = '入れ先のページを選んでください。'
+      toast('入れ先のページを選んでください', 'error')
+      select.focus()
+      return
+    }
     const parsed = parseAdCostCsv(area.value)
     if (parsed.rows.length === 0) {
       result.textContent = parsed.errors.join(' ') || '取り込める行がありませんでした。'
@@ -124,12 +144,12 @@ export async function mountAdCostImport(host: HTMLElement): Promise<void> {
       return
     }
     run.disabled = true
-    void api
-      .importAdCosts(select.value, parsed.rows)
-      .then(({ days }) => {
+    void confirmAndImport(page, parsed.rows)
+      .then((days) => {
+        if (days === null) return
         // 落とした行があれば隠さずに伝える（入ったつもりで数字が合わない事故を防ぐ）
         const dropped = parsed.errors.length === 0 ? '' : ` 読めなかった行: ${parsed.errors.join(' ')}`
-        result.textContent = `${days}日ぶんを取り込みました。${dropped}`
+        result.textContent = `「${page.title}」に${days}日ぶんを取り込みました。${dropped}`
         toast(`${days}日ぶんの広告費を取り込みました`)
       })
       .catch((error: unknown) => {
@@ -143,4 +163,72 @@ export async function mountAdCostImport(host: HTMLElement): Promise<void> {
   })
 
   host.append(section)
+}
+
+const yen = (n: number): string => `¥${Math.round(n).toLocaleString('ja-JP')}`
+
+/** 見出しに無かった列の名前（確認カードで「前の値のまま」と言うため） */
+function missingColumns(rows: readonly AdCostRow[]): string[] {
+  const first = rows[0]
+  if (first === undefined) return []
+  const names: [keyof AdCostRow, string][] = [
+    ['imp', '表示回数'],
+    ['media_click', 'クリック'],
+    ['media_cv', 'CV'],
+  ]
+  return names.filter(([key]) => first[key] === undefined).map(([, label]) => label)
+}
+
+/**
+ * 書く前の確認（2026-09-24）。どのページの・どの日に書くかを見せる。
+ * 出どころの記録が無い古い値が残っている日があれば、置き換えるか足すかを先に選んでもらう。
+ * 取り消したら null（何も書かない）。
+ */
+async function confirmAndImport(page: AbTest, rows: readonly AdCostRow[]): Promise<number | null> {
+  const dates = [...new Set(rows.map((r) => r.date))].sort()
+  const first = dates[0] ?? ''
+  const last = dates[dates.length - 1] ?? ''
+  const { days } = await api.mediaSources(page.uid, `start_date=${first}&end_date=${last}`)
+  const wanted = new Set(dates)
+  const legacyDays = days.filter((d) => wanted.has(d.date) && d.sources.legacy !== undefined)
+
+  let legacy: 'keep' | 'replace' = 'keep'
+  if (legacyDays.length > 0) {
+    const listed = legacyDays
+      .map((d) => `${d.date}（${yen((d.sources.legacy as MediaFigures).ad_cost)}）`)
+      .join('、')
+    const choice = await chooseCard({
+      title: '以前に入れた値が残っている日があります',
+      message:
+        `${listed} には、どこから入れたかの記録が無い配信金額が残っています` +
+        '（出どころを分けて持つようになる前に入った値です）。今回のCSVの値とどう合わせるか選んでください。',
+      options: [
+        {
+          value: 'replace',
+          label: '以前の値を今回のCSVで置き換える',
+          hint: '以前もこの媒体のCSVを入れていたとき。足すと二重になります。',
+        },
+        {
+          value: 'keep',
+          label: '以前の値を残して、今回の値を足す',
+          hint: '以前の値がMetaなど別の媒体のものだったとき。',
+        },
+      ],
+    })
+    if (choice === null) return null
+    legacy = choice === 'replace' ? 'replace' : 'keep'
+  }
+
+  const missing = missingColumns(rows)
+  const ok = await confirmCard({
+    title: '広告費を書き込みます',
+    message: `「${page.title}」の ${describeImportDates(dates)} に書き込みます。`,
+    detail:
+      '同じ日にCSVで入れた値は今回の値に置き換わります。Metaから取り込んだ値はそのまま残り、足して出します。' +
+      (missing.length === 0 ? '' : `CSVに無い列（${missing.join('・')}）は前の値のまま変えません。`),
+    submitLabel: '書き込む',
+  })
+  if (!ok) return null
+  const out = await api.importAdCosts(page.uid, rows, legacy)
+  return out.days
 }

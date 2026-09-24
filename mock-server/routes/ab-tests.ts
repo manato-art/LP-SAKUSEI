@@ -10,7 +10,6 @@ import {
   createAbTest,
   deleteAbTest,
   deleteRedirectPage,
-  setMediaMetrics,
   updateRedirectPage,
 } from '../store/actions.ts'
 import { getState, setState } from '../store/store.ts'
@@ -21,18 +20,19 @@ import { errorEnvelope, pagination } from '../lib/envelope.ts'
 import { dateRangeParams, filterItems, pageParams, paginate, searchItems, sortItems, sortParams, str } from '../lib/query.ts'
 import { optionalNumber, optionalString, requireString } from '../lib/validate.ts'
 import { serializeAbTest, serializeArticle } from '../lib/serialize.ts'
-import { fetchMetaInsights } from '../meta-insights.ts'
 import { findAbTest, notFound } from './ab-tests-shared.ts'
 import { REDIRECT_SECONDS, isRedirectSeconds, redirectDestination } from '../lib/redirect-page-rules.ts'
 import { migrateLegacyRedirectPageTags } from '../store/redirect-page-tags.ts'
 import { abTestsPopupsRouter } from './ab-tests-popups.ts'
 import { abTestsReportsRouter } from './ab-tests-reports.ts'
+import { abTestsMediaRouter } from './ab-tests-media.ts'
 
 export const abTestsRouter: Router = Router()
 
 // 分割したルーターを同じパス空間へ合流させる（パスは分ける前と同じ）
 abTestsRouter.use(abTestsPopupsRouter)
 abTestsRouter.use(abTestsReportsRouter)
+abTestsRouter.use(abTestsMediaRouter)
 
 
 
@@ -360,105 +360,4 @@ abTestsRouter.put('/ab_tests/:uid/meta_link', (req, res) => {
     ),
   }))
   res.json({ ok: true, meta_level: level, meta_object_id: objectId })
-})
-
-/**
- * 広告費の取り込み（CSVから貼り付け・2026-09-15）。
- *
- * ⚠️ これは**実物のSquadBeyondには無い**、このシステムだけの入口（本人の依頼）。
- * 実物は広告アカウントを繋いで自動で取り込むが、Meta以外の媒体には繋げられないため、
- * 各媒体の管理画面から落とした日別の実績を入れられるようにした。
- *
- * Meta連携と同じく setMediaMetrics で**上書き**する（同じ日を入れ直しても二重計上しない）。
- * LP側の実測（pv/click/cv）には触らない。
- */
-abTestsRouter.post('/ab_tests/:uid/ad_costs', (req, res) => {
-  const abTest = findAbTest(getState(), req.params.uid)
-  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
-
-  const body = req.body as { rows?: unknown }
-  const incoming = Array.isArray(body.rows) ? body.rows : []
-  if (incoming.length === 0) {
-    return res.status(422).json(errorEnvelope('validation_failed', '取り込む行がありません。'))
-  }
-
-  const num = (value: unknown): number =>
-    typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : 0
-  const rows: { date: string; ad_cost: number; imp: number; media_click: number; media_cv: number }[] = []
-  for (const raw of incoming) {
-    const row = raw as Record<string, unknown>
-    const date = typeof row['date'] === 'string' ? row['date'] : ''
-    // 日付は YYYY-MM-DD だけ。形が違うものを黙って捨てると、入ったつもりで数字が合わなくなる。
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      return res
-        .status(422)
-        .json(errorEnvelope('validation_failed', `日付は YYYY-MM-DD で指定してください（${date}）。`))
-    }
-    rows.push({
-      date,
-      ad_cost: num(row['ad_cost']),
-      imp: num(row['imp']),
-      media_click: num(row['media_click']),
-      media_cv: num(row['media_cv']),
-    })
-  }
-
-  setState((s) => {
-    let metrics = s.metrics
-    for (const row of rows) {
-      metrics = setMediaMetrics({ ...s, metrics }, abTest.uid, 'ab_test', row.date, {
-        ad_cost: row.ad_cost,
-        imp: row.imp,
-        media_click: row.media_click,
-        media_cv: row.media_cv,
-      })
-    }
-    return { ...s, metrics }
-  })
-  res.json({ ok: true, days: rows.length })
-})
-
-/**
- * 媒体実績の取り込み。Metaが返すのは日別の絶対値なので setMediaMetrics で**上書き**する
- * （再実行しても二重計上にならない）。LP側の実測（pv/click/cv）には触らない。
- */
-abTestsRouter.post('/ab_tests/:uid/meta_sync', (req, res) => {
-  const abTest = findAbTest(getState(), req.params.uid)
-  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
-
-  const level = abTest.meta_level
-  const objectId = abTest.meta_object_id ?? ''
-  if (level === undefined || objectId === '') {
-    res.status(422).json(errorEnvelope('not_linked', 'この beyondページにMeta広告が紐付いていません。'))
-    return
-  }
-  const body = req.body as Record<string, unknown>
-  const since = typeof body.start_date === 'string' ? body.start_date : ''
-  const until = typeof body.end_date === 'string' ? body.end_date : ''
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(since) || !/^\d{4}-\d{2}-\d{2}$/.test(until)) {
-    res.status(422).json(errorEnvelope('validation_failed', '期間は YYYY-MM-DD で指定してください。'))
-    return
-  }
-
-  void fetchMetaInsights({ level, objectId, since, until }).then((result) => {
-    if (!result.ok) {
-      const status = result.reason === 'no_token' ? 503 : 502
-      res.status(status).json(errorEnvelope(result.reason, result.message))
-      return
-    }
-    setState((s) => {
-      let metrics = s.metrics
-      for (const row of result.rows) {
-        metrics = setMediaMetrics(
-          { ...s, metrics },
-          abTest.uid,
-          'ab_test',
-          row.date,
-          { ad_cost: row.ad_cost, imp: row.imp, media_click: row.media_click, media_cv: row.media_cv },
-        )
-      }
-      return { ...s, metrics }
-    })
-    res.json({ ok: true, days: result.rows.length, start_date: since, end_date: until })
-  })
 })

@@ -115,6 +115,7 @@ export function createEmptyState(): State {
     scheduledSwitches: [],
     htmlParts: [],
     metrics: [],
+    mediaImports: [],
 
     // ── 設定系は「既定値が入った状態」で存在する（0件ではない）──
     // 異常のお知らせ。既定は切（送り先を決めるまで鳴らさない）

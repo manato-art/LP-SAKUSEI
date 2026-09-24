@@ -50,9 +50,9 @@ describe('CSVの読み取り', () => {
     expect(out.rows[0]).toEqual({ date: '2026-09-15', ad_cost: 100, imp: 2, media_click: 1, media_cv: 0 })
   })
 
-  it('配信金額だけでも読む（他は0）', () => {
+  it('配信金額だけでも読む（無い列は送らない＝前の値のまま・2026-09-24）', () => {
     const out = parseAdCostCsv('日付,配信金額\n2026-09-15,500\n')
-    expect(out.rows[0]).toEqual({ date: '2026-09-15', ad_cost: 500, imp: 0, media_click: 0, media_cv: 0 })
+    expect(out.rows[0]).toEqual({ date: '2026-09-15', ad_cost: 500 })
   })
 
   it('桁区切りと円記号と余分な空白を落とす', () => {

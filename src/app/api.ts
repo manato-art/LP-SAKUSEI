@@ -137,6 +137,25 @@ export interface ReportKpi {
   oar: number | null
 }
 
+/** 媒体実績の4つの値（出どころごとの内訳に使う） */
+export interface MediaFigures {
+  ad_cost: number
+  imp: number
+  media_click: number
+  media_cv: number
+}
+
+/** 媒体実績を最後に取り込んだ記録（ページ×出どころで1件） */
+export interface MediaImportRecord {
+  source: 'meta' | 'csv'
+  /** UNIXミリ秒 */
+  last_attempt_at: number
+  last_success_at: number | null
+  last_error: string | null
+  last_days: number
+  trigger: 'manual' | 'auto'
+}
+
 export interface ReportVersionRow extends ReportKpi {
   scope: string
   entity_uid: string
@@ -453,12 +472,23 @@ export const api = {
   abTests: () => request<{ ab_tests: AbTest[] }>('GET', '/ab_tests?per_page=200'),
   /**
    * 広告費の取り込み（このシステムだけの入口）。
-   * 媒体が返すのは日別の絶対値なので、同じ日は上書きされる（二重計上しない）。
+   * 出どころ csv として入る。同じ日を入れ直すと csv のぶんだけ置き換わる（Meta の値は残る）。
+   * 行に無い値は前の値のまま。`legacy` は出どころ不明の古い値を置き換えるか（既定は残して足す）。
    */
   importAdCosts: (
     abTestUid: string,
-    rows: readonly { date: string; ad_cost: number; imp: number; media_click: number; media_cv: number }[],
-  ) => request<{ ok: true; days: number }>('POST', `/ab_tests/${abTestUid}/ad_costs`, { rows }),
+    rows: readonly { date: string; ad_cost: number; imp?: number; media_click?: number; media_cv?: number }[],
+    legacy: 'keep' | 'replace' = 'keep',
+  ) => request<{ ok: true; days: number }>('POST', `/ab_tests/${abTestUid}/ad_costs`, { rows, legacy }),
+  /** 日ごとの媒体実績の出どころの内訳（読むだけ） */
+  mediaSources: (abTestUid: string, query: string) =>
+    request<{ days: { date: string; sources: Partial<Record<'meta' | 'csv' | 'legacy', MediaFigures>> }[] }>(
+      'GET',
+      `/ab_tests/${abTestUid}/media_sources?${query}`,
+    ),
+  /** 最後に媒体実績を取り込んだ記録（レポートの「広告データ取得日時」） */
+  mediaImports: (abTestUid: string) =>
+    request<{ imports: MediaImportRecord[] }>('GET', `/ab_tests/${abTestUid}/media_imports`),
   createAbTest: (input: {
     title: string
     folder_id: number | null
