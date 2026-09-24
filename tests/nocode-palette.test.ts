@@ -3,6 +3,7 @@
  * もっと見るを押したら、同じ左のツールバーのままでサムネ付きで全部表示」。11個は本人の選択「今の10種＋移行先」）。
  */
 import { describe, expect, it } from 'vitest'
+import { readFileSync } from 'node:fs'
 import { parseHTML } from 'linkedom'
 import { PALETTE_FIRST, PALETTE_GROUPS, createPalette } from '../src/app/panels/nocode/palette.ts'
 import { ALL_BLOCK_TYPES, BUILDER_TEMPLATE } from '../src/app/panels/nocode/templates/builder.ts'
@@ -49,5 +50,23 @@ describe('まとまった型は、部品とは別の段（2026-09-24・本人「
   it('もっと見る（すべての部品）には型を入れない', () => {
     const grouped = PALETTE_GROUPS.flatMap((g) => g.types)
     for (const t of templates) expect(grouped).not.toContain(t.type)
+  })
+})
+
+describe('もっと見るの間は、左の列を一覧だけにする（2026-09-24・本人「上の部分が残って狭い」）', () => {
+  const css = readFileSync(new URL('../src/app/panels/nocode/nocode-form-css.ts', import.meta.url), 'utf8')
+
+  it('もっと見るを開いている間は、画面のタブと並びを隠す（戻ると出る）', () => {
+    for (const part of ['[data-widget-tabs]', '[data-widget-parts-list]']) {
+      expect(css).toContain(`[data-widget-pane="parts"]:has([data-ncf-catalog])>${part}`)
+    }
+    expect(css).toMatch(/:has\(\[data-ncf-catalog\]\)>\[data-widget-parts-list\]\{display:none !important\}/)
+  })
+
+  it('隠す対象は、左の列の組み立て（widget-studio.ts）と同じ目印', () => {
+    const studio = readFileSync(new URL('../src/app/panels/widget-studio.ts', import.meta.url), 'utf8')
+    expect(studio).toContain("tabsHost.dataset['widgetTabs'] = 'true'")
+    expect(studio).toContain("partsList.dataset['widgetPartsList'] = 'true'")
+    expect(studio).toContain('partsPane.append(tabsHost, partsList, partsPalette)')
   })
 })

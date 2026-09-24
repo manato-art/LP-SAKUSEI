@@ -241,6 +241,11 @@ textarea.ncf-input{resize:vertical;min-height:64px}
 .ncf-palette__tile--more{border-style:dashed;border-color:#D5D9DF;background:transparent;color:var(--sb-sub,#5F6673);cursor:pointer}
 .ncf-palette__tile--more .ncf-palette__icon{color:var(--sb-sub,#5F6673)}
 .ncf-palette__tile--more:hover .ncf-palette__icon{color:var(--sb-accent,#0091FF)}
+/* もっと見るの間は、左の列を一覧だけにする（本人「上の部分が残って狭い」）。画面のタブと並びは「戻る」で出る。
+   タブは表示を style で切り替えている（widget-studio.ts）ので !important */
+[data-widget-pane="parts"]:has([data-ncf-catalog])>[data-widget-tabs],
+[data-widget-pane="parts"]:has([data-ncf-catalog])>[data-widget-parts-list]{display:none !important}
+[data-widget-pane="parts"]:has([data-ncf-catalog])>[data-widget-parts-palette]{border-top:0 !important}
 .ncf-cat__head{display:flex;align-items:center;gap:8px;padding:0 2px 2px}
 .ncf-cat__back{height:28px;display:inline-flex;align-items:center;gap:2px;padding:0 10px 0 4px;border:1px solid #E3E5E9;border-radius:8px;
   background:transparent;color:#3F4450;font:inherit;font-size:12px;cursor:pointer}
