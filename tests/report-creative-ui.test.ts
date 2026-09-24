@@ -30,8 +30,8 @@ const versions: ReportVersionRow[] = [
   },
 ]
 const daily: ReportDailyRow[] = [
-  { ...kpi(), date: '2026-09-23', pv: 10, ad_cost: 1000 },
-  { ...kpi(), date: '2026-09-24', pv: 4, ad_cost: 500 },
+  { ...kpi(), date: '2026-09-23', pv: 10, ad_cost: 300 },
+  { ...kpi(), date: '2026-09-24', pv: 4, ad_cost: 200 },
 ]
 
 beforeAll(() => {
@@ -77,9 +77,9 @@ describe('クリエイティブの絞り込み', () => {
   it('平均 / 合計でグラフの横の値が変わる', async () => {
     const card = await build()
     const legend = (): string => card.querySelector('.rv2-legend')?.textContent ?? ''
-    expect(legend()).toContain('1日平均 ¥ 750')
+    expect(legend()).toContain('1日平均 ¥ 250')
     chip(card, '合計').dispatchEvent(new Event('click'))
-    expect(legend()).toContain('期間の合計 ¥ 1,500')
+    expect(legend()).toContain('期間の合計 ¥ 500')
   })
 
   it('「比較」に印を付けた広告が右の枠に並ぶ', async () => {
