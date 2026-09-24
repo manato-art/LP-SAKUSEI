@@ -24,6 +24,7 @@ import { buildCreativeReport } from './report-v2-chart.ts'
 import { buildBranchOperation, buildDailyTable, buildReportList } from './report-v2-tables.ts'
 import { buildFunnelReport } from './report-funnel-view.ts'
 import { buildTotalsNote } from './report-totals-note.ts'
+import { buildSignificanceCard } from './report-significance.ts'
 
 /** 同じ日数だけ手前にずらした期間（増減の比較対象） */
 export function previousRange(range: DateRange): DateRange {
@@ -370,6 +371,8 @@ export async function buildReportBody(deps: ReportBodyDeps): Promise<HTMLElement
       abTestUid: deps.abTestUid,
       onPickVersion: (versionUid) => deps.onFilterChange({ ...deps.filter, version: versionUid }),
     }),
+    // Versionの勝ち負け（CVRの差の z 検定・コントロール基準・2026-09-24）
+    buildSignificanceCard(deps.report.rows),
     buildDailyTable({ daily: deps.report.daily, totals: deps.report.totals }),
     buildBranchOperation({ rows: deps.report.rows, totals: deps.report.totals, onDownloadCsv: csv }),
     // 実物はBranch Operationの下にファネル、その下にポップアップが並ぶ

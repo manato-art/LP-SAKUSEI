@@ -210,6 +210,8 @@ export function reportRows(state: State, uid: string, scope: 'version' | 'lp' | 
     archived: version.archived,
     // Branch Operation の「端末」で絞るのに要る（値は元から持っていた）
     device_targets: version.device_targets,
+    // Versionの差（CVR）の判定の基準（ページを作ったときの最初のVersion・2026-09-24）
+    is_control: version.is_control,
     ...rowKpi(
       view.metrics('version', (u) => u === version.uid),
       scrollCounts(view.scrollState, version.uid, startDate, endDate),
