@@ -114,6 +114,7 @@ export function openEditor(state: PopupPageState, popup: ExitPopup): void {
         html: draft.html,
         css: '',
         name: draft.name,
+        badge: '離脱防止',
         frame: 'overlay',
         onSave: (html) => {
           draft.html = html

@@ -359,6 +359,7 @@ function openFollowEditor(state: PopupPageState, fp: FollowPopup): void {
         html: draft.html,
         css: draft.css,
         name: draft.name,
+        badge: '追従型',
         frame: isCornerPosition(draft.position) ? 'corner' : 'lp',
         onSave: (html) => {
           // CSS は中身の <style> に入った（見本の部品の中）。二重に効かないように CSS の欄は空にする

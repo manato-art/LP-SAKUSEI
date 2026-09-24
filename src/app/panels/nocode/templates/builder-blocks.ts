@@ -74,8 +74,8 @@ export function widthKeyOf(type: string): string | null {
  */
 function layoutFields(widthKey: string): readonly Field[] {
   return [
-    { kind: 'number', key: widthKey, label: '幅', min: 10, max: 100, unit: '%', fallback: 100 },
-    { kind: 'select', key: 'place', label: '置く位置', options: PLACE_OPTIONS, fallback: 'center' },
+    { kind: 'number', key: widthKey, label: '幅', min: 10, max: 100, unit: '%', fallback: 100, section: 'layout' },
+    { kind: 'select', key: 'place', label: '置く位置', options: PLACE_OPTIONS, fallback: 'center', section: 'layout' },
   ]
 }
 
@@ -113,9 +113,9 @@ const CHECK_MARK =
  */
 function actionFields(): readonly Field[] {
   return [
-    { kind: 'goto', key: 'action', label: '押したとき' },
-    { kind: 'url', key: 'url', label: '開くページ', placeholder: 'https://', showIfItem: (item) => str(item, 'action') === 'link' },
-    { kind: 'toggle', key: 'track', label: 'クリック数をレポートで数える', showIfItem: (item) => str(item, 'action') === 'link' },
+    { kind: 'goto', key: 'action', label: '押したとき', section: 'press' },
+    { kind: 'url', key: 'url', label: '開くページ', placeholder: 'https://', showIfItem: (item) => str(item, 'action') === 'link', section: 'press' },
+    { kind: 'toggle', key: 'track', label: 'クリック数をレポートで数える', showIfItem: (item) => str(item, 'action') === 'link', section: 'press' },
   ]
 }
 

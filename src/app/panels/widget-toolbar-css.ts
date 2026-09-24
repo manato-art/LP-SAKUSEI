@@ -22,8 +22,8 @@ const LINE = '#E3E5E9'
 const INK = '#3F4450'
 
 const CSS = `
-.wtb{container:wtb/inline-size;display:flex;flex-wrap:wrap;align-items:center;gap:4px;flex-shrink:0;
-  margin:10px 12px 6px;padding:7px 12px;min-height:46px;box-sizing:border-box;background:#fff;
+.wtb{container:wtb/inline-size;display:flex;flex-wrap:wrap;align-items:center;gap:3px;flex-shrink:0;
+  margin:10px 10px 6px;padding:7px 10px;min-height:46px;box-sizing:border-box;background:#fff;
   border:1px solid ${LINE};border-radius:14px;box-shadow:0 3px 14px rgba(16,24,40,.05);color:${INK};font-family:${FONT}}
 .wtb__btn{display:inline-flex;align-items:center;justify-content:center;gap:1px;flex-shrink:0;width:30px;height:30px;padding:0;
   border:none;border-radius:8px;background:transparent;color:${INK};cursor:pointer;
@@ -36,7 +36,7 @@ const CSS = `
 .wtb__btn--round:hover{background:#E8EAEE}
 .wtb__btn--menu{width:40px}
 .wtb__btn--menu svg{width:auto}
-.wtb__sep{width:1px;height:22px;margin:0 10px;background:${LINE};flex-shrink:0}
+.wtb__sep{width:1px;height:22px;margin:0 8px;background:${LINE};flex-shrink:0}
 .wtb__font{display:inline-flex;align-items:center;justify-content:space-between;gap:12px;height:30px;min-width:92px;
   padding:0 9px 0 12px;box-sizing:border-box;border:1px solid ${LINE};border-radius:8px;background:#fff;color:${INK};
   font:13px/1 ${FONT};white-space:nowrap;cursor:pointer}

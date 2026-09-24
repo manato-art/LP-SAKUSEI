@@ -16,6 +16,10 @@
  * 開き方は4つ（全部ここ）:
  *   ライブラリの「+ ノーコードで作る」／見本のカードの「画面を作って使う」／LPの中のWidgetをクリック／設置済みWidgetのカード
  * 2026-09-24: 離脱防止ポップ・追従型ポップの中身も、この画面で直す（popup-studio.ts。画面の組み立ては mountStudio で共通）。
+ * 2026-09-24: 画面の作り直し（本人の決定 C-1a。デザイン案のモックで比べて決めた）。3列:
+ *   左＝画面①②…・部品の並び（ドラッグで並べ替え）・部品を足す（ドラッグで好きな所へ）／
+ *   まん中＝書式のツールバー＋灰色の地に白い紙（見たまま画面）／右＝選んだ部品の設定（段に分けて畳める）とコード。
+ *   ヘッダーは「← LPに戻る」・名前・作成したWidgetに登録・更新する
  */
 import type Quill from 'quill'
 import { toast } from '../ui.ts'
@@ -96,8 +100,14 @@ export function openWidgetStudio(quill: Quill, source: StudioSource): void {
 export interface StudioHost {
   readonly target: WidgetEditTarget
   readonly start: { data: TemplateData; uid: string }
-  /** ヘッダーのまん中の名前 */
+  /** ヘッダーの名前 */
   readonly title: string
+  /** 名前の横に小さく出す説明（ポップアップの名前など） */
+  readonly subtitle?: string
+  /** 名前の横の印（「離脱防止」など） */
+  readonly badge?: string
+  /** 左上の戻るボタンの文字（既定「LPに戻る」） */
+  readonly backLabel?: string
   /** 右上の青いボタンの文字 */
   readonly primaryLabel: string
   /** 右上の青いボタン。書き出したHTML（設定データつき）を渡す */
@@ -151,7 +161,7 @@ export function mountStudio(host: StudioHost): void {
       openWidgetLibraryForPick(host.libraryQuill, { onPick: finish, onCancel: () => finish(null) })
     })
 
-  /* ── 本体（2ペイン） ── */
+  /* ── 本体（3列: 左＝部品・まん中＝見たまま画面・右＝設定） ── */
   const darkContainer = document.createElement('div')
   darkContainer.dataset['widgetPanes'] = 'true'
   // 地は白（以前の濃い地 #2B2B2B は仕切りの帯として見えていた）
@@ -167,6 +177,24 @@ export function mountStudio(host: StudioHost): void {
     ...(host.previewFrame === undefined ? {} : { previewFrame: host.previewFrame }),
   })
   leftPane.dataset['widgetPane'] = 'visual'
+  // まん中の地: 灰色に細かい点（白い紙＝見たまま画面が浮いて見える。ダークではアプリの暗い地）
+  leftPane.style.background =
+    'radial-gradient(var(--sb-c-e3e5e9, #E3E5E9) 1px, transparent 1px) 0 0 / 20px 20px, var(--sb-c-f0f1f4, #F0F1F4)'
+
+  // 左の列: 画面①②…（上）・部品の並び・部品を足す（template-form.ts の partsHost）
+  const partsPane = document.createElement('div')
+  partsPane.dataset['widgetPane'] = 'parts'
+  partsPane.style.cssText =
+    `flex:0 0 288px;display:flex;flex-direction:column;min-height:0;min-width:0;overflow:hidden;` +
+    `background:var(--sb-c-ffffff, #FFFFFF);border-right:1px solid var(--sb-c-e3e5e9, #E3E5E9)`
+  const partsList = document.createElement('div')
+  partsList.className = 'ncf-parts'
+  partsList.dataset['widgetPartsList'] = 'true'
+  partsList.style.cssText = 'flex:0 1 auto;min-height:0;max-height:42%;overflow-y:auto;padding:8px 8px 10px'
+  const partsPalette = document.createElement('div')
+  partsPalette.dataset['widgetPartsPalette'] = 'true'
+  partsPalette.style.cssText =
+    'flex:1 1 auto;min-height:0;overflow-y:auto;padding:12px 12px 16px;border-top:1px solid var(--sb-c-e3e5e9, #E3E5E9)'
 
   // 右: 上に画面のタブ、その下に「部品」とコード
   const rightPane = document.createElement('div')
@@ -178,18 +206,22 @@ export function mountStudio(host: StudioHost): void {
   divider.dataset['widgetDivider'] = 'true'
   const tabsHost = document.createElement('div')
   tabsHost.dataset['widgetTabs'] = 'true'
-  tabsHost.style.cssText = `flex-shrink:0;display:none;flex-direction:column;background:var(--sb-c-ffffff, #FFFFFF);border-bottom:1px solid var(--sb-c-e3e6ea, #E3E6EA)`
+  tabsHost.style.cssText =
+    `flex-shrink:0;display:none;flex-direction:column;padding:12px 10px 0;` +
+    `background:var(--sb-c-ffffff, #FFFFFF);border-bottom:1px solid var(--sb-c-e3e6ea, #E3E6EA)`
   // タブは中身があるときだけ見せる
   new MutationObserver(() => {
     tabsHost.style.display = tabsHost.childElementCount > 0 ? 'flex' : 'none'
   }).observe(tabsHost, { childList: true })
 
   const leftDisplay = leftPane.style.display
+  const partsDisplay = partsPane.style.display
   const dividerDisplay = divider.style.display
   const onViewChange = (view: 'split' | 'code'): void => {
-    // 「コード表示」を選んだら左ペインと仕切りを畳んで全幅にする（指示183）
+    // 「コード表示」を選んだら左の列・見たまま画面・仕切りを畳んで全幅にする（指示183）
     const codeOnly = view === 'code'
     leftPane.style.display = codeOnly ? 'none' : leftDisplay
+    partsPane.style.display = codeOnly ? 'none' : partsDisplay
     divider.style.display = codeOnly ? 'none' : dividerDisplay
     rightPane.style.flex = codeOnly ? '1 1 auto' : RIGHT_PANE_FLEX
   }
@@ -201,6 +233,7 @@ export function mountStudio(host: StudioHost): void {
     editorBody,
     setPreviewCss,
     tabsHost,
+    partsHost: { list: partsList, palette: partsPalette },
     pickSample,
   })
   const current = session
@@ -215,8 +248,9 @@ export function mountStudio(host: StudioHost): void {
       codePanel.setCode(code.html, code.css)
     },
   })
-  rightPane.append(tabsHost, codePanel.pane)
-  darkContainer.append(leftPane, divider, rightPane)
+  partsPane.append(tabsHost, partsList, partsPalette)
+  rightPane.append(codePanel.pane)
+  darkContainer.append(partsPane, leftPane, divider, rightPane)
 
   /* ── ヘッダー ── */
   const readOutput = (): string | null => {
@@ -225,6 +259,9 @@ export function mountStudio(host: StudioHost): void {
   }
   const header = buildHeader({
     title: host.title,
+    subtitle: host.subtitle ?? '',
+    badge: host.badge ?? '',
+    backLabel: host.backLabel ?? 'LPに戻る',
     primaryLabel: host.primaryLabel,
     onClose: closeWidgetStudio,
     onRegister: () => {
@@ -260,11 +297,14 @@ export function mountStudio(host: StudioHost): void {
 }
 
 /* ================================================================
- *  ヘッダー（本番実測: padding:12px, borderBottom:1px solid #f4f4f4）
+ *  ヘッダー（2026-09-24 画面の作り直し: 「← LPに戻る」・名前・右に登録と更新）
  * ================================================================ */
 
 function buildHeader(options: {
   title: string
+  subtitle: string
+  badge: string
+  backLabel: string
   primaryLabel: string
   onClose: () => void
   onRegister: () => void
@@ -273,38 +313,71 @@ function buildHeader(options: {
   const header = document.createElement('div')
   // スマホCSSの目印（PCでは属性が増えるだけ）。クラス名は採取物と衝突するので data 属性を使う
   header.dataset['widgetHeader'] = 'true'
-  header.style.cssText = `display:flex;align-items:center;padding:12px;border-bottom:1px solid var(--sb-c-f4f4f4, #F4F4F4);flex-shrink:0`
+  header.style.cssText =
+    `display:flex;align-items:center;gap:12px;min-height:52px;padding:0 14px;box-sizing:border-box;flex-shrink:0;` +
+    `background:var(--sb-c-ffffff, #FFFFFF);border-bottom:1px solid var(--sb-c-e3e5e9, #E3E5E9)`
 
-  // 閉じる（本番実測: fontSize:12px, color:rgb(128,128,128), padding:0 8px）
+  // 戻る（閉じる）。変えた中身は、右上のボタンを押すまでLPに入らない
   const closeBtn = document.createElement('button')
   closeBtn.type = 'button'
-  closeBtn.textContent = '閉じる'
-  closeBtn.style.cssText = `border:none;background:none;color:var(--sb-sub, #808080);font:12px/1 ${FONT};cursor:pointer;padding:0 8px`
+  closeBtn.title = `${options.backLabel}（右上のボタンを押す前の変更は入りません）`
+  closeBtn.innerHTML =
+    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" ' +
+    'stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>'
+  const backLabel = document.createElement('span')
+  backLabel.dataset['widgetBackLabel'] = 'true'
+  backLabel.textContent = options.backLabel
+  closeBtn.append(backLabel)
+  closeBtn.setAttribute('aria-label', options.backLabel)
+  closeBtn.style.cssText =
+    `height:32px;display:inline-flex;align-items:center;gap:4px;padding:0 10px 0 6px;border-radius:8px;cursor:pointer;` +
+    `border:1px solid var(--sb-c-e3e5e9, #E3E5E9);background:var(--sb-c-ffffff, #FFFFFF);color:var(--sb-c-333333, #333333);font:12.5px/1 ${FONT}`
   closeBtn.addEventListener('click', options.onClose)
 
+  // 名前（と小さな説明・印）
   const title = document.createElement('div')
-  title.textContent = options.title
-  title.style.cssText = `flex:1;text-align:center;font:600 15px/1.4 ${FONT};color:var(--sb-c-333333, #333333)`
+  title.style.cssText =
+    `flex:1;min-width:0;display:flex;align-items:center;gap:10px;font:600 14px/1.4 ${FONT};color:var(--sb-c-333333, #333333)`
+  const name = document.createElement('span')
+  name.textContent = options.title
+  name.style.cssText = 'white-space:nowrap'
+  title.append(name)
+  if (options.badge !== '') {
+    const badge = document.createElement('span')
+    badge.dataset['widgetBadge'] = 'true'
+    badge.textContent = options.badge
+    badge.style.cssText =
+      `height:22px;display:inline-flex;align-items:center;padding:0 9px;border-radius:999px;flex-shrink:0;` +
+      `background:var(--sb-neutral, #F4F4F4);color:var(--sb-c-333333, #333333);font:700 11.5px/1 ${FONT}`
+    title.append(badge)
+  }
+  if (options.subtitle !== '') {
+    const sub = document.createElement('span')
+    sub.dataset['widgetSubtitle'] = 'true'
+    sub.textContent = options.subtitle
+    sub.style.cssText = `min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:12.5px/1.4 ${FONT};color:var(--sb-sub, #5F6673)`
+    title.append(sub)
+  }
 
   const rightBtns = document.createElement('div')
-  rightBtns.style.cssText = 'display:flex;gap:8px;align-items:center'
+  rightBtns.style.cssText = 'display:flex;gap:6px;align-items:center'
 
-  // 「作成したWidgetに登録」（本番実測: fontSize:12px, color:var(--sb-accent, #0091FF), border:none, SVG plus icon）
+  // 「作成したWidgetに登録」
   const registerBtn = document.createElement('button')
   registerBtn.type = 'button'
   registerBtn.innerHTML = svgPlus() + ' 作成したWidgetに登録'
   registerBtn.style.cssText =
-    `display:flex;align-items:center;gap:4px;border:none;background:none;` +
-    `color:${COLOR.brand};padding:6px 14px;font:12px/1 ${FONT};cursor:pointer`
+    `display:flex;align-items:center;gap:4px;height:32px;border:none;border-radius:8px;background:none;` +
+    `color:${COLOR.brand};padding:0 12px;font:700 12.5px/1 ${FONT};cursor:pointer`
   registerBtn.addEventListener('click', options.onRegister)
 
-  // 「更新する」「LPに入れる」（本番実測: fontSize:12px, color:white, bg:var(--sb-accent, #0091FF), borderRadius:4px）
+  // 「更新する」「LPに入れる」「ポップアップに反映」
   const primaryBtn = document.createElement('button')
   primaryBtn.type = 'button'
   primaryBtn.textContent = options.primaryLabel
   primaryBtn.style.cssText =
-    `border:none;background:${COLOR.brand};color:#fff;border-radius:4px;padding:6px 20px;` +
-    `font:12px/1 ${FONT};cursor:pointer`
+    `height:32px;border:none;background:${COLOR.brand};color:#fff;border-radius:8px;padding:0 18px;` +
+    `font:700 12.5px/1 ${FONT};cursor:pointer`
   primaryBtn.addEventListener('click', options.onPrimary)
 
   rightBtns.append(registerBtn, primaryBtn)

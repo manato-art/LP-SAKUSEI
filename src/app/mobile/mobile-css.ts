@@ -186,13 +186,21 @@ export function mobileCss(): string {
     // ヘッダーは折り返させない（幅が足りず「閉じる」「Widget編集」が2行に割れていた）
     `html body [data-widget-header]{flex-wrap:nowrap !important;padding:10px 4px !important;gap:2px}`,
     `html body [data-widget-header]>*{white-space:nowrap !important;flex-shrink:0 !important}`,
-    `html body [data-widget-header]>*:nth-child(2){font-size:13px !important}`,
-    // 2ペインは上下に積む。左は flex:0 0 660px の固定幅なので幅もmin-widthも外す
+    // 名前だけは縮める（2026-09-24 画面の作り直しで名前が左寄せになり、縮めないと右のボタンに重なった）
+    `html body [data-widget-header]>*:nth-child(2){font-size:13px !important;flex-shrink:1 !important;min-width:0 !important;overflow:hidden}`,
+    // 列は上下に積む。左は固定幅なので幅もmin-widthも外す。
+    // 3列（2026-09-24 画面の作り直し: 左＝部品・まん中＝見たまま画面・右＝設定）は、見たまま画面→部品→設定の順
     `html body [data-widget-panes]{flex-direction:column !important}`,
-    `html body [data-widget-pane="visual"]{flex:0 0 46% !important;width:auto !important;`,
+    `html body [data-widget-pane="visual"]{order:1;flex:0 0 42% !important;width:auto !important;`,
     `min-width:0 !important;min-height:0 !important}`,
-    `html body [data-widget-pane="code"]{flex:1 1 auto !important;width:auto !important;`,
+    `html body [data-widget-pane="parts"]{order:2;flex:0 0 auto !important;max-height:28%;width:auto !important;min-width:0 !important;`,
+    `overflow-y:auto !important;border-right:none !important;border-bottom:1px solid var(--sb-line,#DDDDDD) !important}`,
+    // 部品の列は1つの箱として送る（並びと部品を足すを、それぞれの中で送ると指で届かない）
+    `html body [data-widget-parts-list],html body [data-widget-parts-palette]{max-height:none !important;overflow:visible !important;flex:0 0 auto !important}`,
+    `html body [data-widget-pane="code"]{order:3;flex:1 1 auto !important;width:auto !important;`,
     `min-width:0 !important;min-height:0 !important}`,
+    // ヘッダーの戻るは矢印だけ・小さな説明は出さない（1行に収める）
+    `html body [data-widget-back-label],html body [data-widget-subtitle]{display:none !important}`,
     // 仕切り（col-resize）は指では掴めない
     `html body [data-widget-divider]{display:none !important}`,
     // 書式ツールバーは1行で横に流す（折り返すと枠(64px)の外で下の段が切れる）

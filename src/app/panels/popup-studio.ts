@@ -20,6 +20,8 @@ export interface PopupStudioOptions {
   readonly css: string
   /** ポップアップの名前（見本の部品の名前・ヘッダーに出す） */
   readonly name: string
+  /** ヘッダーの印（「離脱防止」「追従型」） */
+  readonly badge: string
   readonly frame: PreviewFrame
   /** 書き出したHTML（CSS は中の <style>）を保存する。保存できたら true（画面を閉じる） */
   readonly onSave: (html: string) => Promise<boolean>
@@ -30,7 +32,10 @@ export function openPopupStudio(options: PopupStudioOptions): void {
   mountStudio({
     target: { node: document.createElement('div'), html: options.html, css: options.css, index: -1, length: 0 },
     start: popupStudioStart(options.html, options.css, name, new Date()),
-    title: `ポップアップの中身（${name}）`,
+    title: 'ポップアップの中身',
+    subtitle: name,
+    badge: options.badge,
+    backLabel: 'ポップアップの設定へ',
     primaryLabel: 'ポップアップに反映',
     libraryQuill: null,
     previewFrame: options.frame,

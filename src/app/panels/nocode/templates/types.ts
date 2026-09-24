@@ -27,6 +27,11 @@ interface FieldBase {
   readonly showIf?: (data: TemplateData) => boolean
   /** 並びの中の入力を、その1件の値しだいで出し分ける（「リンクを開く」を選んだときだけ「開くページ」を出す） */
   readonly showIfItem?: (item: ItemData) => boolean
+  /**
+   * Widget編集の右の設定で入れる段（2026-09-24 画面の作り直し）。layout＝「レイアウト」（幅・置く位置）、
+   * press＝「押したとき」。無ければ「中身」
+   */
+  readonly section?: 'layout' | 'press'
 }
 
 export type Field =

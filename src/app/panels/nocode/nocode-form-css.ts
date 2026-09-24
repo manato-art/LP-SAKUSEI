@@ -179,6 +179,8 @@ textarea.ncf-input{resize:vertical;min-height:64px}
 .ncf-start{margin:0 0 18px}
 .ncf-start__title{margin:4px 0 2px;font-size:15px;font-weight:700}
 .ncf-start .ncf-picker{margin-top:10px;column-gap:16px}
+/* 右の列は細い（2026-09-24 画面の作り直し）ので、選べる物は1列 */
+.ncf-parts-right .ncf-start .ncf-picker,[data-widget-pane="code"] .ncf-start .ncf-picker{grid-template-columns:minmax(0,1fr)}
 .ncf-start .ncf-pick{padding:12px 6px}
 .ncf-listhead .ncf-reset{margin-left:auto;border:0;background:transparent;color:#C0392B;font-size:12px;font-weight:600;cursor:pointer;padding:2px 4px}
 .ncf-listhead .ncf-reset:hover{text-decoration:underline}
@@ -194,6 +196,54 @@ textarea.ncf-input{resize:vertical;min-height:64px}
 .ncf-item--dragging{opacity:.4}
 .ncf-item--drop-before{box-shadow:inset 0 3px 0 var(--sb-accent,#0091FF)}
 .ncf-item--drop-after{box-shadow:inset 0 -3px 0 var(--sb-accent,#0091FF)}
+/* 左の列（2026-09-24 画面の作り直し・C-1a）: 並び（頭だけ）と「部品を足す」 */
+.ncf-parts .ncf-listhead{padding:0 6px;margin:0 0 4px;align-items:center}
+.ncf-parts .ncf-listhead .ncf-label{font-size:12px;font-weight:700;color:var(--sb-sub,#5F6673);margin:0}
+.ncf-parts .ncf-list{border-top:none;display:flex;flex-direction:column;gap:2px}
+.ncf-parts .ncf-item{border-bottom:none;padding:0}
+.ncf-parts .ncf-item--selected{padding-bottom:0}
+.ncf-parts .ncf-item__head[role="button"]{padding:4px 4px 4px 8px;border-radius:8px;min-height:38px;box-sizing:border-box;gap:2px}
+.ncf-parts .ncf-item__name{font-size:12.5px;color:var(--sb-text,#3F4450);min-width:0}
+.ncf-parts .ncf-item--selected>.ncf-item__head{background:#E8F3FF}
+.ncf-parts .ncf-item--selected>.ncf-item__head .ncf-item__name{color:#0060B8}
+.ncf-parts .ncf-item__head .ncf-icon-btn{width:26px;height:26px;flex-shrink:0}
+.ncf-parts .ncf-item__copy,.ncf-parts .ncf-item__remove{width:auto;padding:0 6px;font-size:11.5px}
+/* 選んでいない部品の操作ボタンは、乗せたときだけ（細い列に押せないほど並べない） */
+.ncf-parts .ncf-item:not(.ncf-item--selected)>.ncf-item__head:not(:hover):not(:focus-within) .ncf-icon-btn{display:none}
+.ncf-parts__whole{display:block;width:100%;margin-top:8px;padding:8px 10px;border:1px dashed var(--sb-line,#D5D9DF);border-radius:8px;
+  background:transparent;color:var(--sb-sub,#5F6673);font-size:12px;text-align:left;cursor:pointer}
+.ncf-parts__whole[aria-pressed="true"]{border-style:solid;border-color:var(--sb-accent,#0091FF);background:#E8F3FF;color:#0060B8;font-weight:700}
+.ncf-parts__whole:focus-visible{outline:2px solid var(--sb-accent,#0091FF);outline-offset:2px}
+.ncf-palette{display:flex;flex-direction:column;gap:8px}
+.ncf-palette__head{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:0 4px}
+.ncf-palette__title{font-size:12px;font-weight:700;color:var(--sb-text,#1F2430)}
+.ncf-palette__title--sub{padding:6px 4px 0}
+.ncf-palette__hint{font-size:11.5px;color:var(--sb-sub,#5F6673)}
+.ncf-palette__grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.ncf-palette__tpl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.ncf-palette__tile,.ncf-palette__chip{border:1px solid #EEF0F2;border-radius:9px;background:#FAFBFC;color:#3F4450;cursor:grab;font:inherit;
+  transition:border-color .15s,background-color .15s}
+.ncf-palette__tile{height:58px;padding:0 2px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;font-size:11px}
+.ncf-palette__chip{min-height:36px;padding:4px 10px;display:flex;align-items:center;gap:8px;font-size:12px;text-align:left}
+.ncf-palette__tile:hover:not(:disabled),.ncf-palette__chip:hover:not(:disabled){border-color:var(--sb-accent,#0091FF);background:#F4F9FF}
+.ncf-palette__tile:disabled,.ncf-palette__chip:disabled{opacity:.4;cursor:default}
+.ncf-palette__tile:focus-visible,.ncf-palette__chip:focus-visible,.ncf-palette__library:focus-visible{outline:2px solid var(--sb-accent,#0091FF);outline-offset:2px}
+.ncf-palette__icon{display:inline-flex;width:18px;height:18px;flex-shrink:0;color:var(--sb-accent,#0091FF)}
+.ncf-palette__icon svg{width:18px;height:18px}
+.ncf-palette__label{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ncf-palette--dragging{opacity:.5}
+.ncf-palette__library{min-height:40px;margin-top:4px;padding:0 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;
+  border:1.5px solid var(--sb-accent,#0074D9);border-radius:10px;background:#FFF;color:#0060B8;font:700 12.5px/1.3 inherit;cursor:pointer}
+.ncf-palette__library::after{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);flex-shrink:0}
+.ncf-palette__library:disabled{opacity:.4;cursor:default}
+/* 右の設定: 選んだ部品の名前と段（レイアウト・中身・押したとき） */
+.ncf-inspector__head{display:flex;align-items:center;gap:8px;padding:2px 0 12px;border-bottom:1px solid #EEF0F2}
+.ncf-inspector__icon{width:30px;height:30px;flex-shrink:0;border-radius:8px;background:#F1F2F4;display:flex;align-items:center;justify-content:center;color:#3F4450}
+.ncf-inspector__icon svg{width:17px;height:17px}
+.ncf-inspector__name{font-size:14px;font-weight:700;color:var(--sb-text,#1F2430);flex-shrink:0}
+.ncf-inspector__snippet{flex:1;min-width:0;font-size:12px;color:var(--sb-sub,#5F6673);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ncf-fold.ncf-fold--section{margin:0;border:0;border-bottom:1px solid #EEF0F2;border-radius:0;padding:0 0 4px}
+.ncf-fold--section>.ncf-fold__summary{padding:12px 0;font-size:13px;color:var(--sb-text,#1F2430)}
 /* ダークの赤い文字: #C0392B は暗い地の上で読めない（実行時の上書きは彩度のある文字の色を変えないので、ここで明示する） */
 html[data-theme="dark"] :is(.ncf-item__remove,.ncf-btn.ncf-danger,.ncf-error,.ncf-warn,.ncf-listhead .ncf-reset){color:#FF8A7A}
 `

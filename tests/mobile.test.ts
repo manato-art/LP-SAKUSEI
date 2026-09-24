@@ -451,6 +451,20 @@ describe('スマホのWidget編集画面', () => {
     expect(css).toContain('[data-widget-divider]{display:none !important}')
   })
 
+  it('3列（左＝部品・まん中＝見たまま画面・右＝設定）は、見たまま画面→部品→設定の順に積む（2026-09-24 画面の作り直し）', () => {
+    const order = (pane: string): number => Number(new RegExp(`\\[data-widget-pane="${pane}"\\]\\{[^}]*order:(\\d)`).exec(css)?.[1] ?? '0')
+    expect(order('visual')).toBe(1)
+    expect(order('parts')).toBe(2)
+    expect(order('code')).toBe(3)
+    const parts = css.slice(css.indexOf('[data-widget-pane="parts"]'))
+    expect(parts.slice(0, parts.indexOf('}'))).toContain('width:auto !important')
+    expect(editorSrc).toContain("dataset['widgetPane'] = 'parts'")
+  })
+
+  it('ヘッダーの戻るは矢印だけ・小さな説明は出さない（1行に収める）', () => {
+    expect(css).toContain('[data-widget-back-label],html body [data-widget-subtitle]{display:none !important}')
+  })
+
   it('ヘッダーは折り返さない（「閉じる」「Widget編集」が2行に割れていた）', () => {
     expect(css).toContain('[data-widget-header]{flex-wrap:nowrap !important')
     expect(css).toContain('[data-widget-header]>*{white-space:nowrap !important')

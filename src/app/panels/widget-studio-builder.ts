@@ -19,7 +19,7 @@ import { embedBuilderData, splitStyles } from './nocode/builder-data.ts'
 import { blockElementAt, isTextEditableBlock, outermostBlock, syncCanvasBlock } from './nocode/canvas-sync.ts'
 import { getAt, moveTo, setAt, type Path } from './nocode/form-state.ts'
 import { ensureNocodeFormCss } from './nocode/nocode-form-css.ts'
-import { buildTemplateForm } from './nocode/template-form.ts'
+import { NC_BLOCK_MIME, buildTemplateForm } from './nocode/template-form.ts'
 import { BUILDER_PADDING, BUILDER_TEMPLATE } from './nocode/templates/builder.ts'
 import { ALIGNS, HEADING_SIZES, PLACES, SPACER_SIZES, TEXT_SIZES, blockLabel, sizeOf, widthKeyOf, type Place } from './nocode/templates/builder-blocks.ts'
 import { newUid } from './nocode/templates/kit.ts'
@@ -40,6 +40,11 @@ export interface BuilderSessionDeps {
   readonly setPreviewCss: (css: string) => void
   /** 画面①②…のタブを置く所（右側のいちばん上） */
   readonly tabsHost: HTMLElement
+  /**
+   * 部品の並びと「部品を足す」を置く所（2026-09-24 画面の作り直し＝左の列）。
+   * 「部品を足す」からドラッグで運ぶと、見たまま画面（editorBody）が受け取って入れる
+   */
+  readonly partsHost?: { readonly list: HTMLElement; readonly palette: HTMLElement }
   /** 見本の部品: いつもの見本の一覧から見本を選んでもらう（やめたら null）。無い画面（ポップアップ）では見本を選ばせない */
   readonly pickSample?: () => Promise<{ title: string; html: string } | null>
 }
@@ -69,6 +74,19 @@ export interface BuilderSession {
   readonly rekey: () => void
 }
 
+/**
+ * 空の見出し・文章は高さ0で見えない（部品を足す・ドラッグで入れても、どこに入ったか分からない）。
+ * 見たまま画面だけ、薄い字で入れる物を出す（プレビューのCSSにだけ足す。保存する中身には入らない）
+ */
+const EMPTY_PLACEHOLDER_CSS =
+  '.nc-b-heading:empty::before{content:"見出しを入れてください";opacity:.35}' +
+  '.nc-b-text:empty::before{content:"文章を入れてください";opacity:.35}' +
+  // 画像・動画は、まだ選んでいないと何も出ない → 灰色の箱に「選んでください」
+  '.nc-b-image:empty,.nc-b-video:empty{min-height:120px;display:flex;align-items:center;justify-content:center;' +
+  'background:#EEF0F3;border-radius:8px;color:#5F6673;font-size:13px}' +
+  '.nc-b-image:empty::before{content:"画像を選んでください（右の設定から）"}' +
+  '.nc-b-video:empty::before{content:"動画を選んでください（右の設定から）"}'
+
 /** 打つたびに見え方を描き直すと重いので、手が止まってから描く */
 const PAINT_DELAY_MS = 250
 /** 見本の部品を左で直したあと、右の入力欄を読み直すまでの待ち */
@@ -95,7 +113,7 @@ function emptyHint(): HTMLElement {
   const hint = document.createElement('div')
   hint.dataset['widgetEmpty'] = 'true'
   hint.setAttribute('contenteditable', 'false')
-  hint.textContent = '右の「何から作りますか？」から選ぶか、「部品を足す」で部品を積むと、ここに出ます'
+  hint.textContent = '左の「部品を足す」から部品をここへ運ぶか、右の「何から作りますか？」から選ぶと、ここに出ます'
   hint.style.cssText =
     `margin:24px 16px;padding:40px 16px;border:1.5px dashed #C9CFD6;border-radius:10px;text-align:center;` +
     `color:#6B7480;font:14px/1.8 ${FONT};user-select:none`
@@ -440,7 +458,7 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
     const screen = activeScreenId()
     const html = BUILDER_TEMPLATE.render(previewData, uid, screen === undefined ? undefined : { screen })
     const { css, body } = splitStyles(html)
-    deps.setPreviewCss(css)
+    deps.setPreviewCss(css + EMPTY_PLACEHOLDER_CSS)
     clearPreviews()
     // CSSだけの変化（カードのスライダーなど）は中身を入れ替えない（要素が入れ替わると、開いているカードや選択枠がずれる）。
     // 枠とつまみは今の値で作り直す（置く位置で幅のつまみの側が変わる）
@@ -477,6 +495,7 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
     },
     onPreviewReset: () => previewOverrides.clear(),
     tabsHost: deps.tabsHost,
+    ...(deps.partsHost === undefined ? {} : { partsHost: deps.partsHost }),
     // 白紙のときの「何から作りますか？」に出す例
     examples: [
       {
@@ -627,6 +646,59 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
   })
   // 画像を掴んだときにブラウザが画像そのものを運ぼうとするのを止める（部品の位置は上で動かす）
   contentDiv.addEventListener('dragstart', (event) => event.preventDefault())
+
+  /*
+   * 左の「部品を足す」からドラッグで運んで入れる（2026-09-24 画面の作り直し・本人「ドラッグ&ドロップで追加できるように」）。
+   * 運んでいる間は、入る所に青い線（部品の真ん中より上か下か）。離すとその位置に足して選ぶ（form.insertBlock）。
+   * 紙の外（灰色の地）で離しても、高さで入る位置を決める。文字として貼り付かないよう、既定の動きは止める
+   */
+  let dropAt: number | null = null
+  const isBlockDrag = (event: DragEvent): boolean => event.dataTransfer?.types.includes(NC_BLOCK_MIME) === true
+  const insertPointAt = (y: number): { index: number; lineY: number } => {
+    const screenIndex = form.activeScreen()
+    const rects = items(items(data, 'screens')[screenIndex] ?? {}, 'blocks')
+      .map((_, index) => blockElementAt(data, contentDiv, screenIndex, index)?.getBoundingClientRect() ?? null)
+      .filter((r): r is DOMRect => r !== null)
+    const index = rects.filter((r) => r.top + r.height / 2 < y).length
+    const before = rects[index - 1]
+    const after = rects[index]
+    const box = contentDiv.getBoundingClientRect()
+    const lineY =
+      before !== undefined && after !== undefined
+        ? (before.bottom + after.top) / 2
+        : after !== undefined
+          ? after.top - 4
+          : before !== undefined
+            ? before.bottom + 4
+            : box.top + 24
+    return { index, lineY }
+  }
+  const clearDrop = (): void => {
+    dropAt = null
+    selection.dropLine(null)
+  }
+  editorBody.addEventListener('dragover', (event) => {
+    if (!isBlockDrag(event)) return
+    event.preventDefault()
+    const transfer = event.dataTransfer
+    if (transfer !== null) transfer.dropEffect = 'copy'
+    const point = insertPointAt(event.clientY)
+    dropAt = point.index
+    const box = contentDiv.getBoundingClientRect()
+    selection.dropLine({ y: point.lineY, left: box.left + 8, width: box.width - 16 })
+  })
+  editorBody.addEventListener('dragleave', (event) => {
+    if (event.relatedTarget instanceof Node && editorBody.contains(event.relatedTarget)) return
+    clearDrop()
+  })
+  editorBody.addEventListener('drop', (event) => {
+    if (!isBlockDrag(event)) return
+    event.preventDefault()
+    const type = event.dataTransfer?.getData(NC_BLOCK_MIME) ?? ''
+    const at = dropAt ?? insertPointAt(event.clientY).index
+    clearDrop()
+    if (type !== '') form.insertBlock(type, at)
+  })
 
   /**
    * 上のツールバーの「配置 ⌄」で変えるもの（見出し・文章は文字の寄せ、ほかは置く位置）。

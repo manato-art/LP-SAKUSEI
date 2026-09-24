@@ -62,6 +62,9 @@ export interface VisualEditorOptions {
   readonly previewFrame?: PreviewFrame
 }
 
+/** 見たまま画面の白い紙の影（灰色の地から浮いて見える） */
+const PAPER_SHADOW = 'box-shadow:0 1px 2px rgba(16,24,40,.06),0 10px 28px rgba(16,24,40,.08)'
+
 /**
  * 枠ごとの、見たまま画面の地の色と中身の箱の大きさ。
  * LPの枠は、620pxの箱を白い紙にして地は透かす（地はWidget編集の地の色＝ダークでは暗い。ライトはどちらも白で今までと同じ）。
@@ -70,7 +73,8 @@ export interface VisualEditorOptions {
 function frameStyle(frame: PreviewFrame): { backdrop: string; box: string } {
   if (frame === 'overlay') return { backdrop: '#999999', box: 'width:fit-content;max-width:500px;margin:24px auto' }
   if (frame === 'corner') return { backdrop: '#fff', box: 'width:fit-content;max-width:100%;margin:24px auto' }
-  return { backdrop: 'transparent', box: `width:${WIDGET_PREVIEW_WIDTH}px;max-width:none;margin:0 auto;background:#fff` }
+  // 灰色の地に浮かぶ白い紙（2026-09-24 画面の作り直し）
+  return { backdrop: 'transparent', box: `width:${WIDGET_PREVIEW_WIDTH}px;max-width:none;margin:4px auto 40px;background:#fff;${PAPER_SHADOW}` }
 }
 
 export function buildVisualEditor(

@@ -48,7 +48,7 @@ export interface CodePanel {
  * 右は読みやすい幅で止め、余った所は左（見え方）に回す（本人の指示 2026-09-23）。
  * 仕切りのドラッグで変えられる。「コードだけ」を選んだときは全幅（widget-studio.ts）。
  */
-export const RIGHT_PANE_FLEX = '0 0 560px'
+export const RIGHT_PANE_FLEX = '0 0 360px'
 
 export function buildCodePanels(target: WidgetEditTarget, options: CodePanelOptions = {}): CodePanel {
   const { onViewChange, design, onCssInput, readOnly, onShowCode } = options
