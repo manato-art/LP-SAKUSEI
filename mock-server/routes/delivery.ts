@@ -718,16 +718,20 @@ deliveryRouter.get('/preview/:versionUid', (req, res) => {
     ? `${escapeHtml(abTest.title)} - ${escapeHtml(version.name)} プレビュー`
     : `${escapeHtml(version.name)} プレビュー`
 
+  // ?bare=1: LPの本文だけ（2026-09-24）。ポップアップの中身を直す画面の「LPの上に重ねて見る」で後ろに敷く。
+  // 検証用の帯とポップアップは出さない（直しているポップアップの後ろに、同じポップアップや帯が重ならないように）
+  const bare = req.query['bare'] === '1'
+
   // 指示174: プレビューでも離脱防止/表示直後/追尾ポップを発動させる（配信と同じ）。
   // （従来はプレビューにスニペットを入れておらず、プレビューURLでは一切出なかった）
   const previewDevice = buildVisitorContext(req).device
-  const previewPopupHtml = abTest === undefined
+  const previewPopupHtml = abTest === undefined || bare
     ? ''
     : (getState().exitPopups ?? [])
         .filter((p) => p.ab_test_id === abTest.id && p.enabled)
         .map((p) => buildPopupSnippet(p, previewDevice))
         .join('')
-  const previewFollowHtml = abTest === undefined
+  const previewFollowHtml = abTest === undefined || bare
     ? ''
     : (getState().followPopups ?? [])
         .filter((p) => p.ab_test_id === abTest.id && p.enabled)
@@ -757,14 +761,7 @@ deliveryRouter.get('/preview/:versionUid', (req, res) => {
     `</style>` +
     externalWidgetLibs(lp.html) +
     `</head><body>` +
-    `<div class="preview-banner" id="preview-banner">` +
-    `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>` +
-    `<span>このLPは検証用です。入稿しないでください。</span>` +
-    `<span class="preview-note">※計測されません</span>` +
-    `<button class="preview-close" onclick="document.getElementById('preview-banner').remove()" aria-label="閉じる">` +
-    `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>` +
-    `</button>` +
-    `</div>` +
+    (bare ? '' : previewBannerHtml()) +
     headerHtml +
     withAutoplayVideos(lp.html) +
     previewPopupHtml +
@@ -775,6 +772,20 @@ deliveryRouter.get('/preview/:versionUid', (req, res) => {
   res.set('Cache-Control', 'no-cache')
   res.type('html').send(html)
 })
+
+/** プレビューの上の赤い帯（「このLPは検証用です」） */
+function previewBannerHtml(): string {
+  return (
+    `<div class="preview-banner" id="preview-banner">` +
+    `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>` +
+    `<span>このLPは検証用です。入稿しないでください。</span>` +
+    `<span class="preview-note">※計測されません</span>` +
+    `<button class="preview-close" onclick="document.getElementById('preview-banner').remove()" aria-label="閉じる">` +
+    `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>` +
+    `</button>` +
+    `</div>`
+  )
+}
 
 
 

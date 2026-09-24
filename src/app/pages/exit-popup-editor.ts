@@ -18,7 +18,7 @@ import { PRESETS } from './exit-popup-presets.ts'
 import type { PopupPageState } from './exit-popup-state.ts'
 import { injectPositionGridCss } from './exit-popup-styles.ts'
 import { makeCheckboxRow, makeSuffixField, makeTextField, updateGutter } from './exit-popup-fields.ts'
-import { openPopupStudio } from '../panels/popup-studio.ts'
+import { lpPreviewUrl, openPopupStudio } from '../panels/popup-studio.ts'
 import { popupContentCard } from './popup-content-card.ts'
 import { runWidgetScripts } from '../panels/widget-run-scripts.ts'
 
@@ -116,6 +116,8 @@ export function openEditor(state: PopupPageState, popup: ExitPopup): void {
         name: draft.name,
         badge: '離脱防止',
         frame: 'overlay',
+        // 「LPの上に重ねて見る」: このABテストのLPを後ろに敷く（読めなければ中身だけ）
+        underlay: lpPreviewUrl(state.abTestUid).catch(() => null),
         onSave: (html) => {
           draft.html = html
           content.refresh()

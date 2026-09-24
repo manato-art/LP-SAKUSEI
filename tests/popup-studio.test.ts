@@ -124,3 +124,19 @@ describe('小さな絵（編集画面の左上・一覧のカード）', () => {
   })
 })
 
+describe('「LPの上に重ねて見る」（本人「必ず実装したい」2026-09-24）', () => {
+  it('離脱防止の中身を開くと、このABテストのLP（帯とポップアップ抜き）を後ろに敷く', () => {
+    expect(src('src/app/pages/exit-popup-editor.ts')).toContain('underlay: lpPreviewUrl(state.abTestUid)')
+    expect(src('src/app/panels/popup-studio.ts')).toContain('?bare=1')
+  })
+
+  it('後ろのLPの上に配信と同じ暗い幕、切り替えは「LPの上に重ねて見る／中身だけ」', () => {
+    const underlay = src('src/app/panels/popup-underlay.ts')
+    expect(underlay).toContain("const DIM = 'rgba(0,0,0,.4)'")
+    expect(underlay).toContain("option('LPの上に重ねて見る', true)")
+    expect(underlay).toContain("option('中身だけ', false)")
+    // 別の出どころ扱い（allow-scripts だけ）はブラウザが読み込みを止めることがある
+    expect(underlay).toContain("'sandbox', 'allow-scripts allow-same-origin'")
+  })
+})
+

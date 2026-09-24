@@ -119,6 +119,8 @@ export interface StudioHost {
   readonly libraryQuill: Quill | null
   /** 見たまま画面の枠（既定はLPと同じ620px） */
   readonly previewFrame?: PreviewFrame
+  /** 後ろに敷くLPのプレビュー（ポップアップの「LPの上に重ねて見る」） */
+  readonly underlay?: Promise<string | null>
 }
 
 export function mountStudio(host: StudioHost): void {
@@ -175,6 +177,7 @@ export function mountStudio(host: StudioHost): void {
     alignTarget: () => session?.alignTarget() ?? null,
     onSizeButton: (anchor) => session?.onSizeButton(anchor) ?? false,
     ...(host.previewFrame === undefined ? {} : { previewFrame: host.previewFrame }),
+    ...(host.underlay === undefined ? {} : { underlay: host.underlay }),
   })
   leftPane.dataset['widgetPane'] = 'visual'
   // まん中の地: 灰色に細かい点（白い紙＝見たまま画面が浮いて見える。ダークではアプリの暗い地）

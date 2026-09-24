@@ -20,6 +20,7 @@ import { attachItemToolbar } from './nocode/item-toolbar.ts'
 import { openLinkBubble } from './widget-link-bubble.ts'
 import { closeAlignMenu, openAlignMenu, type AlignTarget } from './align-menu.ts'
 import { ensureWidgetToolbarCss } from './widget-toolbar-css.ts'
+import { attachPopupUnderlay } from './popup-underlay.ts'
 import {
   svgToolAlign,
   svgToolBgColor,
@@ -60,6 +61,8 @@ export interface VisualEditorOptions {
   readonly onSizeButton?: (anchor: HTMLElement) => boolean
   /** 見たまま画面の枠（既定は lp） */
   readonly previewFrame?: PreviewFrame
+  /** 後ろに敷くLPのプレビュー（ポップアップの「LPの上に重ねて見る」・popup-underlay.ts）。無ければ敷かない */
+  readonly underlay?: Promise<string | null>
 }
 
 /** 見たまま画面の白い紙の影（灰色の地から浮いて見える） */
@@ -470,6 +473,7 @@ export function buildVisualEditor(
     `outline:none;min-height:100px;${frame.box};box-sizing:border-box;line-height:1.5;color:#000;color-scheme:light`
   contentDiv.innerHTML = target.html
   editorBody.append(contentDiv)
+  if (options.underlay !== undefined) attachPopupUnderlay(editorBody, contentDiv, options.underlay)
   // よくある質問・口コミのように並んでいる部品に「複製・上へ・下へ・消す」を出す（ノーコードでWidgetを作る②）。
   // 部品で作ったWidgetでは見本の部品の中だけ（見出し・ボタンなどの部品の並びは右で直す）
   attachItemToolbar(editorBody, contentDiv, { allow: inScope })
