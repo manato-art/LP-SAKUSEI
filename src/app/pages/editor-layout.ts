@@ -511,21 +511,26 @@ export function wireSideToolbar(ctx: EditorContext): void {
   // 本文の自動保存。実物のエディタは自動保存が走る
   // （docs/findings-live-observation.md「エディタは『開くだけで自動保存』が走る」・DOMに _saveAnimation_）。
   // これが無いと、打った内容がサーバーに残らない。
-  const status = ctx.saveStatus
+  // 見出しの保存状態は、この関数のあとで作られる（mountHeaderExtras）。作った時点で読むと空のままなので、
+  // 使うたびに ctx から読む（以前はこれで「未保存」「保存中」が一度も出なかった）
+  const status = {
+    set: (state: Parameters<NonNullable<EditorContext['saveStatus']>['set']>[0]): void => ctx.saveStatus?.set(state),
+    state: () => ctx.saveStatus?.state(),
+  }
   const autosave = createAutosave({
     // 変更のたびに保存し、同時に履歴スナップショットを積む（指示⑪・サーバー側で最新100件に丸め）。
     save: async () => {
-      status?.set('saving')
+      status.set('saving')
       const saved = await saveHtml(ctx)
       if (saved.result === 'skipped-empty') {
-        status?.set('empty')
+        status.set('empty')
         return
       }
       if (saved.result === 'conflict') {
-        status?.set('conflict')
+        status.set('conflict')
         return
       }
-      status?.set('saved')
+      status.set('saved')
       // 比較モードのプレビューも、保存した中身に合わせる
       if (isComparePanelOpen()) refreshComparePreview(saved.versionUid, saved.html)
       try {
@@ -539,17 +544,17 @@ export function wireSideToolbar(ctx: EditorContext): void {
     delayMs: AUTOSAVE_DELAY_MS,
     onError: (error) => {
       // 失敗が続く間は、お知らせは最初の1回だけ（見出しの表示は出し続ける）
-      if (status?.state() !== 'error') toast(`保存できませんでした: ${error.message}`, 'error')
-      status?.set('error')
+      if (status.state() !== 'error') toast(`保存できませんでした: ${error.message}`, 'error')
+      status.set('error')
     },
   })
   ctx.retrySave = () => {
     // 「ほかの人が先に保存しました」を押したら、どちらを残すかをもう一度聞く
-    if (status?.state() === 'conflict' && askAgainAboutConflict(ctx)) return
+    if (status.state() === 'conflict' && askAgainAboutConflict(ctx)) return
     void autosave.flush()
   }
   const changed = (): void => {
-    status?.set('dirty')
+    status.set('dirty')
     autosave.schedule()
   }
   ctx.quill.on('text-change', (_delta, _old, source) => {
@@ -566,7 +571,7 @@ export function wireSideToolbar(ctx: EditorContext): void {
       e.preventDefault()
       // 失敗したときは「保存しました」を出さない（失敗のお知らせは onError が出す）
       void autosave.flush().then((ok) => {
-        if (ok && status?.state() === 'saved') toast('保存しました')
+        if (ok && status.state() === 'saved') toast('保存しました')
       })
     }
   })
