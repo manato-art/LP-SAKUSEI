@@ -14,13 +14,9 @@ import type { Folder, State } from './types.ts'
 /** このシステムのドメインを指す印（実際のホスト名は画面側が今開いているURLから入れる） */
 export const SYSTEM_FOLDER_DOMAIN = 'system'
 
-/** ホスト名の形（英数とハイフンのラベルを . でつないだもの） */
-const HOST = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/
-
-/** ホスト名として使える形か（英数とハイフンのラベルが . で2つ以上つながっていること） */
-export function isHostName(value: string): boolean {
-  return value.length <= 253 && HOST.test(value)
-}
+/** ホスト名として使える形か（画面と同じ決まり・src/shared/domain-input.ts） */
+import { isHostName } from '../../src/shared/domain-input.ts'
+export { isHostName }
 
 /** 受け取った値をドメインとして整える（受け付けられない形なら null） */
 export function normalizeFolderDomain(raw: unknown): string | null {

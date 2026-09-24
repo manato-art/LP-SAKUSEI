@@ -1002,6 +1002,10 @@ export interface DomainEntry {
   ssl: boolean
   /** quick＝クイックドメイン（自動発行） / custom＝手で登録した独自ドメイン */
   kind?: 'quick' | 'custom'
+  /** 最後に「確認する」を押した時刻（UNIX秒）。まだなら null */
+  checked_at?: number | null
+  /** 確認の結果の短い説明 */
+  check_message?: string
 }
 
 /** レポート除外 */

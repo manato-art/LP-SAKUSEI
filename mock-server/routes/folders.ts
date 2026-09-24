@@ -154,9 +154,11 @@ foldersRouter.post('/folders/:uid/quick_domain', (req, res) => {
       uid: makeUid('domain', out.state.domains.length + 1),
       team_id: folder.team_id,
       host,
-      status: 'pending' as const,
+      // クイックドメインは土台（*.土台）をこのシステムへ向けてある前提の仕組みなので、発行した時点で使える
+      status: 'active' as const,
       ssl: false,
       kind: 'quick' as const,
+      checked_at: null,
     }
     return { ...out.state, domains: [...out.state.domains, domain], nextId: out.state.nextId + 1 }
   })

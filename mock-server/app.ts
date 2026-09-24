@@ -42,6 +42,7 @@ import { inspectionsRouter } from './routes/inspections.ts'
 import { bulkTagsRouter } from './routes/bulk-tags.ts'
 import { adAccountsRouter } from './routes/ad-accounts.ts'
 import { teamMembersRouter } from './routes/team-members.ts'
+import { domainsRouter } from './routes/domains.ts'
 import { UPLOADS_PATH, uploadsDir } from './lib/uploads.ts'
 
 /** `?reset=1` で新規アカウント発行直後（空）へ戻す（§10-9） */
@@ -160,6 +161,8 @@ export function createApp(): Express {
     adAccountsRouter,
     // アカウント設定 > チームメンバー（追加・権限の変更・削除）
     teamMembersRouter,
+    // ドメイン（一覧・独自ドメインの登録・「確認する」）
+    domainsRouter,
   ]
 
   // [A] メインREST API（実物は v1 / v2 が混在するため両方に同じルーターを載せる）

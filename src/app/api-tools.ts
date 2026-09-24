@@ -2,7 +2,7 @@
  * ツール・設定まわりで足したAPI（api.ts が長くなりすぎたので分けた）。
  * 通信の仕方（エラーの投げ方）は api.ts の request と同じ。
  */
-import { request } from './api.ts'
+import { request, type DomainEntry } from './api.ts'
 
 /** 外部連携 > Meta: 連携済みの広告アカウント1件 */
 export interface LinkedMetaAccount {
@@ -33,6 +33,9 @@ export const toolsApi = {
     request<{ account: LinkedMetaAccount }>('POST', '/teams/ad_accounts/meta', { account_id: accountId }),
   unlinkMetaAccount: (accountId: string) =>
     request<void>('DELETE', `/teams/ad_accounts/meta/${encodeURIComponent(accountId)}`),
+  /** ドメインがこのシステムに届くかを確かめて、状態とSSLを更新する（DNSは読むだけ） */
+  checkDomain: (uid: string) =>
+    request<{ domain: DomainEntry }>('POST', `/teams/domains/${encodeURIComponent(uid)}/check`),
   /** 審査の「beyondページURL検索」: 配信 / プレビュー / 中間ページのURL か uid からページを探す */
   lookupPageByUrl: (url: string) =>
     request<{ ab_test_uid: string; title: string }>('GET', `/inspections/lookup?url=${encodeURIComponent(url)}`),
