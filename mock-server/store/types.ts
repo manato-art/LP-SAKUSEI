@@ -4,6 +4,7 @@
  */
 
 import type { MediaField } from './media-templates.ts'
+import type { ExitPopupContentKey, FollowPopupContentKey } from '../../src/shared/popup-content.ts'
 
 export type MediaIconName = string
 
@@ -234,6 +235,11 @@ export interface Version {
   time_ranges?: TimeRange[]
   /** 日付別。期間ごとに配信する/しない。未登録=日付別は適用しない。 */
   date_periods?: DatePeriod[]
+  /**
+   * ポップアップ画面の「このVersionで配信」（2026-09-24）。false のとき、このVersionを配信する表示では
+   * ポップアップ（離脱防止・表示直後・追従型）を出さない。未設定は true（今までどおり出す）。
+   */
+  popup_delivery?: boolean
   html: string
   css: string
   /**
@@ -322,9 +328,22 @@ export interface ExitPopup {
 
   /** 指示176: 'exit'=離脱防止（既定）/ 'instant'=表示直後（LP表示直後にオーバーレイ）。未設定は 'exit'。 */
   popup_kind?: 'exit' | 'instant'
-  /** 指示172: 'link'=遷移先URLへ移動（既定）/ 'close'=LPに戻る（閉じて元の位置へ）。未設定は 'link'。 */
-  link_action?: 'link' | 'close'
+  /**
+   * 指示172: 'link'=遷移先URLへ移動（既定）/ 'close'=LPに戻る（閉じて元の位置へ）。未設定は 'link'。
+   * 'tel'=電話をかける（phone_number へ・2026-09-24）。
+   */
+  link_action?: 'link' | 'close' | 'tel'
+
+  /**
+   * 本番（配信に使う中身・2026-09-24 本人の決定「下書きと本番を分ける」）。上の編集できる項目が下書き。
+   *   null      … 作ってからまだ一度も本番反映していない（配信しない）
+   *   項目が無い … この仕組みより前に作ったポップアップ。上の項目をそのまま本番として配信する（store/popups.ts）
+   */
+  live?: ExitPopupContent | null
 }
+
+/** 離脱防止ポップアップの、下書きと本番に分ける項目（名前・割合・配信ON/OFF・種類は分けない。並びは src/shared/popup-content.ts） */
+export type ExitPopupContent = Pick<ExitPopup, ExitPopupContentKey>
 
 /** 追尾型ポップアップ（指示85: スクロール追従バナー） */
 export interface FollowPopup {
@@ -350,7 +369,13 @@ export interface FollowPopup {
   html: string
   javascript: string
   css: string
+
+  /** 本番（配信に使う中身）。null＝まだ本番反映していない／項目が無い＝この仕組みより前に作った物（上をそのまま配信） */
+  live?: FollowPopupContent | null
 }
+
+/** 追従型ポップアップの、下書きと本番に分ける項目（名前・配信ON/OFFは分けない。並びは src/shared/popup-content.ts） */
+export type FollowPopupContent = Pick<FollowPopup, FollowPopupContentKey>
 
 export type SplitTestType = 'devices' | 'oses' | 'carriers' | 'hours' | 'periods' | 'params'
 

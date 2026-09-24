@@ -153,6 +153,18 @@ export function injectPopupCss(): void {
     .ep-dropdown-item { display:flex; align-items:center; width:100%; padding:10px 14px; font-size:13px; text-align:left; cursor:pointer; background:none; border:none; font-family:${T.font}; color:${T.text}; gap:8px; }
     .ep-dropdown-item:hover { background:#f5f5f5; }
     .ep-dropdown-item.danger { color:#D0021B; }
+    /* 本番との違い（2026-09-24）: 色は小さな丸だけ */
+    .ep-status { display:inline-flex; align-items:center; gap:5px; font-size:11px; color:${T.sub}; white-space:nowrap; }
+    .ep-status-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+    .ep-card-body .ep-status { margin:-4px 0 8px; }
+    /* 「閉じる」のあと（2026-09-24）: 真っ白にせず、一覧を開き直せる */
+    .ep-closed { max-width:420px; margin:64px auto; text-align:center; }
+    .ep-closed-text { font-size:13px; color:${T.sub}; margin:0 0 14px; }
+    .ep-closed-open { padding:8px 18px; font-size:13px; background:${T.primary}; color:#fff; border:none; border-radius:4px; cursor:pointer; font-family:${T.font}; }
+    /* このVersionで配信（Versionごと）・割合の説明 */
+    .ep-delivery-version { display:flex; align-items:center; gap:8px; min-width:0; }
+    .ep-delivery-version select { max-width:260px; padding:5px 8px; border:1px solid #ddd; border-radius:4px; font-size:12px; font-family:${T.font}; background:#fff; }
+    .ep-help { font-size:11px; color:${T.sub}; line-height:1.6; padding:0 20px; margin:-6px 0 8px; }
   `
   document.head.append(s)
 }

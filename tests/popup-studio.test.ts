@@ -65,7 +65,7 @@ describe('配信: 部品で作った「次の画面へ」はポップアップ�
 
 describe('編集画面の配線', () => {
   const exitEditor = src('src/app/pages/exit-popup-editor.ts')
-  const followEditor = src('src/app/pages/exit-popup-follow.ts')
+  const followEditor = src('src/app/pages/exit-popup-follow-editor.ts')
 
   it('離脱防止: 中身は「中身を編集」から Widget編集の画面で直す（「デザイン」タブ・HTMLの欄は無くす）', () => {
     expect(exitEditor).toContain('openPopupStudio(')
@@ -104,7 +104,7 @@ describe('設定画面の「プレビュー」でも中身のスクリプトが�
 
   for (const [file, name] of [
     ['src/app/pages/exit-popup-editor.ts', 'previewPopup'],
-    ['src/app/pages/exit-popup-follow.ts', 'previewFollowPopup'],
+    ['src/app/pages/exit-popup-follow-editor.ts', 'previewFollowPopup'],
   ] as const) {
     it(`${name}: 画面に載せてから中身の <script> を動かし、そのあとポップアップの JavaScript`, () => {
       const body = bodyOf(src(file), name)
@@ -142,7 +142,7 @@ describe('「LPの上に重ねて見る」（本人「必ず実装したい」20
 
 describe('追従型も「LPの上に重ねて見る」（2026-09-24 本人「続けて作って」）', () => {
   it('追従型は暗い幕なしで、配信で出る所（上の帯・下の帯・右下・左下）に置く', () => {
-    const follow = src('src/app/pages/exit-popup-follow.ts')
+    const follow = src('src/app/pages/exit-popup-follow-editor.ts')
     expect(follow).toContain('underlay: lpPreviewUrl(state.abTestUid)')
     expect(follow).toContain('underlayStyle: { dim: false, place: followPlace(draft.position) }')
     const underlay = src('src/app/panels/popup-underlay.ts')

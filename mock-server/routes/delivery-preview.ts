@@ -20,7 +20,7 @@ import { masterStyleIframeCss } from '../../src/app/master-style.ts'
 import { withAutoplayVideos } from '../../src/app/lp-video.ts'
 import { buildAnimCss, buildAnimRuntimeScript } from '../../src/app/anim/anim-presets.ts'
 import { buildVisitorContext } from './delivery-targeting.ts'
-import { buildFollowPopupSnippet, buildPopupSnippet } from './delivery-popup-html.ts'
+import { renderPreviewPopups } from './delivery-popups.ts'
 import { imageLinkScript } from './delivery-image-links.ts'
 import { escapeHtml, renderPreviewNotice } from './delivery-notice.ts'
 import { DELIVERY_WIDTH } from './delivery.ts'
@@ -34,6 +34,8 @@ export interface PreviewOptions {
   readonly bare: boolean
   /** ポップアップの出し分けに使う端末 */
   readonly device: ReturnType<typeof buildVisitorContext>['device']
+  /** ?popup_draft={uid}: そのポップアップの下書きだけを出す（ポップアップ編集の「下書きを確認」） */
+  readonly draftUid?: string
 }
 
 /** プレビューのページ全体（Versionが見つからなければ null） */
@@ -54,20 +56,12 @@ export function renderPreviewDocument(state: State, version: Version, options: P
     ? `${escapeHtml(abTest.title)} - ${escapeHtml(version.name)} プレビュー`
     : `${escapeHtml(version.name)} プレビュー`
 
-  // 指示174: プレビューでも離脱防止/表示直後/追尾ポップを発動させる（配信と同じ）。
-  // （従来はプレビューにスニペットを入れておらず、プレビューURLでは一切出なかった）
-  const previewPopupHtml = abTest === undefined || options.bare
-    ? ''
-    : (state.exitPopups ?? [])
-        .filter((p) => p.ab_test_id === abTest.id && p.enabled)
-        .map((p) => buildPopupSnippet(p, options.device))
-        .join('')
-  const previewFollowHtml = abTest === undefined || options.bare
-    ? ''
-    : (state.followPopups ?? [])
-        .filter((p) => p.ab_test_id === abTest.id && p.enabled)
-        .map((p) => buildFollowPopupSnippet(p, options.device))
-        .join('')
+  // 指示174: プレビューでも離脱防止/表示直後/追尾ポップを発動させる（配信と同じ・本番反映した物）。
+  // draftUid: 編集画面の「下書きを確認」＝そのポップアップの下書きだけ（delivery-popups.ts・2026-09-24）
+  const previewPopupHtml = renderPreviewPopups(
+    abTest === undefined ? null : { state, abTest, version, device: options.device },
+    { bare: options.bare, draftUid: options.draftUid ?? '' },
+  )
 
   return (
     `<!doctype html><html lang="ja"><head><meta charset="utf-8">` +
@@ -96,7 +90,6 @@ export function renderPreviewDocument(state: State, version: Version, options: P
     headerHtml +
     withAutoplayVideos(lp.html) +
     previewPopupHtml +
-    previewFollowHtml +
     // 画像のリンクは押せるように（計測URLへは送らない）
     imageLinkScript(false) +
     buildAnimRuntimeScript() +
@@ -113,7 +106,11 @@ previewRouter.get('/preview/:versionUid', (req, res) => {
   const html =
     version === undefined
       ? null
-      : renderPreviewDocument(state, version, { bare: req.query['bare'] === '1', device: buildVisitorContext(req).device })
+      : renderPreviewDocument(state, version, {
+          bare: req.query['bare'] === '1',
+          device: buildVisitorContext(req).device,
+          draftUid: typeof req.query['popup_draft'] === 'string' ? req.query['popup_draft'] : '',
+        })
   if (html === null) {
     res.status(404).type('html').send(renderPreviewNotice(versionUid))
     return

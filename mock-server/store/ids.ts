@@ -33,6 +33,7 @@ export const UID_KINDS = {
   aspAccount: 'ASPACCOUNT',
   redirectPage: 'REDIRECT',
   exitPopup: 'EXITPOPUP',
+  followPopup: 'FOLLOWPOPUP',
   conversionTag: 'CVTAG',
   operatorArticle: 'OPARTICLE',
   inspection: 'INSPECTION',

@@ -7,7 +7,7 @@
  * `rerender` は「一覧を描き直す」1手。実体は exit-popup.ts の renderPanel だが、
  * 各ファイルから直接呼ぶと逆向きの import が要るので、state 経由で渡している。
  */
-import type { ExitPopup, FollowPopup } from '../api.ts'
+import type { ExitPopup, FollowPopup, PopupDeliveryVersion } from '../api-popups.ts'
 
 /** 現在のサブタブ */
 export type SubTab = 'exit' | 'follow' | 'instant'
@@ -21,7 +21,10 @@ export interface PopupPageState {
   folderUid: string
   popups: ExitPopup[]
   followPopups: FollowPopup[]
-  deliveryEnabled: boolean
+  /** 「このVersionで配信」: このLPの Version ごとのON/OFF（サーバーに保存・2026-09-24） */
+  deliveryVersions: PopupDeliveryVersion[]
+  /** 「このVersionで配信」でいま選んでいる Version（無ければ null） */
+  deliveryVersionUid: string | null
   editingPopup: ExitPopup | null
   activeSubTab: SubTab
   root: HTMLElement
