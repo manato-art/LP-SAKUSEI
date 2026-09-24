@@ -15,7 +15,7 @@ import { buildBotNote } from './bot-note-el.ts'
 import { T, el, emptyState } from '../ui.ts'
 import { jstDateKey, jstParts } from '../jst.ts'
 import {
-  getJson,
+  getJsonResult,
   int,
   pageShell,
   ratio,
@@ -23,6 +23,7 @@ import {
   table,
   yen,
   type Column,
+  type JsonResult,
   type Kpi,
 } from './data-ui.ts'
 
@@ -100,7 +101,8 @@ export async function renderDashboard(container: HTMLElement): Promise<void> {
   ]
   let activePeriod = '過去7日'
   let activeTab: DashboardTab = '全体'
-  let latest: DashboardData | null = null
+  // 失敗したときは理由を持つ（「0件」と見分けがつくように・2026-09-24）
+  let latest: JsonResult<DashboardData> | null = null
 
   // 期間ピッカー
   const periodBar = el('div', { style: 'display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap' })
@@ -132,7 +134,7 @@ export async function renderDashboard(container: HTMLElement): Promise<void> {
 
   async function loadDashboard(days: number): Promise<void> {
     const { startDate, endDate } = dashboardRange(days)
-    latest = await getJson<DashboardData>(
+    latest = await getJsonResult<DashboardData>(
       `/teams/dashboard?start_date=${startDate}&end_date=${endDate}`,
     )
     renderDashboardBody(content, latest, activeTab)
@@ -143,7 +145,7 @@ export async function renderDashboard(container: HTMLElement): Promise<void> {
 
 function renderDashboardBody(
   content: HTMLElement,
-  data: DashboardData | null,
+  result: JsonResult<DashboardData> | null,
   tab: DashboardTab,
 ): void {
   // 既存の本文だけを除去（期間ピッカーとタブは残す）
@@ -152,11 +154,13 @@ function renderDashboardBody(
   const wrap = el('div', { style: '' })
   wrap.className = 'sb-dash-body'
 
-  if (data === null) {
-    wrap.append(emptyState('ダッシュボードのデータを取得できませんでした。'))
+  if (result === null) return
+  if (!result.ok) {
+    wrap.append(emptyState(`ダッシュボードのデータを取得できませんでした（${result.message}）。`))
     content.append(wrap)
     return
   }
+  const data = result.data
 
   // 数字にボットが入っていないことと、除いた件数（2026-09-16・本人の依頼）
   wrap.append(buildBotNote(data.bot_hits ?? 0))
