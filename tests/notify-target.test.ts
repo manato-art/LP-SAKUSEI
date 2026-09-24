@@ -236,7 +236,10 @@ describe('画面だけで設定を完結させる', () => {
   })
 
   it('入れたトークンは消せる', () => {
-    expect(src).toContain("api.clearIntegration('chatwork')")
+    // 確認カードを通してから消す（confirm-destructive.test.ts）。チャットワークもLINEも同じ入口
+    expect(src).toContain("clearToken('chatwork'")
+    expect(src).toContain("clearToken('line'")
+    expect(src).toContain('api.clearIntegration(service)')
   })
 })
 

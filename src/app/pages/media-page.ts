@@ -19,6 +19,7 @@
  */
 import { api, type Media, type MediaField, type Product } from '../api.ts'
 import { toast } from '../ui.ts'
+import { confirmCard } from '../dialog.ts'
 import { buildToolGuide } from './tool-guide.ts'
 import { downloadFile } from '../download.ts'
 
@@ -274,6 +275,14 @@ export async function renderMediaPage(host: HTMLElement): Promise<void> {
     del.type = 'button'
     del.addEventListener('click', () => {
       void (async () => {
+        const ok = await confirmCard({
+          title: 'メディアを削除します',
+          message: `「${current.name}」を削除します。`,
+          detail: '削除すると元に戻せません。このメディアの検索項目と選択肢も消えます（商品は消えません）。',
+          submitLabel: '削除する',
+          danger: true,
+        })
+        if (!ok) return
         try {
           await api.deleteMedia(current.uid)
           selectedMedia = null
@@ -461,6 +470,14 @@ export async function renderMediaPage(host: HTMLElement): Promise<void> {
       del.type = 'button'
       del.addEventListener('click', () => {
         void (async () => {
+          const ok = await confirmCard({
+            title: '商品を削除します',
+            message: `「${current.name}」を削除します。`,
+            detail: '削除すると元に戻せません。',
+            submitLabel: '削除する',
+            danger: true,
+          })
+          if (!ok) return
           try {
             await api.deleteProduct(current.uid)
             selectedProduct = null
