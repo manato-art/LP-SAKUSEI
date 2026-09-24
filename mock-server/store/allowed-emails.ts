@@ -80,6 +80,15 @@ export function addAllowedEmail(email: string): AllowedEmail {
   return entry
 }
 
+/** 削除の結果。最後の1件は消さない（0件になると入口が404になり誰もログインできなくなる） */
+export type RemoveAllowedEmailResult = 'removed' | 'not_found' | 'last_one'
+
+export function removeAllowedEmailSafely(id: number): RemoveAllowedEmailResult {
+  if (!emails.some((e) => e.id === id)) return 'not_found'
+  if (emails.length <= 1) return 'last_one'
+  return removeAllowedEmail(id) ? 'removed' : 'not_found'
+}
+
 export function removeAllowedEmail(id: number): boolean {
   const before = emails.length
   emails = emails.filter((e) => e.id !== id)

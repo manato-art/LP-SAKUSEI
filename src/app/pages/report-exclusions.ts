@@ -16,6 +16,7 @@ import {
   type ReportExclusionEntry,
 } from '../api.ts'
 import { toast } from '../ui.ts'
+import { confirmCard } from '../dialog.ts'
 import { toDateKey, type DateRange } from './report-period.ts'
 
 const CSS_ID = 'sb-exclusions-css'
@@ -396,13 +397,23 @@ function buildRulesTable(rows: readonly ReportExclusionEntry[], reload: () => vo
     del.className = 'rx-del'
     del.textContent = '削除'
     del.addEventListener('click', () => {
-      void api.deleteReportExclusion(row.uid).then(
-        () => {
+      void (async () => {
+        const ok = await confirmCard({
+          title: '除外条件を削除します',
+          message: `「${valueText}」の除外条件を削除します。`,
+          detail: '削除すると元に戻せません。これから先のアクセスはレポートに数えられるようになります。',
+          submitLabel: '削除する',
+          danger: true,
+        })
+        if (!ok) return
+        try {
+          await api.deleteReportExclusion(row.uid)
           toast('除外条件を削除しました')
           reload()
-        },
-        (error: Error) => toast(error.message, 'error'),
-      )
+        } catch (error) {
+          toast((error as Error).message, 'error')
+        }
+      })()
     })
     last.append(del)
     tr.append(last)

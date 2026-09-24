@@ -5,9 +5,11 @@
 import type { MasterStyleSheet } from './master-style.ts'
 import { editorSessionHeaders } from './editor-session.ts'
 import { LIST_PAGE_SIZE, fetchAllPages, type PageInfo } from './api-paging.ts'
+import type { TaskStatus } from '../shared/task-status.ts'
 
 const BASE = '/api/v1'
 
+/** 共通のリクエスト。失敗はサーバーの日本語メッセージで投げる（api-tools.ts からも使う） */
 export async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     method,
@@ -453,7 +455,10 @@ export const api = {
     targets: { version_uid: string; value: string; indexes?: number[] }[]
     replacement: string
     tracking?: string
-  }) => request<{ replaced: number; versions: number }>('POST', '/articles/bulk_replaces', body),
+  }) => request<{ replaced: number; versions: number; undo_id: string | null }>('POST', '/articles/bulk_replaces', body),
+  /** 直前の「置換する」を元に戻す（置換した直後のままのVersionだけ戻る） */
+  undoBulkReplace: (undoId: string) =>
+    request<{ restored: number; skipped: number }>('POST', `/articles/bulk_replaces/${encodeURIComponent(undoId)}/undo`),
   createFolder: (name: string) => request<{ folder: Folder }>('POST', '/folders', { name }),
   /** フォルダのドメインを変える（'' ＝未設定 / 'system' ＝このシステムのドメイン / ホスト名） */
   setFolderDomain: (uid: string, domain: string) =>
@@ -831,9 +836,21 @@ export const api = {
     report_items?: ReportItemsInput
     notify?: { service: NotifyServiceName; destination_id: string } | null
   }) => request<{ task: Task }>('POST', '/tasks', input),
-  /** タスク更新 */
-  updateTask: (uid: string, patch: { status?: string; title?: string }) =>
-    request<{ task: Task }>('PUT', `/tasks/${uid}`, patch),
+  /** タスク更新（送った項目だけ変わる） */
+  updateTask: (
+    uid: string,
+    patch: {
+      status?: TaskStatus
+      title?: string
+      description?: string
+      schedule?: { kind: string; hour: string; minute: string; weekdays: readonly number[] }
+      span?: string
+      report_items?: ReportItemsInput
+      notify?: { service: NotifyServiceName; destination_id: string } | null
+    },
+  ) => request<{ task: Task }>('PUT', `/tasks/${uid}`, patch),
+  /** タスク削除 */
+  deleteTask: (uid: string) => request<void>('DELETE', `/tasks/${uid}`),
   /** タスク一覧 */
   listTasks: () => request<{ tasks: Task[] }>('GET', '/tasks'),
   /** SB AI 会話一覧 */
@@ -1011,9 +1028,14 @@ export interface Task {
   last_run_status?: 'ok' | 'failed' | null
   last_run_error?: string | null
   assignee_member_id: number | null
-  status: string
+  status: TaskStatus
   due_at: string | null
   created_at: number
+  description: string
+  schedule: { kind: string; hour: string; minute: string; weekdays: readonly number[] }
+  span: string
+  notify: { service: NotifyServiceName; destination_id: string } | null
+  report_items?: ReportItemsInput
 }
 
 /** ドメイン */
@@ -1025,6 +1047,10 @@ export interface DomainEntry {
   ssl: boolean
   /** quick＝クイックドメイン（自動発行） / custom＝手で登録した独自ドメイン */
   kind?: 'quick' | 'custom'
+  /** 最後に「確認する」を押した時刻（UNIX秒）。まだなら null */
+  checked_at?: number | null
+  /** 確認の結果の短い説明 */
+  check_message?: string
 }
 
 /** レポート除外 */

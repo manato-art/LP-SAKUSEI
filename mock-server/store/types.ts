@@ -455,7 +455,9 @@ export interface OperatorArticle {
   body: string
 }
 
-export type TaskStatus = 'todo' | 'doing' | 'done'
+/** 状態の言葉は画面と共有する（src/shared/task-status.ts が正本） */
+export type { TaskStatus } from '../../src/shared/task-status.ts'
+import type { TaskStatus } from '../../src/shared/task-status.ts'
 
 /** タスクの実行間隔（実物のプルダウンどおり） */
 export type TaskScheduleKind =
@@ -559,7 +561,10 @@ export interface AdAccount {
   provider: AdProvider
   account_name: string
   connected: boolean
+  /** 連携した日（JSTの YYYY-MM-DD） */
   connected_at: string | null
+  /** 媒体側の広告アカウントID（Metaは `act_` を除いた数字）。外部連携画面の「認証」で入る */
+  external_id?: string
 }
 
 export interface AspAccount {
@@ -579,6 +584,10 @@ export interface Domain {
   ssl: boolean
   /** quick＝クイックドメイン（土台ドメインの下に自動発行したもの） / custom＝手で登録した独自ドメイン */
   kind?: 'quick' | 'custom'
+  /** 最後に「確認する」を押した時刻（UNIX秒）。まだなら null / 無し */
+  checked_at?: number | null
+  /** 確認の結果の短い説明（画面に出す） */
+  check_message?: string
 }
 
 export interface Tag {

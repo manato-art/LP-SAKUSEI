@@ -27,6 +27,9 @@ import {
 } from '../store/bulk-replace.ts'
 import type { State, Version } from '../store/types.ts'
 import { externalizeDataUrls } from '../lib/uploads.ts'
+import { updateVersion } from '../store/actions.ts'
+import { recordVersionChange } from '../store/version-history-record.ts'
+import { consumeUndo, rememberUndo, type UndoEntry } from '../store/bulk-replace-undo.ts'
 
 export const bulkReplaceRouter: Router = Router()
 
@@ -165,7 +168,7 @@ bulkReplaceRouter.post('/articles/bulk_replaces', (req, res) => {
     : 'keep'
 
   let replaced = 0
-  const touched = new Set<string>()
+  const changes: UndoEntry[] = []
   setState((s) => ({
     ...s,
     versions: s.versions.map((v) => {
@@ -183,10 +186,49 @@ bulkReplaceRouter.post('/articles/bulk_replaces', (req, res) => {
         replaced += out.replaced
       }
       if (html === v.html) return v
-      touched.add(v.uid)
+      changes.push({ version_uid: v.uid, before: v.html, after: html })
       return { ...v, html }
     }),
   }))
 
-  res.json({ replaced, versions: touched.size })
+  // 1件ずつ置き換えた前後を「変更・復元履歴」に積む（リンク置換と同じ・間違えたら戻せる）
+  const state = getState()
+  for (const change of changes) {
+    recordVersionChange(state, change.version_uid, [change.before, change.after])
+  }
+  const undoId = changes.length === 0 ? null : rememberUndo(changes)
+
+  res.json({ replaced, versions: changes.length, undo_id: undoId })
+})
+
+/**
+ * 直前の「置換する」を元に戻す。
+ * 置換した直後の本文のままのVersionだけを戻す。あとで手で直したVersionは上書きしない
+ * （直した内容を消さないため）。戻せなかった数は `skipped` で返す。
+ */
+bulkReplaceRouter.post('/articles/bulk_replaces/:undoId/undo', (req, res) => {
+  const entries = consumeUndo(req.params.undoId)
+  if (entries === null) {
+    res.status(404).json(errorEnvelope('not_found', '元に戻せる置換が見つかりません。すでに戻したか、サーバーが再起動しました。'))
+    return
+  }
+  let restored = 0
+  let skipped = 0
+  const restoredUids: string[] = []
+  for (const entry of entries) {
+    const current = getState().versions.find((v) => v.uid === entry.version_uid)
+    if (current === undefined || current.html !== entry.after) {
+      skipped += 1
+      continue
+    }
+    setState((s) => updateVersion(s, entry.version_uid, { html: entry.before }).state)
+    restored += 1
+    restoredUids.push(entry.version_uid)
+  }
+  const state = getState()
+  for (const uid of restoredUids) {
+    const entry = entries.find((e) => e.version_uid === uid)
+    if (entry !== undefined) recordVersionChange(state, uid, [entry.before])
+  }
+  res.json({ restored, skipped })
 })

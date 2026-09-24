@@ -50,29 +50,7 @@ teamsRouter.put('/teams/quick_domain', (req, res) => {
   res.json({ quick_domain: { base } })
 })
 
-teamsRouter.get('/teams/domains', (req, res) => {
-  res.json({ domains: applyEmptyState(req, getState().domains) })
-})
-
-teamsRouter.post('/teams/domains', (req, res) => {
-  const host = requireString(req.body, 'host', { maxLength: 253 })
-  if (!host.ok) {
-    res.status(422).json(errorEnvelope('validation_failed', host.message))
-    return
-  }
-  const state = getState()
-  const created = {
-    id: state.nextId,
-    uid: makeUid('domain', state.domains.length + 1),
-    team_id: currentTeamId(state),
-    host: host.value,
-    status: 'pending' as const,
-    ssl: false,
-    kind: 'custom' as const,
-  }
-  setState((s) => ({ ...s, domains: [...s.domains, created], nextId: s.nextId + 1 }))
-  res.status(201).json({ domain: created })
-})
+/* ドメインの一覧・登録・「確認する」は routes/domains.ts */
 
 teamsRouter.get('/teams/tags', (req, res) => {
   res.json({ tags: applyEmptyState(req, getState().tags) })

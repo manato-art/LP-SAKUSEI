@@ -7,9 +7,10 @@
  *   2段目 … 設定フォーム（テンプレートの初期値が入った状態）
  * URLは変わらず、各段に「戻る」リンクが付く。
  */
-import { api } from '../api.ts'
+import { api, type ReportItemsInput, type Task } from '../api.ts'
 import { T, el, toast } from '../ui.ts'
-import { buildNotifyTarget } from '../panels/notify-target.ts'
+import { buildNotifyTarget, type NotifyDestination } from '../panels/notify-target.ts'
+import { TASK_STATUSES, TASK_STATUS_LABELS, isTaskStatus } from '../../shared/task-status.ts'
 import { buildReportItemsField } from '../panels/report-items-field.ts'
 import {
   MINUTES,
@@ -169,37 +170,97 @@ export function renderTemplatePicker(host: HTMLElement, deps: TaskCreateDeps): v
   host.replaceChildren(root)
 }
 
-/** 2段目: 設定フォーム */
+/** フォームの初期値（テンプレートから作るときも、保存済みのタスクを開き直すときも同じ形） */
+interface TaskFormInit {
+  name: string
+  schedule: ScheduleKind
+  hour: string
+  minute: string
+  weekdays: readonly number[]
+  span: string
+  description: string
+  notify: NotifyDestination | null
+  reportItems?: ReportItemsInput
+}
+
+/** 2段目: 設定フォーム（新規） */
 export function renderTaskForm(
   host: HTMLElement,
   template: TaskTemplate,
   deps: TaskCreateDeps,
 ): void {
+  buildTaskForm(
+    host,
+    {
+      name: template.preset.name,
+      schedule: template.preset.schedule,
+      hour: template.preset.hour,
+      minute: template.preset.minute,
+      weekdays: [],
+      span: template.preset.span,
+      description: '',
+      notify: null,
+    },
+    { mode: 'create', templateTitle: template.title },
+    deps,
+  )
+}
+
+/** 保存済みのタスクを開き直して編集する（一覧の行を押したとき） */
+export function renderTaskEditForm(host: HTMLElement, task: Task, deps: TaskCreateDeps): void {
+  const kind = (SCHEDULES.find((sc) => sc.value === task.schedule.kind)?.value ?? 'once') as ScheduleKind
+  buildTaskForm(
+    host,
+    {
+      name: task.title,
+      schedule: kind,
+      hour: task.schedule.hour,
+      minute: task.schedule.minute,
+      weekdays: task.schedule.weekdays,
+      span: task.span,
+      description: task.description,
+      notify: task.notify === null ? null : { service: task.notify.service, id: task.notify.destination_id },
+      ...(task.report_items === undefined ? {} : { reportItems: task.report_items }),
+    },
+    { mode: 'edit', task },
+    deps,
+  )
+}
+
+type FormMode = { mode: 'create'; templateTitle: string } | { mode: 'edit'; task: Task }
+
+function buildTaskForm(host: HTMLElement, init: TaskFormInit, mode: FormMode, deps: TaskCreateDeps): void {
   ensureTaskFormCss()
   const root = el('div', { class: 'tc' })
-  root.append(backLink('テンプレート選択に戻る', () => renderTemplatePicker(host, deps)))
-  root.append(el('h1', { text: '新しいタスク' }))
+  root.append(
+    mode.mode === 'create'
+      ? backLink('テンプレート選択に戻る', () => renderTemplatePicker(host, deps))
+      : backLink('タスク一覧に戻る', deps.onDone),
+  )
+  root.append(el('h1', { text: mode.mode === 'create' ? '新しいタスク' : 'タスクを編集' }))
 
   const form = el('div', { class: 'tc-form' })
-  form.append(el('p', { class: 'tc-of', text: `テンプレート: ${template.title}` }))
+  if (mode.mode === 'create') {
+    form.append(el('p', { class: 'tc-of', text: `テンプレート: ${mode.templateTitle}` }))
+  }
 
   // タスク名
   const name = document.createElement('input')
   name.type = 'text'
   name.className = 'tc-input'
   name.placeholder = '例: 週次レポート'
-  name.value = template.preset.name
+  name.value = init.name
 
   // スケジュール（種類 → 曜日 → 時 → 分 の順に、必要なものだけ出す）
   const scheduleRow = el('div', { class: 'tc-row' })
-  const kind = select(SCHEDULES.map((s) => ({ value: s.value, label: s.label })))
-  kind.value = template.preset.schedule
+  const kind = select(SCHEDULES.map((sc) => ({ value: sc.value, label: sc.label })))
+  kind.value = init.schedule
   const days = el('div', { class: 'tc-days' })
-  const chosenDays = new Set<number>()
+  const chosenDays = new Set<number>(init.weekdays)
   WEEKDAYS.forEach((d, i) => {
     const b = document.createElement('button')
     b.type = 'button'
-    b.className = 'tc-day'
+    b.className = `tc-day${chosenDays.has(i) ? ' on' : ''}`
     b.textContent = d
     b.addEventListener('click', () => {
       if (chosenDays.has(i)) chosenDays.delete(i)
@@ -214,9 +275,9 @@ export function renderTaskForm(
       return { value: v, label: `${v}時` }
     }),
   )
-  hour.value = template.preset.hour
+  hour.value = init.hour
   const minute = select(MINUTES.map((m) => ({ value: m, label: `${m}分` })))
-  minute.value = template.preset.minute
+  minute.value = init.minute
   scheduleRow.append(kind, days, hour, minute)
 
   const syncSchedule = (): void => {
@@ -229,21 +290,30 @@ export function renderTaskForm(
   syncSchedule()
 
   // 通知先。未設定なら取得手順、設定済みなら送り先の選択が出る
-  const notifyField = buildNotifyTarget()
+  const notifyField = buildNotifyTarget({ initial: init.notify })
 
   // レポートに載せるもの。減らせば短い通知に、全部入れれば1通で状況が分かる
-  const itemsField = buildReportItemsField()
+  const itemsField = buildReportItemsField(init.reportItems)
+
+  // 何のレポートを送るか（beyondAIが無いので、プロンプトの代わりにこれを選ぶ）
+  const span = select(REPORT_SPANS.map((r) => ({ value: r.value, label: r.label })))
+  span.value = init.span
 
   const desc = document.createElement('input')
   desc.type = 'text'
   desc.className = 'tc-input'
   desc.placeholder = 'タスクの概要'
+  desc.value = init.description
 
+  // 状態（編集のときだけ）。完了・停止中にすると定期の通知は止まる
+  const status = select(TASK_STATUSES.map((st) => ({ value: st, label: TASK_STATUS_LABELS[st] })))
+  if (mode.mode === 'edit') status.value = mode.task.status
 
   const submit = document.createElement('button')
   submit.type = 'button'
   submit.className = 'tc-submit'
-  submit.textContent = 'タスクを作成'
+  const submitLabel = mode.mode === 'create' ? 'タスクを作成' : '保存する'
+  submit.textContent = submitLabel
   submit.addEventListener('click', () => {
     const title = name.value.trim()
     if (title === '') {
@@ -251,69 +321,74 @@ export function renderTaskForm(
       name.focus()
       return
     }
-    if ((kind.value as ScheduleKind) === 'weekly' && chosenDays.size === 0) {
+    const scheduleKind = kind.value as ScheduleKind
+    if (scheduleKind === 'weekly' && chosenDays.size === 0) {
       toast('曜日を1つ以上選んでください', 'error')
       return
     }
-    submit.disabled = true
-    submit.textContent = '作成中…'
     const target = notifyField.target()
-    const scheduleKind = kind.value as ScheduleKind
     // 定期なのに送り先が無いと、動いても誰にも届かない
     if (scheduleKind !== 'once' && target === null) {
       toast('定期タスクには通知先を選んでください', 'error')
       return
     }
-    void api
-      .createTask({
-        title,
-        description: desc.value.trim(),
-        schedule: {
-          kind: scheduleKind,
-          hour: hour.value,
-          minute: minute.value,
-          weekdays: [...chosenDays],
-        },
-        span: span.value,
-        report_items: itemsField.value(),
-        notify: target === null ? null : { service: target.service, destination_id: target.id },
-      })
-      .then(
-      async () => {
-        /**
-         * 単発は「作成直後に実行」なので、その場で1通送る。
-         * 作っただけで何も起きないと、動いているのか分からない。
-         * 定期のぶんはサーバー側の時計で送る。
-         */
-        if (scheduleKind === 'once' && target !== null) {
-          try {
-            await api.runTaskNow({
-              name: title,
-              span: span.value,
-              target,
-              report_items: itemsField.value(),
-            })
-            toast('タスクを作成し、通知を送りました')
-          } catch (error) {
-            // タスク自体は作れているので、送れなかったことだけを伝える
-            toast(`タスクは作成しましたが、通知を送れませんでした: ${(error as Error).message}`, 'error')
-          }
-        } else {
-          toast('タスクを作成しました')
-        }
+    submit.disabled = true
+    submit.textContent = mode.mode === 'create' ? '作成中…' : '保存中…'
+    const fields = {
+      title,
+      description: desc.value.trim(),
+      schedule: {
+        kind: scheduleKind,
+        hour: hour.value,
+        minute: minute.value,
+        weekdays: [...chosenDays].sort((a, b) => a - b),
+      },
+      span: span.value,
+      report_items: itemsField.value(),
+      notify: target === null ? null : { service: target.service, destination_id: target.id },
+    }
+    const fail = (error: Error): void => {
+      submit.disabled = false
+      submit.textContent = submitLabel
+      toast(error.message, 'error')
+    }
+    if (mode.mode === 'edit') {
+      const nextStatus = status.value
+      if (!isTaskStatus(nextStatus)) {
+        fail(new Error('状態を選んでください'))
+        return
+      }
+      void api.updateTask(mode.task.uid, { ...fields, status: nextStatus }).then(() => {
+        toast('タスクを保存しました')
         deps.onDone()
-      },
-      (error: Error) => {
-        submit.disabled = false
-        submit.textContent = 'タスクを作成'
-        toast(error.message, 'error')
-      },
-    )
+      }, fail)
+      return
+    }
+    void api.createTask(fields).then(async () => {
+      /**
+       * 単発は「作成直後に実行」なので、その場で1通送る。
+       * 作っただけで何も起きないと、動いているのか分からない。
+       * 定期のぶんはサーバー側の時計で送る。
+       */
+      if (scheduleKind === 'once' && target !== null) {
+        try {
+          await api.runTaskNow({
+            name: title,
+            span: span.value,
+            target,
+            report_items: itemsField.value(),
+          })
+          toast('タスクを作成し、通知を送りました')
+        } catch (error) {
+          // タスク自体は作れているので、送れなかったことだけを伝える
+          toast(`タスクは作成しましたが、通知を送れませんでした: ${(error as Error).message}`, 'error')
+        }
+      } else {
+        toast('タスクを作成しました')
+      }
+      deps.onDone()
+    }, fail)
   })
-
-  // 何のレポートを送るか（beyondAIが無いので、プロンプトの代わりにこれを選ぶ）
-  const span = select(REPORT_SPANS.map((r) => ({ value: r.value, label: r.label })))
-  span.value = template.preset.span
 
   form.append(
     labelled('タスク名', true, name),
@@ -322,8 +397,18 @@ export function renderTaskForm(
     labelled('レポート内容', true, span),
     labelled('レポートに載せるもの', false, itemsField.el),
     labelled('説明', false, desc),
-    submit,
   )
+  if (mode.mode === 'edit') {
+    form.append(labelled('状態', true, status))
+    form.append(
+      el('p', {
+        class: 'tc-of',
+        text: '完了・停止中にすると、定期の通知は送られなくなります。単発のタスクは保存しても送り直しません。',
+        style: 'margin:0',
+      }),
+    )
+  }
+  form.append(submit)
   root.append(form)
   host.replaceChildren(root)
 }

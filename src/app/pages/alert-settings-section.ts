@@ -14,6 +14,7 @@
  * 1行ぶんの中身はタスク画面と同じ部品を使い回す（設定手順・テスト送信もそのまま使える）。
  */
 import { T, el, toast } from '../ui.ts'
+import { confirmCard } from '../dialog.ts'
 import { api, type AlertSettings } from '../api.ts'
 import { buildNotifyTarget, type NotifyDestination } from '../panels/notify-target.ts'
 import { savedTargets } from './alert-targets.ts'
@@ -184,9 +185,19 @@ export async function mountAlertSettings(content: HTMLElement): Promise<void> {
     remove.style.marginTop = '9px'
     const entry = { host, target: built.target }
     remove.addEventListener('click', () => {
-      rows.splice(rows.indexOf(entry), 1)
-      host.remove()
-      saveTargets()
+      void (async () => {
+        const ok = await confirmCard({
+          title: '送り先を消します',
+          message: 'この送り先を、異常のお知らせの送り先から外します。',
+          detail: '消すとすぐに保存され、この送り先には異常のお知らせが届かなくなります。',
+          submitLabel: '消す',
+          danger: true,
+        })
+        if (!ok) return
+        rows.splice(rows.indexOf(entry), 1)
+        host.remove()
+        saveTargets()
+      })()
     })
     host.append(targetEl, remove)
     rows.push(entry)

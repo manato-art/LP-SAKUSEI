@@ -16,6 +16,7 @@ import { getState, setState } from '../store/store.ts'
 import { errorEnvelope } from '../lib/envelope.ts'
 import { str } from '../lib/query.ts'
 import type { InspectionEntry, InspectionStatus, State } from '../store/types.ts'
+import { parsePageUrl } from '../lib/page-url.ts'
 
 export const inspectionsRouter: Router = Router()
 
@@ -138,6 +139,33 @@ inspectionsRouter.get('/inspections/entries', (req, res) => {
     ),
     total: rows.length,
   })
+})
+
+/**
+ * 「beyondページURL検索」: 貼られたURL（配信 / プレビュー / 中間ページ / uid）から、そのページを探す。
+ * 読めない形は422、見つからなければ404（見当違いのページへ飛ばさない）。
+ */
+inspectionsRouter.get('/inspections/lookup', (req, res) => {
+  const ref = parsePageUrl(str(req.query, 'url') ?? '')
+  if (ref === null) {
+    res
+      .status(422)
+      .json(errorEnvelope('invalid', 'beyondページURL（…/lp/…）・プレビューURL（…/preview/…）・中間ページURL・uid のどれかを入れてください。'))
+    return
+  }
+  const state = getState()
+  const abTestId = (() => {
+    if (ref.kind === 'page') return state.abTests.find((t) => t.uid === ref.uid)?.id
+    if (ref.kind === 'redirect') return state.redirectPages.find((p) => p.uid === ref.uid)?.ab_test_id
+    const version = state.versions.find((v) => v.uid === ref.uid)
+    return state.articles.find((a) => a.id === version?.article_id)?.ab_test_id
+  })()
+  const abTest = state.abTests.find((t) => t.id === abTestId)
+  if (abTest === undefined) {
+    res.status(404).json(errorEnvelope('not_found', 'そのURLのbeyondページは見つかりませんでした。'))
+    return
+  }
+  res.json({ ab_test_uid: abTest.uid, title: abTest.title })
 })
 
 /** 審査の状態を変える（審査待ち → 審査中 → 承認済 / 非承認） */

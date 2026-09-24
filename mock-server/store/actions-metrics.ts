@@ -50,7 +50,20 @@ export function createTask(
 export function updateTask(
   state: State,
   uid: string,
-  patch: Partial<Pick<Task, 'title' | 'status' | 'assignee_member_id' | 'due_at'>>,
+  patch: Partial<
+    Pick<
+      Task,
+      | 'title'
+      | 'status'
+      | 'assignee_member_id'
+      | 'due_at'
+      | 'description'
+      | 'schedule'
+      | 'span'
+      | 'notify'
+      | 'report_items'
+    >
+  >,
 ): { state: State; task: Task | null } {
   const target = state.tasks.find((t) => t.uid === uid)
   if (target === undefined) return { state, task: null }
@@ -59,6 +72,11 @@ export function updateTask(
     state: { ...state, tasks: state.tasks.map((t) => (t.uid === uid ? updated : t)) },
     task: updated,
   }
+}
+/** タスクを消す。無ければ state はそのまま・removed:false */
+export function deleteTask(state: State, uid: string): { state: State; removed: boolean } {
+  if (!state.tasks.some((t) => t.uid === uid)) return { state, removed: false }
+  return { state: { ...state, tasks: state.tasks.filter((t) => t.uid !== uid) }, removed: true }
 }
 // ── コンバージョン（CV速報が積む・§10-9「ダミーの流入が乗ると数値が付く」）──
 export function recordConversion(

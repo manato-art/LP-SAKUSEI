@@ -16,12 +16,15 @@ import { buildTaskReport } from './task-report.ts'
 import { normalizeReportItems } from './report-items.ts'
 import { getState, setState } from './store/store.ts'
 import type { Task } from './store/types.ts'
+import { isTaskRunnable } from '../src/shared/task-status.ts'
 
 /** そのタスクを、今この分に動かすべきか */
 export function isDue(task: Task, now: JstNow): boolean {
   // 単発は作成時に1回送るだけ。見張りでは動かさない。
   if (task.schedule.kind === 'once') return false
   if (task.notify === null) return false
+  // 完了・停止中のタスクは送らない（以前は状態を見ずに送り続けていた）
+  if (!isTaskRunnable(task.status)) return false
 
   const slot = `${now.date} ${now.hhmm}`
   // 同じ分で既に送っていれば動かさない

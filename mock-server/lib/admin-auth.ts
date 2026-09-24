@@ -172,11 +172,15 @@ adminAuthRouter.get('/__auth/check', (req, res) => {
 adminAuthRouter.post('/__auth/logout', (req, res) => {
   // 管理セッション + メールゲートの両方のCookieを消す（再アクセス時にメール認証からやり直し）
   const expire = cookieAttributes(req, 0)
+  // 行き先（ログインの入口）は、ログインしていた人にだけ返す。
+  // `/` は未ログインだと404なので、ログアウト後にそこへ飛ぶと「ページが見つかりません」になっていた。
+  // 未ログインの人が叩いても入口のパスは教えない（入口を知っている人だけが使える作りを崩さない）。
+  const wasLoggedIn = isAdminAuthenticated(req)
   res.setHeader('Set-Cookie', [
     `${ADMIN_SESSION_COOKIE}=; ${expire}`,
     `${EMAIL_GATE_COOKIE}=; ${expire}`,
   ])
-  res.json({ ok: true })
+  res.json(wasLoggedIn ? { ok: true, redirect: ADMIN_PATH } : { ok: true })
 })
 
 /** メールゲート: メールアドレスを検証してCookieを付与する */

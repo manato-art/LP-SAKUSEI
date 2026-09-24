@@ -8,7 +8,7 @@ import { errorEnvelope } from '../lib/envelope.ts'
 import {
   addAllowedEmail,
   getAllowedEmails,
-  removeAllowedEmail,
+  removeAllowedEmailSafely,
 } from '../store/allowed-emails.ts'
 import { ADMIN_PATH } from '../config.ts'
 
@@ -43,9 +43,23 @@ allowedEmailsRouter.delete('/allowed_emails/:id', (req, res) => {
     res.status(400).json(errorEnvelope('validation_error', 'IDが不正です。'))
     return
   }
-  const removed = removeAllowedEmail(id)
-  if (!removed) {
+  // メールゲートの Cookie はどのメールで通ったかを持たない（パスワード由来の固定値）。
+  // なので特定のメールを消しても、今ログインしている人の入り直しは残りのどれかで通れる。
+  // 締め出しが起きるのは0件になるときだけなので、最後の1件だけを断る。
+  const result = removeAllowedEmailSafely(id)
+  if (result === 'not_found') {
     res.status(404).json(errorEnvelope('not_found', '指定されたメールアドレスが見つかりません。'))
+    return
+  }
+  if (result === 'last_one') {
+    res
+      .status(400)
+      .json(
+        errorEnvelope(
+          'last_allowed_email',
+          '最後の1件は削除できません。0件になるとログインの入口が開かなくなり、誰もログインできなくなります。先に別のメールアドレスを追加してください。',
+        ),
+      )
     return
   }
   res.json({ ok: true })

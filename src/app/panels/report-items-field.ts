@@ -24,7 +24,8 @@ export interface ReportItemsFieldResult {
   value: () => ReportItemsInput
 }
 
-export function buildReportItemsField(): ReportItemsFieldResult {
+/** `initial` は保存済みのタスクを開き直したときの値（無ければ全部入り） */
+export function buildReportItemsField(initial?: ReportItemsInput): ReportItemsFieldResult {
   const wrap = el('div', { style: 'display:flex;flex-direction:column;gap:8px' })
   const boxes = new Map<keyof ReportItemsInput, HTMLInputElement>()
 
@@ -34,7 +35,7 @@ export function buildReportItemsField(): ReportItemsFieldResult {
     })
     const box = document.createElement('input')
     box.type = 'checkbox'
-    box.checked = true
+    box.checked = initial?.[item.key] ?? true
     // 指で押せる大きさ（スマホ）。小さいと隣の項目を押してしまう
     box.style.cssText = 'width:18px;height:18px;margin-top:2px;flex-shrink:0;cursor:pointer'
     boxes.set(item.key, box)

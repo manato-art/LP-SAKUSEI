@@ -11,12 +11,6 @@ import { api, type BulkTag, type Folder } from '../api.ts'
 import { toast } from '../ui.ts'
 import { confirmCard } from '../dialog.ts'
 
-const CV_OPTIONS: readonly [string, string][] = [
-  ['', '指定なし'],
-  ['click', 'クリック'],
-  ['access', 'アクセス'],
-]
-
 export async function renderBulkTagsPage(host: HTMLElement): Promise<void> {
   injectStyles()
   host.innerHTML = ''
@@ -166,7 +160,10 @@ function buildForm(
     folderSel.setEnabled(false)
   }
 
-  // 計測ツール・ASP / CV条件 / noindex
+  // 計測ツール・ASP / noindex
+  // 「CV条件」はここに置いていたが、保存されるだけでどこにも使われていなかった。
+  // CVの数え方はページごとの「CV条件」（基本情報）が決めていて、一括タグの値との関係（上書き / 既定 /
+  // 複数の一括タグで違うとき）が決まっていないので外した。保存済みの値は消さない（送らない＝そのまま残る）。
   const opts = h('div', 'bt-section bt-opts')
   const aspOptions: [string, string][] = [
     ['', '指定なし'],
@@ -175,11 +172,13 @@ function buildForm(
     ...aspAccounts.filter((a) => a.asp_name !== 'AFFILICODE').map((a) => [a.asp_name, a.asp_name] as [string, string]),
   ]
   const aspSel = selectInput(aspOptions, tag.asp ?? '')
-  const cvSel = selectInput(CV_OPTIONS, tag.cv_condition ?? '')
   const noindexToggle = toggle(tag.noindex)
   opts.append(
-    fieldBlock('計測ツール・ASP', aspSel, 'ASPを設定すると連携用パラメーターを自動で付与します'),
-    fieldBlock('CV条件', cvSel),
+    fieldBlock(
+      '計測ツール・ASP',
+      aspSel,
+      'AFFILICODE を選ぶと、配信するLP内のリンク（http/https）に squadbeyond_uid / sb_tracking=true / sb_article_uid を自動で付けます。ほかのASPを選んでもパラメーターは付きません（記録として残るだけです）。',
+    ),
     fieldBlock('noindexを含める', noindexToggle.el, 'メタタグ設定で「noindexを含める」としていた場合、noindexは含まれます。'),
   )
   form.append(opts)
@@ -210,7 +209,6 @@ function buildForm(
       folder_group_ids: teamWide ? [] : groupSel.get(),
       folder_ids: teamWide ? [] : folderSel.get(),
       asp: aspSel.value === '' ? null : aspSel.value,
-      cv_condition: cvSel.value === '' ? null : cvSel.value,
       noindex: noindexToggle.get(),
       head_js: headTa.value,
       body_js: bodyTa.value,

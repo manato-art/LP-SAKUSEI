@@ -116,3 +116,35 @@ export function rewireToolSubnav(root: HTMLElement): void {
     }
   }
 }
+
+/**
+ * 審査の2画面（審査 / 審査対象）の切り替え。
+ * 以前は審査対象へ行く道が閉じられる案内帯にしか無く、閉じると行けなくなった。
+ * 2画面とも、この切り替えを常に出す（inspections-page.ts の screenSwitch）。
+ */
+export const INSPECTION_SCREENS = [
+  { label: '審査', hash: '#/inspections' },
+  { label: '審査対象', hash: `#${INSPECTIONS_CANONICAL_ROUTE}` },
+] as const
+
+/**
+ * 採取したツール画面の土台を、サブナビを残したまま中身だけ差し替えられる形に整え、
+ * 中身を描く場所を返す（見つからなければ null）。
+ *
+ * 採取物の形: `.ehppitp0 > div(flex-col md:flex-row) > [div.hidden.md:flex > nav(PC) nav(スマホ)] + 中身の箱`
+ *   1. 以前は `.ehppitp0` を丸ごと空にしていたので、サブナビまで消えていた → 中身の箱だけを返す
+ *   2. スマホ用の横並びサブナビ（md:hidden）は PC 用の枠（hidden md:flex）の中にあり、
+ *      スマホでは枠ごと消えていた → 枠の手前（同じ並び）へ出す。PC では md:hidden で隠れる
+ */
+export function prepareToolLayout(root: ParentNode): HTMLElement | null {
+  const row = root.querySelector<HTMLElement>('.ehppitp0 > div')
+  if (row === null) return null
+  const children = [...row.children] as HTMLElement[]
+  const navWrap = children.find((c) => c.querySelector('nav') !== null)
+  if (navWrap !== undefined) {
+    for (const nav of navWrap.querySelectorAll<HTMLElement>('nav')) {
+      if (nav.classList.contains('md:hidden')) row.insertBefore(nav, navWrap)
+    }
+  }
+  return children.find((c) => c !== navWrap) ?? null
+}

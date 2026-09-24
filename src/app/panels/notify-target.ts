@@ -16,6 +16,7 @@
  */
 import { api } from '../api.ts'
 import { T, el, toast } from '../ui.ts'
+import { confirmCard } from '../dialog.ts'
 
 export type NotifyService = 'none' | 'slack' | 'chatwork' | 'line'
 
@@ -285,37 +286,49 @@ export function buildNotifyTarget(options: NotifyTargetOptions = {}): NotifyTarg
     // 認可はブラウザ遷移。別タブで開いて、終わったらこの画面に戻ってもらう
     window.open('/oauth/slack/start', '_blank', 'noopener')
   })
+  /** 入れたトークンを消す。消すとそのサービスへの通知（タスク・異常のお知らせ）が届かなくなる */
+  const clearToken = async (service: 'chatwork' | 'line', label: string): Promise<void> => {
+    const ok = await confirmCard({
+      title: `${label}のトークンを消します`,
+      message: `保存してある${label}のトークンを消します。`,
+      detail: `消すと、${label}へ送るタスクや異常のお知らせが届かなくなります。もう一度使うにはトークンを入れ直してください。`,
+      submitLabel: '消す',
+      danger: true,
+    })
+    if (!ok) return
+    try {
+      await api.clearIntegration(service)
+      toast(`${label}のトークンを消しました`)
+      void refresh()
+    } catch (error) {
+      toast((error as Error).message, 'error')
+    }
+  }
   const clearChatwork = el('button', { class: 'tc-link', text: 'トークンを消す' })
-  clearChatwork.addEventListener('click', () => {
-    void api.clearIntegration('chatwork').then(
-      () => {
-        toast('チャットワークのトークンを消しました')
-        void refresh()
-      },
-      (error: Error) => toast(error.message, 'error'),
-    )
-  })
+  clearChatwork.addEventListener('click', () => void clearToken('chatwork', 'チャットワーク'))
 
   const clearLine = el('button', { class: 'tc-link', text: 'トークンを消す' })
-  clearLine.addEventListener('click', () => {
-    void api.clearIntegration('line').then(
-      () => {
-        toast('LINEのトークンを消しました')
-        void refresh()
-      },
-      (error: Error) => toast(error.message, 'error'),
-    )
-  })
+  clearLine.addEventListener('click', () => void clearToken('line', 'LINE'))
 
   const disconnect = el('button', { class: 'tc-link', text: '連携を解除' })
   disconnect.addEventListener('click', () => {
-    void api.disconnectSlack().then(
-      () => {
+    void (async () => {
+      const ok = await confirmCard({
+        title: 'Slackの連携を解除します',
+        message: 'このシステムとSlackの連携を解除します。',
+        detail: '解除すると、Slackへ送るタスクや異常のお知らせが届かなくなります。もう一度使うには「Slackと連携する」からやり直してください。',
+        submitLabel: '連携を解除',
+        danger: true,
+      })
+      if (!ok) return
+      try {
+        await api.disconnectSlack()
         toast('Slackの連携を解除しました')
         void refresh()
-      },
-      (error: Error) => toast(error.message, 'error'),
-    )
+      } catch (error) {
+        toast((error as Error).message, 'error')
+      }
+    })()
   })
 
   async function showSlack(): Promise<void> {

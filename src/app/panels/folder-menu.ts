@@ -150,10 +150,15 @@ export function openFolderMenu(anchor: HTMLElement, folder: Folder): void {
 const ISSUE_QUICK_DOMAIN = '\u0000issue-quick-domain'
 
 async function openDomainDialog(folder: Folder): Promise<void> {
-  const [registered, quick] = await Promise.all([
-    api.domains().catch(() => ({ domains: [] as DomainEntry[] })),
-    api.quickDomain().catch(() => ({ quick_domain: { base: '' } })),
-  ])
+  // 読めなかったのに空の選択肢で開くと、登録したドメインが消えたように見える。理由を出して開かない
+  let registered: { domains: DomainEntry[] }
+  let quick: { quick_domain: { base: string } }
+  try {
+    ;[registered, quick] = await Promise.all([api.domains(), api.quickDomain()])
+  } catch (error) {
+    toast(`ドメインの一覧を読み込めませんでした: ${(error as Error).message}`, 'error')
+    return
+  }
   const current = folder.domain ?? ''
   const base = quick.quick_domain.base
   // 自動発行したドメインは、下の「クイックドメインを発行」から作るので選択肢には並べない
