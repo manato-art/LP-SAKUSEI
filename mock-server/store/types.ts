@@ -531,7 +531,10 @@ export interface AdAccount {
   provider: AdProvider
   account_name: string
   connected: boolean
+  /** 連携した日（JSTの YYYY-MM-DD） */
   connected_at: string | null
+  /** 媒体側の広告アカウントID（Metaは `act_` を除いた数字）。外部連携画面の「認証」で入る */
+  external_id?: string
 }
 
 export interface AspAccount {

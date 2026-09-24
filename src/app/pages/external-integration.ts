@@ -4,19 +4,21 @@
  * 見た目は採取した実DOM（media グリッド）を土台にする（企画書 §11）。ここで足すのは挙動だけ:
  *   - 各媒体の「アカウント連携」ボタンを配線（Metaはモーダルを開く／他媒体は正直に未対応トースト）
  *   - Meta 行の名前は匿名化で伏せられている（例「サンプル施策NNN」）ので「Meta(旧Facebook)」に戻す
- *   - Meta の連携数＝トークンで見える広告アカウント数（実データ）
+ *   - Meta の連携数＝このシステムに連携した広告アカウントの数（サーバーに保存）
  *   - Meta モーダル（Meta(旧Facebook)連携）は採取物が無い（採取許可経路外）ので、
  *     ユーザー提供のスクリーンショットを仕様として組む＝広告アカウントID入力＋認証＋一覧表。
+ *     「認証」はトークンで見える広告アカウントの中にそのIDがあるかをサーバーで確かめて保存する
+ *     （routes/ad-accounts.ts）。削除は確認カードを出してからサーバーで外す。
  */
 import { DATA_HEAD_CLASS, DATA_ROW_CLASS } from './data-ui.ts'
 import substrate from '../fragments/teams__ad_accounts__default.html?raw'
-import { api, type MetaAdAccount } from '../api.ts'
+import { toolsApi, type LinkedMetaAccount } from '../api-tools.ts'
 import { isStale } from '../main.ts'
 import { mountAdCostImport } from './ad-cost-import.ts'
 import { toast } from '../ui.ts'
+import { confirmCard } from '../dialog.ts'
 import { stripShellFromFragment } from './report-substrate.ts'
 import { bindBackdropClose } from '../panels/portal.ts'
-import { jstDateKey } from '../jst.ts'
 
 /** 採取物で名前が判別できる媒体（この中に無い名前＝匿名化されたMeta行） */
 const KNOWN_MEDIA = new Set([
@@ -35,6 +37,34 @@ const KNOWN_MEDIA = new Set([
 
 const META_LABEL = 'Meta(旧Facebook)'
 
+const TRASH_ICON =
+  '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
+  'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/>' +
+  '<path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>'
+
+/** Metaの連携の今の状態（サーバーから読んだもの） */
+interface MetaModel {
+  configured: boolean
+  accounts: LinkedMetaAccount[]
+  candidates: { account_id: string; name: string }[]
+  /** 読めなかったときの理由（読めたら null） */
+  error: string | null
+}
+
+async function loadMeta(): Promise<MetaModel> {
+  try {
+    const res = await toolsApi.linkedMetaAccounts()
+    return {
+      configured: res.configured,
+      accounts: res.accounts,
+      candidates: res.candidates,
+      error: res.error ?? null,
+    }
+  } catch (error) {
+    return { configured: false, accounts: [], candidates: [], error: (error as Error).message }
+  }
+}
+
 export async function renderExternalIntegration(
   content: HTMLElement,
   generation?: number,
@@ -45,28 +75,17 @@ export async function renderExternalIntegration(
   root.innerHTML = stripShellFromFragment(substrate)
   content.append(root)
 
-  // 実データ（トークンで見える広告アカウント）を取りに行く。未設定/失敗でも画面は出す。
-  let accounts: MetaAdAccount[] = []
-  let configured = false
-  try {
-    const res = await api.metaAdAccounts()
-    configured = res.configured
-    accounts = res.accounts
-  } catch {
-    // 取得失敗はグリッド表示のみ（連携数は採取値のまま）
-  }
+  // 連携済みの広告アカウントを取りに行く。読めなくても画面は出す（数は「-」、モーダルで理由を出す）
+  const meta = await loadMeta()
   if (generation !== undefined && isStale(generation)) return
 
-  wireMediaGrid(root, { configured, accounts })
+  wireMediaGrid(root, meta)
 
   // 採取した画面の下に、広告費の取り込みを足す（実物のUIには手を入れない）
   await mountAdCostImport(content)
 }
 
-function wireMediaGrid(
-  root: HTMLElement,
-  meta: { configured: boolean; accounts: MetaAdAccount[] },
-): void {
+function wireMediaGrid(root: HTMLElement, initial: MetaModel): void {
   for (const media of root.querySelectorAll<HTMLElement>('[class*="_media_ifzcq_8"]')) {
     const nameEl = media.querySelector<HTMLElement>('[class*="_mediaContainer_ifzcq_17"] span, [class*="_mediaContainer_ifzcq_17"] p')
       ?? findNameNode(media)
@@ -78,8 +97,10 @@ function wireMediaGrid(
     const isMeta = name !== '' && !KNOWN_MEDIA.has(name)
     if (isMeta) {
       if (nameEl !== null && nameEl !== undefined) nameEl.textContent = META_LABEL
-      setConnectionCount(media, meta.configured ? meta.accounts.length : null)
-      button.addEventListener('click', () => openMetaModal(meta))
+      const paintCount = (model: MetaModel): void =>
+        setConnectionCount(media, model.error === null ? model.accounts.length : null)
+      paintCount(initial)
+      button.addEventListener('click', () => openMetaModal(initial, paintCount))
     } else {
       button.addEventListener('click', () => toast(`${name} の連携は未対応です`, 'error'))
     }
@@ -107,7 +128,7 @@ function findConnectButton(media: HTMLElement): HTMLElement | null {
 function setConnectionCount(media: HTMLElement, count: number | null): void {
   const el = media.querySelector<HTMLElement>('[class*="_connectionCount_ifzcq_102"]')
   if (el === null) return
-  el.textContent = `連携数 ${count ?? 0}`
+  el.textContent = `連携数 ${count ?? '-'}`
 }
 
 /* ────────────────────────────────────────────────────────────
@@ -116,9 +137,10 @@ function setConnectionCount(media: HTMLElement, count: number | null): void {
 
 let metaModalOpen = false
 
-function openMetaModal(meta: { configured: boolean; accounts: MetaAdAccount[] }): void {
+function openMetaModal(initial: MetaModel, onChanged: (model: MetaModel) => void): void {
   if (metaModalOpen) return
   metaModalOpen = true
+  let model = initial
 
   const overlay = document.createElement('div')
   overlay.dataset['sbMetaModal'] = 'true'
@@ -137,14 +159,48 @@ function openMetaModal(meta: { configured: boolean; accounts: MetaAdAccount[] })
     'background:var(--sb-c-ececec, #ECECEC);border-radius:12px;width:min(1100px,96vw);padding:0 0 8px;' +
     'font-family:"Hiragino Sans",sans-serif;box-shadow:0 8px 40px rgba(0,0,0,.25)'
 
+  const formWrap = document.createElement('div')
   const tableWrap = document.createElement('div')
-  const renderTable = (): void => {
-    tableWrap.innerHTML = ''
-    tableWrap.append(buildAccountsTable(meta))
+  const render = (): void => {
+    formWrap.replaceChildren(buildAuthForm(model, link))
+    tableWrap.replaceChildren(buildAccountsTable(model, unlink))
   }
-  renderTable()
+  const reload = async (): Promise<void> => {
+    model = await loadMeta()
+    onChanged(model)
+    render()
+  }
+  async function link(accountId: string): Promise<boolean> {
+    try {
+      const res = await toolsApi.linkMetaAccount(accountId)
+      toast(`${res.account.name}（${res.account.account_id}）を連携しました`)
+      await reload()
+      return true
+    } catch (error) {
+      toast((error as Error).message, 'error')
+      return false
+    }
+  }
+  async function unlink(acc: LinkedMetaAccount): Promise<void> {
+    const ok = await confirmCard({
+      title: '連携を外します',
+      message: `${acc.name || acc.account_id}（${acc.account_id}）の連携を外します。`,
+      detail: 'ページに設定したMeta広告の紐付け（基本情報）はそのまま残ります。もう一度「認証」すれば連携し直せます。',
+      submitLabel: '連携を外す',
+      danger: true,
+    })
+    if (!ok) return
+    try {
+      await toolsApi.unlinkMetaAccount(acc.account_id)
+      toast('連携を外しました')
+      await reload()
+    } catch (error) {
+      toast((error as Error).message, 'error')
+    }
+  }
 
-  panel.append(buildHeader(close), buildAuthForm(meta, renderTable), tableWrap)
+  render()
+  panel.append(buildHeader(close), formWrap, tableWrap)
   overlay.append(panel)
   document.body.append(overlay)
 }
@@ -166,17 +222,17 @@ function buildHeader(close: () => void): HTMLElement {
   return head
 }
 
-function buildAuthForm(meta: { configured: boolean; accounts: MetaAdAccount[] }, renderTable: () => void): HTMLElement {
+function buildAuthForm(model: MetaModel, link: (accountId: string) => Promise<boolean>): HTMLElement {
   const wrap = document.createElement('div')
   wrap.style.cssText =
-    'display:flex;align-items:center;justify-content:center;gap:24px;padding:16px 16px 28px'
+    'display:flex;align-items:center;justify-content:center;gap:24px;padding:16px 16px 28px;flex-wrap:wrap'
   const fb = document.createElement('div')
   fb.textContent = 'f'
   fb.style.cssText =
     'width:56px;height:56px;border-radius:50%;background:#1877F2;color:#FFFFFF;font-weight:800;' +
     'font-size:34px;display:flex;align-items:center;justify-content:center;font-family:Georgia,serif'
   const col = document.createElement('div')
-  col.style.cssText = 'display:flex;flex-direction:column;gap:8px'
+  col.style.cssText = 'display:flex;flex-direction:column;gap:8px;min-width:0'
   const label = document.createElement('div')
   label.textContent = '広告アカウントID'
   label.style.cssText = 'font-size:14px;color:var(--sb-c-333333, #333333)'
@@ -185,6 +241,19 @@ function buildAuthForm(meta: { configured: boolean; accounts: MetaAdAccount[] },
   input.placeholder = '例: 1234567890123456'
   input.style.cssText =
     'width:520px;max-width:70vw;padding:12px 14px;border:1px solid #CBD5E1;border-radius:8px;font-size:14px'
+  // トークンで見えていて、まだ連携していないアカウントを候補に出す（打ち間違いを減らす）
+  if (model.candidates.length > 0) {
+    const list = document.createElement('datalist')
+    list.id = 'sb-meta-candidates'
+    for (const c of model.candidates) {
+      const opt = document.createElement('option')
+      opt.value = c.account_id
+      opt.label = c.name
+      list.append(opt)
+    }
+    input.setAttribute('list', list.id)
+    col.append(list)
+  }
   const authBtn = document.createElement('button')
   authBtn.type = 'button'
   authBtn.textContent = '認証'
@@ -192,62 +261,23 @@ function buildAuthForm(meta: { configured: boolean; accounts: MetaAdAccount[] },
     'align-self:flex-start;padding:10px 26px;border:none;border-radius:8px;background:#2B7CFF;' +
     'color:#FFFFFF;font-size:14px;cursor:pointer'
   authBtn.addEventListener('click', () => {
-    authenticate(input.value.trim(), meta, renderTable)
-    input.value = ''
+    const id = input.value.trim()
+    if (id === '') {
+      toast('広告アカウントIDを入力してください', 'error')
+      return
+    }
+    authBtn.disabled = true
+    void link(id).then((ok) => {
+      authBtn.disabled = false
+      if (ok) input.value = ''
+    })
   })
   col.append(label, input, authBtn)
   wrap.append(fb, col)
   return wrap
 }
 
-/**
- * 認証: 入力IDでアカウントを連携する。
- * トークン設定済みなら実アカウント検索、未設定ならモックアカウントを作成。
- * クローンなので OAuth を踏まず、IDを入力すれば連携できる。
- */
-function authenticate(
-  id: string,
-  meta: { configured: boolean; accounts: MetaAdAccount[] },
-  renderTable: () => void,
-): void {
-  if (id === '') {
-    toast('広告アカウントIDを入力してください', 'error')
-    return
-  }
-  const cleanId = id.replace(/^act_/, '')
-
-  // 重複チェック
-  if (meta.accounts.some((a) => a.account_id === cleanId)) {
-    toast('このアカウントは既に連携済みです', 'error')
-    return
-  }
-
-  if (meta.configured) {
-    // トークンあり: 実アカウント検索
-    const found = meta.accounts.find((a) => a.account_id === cleanId)
-    if (found === undefined) {
-      toast('このトークンでは見つからない広告アカウントIDです', 'error')
-      return
-    }
-    toast(`${found.name}（${found.account_id}）を認証しました`)
-  } else {
-    // トークンなし: モックアカウントを作成して一覧に追加
-    const today = jstDateKey(new Date())
-    const mockAccount: MetaAdAccount = {
-      account_id: cleanId,
-      name: `広告アカウント ${cleanId}`,
-      account_status: 1,
-      currency: 'JPY',
-      created_date: today,
-    }
-    meta.accounts.push(mockAccount)
-    meta.configured = true
-    toast(`広告アカウント ${cleanId} を連携しました`)
-  }
-  renderTable()
-}
-
-function buildAccountsTable(meta: { configured: boolean; accounts: MetaAdAccount[] }): HTMLElement {
+function buildAccountsTable(model: MetaModel, unlink: (acc: LinkedMetaAccount) => Promise<void>): HTMLElement {
   const card = document.createElement('div')
   card.style.cssText = 'background:var(--sb-c-ffffff, #FFFFFF);margin:0 16px;border-radius:10px;overflow:hidden'
 
@@ -266,41 +296,55 @@ function buildAccountsTable(meta: { configured: boolean; accounts: MetaAdAccount
   }
   card.append(head)
 
-  if (!meta.configured) {
-    card.append(notice('Metaのアクセストークンが未設定です。環境変数 META_ACCESS_TOKEN / META_AD_ACCOUNT_ID を設定すると、連携済みの広告アカウントがここに一覧表示されます。'))
+  if (model.error !== null) card.append(notice(`連携の状態を読み込めませんでした: ${model.error}`))
+  if (!model.configured && model.error === null) {
+    card.append(notice('Metaのアクセストークンが未設定です。環境変数 META_ACCESS_TOKEN を設定すると、広告アカウントIDを入れて「認証」で連携できます（トークンが無いとIDを確かめられないため、連携できません）。'))
+  }
+  if (model.accounts.length === 0) {
+    if (model.configured) card.append(notice('まだ連携している広告アカウントはありません。上に広告アカウントIDを入れて「認証」を押してください。'))
     return card
   }
-  if (meta.accounts.length === 0) {
-    card.append(notice('連携できる広告アカウントが見つかりませんでした。'))
-    return card
-  }
-  for (const acc of meta.accounts) card.append(buildAccountRow(acc, grid, cols))
+  for (const acc of model.accounts) card.append(buildAccountRow(acc, grid, cols, unlink))
+  card.append(notice('beyondページ数は、ページの「Meta広告連携」で「広告アカウント」単位にこのIDを紐付けたページの数です（キャンペーン・広告セット・広告の単位で紐付けたページは数えていません）。'))
   return card
 }
 
-function buildAccountRow(acc: MetaAdAccount, grid: string, cols: readonly string[]): HTMLElement {
+function statusOf(acc: LinkedMetaAccount): { label: string; color: string } {
+  if (!acc.visible) return { label: '見えません', color: 'var(--sb-c-c0c0c0, #C0C0C0)' }
+  return acc.account_status === 1
+    ? { label: '接続可', color: '#7ED07E' }
+    : { label: '停止中', color: 'var(--sb-c-c0c0c0, #C0C0C0)' }
+}
+
+function buildAccountRow(
+  acc: LinkedMetaAccount,
+  grid: string,
+  cols: readonly string[],
+  unlink: (acc: LinkedMetaAccount) => Promise<void>,
+): HTMLElement {
   const row = document.createElement('div')
   row.className = DATA_ROW_CLASS
   row.style.cssText = `display:grid;${grid};gap:12px;padding:20px 24px;border-top:1px solid var(--sb-c-eeeeee, #EEEEEE);align-items:center;font-size:14px;color:var(--sb-c-333333, #333333)`
 
+  const s = statusOf(acc)
   const status = document.createElement('span')
-  const active = acc.account_status === 1
-  status.textContent = active ? '接続可' : '停止中'
+  status.textContent = s.label
+  status.title = acc.visible ? '' : '今のトークンではこのアカウントが見えません（権限が外れた可能性があります）'
   status.style.cssText =
-    `justify-self:start;padding:6px 14px;border-radius:6px;color:#FFFFFF;font-size:13px;` +
-    `background:${active ? '#7ED07E' : 'var(--sb-c-c0c0c0, #C0C0C0)'}`
+    `justify-self:start;padding:6px 14px;border-radius:6px;color:#FFFFFF;font-size:13px;background:${s.color}`
 
-  const date = cell(acc.created_date || '-')
+  const date = cell(acc.linked_date || '-')
   const id = cell(acc.account_id)
   const name = cell(acc.name || '-')
-  const pages = cell('0')
-  const del = document.createElement('div')
-  del.textContent = '🗑'
-  del.style.cssText = 'color:#E5573F;cursor:pointer;justify-self:start'
-  del.addEventListener('click', () => {
-    row.remove()
-    toast(`${acc.name || acc.account_id} を一覧から外しました（クローン内のみ）`)
-  })
+  const pages = cell(String(acc.page_count))
+  const del = document.createElement('button')
+  del.type = 'button'
+  del.innerHTML = TRASH_ICON
+  del.title = '連携を外す'
+  del.setAttribute('aria-label', '連携を外す')
+  del.style.cssText =
+    'justify-self:start;border:none;background:none;color:#E5573F;cursor:pointer;padding:4px;display:inline-flex'
+  del.addEventListener('click', () => void unlink(acc))
 
   // セル自身に列名を持たせる。スマホで列見出しが消えたときにCSSが「列名 値」で出す
   const cells = [status, date, id, name, pages, del]

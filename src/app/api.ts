@@ -7,7 +7,8 @@ import type { TaskStatus } from '../shared/task-status.ts'
 
 const BASE = '/api/v1'
 
-async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+/** 共通のリクエスト。失敗はサーバーの日本語メッセージで投げる（api-tools.ts からも使う） */
+export async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     method,
     headers: { 'Content-Type': 'application/json' },

@@ -2,11 +2,12 @@
  * CV計測連携ページ（実SB「外部連携 > CV計測連携」= /teams/asp_accounts）。
  *
  * 実SBを採取して再現: カート / ASP / 計測 の3タブに、連携可能なサービスのカタログを並べ、
- * 選ぶと右側に詳細＋連携ボタン（カート/計測＝連携を申請する、ASP＝連携要望を出す）を出す。
- * クローンは実際の外部接続を持たないため、連携ボタンはモック（トーストで受付表示）。
+ * 選ぶと右側に詳細を出す。実物はここに「連携を申請する / 連携要望を出す」があり、サポートへ申請が飛ぶ。
+ * このシステムには申請の窓口も自動の連携も無いので、押すと受付済みと出す偽の成功はやめ、
+ * このシステムで実際にCVを数える手順（cv-tracking-guide.ts）を出す。
  * カタログ3種は実SB(実物の管理画面/teams/asp_accounts)から採取した一覧。
  */
-import { toast } from '../ui.ts'
+import { cvTrackingGuide } from './cv-tracking-guide.ts'
 
 const CART: readonly string[] = [
   'ecforce', 'Shopify', 'サブスクストア', 'たまごリピート', 'メルリッツ', 'リピスト', '楽楽リピート', '売れるD2Cつくーる',
@@ -29,10 +30,10 @@ const KEISOKU: readonly string[] = [
 ]
 
 type TabKey = 'cart' | 'asp' | 'keisoku'
-const TABS: readonly { key: TabKey; label: string; items: readonly string[]; action: string }[] = [
-  { key: 'cart', label: 'カート', items: CART, action: '連携を申請する' },
-  { key: 'asp', label: 'ASP', items: ASP, action: '連携要望を出す' },
-  { key: 'keisoku', label: '計測', items: KEISOKU, action: '連携を申請する' },
+const TABS: readonly { key: TabKey; label: string; items: readonly string[] }[] = [
+  { key: 'cart', label: 'カート', items: CART },
+  { key: 'asp', label: 'ASP', items: ASP },
+  { key: 'keisoku', label: '計測', items: KEISOKU },
 ]
 
 export function renderCvTracking(container: HTMLElement): void {
@@ -112,12 +113,19 @@ export function renderCvTracking(container: HTMLElement): void {
         return
       }
       detailCol.append(h('div', 'cvt-detail-title', selected))
-      const btn = h('button', 'cvt-connect', tab.action) as HTMLButtonElement
+      const guide = cvTrackingGuide(selected)
+      const box = h('div', 'cvt-guide')
+      box.append(h('p', 'cvt-guide-lead', guide.lead))
+      const steps = h('ol', 'cvt-guide-steps')
+      for (const step of guide.steps) steps.append(h('li', '', step))
+      box.append(steps)
+      const btn = h('button', 'cvt-connect', 'ページ一覧を開く') as HTMLButtonElement
       btn.type = 'button'
       btn.addEventListener('click', () => {
-        toast(`${selected}: ${tab.action}を受け付けました（モック）`)
+        location.hash = '/folders'
       })
-      detailCol.append(btn)
+      box.append(btn)
+      detailCol.append(box)
     }
 
     body.append(listCol, detailCol)
@@ -157,7 +165,10 @@ function injectStyles(): void {
     .cvt-item.active .cvt-item-dot { background:var(--sb-accent, #0091FF); }
     .cvt-detail-col { display:flex; flex-direction:column; align-items:center; padding:48px 24px; gap:20px; }
     .cvt-detail-title { font-size:22px; font-weight:700; color:var(--sb-c-1a2233, #1A2233); }
-    .cvt-connect { padding:9px 22px; font-size:13px; font-weight:600; color:#FFFFFF; background:var(--sb-accent, #0091FF); border:none; border-radius:8px; cursor:pointer; }
+    .cvt-guide { max-width:560px; width:100%; display:flex; flex-direction:column; gap:12px; }
+    .cvt-guide-lead { margin:0; font-size:13px; color:var(--sb-c-2f3a4d, #2F3A4D); line-height:1.8; }
+    .cvt-guide-steps { margin:0; padding-left:20px; font-size:13px; color:var(--sb-c-2f3a4d, #2F3A4D); line-height:1.9; }
+    .cvt-connect { align-self:flex-start; padding:9px 22px; font-size:13px; font-weight:600; color:#FFFFFF; background:var(--sb-accent, #0091FF); border:none; border-radius:8px; cursor:pointer; }
     .cvt-connect:hover { background:#007ee0; }
     .cvt-empty { color:#8A94A6; font-size:13px; padding:32px 8px; text-align:center; }
   `
