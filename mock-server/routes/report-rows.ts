@@ -73,7 +73,7 @@ function rowKpi(metrics: readonly DailyMetric[], scroll: ReturnType<typeof scrol
  * Version の下にぶら下がる広告パラメータの行（実物の Branch Operation）。
  *
  * 材料は `scope:'parameter'` の日次メトリクス（entity_uid は `<versionUid>|utm_source=fb`）。
- * レポート設定で Branch Operation をOFFにした名前は出さない。並びはPVの多い順。
+ * レポート設定で、その一覧（Branch Operation / クリエイティブ）をOFFにした名前は出さない。並びはPVの多い順。
  */
 function parameterRows(
   state: State,
@@ -82,10 +82,13 @@ function parameterRows(
   versionUid: string,
   startDate: string,
   endDate: string,
+  list: 'branch_operation' | 'creative',
 ) {
+  // レポート設定の列はそれぞれ自分の一覧だけを決める（2026-09-24。以前は Branch Operation の列が
+  // クリエイティブの一覧まで決めていて、クリエイティブの列は保存されるだけだった）
   const shown = new Set(
     parameterScopesOf(state, abTestUid)
-      .filter((row) => row.branch_operation)
+      .filter((row) => row[list])
       .map((row) => row.name),
   )
   const prefix = `${versionUid}|`
@@ -211,8 +214,19 @@ export function reportRows(state: State, uid: string, scope: 'version' | 'lp' | 
       view.metrics('version', (u) => u === version.uid),
       scrollCounts(view.scrollState, version.uid, startDate, endDate),
     ),
-    /** そのVersionに来た広告パラメータごとの行（実物はVersionの下にぶら下がる） */
-    children: parameterRows(state, view, abTest.uid, version.uid, startDate, endDate),
+    /** そのVersionに来た広告パラメータごとの行（実物はVersionの下にぶら下がる・Branch Operation 用） */
+    children: parameterRows(state, view, abTest.uid, version.uid, startDate, endDate, 'branch_operation'),
+    /** クリエイティブレポートの広告の一覧の材料（レポート設定の「クリエイティブ」で絞る） */
+    creative_children: parameterRows(state, view, abTest.uid, version.uid, startDate, endDate, 'creative'),
+    /**
+     * LP側の日別（表示・クリック・CV・売上があった日だけ）。クリエイティブの「配信中 / 停止中」で
+     * グラフを Version ごとに足し直すのに使う（配信金額はページ単位なので入れない）。
+     */
+    daily_lp: view
+      .metrics('version', (u) => u === version.uid)
+      .filter((m) => m.pv + m.click + m.cv > 0)
+      .map((m) => ({ date: m.date, pv: m.pv, click: m.click, cv: m.cv, sales: m.sales }))
+      .sort((a, b) => a.date.localeCompare(b.date)),
     /** 読み込みに3秒以上かかった人の割合と人数（store/page-speed.ts・2026-09-16） */
     speed: speedSummary(state.pageSpeedStats, { versionUids: [version.uid], start: startDate, end: endDate }),
   }))
@@ -243,6 +257,14 @@ export function reportRows(state: State, uid: string, scope: 'version' | 'lp' | 
     device_since: state.deviceRecordedSince,
   }
 
+  // 日ごとにスクロールの記録を数え直すので、先にこのページ・この期間の行だけにしておく（毎日全件を見ない）
+  const pageScrollState: State = {
+    ...state,
+    heatmapStats: state.heatmapStats.filter(
+      (h) => h.ab_test_uid === abTest.uid && isWithin(h.date, startDate, endDate),
+    ),
+  }
+
   if (filteredBy.length === 0) {
     return {
       ...shared,
@@ -251,8 +273,10 @@ export function reportRows(state: State, uid: string, scope: 'version' | 'lp' | 
         ...sumPrimary(pageMetrics),
         ...scrollCountsForAbTest(state, abTest.uid, startDate, endDate),
       }),
-      /** レポートタブ「デイリーレポート」表の日付別の行（§10-5・両端含む） */
-      daily: dailyKpiSeries(pageMetrics, startDate, endDate),
+      /** レポートタブ「デイリーレポート」表の日付別の行（§10-5・両端含む）。日ごとのスクロールの記録も足す */
+      daily: dailyKpiSeries(pageMetrics, startDate, endDate, (date) =>
+        scrollCountsForAbTest(pageScrollState, abTest.uid, date, date),
+      ),
     }
   }
 
@@ -262,10 +286,11 @@ export function reportRows(state: State, uid: string, scope: 'version' | 'lp' | 
     filter.version === ''
       ? view.metrics('ab_test', (u) => u === abTest.uid)
       : view.metrics('version', (u) => versionUids.has(u))
-  const scroll =
+  const scrollBetween = (start: string, end: string): ReturnType<typeof sumScrollCounts> =>
     filter.version === ''
-      ? scrollCountsForAbTest(view.scrollState, abTest.uid, startDate, endDate)
-      : sumScrollCounts(view.scrollState, [...versionUids], startDate, endDate)
+      ? scrollCountsForAbTest(view.scrollState, abTest.uid, start, end)
+      : sumScrollCounts(view.scrollState, [...versionUids], start, end)
+  const scroll = scrollBetween(startDate, endDate)
   const combined = [
     ...lpMetrics.map((m) => ({ ...m, ad_cost: 0, imp: 0, media_click: 0, media_cv: 0 })),
     ...pageMetrics.map(mediaOnly),
@@ -273,6 +298,6 @@ export function reportRows(state: State, uid: string, scope: 'version' | 'lp' | 
   return {
     ...shared,
     totals: withoutCostRatios(deriveKpi({ ...sumPrimary(combined), ...scroll })),
-    daily: dailyKpiSeries(combined, startDate, endDate).map(withoutCostRatios),
+    daily: dailyKpiSeries(combined, startDate, endDate, (date) => scrollBetween(date, date)).map(withoutCostRatios),
   }
 }

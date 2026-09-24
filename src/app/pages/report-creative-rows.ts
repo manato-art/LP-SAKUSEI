@@ -32,7 +32,8 @@ export function creativeParameterRows(
 ): ReportVersionRow[] {
   const sums = new Map<string, ReportVersionRow>()
   for (const version of versions) {
-    for (const child of version.children ?? []) {
+    // クリエイティブの一覧はレポート設定の「クリエイティブ」で絞ったもの（Branch Operation の列には左右されない・2026-09-24）
+    for (const child of version.creative_children ?? []) {
       const base = sums.get(child.name)
       if (base === undefined) {
         sums.set(child.name, { ...child, entity_uid: child.name })

@@ -52,7 +52,7 @@ describe('配信金額が分からない行', () => {
   it('クリエイティブの広告の行も、足したあと CPA を ¥0 にしない', async () => {
     const { creativeParameterRows } = await import('../src/app/pages/report-creative-rows.ts')
     const child = row({ scope: 'parameter', entity_uid: 'V1|utm_source=fb', name: 'utm_source=fb' })
-    const out = creativeParameterRows([row({ children: [child] }), row({ entity_uid: 'V2', children: [child] })])
+    const out = creativeParameterRows([row({ creative_children: [child] }), row({ entity_uid: 'V2', creative_children: [child] })])
     expect(out[0]?.cpa).toBeNull()
     expect(out[0]?.cost_known).toBe(false)
   })

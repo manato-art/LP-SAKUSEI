@@ -44,7 +44,9 @@ export async function renderHeatmap(
   const range: DateRange = requestedRange ?? defaultRange()
   const [{ ab_test }, report, { heatmaps }, { folders }, stats, externalPage] = await Promise.all([
     api.abTest(abTestUid),
-    api.report(abTestUid, toRangeQuery(range)),
+    // 左の一覧の「アーカイブ有り／無し」はこの画面で絞る。サーバーの既定（アーカイブ済みを除く）のままだと
+    // アーカイブ済みの行が最初から届かず、「アーカイブ有り」にしても何も増えなかった（2026-09-24）
+    api.report(abTestUid, `${toRangeQuery(range)}&archive=all`),
     api.heatmaps(abTestUid),
     api.folders(),
     api.heatmapStats(abTestUid, toRangeQuery(range)),
@@ -65,8 +67,11 @@ export async function renderHeatmap(
   setupBreadcrumb(root, folder?.name ?? '', ab_test.title, folder?.uid)
   applyLightTheme(root)
   wireThemeToggle(root)
-  // 「広告データ取得日時」「パラメーター設定」の小さな面を押して開けるようにする
-  wireCapturedDropdowns(root, abTestUid)
+  // 「広告データ取得日時」「パラメーター設定」の小さな面を押して開けるようにする。
+  // 設定（ヒートマップに出す広告）を変えて閉じたら、その設定で描き直す（2026-09-24）
+  wireCapturedDropdowns(root, abTestUid, () => {
+    void renderHeatmap(container, abTestUid, generation, range)
+  })
 
   // 実物は「Version × 指標(離脱/CLICK/CV)」でチェックした数だけ右に列が増える。
   // 選択状態をここで持ち、変わるたびに列を組み直す。

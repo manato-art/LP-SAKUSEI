@@ -103,8 +103,11 @@ export async function renderReport(
   setupBreadcrumb(root, folderName, ab_test.title, folder?.uid)
   applyLightTheme(root)
   wireThemeToggle(root)
-  // 「広告データ取得日時」「パラメーター設定」の小さな面を押して開けるようにする
-  wireCapturedDropdowns(root, abTestUid)
+  // 「広告データ取得日時」「パラメーター設定」の小さな面を押して開けるようにする。
+  // 設定を変えて閉じたら、その設定で一覧を組み直す（2026-09-24）
+  wireCapturedDropdowns(root, abTestUid, () => {
+    void renderReport(container, abTestUid, params, generation)
+  })
 
   const alert = root.querySelector<HTMLElement>('.MuiAlert-message')
   if (alert !== null) replaceBakedPageName(alert, ab_test.title)

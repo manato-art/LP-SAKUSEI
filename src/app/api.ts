@@ -169,6 +169,10 @@ export interface ReportVersionRow extends ReportKpi {
    * 実物の Branch Operation は Version の行の下にこれがぶら下がる。
    */
   children?: ReportVersionRow[]
+  /** クリエイティブレポートの広告の一覧の材料（レポート設定の「クリエイティブ」で絞ったもの・2026-09-24） */
+  creative_children?: ReportVersionRow[]
+  /** LP側の日別（表示・クリック・CVがあった日だけ）。クリエイティブの「配信中 / 停止中」でグラフを足し直すのに使う */
+  daily_lp?: { date: string; pv: number; click: number; cv: number; sales: number }[]
   /** 端末の出し分け設定（Branch Operation の「端末」で絞るのに使う） */
   device_targets?: { sp: boolean; tablet: boolean; pc: boolean }
   /** 読み込みに3秒以上かかった人の割合と、測れた人数（記録が無ければ slow_share は null） */

@@ -197,6 +197,7 @@ function wireNameLabel(
   trigger: HTMLElement,
   body: HTMLElement,
   abTestUid?: string,
+  onSettingsChanged?: () => void,
 ): void {
   const show = (on: boolean): void => { body.classList.toggle(PANEL_OPEN_CLASS, on) }
   dropdown.addEventListener('mouseenter', () => show(true))
@@ -206,7 +207,7 @@ function wireNameLabel(
     event.stopPropagation()
     show(false)
     if (name === PARAMETER_SETTINGS_LABEL && abTestUid !== undefined && abTestUid !== '') {
-      openReportSettingsModal(abTestUid)
+      openReportSettingsModal(abTestUid, onSettingsChanged)
       return
     }
     toast(`「${name}」の画面は実物をまだ採取していないため開けません`, 'error')
@@ -239,7 +240,12 @@ function wireOutsideClose(): void {
  * 開閉は採取CSSのクラス（`_open_x4j8w_84`）をそのまま使う＝見た目は手書きしない。
  * 実物はホバーでも開くが、スマホにホバーは無いので「押して開閉」に寄せる。
  */
-export function wireCapturedDropdowns(root: HTMLElement, abTestUid?: string): void {
+export function wireCapturedDropdowns(
+  root: HTMLElement,
+  abTestUid?: string,
+  /** レポート設定（歯車）を変えて閉じたときに、画面を描き直す（2026-09-24） */
+  onSettingsChanged?: () => void,
+): void {
   for (const dropdown of root.querySelectorAll<HTMLElement>(DROPDOWN_SELECTOR)) {
     if (dropdown.dataset[WIRED_MARK] === 'true') continue
     const trigger = dropdown.querySelector<HTMLElement>(DROPDOWN_TRIGGER)
@@ -254,7 +260,7 @@ export function wireCapturedDropdowns(root: HTMLElement, abTestUid?: string): vo
      * 名札を押した結果として出すのは間違い（2026-09-15 本人指摘）。
      */
     if (isNameLabelOnly(body)) {
-      wireNameLabel(dropdown, trigger, body, abTestUid)
+      wireNameLabel(dropdown, trigger, body, abTestUid, onSettingsChanged)
       continue
     }
     trigger.addEventListener('click', (event) => {

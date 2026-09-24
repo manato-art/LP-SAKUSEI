@@ -63,10 +63,20 @@ function labelCellsForMobile(root: HTMLElement, rows: readonly HTMLElement[]): v
   }
 }
 
-export function openReportSettingsModal(abTestUid: string): void {
+/**
+ * @param onChangedClose 何か1つでも変えて閉じたときに呼ぶ（2026-09-24）。
+ *   レポート・ヒートマップは開いたときの設定で一覧を組んでいるので、閉じたら描き直す。
+ *   保存の途中で閉じても、送り終わってから呼ぶ（古い設定で描き直さない）。
+ */
+export function openReportSettingsModal(abTestUid: string, onChangedClose?: () => void): void {
   if (isOpen) return
+  /** 送った保存（閉じたときに全部終わるのを待つ） */
+  const pending: Promise<unknown>[] = []
   const portal = openPortal(rawModal, HOOK.overlay, () => {
     isOpen = false
+    if (pending.length === 0 || onChangedClose === undefined) return
+    // 失敗は保存のたびに知らせている。成功・失敗どちらでも、今の設定で描き直す
+    void Promise.allSettled(pending).then(() => onChangedClose())
   })
   if (portal === null) {
     toast('レポート設定のマークアップが壊れています', 'error')
@@ -80,9 +90,11 @@ export function openReportSettingsModal(abTestUid: string): void {
   labelCellsForMobile(portal.root, rows)
   /** 1行送る。返ってきた値で塗り直さない（押した手応えを優先し、失敗だけ知らせる） */
   const save = (patch: Partial<ParameterScope> & { name: string }): void => {
-    void api.saveParameterScopes(abTestUid, [patch]).catch(() => {
-      toast('レポート設定を保存できませんでした', 'error')
-    })
+    pending.push(
+      api.saveParameterScopes(abTestUid, [patch]).catch(() => {
+        toast('レポート設定を保存できませんでした', 'error')
+      }),
+    )
   }
 
   void api
