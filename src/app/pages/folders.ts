@@ -117,16 +117,15 @@ export async function renderFolders(
   renderTree(body, context)
 
   // 指示㊳: フォルダ未選択時はページ一覧・詳細パネルを表示しない（空状態）
-  if (selectedUid === null) {
-    hidePageListAndDetail(body)
-  } else if (context.abTests.length === 0) {
-    // 指示㊿再修正: 空状態メッセージは不要（そのまま何も出さない）
+  // 指示㊿再修正: ページが0件のフォルダも空状態メッセージは出さない（そのまま何も出さない）
+  if (selectedUid !== null && context.abTests.length > 0) {
+    renderRealList(body, context)
+  } else {
     hidePageListAndDetail(body)
     // 行が無くても、上の操作（配信ステータス・検索など）のラベルと動きは今の状態に合わせる
+    // （配線しないと、採取物の「配信ステータス：終了以外」がそのまま残る）
     const main = body.querySelector<HTMLElement>(FOLDERS_HOOK.mainPane)
     if (main !== null) wireListControls(main, context)
-  } else {
-    renderRealList(body, context)
   }
 
   wireTreeTabs(body, context)

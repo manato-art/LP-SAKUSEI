@@ -251,10 +251,7 @@ export function wireListControls(main: HTMLElement, context: PageContext): void 
   const sort = sortButton(main)
   if (sort !== null) {
     sort.style.cursor = 'pointer'
-    sort.addEventListener('click', (event) => {
-      event.stopPropagation()
-      openSortMenu(sort, main, context)
-    })
+    sort.addEventListener('click', () => openSortMenu(sort, main, context))
   }
 
   // 集計期間: 採取物にUIが無いためクローン独自のピッカーを出し、KPI列と合計行を実データで更新する。
