@@ -20,6 +20,7 @@ import { serializeAbTest } from '../lib/serialize.ts'
 import { mergeConversionSetting, parseAbTestPatch } from '../store/ab-test-patch.ts'
 import { updateAbTest } from '../store/actions.ts'
 import { getState, setState } from '../store/store.ts'
+import { isKnownFolderId } from '../store/unfiled.ts'
 import type { AbTest } from '../store/types.ts'
 
 export const basicInfoRouter: Router = Router()
@@ -58,6 +59,12 @@ basicInfoRouter.put('/ab_tests/:uid', (req, res) => {
   const parsed = parseAbTestPatch(req.body)
   if (!parsed.ok) {
     res.status(422).json(errorEnvelope('validation_failed', parsed.message))
+    return
+  }
+  // フォルダ移動は実在するフォルダか「フォルダなし」(null) だけ。無いフォルダに入れると、どの一覧にも出なくなる。
+  const folderId = parsed.value.folder_id
+  if (folderId !== undefined && !isKnownFolderId(getState(), folderId)) {
+    res.status(422).json(errorEnvelope('validation_failed', '移動先のフォルダが見つかりません。'))
     return
   }
   // 実機の「編集タイプ」は disabled で「後から変更できません」。ここでも受け付けない。

@@ -27,6 +27,9 @@ import { REDIRECT_SECONDS, isRedirectSeconds, redirectDestination } from '../lib
 import { migrateLegacyRedirectPageTags } from '../store/redirect-page-tags.ts'
 import { abTestsPopupsRouter } from './ab-tests-popups.ts'
 import { abTestsReportsRouter } from './ab-tests-reports.ts'
+import { relationCountsFor } from '../store/relation-counts.ts'
+import { folderIdForUid, isKnownFolderId } from '../store/unfiled.ts'
+import { duplicateAbTest } from '../store/duplicate-ab-test.ts'
 
 export const abTestsRouter: Router = Router()
 
@@ -72,36 +75,31 @@ abTestsRouter.get('/folders/:folderUid/ab_tests', (req, res) => {
   })
 })
 
-/** 一覧の合計行（実測: GET /api/v2/folders/:uuid/ab_tests/reports_total） */
+/**
+ * 一覧の合計行（実測: GET /api/v2/folders/:uuid/ab_tests/reports_total）。
+ * 行と同じ数字（ページ単位の日次の計測）を足す。`ab_test_uids` を付けると、表に出ている行だけを足す
+ * （配信ステータスや検索で行を絞ったときに、合計が行と合うように）。
+ * フォルダuid `unfiled` は「フォルダなし」（フォルダを消したページ）。
+ */
 abTestsRouter.get('/folders/:folderUid/ab_tests/reports_total', (req, res) => {
   const state = getState()
-  const folder = state.folders.find((f) => f.uid === req.params.folderUid)
-  if (folder === undefined) return notFound(res, 'フォルダが見つかりません。')
+  const folderId = folderIdForUid(state, req.params.folderUid)
+  if (folderId === undefined) return notFound(res, 'フォルダが見つかりません。')
   const { startDate, endDate } = dateRangeParams(req.query)
-  const uids = state.abTests.filter((t) => t.folder_id === folder.id).map((t) => t.uid)
+  const inFolder = state.abTests.filter((t) => t.folder_id === folderId).map((t) => t.uid)
+  const picked = str(req.query, 'ab_test_uids')?.split(',')
+  const uids = new Set(picked === undefined ? inFolder : inFolder.filter((uid) => picked.includes(uid)))
   const metrics = state.metrics.filter(
-    (m) => uids.includes(m.entity_uid) && isWithin(m.date, startDate, endDate),
+    (m) => m.scope === 'ab_test' && uids.has(m.entity_uid) && isWithin(m.date, startDate, endDate),
   )
   res.json({ reports_total: aggregate(metrics) })
 })
 
-/** 関連数（Version数/ポップアップ数/中間ページ数）。実測: GET /api/v1/.../relation_counts?ids= */
+/** 関連数（行のアイコンと右パネルの件数）。実測: GET /api/v1/.../relation_counts?ids= */
 abTestsRouter.get('/folders/:folderUid/ab_tests/relation_counts', (req, res) => {
   const state = getState()
   const ids = (str(req.query, 'ids') ?? '').split(',').map(Number).filter(Number.isFinite)
-  const counts = ids.map((id) => {
-    const abTest = state.abTests.find((t) => t.id === id)
-    const articleIds = state.articles.filter((a) => a.ab_test_id === id).map((a) => a.id)
-    return {
-      id,
-      versions_count: state.versions.filter((v) => articleIds.includes(v.article_id)).length,
-      exit_popups_count: state.exitPopups.filter((p) => p.ab_test_id === id).length,
-      // 中間ページ＝ファネルのステップ（実機で確認した概念。現状は常に0）
-      funnel_steps_count: 0,
-      ab_test_uid: abTest?.uid ?? null,
-    }
-  })
-  res.json({ relation_counts: counts })
+  res.json({ relation_counts: ids.map((id) => relationCountsFor(state, id)) })
 })
 
 // ── 一覧 / 作成 ──────────────────────────────────────────
@@ -161,6 +159,27 @@ abTestsRouter.get('/ab_tests/:uid', (req, res) => {
  * `PUT /ab_tests/:uid` は「基本情報」タブが使う更新なので
  * `routes/panel-basic-info.ts` に移した（部分更新でフォルダ/媒体が消える不具合があったため）。
  */
+
+/**
+ * beyondページの複製（ページ一覧「…」の beyondページ複製 / 別フォルダへ複製）。
+ * `folder_id` を省くと同じフォルダ、null なら「フォルダなし」。写すもの・写さないものは store/duplicate-ab-test.ts。
+ */
+abTestsRouter.post('/ab_tests/:uid/duplicate', (req, res) => {
+  const state = getState()
+  const source = findAbTest(state, req.params.uid)
+  if (source === undefined) return notFound(res, 'beyondページが見つかりません。')
+  const body = (req.body ?? {}) as Record<string, unknown>
+  const raw = 'folder_id' in body ? body['folder_id'] : source.folder_id
+  const folderId = raw === null ? null : typeof raw === 'number' && Number.isInteger(raw) ? raw : undefined
+  if (folderId === undefined || !isKnownFolderId(state, folderId)) {
+    res.status(422).json(errorEnvelope('validation_failed', '複製先のフォルダが見つかりません。'))
+    return
+  }
+  const out = duplicateAbTest(state, source.uid, folderId)
+  if (out === null) return notFound(res, 'beyondページが見つかりません。')
+  setState(() => out.state)
+  res.status(201).json({ ab_test: serializeAbTest(out.state, out.abTest) })
+})
 
 abTestsRouter.delete('/ab_tests/:uid', (req, res) => {
   let deleted = false
