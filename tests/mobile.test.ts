@@ -461,8 +461,9 @@ describe('スマホのWidget編集画面', () => {
     expect(editorSrc).toContain("dataset['widgetPane'] = 'parts'")
   })
 
-  it('ヘッダーの戻るは矢印だけ・小さな説明は出さない（1行に収める）', () => {
+  it('ヘッダーの戻るは矢印だけ・小さな説明とPC／スマホの切り替えは出さない（1行に収める）', () => {
     expect(css).toContain('[data-widget-back-label],html body [data-widget-subtitle]{display:none !important}')
+    expect(css).toContain('[data-widget-device]{display:none !important}')
   })
 
   it('ヘッダーは折り返さない（「閉じる」「Widget編集」が2行に割れていた）', () => {

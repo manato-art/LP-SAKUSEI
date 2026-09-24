@@ -85,7 +85,10 @@ const EMPTY_PLACEHOLDER_CSS =
   '.nc-b-image:empty,.nc-b-video:empty{min-height:120px;display:flex;align-items:center;justify-content:center;' +
   'background:#EEF0F3;border-radius:8px;color:#5F6673;font-size:13px}' +
   '.nc-b-image:empty::before{content:"画像を選んでください（右の設定から）"}' +
-  '.nc-b-video:empty::before{content:"動画を選んでください（右の設定から）"}'
+  '.nc-b-video:empty::before{content:"動画を選んでください（右の設定から）"}' +
+  // 画像と文章: 画像の欄は灰色の箱、文章は薄い字
+  '.nc-b-imageText__img:empty{min-height:90px;background:#EEF0F3;border-radius:8px}' +
+  '.nc-b-imageText__text:empty::before{content:"文章を入れてください";opacity:.35}'
 
 /** 打つたびに見え方を描き直すと重いので、手が止まってから描く */
 const PAINT_DELAY_MS = 250

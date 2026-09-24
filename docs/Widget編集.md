@@ -160,3 +160,6 @@
 - **ポップアップ「LPの上に重ねて見る」**（本人「必ず実装したい」）: 離脱防止の中身を開くと、見たまま画面の後ろにそのABテストのLP（配信の割合がいちばん大きいVersion）を `/preview/:versionUid?bare=1`（検証用の帯・ポップアップ抜き）で敷き、配信と同じ暗い幕（rgba(0,0,0,.4)）を重ねる。左上で「LPの上に重ねて見る／中身だけ」（popup-underlay.ts）。LPが無ければ切り替えは出さない
   - ⚠️ iframe の sandbox は `allow-scripts allow-same-origin`。`allow-scripts` だけ（別の出どころ扱い）だと、ブラウザによっては読み込みを止める（実測 ERR_BLOCKED_BY_CLIENT）
   - ⚠️ ローカルのモック（4010）は tsx の常駐で自動では読み直さない。サーバー側を直したら確認は別ポート（launch.json の lp-sakusei-verify-mock 4011 ＋ lp-sakusei-verify 5180）で。4010 を再起動するとローカルのテストLPが消える
+- **PC／スマホ**（ヘッダーのまん中・2026-09-24 本人「続けて作って」）: スマホは見たまま画面を幅375px（`SP_WIDTH`）にし、@media もその幅で判定する（`widgetPreviewCss(css, scope, width)` → `scopeWidgetCss` → `mediaAtLpWidth(…, width)`。**stripSbPreviewCss は変えていない**＝幅を渡しただけ）。離脱防止の箱は配信と同じ min(500px, 92vw)、後ろのLPも375pxにする。スマホの画面では切り替えを出さない
+- **追従型も「LPの上に重ねて見る」**: 暗い幕なし・配信で出る所（上の帯＝上、下の帯＝下、右下・左下）に置く（`UnderlayStyle.place`）。LPを敷いている間は白い紙（地・影・最低の高さ）を消す（帯の下に白い余りが出ていた）。離脱防止は縦もまん中（配信と同じ）
+- 空の「画像と文章」も、画像の欄を灰色の箱・文章を薄い字で見せる

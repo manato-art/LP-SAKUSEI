@@ -12,6 +12,9 @@
 
 /** 公開LPの配信幅（mock-server/routes/delivery.ts の DELIVERY_WIDTH と同じ値） */
 export const LP_WIDTH = 620
+
+/** Widget編集の「スマホ」で見るときの幅（2026-09-24・ヘッダーの PC／スマホ 切り替え） */
+export const SP_WIDTH = 375
 /** @media の em / rem は常に 16px で計算される */
 const EM_PX = 16
 

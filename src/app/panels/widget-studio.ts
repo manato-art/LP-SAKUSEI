@@ -36,7 +36,8 @@ import { templateNameOf, visibleTextOf } from './widget-editor-html.ts'
 import { defaultRegisterName } from './nocode/nocode-flow.ts'
 import { closeMediaControl } from './widget-media-control.ts'
 import { RIGHT_PANE_FLEX, buildCodePanels } from './widget-code-panel.ts'
-import { buildVisualEditor, type PreviewFrame } from './widget-visual-editor.ts'
+import { buildVisualEditor, type PreviewDevice, type PreviewFrame } from './widget-visual-editor.ts'
+import type { UnderlayStyle } from './popup-underlay.ts'
 import { insertWidget } from './widget-creator.ts'
 import { openWidgetLibraryForPick } from './widget-library.ts'
 import { createBuilderSession, type BuilderSession } from './widget-studio-builder.ts'
@@ -121,6 +122,8 @@ export interface StudioHost {
   readonly previewFrame?: PreviewFrame
   /** 後ろに敷くLPのプレビュー（ポップアップの「LPの上に重ねて見る」） */
   readonly underlay?: Promise<string | null>
+  /** 後ろにLPを敷いたときの見せ方（暗い幕・出る所） */
+  readonly underlayStyle?: UnderlayStyle
 }
 
 export function mountStudio(host: StudioHost): void {
@@ -171,13 +174,14 @@ export function mountStudio(host: StudioHost): void {
 
   // 左: 見たまま画面（書式のツールバーつき）
   let session: BuilderSession | null = null
-  const { pane: leftPane, contentDiv, editorBody, setPreviewCss } = buildVisualEditor(target, {
+  const { pane: leftPane, contentDiv, editorBody, setPreviewCss, setPreviewDevice } = buildVisualEditor(target, {
     toolScope: (el) => session?.toolScope(el) ?? false,
     onClick: (clicked) => session?.onCanvasClick(clicked),
     alignTarget: () => session?.alignTarget() ?? null,
     onSizeButton: (anchor) => session?.onSizeButton(anchor) ?? false,
     ...(host.previewFrame === undefined ? {} : { previewFrame: host.previewFrame }),
     ...(host.underlay === undefined ? {} : { underlay: host.underlay }),
+    ...(host.underlayStyle === undefined ? {} : { underlayStyle: host.underlayStyle }),
   })
   leftPane.dataset['widgetPane'] = 'visual'
   // まん中の地: 灰色に細かい点（白い紙＝見たまま画面が浮いて見える。ダークではアプリの暗い地）
@@ -266,6 +270,7 @@ export function mountStudio(host: StudioHost): void {
     badge: host.badge ?? '',
     backLabel: host.backLabel ?? 'LPに戻る',
     primaryLabel: host.primaryLabel,
+    onDevice: (device) => setPreviewDevice(device),
     onClose: closeWidgetStudio,
     onRegister: () => {
       const html = readOutput()
@@ -309,6 +314,7 @@ function buildHeader(options: {
   badge: string
   backLabel: string
   primaryLabel: string
+  onDevice: (device: PreviewDevice) => void
   onClose: () => void
   onRegister: () => void
   onPrimary: () => void
@@ -362,6 +368,42 @@ function buildHeader(options: {
     title.append(sub)
   }
 
+  // PC／スマホ（2026-09-24）: 見たまま画面の幅と @media を判定する幅を切り替える
+  const device = document.createElement('div')
+  device.dataset['widgetDevice'] = 'true'
+  device.setAttribute('role', 'radiogroup')
+  device.setAttribute('aria-label', '見る大きさ')
+  device.style.cssText = 'display:flex;gap:2px;padding:3px;border-radius:9px;background:var(--sb-neutral, #F4F4F4);flex-shrink:0'
+  const deviceButtons: HTMLButtonElement[] = []
+  const paintDevice = (current: PreviewDevice): void => {
+    for (const b of deviceButtons) {
+      const on = b.dataset['device'] === current
+      b.setAttribute('aria-checked', String(on))
+      b.style.background = on ? 'var(--sb-c-ffffff, #FFFFFF)' : 'transparent'
+      b.style.boxShadow = on ? '0 1px 2px rgba(16,24,40,.12)' : 'none'
+      b.style.fontWeight = on ? '700' : '400'
+    }
+  }
+  for (const [value, label, title] of [
+    ['pc', 'PC', 'PCで見る（LPの幅 620px）'],
+    ['sp', 'スマホ', 'スマホで見る（幅 375px・スマホ用の指定が効いた見え方）'],
+  ] as const) {
+    const b = document.createElement('button')
+    b.type = 'button'
+    b.dataset['device'] = value
+    b.textContent = label
+    b.title = title
+    b.setAttribute('role', 'radio')
+    b.style.cssText = `height:28px;padding:0 14px;border:none;border-radius:7px;cursor:pointer;color:var(--sb-c-333333, #333333);font:12.5px/1 ${FONT}`
+    b.addEventListener('click', () => {
+      paintDevice(value)
+      options.onDevice(value)
+    })
+    deviceButtons.push(b)
+    device.append(b)
+  }
+  paintDevice('pc')
+
   const rightBtns = document.createElement('div')
   rightBtns.style.cssText = 'display:flex;gap:6px;align-items:center'
 
@@ -384,6 +426,6 @@ function buildHeader(options: {
   primaryBtn.addEventListener('click', options.onPrimary)
 
   rightBtns.append(registerBtn, primaryBtn)
-  header.append(closeBtn, title, rightBtns)
+  header.append(closeBtn, title, device, rightBtns)
   return header
 }

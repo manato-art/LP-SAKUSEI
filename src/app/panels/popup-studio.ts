@@ -13,6 +13,7 @@
 import { api } from '../api.ts'
 import { closeWidgetStudio, mountStudio } from './widget-studio.ts'
 import type { PreviewFrame } from './widget-visual-editor.ts'
+import type { UnderlayStyle } from './popup-underlay.ts'
 import { popupStudioStart } from './popup-studio-start.ts'
 
 export interface PopupStudioOptions {
@@ -28,6 +29,8 @@ export interface PopupStudioOptions {
   readonly onSave: (html: string) => Promise<boolean>
   /** 後ろに敷くLPのプレビュー（「LPの上に重ねて見る」・lpPreviewUrl）。無ければ中身だけ */
   readonly underlay?: Promise<string | null>
+  /** 後ろにLPを敷いたときの見せ方（離脱防止＝暗い幕・まん中／追従型＝幕なし・出る所） */
+  readonly underlayStyle?: UnderlayStyle
 }
 
 /**
@@ -56,6 +59,7 @@ export function openPopupStudio(options: PopupStudioOptions): void {
     libraryQuill: null,
     previewFrame: options.frame,
     ...(options.underlay === undefined ? {} : { underlay: options.underlay }),
+    ...(options.underlayStyle === undefined ? {} : { underlayStyle: options.underlayStyle }),
     onPrimary: (html) => {
       void options.onSave(html).then((saved) => {
         if (saved) closeWidgetStudio()

@@ -20,7 +20,8 @@ import { attachItemToolbar } from './nocode/item-toolbar.ts'
 import { openLinkBubble } from './widget-link-bubble.ts'
 import { closeAlignMenu, openAlignMenu, type AlignTarget } from './align-menu.ts'
 import { ensureWidgetToolbarCss } from './widget-toolbar-css.ts'
-import { attachPopupUnderlay } from './popup-underlay.ts'
+import { attachPopupUnderlay, type UnderlayStyle } from './popup-underlay.ts'
+import { LP_WIDTH, SP_WIDTH } from './lp-width-media.ts'
 import {
   svgToolAlign,
   svgToolBgColor,
@@ -47,6 +48,9 @@ import {
  */
 export type PreviewFrame = 'lp' | 'overlay' | 'corner'
 
+/** 見る大きさ（2026-09-24・ヘッダーの PC／スマホ）。スマホは幅375pxで見せ、@media もその幅で判定する */
+export type PreviewDevice = 'pc' | 'sp'
+
 export interface VisualEditorOptions {
   /**
    * 画像の操作パネル・リンクの吹き出し・並んだ部品の操作ボタンを効かせてよい要素か（2026-09-24・第3弾）。
@@ -63,6 +67,8 @@ export interface VisualEditorOptions {
   readonly previewFrame?: PreviewFrame
   /** 後ろに敷くLPのプレビュー（ポップアップの「LPの上に重ねて見る」・popup-underlay.ts）。無ければ敷かない */
   readonly underlay?: Promise<string | null>
+  /** 後ろにLPを敷いたときの見せ方（暗い幕・出る所）。既定は離脱防止（暗い幕・まん中） */
+  readonly underlayStyle?: UnderlayStyle
 }
 
 /** 見たまま画面の白い紙の影（灰色の地から浮いて見える） */
@@ -90,6 +96,8 @@ export function buildVisualEditor(
   editorBody: HTMLElement
   /** プレビューに当てる Widget の CSS を差し替える。コード欄や「要素ごとに編集」の変更をここへ流し込む */
   setPreviewCss: (css: string) => void
+  /** PC／スマホ（見たまま画面の幅と、@media を判定する幅） */
+  setPreviewDevice: (device: PreviewDevice) => void
 } {
   const inScope = (el: Element): boolean => options.toolScope === undefined || options.toolScope(el)
   const pane = document.createElement('div')
@@ -456,8 +464,12 @@ export function buildVisualEditor(
   editorBody.append(styleTag)
   const contentDiv = document.createElement('div')
   const previewScope = markStyleScope(contentDiv)
+  /** @media を判定する幅（PC＝LPの幅・スマホ＝375px）と、いま当てているCSS（幅を変えたら当て直す） */
+  let previewWidth = LP_WIDTH
+  let lastCss = target.css
   const setPreviewCss = (css: string): void => {
-    styleTag.textContent = widgetPreviewCss(css, previewScope)
+    lastCss = css
+    styleTag.textContent = widgetPreviewCss(css, previewScope, previewWidth)
   }
   setPreviewCss(target.css)
   contentDiv.setAttribute('contenteditable', 'true')
@@ -473,7 +485,21 @@ export function buildVisualEditor(
     `outline:none;min-height:100px;${frame.box};box-sizing:border-box;line-height:1.5;color:#000;color-scheme:light`
   contentDiv.innerHTML = target.html
   editorBody.append(contentDiv)
-  if (options.underlay !== undefined) attachPopupUnderlay(editorBody, contentDiv, options.underlay)
+  const underlay =
+    options.underlay === undefined
+      ? null
+      : attachPopupUnderlay(editorBody, contentDiv, options.underlay, options.underlayStyle ?? { dim: true, place: 'center' })
+  /** PC／スマホ（2026-09-24）: 見たまま画面の幅と @media を判定する幅を変えて、CSSを当て直す */
+  const setPreviewDevice = (device: PreviewDevice): void => {
+    previewWidth = device === 'sp' ? SP_WIDTH : LP_WIDTH
+    const kind = options.previewFrame ?? 'lp'
+    if (kind === 'lp') contentDiv.style.width = `${previewWidth}px`
+    // 離脱防止の箱は配信と同じ min(500px, 92vw)
+    if (kind === 'overlay') contentDiv.style.maxWidth = `${Math.min(500, Math.round(previewWidth * 0.92))}px`
+    if (kind === 'corner') contentDiv.style.maxWidth = device === 'sp' ? `${previewWidth - 32}px` : '100%'
+    underlay?.setWidth(device === 'sp' ? SP_WIDTH : null)
+    setPreviewCss(lastCss)
+  }
   // よくある質問・口コミのように並んでいる部品に「複製・上へ・下へ・消す」を出す（ノーコードでWidgetを作る②）。
   // 部品で作ったWidgetでは見本の部品の中だけ（見出し・ボタンなどの部品の並びは右で直す）
   attachItemToolbar(editorBody, contentDiv, { allow: inScope })
@@ -555,5 +581,5 @@ export function buildVisualEditor(
   // Widget全体の上下の余白は、右の「Widget全体の設定」か左の選択枠の上下の辺で直す（2026-09-24・第3弾で余白の欄は外した）。
   // 画面①②…・設問①②…のタブは、右側のいちばん上に出す（widget-studio.ts）
   pane.append(toolbar, editorBody)
-  return { pane, contentDiv, editorBody, setPreviewCss }
+  return { pane, contentDiv, editorBody, setPreviewCss, setPreviewDevice }
 }

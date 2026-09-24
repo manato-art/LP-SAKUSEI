@@ -14,7 +14,7 @@ import { highlight } from '../panels/syntax-highlight.ts'
 import { FOLLOW_PRESETS, type FollowPreset } from './follow-popup-presets.ts'
 import type { PopupPageState } from './exit-popup-state.ts'
 import { makeNumberField, updateGutter } from './exit-popup-fields.ts'
-import { openPopupStudio } from '../panels/popup-studio.ts'
+import { lpPreviewUrl, openPopupStudio } from '../panels/popup-studio.ts'
 import { drawPopupThumb, popupContentCard } from './popup-content-card.ts'
 import { runWidgetScripts } from '../panels/widget-run-scripts.ts'
 
@@ -280,6 +280,10 @@ const FOLLOW_EDITOR_TABS: readonly { id: FollowEditorTab; label: string }[] = [
 
 /** 画面の上端・下端の帯は画面の幅いっぱい（見たまま画面はLPと同じ620px）、角は中身の幅 */
 const isCornerPosition = (position: string): boolean => position === 'bottom-right' || position === 'bottom-left'
+
+/** 追従型の出る所（「LPの上に重ねて見る」で中身を置く所。知らない値は配信と同じく下の帯） */
+const followPlace = (position: string): 'top' | 'bottom' | 'bottom-right' | 'bottom-left' =>
+  position === 'top' || position === 'bottom-right' || position === 'bottom-left' ? position : 'bottom'
 function openFollowEditor(state: PopupPageState, fp: FollowPopup): void {
   for (const p of state.root.querySelectorAll('.ep-panel')) p.remove()
   for (const e of state.root.querySelectorAll('.ep-editor')) e.remove()
@@ -361,6 +365,9 @@ function openFollowEditor(state: PopupPageState, fp: FollowPopup): void {
         name: draft.name,
         badge: '追従型',
         frame: isCornerPosition(draft.position) ? 'corner' : 'lp',
+        // 「LPの上に重ねて見る」: 追従型は暗い幕なし・配信で出る所（上の帯・下の帯・右下・左下）に置く
+        underlay: lpPreviewUrl(state.abTestUid).catch(() => null),
+        underlayStyle: { dim: false, place: followPlace(draft.position) },
         onSave: (html) => {
           // CSS は中身の <style> に入った（見本の部品の中）。二重に効かないように CSS の欄は空にする
           draft.html = html

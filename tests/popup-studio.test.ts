@@ -140,3 +140,17 @@ describe('「LPの上に重ねて見る」（本人「必ず実装したい」20
   })
 })
 
+describe('追従型も「LPの上に重ねて見る」（2026-09-24 本人「続けて作って」）', () => {
+  it('追従型は暗い幕なしで、配信で出る所（上の帯・下の帯・右下・左下）に置く', () => {
+    const follow = src('src/app/pages/exit-popup-follow.ts')
+    expect(follow).toContain('underlay: lpPreviewUrl(state.abTestUid)')
+    expect(follow).toContain('underlayStyle: { dim: false, place: followPlace(draft.position) }')
+    const underlay = src('src/app/panels/popup-underlay.ts')
+    for (const place of ["top: '0 auto auto'", "bottom: 'auto auto 0'", "'bottom-right': 'auto 0 0 auto'", "'bottom-left': 'auto auto 0 0'"]) {
+      expect(underlay).toContain(place)
+    }
+    // LPの上では白い紙を消す（帯の下に白い余りが出ていた）
+    expect(underlay).toContain("content.style.background = showLp ? 'transparent' : original.background")
+  })
+})
+

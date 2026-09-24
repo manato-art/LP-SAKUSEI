@@ -201,6 +201,8 @@ export function mobileCss(): string {
     `min-width:0 !important;min-height:0 !important}`,
     // ヘッダーの戻るは矢印だけ・小さな説明は出さない（1行に収める）
     `html body [data-widget-back-label],html body [data-widget-subtitle]{display:none !important}`,
+    // PC／スマホの切り替えは出さない（スマホの画面そのものが狭い。1行に収める）
+    `html body [data-widget-device]{display:none !important}`,
     // 仕切り（col-resize）は指では掴めない
     `html body [data-widget-divider]{display:none !important}`,
     // 書式ツールバーは1行で横に流す（折り返すと枠(64px)の外で下の段が切れる）
