@@ -15,6 +15,7 @@
  */
 import { toast } from '../ui.ts'
 import { convertImageToWebP } from './webp-convert.ts'
+import { placeHeaderImage } from './header-image-dom.ts'
 
 /** アップロードしたヘッダー画像（dataURL・セッション内。実サーバーへは上げない） */
 const uploadedImages: string[] = []
@@ -68,7 +69,7 @@ export function mountHeaderImageModal(root: HTMLElement): void {
   trigger.addEventListener('click', (event) => {
     const target = event.target as HTMLElement | null
     if (target !== null && target.closest('form') !== null) return
-    // 削除ボタンのクリックは伝播させない（setHeaderImage 内で stopPropagation 済み）
+    // 削除ボタンのクリックは伝播させない（header-image-dom.ts で stopPropagation 済み）
     if (target !== null && target.closest('[data-clone-header-remove]') !== null) return
     pickImageDirect(trigger)
   })
@@ -97,7 +98,7 @@ export function mountHeaderImageModal(root: HTMLElement): void {
     void convertImageToWebP(file).then((dataUrl) => {
       if (dataUrl === '') return
       if (!uploadedImages.includes(dataUrl)) uploadedImages.push(dataUrl)
-      setHeaderImage(trigger, dataUrl)
+      placeHeaderImage(trigger, dataUrl)
       toast('ヘッダー画像を設定しました')
     })
   })
@@ -117,86 +118,11 @@ function pickImageDirect(headerBox: HTMLElement): void {
     void convertImageToWebP(file).then((dataUrl) => {
       if (dataUrl === '') return
       if (!uploadedImages.includes(dataUrl)) uploadedImages.push(dataUrl)
-      setHeaderImage(headerBox, dataUrl)
+      placeHeaderImage(headerBox, dataUrl)
       toast('ヘッダー画像を設定しました')
     })
   })
   input.click()
-}
-
-/** 本文上部のヘッダー画像枠に、選んだ画像を実際に表示する（右上に×＝削除ボタン付き） */
-function setHeaderImage(headerBox: HTMLElement, dataUrl: string): void {
-  headerBox.style.position = 'relative'
-  let img = headerBox.querySelector<HTMLImageElement>('img[data-clone-header="true"]')
-  if (img === null) {
-    img = document.createElement('img')
-    img.dataset['cloneHeader'] = 'true'
-    // 高さ制限でキャンバスを圧迫しない + 枠なし
-    img.style.cssText = 'display:block;width:100%;max-height:200px;object-fit:cover;border-radius:0'
-    headerBox.prepend(img)
-  }
-  img.src = dataUrl
-  // stickyにしない（ミニマップと重なる・キャンバスが見づらい）
-  headerBox.style.position = 'relative'
-  headerBox.style.background = 'var(--sb-c-ffffff, #FFFFFF)'
-  // headerBox自体の青い点線枠・パディングを消す
-  headerBox.style.border = 'none'
-  headerBox.style.padding = '0'
-  headerBox.style.margin = '0'
-  headerBox.style.outline = 'none'
-  // 青い点線枠の内側要素(sample_token)と案内文を全て隠す
-  for (const el of headerBox.querySelectorAll<HTMLElement>('[class*="sample_token"]')) {
-    el.style.display = 'none'
-  }
-  const prompt = findPrompt(headerBox)
-  if (prompt !== null) prompt.style.display = 'none'
-  // ミニマップの位置を再計算させる（headerBoxの高さ変更を通知）
-  requestAnimationFrame(() => dispatchEvent(new Event('resize')))
-
-  // 削除リンク。実物は画像右上に白い角丸の中に青文字「削除」が出る（ユーザー提示の実画面）。
-  if (headerBox.querySelector('[data-clone-header-remove="true"]') === null) {
-    const remove = document.createElement('button')
-    remove.dataset['cloneHeaderRemove'] = 'true'
-    remove.type = 'button'
-    remove.textContent = '削除'
-    remove.title = 'ヘッダー画像を削除'
-    remove.style.cssText =
-      'position:absolute;top:15px;right:15px;z-index:2;padding:8px 16px;border:none;border-radius:6px;' +
-      'background:var(--sb-c-ffffff, #FFFFFF);color:var(--sb-accent, #0091FF);font-size:14px;line-height:1;cursor:pointer;' +
-      'box-shadow:0 1px 4px rgba(0,0,0,.2)'
-    remove.addEventListener('click', (event) => {
-      // 枠クリック＝モーダルを開く挙動へ伝播させない（削除だけ）
-      event.stopPropagation()
-      removeHeaderImage(headerBox)
-    })
-    headerBox.append(remove)
-  }
-}
-
-/** ヘッダー画像を外して、元の「ヘッダー画像を追加する」状態へ戻す */
-function removeHeaderImage(headerBox: HTMLElement): void {
-  headerBox.querySelector('img[data-clone-header="true"]')?.remove()
-  headerBox.querySelector('[data-clone-header-remove="true"]')?.remove()
-  const prompt = findPrompt(headerBox)
-  if (prompt !== null) prompt.style.display = ''
-  // 枠線・パディングを元に戻す
-  headerBox.style.position = 'relative'
-  headerBox.style.border = ''
-  headerBox.style.padding = ''
-  headerBox.style.margin = ''
-  headerBox.style.outline = ''
-  toast('ヘッダー画像を削除しました')
-  // ミニマップの位置を再計算させる
-  requestAnimationFrame(() => dispatchEvent(new Event('resize')))
-}
-
-/** 「ヘッダー画像を追加する」の案内 span を文言で探す（クラスは匿名化され得るため） */
-function findPrompt(headerBox: HTMLElement): HTMLElement | null {
-  return (
-    [...headerBox.querySelectorAll<HTMLElement>('span')].find(
-      (s) => s.textContent?.trim() === 'ヘッダー画像を追加する',
-    ) ?? null
-  )
 }
 
 // 旧モーダル用の renderGrid / wireTabs は指示95で廃止（直接ファイル選択に移行）

@@ -14,6 +14,7 @@
  */
 import { Router } from 'express'
 import { errorEnvelope } from '../lib/envelope.ts'
+import { editorSessionOf } from '../lib/editor-session.ts'
 import { serializeVersion } from '../lib/serialize.ts'
 import { optionalBoolean, optionalString } from '../lib/validate.ts'
 import { updateVersion } from '../store/actions.ts'
@@ -157,7 +158,7 @@ linkReplaceRouter.post('/articles/:uid/link_replace', (req, res) => {
 
   let updated: Version | null = null
   setState((s) => {
-    const out = updateVersion(s, version.uid, { html: after })
+    const out = updateVersion(s, version.uid, { html: after }, editorSessionOf(req))
     updated = out.version
     return out.state
   })

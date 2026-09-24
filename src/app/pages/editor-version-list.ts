@@ -12,6 +12,7 @@
 import { openScheduledSwitchPanel } from '../panels/scheduled-switch-panel.ts'
 import { api, type Version } from '../api.ts'
 import { toast } from '../ui.ts'
+import { confirmCard } from '../dialog.ts'
 import { setVersionListMode } from '../panels/version-actions.ts'
 import { updateUrlBar } from '../panels/url-bar.ts'
 import { mountVersionDotsMenu } from '../panels/version-dots-menu.ts'
@@ -19,7 +20,9 @@ import { refreshComparePreview, isComparePanelOpen } from '../panels/compare-mod
 import type { EditorContext } from './editor-context.ts'
 import { ACTIVE_CARD_CLASS, injectVersionCardCss } from './editor-styles.ts'
 import { HOOK } from './editor-hooks.ts'
-import { buildFullHtml, isEffectivelyEmptyHtml, restoreHeaderImage, splitHeaderFromHtml } from './editor-html.ts'
+import { showVersionContent, splitHeaderFromHtml } from './editor-html.ts'
+import { saveHtml } from './editor-save.ts'
+import { paintRatioNotice } from './version-ratio-notice.ts'
 import { containWidgetStyles } from '../panels/widget-style-scope.ts'
 
 /**
@@ -119,9 +122,13 @@ function buildVersionCardEl(version: Version, isCurrent: boolean): HTMLElement {
     option.textContent = `${preset}%`
     ratioSelect.append(option)
   }
-  if (ratioPresets.includes(version.distribution_ratio)) {
-    ratioSelect.value = String(version.distribution_ratio)
-  }
+  // 0% などプリセットに無い割合のとき、先頭の「10%」が選ばれて見えていた（点検34）。そのときは空の行を選んでおく
+  const other = document.createElement('option')
+  other.value = ''
+  other.textContent = '—'
+  other.hidden = true
+  ratioSelect.prepend(other)
+  syncRatioSelect(ratioSelect, version.distribution_ratio)
 
   // −1%+ / プルダウン を1行にまとめる（保存状態は下部タイムスタンプで表示）
   ratioControl.append(downBtn, ratioDisplay, pct, upBtn, ratioSelect)
@@ -191,6 +198,10 @@ function buildVersionCardEl(version: Version, isCurrent: boolean): HTMLElement {
   card.append(inner)
   return card
 }
+/** 配信割合のプルダウンを今の割合に合わせる（10・50・100 以外は空の行） */
+function syncRatioSelect(select: HTMLSelectElement, ratio: number): void {
+  select.value = [10, 50, 100].includes(ratio) ? String(ratio) : ''
+}
 /** ISO 日時文字列を相対表現に変換する */
 function relativeTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime()
@@ -230,13 +241,8 @@ export function loadVersion(ctx: EditorContext, uid: string): void {
   // 重い DOM 更新をマクロタスクに回してオーバーレイを先に描画させる
   setTimeout(() => {
     ctx.currentUid = uid
-    // ヘッダー画像とQuill本文を分離
-    const { headerSrc, body } = splitHeaderFromHtml(v.html)
-    ctx.quill.root.innerHTML = body
-    // ヘッダー画像を復元
-    if (headerSrc !== null) {
-      restoreHeaderImage(ctx.root, headerSrc)
-    }
+    // ヘッダー画像と本文をこのVersionのものへ（自動保存は起こさない・戻す履歴も空にする）
+    showVersionContent(ctx, v.html)
     renderVersionList(ctx)
     overlay?.remove()
     // URLバーを新しい Version UID で更新
@@ -248,7 +254,7 @@ export function loadVersion(ctx: EditorContext, uid: string): void {
       })
     }
     // 比較パネルが開いていればプレビューも更新
-    if (isComparePanelOpen()) refreshComparePreview(v.html)
+    if (isComparePanelOpen()) refreshComparePreview(uid, v.html)
   }, 50)
 }
 /** カードの「…」トリガー（採取物のクラス） */
@@ -332,6 +338,7 @@ export function renderVersionList(ctx: EditorContext): void {
     })
     list.append(schedule)
   }
+  paintRatioNotice(list, archivedMode ? [] : ctx.versions)
   applySelectionMode(ctx, list)
 }
 /** Versionパネル上部（選択モードでは「キャンセル / アーカイブする」を差し込む） */
@@ -393,7 +400,16 @@ function applySelectionMode(ctx: EditorContext, list: HTMLElement): void {
     })
   }
   bulk?.addEventListener('click', () => {
-    if (selected.size > 0) void bulkArchive(ctx, [...selected])
+    if (selected.size === 0) return
+    // 1件ずつのアーカイブと同じく、確かめてから（まとめてだと確認なしで配信から外れていた・点検41）
+    void confirmCard({
+      title: `${String(selected.size)}件のVersionをアーカイブしますか？`,
+      message: 'Version一覧から「アーカイブ済み」へ移り、配信されなくなります。',
+      detail: 'あとから「アーカイブ済み」の「復元」で戻せます（配信割合は0%に戻ります）。',
+      submitLabel: 'アーカイブする',
+    }).then((ok) => {
+      if (ok) void bulkArchive(ctx, [...selected])
+    })
   })
 }
 /** 選択したVersionをまとめてアーカイブ（配信割合1以上を1件残すガードは各リクエストで効く） */
@@ -433,22 +449,36 @@ function wireArchivedCard(ctx: EditorContext, card: HTMLElement, version: Versio
     ratio.value = String(version.distribution_ratio)
     ratio.readOnly = true
   }
-  // 「…」トリガーは隠し、更新ボタンを「復元」に置き換える
+  // 「…」は隠し、「復元」ボタンを置く。以前は無い「更新」ボタンを探して差し替える作りで、
+  // ボタンが1つも出ず戻せなかった（確認の文は「あとから復元できます」だった・2026-09-24 点検8）
   card.querySelector<HTMLElement>(DOTS_MENU_TRIGGER)?.style.setProperty('display', 'none')
-  const restore = findUpdateButton(card)
-  if (restore !== null) {
-    restore.textContent = '復元'
-    restore.addEventListener('click', (event) => {
-      event.stopPropagation()
-      void api.unarchiveVersion(version.uid).then((res) => {
+  const restore = document.createElement('button')
+  restore.type = 'button'
+  restore.className = 'sb-vc-restore'
+  restore.setAttribute('data-version-restore', version.uid)
+  restore.textContent = '復元'
+  restore.style.cssText =
+    'margin-left:auto;padding:4px 14px;border:1px solid var(--sb-accent, #0091FF);border-radius:6px;' +
+    'background:var(--sb-c-ffffff, #FFFFFF);color:var(--sb-accent, #0091FF);font-size:12px;font-weight:700;cursor:pointer'
+  restore.addEventListener('click', (event) => {
+    event.stopPropagation()
+    restore.disabled = true
+    void api
+      .unarchiveVersion(version.uid)
+      .then((res) => {
         ctx.versions = ctx.versions.map((v) => (v.uid === version.uid ? res.version : v))
-        toast(`${res.version.name} を復元しました`)
+        // アーカイブで配信割合は0%になっている。戻しただけでは配信されないことを伝える
+        toast(`${res.version.name} を復元しました（配信割合は${String(res.version.distribution_ratio)}%です）`)
         ctx.listMode = 'active'
         setVersionListMode(ctx.root, 'active')
         loadVersion(ctx, res.version.uid)
       })
-    })
-  }
+      .catch((error: Error) => {
+        restore.disabled = false
+        toast(error.message, 'error')
+      })
+  })
+  card.querySelector<HTMLElement>('[data-version-meta]')?.append(restore)
 }
 /** 1枚のVersionカードに操作（名前/配信割合/更新/「…」/クリック切替）を配線する */
 export function wireVersionCard(ctx: EditorContext, card: HTMLElement, version: Version): void {
@@ -469,6 +499,7 @@ export function wireVersionCard(ctx: EditorContext, card: HTMLElement, version: 
   const syncRatioDisplay = (): void => {
     if (ratio === null || ratioDisplay === null) return
     ratioDisplay.textContent = ratio.value
+    if (ratioSelect !== null) syncRatioSelect(ratioSelect, Number(ratio.value))
   }
 
   const save = async (): Promise<void> => {
@@ -500,12 +531,14 @@ export function wireVersionCard(ctx: EditorContext, card: HTMLElement, version: 
             const sibSelect = sibCard.querySelector<HTMLSelectElement>('.sb-vc-ratio-select')
             if (sibRatio !== null) sibRatio.value = String(sib.distribution_ratio)
             if (sibDisplay !== null) sibDisplay.textContent = String(sib.distribution_ratio)
-            if (sibSelect !== null) sibSelect.value = String(sib.distribution_ratio)
+            if (sibSelect !== null) syncRatioSelect(sibSelect, sib.distribution_ratio)
           }
         }
       }
       model = updated
       ctx.versions = ctx.versions.map((v) => (v.uid === updated.uid ? updated : v))
+      const list = ctx.root.querySelector<HTMLElement>(HOOK.versionList)
+      if (list !== null) paintRatioNotice(list, ctx.versions)
       toast('更新しました')
     } catch (error) {
       toast((error as Error).message, 'error')
@@ -532,7 +565,7 @@ export function wireVersionCard(ctx: EditorContext, card: HTMLElement, version: 
   // click は card 側の「クリックでVersion切替」に拾われるとドロップダウン操作が壊れるため止める。
   ratioSelect?.addEventListener('click', (event) => event.stopPropagation())
   ratioSelect?.addEventListener('change', () => {
-    if (ratio === null || ratioSelect === null) return
+    if (ratio === null || ratioSelect === null || ratioSelect.value === '') return
     ratio.value = ratioSelect.value
     syncRatioDisplay()
     ratio.dispatchEvent(new Event('change'))
@@ -574,14 +607,6 @@ export function wireVersionCard(ctx: EditorContext, card: HTMLElement, version: 
         syncRatioDisplay()
         ratioDisplay.blur()
       }
-    })
-  }
-  // 保存ボタンの配線
-  const saveBtn = findUpdateButton(card)
-  if (saveBtn !== null) {
-    saveBtn.addEventListener('click', (event) => {
-      event.stopPropagation()
-      void save()
     })
   }
 
@@ -630,32 +655,4 @@ export function wireVersionCard(ctx: EditorContext, card: HTMLElement, version: 
       renderVersionList(ctx)
     },
   })
-}
-/** カード内の保存ボタンを探す（data属性→文言フォールバック） */
-export function findUpdateButton(card: HTMLElement): HTMLElement | null {
-  // data-save-btn 属性で探す（指示62で付与）
-  const marked = card.querySelector<HTMLElement>('[data-save-btn]')
-  if (marked !== null) return marked
-  // フォールバック: 旧テキスト「更新」で探す（初回配線前）
-  const buttons = card.querySelectorAll<HTMLElement>('._articleButtons_1xibh_160 button')
-  for (const button of buttons) {
-    if ((button.textContent ?? '').trim().startsWith('更新')) return button
-  }
-  return null
-}
-export async function saveHtml(ctx: EditorContext): Promise<void> {
-  if (ctx.currentUid === '') return
-  const html = buildFullHtml(ctx)
-  const v = ctx.versions.find((x) => x.uid === ctx.currentUid)
-  // 🚨データ損失防止: いま中身のあるVersionを「空」で上書きしない。
-  const bodyOnly = splitHeaderFromHtml(html).body
-  if (v !== undefined && isEffectivelyEmptyHtml(bodyOnly) && !isEffectivelyEmptyHtml(splitHeaderFromHtml(v.html).body)) {
-    console.warn(
-      '[editor] 空の本文で既存Versionを上書きしようとしたため保存を中止しました:',
-      ctx.currentUid,
-    )
-    return
-  }
-  await api.saveVersion(ctx.currentUid, { html })
-  if (v !== undefined) v.html = html
 }

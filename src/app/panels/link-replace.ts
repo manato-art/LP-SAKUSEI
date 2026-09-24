@@ -24,7 +24,9 @@
  *
  * 「計測機能付きリンク」の意味と置換ロジックは src/shared/link-html.ts（実 Quill Link blot 準拠）。
  */
+import { editorSessionHeaders } from '../editor-session.ts'
 import { toast } from '../ui.ts'
+import { renderLinkRows, renderPopupRows, renderRedirectPicker } from './link-replace-rows.ts'
 import { ensureWhiteBase, stripDarkThemeClasses } from '../white-base.ts'
 import { cleanupDropdownHost, findLpBody } from './history.ts'
 import {
@@ -120,7 +122,7 @@ interface LinkReplaceResult {
 async function requestJson<T>(method: string, path: string, body?: unknown): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     method,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...editorSessionHeaders() },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   })
   if (!res.ok) {
@@ -183,6 +185,8 @@ interface PanelState {
   readonly versionUid: string
   readonly redirectPages: readonly RedirectPageRow[]
   readonly exitPopups: readonly ExitPopupRow[]
+  /** 「中間ページリンク」で置き換え先に選んだ中間ページ */
+  readonly redirectPageUid: string
 }
 
 const INITIAL_STATE: PanelState = {
@@ -194,6 +198,7 @@ const INITIAL_STATE: PanelState = {
   versionUid: '',
   redirectPages: [],
   exitPopups: [],
+  redirectPageUid: '',
 }
 
 const PANEL_STATE = new WeakMap<HTMLElement, PanelState>()
@@ -321,6 +326,16 @@ function wire(root: HTMLElement, panel: HTMLElement): void {
   typeSelect?.addEventListener('change', () => {
     const value: ReplaceTargetType = typeSelect.value === 'redirectPage' ? 'redirectPage' : 'free'
     patchState(panel, { targetType: value })
+    // 中間ページリンクなら、置き換え先の中間ページを選ばせる（以前は「未採取」のエラーだけだった・点検37）
+    if (value === 'redirectPage') {
+      const state = stateOf(panel)
+      renderRedirectPicker(typeSelect, state.redirectPages, state.redirectPageUid, (uid) => {
+        patchState(panel, { redirectPageUid: uid })
+        updateReplaceButton(panel)
+      })
+    } else {
+      typeSelect.parentElement?.querySelector('[data-redirect-picker]')?.remove()
+    }
     updateReplaceButton(panel)
   })
 
@@ -435,7 +450,10 @@ function renderList(panel: HTMLElement): void {
   lists.setAttribute('data-clone-exit-popup-count', String(state.exitPopups.length))
   lists.setAttribute('data-clone-redirect-page-count', String(state.redirectPages.length))
 
-  if (visible.length === 0) {
+  if (state.tab === 'exitPopup') {
+    // ポップアップの中のリンクは、ポップアップの編集画面で直す（下書きと本番に分かれているため）
+    renderPopupRows(lists, state.exitPopups, openPopupEditor)
+  } else if (visible.length === 0) {
     // 採取した空状態（`_noLinksDescription_` + 文言）だけは実物どおりに出す
     lists.removeAttribute('data-clone-row-markup')
     const empty = document.createElement('div')
@@ -443,7 +461,18 @@ function renderList(panel: HTMLElement): void {
     empty.textContent = EMPTY_LINKS_MESSAGE
     lists.append(empty)
   } else {
-    lists.setAttribute('data-clone-row-markup', 'uncaptured')
+    // 実物の行は採取できていないので、このシステムの行として並べる（以前は真っ白だった・点検37）
+    lists.setAttribute('data-clone-row-markup', 'own')
+    renderLinkRows(lists, visible, {
+      selected: state.selected,
+      onToggle: (index) => {
+        const next = new Set(stateOf(panel).selected)
+        if (next.has(index)) next.delete(index)
+        else next.add(index)
+        patchState(panel, { selected: next })
+        renderList(panel)
+      },
+    })
   }
   updateReplaceButton(panel)
 }
@@ -465,8 +494,7 @@ function buildRequest(panel: HTMLElement): ReturnType<typeof buildLinkReplaceReq
     targetType: state.targetType,
     selected: [...state.selected],
     url: textInputOf(panel)?.value ?? '',
-    // 中間ページの選択UIが未採取なので、いまは何も選べない（＝常に空）
-    redirectPageUid: '',
+    redirectPageUid: state.redirectPageUid,
     isTracking: checkboxOf(panel, 'trackingCheckBox')?.checked ?? true,
     isNewTab: checkboxOf(panel, 'targetCheckBox')?.checked ?? false,
     versionUid: state.versionUid,
@@ -478,18 +506,7 @@ async function applyReplacement(root: HTMLElement, panel: HTMLElement): Promise<
   const articleUid = panel.getAttribute('data-clone-article-uid') ?? ''
   if (articleUid === '') return
 
-  if (state.tab === 'exitPopup') {
-    toast('離脱防止ポップアップリンクの置換は未採取のため出せません', 'error')
-    return
-  }
-  if (state.targetType === 'redirectPage') {
-    // 中間ページの一覧は取れているが、選ばせるUIのマークアップが採取できていない
-    toast(
-      `中間ページリンクの選択UIは未採取です（中間ページ ${String(state.redirectPages.length)}件）`,
-      'error',
-    )
-    return
-  }
+  if (state.tab === 'exitPopup') return
 
   const built = buildRequest(panel)
   if (!built.ok) {
@@ -516,4 +533,11 @@ async function applyReplacement(root: HTMLElement, panel: HTMLElement): Promise<
 
 function send(articleUid: string, request: LinkReplacePayload): Promise<LinkReplaceResult> {
   return requestJson<LinkReplaceResult>('POST', `/articles/${articleUid}/link_replace`, request)
+}
+
+/** ポップアップの一覧を開く（いま開いているページの離脱防止ポップタブ） */
+function openPopupEditor(): void {
+  const match = /^#\/ab_tests\/([^/]+)\//.exec(location.hash)
+  if (match === null) return
+  location.hash = `/ab_tests/${match[1] ?? ''}/articles/exit_popups`
 }

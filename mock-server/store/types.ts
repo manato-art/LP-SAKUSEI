@@ -146,6 +146,8 @@ export interface Article {
   uid: string
   ab_test_id: number
   memo: string
+  /** 下部バーでの目印の色（#rrggbb）。ステップを作るときに選ぶ。古いデータには無い */
+  color?: string
   archived: boolean
   style_applied: boolean
   created_at: number
@@ -213,6 +215,13 @@ export interface Version {
   date_periods?: DatePeriod[]
   html: string
   css: string
+  /**
+   * 中身（html/css）を保存するたびに1ずつ増える番号と、最後に中身を書いたエディタ（タブごとの印）。
+   * 2人（2つのタブ）が同じVersionを直して、自動保存で互いの編集を黙って消し合わないように使う（2026-09-24）。
+   * 古いデータには無い＝0 として扱う。
+   */
+  content_revision?: number
+  content_writer?: string
   thumbnail_url: string | null
   created_at: number
   updated_at: number

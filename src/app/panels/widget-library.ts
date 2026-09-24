@@ -11,6 +11,7 @@
  *   - 追加（本文へ挿入）／プレビュー
  *   - Widgetを作成（Widget名・カテゴリー・説明文・HTML/CSSエディタ）
  */
+import { confirmCard } from '../dialog.ts'
 import type Quill from 'quill'
 import rawLibrary from '../fragments/ab_tests__UID__articles__widget-library.portals.html?raw'
 import { toast } from '../ui.ts'
@@ -476,7 +477,9 @@ function renderCreatedWidgets(root: HTMLElement, quill: Quill | null, close: () 
     frame.setAttribute('sandbox', 'allow-same-origin')
 
     const titleEl = document.createElement('div')
-    titleEl.textContent = w.name
+    // カテゴリー・説明文があれば添える（Widget作成で入れたもの）
+    titleEl.textContent = w.category === undefined ? w.name : `${w.name}（${w.category}）`
+    if (w.description !== undefined) titleEl.title = w.description
     titleEl.style.cssText =
       'padding:8px 12px;font:600 13px "Hiragino Sans",sans-serif;color:#333;border-top:1px solid #eee;' +
       'white-space:nowrap;overflow:hidden;text-overflow:ellipsis'
@@ -492,8 +495,19 @@ function renderCreatedWidgets(root: HTMLElement, quill: Quill | null, close: () 
       'cursor:pointer;font:12px "Hiragino Sans",sans-serif'
     del.addEventListener('click', (e) => {
       e.stopPropagation()
-      deleteCreatedWidget(w.id)
-      renderCreatedWidgets(root, quill, close)
+      // 確かめてから消す（以前は押した瞬間に消え、元に戻せなかった・2026-09-24 点検41）。
+      // LPに入れたぶんはそのまま残る
+      void confirmCard({
+        title: `「${w.name}」を削除しますか？`,
+        message: '作成したWidgetの一覧から消えます。LPに入れたぶんは消えません。',
+        detail: '元に戻せません。',
+        submitLabel: '削除する',
+        danger: true,
+      }).then((ok) => {
+        if (!ok) return
+        deleteCreatedWidget(w.id)
+        renderCreatedWidgets(root, quill, close)
+      })
     })
 
     const add = document.createElement('button')

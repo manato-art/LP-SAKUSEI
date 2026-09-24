@@ -25,6 +25,7 @@ import {
 } from '../store/article-history.ts'
 import { applyEmptyState } from '../lib/mock-state.ts'
 import { errorEnvelope } from '../lib/envelope.ts'
+import { editorSessionOf } from '../lib/editor-session.ts'
 import { serializeVersion } from '../lib/serialize.ts'
 import { optionalString } from '../lib/validate.ts'
 import type { Article, State, Version } from '../store/types.ts'
@@ -77,7 +78,7 @@ function articleNotFound(res: Parameters<Parameters<Router['get']>[1]>[1]): void
  */
 function ensureSeeded(key: string, article: Article, version: Version | undefined): void {
   if (version === undefined) return
-  if (currentHistoryOf(getArticleHistoryState(), key) !== undefined) return
+  if (currentHistoryOf(getArticleHistoryState(), key, version.uid) !== undefined) return
   setArticleHistoryState(
     (history) =>
       appendArticleHistory(history, {
@@ -100,10 +101,28 @@ historyRouter.get('/articles/:uid/histories', (req, res) => {
   if (found === null) return articleNotFound(res)
 
   ensureSeeded(found.key, found.article, found.version)
-  const entries = historiesOf(getArticleHistoryState(), found.key)
+  // そのVersionの履歴だけ（Versionを区別しないと、別のVersionの本文が並んでいた・点検3）
+  const entries = historiesOf(getArticleHistoryState(), found.key, found.version?.uid)
   const currentId = entries.at(-1)?.id ?? -1
   const rows = [...entries].reverse().map((e) => serializeHistory(e, e.id === currentId))
   res.json({ histories: applyEmptyState(req, rows) })
+})
+
+/** 1件の中身（比較モードの「更新履歴・復元」で、その時点の本文を見比べる・2026-09-24 点検17） */
+historyRouter.get('/articles/:uid/histories/:id', (req, res) => {
+  const versionUid = typeof req.query['version_uid'] === 'string' ? req.query['version_uid'] : ''
+  const state = getState()
+  pruneArticleHistories(state)
+  const found = resolve(state, req.params.uid, versionUid === '' ? undefined : versionUid)
+  if (found === null) return articleNotFound(res)
+  const id = Number(req.params.id)
+  const entry = historiesOf(getArticleHistoryState(), found.key, found.version?.uid).find((e) => e.id === id)
+  if (entry === undefined || found.version === undefined) {
+    res.status(404).json(errorEnvelope('not_found', '履歴が見つかりません。'))
+    return
+  }
+  const currentId = currentHistoryOf(getArticleHistoryState(), found.key, found.version.uid)?.id
+  res.json({ history: { ...serializeHistory(entry, entry.id === currentId), html: entry.html } })
 })
 
 /** 現在の本文を記録する。直前と同じ内容なら積まない（`recorded:false`） */
@@ -153,11 +172,19 @@ historyRouter.post('/articles/:uid/histories', (req, res) => {
 historyRouter.post('/articles/:uid/histories/:id/restore', (req, res) => {
   const state = getState()
   pruneArticleHistories(state)
-  const found = resolve(state, req.params.uid, undefined)
+  // どのVersionの履歴か（エディタは今開いているVersionを添える。別のVersionの番号では戻さない・点検3）
+  const versionUid = typeof req.query['version_uid'] === 'string' ? req.query['version_uid'] : optionalString(req.body, 'version_uid')
+  const found = resolve(state, req.params.uid, versionUid === '' ? undefined : versionUid)
   if (found === null) return articleNotFound(res)
+  if (versionUid !== '' && found.version === undefined) {
+    res.status(404).json(errorEnvelope('not_found', 'Versionが見つかりません。'))
+    return
+  }
 
   const id = Number(req.params.id)
-  const target = historiesOf(getArticleHistoryState(), found.key).find((e) => e.id === id)
+  const target = historiesOf(getArticleHistoryState(), found.key, versionUid === '' ? undefined : found.version?.uid).find(
+    (e) => e.id === id,
+  )
   if (target === undefined) {
     res.status(404).json(errorEnvelope('not_found', '履歴が見つかりません。'))
     return
@@ -165,10 +192,12 @@ historyRouter.post('/articles/:uid/histories/:id/restore', (req, res) => {
 
   let updated: Version | null = null
   setState((s) => {
-    const out = updateVersion(s, target.version_uid, {
-      html: externalizeDataUrls(target.html).text,
-      css: externalizeDataUrls(target.css).text,
-    })
+    const out = updateVersion(
+      s,
+      target.version_uid,
+      { html: externalizeDataUrls(target.html).text, css: externalizeDataUrls(target.css).text },
+      editorSessionOf(req),
+    )
     updated = out.version
     return out.state
   })
@@ -191,7 +220,7 @@ historyRouter.post('/articles/:uid/histories/:id/restore', (req, res) => {
     return out.state
   })
 
-  const currentEntry = currentHistoryOf(getArticleHistoryState(), found.key) ?? created
+  const currentEntry = currentHistoryOf(getArticleHistoryState(), found.key, target.version_uid) ?? created
   res.json({
     version: serializeVersion(updated),
     html: target.html,

@@ -6,6 +6,7 @@
  */
 import type Quill from 'quill'
 import type { Version } from '../api.ts'
+import type { SaveStatus } from './editor-save-status.ts'
 
 export interface EditorContext {
   /** フォルダのドメイン（配信URLに使う。'' ＝未設定 / 'system' ＝このシステムのドメイン / ホスト名） */
@@ -20,7 +21,7 @@ export interface EditorContext {
    * beyondページのファネルステップ（記事）一覧。下部バーの一覧から行き来する。
    * `memo` が実物の「ステップ名」。
    */
-  articles: { uid: string; memo?: string }[]
+  articles: { uid: string; memo?: string; color?: string }[]
   /** いま開いているステップの index（articles 内） */
   stepIndex: number
   versions: Version[]
@@ -31,4 +32,8 @@ export interface EditorContext {
   listMode: 'active' | 'archived'
   /** 「選択してアーカイブする」モード（チェックボックス選択・指示⑮） */
   selectionMode: boolean
+  /** 見出しの保存状態（未保存・保存中・保存済み・失敗） */
+  saveStatus?: SaveStatus
+  /** 保存をやり直す（見出しの「保存できませんでした」を押したとき）。自動保存を作ったときに入る */
+  retrySave?: () => void
 }

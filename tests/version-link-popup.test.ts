@@ -43,24 +43,19 @@ describe('Versionリンク popup の目印は採取物に実在する（task 3�
 })
 
 describe('コピーするURLの組み立て（純粋関数）', () => {
-  it('配信URL（/lp/:abTestUid?version=）を作る', () => {
-    expect(buildVersionLinkUrl('http://localhost:5173', 'UID_1997', 'VERSION_0001')).toBe(
-      'http://localhost:5173/lp/UID_1997?version=VERSION_0001',
+  // 2026-09-24 全体点検25: 以前は `?version=` を付けていたが、配信はそれを読まず、
+  // ステップ2のリンクを貼ってもステップ1が開いていた。実物と同じ `?step_uid=` にする
+  it('配信URLにステップを添える（/lp/:abTestUid?step_uid=）', () => {
+    expect(buildVersionLinkUrl('https://lp.example.test/lp/UID_1997', 'ARTICLE_0002')).toBe(
+      'https://lp.example.test/lp/UID_1997?step_uid=ARTICLE_0002',
     )
   })
 
-  it('versionUid が空なら version クエリを付けない', () => {
-    expect(buildVersionLinkUrl('http://localhost:5173', 'UID_1997', '')).toBe(
-      'http://localhost:5173/lp/UID_1997',
-    )
+  it('ステップが分からなければ配信URLのまま', () => {
+    expect(buildVersionLinkUrl('https://lp.example.test/lp/UID_1997', '')).toBe('https://lp.example.test/lp/UID_1997')
   })
 
-  it('abTestUid が空なら組み立てを拒否する（境界で失敗）', () => {
-    expect(() => buildVersionLinkUrl('http://localhost:5173', '', 'V1')).toThrow()
-  })
-
-  it('実LPの架空URL（例 sample16.example.test）は組み立てない', () => {
-    const url = buildVersionLinkUrl('http://localhost:5173', 'UID_1997', 'V1')
-    expect(url).not.toContain('example.test')
+  it('配信URLが無い（フォルダのドメインが未設定）なら組み立てを拒否する', () => {
+    expect(() => buildVersionLinkUrl('', 'ARTICLE_0002')).toThrow()
   })
 })

@@ -64,15 +64,17 @@ describe('「…」→複製 はモーダルを開くよう結線されている
    * 上の断片（ダークテーマの ReactModal）は当時の採取物で、現行UIの土台ではない。
    * ここでは作り直した後の中身を突き合わせる。
    */
-  it('パネルは指示76のライトテーマカードで、複製個数だけ実際に効く', () => {
+  it('パネルは指示76のライトテーマカードで、複製個数とリンク設定が効く', () => {
     const panel = read(PANEL)
     expect(panel).toContain('sb-dup-overlay')
     // ヘッダと各オプションの文言（実物の最新UI）
-    expect(panel).toContain('Versionのhead/bodyタグを引き継ぐ')
-    expect(panel).toContain('ステップを引き継ぐ')
     expect(panel).toContain('※最大4件まで')
     // 複製個数は 1〜4 にクランプして、その回数だけ複製する
     expect(panel).toContain('Math.min(4, Math.max(1, raw))')
-    expect(panel).toContain('api.duplicateVersion(current.uid)')
+    // リンク設定をサーバーへ渡す（2026-09-24 点検13: 以前は受け取るだけだった）
+    expect(panel).toContain('api.duplicateVersion(current.uid, linkMode)')
+    // 選んでも何も起きないチェックは置かない
+    expect(panel).not.toContain("createCheckbox('Versionのhead/bodyタグを引き継ぐ'")
+    expect(panel).not.toContain("createCheckbox('ステップを引き継ぐ'")
   })
 })

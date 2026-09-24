@@ -22,6 +22,7 @@ import { promptCard } from '../dialog.ts'
 import { ANIM_PRESETS, ANIM_SPEEDS } from '../anim/anim-presets.ts'
 import { colorPicker, fmtBtn, group, row } from './properties-parts.ts'
 import { buildImageBody, refreshImageBody } from './properties-image.ts'
+import { notifyEditorChanged } from './editor-change.ts'
 import {
   ALIGN_LABELS,
   SVG,
@@ -265,6 +266,8 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
       const node = line.domNode as HTMLElement
       node.style.letterSpacing = v === 0 ? '' : `${v}px`
     }
+    // Quill の外で書いた見た目なので、自動保存の合図を出す（出さないと保存されなかった・点検11）
+    notifyEditorChanged(quill.root)
   })
   const lsUnit = document.createElement('span')
   lsUnit.className = 'sb-pr-unit'
@@ -289,11 +292,12 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
       const node = line.domNode as HTMLElement
       node.style.lineHeight = String(v)
     }
+    notifyEditorChanged(quill.root)
   })
   lhRow.append(lhInput)
 
   // ── 位置・サイズ ──
-  const posGroup = group('位置・サイズ')
+  const posGroup = group('位置・サイズ（表示のみ）')
   const posGrid = document.createElement('div')
   posGrid.className = 'sb-pr-size-grid'
 
@@ -341,6 +345,15 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
   posHUnit.className = 'sb-pr-size-unit'
   posHUnit.textContent = 'px'
 
+  // 選んだ文字の位置と大きさを見せるだけの欄（文字は流れて並ぶので、数字で動かすことはできない）。
+  // 入力できる見た目だったのに何も起きなかった（点検14）ので、読むだけにする
+  for (const input of [posXInput, posYInput, posWInput, posHInput]) {
+    input.readOnly = true
+    input.tabIndex = -1
+    input.title = '選んだ文字の位置と大きさ（表示のみ）'
+    input.style.background = 'transparent'
+    input.style.cursor = 'default'
+  }
   posGrid.append(
     posXLabel, posXInput, posXUnit,
     posYLabel, posYInput, posYUnit,

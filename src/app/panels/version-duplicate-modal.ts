@@ -5,11 +5,11 @@
  * - ヘッダ: キャンセル | Version複製 | 複製（青ボタン）
  * - リンク設定: ドロップダウン（【残す】全てのページ内URL）
  * - 複製数: ドロップダウン（1〜4、※最大4件まで）
- * - ✅ Versionのhead/bodyタグを引き継ぐ（チェックボックス）
- * - ✅ ステップを引き継ぐ（チェックボックス）
  *
- * リンク／head&body／ステップの各オプションは、モックの複製が html/css をそのまま引き継ぐ挙動なので
- * 値は受け取るだけ（＝「引き継ぐ」相当）。複製個数だけ実際に効かせ、その回数だけ複製する。
+ * 2026-09-24 全体点検13: 以前はリンク設定・「head/bodyタグを引き継ぐ」「ステップを引き継ぐ」を受け取るだけで、
+ * どれを選んでも変わらなかった。リンク設定はサーバーで効かせる（全部外す／計測付きだけ外す）。
+ * タグはステップ（記事）ごとの設定で、複製は同じステップの中に作るので、引き継ぐ・引き継がないの違いが無い。
+ * 選んでも何も起きない2つのチェックは置かない。
  */
 import { api, type Version } from '../api.ts'
 import { toast } from '../ui.ts'
@@ -83,57 +83,11 @@ function injectStyles(): void {
       position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
       pointer-events: none; color: #8E8E93; font-size: 12px;
     }
-    /* ── チェックボックス ── */
-    .sb-dup-check {
-      display: flex; align-items: center; gap: 10px;
-      padding: 6px 0; cursor: pointer; user-select: none;
-    }
-    .sb-dup-check-box {
-      flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%;
-      border: 2px solid var(--sb-c-d1d1d6, #D1D1D6); background: var(--sb-c-ffffff, #FFFFFF);
-      display: flex; align-items: center; justify-content: center;
-      transition: background 0.15s, border-color 0.15s;
-    }
-    .sb-dup-check-box.checked {
-      background: #4A8DF8; border-color: #4A8DF8;
-    }
-    .sb-dup-check-box svg { opacity: 0; transition: opacity 0.15s; }
-    .sb-dup-check-box.checked svg { opacity: 1; }
-    .sb-dup-check-text { font-size: 15px; color: var(--sb-c-1a1a1a, #1A1A1A); }
   `
   document.head.append(style)
 }
 
-const CHECKMARK_SVG = `<svg width="12" height="10" viewBox="0 0 12 10" fill="none">
-  <path d="M1 5L4.5 8.5L11 1.5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-</svg>`
 
-/** チェックボックス行を生成する（純粋DOM） */
-function createCheckbox(labelText: string, defaultChecked: boolean): {
-  row: HTMLElement
-  isChecked: () => boolean
-} {
-  const row = document.createElement('label')
-  row.className = 'sb-dup-check'
-
-  const box = document.createElement('span')
-  box.className = `sb-dup-check-box${defaultChecked ? ' checked' : ''}`
-  box.innerHTML = CHECKMARK_SVG
-
-  const text = document.createElement('span')
-  text.className = 'sb-dup-check-text'
-  text.textContent = labelText
-
-  let checked = defaultChecked
-  row.addEventListener('click', (e) => {
-    e.preventDefault()
-    checked = !checked
-    box.classList.toggle('checked', checked)
-  })
-
-  row.append(box, text)
-  return { row, isChecked: () => checked }
-}
 
 /** ドロップダウン付きフィールドを生成する */
 function createSelectField(
@@ -237,7 +191,7 @@ export function openDuplicateModal(deps: DuplicateDeps): void {
   body.className = 'sb-dup-body'
 
   // リンク設定
-  const { field: linkField } = createSelectField('リンク設定', '', [
+  const { field: linkField, select: linkSelect } = createSelectField('リンク設定', '', [
     { value: 'leave_links', text: '【残す】全てのページ内URL' },
     { value: 'remove_links', text: '【削除】全てのページ内URL' },
     { value: 'remove_tracking_links', text: '【削除】トラッキングリンクだけ' },
@@ -255,19 +209,13 @@ export function openDuplicateModal(deps: DuplicateDeps): void {
     ] as const,
   )
 
-  // チェックボックス
-  const headBody = createCheckbox('Versionのhead/bodyタグを引き継ぐ', true)
-  const step = createCheckbox('ステップを引き継ぐ', true)
+  // タグはステップの設定なので、同じステップに作る複製では「引き継ぐ」必要が無いことを書いておく
+  const note = document.createElement('div')
+  note.className = 'sb-dup-field'
+  note.style.cssText = 'font-size:12px;color:var(--sb-c-8a8a8e, #8A8A8E);line-height:1.6'
+  note.textContent = '複製は同じステップの中に作ります。タグ設定（head/body）はステップごとの設定なので、そのまま使われます。'
 
-  const checkField1 = document.createElement('div')
-  checkField1.className = 'sb-dup-field'
-  checkField1.append(headBody.row)
-
-  const checkField2 = document.createElement('div')
-  checkField2.className = 'sb-dup-field'
-  checkField2.append(step.row)
-
-  body.append(linkField, countField, checkField1, checkField2)
+  body.append(linkField, countField, note)
   card.append(header, divider, body)
   overlay.append(card)
   document.body.append(overlay)
@@ -275,21 +223,26 @@ export function openDuplicateModal(deps: DuplicateDeps): void {
   // ── 複製ボタン ──
   submitBtn.addEventListener('click', () => {
     submitBtn.disabled = true
-    void runDuplicate(deps, current, countSelect, close)
+    void runDuplicate(deps, current, countSelect, linkModeOf(linkSelect.value), close)
   })
 }
+
+type LinkMode = 'leave_links' | 'remove_links' | 'remove_tracking_links'
+const linkModeOf = (value: string): LinkMode =>
+  value === 'remove_links' || value === 'remove_tracking_links' ? value : 'leave_links'
 
 async function runDuplicate(
   deps: DuplicateDeps,
   current: Version,
   countSelect: HTMLSelectElement,
+  linkMode: LinkMode,
   close: () => void,
 ): Promise<void> {
   const raw = Number.parseInt(countSelect.value, 10)
   const count = Number.isFinite(raw) ? Math.min(4, Math.max(1, raw)) : 1
   for (let i = 0; i < count; i += 1) {
     try {
-      const { version } = await api.duplicateVersion(current.uid)
+      const { version } = await api.duplicateVersion(current.uid, linkMode)
       deps.onDuplicated(version)
     } catch (error) {
       toast((error as Error).message, 'error')

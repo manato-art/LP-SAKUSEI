@@ -17,6 +17,9 @@ interface CreatedWidget {
    * これがあれば、あとでコードを見ずにフォームのまま直せる。コードで作ったものには無い。
    */
   source?: unknown
+  /** Widget作成で選んだカテゴリー・説明文（2026-09-24。以前は入力しても保存されていなかった） */
+  category?: string
+  description?: string
 }
 /** localStorage から自作Widget一覧を読む（壊れていれば空）。 */
 export function loadCreatedWidgets(): CreatedWidget[] {
@@ -36,11 +39,26 @@ export function loadCreatedWidgets(): CreatedWidget[] {
  * 以前は黙って捨てていた（作ったつもりで一覧に無い）ので、呼び出し側が知らせられるよう結果を返す。
  * 今までの呼び出し（戻り値を見ない）はそのまま動く。
  */
-export function saveCreatedWidget(name: string, html: string, source?: unknown): boolean {
+export function saveCreatedWidget(
+  name: string,
+  html: string,
+  source?: unknown,
+  meta: { readonly category?: string; readonly description?: string } = {},
+): boolean {
   try {
     const list = loadCreatedWidgets()
-    const entry: CreatedWidget = { id: `cw_${Date.now().toString(36)}`, name, html, ts: Date.now() }
-    list.unshift(source === undefined ? entry : { ...entry, source })
+    const category = (meta.category ?? '').trim()
+    const description = (meta.description ?? '').trim()
+    const entry: CreatedWidget = {
+      id: `cw_${Date.now().toString(36)}`,
+      name,
+      html,
+      ts: Date.now(),
+      ...(source === undefined ? {} : { source }),
+      ...(category === '' ? {} : { category }),
+      ...(description === '' ? {} : { description }),
+    }
+    list.unshift(entry)
     localStorage.setItem(CREATED_WIDGETS_KEY, JSON.stringify(list.slice(0, 100)))
     return true
   } catch {

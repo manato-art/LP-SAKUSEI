@@ -38,6 +38,17 @@ const EMPTY_HISTORY_STATE: ArticleHistoryState = { entries: [], nextId: 1 }
 
 let current: ArticleHistoryState = EMPTY_HISTORY_STATE
 
+/** 変わったときに呼ぶもの（ディスクへの保存・article-history-file.ts） */
+const listeners: ((state: ArticleHistoryState) => void)[] = []
+
+export function onArticleHistoryChange(listener: (state: ArticleHistoryState) => void): void {
+  listeners.push(listener)
+}
+
+function changed(): void {
+  for (const listener of listeners) listener(current)
+}
+
 export function getArticleHistoryState(): ArticleHistoryState {
   return current
 }
@@ -49,11 +60,13 @@ export function setArticleHistoryState(
   const next = updater(current)
   if (next === current) return current
   current = next
+  changed()
   return current
 }
 
 export function resetArticleHistories(): void {
   current = EMPTY_HISTORY_STATE
+  changed()
 }
 
 /**
@@ -76,6 +89,14 @@ export function articleKey(article: Article): string {
   return key
 }
 
+/**
+ * 記事を名前の変更などで新しいオブジェクトに差し替えたとき、同じ記事として履歴を引き継ぐ
+ * （差し替えるとキーが変わり、履歴が「消えた記事」の分として捨てられてしまうため）
+ */
+export function inheritArticleKey(from: Article, to: Article): void {
+  ARTICLE_KEYS.set(to, articleKey(from))
+}
+
 /** いま実在する記事のキー集合（消えた記事の履歴を捨てるために使う） */
 export function liveArticleKeys(state: State): ReadonlySet<string> {
   return new Set(state.articles.map(articleKey))
@@ -90,20 +111,25 @@ export function pruneArticleHistories(state: State): ArticleHistoryState {
   })
 }
 
-/** 記事の履歴を古い順に返す */
+/**
+ * 記事の履歴を古い順に返す。versionUid を渡すとそのVersionの分だけ
+ * （Versionを区別しないと、別のVersionの本文が一覧に混ざり、復元で別のVersionが書き換わっていた・2026-09-24 点検3）
+ */
 export function historiesOf(
   history: ArticleHistoryState,
   key: string,
+  versionUid?: string,
 ): readonly ArticleHistory[] {
-  return history.entries.filter((e) => e.article_key === key)
+  return history.entries.filter((e) => e.article_key === key && (versionUid === undefined || e.version_uid === versionUid))
 }
 
-/** その記事の最新スナップショット（＝`現行版`） */
+/** その記事（versionUid を渡すとそのVersion）の最新スナップショット（＝`現行版`） */
 export function currentHistoryOf(
   history: ArticleHistoryState,
   key: string,
+  versionUid?: string,
 ): ArticleHistory | undefined {
-  return historiesOf(history, key).at(-1)
+  return historiesOf(history, key, versionUid).at(-1)
 }
 
 export interface AppendHistoryInput {
@@ -127,7 +153,7 @@ export function appendArticleHistory(
   history: ArticleHistoryState,
   input: AppendHistoryInput,
 ): { state: ArticleHistoryState; history: ArticleHistory; recorded: boolean } {
-  const latest = currentHistoryOf(history, input.article_key)
+  const latest = currentHistoryOf(history, input.article_key, input.version_uid)
   if (latest !== undefined && latest.html === input.html && latest.css === input.css) {
     return { state: history, history: latest, recorded: false }
   }

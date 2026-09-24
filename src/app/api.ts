@@ -3,13 +3,14 @@
  * 本番ドメインは登場させない（§3-2）。
  */
 import type { MasterStyleSheet } from './master-style.ts'
+import { editorSessionHeaders } from './editor-session.ts'
 
 const BASE = '/api/v1'
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     method,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...editorSessionHeaders() },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   })
   if (!res.ok && res.status !== 204) {
@@ -96,6 +97,8 @@ export interface Version {
   date_periods?: { from: string; to: string; mode: 'on' | 'off' }[]
   html: string
   css: string
+  /** 中身の版（保存がぶつかったかを見るのに使う・2026-09-24） */
+  content_revision?: number
 }
 
 /**
@@ -517,6 +520,27 @@ export const api = {
     request<{ version: Version }>('POST', `/articles/${articleUid}/versions`),
   saveVersion: (uid: string, patch: { html?: string; css?: string; name?: string }) =>
     request<{ version: Version }>('PUT', `/versions/${uid}`, patch),
+  /**
+   * 本文の保存。baseRevision（開いた・最後に保存したときの中身の版）を添えると、
+   * そのあと別の人・別のタブが保存していたときに上書きせず、相手の中身を返す（2026-09-24）
+   */
+  saveVersionContent: async (
+    uid: string,
+    html: string,
+    baseRevision: number | undefined,
+  ): Promise<{ conflict: false; version: Version } | { conflict: true; version: Version }> => {
+    const res = await fetch(`${BASE}/versions/${uid}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', ...editorSessionHeaders() },
+      body: JSON.stringify({ html, ...(baseRevision === undefined ? {} : { base_revision: baseRevision }) }),
+    })
+    const json = (await res.json().catch(() => null)) as { version?: Version; error?: { message?: string } } | null
+    if (res.status === 409 && json?.version !== undefined) return { conflict: true, version: json.version }
+    if (!res.ok || json?.version === undefined) {
+      throw new Error(json?.error?.message ?? `保存できませんでした (${res.status})`)
+    }
+    return { conflict: false, version: json.version }
+  },
   setRatio: (uid: string, ratio: number) =>
     request<{
       version: Version
@@ -525,8 +549,9 @@ export const api = {
       adjusted_siblings?: ReadonlyArray<{ uid: string; distribution_ratio: number }>
     }>('PATCH', `/versions/${uid}/distribution`, { distribution_ratio: ratio }),
   publish: (uid: string) => request<{ version: Version }>('POST', `/versions/${uid}/publish`),
-  duplicateVersion: (uid: string) =>
-    request<{ version: Version }>('POST', `/versions/${uid}/duplicate`),
+  /** linkMode: 複製先のリンクを残す／全部外す／計測付きだけ外す（Version複製の「リンク設定」） */
+  duplicateVersion: (uid: string, linkMode: 'leave_links' | 'remove_links' | 'remove_tracking_links' = 'leave_links') =>
+    request<{ version: Version }>('POST', `/versions/${uid}/duplicate`, { link_mode: linkMode }),
   duplicateVersionToArticle: (uid: string, targetArticleUid: string) =>
     request<{ version: Version }>('POST', `/versions/${uid}/duplicate_to`, {
       target_article_uid: targetArticleUid,

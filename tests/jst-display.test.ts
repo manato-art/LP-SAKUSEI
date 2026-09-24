@@ -45,7 +45,7 @@ describe('各画面の日時表示', () => {
   })
 
   it('エディタの保存時刻「08:05」（12時間より前は時刻表示）', async () => {
-    const { formatSaveTime } = await import('../src/app/pages/editor-layout.ts')
+    const { formatSaveTime } = await import('../src/app/pages/save-time.ts')
     // 必ず「12時間以上前」の分岐に入るよう、十分に古い日時を渡す
     // 2020-01-15 08:05 JST = 2020-01-14 23:05 UTC
     expect(formatSaveTime(new Date('2020-01-14T23:05:00Z'))).toBe('08:05')

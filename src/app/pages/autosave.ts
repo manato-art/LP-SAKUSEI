@@ -21,48 +21,68 @@ export interface AutosaveOptions {
 export interface Autosave {
   /** 変更があったことを伝える（保存は遅れて1回だけ走る）。 */
   schedule: () => void
-  /** 待たずに今すぐ保存する。保存するものが無ければ何もしない。 */
-  flush: () => Promise<void>
+  /**
+   * 待たずに今すぐ保存する。保存できた（または保存するものが無かった）ら true、失敗したら false。
+   * 失敗しても「保存しました」と出していた（2026-09-24 点検11）ので、呼び出し側が結果で出し分ける。
+   */
+  flush: () => Promise<boolean>
+  /** まだ保存していない変更（保存中を含む）があるか。画面を閉じる前に知らせるのに使う */
+  isPending: () => boolean
   /** 以降の保存を止める（画面を離れるとき）。 */
   stop: () => void
 }
+
+/** 失敗が続いたときのやり直しの間の上限 */
+const MAX_RETRY_MS = 30_000
 
 export function createAutosave({ save, delayMs, onError }: AutosaveOptions): Autosave {
   let timer: ReturnType<typeof setTimeout> | undefined
   let isDirty = false
   let isSaving = false
   let isStopped = false
+  /** 続けて失敗した回数（やり直しの間を倍々にあける。通信が切れている間に叩き続けない） */
+  let failures = 0
 
-  async function run(): Promise<void> {
-    if (isStopped || !isDirty || isSaving) return
+  async function run(): Promise<boolean> {
+    if (isStopped || !isDirty || isSaving) return !isDirty
     isDirty = false
     isSaving = true
+    let ok = true
     try {
       await save()
+      failures = 0
     } catch (error) {
       // 保存できなかったことは必ず外へ出す（黙って失うのが最悪）。
+      ok = false
       isDirty = true
+      failures += 1
       onError?.(error as Error)
     } finally {
       isSaving = false
-      // 保存中に新しい変更が来ていたら、もう一度予約し直す。
-      if (isDirty && !isStopped) schedule()
+      // 保存中に新しい変更が来ていた・失敗したときは、もう一度予約し直す。
+      if (isDirty && !isStopped) arm(Math.min(MAX_RETRY_MS, delayMs * 2 ** failures))
     }
+    return ok
+  }
+
+  function arm(wait: number): void {
+    if (timer !== undefined) clearTimeout(timer)
+    timer = setTimeout(() => void run(), wait)
   }
 
   function schedule(): void {
     if (isStopped) return
     isDirty = true
-    if (timer !== undefined) clearTimeout(timer)
-    timer = setTimeout(() => void run(), delayMs)
+    arm(delayMs)
   }
 
   return {
     schedule,
-    async flush(): Promise<void> {
+    async flush(): Promise<boolean> {
       if (timer !== undefined) clearTimeout(timer)
-      await run()
+      return run()
     },
+    isPending: () => isDirty || isSaving,
     stop(): void {
       isStopped = true
       if (timer !== undefined) clearTimeout(timer)

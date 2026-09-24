@@ -83,18 +83,7 @@ export function openWidgetCreator(
   metaRow.style.cssText =
     'display:flex;align-items:flex-start;gap:16px;padding:20px 24px;flex-shrink:0'
 
-  // サムネイル枠
-  const thumbWrap = document.createElement('div')
-  thumbWrap.style.cssText =
-    'width:80px;height:80px;border:2px dashed #ccc;border-radius:8px;' +
-    'display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;color:#aaa'
-  const thumbIcon = document.createElement('span')
-  thumbIcon.style.cssText = 'font-size:28px;line-height:1'
-  thumbIcon.textContent = '+'
-  thumbWrap.append(thumbIcon)
-  thumbWrap.addEventListener('click', () => {
-    toast('サムネイルのアップロードはクローンでは未対応です')
-  })
+  // サムネイルは置かない: 「作成したWidget」の一覧は、中身そのものを縮めて見せる（アップロードは「未対応」と出るだけだった）
 
   // Widget名
   const nameGroup = createFormGroup('Widget名', 'text', '入力してください')
@@ -125,7 +114,7 @@ export function openWidgetCreator(
   // 説明文
   const descGroup = createFormGroup('説明文', 'text', '入力してください')
 
-  metaRow.append(thumbWrap, nameGroup, catGroup, descGroup)
+  metaRow.append(nameGroup, catGroup, descGroup)
 
   /* ── エディタ領域 ── */
   const editorArea = document.createElement('div')
@@ -137,13 +126,13 @@ export function openWidgetCreator(
   const editorLeft = document.createElement('div')
   editorLeft.style.cssText = 'flex:1;display:flex;flex-direction:column;border:1px solid #ddd;border-radius:4px;overflow:hidden'
 
-  const toolbar = createEditorToolbar()
+  // 文字の飾りのツールバーは置かない（ここは文字を打つ欄なので飾れず、押しても「利用できません」と出るだけだった）
   const editorBody = document.createElement('textarea')
   editorBody.placeholder = 'WidgetのHTMLを入力してください'
   editorBody.style.cssText =
     'flex:1;border:none;resize:none;padding:16px;font:14px/1.6 "Hiragino Sans",monospace;' +
     'outline:none;background:#fff;min-height:200px'
-  editorLeft.append(toolbar, editorBody)
+  editorLeft.append(editorBody)
 
   // 右: HTML(カスタム) / CSS(カスタム)
   const editorRight = document.createElement('div')
@@ -192,7 +181,9 @@ export function openWidgetCreator(
     }
 
     // 作成したWidgetは localStorage に保存し、「作成したWidget」カテゴリーから再利用できるようにする（指示147）。
-    saveCreatedWidget(widgetName, finalHtml)
+    const category = catSelect.value === '選択してください' ? '' : catSelect.value
+    const description = (descGroup.querySelector('input') as HTMLInputElement | null)?.value ?? ''
+    saveCreatedWidget(widgetName, finalHtml, undefined, { category, description })
 
     creator.remove()
     libraryClose()
@@ -216,30 +207,6 @@ function createFormGroup(label: string, type: string, placeholder: string): HTML
     'font:14px "Hiragino Sans",sans-serif;color:#333;box-sizing:border-box'
   group.append(lbl, input)
   return group
-}
-function createEditorToolbar(): HTMLDivElement {
-  const toolbar = document.createElement('div')
-  toolbar.style.cssText =
-    'display:flex;flex-wrap:wrap;gap:2px;padding:6px 8px;border-bottom:1px solid #ddd;background:#fafafa'
-  const tools = [
-    '↩', '↪', 'sans-serif ▾', '−', '16', '+',
-    'B', 'U', 'S', '≡ ▾', 'A ▾', '■ ▾',
-    '🖼', '💡', '⏎', '🔗', 'T̸',
-  ]
-  for (const t of tools) {
-    const btn = document.createElement('button')
-    btn.type = 'button'
-    btn.textContent = t
-    btn.style.cssText =
-      'border:1px solid #e0e0e0;background:#fff;border-radius:3px;padding:3px 6px;' +
-      'font:12px "Hiragino Sans",sans-serif;color:#555;cursor:pointer;min-width:24px'
-    btn.addEventListener('click', (e) => {
-      e.preventDefault()
-      toast('ツールバー機能はクローンでは利用できません')
-    })
-    toolbar.append(btn)
-  }
-  return toolbar
 }
 function createCodePanel(title: string, placeholder: string): HTMLDivElement {
   const lang = title.toLowerCase().includes('css') ? 'css' : 'html'

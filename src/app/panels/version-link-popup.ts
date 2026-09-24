@@ -14,6 +14,7 @@
  *   採取物に確実に在るこのノードをトリガーにする（＝home の位置に在るものを押すと開く）。
  */
 import { toast } from '../ui.ts'
+import { DELIVERY_DOMAIN_UNSET_NOTE, deliveryUrlFor } from '../pages/basic-info-form.ts'
 
 /** 採取物の目印（実物のクラス／属性。書き換えていない） */
 export const VERSION_LINK_HOOK = {
@@ -30,20 +31,42 @@ export const VERSION_LINK_HOOK = {
 } as const
 
 /**
- * コピーする Version リンクを組み立てる（純粋関数・境界で検証）。
- * 実LPのURLは採取物では架空化済みなので**転記しない**。クローンのプレビュー系URLを作る
- * （配信URLと同じ `/lp/:abTestUid` 実パス・§3-2 localhost固定）。
+ * コピーする Versionリンクを組み立てる（純粋関数・境界で検証）。
+ *
+ * 実物の「Versionリンク」は配信URLにステップを添えた `…?step_uid=<ステップ>` の形。
+ * LPの中のボタンにこのリンクを置くと、そのステップへ進む（どのVersionを出すかは配信割合で決まる）。
+ * 以前は `?version=` を付けていて、配信はそれを読まずに1つ目のステップを出していた（2026-09-24 点検25）。
+ * 配信URL（フォルダのドメイン）は呼び出し側が basic-info-form.ts の deliveryUrlFor で作る。
  */
-export function buildVersionLinkUrl(origin: string, abTestUid: string, versionUid: string): string {
-  if (abTestUid.trim() === '') throw new Error('abTestUid が空です')
-  const base = `${origin}/lp/${abTestUid}`
-  return versionUid.trim() === '' ? base : `${base}?version=${versionUid}`
+export function buildVersionLinkUrl(deliveryUrl: string, stepUid: string): string {
+  if (deliveryUrl.trim() === '') throw new Error('配信URLがありません（フォルダのドメインが未設定）')
+  return stepUid.trim() === '' ? deliveryUrl : `${deliveryUrl}?step_uid=${encodeURIComponent(stepUid)}`
 }
 
 export interface VersionLinkDeps {
-  abTestUid: string
-  /** いま開いている Version の uid を返す（切替に追従するため getter） */
-  getCurrentUid: () => string
+  /** 配信URL（フォルダのドメイン未設定なら null） */
+  getDeliveryUrl: () => string | null
+  /** いま開いているステップの uid（切替に追従するため getter） */
+  getStepUid: () => string
+}
+
+/** エディタから渡すもの: 配信URLはフォルダのドメインで決まり、ステップは今開いているもの（点検25） */
+export function editorVersionLinkDeps(ctx: {
+  readonly folderDomain?: string
+  readonly abTestUid: string
+  readonly articleUid: string
+}): VersionLinkDeps {
+  return {
+    getDeliveryUrl: () => deliveryUrlFor(ctx.folderDomain, location.origin, ctx.abTestUid),
+    getStepUid: () => ctx.articleUid,
+  }
+}
+
+/** 吹き出しの入力欄に入れる文字（ドメイン未設定なら、URLの代わりに案内を出してコピーさせない） */
+function linkText(deps: VersionLinkDeps): { value: string; canCopy: boolean } {
+  const base = deps.getDeliveryUrl()
+  if (base === null) return { value: DELIVERY_DOMAIN_UNSET_NOTE, canCopy: false }
+  return { value: buildVersionLinkUrl(base, deps.getStepUid()), canCopy: true }
 }
 
 /**
@@ -64,9 +87,12 @@ export function mountVersionLinkPopup(root: HTMLElement, deps: VersionLinkDeps):
   const input = popup.querySelector<HTMLInputElement>(VERSION_LINK_HOOK.input)
 
   const isOpen = (): boolean => popup.getAttribute(VERSION_LINK_HOOK.hideAttr) === 'false'
+  let canCopy = false
   const setUrl = (): void => {
     if (input === null) return
-    input.value = buildVersionLinkUrl(location.origin, deps.abTestUid, deps.getCurrentUid())
+    const text = linkText(deps)
+    input.value = text.value
+    canCopy = text.canCopy
   }
   const open = (): void => {
     setUrl()
@@ -95,6 +121,10 @@ export function mountVersionLinkPopup(root: HTMLElement, deps: VersionLinkDeps):
   const copyLabel = popup.querySelector<HTMLElement>(`${VERSION_LINK_HOOK.title} span`)
   copyLabel?.addEventListener('click', (event) => {
     event.stopPropagation()
+    if (!canCopy) {
+      toast(DELIVERY_DOMAIN_UNSET_NOTE, 'error')
+      return
+    }
     void copyToClipboard(input?.value ?? '')
   })
   // 入力欄クリックで全選択（実物と同じ体験）
@@ -116,9 +146,7 @@ export function toggleVersionLinkPopup(root: HTMLElement, deps: VersionLinkDeps)
     return
   }
   const input = popup.querySelector<HTMLInputElement>(VERSION_LINK_HOOK.input)
-  if (input !== null) {
-    input.value = buildVersionLinkUrl(location.origin, deps.abTestUid, deps.getCurrentUid())
-  }
+  if (input !== null) input.value = linkText(deps).value
   popup.setAttribute(VERSION_LINK_HOOK.hideAttr, 'false')
 }
 

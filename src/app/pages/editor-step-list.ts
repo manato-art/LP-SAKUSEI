@@ -17,6 +17,8 @@
 export interface StepLike {
   uid: string
   memo?: string
+  /** 目印の色（#rrggbb・空なら無し） */
+  color?: string
 }
 
 /**
@@ -38,6 +40,8 @@ export interface StepListDeps {
   /** いま開いているステップの index */
   activeIndex: number
   onSelect: (index: number) => void
+  /** 「…」を押したとき（名前・色の変更、削除・2026-09-24） */
+  onMenu?: (index: number, anchor: HTMLElement) => void
 }
 
 /**
@@ -87,6 +91,32 @@ export function renderStepList(root: HTMLElement, deps: StepListDeps): void {
     // 押せるのに何も起きない物を出すほうが分かりにくいので、繋ぐまでは出さない。
     const option = item.querySelector<HTMLElement>('[class*="_listOption_"]')
     if (option !== null) option.hidden = true
+
+    // 目印の色（ステップを作るときに選んだ色）
+    const color = (step.color ?? '').trim()
+    if (color !== '') {
+      const dot = document.createElement('span')
+      dot.setAttribute('data-step-color', color)
+      dot.setAttribute('aria-hidden', 'true')
+      dot.style.cssText = `display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;flex-shrink:0;background:${color}`
+      item.prepend(dot)
+    }
+    // 名前・色の変更と削除（以前はステップを作ることしかできなかった）
+    const onMenu = deps.onMenu
+    if (onMenu !== undefined) {
+      const menu = document.createElement('button')
+      menu.type = 'button'
+      menu.setAttribute('data-step-menu', step.uid)
+      menu.setAttribute('aria-label', `${stepLabel(step, index)} の操作`)
+      menu.textContent = '…'
+      menu.style.cssText =
+        'margin-left:4px;padding:0 4px;border:none;background:transparent;color:inherit;font-size:14px;line-height:1;cursor:pointer'
+      menu.addEventListener('click', (event) => {
+        event.stopPropagation()
+        onMenu(index, menu)
+      })
+      item.append(menu)
+    }
 
     if (activeToken !== null) item.classList.toggle(activeToken, index === deps.activeIndex)
     item.addEventListener('click', () => deps.onSelect(index))

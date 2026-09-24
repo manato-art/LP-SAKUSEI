@@ -72,4 +72,36 @@ describe('自動保存（実物のエディタは自動保存が走る・finding
     await vi.advanceTimersByTimeAsync(500)
     expect(save).not.toHaveBeenCalled()
   })
+
+  it('flush は保存できたかを返す（失敗しても「保存しました」と出していた・2026-09-24 点検11）', async () => {
+    const ok = createAutosave({ save: vi.fn().mockResolvedValue(undefined), delayMs: 9999 })
+    ok.schedule()
+    await expect(ok.flush()).resolves.toBe(true)
+    const ng = createAutosave({ save: vi.fn().mockRejectedValue(new Error('x')), delayMs: 9999, onError: vi.fn() })
+    ng.schedule()
+    await expect(ng.flush()).resolves.toBe(false)
+  })
+
+  it('まだ保存していない変更があるかが分かる（画面を閉じる前に知らせるため）', async () => {
+    const autosave = createAutosave({ save: vi.fn().mockResolvedValue(undefined), delayMs: 100 })
+    expect(autosave.isPending()).toBe(false)
+    autosave.schedule()
+    expect(autosave.isPending()).toBe(true)
+    await vi.advanceTimersByTimeAsync(100)
+    expect(autosave.isPending()).toBe(false)
+  })
+
+  it('失敗が続くときは、やり直しの間をあけていく（通信が切れている間に 0.9秒ごとに叩き続けない）', async () => {
+    const onError = vi.fn()
+    const save = vi.fn().mockRejectedValue(new Error('通信失敗'))
+    const autosave = createAutosave({ save, delayMs: 100, onError })
+    autosave.schedule()
+    await vi.advanceTimersByTimeAsync(100)
+    expect(save).toHaveBeenCalledTimes(1)
+    await vi.advanceTimersByTimeAsync(100)
+    expect(save).toHaveBeenCalledTimes(1)
+    await vi.advanceTimersByTimeAsync(100)
+    expect(save).toHaveBeenCalledTimes(2)
+    expect(autosave.isPending()).toBe(true)
+  })
 })

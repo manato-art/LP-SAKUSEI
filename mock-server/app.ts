@@ -32,6 +32,8 @@ import { teamsRouter } from './routes/teams.ts'
 import { usersRouter } from './routes/users.ts'
 import { versionsRouter } from './routes/versions.ts'
 import { deliveryRouter } from './routes/delivery.ts'
+import { articlesEditRouter } from './routes/articles-edit.ts'
+import { previewRouter } from './routes/delivery-preview.ts'
 import { redirectPageTagsRouter } from './routes/redirect-page-tags.ts'
 import { redirectPageDeliveryRouter } from './routes/redirect-page-delivery.ts'
 import { adminAuthRouter, isAdminAuthenticated, render404Page } from './lib/admin-auth.ts'
@@ -154,6 +156,8 @@ export function createApp(): Express {
     mediaRouter,
     // 審査（審査対象の設定と、審査キュー）
     inspectionsRouter,
+    // ステップ（記事）の名前・色の変更と削除
+    articlesEditRouter,
   ]
 
   // [A] メインREST API（実物は v1 / v2 が混在するため両方に同じルーターを載せる）
@@ -176,6 +180,8 @@ export function createApp(): Express {
   // Slackの認可はブラウザ遷移で戻ってくるので、API認証の外に置く
   app.use(slackOauthRouter)
   app.use(deliveryRouter)
+  // プレビュー（/preview/:versionUid）。配信と同じく認証を掛けない（計測はしない）
+  app.use(previewRouter)
   // 中間ページ（中間ページリンクの実体・実パス）。配信ページと同じく認証を掛けない
   app.use(redirectPageDeliveryRouter)
   // LPの画像・動画ファイル（本文に埋め込まれていた data URL を別ファイルにしたもの・lib/uploads.ts）。

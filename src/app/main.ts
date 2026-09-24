@@ -2,6 +2,7 @@
  * クローンのエントリ（企画書 §1-4 の基準状態＝新規アカウントの空状態から始まる）。
  * データはすべてローカルのモックAPIから供給される（§3-2・localhost固定）。
  */
+import { closeComparePanel } from './panels/compare-mode.ts'
 import { markActiveNav, mountShell } from './shell.ts'
 import { initAccent } from './theme-color.ts'
 import { initThemeMode, isThemeMode } from './theme-mode.ts'
@@ -59,6 +60,8 @@ async function route(): Promise<void> {
   const generation = renderGeneration
   // 画面が変わったら、エディタ用に開いていたパネルの合図を消す
   teardownMobileEditor()
+  // 比較モードは body 直下に出すので、ほかの画面へ移ったら閉じる（残っていた・2026-09-24 点検17）
+  closeComparePanel()
   const raw = location.hash.replace(/^#/, '') || '/folders'
   const [path, query] = raw.split('?')
   const params = new URLSearchParams(query ?? '')

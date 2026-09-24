@@ -301,6 +301,8 @@ export function addVersion(
 export function duplicateVersion(
   state: State,
   uid: string,
+  /** 複製先の本文の手直し（「リンク設定」でリンクを外すなど）。省略すると元のまま */
+  transformHtml?: (html: string) => string,
 ): { state: State; version: Version | null } {
   const index = state.versions.findIndex((v) => v.uid === uid)
   const source = state.versions[index]
@@ -308,6 +310,7 @@ export function duplicateVersion(
   const id = state.nextId
   const copy: Version = {
     ...source,
+    html: transformHtml === undefined ? source.html : transformHtml(source.html),
     id,
     uid: freshUid(state.versions, id, (n) => makeUid('version', n)),
     name: generateVersionName(state.versions.length + 1),
@@ -392,11 +395,19 @@ export function updateVersion(
   state: State,
   uid: string,
   patch: Partial<Pick<Version, 'name' | 'html' | 'css' | 'distribution_ratio' | 'status'>>,
+  /** 中身を書いたエディタの印（X-Editor-Session）。サーバーの一括置換などは空 */
+  writer = '',
 ): { state: State; version: Version | null } {
   const target = state.versions.find((v) => v.uid === uid)
   if (target === undefined) return { state, version: null }
   const safePatch = guardEmptyHtmlOverwrite(target, patch)
-  const updated: Version = { ...target, ...safePatch, updated_at: nowTs() }
+  const touchesContent = safePatch.html !== undefined || safePatch.css !== undefined
+  const updated: Version = {
+    ...target,
+    ...safePatch,
+    ...(touchesContent ? { content_revision: (target.content_revision ?? 0) + 1, content_writer: writer } : {}),
+    updated_at: nowTs(),
+  }
   return {
     state: { ...state, versions: state.versions.map((v) => (v.uid === uid ? updated : v)) },
     version: updated,
@@ -426,9 +437,23 @@ export function publishVersion(
   }
 }
 
-export function deleteVersion(state: State, uid: string): { state: State; deleted: boolean } {
+/**
+ * Versionを削除する。アーカイブと同じく、配信が止まる削除はしない（2026-09-24 全体点検42）:
+ * - そのページのVersionが1つだけ → 消さない（Versionの無いページになる）
+ * - 配信中（アーカイブしていない・割合1以上）のVersionで、ほかに配信できるVersionが無い → 消さない
+ */
+export function deleteVersion(
+  state: State,
+  uid: string,
+): { state: State; deleted: boolean; reason?: 'notfound' | 'last-version' | 'need-active' } {
   const target = state.versions.find((v) => v.uid === uid)
-  if (target === undefined) return { state, deleted: false }
+  if (target === undefined) return { state, deleted: false, reason: 'notfound' }
+  const siblings = state.versions.filter((v) => v.article_id === target.article_id && v.uid !== uid)
+  if (siblings.length === 0) return { state, deleted: false, reason: 'last-version' }
+  const isDelivering = !target.archived && target.distribution_ratio >= 1
+  if (isDelivering && !siblings.some((v) => !v.archived && v.distribution_ratio >= 1)) {
+    return { state, deleted: false, reason: 'need-active' }
+  }
   return {
     state: {
       ...state,

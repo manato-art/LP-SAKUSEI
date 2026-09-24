@@ -47,7 +47,8 @@ let isOpen = false
 
 export interface StepAddDeps {
   /** 「作成」で新しいステップ（記事）を作る。name はモーダルの「ステップ名」 */
-  onCreate: (name: string) => Promise<void>
+  /** color は選んだ見本の色（#rrggbb・無ければ空）。以前は選んでも送らず捨てていた（2026-09-24） */
+  onCreate: (name: string, color: string) => Promise<void>
 }
 
 /**
@@ -99,7 +100,16 @@ function open(deps: StepAddDeps): void {
   const create = findByExactText(portal.root, STEP_ADD_HOOK.button, STEP_ADD_HOOK.create)
   create?.addEventListener('click', () => {
     const name = (nameInput?.value ?? '').trim() || '無題のステップ'
+    const chosen = swatches.find((swatch) => swatch.classList.contains(STEP_ADD_HOOK.colorActive))
+    const color = rgbToHex(chosen?.style.backgroundColor ?? '')
     portal.close()
-    void deps.onCreate(name).catch((error: unknown) => toast((error as Error).message, 'error'))
+    void deps.onCreate(name, color).catch((error: unknown) => toast((error as Error).message, 'error'))
   })
+}
+
+/** 見本の色（`rgb(98, 54, 255)`）を `#6236ff` にする。読めなければ空 */
+export function rgbToHex(value: string): string {
+  const m = /^rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})/.exec(value.trim())
+  if (m === null) return ''
+  return `#${[m[1], m[2], m[3]].map((n) => Math.min(255, Number(n)).toString(16).padStart(2, '0')).join('')}`
 }
