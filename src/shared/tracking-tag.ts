@@ -88,7 +88,9 @@ export function buildTrackingScriptBody(endpoint: string, versionUid?: string): 
   },true);
 
   var reach=new Array(B).fill(0),dwell=new Array(B).fill(0),clicks=[];
-  var lastT=Date.now(),maxBand=0,sent=false;
+  /* 到達は画面の下端の位置（px）の最大を覚えておき、離れるときの高さで割合にする。
+     画像の読み込み中はページが短く、その時点の割合で覚えると深く出すぎる（2026-09-25） */
+  var lastT=Date.now(),maxBottom=0,sent=false;
   /* 前に時間を足したときの画面の位置。次に足す時間は、この位置を見ていた時間（2026-09-25） */
   var lastY=window.scrollY,lastH=window.innerHeight;
   function docH(){return Math.max(1,document.documentElement.scrollHeight-window.innerHeight)}
@@ -105,11 +107,11 @@ export function buildTrackingScriptBody(endpoint: string, versionUid?: string): 
      今の（スクロール後の）場所に付けない（以前はそうしていて、1回のスクロールで最大1秒ずれた・2026-09-25）。
      ページの高さは画像の読み込みで伸びるので、割合は今の高さで出す。 */
   function tick(){
-    var now=Date.now(),b=curBand(),full=docH()+window.innerHeight;
+    var now=Date.now(),full=docH()+window.innerHeight,bottom=window.scrollY+window.innerHeight;
     var from=Math.max(0,Math.floor((lastY/full)*B));
     var to=Math.min(B-1,Math.floor(((lastY+lastH)/full)*B));
     for(var i=from;i<=to;i++)dwell[i]+=(now-lastT);
-    lastT=now; lastY=window.scrollY; lastH=window.innerHeight; if(b>maxBand)maxBand=b;
+    lastT=now; lastY=window.scrollY; lastH=window.innerHeight; if(bottom>maxBottom)maxBottom=bottom;
   }
   window.addEventListener('scroll',tick,{passive:true});
   // 滞在時間用の定期計測。タブが裏に回ったら止める（見ていない間は数えない・負荷も落とす）
@@ -161,6 +163,7 @@ export function buildTrackingScriptBody(endpoint: string, versionUid?: string): 
   }
   function flush(){
     if(sent)return; sent=true; tick();
+    var maxBand=Math.max(0,Math.min(B-1,Math.ceil((maxBottom/(docH()+window.innerHeight))*B)-1));
     for(var i=0;i<=maxBand;i++)reach[i]=1;
     var body={event:'heatmap',bands:B,reach:reach,dwell:dwell,exit_band:curBand(),
       fv:fvBands(),offer:offerBand(),params:PRM,clicks:clicks,rb:1};
