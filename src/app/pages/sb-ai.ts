@@ -9,6 +9,7 @@
  * - 新しいチャットボタン → 会話を作成してリセット
  */
 import fragment from '../fragments/sb_ai__default.html?raw'
+import { uniquifySvgIds } from '../svg-unique-ids.ts'
 import { stripGlobalSidebar } from './sidebar-shell.ts'
 import { api } from '../api.ts'
 import { T, el, toast } from '../ui.ts'
@@ -22,6 +23,8 @@ export function renderSbAi(container: HTMLElement): void {
 
   const root = document.createElement('div')
   root.innerHTML = stripGlobalSidebar(fragment)
+  // 写し取ったアイコンは同じ id のまま並んでいるので、アイコンごとに別の名前にする（svg-unique-ids.ts）
+  uniquifySvgIds(root)
   container.append(root)
 
   wireComposer(root)

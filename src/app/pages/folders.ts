@@ -24,6 +24,7 @@
  * （見た目の忠実さを優先し、推測で数値を作らない）。ページ行のクリック先だけモックへ束ねる。
  */
 import substrate from '../fragments/folders__detail.html?raw'
+import { uniquifySvgIds } from '../svg-unique-ids.ts'
 import { isStale } from '../main.ts'
 import { api, type AbTest, type Folder, type RelationCounts } from '../api.ts'
 import { pageListApi } from '../api-page-list.ts'
@@ -86,6 +87,8 @@ export async function renderFolders(
 
   const root = document.createElement('div')
   root.innerHTML = substrate
+  // 写し取ったアイコンは同じ id のまま並んでいるので、アイコンごとに別の名前にする（svg-unique-ids.ts）
+  uniquifySvgIds(root)
   // 断片は `#root` の中身そのままなので**グローバルサイドバーを含む**。
   // シェルが同じものを出しているため、ここでは本体側だけを残す（マークアップは書き換えていない）。
   const body = root.querySelector<HTMLElement>(FOLDERS_HOOK.body)
@@ -251,6 +254,8 @@ function folderRowPrototype(): HTMLElement | null {
 
 function folderRow(prototypeRow: HTMLElement, folder: Folder, rerender: () => void): HTMLElement {
   const row = prototypeRow.cloneNode(true) as HTMLElement
+  // 行はコピーで増やすので、行ごとにアイコンの id を付け直す（コピーのままだと同じ名前が並ぶ）
+  uniquifySvgIds(row)
   row.setAttribute(FOLDER_UID_ATTRIBUTE, folder.uid)
   const name = row.querySelector<HTMLElement>(FOLDERS_HOOK.folderRowName)
   if (name === null) console.warn('[folders] フォルダ名の差し込み先が行に見つかりませんでした')

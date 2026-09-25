@@ -75,7 +75,9 @@ export const DIVIDER_ICONS = {
 /* ── 画面の切り替わり方 ── */
 export const TRANSITION_ICONS = {
   none: svg('<rect x="2" y="5" width="12" height="14" rx="2" fill="currentColor" opacity=".35"/><rect x="18" y="5" width="12" height="14" rx="2" fill="currentColor"/>'),
-  fade: svg('<defs><linearGradient id="nc-fade-g" x1="0" x2="1"><stop offset="0" stop-color="currentColor" stop-opacity=".1"/><stop offset="1" stop-color="currentColor"/></linearGradient></defs><rect x="3" y="5" width="26" height="14" rx="2" fill="url(#nc-fade-g)"/>'),
+  // 名前（id）を使うグラデーションは、同じアイコンが並ぶと最初の1つが隠れたとき全部の色が消える（2026-09-25）。
+  // 濃さの違う帯を並べて、id を使わずに「だんだん現れる」を描く
+  fade: svg('<rect x="3" y="5" width="7" height="14" rx="2" fill="currentColor" opacity=".15"/><rect x="10.5" y="5" width="6.5" height="14" fill="currentColor" opacity=".4"/><rect x="17" y="5" width="6" height="14" fill="currentColor" opacity=".7"/><rect x="22" y="5" width="7" height="14" rx="2" fill="currentColor"/>'),
   slide: svg('<rect x="14" y="5" width="15" height="14" rx="2" fill="currentColor"/><path d="M3 12 H10 M7 9 L10 12 L7 15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>'),
 } as const
 

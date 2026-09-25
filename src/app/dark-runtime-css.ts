@@ -31,7 +31,8 @@ function isTarget(sheet: CSSStyleSheet): boolean {
 /** ルール（入れ子の @media も）から上書きを作る */
 function convert(rule: CSSRule): string {
   if (rule instanceof CSSStyleRule) {
-    return darkRule(rule.selectorText, parseDeclarations(rule.style.cssText))
+    // 色を持つルールには、変えない色も含めて写しを作る（「選んだとき」の色が「ふつう」の写しに負けないように・2026-09-25）
+    return darkRule(rule.selectorText, parseDeclarations(rule.style.cssText), { keepCascade: true })
   }
   if (rule instanceof CSSMediaRule || rule instanceof CSSSupportsRule) {
     const inner = [...rule.cssRules].map(convert).filter(Boolean).join('\n')

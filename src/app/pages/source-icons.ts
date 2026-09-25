@@ -4,6 +4,7 @@
  * utm_source は広告を出す人が自由に書く。よく使う書き方（fb・facebook・fb_story…）を、最初の語で見分ける。
  * 知らない名前には付けない（文字だけ）。形は画面の小さな目印として描いた簡略版（公式ロゴの画像ではない）。
  */
+import { withUniqueSvgIds } from '../svg-unique-ids.ts'
 
 export type SourceKind = 'facebook' | 'instagram' | 'google' | 'youtube' | 'yahoo' | 'line' | 'tiktok' | 'x'
 
@@ -82,12 +83,6 @@ const SVG_BODY: Readonly<Record<SourceKind, string>> = {
     '<path fill="#fff" transform="translate(5.2 5.2) scale(0.567)" d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>',
 }
 
-/**
- * グラデーションの名前（id）はページ全体で1つの名前として扱われる。同じ名前を使い回すと、
- * 最初にその名前を持った図形が隠れたとき（別の行が非表示など）に、ほかの全部の色も消える（2026-09-25 実測）。
- * アイコンごとに別の名前にする。
- */
-let gradientSeq = 0
 
 /** アイコン（16px）。知らない流入元なら null */
 export function sourceIconFor(value: string, size = 16): HTMLElement | null {
@@ -98,10 +93,11 @@ export function sourceIconFor(value: string, size = 16): HTMLElement | null {
   wrap.dataset['source'] = kind
   wrap.title = SOURCE_NAMES[kind]
   // 固定の文字列だけを入れる（利用者の入力は入らない）
-  gradientSeq += 1
-  const body = SVG_BODY[kind].replaceAll('hm-src-ig', `hm-src-ig-${gradientSeq}`)
-  wrap.innerHTML =
+  // グラデーションの名前（id）は、アイコンごとに別にする。同じ名前を使い回すと、最初の1つが隠れたとき
+  // （別の行が非表示など）に、ほかの全部の色も消える（2026-09-25 実測・svg-unique-ids.ts）
+  wrap.innerHTML = withUniqueSvgIds(
     `<svg viewBox="0 0 24 24" width="${size}" height="${size}" role="img" aria-label="${SOURCE_NAMES[kind]}">` +
-    `${body}</svg>`
+      `${SVG_BODY[kind]}</svg>`,
+  )
   return wrap
 }

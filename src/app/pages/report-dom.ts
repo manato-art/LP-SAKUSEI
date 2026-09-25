@@ -11,6 +11,7 @@ import { overrideDarkBackgrounds } from '../white-base.ts'
 import { extractCapturedAbTestUid, stripShellFromFragment, toHashHref } from './report-substrate.ts'
 import { buildThemeSwap, extractThemeTokens, swapClassName, type ThemeSwap } from './report-theme.ts'
 import { openReportSettingsModal } from '../panels/report-settings-modal.ts'
+import { uniquifySvgIds } from '../svg-unique-ids.ts'
 
 /**
  * 採取したページ断片を差し込む。断片はページ全体（サイドバー込み）なので、
@@ -19,6 +20,8 @@ import { openReportSettingsModal } from '../panels/report-settings-modal.ts'
 export function mountCapturedPage(container: HTMLElement, fragmentHtml: string): HTMLElement {
   const root = document.createElement('div')
   root.innerHTML = stripShellFromFragment(fragmentHtml)
+  // 写し取ったアイコンは同じ id のまま並んでいるので、アイコンごとに別の名前にする（svg-unique-ids.ts）
+  uniquifySvgIds(root)
   container.append(root)
   return root
 }

@@ -47,6 +47,28 @@ export function darkDeclarations(declarations: readonly { property: string; valu
   return out.join(';')
 }
 
+/** 色を持つ宣言（地・文字・枠・線・影・塗り）。写しの強さの順番をそろえるときに、変えない値も写す対象 */
+const COLOR_PROPERTY =
+  /^(color|background(-color|-image)?|border(-(top|right|bottom|left))?(-color)?|outline(-color)?|box-shadow|-webkit-box-shadow|text-shadow|fill|stroke|caret-color|accent-color|-webkit-text-fill-color|text-decoration(-color)?|column-rule(-color)?)$/
+
+/**
+ * 実行時の写し用: 色を持つ宣言を、変える値は写した値で・変えない値はそのまま、全部並べる（2026-09-25）。
+ *
+ * 写しは元のルールより1段強い（`html[data-theme="dark"]` の分）。変える色が無いルールに写しを作らないと、
+ * 「ふつう」のルールの写しが、写しの無い「選んだとき」のルールに勝ってしまう（選んだボタンの青やオレンジが消えた）。
+ * 色を持つルールには必ず写しを作れば、写し同士の強さの順番がライトと同じになる。
+ */
+function darkDeclarationsKeepingCascade(declarations: readonly { property: string; value: string }[]): string {
+  const out: string[] = []
+  for (const { property, value } of declarations) {
+    if (property === '' || value === '' || property.startsWith('--')) continue
+    const mapped = mapDarkDeclaration(property, value)
+    if (mapped !== null) out.push(`${property}:${mapped}`)
+    else if (COLOR_PROPERTY.test(property.trim().toLowerCase())) out.push(`${property}:${value}`)
+  }
+  return out.join(';')
+}
+
 /** `color:#fff;background:#000` のような文字列を宣言の並びにする */
 export function parseDeclarations(block: string): { property: string; value: string }[] {
   const out: { property: string; value: string }[] = []
@@ -60,10 +82,18 @@ export function parseDeclarations(block: string): { property: string; value: str
   return out
 }
 
-/** セレクタと宣言から、ダーク用のルール1つを作る。変えるものが無ければ空文字 */
-export function darkRule(selector: string, declarations: readonly { property: string; value: string }[]): string {
+/**
+ * セレクタと宣言から、ダーク用のルール1つを作る。変えるものが無ければ空文字。
+ * `keepCascade` … 実行時の写し用。色を持つルールには、変えない色も含めて写しを作る（darkDeclarationsKeepingCascade）。
+ * 採取したCSSから作るビルド時の上書き（tools/rehydrate/build-dark-css.ts）は今までどおり、変える宣言だけ。
+ */
+export function darkRule(
+  selector: string,
+  declarations: readonly { property: string; value: string }[],
+  options: { keepCascade?: boolean } = {},
+): string {
   const sel = darkSelector(selector)
   if (sel === '') return ''
-  const decls = darkDeclarations(declarations)
+  const decls = options.keepCascade === true ? darkDeclarationsKeepingCascade(declarations) : darkDeclarations(declarations)
   return decls === '' ? '' : `${sel}{${decls}}`
 }
