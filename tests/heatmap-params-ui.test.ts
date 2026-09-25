@@ -89,26 +89,26 @@ describe('カードの複製', () => {
  * 行全体から拾うと「広告を選んだだけ」で行が選択中の見た目になる。
  */
 describe('指標のチェックと広告パラメータのチェックを取り違えない', () => {
-  const source = readFileSync('src/app/pages/heatmap.ts', 'utf8')
+  const list = readFileSync('src/app/pages/heatmap-version-list.ts', 'utf8')
+  const page = readFileSync('src/app/pages/heatmap.ts', 'utf8')
 
-  it('行が選択中かの判定は指標のタブだけを数える', () => {
-    expect(source).toContain('[class*="_tab_"] input[type="checkbox"]')
-    // 行（item）全体から拾っていないこと。広告パラメータの ul から拾うのは正しい使い方。
-    expect(source).not.toContain('item.querySelectorAll<HTMLInputElement>(\'input[type="checkbox"]\')')
+  it('行が選択中（白い面）かの判定は指標のボタンだけを見る', () => {
+    expect(list).toContain('.hm-vl-item:has(.hm-vl-metrics input:checked)')
+    // 行全体のチェックで判定しない（広告を選んだだけで行が選択中に見えてしまう）
+    expect(list).not.toContain('.hm-vl-item:has(input:checked)')
   })
 
-  it('既定で開く行も指標のタブを押す', () => {
-    expect(source).toContain(
-      "items[bestIndex]?.querySelector<HTMLInputElement>('[class*=\"_tab_\"] input[type=\"checkbox\"]')",
-    )
+  it('既定で開く行も指標（離脱）のボタンを押す', () => {
+    expect(page).toContain(".querySelector<HTMLInputElement>('.hm-vl-metrics input[data-metric=\"exit\"]')")
   })
 })
 
 /**
  * カード見出しの数字（PV / CTR / CV）。
  * 広告で絞った列に、そのVersion全体のPVを出すと「19PVの中のfb」なのか
- * 「fbが19PV」なのか読めない。絞った列は計測したPVだけを出し、
- * パラメータ別に測っていないCTR・CVは「-」にする。
+ * 「fbが19PV」なのか読めない。絞った列はその広告の数字を出す。
+ * 2026-09-25 から広告ごとの CV も数えているので、レポートの広告の行（Branch Operation）と同じ PV・CTR・CV を出す。
+ * その行が無い（レポート設定で隠した等）ときは、計測したPVだけを出し CTR・CV は「-」。
  */
 describe('カード見出しの数字', () => {
   const spec = { versionUid: 'V1', pv: 19, ctr: 0.5, cv: 3 }
@@ -123,7 +123,7 @@ describe('カード見出しの数字', () => {
       .toEqual({ pv: 99, ctr: 0.1, cv: 1 })
   })
 
-  it('広告で絞った列は、その広告で計測したPVだけを出し、CTR・CVは出さない', () => {
+  it('広告で絞った列で、レポートにその広告の行が無ければ、計測したPVだけを出し、CTR・CVは出さない', () => {
     expect(
       columnHeaderStats({ ...spec, param: 'utm_source=fb' }, {
         isShared: false,
@@ -131,6 +131,16 @@ describe('カード見出しの数字', () => {
         stat: { pv: 12 },
       }),
     ).toEqual({ pv: 12, ctr: null, cv: null })
+  })
+
+  it('レポートにその広告の行があれば、その PV・CTR・CV を出す（広告ごとの CV も数えるようになった・2026-09-25）', () => {
+    expect(
+      columnHeaderStats({ ...spec, param: 'utm_source=fb', adRow: { pv: 35, ctr: 0.3143, cv: 8 } }, {
+        isShared: false,
+        totals: { pv: 99, ctr: 0.1, cv: 1 },
+        stat: { pv: 35 },
+      }),
+    ).toEqual({ pv: 35, ctr: 0.3143, cv: 8 })
   })
 
   it('絞った広告の計測がまだ無ければ0PV（他の数字を借りない）', () => {

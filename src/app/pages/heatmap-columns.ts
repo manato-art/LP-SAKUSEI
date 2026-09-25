@@ -14,7 +14,7 @@
  */
 import type { HeatmapDeviceCoverage, HeatmapVersionStat, ReportVersionRow } from '../api.ts'
 import { buildHeatmapLpDocument } from './heatmap-lp-document.ts'
-import { ALL_PARAMS_LABEL } from './heatmap-params.ts'
+import { ALL_PARAMS_LABEL, formatAdParam } from './heatmap-params.ts'
 import { deviceNoteLines, reachBasisNote } from './heatmap-notes.ts'
 import { ROW_COUNT, bandStrength, rowValue, type LineMode } from './heatmap-rows.ts'
 import { paintLpLayer } from './heatmap-lp-layer.ts'
@@ -205,6 +205,8 @@ export interface ColumnSpec {
   pv: number
   ctr: number | null
   cv: number
+  /** 広告で絞った列の、レポートの広告の行の数字（無ければ見出しは PV だけ） */
+  adRow?: { pv: number; ctr: number | null; cv: number }
 }
 
 export interface ColumnDeps {
@@ -263,7 +265,13 @@ export interface ColumnHeaderStats {
  *   （Version全体の数字を出すと「19PVの中のfb」なのか「fbが19PV」なのか読めない）
  */
 export function columnHeaderStats(
-  spec: { param?: string; pv: number; ctr: number | null; cv: number },
+  spec: {
+    param?: string
+    pv: number
+    ctr: number | null
+    cv: number
+    adRow?: { pv: number; ctr: number | null; cv: number }
+  },
   deps: {
     isShared: boolean
     totals: { pv: number; ctr: number | null; cv: number }
@@ -271,6 +279,8 @@ export function columnHeaderStats(
   },
 ): ColumnHeaderStats {
   if (spec.param !== undefined && spec.param !== '') {
+    // レポート（Branch Operation）にその広告の行があれば、同じ数字を出す（広告ごとの CV も数えている・2026-09-25）
+    if (spec.adRow !== undefined) return { pv: spec.adRow.pv, ctr: spec.adRow.ctr, cv: spec.adRow.cv }
     return { pv: deps.stat?.pv ?? 0, ctr: null, cv: null }
   }
   if (deps.isShared) return { ...deps.totals }
@@ -330,9 +340,11 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
   note.className = 'hm-col-note'
   // このカードが何を合算しているかを名乗る場所（実物の `_noParam_`）。
   // 広告パラメータで絞っていればその広告名、絞っていなければ「全パラメータ合算」。
-  const scope = spec.param === undefined || spec.param === '' ? ALL_PARAMS_LABEL : spec.param
+  // 広告は「流入元: fb」の形で名乗る（生の utm_source=fb は title に残す・2026-09-25）
+  const scope = spec.param === undefined || spec.param === '' ? ALL_PARAMS_LABEL : formatAdParam(spec.param)
   let scopeNote = isShared ? `${scope}・外部LP（Version区別なし）` : scope
   note.textContent = scopeNote
+  if (spec.param !== undefined && spec.param !== '') note.title = spec.param
 
   const ctrl = document.createElement('div')
   ctrl.className = 'hm-col-ctrl'

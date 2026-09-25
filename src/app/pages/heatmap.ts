@@ -7,7 +7,7 @@
  * 左＝Version一覧（PV付き・並び替え）、右＝ヒートマップの並び（採取時も空）。
  */
 import substrate from '../fragments/ab_tests__UID__articles__htmls__heatmaps__comparisons__default.html?raw'
-import { api, type HeatmapParameter, type HeatmapVersionStat, type ReportVersionRow } from '../api.ts'
+import { api, type HeatmapVersionStat, type ReportVersionRow } from '../api.ts'
 import { isStale } from '../main.ts'
 import {
   applyLightTheme,
@@ -27,7 +27,8 @@ import {
   type HeatmapDeviceData,
   type HeatmapMetric,
 } from './heatmap-columns.ts'
-import { columnKeyOf, expandColumnKeys, paramsForVersion } from './heatmap-params.ts'
+import { columnKeyOf, expandColumnKeys } from './heatmap-params.ts'
+import { labelSortTrigger, renderVersionItems } from './heatmap-version-list.ts'
 import { fetchHeatmapLpSources, type HeatmapLpSources } from './heatmap-lp-sources.ts'
 import { wireAbTestTabs, setupHorizTabs, setupBreadcrumb } from './tab-nav.ts'
 import { mountMediaImportSummary } from './report-media-imports.ts'
@@ -141,6 +142,7 @@ export async function renderHeatmap(
     for (const key of expandColumnKeys(selection, paramSelection, duplicates)) {
       const row = listRows.find((r) => r.entity_uid === key.versionUid)
       if (row === undefined) continue
+      const adRow = key.param === '' ? undefined : row.children?.find((c) => c.name === key.param)
       specs.push({
         versionUid: key.versionUid,
         versionName: row.name,
@@ -151,6 +153,7 @@ export async function renderHeatmap(
         pv: row.pv,
         ctr: row.ctr,
         cv: row.cv,
+        ...(adRow === undefined ? {} : { adRow: { pv: adRow.pv, ctr: adRow.ctr, cv: adRow.cv } }),
       })
     }
     renderHeatmapColumns(columnHost, sortColumnSpecs(specs, columnOrder), {
@@ -243,15 +246,25 @@ export async function renderHeatmap(
     // 先に空にする。描いたあとに空にすると、描くときに預かったものまで捨ててしまう。
     metricBoxes.clear()
     paramBoxes.clear()
-    renderVersionList(root, rowsToDraw, onToggle, selection, {
-      parameters: stats.parameters,
-      selected: paramSelection,
-      onToggle: onParamToggle,
-      register: (key, box) => paramBoxes.set(key, box),
+    const ul = root.querySelector<HTMLElement>('[class*="_articleList_"] ul[class*="_body_"]')
+    if (ul === null) {
+      console.warn('[heatmap] Version一覧の置き場所が土台に見つかりませんでした')
+      return
+    }
+    renderVersionItems(ul, rowsToDraw, {
+      selection,
+      onToggle,
+      registerMetric: (key, box) => metricBoxes.set(key, box),
+      params: {
+        parameters: stats.parameters,
+        selected: paramSelection,
+        onToggle: onParamToggle,
+        register: (key, box) => paramBoxes.set(key, box),
+      },
     })
-    registerMetricBoxes(root, rowsToDraw, metricBoxes)
   }
 
+  labelSortTrigger(root)
   drawList(listRows)
   // 開いた直後は何もチェックされておらず右側が空になる。ユーザーからは
   // 「反映されていない／壊れている」に見えるので、実測データが一番多い行を既定で開く。
@@ -285,182 +298,6 @@ function ensureColumnHost(root: HTMLElement): HTMLElement {
   return host
 }
 
-/** 左のVersion一覧。採取済みの1件をテンプレートに、Version数だけ複製する */
-type ToggleColumn = (versionUid: string, metric: HeatmapMetric, on: boolean) => void
-
-/** 左の行に並べる広告パラメータの配線 */
-interface ParamListDeps {
-  parameters: readonly HeatmapParameter[]
-  /** 今チェックされている `versionUid|utm_source=fb` */
-  selected: ReadonlySet<string>
-  onToggle: (versionUid: string, param: string, on: boolean) => void
-  /** カードの「非表示にする」から外せるように、作ったチェックボックスを預ける */
-  register?: (key: string, box: HTMLInputElement) => void
-}
-
-function renderVersionList(
-  root: HTMLElement,
-  rows: readonly ReportVersionRow[],
-  onToggle?: ToggleColumn,
-  /** 今チェックされている `versionUid|metric`。並び替えても選択を保つために渡す */
-  selection?: ReadonlySet<string>,
-  params?: ParamListDeps,
-): void {
-  const list = root.querySelector<HTMLElement>('[class*="_articleList_"] ul[class*="_body_"]')
-  const template = list?.querySelector<HTMLElement>('li[class*="_content_"]') ?? null
-  if (list === null || template === null) {
-    console.warn('[heatmap] Version一覧のテンプレートが土台に見つかりませんでした')
-    return
-  }
-  const activeToken = findClassToken(template, '_active_')
-  const items = rows.map((row) => {
-    const item = template.cloneNode(true) as HTMLElement
-    for (const node of item.querySelectorAll<HTMLElement>('[class*="_memo_"], [class*="_fullContent_"]')) {
-      node.textContent = row.name
-    }
-    const count = item.querySelector<HTMLElement>('[class*="_count_"] div')
-    if (count !== null) count.textContent = `PV: ${row.pv.toLocaleString('ja-JP')}`
-    // 行の見た目は「何番目か」ではなく**チェックされているか**で決める。
-    // 採取物は先頭行に active が付いた状態なので、まず全行から外す。
-    // （付けたままだと、チェックを入れても2行目以降の色が変わらない）
-    if (activeToken !== null) item.classList.remove(activeToken)
-    wireOverlayTabs(item, activeToken, row.entity_uid, onToggle, selection)
-    if (params !== undefined) renderParamOptions(item, row.entity_uid, params)
-    return item
-  })
-  list.replaceChildren(...items)
-}
-
-/**
- * 各Versionの「離脱 / CLICK / CV」タブ（実物はチェックボックス）。
- * 選択状態そのものは実物のUI状態なので配線する。
- * 表示するヒートマップのデータは無いので、右側は変わらない（注記で明示する）。
- */
-/**
- * 行の下に「来た広告パラメータ」を並べる（実物の `_paramsOption_` と `_viewMore_`）。
- *
- * 採取物の器（`_params_`）には「パラメーターなし」しか入っていない。
- * 実際に広告パラメータが来ているVersionでは、実物と同じ形の
- * `<label><input type="checkbox"><span>utm_source=fb</span></label>` を並べ、
- * 末尾に「元に戻す」（全部外して合算に戻す）を置く。
- */
-function renderParamOptions(item: HTMLElement, versionUid: string, deps: ParamListDeps): void {
-  const host = item.querySelector<HTMLElement>('[class*="_params_"]')
-  if (host === null) return
-  const list = paramsForVersion(deps.parameters, versionUid)
-  // 1件も来ていないVersionは採取物のまま（「パラメーターなし」）
-  if (list.length === 0) return
-
-  const optionClass = findClassToken(host, '_paramsOption_') ?? '_paramsOption_1vzzn_199'
-  const viewMoreClass = findClassToken(host, '_viewMore_') ?? '_viewMore_1vzzn_219'
-  const ul = document.createElement('ul')
-  ul.className = '_unstyled_1ahjy_1'
-  for (const entry of list) {
-    const li = document.createElement('li')
-    li.className = optionClass
-    const label = document.createElement('label')
-    const box = document.createElement('input')
-    box.type = 'checkbox'
-    box.checked = deps.selected.has(`${versionUid}|${entry.param}`)
-    const text = document.createElement('span')
-    text.textContent = entry.param
-    // 実物と同じく、長い値は枠の中で横に流れる（採取CSS: `white-space:nowrap; overflow:scroll`）。
-    // 全部読むのに横スクロールが要るので、PVと一緒に title で添えておく。
-    const hint = `${entry.param}（PV: ${entry.pv.toLocaleString('ja-JP')}）`
-    label.title = hint
-    text.title = hint
-    box.addEventListener('change', () => deps.onToggle(versionUid, entry.param, box.checked))
-    deps.register?.(`${versionUid}|${entry.param}`, box)
-    label.append(box, text)
-    li.append(label)
-    ul.append(li)
-  }
-  const reset = document.createElement('div')
-  reset.className = viewMoreClass
-  const resetText = document.createElement('span')
-  resetText.textContent = '元に戻す'
-  reset.append(resetText)
-  reset.addEventListener('click', () => {
-    for (const box of ul.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')) {
-      if (!box.checked) continue
-      box.checked = false
-      box.dispatchEvent(new Event('change'))
-    }
-  })
-  host.replaceChildren(ul, reset)
-}
-
-/**
- * 左の「離脱 / CLICK / CV」チェックを覚えておく。
- * カードの「非表示にする」を押したときに、ここから外して画面と一覧を揃える。
- * 行の並びは listRows と同じ順なので、添字で結びつけられる。
- */
-function registerMetricBoxes(
-  root: HTMLElement,
-  rows: readonly ReportVersionRow[],
-  into: Map<string, HTMLInputElement>,
-): void {
-  const order: HeatmapMetric[] = ['exit', 'click', 'cv']
-  const items = [...root.querySelectorAll<HTMLElement>('[class*="_articleList_"] ul[class*="_body_"] > li')]
-  items.forEach((item, index) => {
-    const row = rows[index]
-    if (row === undefined) return
-    const boxes = [...item.querySelectorAll<HTMLInputElement>('[class*="_tab_"] input[type="checkbox"]')]
-    boxes.forEach((box, i) => {
-      const metric = order[i]
-      if (metric !== undefined) into.set(`${row.entity_uid}|${metric}`, box)
-    })
-  })
-}
-
-/** 採取CSSにある「選んだ」状態のクラス（DOM側は未チェックの初期状態しか採れていない） */
-const CHECKED_CLASS = '_checked_1vzzn_155'
-
-function wireOverlayTabs(
-  item: HTMLElement,
-  activeToken: string | null,
-  versionUid: string,
-  onToggle?: ToggleColumn,
-  selection?: ReadonlySet<string>,
-): void {
-  // 実物の並びは 離脱 / CLICK / CV の3つ。チェックした数だけ右に列が増える。
-  const order: HeatmapMetric[] = ['exit', 'click', 'cv']
-  const tabs = [...item.querySelectorAll<HTMLElement>('[class*="_tab_"]')]
-  tabs.forEach((tab, i) => {
-    const box = tab.querySelector<HTMLInputElement>('input[type="checkbox"]')
-    if (box === null) return
-    const metric = order[i]
-    // 並び替え・絞り込みで作り直したときに、選んでいた状態を戻す
-    // 採取DOMは未チェックの初期状態なので、DOMからは拾えない。採取CSSにある実クラス名を使う
-    // （`capture/clean/ab_tests__UID__articles__htmls__heatmaps__comparisons/default/cssom.css` の
-    //  `._tab_1vzzn_144._checked_1vzzn_155{border-top:3px solid rgb(208,83,83)}` ほか）
-    const checkedToken = findClassToken(tab, '_checked_') ?? CHECKED_CLASS
-    if (metric !== undefined && selection?.has(`${versionUid}|${metric}`) === true) {
-      box.checked = true
-      if (activeToken !== null) {
-        tab.classList.add(activeToken)
-        item.classList.add(activeToken)
-      }
-      tab.classList.add(checkedToken)
-    }
-    box.addEventListener('change', () => {
-      // 採取物は「選んだ（_checked_）」と「今見ている（_active_）」を別の状態として持つ
-      tab.classList.toggle(checkedToken, box.checked)
-      if (activeToken !== null) {
-        tab.classList.toggle(activeToken, box.checked)
-        // 行そのものも、どれか1つでもチェックされていれば選択中の見た目にする。
-        // 数えるのは指標のタブだけ（下に広告パラメータのチェックが並ぶので、
-        // 行全体から拾うと「広告を選んだだけ」で行が選択中に見えてしまう）。
-        const anyChecked = [
-          ...item.querySelectorAll<HTMLInputElement>('[class*="_tab_"] input[type="checkbox"]'),
-        ].some((b) => b.checked)
-        item.classList.toggle(activeToken, anyChecked)
-      }
-      if (metric !== undefined) onToggle?.(versionUid, metric, box.checked)
-    })
-  })
-}
-
 /**
  * 既定で1本開く。実測（ヒートマップ）のPVが一番多い行を選ぶ。
  * どれにもデータが無ければ先頭行。チェックボックスに change を投げて、
@@ -483,9 +320,9 @@ function openDefaultRow(
       bestIndex = i
     }
   })
-  const items = [...root.querySelectorAll<HTMLElement>('[class*="_articleList_"] ul[class*="_body_"] > li')]
-  // 開くのは指標のタブ（広告パラメータのチェックではない）
-  const box = items[bestIndex]?.querySelector<HTMLInputElement>('[class*="_tab_"] input[type="checkbox"]')
+  const items = [...root.querySelectorAll<HTMLElement>('[class*="_articleList_"] .hm-vl-item')]
+  // 開くのは指標（離脱）のボタン（広告パラメータのチェックではない）
+  const box = items[bestIndex]?.querySelector<HTMLInputElement>('.hm-vl-metrics input[data-metric="exit"]')
   if (box === undefined || box === null || box.checked) return
   box.checked = true
   box.dispatchEvent(new Event('change', { bubbles: true }))

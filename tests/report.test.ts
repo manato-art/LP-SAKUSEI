@@ -532,8 +532,8 @@ describe('ヒートマップの配線（採取物と突き合わせ）', () => {
     // 今は描画口が drawList 1つだけ＝並び替えも同じ道を通る。
     expect(src).toContain('const drawList = (')
     expect(src).toContain('wireSortSelect(root, listRows, drawList)')
-    // renderVersionList を呼ぶのは drawList だけ
-    expect(src.split('renderVersionList(root').length - 1).toBe(1)
+    // 一覧を描く（renderVersionItems）のは drawList だけ（2026-09-25 に一覧を作り直した）
+    expect(src.split('renderVersionItems(ul').length - 1).toBe(1)
   })
 
   it('「全ページ表示」が選ばれているかを見る（どちらが選択中かを見ていなかった）', () => {
@@ -560,14 +560,13 @@ describe('ヒートマップの配線（採取物と突き合わせ）', () => {
     expect(cols).toContain('.hm-cols.full .hm-col-body')
   })
 
-  it('選択したVersionには採取物の `_checked_` を付ける', () => {
-    // 採取DOMは初期状態（どれも未チェック）なので、根拠は採取CSS側にある
-    const css = readFileSync(
-      'capture/clean/ab_tests__UID__articles__htmls__heatmaps__comparisons/default/cssom.css',
-      'utf8',
-    )
-    expect(css).toContain('_checked_1vzzn_155')
-    expect(src).toContain('_checked_')
+  it('選んだVersion・指標が見た目で分かる（2026-09-25 本人「視覚的にわかりやすく」で一覧を作り直した）', () => {
+    // 以前は採取CSSの `_checked_`（チェックの上の赤い弧）で示していた。
+    // 今は、選んだ指標のボタンを塗り（印も出す）、選んだ行を白い面にする
+    const list = readFileSync('src/app/pages/heatmap-version-list.ts', 'utf8')
+    expect(list).toContain('.hm-vl-toggle:has(input:checked)')
+    expect(list).toContain('.hm-vl-item:has(.hm-vl-metrics input:checked)')
+    expect(src).not.toContain('_checked_')
   })
 })
 
