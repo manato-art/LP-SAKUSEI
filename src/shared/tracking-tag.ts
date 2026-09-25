@@ -16,7 +16,8 @@
  *             rb が無い送信は古いタグ（スクロールの進み具合で数えていた）
  *   load    : ヒートマップに添える、読み込み完了までの時間 { ms, done }（表示が遅い人の割合・2026-09-16）
  *   wd      : 自動操作中のブラウザ（navigator.webdriver）のときだけ 1。サーバーはボットとして数えない（2026-09-16）
- *   vid     : pv / click に付ける訪問者の目印（Cookie _sb_tu、押したリンクに付いた squadbeyond_uid）。
+ *   vid     : pv / click / heatmap に付ける訪問者の目印（Cookie _sb_tu、押したリンクに付いた squadbeyond_uid）。
+ *             heatmap の目印は、申し込んだ人だけのヒートマップを作るのに使う（2026-09-25）
  *             CVタグから届いた成果を、この表示・クリックのVersionに結びつける（2026-09-11）
  *             離脱時(pagehide/visibilitychange)に1回だけまとめて送る
  *
@@ -165,7 +166,8 @@ export function buildTrackingScriptBody(endpoint: string, versionUid?: string): 
       fv:fvBands(),offer:offerBand(),params:PRM,clicks:clicks,rb:1};
     var ld=loadInfo();
     if(ld)body.load=ld;
-    post(body);
+    /* 目印も付ける。申し込みはあとから別のページで届くので、同じ目印で「申し込んだ人の記録」に結びつける（2026-09-25） */
+    post(withVid(body,VID));
   }
   window.addEventListener('pagehide',flush);
   document.addEventListener('visibilitychange',function(){if(document.hidden)flush()});

@@ -44,7 +44,7 @@ export async function renderHeatmap(
   container.innerHTML = ''
 
   const range: DateRange = requestedRange ?? defaultRange()
-  const [{ ab_test }, report, { heatmaps }, { folders }, stats, externalPage] = await Promise.all([
+  const [{ ab_test }, report, { heatmaps }, { folders }, stats, externalPage, cvStats] = await Promise.all([
     api.abTest(abTestUid),
     // 左の一覧の「アーカイブ有り／無し」はこの画面で絞る。サーバーの既定（アーカイブ済みを除く）のままだと
     // アーカイブ済みの行が最初から届かず、「アーカイブ有り」にしても何も増えなかった（2026-09-24）
@@ -55,6 +55,8 @@ export async function renderHeatmap(
     // 外部LPの実HTML。自前配信のLPや、まだ1度も計測タグが動いていないLPでは
     // 404 になるのが正常なので、失敗しても画面全体は止めない（背景がサンプルに戻るだけ）。
     api.externalPage(abTestUid).catch(() => null),
+    // 申し込んだ人だけのヒートマップ（CVの列・2026-09-25）。取れなくても画面は止めない（CVの列が「まだありません」になる）
+    api.heatmapStats(abTestUid, `${toRangeQuery(range)}&segment=cv`).catch(() => null),
   ])
   const folder = folders.find((f) => f.id === ab_test.folder_id) ?? null
 
@@ -84,6 +86,10 @@ export async function renderHeatmap(
   const paramSelection = new Set<string>()
   /** 広告パラメータごとの集計。空文字＝合算（最初の1回で取れている） */
   const statsByParam = new Map<string, readonly HeatmapVersionStat[]>([['', stats.versions]])
+  /** 申し込んだ人だけの、広告パラメータごとの集計（CVの列が使う） */
+  const cvStatsByParam = new Map<string, readonly HeatmapVersionStat[]>(
+    cvStats === null ? [] : [['', cvStats.versions]],
+  )
   /** カードの「複製」を押した回数（列の鍵 → 回数） */
   const duplicates = new Map<string, number>()
   /** 左のチェックボックス。カードの「非表示にする」から外すために覚えておく */
@@ -125,8 +131,11 @@ export async function renderHeatmap(
     const loading = Promise.all([
       api.heatmapStats(abTestUid, query),
       api.report(abTestUid, `${query}&archive=all`),
-    ]).then(([deviceStats, deviceReport]) => ({
+      api.heatmapStats(abTestUid, `${query}&segment=cv`).catch(() => null),
+    ]).then(([deviceStats, deviceReport, deviceCv]) => ({
       versions: deviceStats.versions,
+      cvVersions: deviceCv?.versions ?? [],
+      cvCoverage: deviceCv?.device_coverage ?? [],
       coverage: deviceStats.device_coverage ?? [],
       since: deviceStats.device_since ?? null,
       rows: deviceReport.rows,
@@ -159,6 +168,8 @@ export async function renderHeatmap(
     renderHeatmapColumns(columnHost, sortColumnSpecs(specs, columnOrder), {
       stats: stats.versions,
       statsByParam,
+      ...(cvStats === null ? {} : { cvStats: cvStats.versions }),
+      cvStatsByParam,
       totals: { pv: report.totals.pv, ctr: report.totals.ctr, cv: report.totals.cv },
       externalHtml: externalPage?.html ?? null,
       styleCss: lpSources?.styleCss ?? '',
@@ -226,10 +237,15 @@ export async function renderHeatmap(
       rebuild()
       return
     }
-    void api
-      .heatmapStats(abTestUid, `${toRangeQuery(range)}&param=${encodeURIComponent(param)}`)
-      .then((filtered) => {
+    const query = `${toRangeQuery(range)}&param=${encodeURIComponent(param)}`
+    void Promise.all([
+      api.heatmapStats(abTestUid, query),
+      // CVの列も同じ広告で絞れるように、申し込んだ人だけの集計も取る
+      api.heatmapStats(abTestUid, `${query}&segment=cv`).catch(() => null),
+    ])
+      .then(([filtered, filteredCv]) => {
         statsByParam.set(param, filtered.versions)
+        if (filteredCv !== null) cvStatsByParam.set(param, filteredCv.versions)
         rebuild()
       })
       .catch(() => {

@@ -19,6 +19,7 @@
 import type { HeatmapParameter, ReportVersionRow } from '../api.ts'
 import type { HeatmapMetric } from './heatmap-columns.ts'
 import { groupAdParams, paramsForVersion } from './heatmap-params.ts'
+import { sourceIconFor } from './source-icons.ts'
 
 export interface VersionListDeps {
   /** 今チェックされている `versionUid|metric`（並び替えで描き直しても選択を保つ） */
@@ -38,7 +39,7 @@ export interface VersionListDeps {
 const METRICS: readonly { metric: HeatmapMetric; label: string; hint: string }[] = [
   { metric: 'exit', label: '離脱', hint: 'どこで読むのをやめたか' },
   { metric: 'click', label: 'クリック', hint: 'どこが押されたか' },
-  { metric: 'cv', label: 'CV', hint: '申し込みの数（画面のどこで起きたかは記録していません）' },
+  { metric: 'cv', label: 'CV', hint: '申し込んだ人だけの、どこまで読んだか・どこを押したか' },
 ]
 
 const CSS_ID = 'sb-heatmap-version-list-css'
@@ -112,6 +113,10 @@ function injectStyles(): void {
     .hm-vl-chip-value {
       min-width:0; font-size:12px; font-weight:700; color:var(--sb-c-1a1a1a, #1A1A1A); overflow-wrap:anywhere;
     }
+    .hm-vl-src-icon { display:inline-flex; flex:none; width:16px; height:16px; }
+    .hm-vl-src-icon svg { display:block; }
+    /* 選んだ（青く塗った）チップの上でも、ロゴの形が地に溶けないよう白い縁を付ける */
+    .hm-vl-chip:has(input:checked) .hm-vl-src-icon { border-radius:50%; box-shadow:0 0 0 1.5px #FFFFFF; }
     .hm-vl-chip-pv { font-size:10.5px; color:var(--sb-c-6a6a72, #6A6A72); font-variant-numeric:tabular-nums; }
     .hm-vl-chip:has(input:checked) { background:var(--sb-accent, #0091FF); border-color:var(--sb-accent, #0091FF); }
     .hm-vl-chip:has(input:checked) .hm-vl-chip-value,
@@ -224,9 +229,12 @@ function adFilters(versionUid: string, deps: VersionListDeps['params']): HTMLEle
       })
       deps.register(`${versionUid}|${item.param}`, box)
       boxes.push(box)
+      // 流入元は、知っているサービスならその色のロゴの形を添える（source-icons.ts・2026-09-25）
+      const icon = group.key === 'utm_source' ? sourceIconFor(item.value) : null
       chip.append(
         box,
         checkIcon(),
+        ...(icon === null ? [] : [icon]),
         el('span', 'hm-vl-chip-value', item.value),
         el('span', 'hm-vl-chip-pv', item.pv.toLocaleString('ja-JP')),
       )

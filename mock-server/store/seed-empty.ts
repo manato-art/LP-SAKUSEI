@@ -118,6 +118,8 @@ export function createEmptyState(): State {
     mediaImports: [],
     deviceMetrics: [],
     deviceHeatmapStats: [],
+    cvHeatmapStats: [],
+    pendingCvHeatmaps: [],
     deviceRecordedSince: null,
 
     // ── 設定系は「既定値が入った状態」で存在する（0件ではない）──

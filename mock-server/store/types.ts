@@ -846,6 +846,42 @@ export interface DeviceHeatmapStat extends HeatmapStat {
 }
 
 /**
+ * 申し込んだ人だけのヒートマップの行（2026-09-25・store/cv-heatmap.ts）。
+ * 日付は**申し込みが数えられた日**（レポートのCVと同じ日に並ぶ）。端末ごと・広告パラメータごと（param）に持つ。
+ * 全端末は端末の行を足して出す。
+ */
+export interface CvHeatmapStat extends HeatmapStat {
+  device: DeviceKind
+}
+
+/**
+ * 申し込みを待っている位置の記録（2026-09-25・store/cv-heatmap.ts）。
+ * 位置の記録はLPを離れたときに届き、申し込みはあとから届くので、1日だけ預かる。
+ * 預かるのは、申し込みが数えられうる人だけ（CV条件がクリックのページでは計測リンクを押した人）。
+ */
+export interface PendingCvHeatmap {
+  vid: string
+  ab_test_uid: string
+  version_uid: string
+  device: DeviceKind
+  /** 着地の広告パラメータ（`utm_source=fb` の形） */
+  params: readonly string[]
+  /** 預かった時刻（UNIXミリ秒）。1日を過ぎたら捨てる */
+  at: number
+  /** 1回の表示ぶんの記録（store/heatmap-sample.ts の HeatmapSample と同じ形） */
+  sample: {
+    bands: number
+    reach: number[]
+    dwell: number[]
+    exitBand: number
+    fvBands: number | undefined
+    offerBand: number | undefined
+    clicks: { x: number; y: number; cx?: number }[]
+    isViewportBasis: boolean
+  }
+}
+
+/**
  * 「表示するパラメータ」1行。
  * 採取物（capture/clean/ab_tests__UID__reports/report-settings-modal）の表と同じで、
  * 列は クリエイティブ / Branch Operation / ヒートマップ / メモ。
@@ -1144,6 +1180,10 @@ export interface State {
   deviceMetrics: readonly DeviceMetric[]
   /** 端末ごとのスクロールの記録（2026-09-24 から） */
   deviceHeatmapStats: readonly DeviceHeatmapStat[]
+  /** 申し込んだ人だけのヒートマップ（2026-09-25 から・store/cv-heatmap.ts） */
+  cvHeatmapStats: readonly CvHeatmapStat[]
+  /** 申し込みを待っている位置の記録（1日だけ・上限あり） */
+  pendingCvHeatmaps: readonly PendingCvHeatmap[]
   /** 端末を記録し始めた日（JST・YYYY-MM-DD）。まだ1件も無ければ null。これより前のデータには端末が無い */
   deviceRecordedSince: string | null
   /** HTML設定モーダル（noindex とタグ）。記事ごとに1件。 */

@@ -8,6 +8,8 @@
  *   elementClick クリック数 = そのバンドに落ちたクリック数
  * 期間指定は日別集計を合算する。データが無ければ空配列（数字を作らない）。
  *
+ * `segment=cv` を付けると、申し込んだ人だけの記録で出す（2026-09-25・store/cv-heatmap.ts）。
+ *
  * `device=sp|tablet|pc` を付けると、その端末の記録だけで出す（2026-09-24・点検29）。
  * 端末ごとの記録は広告パラメータに分けていないので、`param` と一緒には使えない（param を優先して device を無視し、
  * device_applied:false で知らせる）。どの端末に何PVあるか（device_coverage）も返す。
@@ -18,7 +20,7 @@ import { isWithin } from '../store/metrics.ts'
 import { dateRangeParams } from '../lib/query.ts'
 import { findAbTest, notFound } from './ab-tests-shared.ts'
 import { parameterNameOf, parameterScopesOf } from '../store/parameter-scopes.ts'
-import type { DeviceKind, HeatmapStat, State } from '../store/types.ts'
+import type { CvHeatmapStat, DeviceKind, HeatmapStat, State } from '../store/types.ts'
 
 export const heatmapStatsRouter: Router = Router()
 
@@ -88,6 +90,33 @@ function aggregateByVersion(state: State, rows: readonly HeatmapStat[], param: s
   })
 }
 
+/** 申し込んだ人の行（広告・端末で絞る。端末の行を足すと全端末） */
+function cvRows(
+  state: State,
+  abTestUid: string,
+  range: { startDate: string; endDate: string },
+  param: string,
+  device: DeviceKind | null,
+): readonly CvHeatmapStat[] {
+  return state.cvHeatmapStats.filter(
+    (h) =>
+      h.ab_test_uid === abTestUid &&
+      (h.param ?? '') === param &&
+      (device === null || h.device === device) &&
+      isWithin(h.date, range.startDate, range.endDate),
+  )
+}
+
+/** 申し込んだ人の、Version ごとの全端末と端末ごとの人数 */
+function cvDeviceCoverage(state: State, abTestUid: string, startDate: string, endDate: string) {
+  const out = new Map<string, { version_uid: string; all: number; sp: number; tablet: number; pc: number }>()
+  for (const h of cvRows(state, abTestUid, { startDate, endDate }, '', null)) {
+    const e = out.get(h.version_uid) ?? { version_uid: h.version_uid, all: 0, sp: 0, tablet: 0, pc: 0 }
+    out.set(h.version_uid, { ...e, all: e.all + h.pv, [h.device]: e[h.device] + h.pv })
+  }
+  return [...out.values()]
+}
+
 /** Version ごとに、全端末の PV と端末ごとの PV（端末を記録する前のぶんは all にだけ入る） */
 function deviceCoverage(state: State, abTestUid: string, startDate: string, endDate: string) {
   const out = new Map<string, { version_uid: string; all: number; sp: number; tablet: number; pc: number }>()
@@ -115,11 +144,13 @@ heatmapStatsRouter.get('/ab_tests/:uid/heatmaps/stats', (req, res) => {
   // 実物の画面では、左のVersion一覧で utm_* にチェックを入れるとその広告だけのヒートマップになる。
   const wanted = typeof req.query['param'] === 'string' ? req.query['param'] : ''
   const device = wanted === '' ? deviceOf(req.query['device']) : null
+  const isCv = req.query['segment'] === 'cv'
   const inRange = state.heatmapStats.filter(
     (h) => h.ab_test_uid === abTest.uid && isWithin(h.date, startDate, endDate),
   )
-  const rows: readonly HeatmapStat[] =
-    device === null
+  const rows: readonly HeatmapStat[] = isCv
+    ? cvRows(state, abTest.uid, { startDate, endDate }, wanted, device)
+    : device === null
       ? inRange.filter((h) => (h.param ?? '') === wanted)
       : state.deviceHeatmapStats.filter(
           (h) => h.ab_test_uid === abTest.uid && h.device === device && isWithin(h.date, startDate, endDate),
@@ -154,7 +185,11 @@ heatmapStatsRouter.get('/ab_tests/:uid/heatmaps/stats', (req, res) => {
     parameters,
     /** 端末で絞ったか（広告パラメータと一緒には絞れない） */
     device_applied: device !== null,
-    device_coverage: deviceCoverage(state, abTest.uid, startDate, endDate),
+    device_coverage: isCv
+      ? cvDeviceCoverage(state, abTest.uid, startDate, endDate)
+      : deviceCoverage(state, abTest.uid, startDate, endDate),
+    /** 申し込んだ人だけの記録か（segment=cv） */
+    segment: isCv ? 'cv' : 'all',
     /** 端末を記録し始めた日（それより前の記録には端末が無い） */
     device_since: state.deviceRecordedSince,
   })

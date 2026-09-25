@@ -39,7 +39,10 @@ export function deviceNoteLines(input: {
   param: string
   coverage: { all: number; sp: number; tablet: number; pc: number } | null
   since: string | null | undefined
+  /** 数の単位。申し込んだ人だけの列（CV）は「人」（2026-09-25） */
+  unit?: 'PV' | '人'
 }): string[] {
+  const unit = input.unit ?? 'PV'
   if (input.param !== '') return ['広告で絞った列は端末で分けられません（SP・PCを合わせた数字です）。']
   const coverage = input.coverage
   if (coverage === null) return []
@@ -48,12 +51,12 @@ export function deviceNoteLines(input: {
   if (unknown > 0) {
     lines.push(
       input.since === null || input.since === undefined
-        ? `端末の記録はまだありません。この ${unknown.toLocaleString('ja-JP')} PV は端末が分からないため、SP・PCのどちらにも入っていません。`
-        : `端末の記録は ${shortDate(input.since)} からです。それより前の ${unknown.toLocaleString('ja-JP')} PV は端末が分からないため、SP・PCのどちらにも入っていません。`,
+        ? `端末の記録はまだありません。この ${unknown.toLocaleString('ja-JP')} ${unit} は端末が分からないため、SP・PCのどちらにも入っていません。`
+        : `端末の記録は ${shortDate(input.since)} からです。それより前の ${unknown.toLocaleString('ja-JP')} ${unit} は端末が分からないため、SP・PCのどちらにも入っていません。`,
     )
   }
   if (coverage.tablet > 0) {
-    lines.push(`タブレットの ${coverage.tablet.toLocaleString('ja-JP')} PV は SP・PC のどちらにも入れていません。`)
+    lines.push(`タブレットの ${coverage.tablet.toLocaleString('ja-JP')} ${unit} は SP・PC のどちらにも入れていません。`)
   }
   return lines
 }

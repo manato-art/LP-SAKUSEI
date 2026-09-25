@@ -601,8 +601,10 @@ describe('ヒートマップの列は選んだ指標で中身が変わる', () =
     expect(cols).toContain("case 'click'")
   })
 
-  it('CVは縦位置の記録が無いことを正直に出す（0を描いて誤解させない）', () => {
-    expect(cols).toContain('CVは画面のどこで起きたかを記録していません')
+  it('CVの列は申し込んだ人だけのヒートマップ（2026-09-25 本人の指示で作り直し。以前は何も描かなかった）', () => {
+    expect(cols).not.toContain('CVは画面のどこで起きたかを記録していません')
+    expect(cols).toContain('申し込んだ人だけ（')
+    expect(cols).toContain('deps.cvStats')
   })
 
   it('指標ごとの色は実測どおり（離脱=赤 / CLICK=青 / CV=緑）', () => {

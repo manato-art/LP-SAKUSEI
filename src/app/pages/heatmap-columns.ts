@@ -25,6 +25,10 @@ export type { LineMode } from './heatmap-rows.ts'
 export interface HeatmapDeviceData {
   /** その端末の記録だけで集計したヒートマップ */
   versions: readonly HeatmapVersionStat[]
+  /** その端末の、申し込んだ人だけのヒートマップ（CVの列が使う・2026-09-25） */
+  cvVersions?: readonly HeatmapVersionStat[]
+  /** 申し込んだ人の、Version ごとの全端末と端末ごとの人数（CVの列の断り書きに使う） */
+  cvCoverage?: readonly HeatmapDeviceCoverage[]
   /** Version ごとの、全端末と端末ごとの PV */
   coverage: readonly HeatmapDeviceCoverage[]
   /** 端末を記録し始めた日 */
@@ -60,8 +64,8 @@ export function defaultModeFor(metric: HeatmapMetric): LineMode {
     case 'click':
       return 'elementClick'
     case 'cv':
-      // CVは「画面のどこで起きたか」を記録していないので、面は描かない
-      return 'none'
+      // CVの列は申し込んだ人だけのヒートマップ。まず「どこまで読んだか」を見せる（2026-09-25）
+      return 'arrival'
   }
 }
 
@@ -217,6 +221,13 @@ export interface ColumnDeps {
    */
   statsByParam?: ReadonlyMap<string, readonly HeatmapVersionStat[]>
   /**
+   * 申し込んだ人だけの集計（`segment=cv`・2026-09-25）。CVの列はこちらを見る。
+   * 渡されなければCVの列は「まだありません」になる（ふつうの記録を借りない）。
+   */
+  cvStats?: readonly HeatmapVersionStat[]
+  /** 申し込んだ人だけの、広告パラメータごとの集計（キー＝`utm_source=fb`） */
+  cvStatsByParam?: ReadonlyMap<string, readonly HeatmapVersionStat[]>
+  /**
    * LP全体（ab_testスコープ）の指標。外部LPの計測はVersionに紐づかないので、
    * Version単位の数字を出すと常に0になる。version無しの集計を使う列ではこちらを出す。
    */
@@ -305,7 +316,13 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
   // 広告パラメータで絞った列は、その広告ぶんの集計を見る（無ければ合算）
   const pickStat = (pool: readonly HeatmapVersionStat[]): HeatmapVersionStat | null =>
     pool.find((s) => s.version_uid === spec.versionUid) ?? pool.find((s) => s.version_uid === '') ?? null
-  let stat = pickStat(deps.statsByParam?.get(spec.param ?? '') ?? deps.stats)
+  // CVの列は申し込んだ人だけの集計を見る（2026-09-25）
+  const isCv = spec.metric === 'cv'
+  const poolOf = (param: string): readonly HeatmapVersionStat[] =>
+    isCv
+      ? (deps.cvStatsByParam?.get(param) ?? (param === '' ? deps.cvStats : undefined) ?? [])
+      : (deps.statsByParam?.get(param) ?? deps.stats)
+  let stat = pickStat(poolOf(spec.param ?? ''))
   // 「外部LPの数字を見ている列か」は、行き着いた集計が version無しかどうかで決める。
   // 外部LPの行（entity_uid='')を直接選んだ場合も exact 一致するので、
   // 「フォールバックしたか」では判定できない。
@@ -533,10 +550,9 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
     overlay.innerHTML = ''
     // 何を合算しているかの表示は、描き直すたびに戻す（下でCV用の文言に差し替わるため）
     note.textContent = scopeNote
-    if (spec.metric === 'cv') {
-      // CVは「ページのどこで起きたか」を記録していない（計測タグはCVの座標を送らない）。
-      // 0を描くと「誰も反応しなかった」に見えるので、そうと分かる文言を出す。
-      note.textContent = 'CVは画面のどこで起きたかを記録していません（面は出ません）'
+    if (isCv) {
+      // CVの列は、申し込んだ人だけのヒートマップ（2026-09-25）。何人ぶんの記録かを名乗る
+      note.textContent = `${scopeNote}・申し込んだ人だけ（${stat?.pv ?? 0}人）`
     }
     const mode = lineSelect.value as LineMode
     // SP / PC の切り替えで差し替わるので、描くあいだは手元に固定する
@@ -624,7 +640,14 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
     // 「位置の記録は離脱時に1回だけ送られる」ため、それ以前のPVには位置が無いこと。
     // 自前配信のLPには計測タグが最初から入っているので「タグを貼れ」とは言わない。
     const seen = isShared ? deps.totals.pv : spec.pv
-    empty.textContent = isShared
+    empty.textContent = isCv
+      ? [
+          '申し込んだ人のヒートマップはまだありません。',
+          '計測リンクを押して申し込んだ人の、',
+          'LPを離れたときの位置の記録が、ここに貯まります。',
+          '（2026-09-25 から記録しています）',
+        ].join('\n')
+      : isShared
       ? [
           'この外部LPのヒートマップはまだありません。',
           'LPに計測タグを貼ると、ページを離れたときに',
@@ -655,7 +678,7 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
     }
     try {
       const data = await deps.loadDevice(device)
-      stat = pickStat(data.versions)
+      stat = pickStat(isCv ? (data.cvVersions ?? []) : data.versions)
       isShared = stat !== null && stat.version_uid === ''
       scopeNote = isShared ? `${scope}・外部LP（Version区別なし）` : scope
       const row = data.rows.find((r) => r.entity_uid === spec.versionUid)
@@ -663,9 +686,11 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
         spec: { ...spec, pv: row?.pv ?? 0, ctr: row?.ctr ?? null, cv: row?.cv ?? 0 },
         totals: data.totals,
       }
-      const coverage = data.coverage.find((c) => c.version_uid === (isShared ? '' : spec.versionUid)) ?? null
+      // CVの列は、申し込んだ人の人数で断る（全員の PV ではなく）
+      const pool = isCv ? (data.cvCoverage ?? []) : data.coverage
+      const coverage = pool.find((c) => c.version_uid === (isShared ? '' : spec.versionUid)) ?? null
       paintHeadStats()
-      paintExtraNotes(deviceNoteLines({ device, param, coverage, since: data.since }))
+      paintExtraNotes(deviceNoteLines({ device, param, coverage, since: data.since, unit: isCv ? '人' : 'PV' }))
       paintEmpty()
       drawOverlay()
     } catch (error) {

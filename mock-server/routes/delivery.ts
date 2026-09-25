@@ -17,6 +17,7 @@ import { getMasterStyleSheet } from '../store/master-style-sheet.ts'
 import { getHtmlSetting } from '../store/html-tags.ts'
 import { bulkTagsForFolder } from '../store/bulk-tags.ts'
 import { recordConversion } from '../store/actions.ts'
+import { releaseCvHeatmap } from '../store/cv-heatmap.ts'
 import { shouldExclude } from '../store/exclusions.ts'
 import type { RequestLogEntry } from '../store/types.ts'
 import { broadcastConversion, type ConversionPush } from '../ws/cable.ts'
@@ -568,8 +569,10 @@ deliveryRouter.post('/lp/:uid/__track', (req, res) => {
           params: matched.touch.params ?? [],
         },
       )
-      const media = out.state.media.find((m) => m.id === abTest.media_id)
-      const version = out.state.versions.find((v) => v.uid === versionOfCv)
+      // 預かっていた位置の記録を「申し込んだ人だけのヒートマップ」に足す（2026-09-25・store/cv-heatmap.ts）
+      const withCvHeatmap = releaseCvHeatmap(out.state, { abTestUid: abTest.uid, vid, now: Date.now() })
+      const media = withCvHeatmap.media.find((m) => m.id === abTest.media_id)
+      const version = withCvHeatmap.versions.find((v) => v.uid === versionOfCv)
       pushed = {
         uid: out.conversion.uid,
         ab_test_uid: abTest.uid,
@@ -579,7 +582,7 @@ deliveryRouter.post('/lp/:uid/__track', (req, res) => {
         amount,
         occurred_at: new Date(out.conversion.occurred_at * 1000).toISOString(),
       }
-      return out.state
+      return withCvHeatmap
     })
     if (pushed !== null) broadcastConversion(pushed)
     res.json({ ok: true, counted })
@@ -589,7 +592,8 @@ deliveryRouter.post('/lp/:uid/__track', (req, res) => {
   // ── ヒートマップ（実測）: 計測タグが離脱時にまとめて送る位置情報 ──
   // 回数ではなく「ページのどこか」を積む。到達率/離脱率/滞在時間/クリック数の材料。
   if (body.event === 'heatmap') {
-    setState((s) => mergeHeatmapEvent(s, { abTestUid: abTest.uid, versionUid, date, body, device }))
+    const condition = abTest.conversion_setting.conversion_condition === 'access' ? 'access' : 'click'
+    setState((s) => mergeHeatmapEvent(s, { abTestUid: abTest.uid, versionUid, date, body, device, vid, condition }))
     res.json({ ok: true })
     return
   }
