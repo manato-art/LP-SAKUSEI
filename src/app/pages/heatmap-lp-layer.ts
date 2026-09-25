@@ -9,6 +9,29 @@
  */
 
 const LAYER_ID = 'sb-heatmap-layer'
+/** 「近くで押された」とみなす距離（LPの中のpx） */
+const NEAR_PX = 24
+
+/**
+ * 点ごとに「近くで押された回数」を数える（2026-09-25・指示185）。
+ * 以前は全部の点が同じ薄いオレンジで、同じ所を何回も押された（ボタン）のか、1回だけなのか見分けられなかった。
+ */
+function nearCounts(points: readonly { px: number; py: number }[], near: number): number[] {
+  return points.map((p) => points.filter((q) => (q.px - p.px) ** 2 + (q.py - p.py) ** 2 <= near * near).length)
+}
+
+/**
+ * 回数の強さ 0〜1。回数は「倍」で効かせる（1→2→4→8…で一段ずつ変わる）。
+ * そのまま比で割り当てると、ボタンに25回あるとき2〜6回の点がほとんど同じ青になり見分けられなかった。
+ */
+function countStrength(count: number, max: number): number {
+  return max <= 1 ? 0 : Math.log(count) / Math.log(max)
+}
+
+/** 少ない＝青 → 多い＝赤（面の色と同じ並び） */
+function countColor(count: number, max: number): string {
+  return `hsl(${Math.round((1 - countStrength(count, max)) * 240)}, 90%, 50%)`
+}
 /** ぼかしで端が薄くならないよう、上下にこれだけ広げてから切り取る */
 const BLUR_PAD = 40
 
@@ -20,7 +43,6 @@ export interface LpLayerSpec {
    * cx（画面の真ん中から何px）があればそれで横の位置を決める（真ん中寄せのLPは、画面の幅が違っても同じ場所になる）
    */
   dots: readonly { x: number; y: number; cx?: number }[]
-  dotColor: string
   /** 点の直径（LPの中のpx）。LPを縮めて見せるとき（PC）は、画面で同じ大きさに見えるよう大きくする。既定10 */
   dotSize?: number
   /** 「熟読箇所を非表示にする」で面だけ隠す */
@@ -54,15 +76,26 @@ export function paintLpLayer(doc: Document, spec: LpLayerSpec): number {
     heat.dataset['heat'] = '1'
     layer.append(heat)
   }
+  // 点の色と大きさは「近くで押された回数」で決める（少ない＝青・小さい → 多い＝赤・大きい）。多い点を上に重ねる
   const size = spec.dotSize ?? 10
-  for (const c of spec.dots) {
+  const width = root.clientWidth
+  const placed = spec.dots.map((c) => ({ c, px: c.cx === undefined ? c.x * width : width / 2 + c.cx, py: c.y * height }))
+  const counts = nearCounts(placed, NEAR_PX * (size / 10))
+  const max = Math.max(1, ...counts)
+  const order = placed.map((p, i) => ({ ...p, count: counts[i] ?? 1 })).sort((a, b) => a.count - b.count)
+  for (const { c, count } of order) {
     const dot = doc.createElement('div')
     const left =
       c.cx === undefined ? `${(c.x * 100).toFixed(2)}%` : `calc(50% ${c.cx < 0 ? '-' : '+'} ${Math.abs(c.cx)}px)`
+    const d = Number((size * (1 + countStrength(count, max) * 0.6)).toFixed(1))
+    const half = Number((d / 2).toFixed(1))
+    const ring = Number(Math.max(1, size * 0.15).toFixed(1))
     dot.style.cssText =
       `position:absolute;left:${left};top:${(c.y * height).toFixed(1)}px;` +
-      `width:${size}px;height:${size}px;margin:-${size / 2}px 0 0 -${size / 2}px;border-radius:50%;background:${spec.dotColor};`
+      `width:${d}px;height:${d}px;margin:-${half}px 0 0 -${half}px;` +
+      `border-radius:50%;background:${countColor(count, max)};opacity:.9;box-shadow:0 0 0 ${ring}px rgba(255,255,255,.9);`
     dot.dataset['dot'] = '1'
+    dot.dataset['count'] = String(count)
     layer.append(dot)
   }
   root.append(layer)

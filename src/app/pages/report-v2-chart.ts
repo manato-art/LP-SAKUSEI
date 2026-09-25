@@ -114,10 +114,15 @@ function shortDate(key: string): string {
 }
 
 /**
- * 面付きの折れ線を描く。データが1点以下なら null（呼び出し側が空表示にする）。
+ * 面付きの折れ線を描く。データが無ければ null（呼び出し側が空表示にする）。
  * ラベルが枠から出ないよう、左右と下に余白を確保した viewBox にしている。
+ *
+ * 日ごとの点の印は、図の上に重ねて置く（2026-09-25・指示184「グラフが表示されない」）。
+ * 折れ線は2点以上ないと描かれないので、期間が1日（既定の「今日」）だと目盛りだけで中身が何も見えなかった。
+ * 図は横幅に合わせて横に引き伸ばす作り（preserveAspectRatio="none"）なので、丸を図の中に描くと楕円になる。
+ * 1点のときは、その値も点の上に添える。
  */
-function drawChart(daily: readonly ReportDailyRow[], key: KpiKey): SVGSVGElement | null {
+function drawChart(daily: readonly ReportDailyRow[], key: KpiKey): HTMLElement | null {
   const points = daily
     .map((row) => ({ date: row.date, value: valueOf(row, key) }))
     .filter((p): p is { date: string; value: number } => p.value !== null)
@@ -196,7 +201,29 @@ function drawChart(daily: readonly ReportDailyRow[], key: KpiKey): SVGSVGElement
     label.textContent = shortDate(p.date)
     svg.append(label)
   })
-  return svg
+
+  const wrap = document.createElement('div')
+  wrap.className = 'rv2-chart-wrap'
+  wrap.append(svg)
+  const at = (px: number, total: number): string => `${((px / total) * 100).toFixed(3)}%`
+  points.forEach((p, i) => {
+    const dot = document.createElement('span')
+    dot.className = 'rv2-chart-dot'
+    dot.style.left = at(x(i), W)
+    dot.style.top = at(y(p.value), H)
+    dot.title = `${shortDate(p.date)}　${formatSummary(p.value, key)}`
+    wrap.append(dot)
+  })
+  const only = points.length === 1 ? points[0] : undefined
+  if (only !== undefined) {
+    const value = document.createElement('span')
+    value.className = 'rv2-chart-value'
+    value.style.left = at(x(0), W)
+    value.style.top = at(y(only.value), H)
+    value.textContent = formatSummary(only.value, key)
+    wrap.append(value)
+  }
+  return wrap
 }
 
 function emptyBox(title: string, body: string): HTMLElement {

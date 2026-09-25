@@ -105,7 +105,6 @@ describe('ヒートマップの点', () => {
         { x: 0.3, y: 0.2, cx: 35 },
         { x: 0.3, y: 0.2 },
       ],
-      dotColor: 'red',
       hideHeat: false,
     })
     const lefts = [...document.querySelectorAll('[data-dot]')].map((d) => (d as HTMLElement).style.left)

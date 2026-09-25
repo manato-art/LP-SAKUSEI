@@ -131,6 +131,16 @@ export function injectReportStyles(): void {
     .rv2-legend { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--rv2-sub); margin-bottom:6px; }
     .rv2-legend i { width:7px; height:7px; border-radius:50%; background:var(--rv2-accent); display:inline-block; }
     .rv2-chart { width:100%; height:150px; display:block; }
+    /* 日ごとの点と、1点のときの値（図の上に重ねる・図は横に引き伸ばすので丸は図の外に置く） */
+    .rv2-chart-wrap { position:relative; }
+    .rv2-chart-dot {
+      position:absolute; width:9px; height:9px; margin:-4.5px 0 0 -4.5px; border-radius:50%;
+      background:var(--rv2-accent); box-shadow:0 0 0 2px var(--sb-c-ffffff, #FFFFFF); pointer-events:auto;
+    }
+    .rv2-chart-value {
+      position:absolute; transform:translate(-50%, calc(-100% - 10px)); white-space:nowrap;
+      font-size:12px; font-weight:700; color:var(--sb-c-1a1a1a, #1A1A1A); font-variant-numeric:tabular-nums;
+    }
     .rv2-empty {
       border:1px solid var(--rv2-rule); border-radius:10px; background:#fbfcfe;
       display:flex; flex-direction:column; align-items:center; justify-content:center;

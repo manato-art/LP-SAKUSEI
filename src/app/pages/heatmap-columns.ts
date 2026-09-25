@@ -172,6 +172,14 @@ function injectStyles(): void {
       border-radius:13px 0 0 13px; font-size:11px; font-weight:700;
       font-variant-numeric:tabular-nums;
     }
+    /* クリックの点の色の見方（少ない＝青 → 多い＝赤） */
+    .hm-click-legend { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:6px; font-size:11px; color:var(--sb-c-555555, #555555); }
+    .hm-click-legend[hidden] { display:none; }
+    .hm-click-legend-scale { display:inline-flex; align-items:center; gap:5px; }
+    .hm-click-legend-scale i {
+      display:inline-block; width:72px; height:8px; border-radius:4px;
+      background:linear-gradient(to right, hsl(240,90%,50%), hsl(180,90%,50%), hsl(120,90%,50%), hsl(60,90%,50%), hsl(0,90%,50%));
+    }
     .hm-empty { padding:28px 14px; color:var(--sb-c-6a6a72, #6A6A72); font-size:12px; text-align:center; line-height:1.9; }
   `
   document.head.append(s)
@@ -415,7 +423,22 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
     )
   }
   paintExtraNotes([])
-  head.append(ver, met, note, extraNotes, ctrl)
+  // クリックの点の色の見方（クリック数の線のときだけ出す・2026-09-25 指示185）
+  const clickLegend = document.createElement('div')
+  clickLegend.className = 'hm-click-legend'
+  clickLegend.hidden = true
+  const legendLabel = document.createElement('span')
+  legendLabel.textContent = '点の色＝近くで押された回数'
+  const legendScale = document.createElement('span')
+  legendScale.className = 'hm-click-legend-scale'
+  const few = document.createElement('span')
+  few.textContent = '少ない'
+  const bar = document.createElement('i')
+  const many = document.createElement('span')
+  many.textContent = '多い'
+  legendScale.append(few, bar, many)
+  clickLegend.append(legendLabel, legendScale)
+  head.append(ver, met, note, extraNotes, ctrl, clickLegend)
 
   // 実物のカードにある3つの操作（採取物: `_dupContainer_` / `_optionsContainer_`）。
   //  ・複製      : 同じ設定のカードをもう1枚増やす
@@ -559,6 +582,7 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
     const shownStat = stat
     const doc = lp.contentDocument
     const hasData = shownStat !== null && shownStat.pv > 0 && mode !== 'none'
+    clickLegend.hidden = !(hasData && mode === 'elementClick' && shownStat.clicks.length > 0)
 
     // 熱の色。LPが読めなくなるので薄く敷く（実物もLPの絵柄がはっきり見える）。
     // 面は行（5%刻み21段）より**細かく**出す。行は読むための目盛りで、
@@ -588,7 +612,6 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
         : paintLpLayer(doc, {
             stops,
             dots: hasData && mode === 'elementClick' ? shownStat.clicks.slice(-400) : [],
-            dotColor: bandColor(spec.metric, 0.9),
             // PCはLPを縮めて見せるので、点は画面で10pxに見える大きさにする
             dotSize: 10 / scale,
             hideHeat: col.classList.contains('no-heat'),

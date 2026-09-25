@@ -28,7 +28,6 @@ describe('LPの中に重ねる面と点', () => {
         { x: 0.25, y: 0.5 },
         { x: 0.5, y: 0.1 },
       ],
-      dotColor: 'red',
       hideHeat: false,
     })
     expect(height).toBe(4000)
@@ -47,7 +46,6 @@ describe('LPの中に重ねる面と点', () => {
         { at: 0.5, color: 'blue' },
       ],
       dots: [],
-      dotColor: 'red',
       hideHeat: false,
     })
     const heat = doc.querySelector('[data-heat]') as HTMLElement
@@ -57,7 +55,7 @@ describe('LPの中に重ねる面と点', () => {
 
   it('描き直すと前の層は消える（重ねて濃くならない）・熟読箇所を隠すと面だけ消える', () => {
     const doc = lpDocument(1000)
-    const spec = { stops: [{ at: 0.5, color: 'red' }], dots: [{ x: 0.5, y: 0.5 }], dotColor: 'red', hideHeat: false }
+    const spec = { stops: [{ at: 0.5, color: 'red' }], dots: [{ x: 0.5, y: 0.5 }], hideHeat: false }
     paintLpLayer(doc, spec)
     paintLpLayer(doc, spec)
     expect(doc.querySelectorAll('#sb-heatmap-layer')).toHaveLength(1)
@@ -68,8 +66,8 @@ describe('LPの中に重ねる面と点', () => {
 
   it('何も描かないときは層を置かない', () => {
     const doc = lpDocument(1000)
-    paintLpLayer(doc, { stops: [{ at: 0.5, color: 'red' }], dots: [], dotColor: 'red', hideHeat: false })
-    paintLpLayer(doc, { stops: null, dots: [], dotColor: 'red', hideHeat: false })
+    paintLpLayer(doc, { stops: [{ at: 0.5, color: 'red' }], dots: [], hideHeat: false })
+    paintLpLayer(doc, { stops: null, dots: [], hideHeat: false })
     expect(doc.getElementById('sb-heatmap-layer')).toBeNull()
   })
 })
@@ -77,7 +75,7 @@ describe('LPの中に重ねる面と点', () => {
 describe('点の大きさ', () => {
   it('LPを縮めて見せるとき用に、点の直径を変えられる（真ん中に置く）', () => {
     const doc = lpDocument(1000)
-    paintLpLayer(doc, { stops: null, dots: [{ x: 0.5, y: 0.5 }], dotColor: 'red', dotSize: 26, hideHeat: false })
+    paintLpLayer(doc, { stops: null, dots: [{ x: 0.5, y: 0.5 }], dotSize: 26, hideHeat: false })
     const dot = doc.querySelector('[data-dot]') as HTMLElement
     expect(dot.style.width).toBe('26px')
     expect(dot.style.margin).toBe('-13px 0 0 -13px')
