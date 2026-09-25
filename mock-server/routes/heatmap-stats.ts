@@ -47,7 +47,7 @@ function aggregateByVersion(state: State, rows: readonly HeatmapStat[], param: s
     const list = all.filter((row) => row.bands === bands)
     const zero = (): number[] => new Array<number>(bands).fill(0)
     const sum = { pv: 0, vbPv: 0, reach: zero(), exit: zero(), dwellMs: zero(), dwellN: zero() }
-    const clicks: { x: number; y: number }[] = []
+    const clicks: { x: number; y: number; cx?: number }[] = []
     for (const row of list) {
       sum.pv += row.pv
       sum.vbPv += row.vb_pv ?? 0

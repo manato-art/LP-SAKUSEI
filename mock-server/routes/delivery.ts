@@ -558,7 +558,15 @@ deliveryRouter.post('/lp/:uid/__track', (req, res) => {
       const versionOfCv = matched.touch.version_uid
       const out = recordConversion(
         { ...s, visitorTouches: matched.touches },
-        { ab_test_uid: abTest.uid, version_uid: versionOfCv, media_id: abTest.media_id, amount, device },
+        {
+          ab_test_uid: abTest.uid,
+          version_uid: versionOfCv,
+          media_id: abTest.media_id,
+          amount,
+          device,
+          // 着地したときの広告の行（Branch Operation・クリエイティブ）にも数える（2026-09-25）
+          params: matched.touch.params ?? [],
+        },
       )
       const media = out.state.media.find((m) => m.id === abTest.media_id)
       const version = out.state.versions.find((v) => v.uid === versionOfCv)
@@ -610,6 +618,7 @@ deliveryRouter.post('/lp/:uid/__track', (req, res) => {
           version_uid: versionUid,
           kind: event === 'click' ? 'click' : 'view',
           at: Date.now(),
+          params: adParams,
         }),
       }
     }

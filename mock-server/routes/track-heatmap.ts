@@ -18,7 +18,7 @@ interface HeatmapSample {
   exitBand: number
   fvBands: number | undefined
   offerBand: number | undefined
-  clicks: { x: number; y: number }[]
+  clicks: { x: number; y: number; cx?: number }[]
   isViewportBasis: boolean
 }
 
@@ -53,9 +53,14 @@ function readSample(body: unknown): { sample: HeatmapSample; params: string[] } 
   }
   const clicks = (Array.isArray(hb.clicks) ? hb.clicks : [])
     .slice(0, 300)
-    .map((c) => c as { x?: unknown; y?: unknown })
+    .map((c) => c as { x?: unknown; y?: unknown; cx?: unknown })
     .filter((c) => typeof c.x === 'number' && typeof c.y === 'number')
-    .map((c) => ({ x: c.x as number, y: c.y as number }))
+    // cx＝画面の真ん中から何px（2026-09-25から計測タグが送る）。古いタグの送信には無い
+    .map((c) => ({
+      x: c.x as number,
+      y: c.y as number,
+      ...(typeof c.cx === 'number' && Number.isFinite(c.cx) && Math.abs(c.cx) <= 5000 ? { cx: Math.round(c.cx) } : {}),
+    }))
   return {
     sample: {
       bands,
@@ -76,6 +81,32 @@ function readSample(body: unknown): { sample: HeatmapSample; params: string[] } 
 }
 
 /**
+ * 1人ぶんの FV/SV 離脱とボタン到達（どれも 0 か 1）。
+ *
+ * 画面1枚ぶんの幅（fv）とボタンの位置（offer）は、その人の画面の高さ・LPの横幅で変わる。
+ * 行に1つだけ持つと、スマホとPCが混ざったときに別の人の画面で数えてしまうので、ここで1人ずつ判定する。
+ * fv が来ない送信（ごく古いタグ）はこの数え方の母数に入れない。
+ */
+function judgeView(sample: HeatmapSample): {
+  counted: number
+  fvExit: number
+  svExit: number
+  hasOffer: number
+  offerReach: number
+} {
+  const fv = sample.fvBands
+  const offer = sample.offerBand
+  const hasOffer = fv !== undefined && offer !== undefined
+  return {
+    counted: fv === undefined ? 0 : 1,
+    fvExit: fv !== undefined && sample.exitBand < fv ? 1 : 0,
+    svExit: fv !== undefined && sample.exitBand >= fv && sample.exitBand < fv * 2 ? 1 : 0,
+    hasOffer: hasOffer ? 1 : 0,
+    offerReach: hasOffer && (sample.reach[offer] ?? 0) > 0 ? 1 : 0,
+  }
+}
+
+/**
  * 1回の表示ぶんを、条件に合う行へ足す（無ければ作る）。
  * 分割数(bands)も一致条件に入れる。分割数を変えたときに、古い配列へ新しい長さの値を足し込んで数字を壊さないため。
  */
@@ -88,10 +119,17 @@ function mergeSample<T extends HeatmapStat>(
 ): readonly T[] {
   const idx = stats.findIndex((h) => h.bands === sample.bands && isSame(h))
   const base = idx === -1 ? fresh() : stats[idx]!
+  const view = judgeView(sample)
   const merged: T = {
     ...base,
     pv: base.pv + 1,
     vb_pv: (base.vb_pv ?? 0) + (sample.isViewportBasis ? 1 : 0),
+    // FV/SV離脱・ボタン到達は、この人の画面の幅・この人に見えたボタンの位置で判定して足す（2026-09-25）
+    scroll_pv: (base.scroll_pv ?? 0) + view.counted,
+    fv_exit_n: (base.fv_exit_n ?? 0) + view.fvExit,
+    sv_exit_n: (base.sv_exit_n ?? 0) + view.svExit,
+    offer_pv: (base.offer_pv ?? 0) + view.hasOffer,
+    offer_reach_n: (base.offer_reach_n ?? 0) + view.offerReach,
     // ページの作りで決まる値。届いたら最後のもので上書きする
     fv_bands: sample.fvBands ?? base.fv_bands,
     offer_band: sample.offerBand ?? base.offer_band,

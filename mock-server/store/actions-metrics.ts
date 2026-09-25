@@ -89,6 +89,11 @@ export function recordConversion(
     amount: number
     /** 成果を送ってきた端末（2026-09-24・点検29）。分からなければ端末ごとには数えない */
     device?: DeviceKind
+    /**
+     * その人が着地したときの広告パラメータ（`utm_source=fb` の形・2026-09-25）。
+     * 表示・クリックと同じく「Version×広告」の行（Branch Operation・クリエイティブ）にも数える。
+     */
+    params?: readonly string[]
   },
 ): { state: State; conversion: Conversion } {
   const id = state.nextId
@@ -104,23 +109,29 @@ export function recordConversion(
   }
   const date = toDateKey(new Date())
   const delta = { cv: 1, sales: input.amount }
-  const pageMetrics = bumpMetric(state, input.ab_test_uid, 'ab_test', date, delta)
-  // 見ていたVersionが分かる成果は、そのVersionのCVにも数える（外部LPの計測タグの成果は Version を持たない）
-  const metrics =
-    input.version_uid === ''
-      ? pageMetrics
-      : bumpMetric({ ...state, metrics: pageMetrics }, input.version_uid, 'version', date, delta)
+  // 見ていたVersionが分かる成果は、そのVersionのCVにも数える（外部LPの計測タグの成果は Version を持たない）。
+  // 広告パラメータで来た人なら、表示・クリックと同じ「Version×広告」の行にも数える（track-counts.ts と同じ形）
+  const targets: { entity_uid: string; scope: 'ab_test' | 'version' | 'parameter' }[] = [
+    { entity_uid: input.ab_test_uid, scope: 'ab_test' },
+    ...(input.version_uid === ''
+      ? []
+      : [
+          { entity_uid: input.version_uid, scope: 'version' as const },
+          ...[...new Set(input.params ?? [])].map((param) => ({
+            entity_uid: `${input.version_uid}|${param}`,
+            scope: 'parameter' as const,
+          })),
+        ]),
+  ]
+  const metrics = targets.reduce(
+    (list, key) => bumpMetric({ ...state, metrics: list }, key.entity_uid, key.scope, date, delta),
+    state.metrics,
+  )
   const device = input.device
   const deviceMetrics =
     device === undefined
       ? state.deviceMetrics
-      : [
-          { entity_uid: input.ab_test_uid, scope: 'ab_test' as const },
-          ...(input.version_uid === '' ? [] : [{ entity_uid: input.version_uid, scope: 'version' as const }]),
-        ].reduce(
-          (list, key) => bumpDeviceMetric(list, { ...key, date, device }, delta),
-          state.deviceMetrics,
-        )
+      : targets.reduce((list, key) => bumpDeviceMetric(list, { ...key, date, device }, delta), state.deviceMetrics)
   return {
     state: {
       ...state,

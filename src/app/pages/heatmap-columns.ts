@@ -16,6 +16,10 @@ import type { HeatmapDeviceCoverage, HeatmapVersionStat, ReportVersionRow } from
 import { buildHeatmapLpDocument } from './heatmap-lp-document.ts'
 import { ALL_PARAMS_LABEL } from './heatmap-params.ts'
 import { deviceNoteLines, reachBasisNote } from './heatmap-notes.ts'
+import { ROW_COUNT, bandStrength, rowValue, type LineMode } from './heatmap-rows.ts'
+import { paintLpLayer } from './heatmap-lp-layer.ts'
+
+export type { LineMode } from './heatmap-rows.ts'
 
 /** SP / PC の切り替えで読む、その端末ぶんの記録（2026-09-24・点検29） */
 export interface HeatmapDeviceData {
@@ -48,17 +52,6 @@ export const METRIC_HUE: Readonly<Record<HeatmapMetric, number>> = {
   cv: 275,
 }
 
-/**
- * ラインのモード。
- *
- * 実物と同じ5つ。2026-09-15 に実画面を採取して確認できた
- * （`capture/clean/ab_tests__UID__reports__lp/heatmap-3col/dom.html` の
- *  `<select><option value="none">ライン非表示</option>…` ＝ value も表記も一致）。
- * 左のチェック（離脱 / CLICK / CV）で選んだ指標に合わせた既定値を出し、
- * そのうえで細かく見たいときに切り替えられるようにしている。
- */
-export type LineMode = 'none' | 'arrival' | 'exit' | 'attention' | 'elementClick'
-
 /** 左のチェック（離脱 / CLICK / CV）に対する既定のライン */
 export function defaultModeFor(metric: HeatmapMetric): LineMode {
   switch (metric) {
@@ -72,6 +65,15 @@ export function defaultModeFor(metric: HeatmapMetric): LineMode {
   }
 }
 
+/**
+ * ラインのモード。
+ *
+ * 実物と同じ5つ。2026-09-15 に実画面を採取して確認できた
+ * （`capture/clean/ab_tests__UID__reports__lp/heatmap-3col/dom.html` の
+ *  `<select><option value="none">ライン非表示</option>…` ＝ value も表記も一致）。
+ * 左のチェック（離脱 / CLICK / CV）で選んだ指標に合わせた既定値を出し、
+ * そのうえで細かく見たいときに切り替えられるようにしている。
+ */
 export const LINE_MODES: readonly { value: LineMode; label: string }[] = [
   { value: 'none', label: 'ライン非表示' },
   { value: 'arrival', label: '到達率' },
@@ -113,8 +115,6 @@ function injectStyles(): void {
       color:var(--sb-c-555555, #555555); border-radius:4px; font-size:11px; line-height:1;
       padding:5px 8px; cursor:pointer; font-family:inherit;
     }
-    /* 「熟読箇所を非表示にする」を押した列。色の面だけ消して、LPと線は残す */
-    .hm-col.no-heat .hm-heat { display:none; }
     .hm-col-ctrl { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:6px; }
     .hm-dev { display:flex; gap:4px; }
     .hm-dev button {
@@ -135,13 +135,12 @@ function injectStyles(): void {
     /* 「全ページ表示」を選んだときは枠の高さ固定を外し、LPの全高を出す（2026-09-15） */
     .hm-cols.full .hm-col-body { height:auto; flex:0 0 auto; max-height:none; }
     .hm-canvas { position:relative; width:375px; height:667px; overflow:hidden; }
-    .hm-canvas { position:relative; }
     .hm-lp { transform-origin:top left; }
     .hm-overlay { position:sticky; top:0; height:0; z-index:5; }
-    /* 熱の色は1枚のグラデーションで敷く（帯ごとに矩形を置くと段差が出る） */
-    /* 集計はバンド単位なので停止点の間に段差が出る。ぼかして自然につなぐ。
-       ぼかすと上下の端が薄くなるので、外へ広げてから canvas 側で切り取る。 */
-    .hm-heat { position:absolute; inset:-40px 0; filter:blur(16px); }
+    /* 全ページ表示: LPを全部の高さで出し（高さは読み込み後に測って入れる）、線は本当の深さの位置に置く（2026-09-25） */
+    .hm-cols.full .hm-canvas { height:auto; }
+    .hm-cols.full .hm-overlay { position:absolute; top:0; left:0; right:0; }
+    /* 色の面とクリックの点は、LPの中（iframe の文書）に重ねる（heatmap-lp-layer.ts） */
     /* 到達ライン。実物の arrivalLine に対応する白いバー。
        押すとLPがその深さまでスクロールするので、ボタンとして扱う。 */
     .hm-pill {
@@ -169,7 +168,6 @@ function injectStyles(): void {
       border-radius:13px 0 0 13px; font-size:11px; font-weight:700;
       font-variant-numeric:tabular-nums;
     }
-    .hm-dot { position:absolute; width:10px; height:10px; margin:-5px 0 0 -5px; border-radius:50%; }
     .hm-empty { padding:28px 14px; color:var(--sb-c-6a6a72, #6A6A72); font-size:12px; text-align:center; line-height:1.9; }
   `
   document.head.append(s)
@@ -191,34 +189,6 @@ function bandColor(_metric: HeatmapMetric, strength: number): string {
   //   色相が狭い範囲に固まり、全部同じような青緑になってしまう。
   const hue = (1 - t) * 240
   return `hsla(${hue}, 92%, 50%, 0.42)`
-}
-
-/** モードごとの「そのバンドの値」と表示文字列 */
-function bandValue(
-  stat: HeatmapVersionStat,
-  mode: LineMode,
-  i: number,
-): { strength: number; label: string; isZero: boolean } | null {
-  if (mode === 'none') return null
-  if (mode === 'arrival' || mode === 'exit') {
-    const v = (mode === 'arrival' ? stat.arrival : stat.exit)[i]
-    if (v === null || v === undefined) return null
-    // 実物は割合だけでなく**人数**も出す（「25人 47%到達」）。
-    // 何人が実際にそこまで見たのかが分からないと、率だけでは判断できないため。
-    const word = mode === 'arrival' ? '到達' : '離脱'
-    // 実物は1%未満を数字でなく「1%未満到達」と出す（0人と書くと誤解を招くため）
-    if (v < 0.01) return { strength: v, label: `1%未満${word}`, isZero: true }
-    const people = Math.round(v * stat.pv)
-    return { strength: v, label: `${people}人 ${Math.round(v * 100)}%${word}`, isZero: false }
-  }
-  if (mode === 'attention') {
-    const ms = stat.attention[i] ?? 0
-    const max = Math.max(1, ...stat.attention)
-    return { strength: ms / max, label: `${(ms / 1000).toFixed(1)}秒`, isZero: false }
-  }
-  const n = stat.elementClick[i] ?? 0
-  const max = Math.max(1, ...stat.elementClick)
-  return { strength: n / max, label: `${n}クリック`, isZero: false }
 }
 
 export interface ColumnSpec {
@@ -274,6 +244,8 @@ export interface ColumnDeps {
 /** LPを見せる枠の幅（スマホ／PC） */
 const SP_WIDTH = 375
 const PC_WIDTH = 980
+/** スマホ枠の高さ（実物の iframe と同じ 375×667） */
+const FRAME_HEIGHT = 667
 
 /** カード見出しに出す数字。測っていないものは null＝画面では「-」 */
 export interface ColumnHeaderStats {
@@ -379,6 +351,8 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
       pc.classList.toggle('on', b === pc)
       lp.style.width = `${b === pc ? PC_WIDTH : SP_WIDTH}px`
       applyScale()
+      // 横幅が変わるとLPの高さも変わる（全ページ表示なら枠の高さを測り直す）
+      fitFullPage()
       // 枠の幅だけでなく、数字もその端末の記録に切り替える（2026-09-24・点検29）
       void switchDevice(b === pc ? 'pc' : 'sp')
     })
@@ -424,6 +398,8 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
   heatToggle.addEventListener('click', () => {
     const hidden = col.classList.toggle('no-heat')
     heatToggle.textContent = hidden ? '熟読箇所を表示する' : '熟読箇所を非表示にする'
+    // 面はLPの中に置いているので、描き直して消す／出す
+    drawOverlay()
   })
   tools.append(heatToggle)
   if (deps.onDuplicate !== undefined) {
@@ -457,7 +433,7 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
   lp.className = 'hm-lp'
   // スマホ枠いっぱい。縮小はせず、枠の中だけをスクロールさせる（実物と同じ）。
   lp.style.width = `${SP_WIDTH}px`
-  lp.style.height = '667px'
+  lp.style.height = `${FRAME_HEIGHT}px`
   lp.style.border = '0'
   // allow-scripts は与えない＝中のJSは動かない。allow-same-origin は
   // 高さ測定とスクロール操作のため。
@@ -480,33 +456,62 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
     const h = lp.contentDocument?.documentElement.scrollHeight ?? 0
     return {
       top: win?.scrollY ?? 0,
-      max: Math.max(0, h - 667),
+      max: Math.max(0, h - (win?.innerHeight ?? FRAME_HEIGHT)),
       to: (y) => win?.scrollTo({ top: y, behavior: 'smooth' }),
     }
   }
-  // 縮小はしない（実物どおり等倍のスマホ枠）。読み込み後に描き直すだけ。
+  /**
+   * LPを枠に収める倍率。スマホは等倍（実物どおり375pxの枠）。
+   * PCは980pxの画面として組んだLPを、375pxの枠に縮めて見せる（2026-09-25）。
+   * 以前は縮めずに980pxのまま375pxの枠に入れていて、LPの左の一部しか見えていなかった。
+   */
+  let scale = 1
   const applyScale = (): void => {
-    /* 等倍表示なので寸法計算は不要。resize/読み込み時の再描画のフックとして残す。 */
+    scale = SP_WIDTH / (parseFloat(lp.style.width) || SP_WIDTH)
+    lp.style.transform = scale === 1 ? '' : `scale(${scale})`
+    // 縮めた枠が、見た目で枠いっぱい（667px）になる高さ
+    if (!deps.fullPage) lp.style.height = `${FRAME_HEIGHT / scale}px`
   }
-  lp.addEventListener('load', () => drawOverlay())
+
+  /**
+   * 全ページ表示: 枠をLPの高さまで伸ばして、LPを全部見せる（2026-09-25）。
+   * 以前は外側の枠の高さ固定を外すだけで、LPの枠（iframe）は667pxのままだった＝何も変わらなかった。
+   * 高さは枠いっぱいの高さで測る（画面の高さに合わせて伸びるLPを、伸ばした枠で測り直し続けないため）。
+   */
+  const fitFullPage = (): void => {
+    if (!deps.fullPage) return
+    lp.style.height = `${FRAME_HEIGHT / scale}px`
+    const height = lp.contentDocument?.documentElement.scrollHeight ?? 0
+    if (height <= 0) return
+    lp.style.height = `${height}px`
+    canvas.style.height = `${height * scale}px`
+  }
+  lp.addEventListener('load', () => {
+    fitFullPage()
+    drawOverlay()
+  })
 
   /**
    * 実物の到達ラインは **5%刻みの21行**（0%,5%,…,100%）で、行の位置はLPの高さと無関係に
    * 上から30px間隔で並ぶ。行を押すとLPだけがその深さまでスクロールし、押した行が
    * 黒地オレンジ字になって、右のバッジにその深さ（例: 55%）が出る。
    * 採取した実DOM（arrivalLine / scrollPosition）に合わせている。
+   * 全ページ表示のときは、LP全体が見えているので、線はLPの本当の深さの位置に置く。
    */
   const ROW_STEP = 30
   const ROW_TOP = 10
-  const ROW_COUNT = 21
   let activeRow = 0
 
-  /** 行i（＝LPの深さ i*5%）に対応する、20バンド集計の添字 */
-  const bandIndexOf = (row: number, bands: number): number =>
-    Math.min(bands - 1, Math.floor((row / (ROW_COUNT - 1)) * bands))
+  /** 線の縦位置（px）。全ページ表示ならLPの深さそのもの、スクロール表示なら30px刻み */
+  const rowTop = (row: number, lpHeight: number): number => {
+    if (!deps.fullPage || lpHeight <= 0) return ROW_TOP + row * ROW_STEP
+    const shown = lpHeight * scale
+    return Math.min(shown - ROW_TOP, Math.max(ROW_TOP, (row / (ROW_COUNT - 1)) * shown))
+  }
 
-  /** 行を押したときに、スマホ枠の中のLPをその深さまで送る */
+  /** 行を押したときに、スマホ枠の中のLPをその深さまで送る（全ページ表示では全部見えているので送らない） */
   const scrollLpTo = (depth: number): void => {
+    if (deps.fullPage) return
     const sc = lpScroller()
     if (sc.max <= 0) return
     sc.to(sc.max * depth)
@@ -521,15 +526,11 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
       // 0を描くと「誰も反応しなかった」に見えるので、そうと分かる文言を出す。
       note.textContent = 'CVは画面のどこで起きたかを記録していません（面は出ません）'
     }
-    // 熱の層は canvas 側（LPと一緒にスクロールする）に置くので、別途消す。
-    // 消さずに描き足すと、行を押すたびに層が積み重なって濃くなる。
-    for (const old of canvas.querySelectorAll('.hm-heat')) old.remove()
     const mode = lineSelect.value as LineMode
     // SP / PC の切り替えで差し替わるので、描くあいだは手元に固定する
     const shownStat = stat
-    if (shownStat === null || shownStat.pv === 0) return
-    if (mode === 'none') return
-    const bands = shownStat.bands
+    const doc = lp.contentDocument
+    const hasData = shownStat !== null && shownStat.pv > 0 && mode !== 'none'
 
     // 熱の色。LPが読めなくなるので薄く敷く（実物もLPの絵柄がはっきり見える）。
     // 面は行（5%刻み21段）より**細かく**出す。行は読むための目盛りで、
@@ -538,35 +539,41 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
     // そのLPに実際に出ている最小〜最大へ色相を目一杯割り当てる。
     // こうしないと「26%〜74%しか無いLP」で色がほとんど変化せず、
     // 一面が同じ色に見えてどこが読まれたのか分からない。
-    const raw = Array.from({ length: bands }, (_, i) => bandValue(shownStat, mode, i))
-    const present = raw.filter((v): v is NonNullable<typeof v> => v !== null).map((v) => v.strength)
-    const lo = present.length > 0 ? Math.min(...present) : 0
-    const hi = present.length > 0 ? Math.max(...present) : 1
-    const span = hi - lo
-    const norm = (x: number): number => (span < 1e-6 ? 1 : (x - lo) / span)
-
-    const stops = raw
-      .map((v, i) =>
-        v === null
-          ? null
-          : `${bandColor(spec.metric, norm(v.strength))} ${(((i + 0.5) / bands) * 100).toFixed(2)}%`,
+    let stops: { at: number; color: string }[] | null = null
+    if (hasData) {
+      const bands = shownStat.bands
+      const raw = Array.from({ length: bands }, (_, i) => bandStrength(shownStat, mode, i))
+      const present = raw.filter((v): v is number => v !== null)
+      const lo = present.length > 0 ? Math.min(...present) : 0
+      const hi = present.length > 0 ? Math.max(...present) : 1
+      const span = hi - lo
+      const norm = (x: number): number => (span < 1e-6 ? 1 : (x - lo) / span)
+      stops = raw.flatMap((v, i) =>
+        v === null ? [] : [{ at: (i + 0.5) / bands, color: bandColor(spec.metric, norm(v)) }],
       )
-      .filter((x): x is string => x !== null)
-    if (stops.length > 0) {
-      const heat = document.createElement('div')
-      heat.className = 'hm-heat'
-      heat.style.background = `linear-gradient(to bottom, ${stops.join(',')})`
-      canvas.append(heat)
     }
+    // 面と点は LP の中に重ねる（LPと一緒にスクロールし、深さがLPの高さと合う）。
+    // クリック数モードのときは実際の座標も打つ（帯だけだと横位置が分からない）
+    const lpHeight =
+      doc?.documentElement === undefined || doc === null
+        ? 0
+        : paintLpLayer(doc, {
+            stops,
+            dots: hasData && mode === 'elementClick' ? shownStat.clicks.slice(-400) : [],
+            dotColor: bandColor(spec.metric, 0.9),
+            // PCはLPを縮めて見せるので、点は画面で10pxに見える大きさにする
+            dotSize: 10 / scale,
+            hideHeat: col.classList.contains('no-heat'),
+          })
+    if (!hasData) return
 
     for (let row = 0; row < ROW_COUNT; row++) {
-      const v = bandValue(shownStat, mode, bandIndexOf(row, bands))
+      const v = rowValue(shownStat, mode, row)
       if (v === null) continue
-      const top = ROW_TOP + row * ROW_STEP
       const pill = document.createElement('button')
       pill.type = 'button'
       pill.className = `hm-pill${row === activeRow ? ' on' : ''}${v.isZero ? ' zero' : ''}`
-      pill.style.top = `${top}px`
+      pill.style.top = `${rowTop(row, lpHeight)}px`
       // 幅は割合に比例。実物も最大で列幅の約7割までしか伸びない。
       if (!v.isZero) {
         pill.style.width = `${(22 + Math.min(1, Math.max(0, v.strength)) * 49).toFixed(1)}%`
@@ -585,21 +592,9 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
     // 右のバッジ＝選択中の行がLPのどの深さを指しているか
     const depth = document.createElement('div')
     depth.className = 'hm-depth'
-    depth.style.top = `${ROW_TOP + activeRow * ROW_STEP}px`
+    depth.style.top = `${rowTop(activeRow, lpHeight)}px`
     depth.textContent = `${Math.round((activeRow / (ROW_COUNT - 1)) * 100)}%`
     overlay.append(depth)
-
-    // クリック数モードのときは実際の座標も打つ（帯だけだと横位置が分からない）
-    if (mode === 'elementClick') {
-      for (const c of shownStat.clicks.slice(-400)) {
-        const dot = document.createElement('div')
-        dot.className = 'hm-dot'
-        dot.style.left = `${c.x * 100}%`
-        dot.style.top = `${c.y * 100}%`
-        dot.style.background = bandColor(spec.metric, 0.9)
-        overlay.append(dot)
-      }
-    }
   }
 
   lineSelect.addEventListener('change', drawOverlay)

@@ -257,7 +257,8 @@ export interface HeatmapVersionStat {
   /** そのバンドに落ちたクリック数 */
   elementClick: number[]
   /** クリックの相対座標（x=幅比・y=ページ高さ比） */
-  clicks: { x: number; y: number }[]
+  /** x・y は割合、cx は画面の真ん中から何px（2026-09-25から・古い記録には無い） */
+  clicks: { x: number; y: number; cx?: number }[]
 }
 
 export interface HeatmapStatsResponse {

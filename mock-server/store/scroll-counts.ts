@@ -15,6 +15,10 @@ import type { State } from './types.ts'
  *   sv_exit  … その次の fv_bands 個ぶんで離脱した数
  *   offer_reach … 最初の計測リンクがあるバンドまで到達した数
  *
+ * 2026-09-25 からは、記録を受けたときに1人ずつ**その人の画面で**判定した数（scroll_pv・fv_exit_n など）を使う。
+ * 画面の幅もボタンの位置も端末で違うので、上の「行に1つの fv_bands」で全員を数えると全端末の率がずれた。
+ * fv_bands / offer_band で数えるのは、それより前の保存データだけ。
+ *
  * 記録がまだ無ければ 0 件のまま返す（deriveKpi 側で「-」になる）。
  */
 /**
@@ -43,6 +47,19 @@ export function scrollCounts(
   let offerReach = 0
   let hasOffer = false
   for (const stat of stats) {
+    // 1人ずつその人の画面で数えた記録がある行はそれを使う（2026-09-25）。
+    // 同じ日の行に、それより前の記録（1人ずつの判定が無い）が混ざっていたら、その分は母数にも入れない
+    if (stat.scroll_pv !== undefined) {
+      hmPv += stat.scroll_pv
+      fvExit += stat.fv_exit_n ?? 0
+      svExit += stat.sv_exit_n ?? 0
+      if ((stat.offer_pv ?? 0) > 0) {
+        hasOffer = true
+        offerReach += stat.offer_reach_n ?? 0
+      }
+      continue
+    }
+    // ここから下は古い保存データ（行に1つだけ持った画面の幅・ボタンの位置で数える）
     hmPv += stat.pv
     const fv = stat.fv_bands ?? 0
     if (fv > 0) {

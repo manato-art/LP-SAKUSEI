@@ -88,6 +88,8 @@ export function buildTrackingScriptBody(endpoint: string, versionUid?: string): 
 
   var reach=new Array(B).fill(0),dwell=new Array(B).fill(0),clicks=[];
   var lastT=Date.now(),maxBand=0,sent=false;
+  /* 前に時間を足したときの画面の位置。次に足す時間は、この位置を見ていた時間（2026-09-25） */
+  var lastY=window.scrollY,lastH=window.innerHeight;
   function docH(){return Math.max(1,document.documentElement.scrollHeight-window.innerHeight)}
   /* 到達の物差しは「画面の下端がページの何割まで来たか」（2026-09-24）。
      リンクの位置・FV・滞在・クリックと同じ「ページ上の位置」でそろえる。
@@ -97,23 +99,28 @@ export function buildTrackingScriptBody(endpoint: string, versionUid?: string): 
     var full=docH()+window.innerHeight;
     return Math.max(0,Math.min(B-1,Math.ceil(((window.scrollY+window.innerHeight)/full)*B)-1));
   }
+  /* 滞在時間は「前に足したときから今まで画面に出ていた場所」に付ける。
+     スクロールした瞬間に呼ばれたとき、それまでの時間はスクロール前の場所で読んでいた時間なので、
+     今の（スクロール後の）場所に付けない（以前はそうしていて、1回のスクロールで最大1秒ずれた・2026-09-25）。
+     ページの高さは画像の読み込みで伸びるので、割合は今の高さで出す。 */
   function tick(){
     var now=Date.now(),b=curBand(),full=docH()+window.innerHeight;
-    var from=Math.max(0,Math.floor((window.scrollY/full)*B));
-    var to=Math.min(B-1,Math.floor(((window.scrollY+window.innerHeight)/full)*B));
+    var from=Math.max(0,Math.floor((lastY/full)*B));
+    var to=Math.min(B-1,Math.floor(((lastY+lastH)/full)*B));
     for(var i=from;i<=to;i++)dwell[i]+=(now-lastT);
-    lastT=now; if(b>maxBand)maxBand=b;
+    lastT=now; lastY=window.scrollY; lastH=window.innerHeight; if(b>maxBand)maxBand=b;
   }
   window.addEventListener('scroll',tick,{passive:true});
   // 滞在時間用の定期計測。タブが裏に回ったら止める（見ていない間は数えない・負荷も落とす）
   var timer=setInterval(tick,1000);
   document.addEventListener('visibilitychange',function(){
     if(document.hidden){ if(timer){clearInterval(timer);timer=null} }
-    else if(!timer){ lastT=Date.now(); timer=setInterval(tick,1000) }
+    else if(!timer){ lastT=Date.now(); lastY=window.scrollY; lastH=window.innerHeight; timer=setInterval(tick,1000) }
   });
   document.addEventListener('click',function(e){
     var h=document.documentElement.scrollHeight||1,w=window.innerWidth||1;
-    clicks.push({x:Math.round((e.clientX/w)*1000)/1000,y:Math.round((e.pageY/h)*1000)/1000});
+    /* cx＝画面の真ん中から何px（2026-09-25）。LPは真ん中寄せなので、画面の幅が違っても同じ場所を指す */
+    clicks.push({x:Math.round((e.clientX/w)*1000)/1000,y:Math.round((e.pageY/h)*1000)/1000,cx:Math.round(e.clientX-w/2)});
     if(clicks.length>300)clicks.shift();
   },true);
   /* 画面1枚ぶん（ファーストビュー）が何バンドぶんかを返す。

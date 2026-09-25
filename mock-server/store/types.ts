@@ -477,6 +477,11 @@ export interface VisitorTouch {
   ab_test_uid: string
   /** 見ていたVersion（外部LPの計測タグでは空） */
   version_uid: string
+  /**
+   * 着地したときの広告パラメータ（`utm_source=fb` の形）。成果を広告ごとの行にも数えるのに使う（2026-09-25）。
+   * それより前の記録には無い（その人の成果は広告ごとの行には入らない）。
+   */
+  params?: readonly string[]
   /** LPを見た時刻（UNIXミリ秒） */
   viewed_at: number | null
   /** 計測リンクを押した時刻（UNIXミリ秒） */
@@ -790,11 +795,27 @@ export interface HeatmapStat {
    * これより前の保存データには無い＝全部古い数え方。
    */
   vb_pv?: number
+  /**
+   * 1人ずつ、**その人の画面で**数えた FV/SV 離脱とボタン到達（2026-09-25）。
+   * 画面1枚ぶんの幅とボタンの位置は端末ごとに違うので、上の fv_bands / offer_band（最後に届いた1つ）で
+   * 全員を数え直すと、スマホとPCが混ざったときにずれる。記録を受けたときに1人ずつ判定してここに足す。
+   * scroll_pv はこの数え方で数えた表示数（＝FVER などの母数）。これが無い行は古い保存データ（fv_bands で数える）。
+   */
+  scroll_pv?: number
+  /** 最初の画面の中で離脱した数 */
+  fv_exit_n?: number
+  /** 2画面目の中で離脱した数 */
+  sv_exit_n?: number
+  /** ボタン（最初の計測リンク）があった表示数。0 ならボタンの無いLP＝OARは「-」 */
+  offer_pv?: number
+  /** ボタンの位置まで見た数 */
+  offer_reach_n?: number
   reach: number[]
   exit: number[]
   dwell_ms: number[]
   dwell_n: number[]
-  clicks: { x: number; y: number }[]
+  /** クリックの位置。x・y は画面の幅・ページの高さに対する割合、cx は画面の真ん中から何px（2026-09-25から） */
+  clicks: { x: number; y: number; cx?: number }[]
 }
 
 /** 端末の種類（User-Agent から分ける・lib/device.ts） */

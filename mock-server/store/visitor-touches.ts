@@ -34,10 +34,20 @@ function prune(touches: readonly VisitorTouch[], now: number): readonly VisitorT
   return kept.length > MAX_TOUCHES ? kept.slice(-MAX_TOUCHES) : kept
 }
 
-/** LPを見た・計測リンクを押した記録を足す（同じ目印・同じページなら時刻を更新する） */
+/**
+ * LPを見た・計測リンクを押した記録を足す（同じ目印・同じページなら時刻を更新する）。
+ * 広告パラメータ（着地URLの utm_*）も覚えておき、成果を広告ごとの行にも数えられるようにする（2026-09-25）。
+ */
 export function recordTouch(
   touches: readonly VisitorTouch[],
-  input: { vid: string; ab_test_uid: string; version_uid: string; kind: 'view' | 'click'; at: number },
+  input: {
+    vid: string
+    ab_test_uid: string
+    version_uid: string
+    kind: 'view' | 'click'
+    at: number
+    params?: readonly string[]
+  },
 ): readonly VisitorTouch[] {
   const pruned = prune(touches, input.at)
   const index = pruned.findIndex((t) => t.vid === input.vid && t.ab_test_uid === input.ab_test_uid)
@@ -49,9 +59,12 @@ export function recordTouch(
     clicked_at: null,
     converted_at: null,
   }
+  const params = input.params ?? []
   const next: VisitorTouch = {
     ...base,
     version_uid: input.version_uid !== '' ? input.version_uid : base.version_uid,
+    // 見たとき＝着地のパラメータに置き換える。押したときの送信に付いていなければ、見たときのものを残す
+    ...(input.kind === 'view' || params.length > 0 ? { params } : {}),
     ...(input.kind === 'view' ? { viewed_at: input.at } : { clicked_at: input.at }),
   }
   return index === -1 ? [...pruned, next] : pruned.map((t, i) => (i === index ? next : t))
