@@ -17,7 +17,7 @@ import { getMasterStyleSheet } from '../store/master-style-sheet.ts'
 import { getHtmlSetting } from '../store/html-tags.ts'
 import { bulkTagsForFolder } from '../store/bulk-tags.ts'
 import { recordConversion } from '../store/actions.ts'
-import { releaseCvHeatmap } from '../store/cv-heatmap.ts'
+import { markPendingClicked, releaseCvHeatmap } from '../store/cv-heatmap.ts'
 import { shouldExclude } from '../store/exclusions.ts'
 import type { RequestLogEntry } from '../store/types.ts'
 import { broadcastConversion, type ConversionPush } from '../ws/cable.ts'
@@ -625,6 +625,8 @@ deliveryRouter.post('/lp/:uid/__track', (req, res) => {
           params: adParams,
         }),
       }
+      // 押す前に届いていた位置の記録を、申し込みを待つ（1日預かる）扱いにする（store/cv-heatmap.ts）
+      if (event === 'click') next = markPendingClicked(next, { abTestUid: abTest.uid, vid })
     }
     if (reportedUrl !== null && reportedUrl !== abTest.external_url) {
       next = {

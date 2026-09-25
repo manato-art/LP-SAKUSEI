@@ -4,8 +4,9 @@
  * 位置の記録（計測タグの heatmap）はLPを離れたときに届き、申し込み（CVタグの cv）はあとから別のページで届く。
  * 同じ人の目印（vid）で結びつける:
  *   - 位置の記録が届いたとき … その人の申し込みがもう数えられていれば、すぐ「申し込んだ人」の行に足す。
- *                               まだなら、申し込みが数えられうる人の記録だけを1日預かる
- *                               （CV条件がクリックのページは計測リンクを押した人だけ。アクセスなら見た人全員）
+ *                               まだなら預かる。申し込みが数えられうる人（CV条件がクリックなら計測リンクを押した人・
+ *                               アクセスなら見た人全員）は1日、まだ押していない人は10分
+ *                               （位置の記録が「押した」記録より先に届くことがある。押した記録が届いたら1日に延ばす）
  *   - 申し込みが数えられたとき … 預かっていた記録を「申し込んだ人」の行に足し、預かりから外す
  * 行の日付は申し込みが数えられた日（レポートのCVと同じ日）。端末ごと・広告パラメータごと（param）にも足す。
  * 状態を受け取って新しい状態を返すだけ。
@@ -17,6 +18,11 @@ import type { ConversionCondition, CvHeatmapStat, DeviceKind, PendingCvHeatmap, 
 
 /** 預かる数の上限（流入が急に増えても保存データが膨らみすぎないよう、古いものから捨てる） */
 const MAX_PENDING = 2000
+/**
+ * 押す前に届いた記録を待つ時間。位置の記録と「押した」記録はほぼ同時に送られ、届く順番が入れ替わることがある
+ * （本番で18人中8人がこれで落ちた・2026-09-25）。押した記録はふつう数秒以内に届く。
+ */
+const UNCLICKED_GRACE_MS = 10 * 60 * 1000
 /** 預かる記録のクリックの上限（1人ぶん） */
 const PENDING_CLICK_CAP = 50
 
@@ -48,8 +54,16 @@ function addToCvRows(stats: readonly CvHeatmapStat[], held: Held, date: string):
   return next
 }
 
+/** 押した人の記録は1日、押す前の記録は10分で捨てる。上限を超えたら押す前の記録から、古いものから捨てる */
 function freshPending(list: readonly PendingCvHeatmap[], now: number): PendingCvHeatmap[] {
-  return list.filter((p) => now - p.at <= ATTRIBUTION_WINDOW_MS)
+  const alive = list.filter((p) =>
+    p.clicked === false ? now - p.at <= UNCLICKED_GRACE_MS : now - p.at <= ATTRIBUTION_WINDOW_MS,
+  )
+  if (alive.length <= MAX_PENDING) return alive
+  const unclicked = alive.filter((p) => p.clicked === false)
+  const drop = new Set(unclicked.slice(0, Math.min(unclicked.length, alive.length - MAX_PENDING)))
+  const kept = alive.filter((p) => !drop.has(p))
+  return kept.length > MAX_PENDING ? kept.slice(-MAX_PENDING) : kept
 }
 
 /** 位置の記録が届いたとき（目印つき） */
@@ -66,9 +80,9 @@ export function holdOrAddCvHeatmap(
       cvHeatmapStats: addToCvRows(state.cvHeatmapStats, input, toDateKey(new Date(touch.converted_at))),
     }
   }
-  // 申し込みが数えられうる人だけ預かる（クリック条件で押していない人は、申し込んでも数えられない）
-  const canConvert = input.condition === 'access' || touch.clicked_at !== null
-  if (!canConvert) return state
+  // 申し込みが数えられうる人（クリック条件なら押した人）は1日、まだ押していない人は10分だけ預かる
+  // （位置の記録が「押した」記録より先に届くことがあるため・markPendingClicked で1日に延びる）
+  const clicked = input.condition === 'access' || touch.clicked_at !== null
   const held: PendingCvHeatmap = {
     vid: input.vid,
     ab_test_uid: input.abTestUid,
@@ -76,13 +90,25 @@ export function holdOrAddCvHeatmap(
     device: input.device,
     params: input.params,
     at: input.now,
+    clicked,
     sample: { ...input.sample, clicks: input.sample.clicks.slice(-PENDING_CLICK_CAP) },
   }
   const others = freshPending(state.pendingCvHeatmaps, input.now).filter(
     (p) => !(p.vid === input.vid && p.ab_test_uid === input.abTestUid),
   )
-  const pending = [...others, held]
-  return { ...state, pendingCvHeatmaps: pending.length > MAX_PENDING ? pending.slice(-MAX_PENDING) : pending }
+  return { ...state, pendingCvHeatmaps: freshPending([...others, held], input.now) }
+}
+
+/** 計測リンクを押した記録が届いたとき。押す前に預かっていた記録を、1日預かる扱いにする */
+export function markPendingClicked(state: State, input: { abTestUid: string; vid: string }): State {
+  const index = state.pendingCvHeatmaps.findIndex(
+    (p) => p.vid === input.vid && p.ab_test_uid === input.abTestUid && p.clicked === false,
+  )
+  if (index === -1) return state
+  return {
+    ...state,
+    pendingCvHeatmaps: state.pendingCvHeatmaps.map((p, i) => (i === index ? { ...p, clicked: true } : p)),
+  }
 }
 
 /** 申し込みが数えられたとき。預かっていた記録があれば行に足す */

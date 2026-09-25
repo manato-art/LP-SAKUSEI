@@ -107,6 +107,17 @@ describe('申し込んだ人だけのヒートマップ', () => {
     expect(cv[0]?.arrival[4]).toBe(1)
   })
 
+  it('位置の記録が「押した」記録より先に届いても入る（ほぼ同時に送られ、本番では順番が入れ替わった）', async () => {
+    const { uid, version } = await setup()
+    await track(uid, { event: 'pv', version, vid: 'visitor-race-001' })
+    await track(uid, heatmap(version, 'visitor-race-001', 5, 0.3))
+    await track(uid, { event: 'click', version, vid: 'visitor-race-001' })
+    await track(uid, { event: 'cv', vid: 'visitor-race-001', amount: 0 })
+    const cv = await cvStats(uid)
+    expect(cv[0]?.pv).toBe(1)
+    expect(cv[0]?.arrival[5]).toBe(1)
+  })
+
   it('同じ人の申し込みが2回届いても1人ぶん', async () => {
     const { uid, version } = await setup()
     await track(uid, { event: 'pv', version, vid: 'visitor-twice-01' })

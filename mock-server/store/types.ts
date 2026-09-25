@@ -868,6 +868,12 @@ export interface PendingCvHeatmap {
   params: readonly string[]
   /** 預かった時刻（UNIXミリ秒）。1日を過ぎたら捨てる */
   at: number
+  /**
+   * 申し込みが数えられうる人か（CV条件がクリックなら計測リンクを押した人・アクセスなら全員）。
+   * 位置の記録は「押した」記録より先に届くことがあるので、押す前の記録も10分だけ預かり、押したら true にする。
+   * 以前の保存データには無い（＝押した人だけを預かっていた＝true）。
+   */
+  clicked?: boolean
   /** 1回の表示ぶんの記録（store/heatmap-sample.ts の HeatmapSample と同じ形） */
   sample: {
     bands: number
