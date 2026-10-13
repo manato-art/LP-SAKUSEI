@@ -292,7 +292,10 @@ async function resolveAbTestFromVersion(versionUid: string): Promise<string | nu
   return null
 }
 
-/** まだ作っていない画面は、正直にそう表示する（できているように見せない） */
+/**
+ * 行き先の無いURL（打ち間違い・古いリンク・まだ用意していない画面）は、正直にそう表示する（できているように見せない）。
+ * 文は使う人向けに書く（作っている途中の事情は出さない・2026-10-13）。
+ */
 function renderNotBuilt(content: HTMLElement, path: string): void {
   content.innerHTML = ''
   const goFolders = button('ページ画面へ')
@@ -302,9 +305,9 @@ function renderNotBuilt(content: HTMLElement, path: string): void {
   content.append(
     el('div', { style: `padding:60px 40px;font-family:${T.font}` }, [
       el('div', { text: path, style: `font-family:monospace;font-size:12px;color:${T.sub};margin-bottom:10px` }),
-      el('strong', { text: 'この画面はまだ作っていません', style: 'display:block;font-size:16px;margin-bottom:10px' }),
+      el('strong', { text: 'この画面は見つかりません', style: 'display:block;font-size:16px;margin-bottom:10px' }),
       el('div', {
-        text: '今は「フォルダ作成 → beyondページ作成 → LPエディタ」の作成フローを先に作っています。',
+        text: 'URLが変わったか、まだ用意されていない画面です。下のボタンからページ画面へ戻れます。',
         style: `font-size:13px;color:${T.sub};line-height:1.9;margin-bottom:20px`,
       }),
       goFolders,

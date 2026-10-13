@@ -31,7 +31,7 @@ export function mediaInsertedMessage(images: number, videos: number): string {
   if (images > 0) parts.push(`画像${images}件`)
   if (videos > 0) parts.push(`動画${videos}件`)
   const what = parts.length > 0 ? parts.join('・') : 'メディア'
-  return `${what}を挿入しました（クローン内保存・外部サーバーへは送信しません）`
+  return `${what}を挿入しました（このシステム内に保存・外部サーバーへは送信しません）`
 }
 
 /**

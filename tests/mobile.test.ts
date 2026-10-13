@@ -170,6 +170,28 @@ describe('LPエディタのスマホ版', () => {
     expect(css).toContain('.rv2-apply{align-self:stretch')
   })
 
+  /**
+   * プレビュー画面の上のURLカード2枚（プレビューURL / 配信URL）は、PCでは横に並ぶ（合わせて846px）。
+   * スマホ幅でもそのまま中央寄せで並び、プレビューURLの左半分と配信URLの右半分が画面の外で切れていた
+   * （2026-10-13 ブラウザで実測: 375px幅で 左 -236px 〜 右 611px）。
+   */
+  it('プレビュー画面のURLカードは縦に積んで画面幅いっぱいにする（横並びのままだと左右が切れる）', () => {
+    expect(css).toContain('.sb-preview-urls{flex-direction:column')
+    expect(css).toContain('.sb-preview-url-card{width:100%')
+    // URLの枠（PCは幅200pxまで）も、空いた幅を使う
+    expect(css).toContain('.sb-preview-url-card p{flex:1 1 0')
+  })
+
+  /**
+   * カードの中を1行のままにすると、URLの枠が85pxまで潰れ、見出しが折り返してカードが96pxまで伸びた
+   * （2026-10-13 実測）。最初のボタンの前の切れ目で「見出し＋URL」と「ボタン」の2行にする。
+   */
+  it('URLカードの中は「見出し＋URL」と「ボタン」の2行にし、ボタンは44pxにする', () => {
+    expect(css).toContain('.sb-preview-url-break{display:block !important;flex-basis:100%')
+    expect(css).toContain('flex-wrap:wrap')
+    expect(css).toContain('.sb-preview-url-card a{min-width:44px;min-height:44px}')
+  })
+
   it('「設置済みWidget」の列は出さない（画面の半分を取ってキャンバスが潰れる）', () => {
     expect(css).toContain('[data-widget-nav]{display:none')
   })

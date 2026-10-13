@@ -213,7 +213,7 @@ async function openPanel(articleUid: string): Promise<void> {
 
   const saveButton = wrapper.querySelector<HTMLElement>(HOOK.save)
   if (saveButton === null) {
-    toast('保存ボタンが見つかりません（採取マークアップを確認してください）', 'error')
+    toast('保存ボタンが見つかりません。画面を開き直してください。', 'error')
     return
   }
   saveButton.addEventListener('click', () => {

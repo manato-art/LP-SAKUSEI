@@ -33,6 +33,10 @@ describe('挿入トーストの文言', () => {
   it('外部送信しない旨を必ず添える', () => {
     expect(mediaInsertedMessage(1, 0)).toContain('外部サーバーへは送信しません')
   })
+  it('保存先は「このシステム内」と書く（「クローン」という作る側の言葉は使わない）', () => {
+    expect(mediaInsertedMessage(1, 0)).toContain('このシステム内に保存')
+    expect(mediaInsertedMessage(1, 0)).not.toContain('クローン')
+  })
 })
 
 describe('2つのボタンとドラッグ＆ドロップが配線されている', () => {

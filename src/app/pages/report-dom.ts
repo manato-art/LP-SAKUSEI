@@ -163,10 +163,11 @@ export function wireThemeToggle(root: HTMLElement): void {
 /**
  * クローン側の注記（実物には無い）。
  * 「まだ配線していない」ことを黙って隠さないための表示（main.ts の renderNotBuilt と同じ方針）。
+ * 画面には「※」で出す（「クローン」は作る側の言葉なので使う人には出さない・2026-10-13）。
  */
 export function cloneNote(message: string): HTMLElement {
   return el('div', {
-    text: `クローン注記: ${message}`,
+    text: `※${message}`,
     style: `font-family:${T.font};font-size:11px;line-height:1.8;color:${T.sub};
       padding:6px 12px;border-left:2px solid ${T.sub};margin:0`,
   })

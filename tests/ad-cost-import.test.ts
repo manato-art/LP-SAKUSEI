@@ -148,8 +148,9 @@ describe('取り込み画面', () => {
   const ui = readFileSync('src/app/pages/ad-cost-import.ts', 'utf8')
   const host = readFileSync('src/app/pages/external-integration.ts', 'utf8')
 
-  it('このシステムだけの機能だと画面に書く', () => {
-    expect(ui).toContain('実物にはありません')
+  it('このシステムだけの機能だと画面に書く（「実物」という作る側の言葉は使わない）', () => {
+    expect(ui).toContain('※このシステムだけの機能です。')
+    expect(ui).not.toContain('実物にはありません')
   })
 
   it('採取した画面の下に足す（採取物のDOMは触らない）', () => {

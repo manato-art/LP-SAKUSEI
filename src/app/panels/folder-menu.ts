@@ -186,7 +186,7 @@ async function openDomainDialog(folder: Folder): Promise<void> {
         label: entry.host,
         hint: entry.kind === 'quick' ? 'クイックドメイン' : 'このドメインをこのシステムへ向けるまでは開けません',
       })),
-      { value: '', label: '未設定にする', hint: '配信URLを出しません（実物と同じ）' },
+      { value: '', label: '未設定にする', hint: '配信URLを出しません' },
     ],
   })
   if (picked === null) return

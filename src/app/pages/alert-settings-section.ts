@@ -88,7 +88,7 @@ export async function mountAlertSettings(content: HTMLElement): Promise<void> {
     }),
     el('div', {
       text:
-        '※このシステムだけの機能です（実物にはありません）。' +
+        '※このシステムだけの機能です。' +
         'CVが止まったこと・CPAが跳ねたことを見張って、Slack・チャットワーク・LINEへ1通送ります。' +
         '同じページの同じ理由は1日1通までです。送り先を決めるまでは鳴りません。',
       style: `font-size:12px;color:${T.sub};line-height:1.8;margin-bottom:8px`,

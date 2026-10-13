@@ -32,7 +32,7 @@ function heading(): HTMLElement {
     }),
     el('div', {
       text:
-        '※このシステムだけの機能です（実物にはありません）。Meta以外の媒体は連携できないため、' +
+        '※このシステムだけの機能です。Meta以外の媒体は連携できないため、' +
         '各媒体の管理画面から落とした日別の実績を貼り付けて入れます。' +
         '入れると配信金額・CPA・MCPA・ROAS・ROI がレポートに出ます。',
       style: `font-size:12px;color:${T.sub};line-height:1.8`,

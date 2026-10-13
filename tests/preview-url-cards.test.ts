@@ -13,7 +13,7 @@
  * フォルダにドメインがあれば配信URLを出して使えるようにし、無いときだけ、ほかの画面と同じ案内を出す。
  */
 import { readFileSync } from 'node:fs'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { installDom } from './helpers/dom.ts'
 import { DELIVERY_DOMAIN_UNSET_NOTE } from '../src/app/pages/basic-info-form.ts'
 import { wireUrlCards } from '../src/app/pages/preview-url-cards.ts'
@@ -102,6 +102,81 @@ describe('プレビュー画面のURLカード', () => {
     expect(cards.preview.textContent).toContain('プレビューURL')
     expect(cards.preview.querySelector('a[target="_blank"]')?.getAttribute('href')).toBe(PREVIEW_URL)
     expect(controls(cards.preview).filter(isOff)).toEqual([])
+  })
+
+  /**
+   * カードのまん中のボタンは、実物ではQRコードを出すボタン。
+   * 配線が無く、2枚とも押しても何も起きなかった（2026-10-13 ブラウザで実測）。
+   */
+  describe('まん中のボタンでQRコードを出す', () => {
+    const middleButton = (card: HTMLElement): HTMLElement => {
+      const button = card.querySelectorAll<HTMLElement>('button')[1]
+      if (button === undefined) throw new Error('カードにボタンが2つありません')
+      return button
+    }
+    const press = (el: HTMLElement): void => {
+      el.dispatchEvent(new Event('click', { bubbles: true }))
+    }
+
+    it('プレビューURLのカードは、プレビューURLのQRコード（計測されないと伝える）', () => {
+      const showQr = vi.fn()
+      wireUrlCards(cards.root, { previewUrl: PREVIEW_URL, deliveryUrl: DELIVERY_URL }, { showQr })
+
+      press(middleButton(cards.preview))
+
+      expect(showQr).toHaveBeenCalledTimes(1)
+      const [anchor, url, texts] = showQr.mock.calls[0] ?? []
+      expect(anchor).toBe(middleButton(cards.preview))
+      expect(url).toBe(PREVIEW_URL)
+      expect(texts.label).toBe('プレビューのQRコード')
+      expect(texts.note).toContain('計測はされません')
+    })
+
+    it('配信URLのカードは、配信URLのQRコード（開くと計測されると伝える）', () => {
+      const showQr = vi.fn()
+      wireUrlCards(cards.root, { previewUrl: PREVIEW_URL, deliveryUrl: DELIVERY_URL }, { showQr })
+
+      press(middleButton(cards.delivery))
+
+      expect(showQr).toHaveBeenCalledTimes(1)
+      const [anchor, url, texts] = showQr.mock.calls[0] ?? []
+      expect(anchor).toBe(middleButton(cards.delivery))
+      expect(url).toBe(DELIVERY_URL)
+      expect(texts.label).toBe('配信URLのQRコード')
+      expect(texts.note).toContain('計測されます')
+    })
+
+    it('配信URLが無いときは、QRコードも出さない（ボタンごと隠してある）', () => {
+      const showQr = vi.fn()
+      wireUrlCards(cards.root, { previewUrl: PREVIEW_URL, deliveryUrl: null }, { showQr })
+
+      press(middleButton(cards.delivery))
+
+      expect(showQr).not.toHaveBeenCalled()
+    })
+  })
+
+  /** スマホ用CSS（mobile-css.ts）が縦に積むための目印 */
+  it('2枚のカードと、その行・列に目印のクラスを付ける', () => {
+    wireUrlCards(cards.root, { previewUrl: PREVIEW_URL, deliveryUrl: DELIVERY_URL })
+
+    for (const card of [cards.preview, cards.delivery]) {
+      expect(card.classList.contains('sb-preview-url-card')).toBe(true)
+      expect(card.parentElement?.classList.contains('sb-preview-url-col')).toBe(true)
+    }
+    const row = cards.preview.parentElement?.parentElement
+    expect(row).toBe(cards.delivery.parentElement?.parentElement)
+    expect(row?.classList.contains('sb-preview-urls')).toBe(true)
+  })
+
+  it('スマホで2行に分けるための切れ目を、最初のボタンの前に置く（PCでは出さない）', () => {
+    wireUrlCards(cards.root, { previewUrl: PREVIEW_URL, deliveryUrl: DELIVERY_URL })
+
+    for (const card of [cards.preview, cards.delivery]) {
+      const lineBreak = card.querySelector('.sb-preview-url-break')
+      expect(lineBreak?.nextElementSibling).toBe(card.querySelector('button'))
+      expect(styleOf(lineBreak)).toMatch(/display:\s*none/)
+    }
   })
 
   it('採取したときの見本のURL（example.test）は、どのリンクにも残さない', () => {
