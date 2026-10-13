@@ -11,7 +11,6 @@ import { api, type HeatmapVersionStat, type ReportVersionRow } from '../api.ts'
 import { isStale } from '../main.ts'
 import {
   applyLightTheme,
-  cloneNote,
   mountCapturedPage,
   setTopBarNames,
   wireBackLink,
@@ -21,6 +20,7 @@ import {
 } from './report-dom.ts'
 import { defaultRange, toRangeQuery, type DateRange } from './report-period.ts'
 import { sortVersions, type HeatmapSortKey } from './heatmap-sort.ts'
+import { DEFAULT_SORT_LABEL, wireSortModal } from './heatmap-sort-modal.ts'
 import {
   renderHeatmapColumns,
   type ColumnSpec,
@@ -116,8 +116,8 @@ export async function renderHeatmap(
     : null
   const listRows = externalRow === null ? report.rows : [...report.rows, externalRow]
 
-  /** ソートモーダルで選ばれた並び順（採取物の9択の文字） */
-  let columnOrder = ''
+  /** ソートの一覧で選ばれた並び順（一覧の文字。heatmap-sort-modal.ts） */
+  let columnOrder: string = DEFAULT_SORT_LABEL
 
   /**
    * SP / PC ぶんの記録（2026-09-24・点検29）。列の SP / PC を押したときに1回だけ取りに行き、列どうしで使い回す。
@@ -397,30 +397,8 @@ function wireHeightTypeTabs(root: HTMLElement, onChange?: () => void): void {
 }
 
 /**
- * ソートモーダルのラジオ（実物の9択）。実物は name が無いので排他はこちらで面倒を見る。
- * 2026-09-15: 選んだ順を実際に列の並びへ反映するようにした（以前は排他だけで何も起きなかった）。
- */
-function wireSortModal(root: HTMLElement, onChange: (label: string) => void): void {
-  const modal = root.querySelector<HTMLElement>('[class*="_sortModal_"]')
-  if (modal === null) return
-  const radios = [...modal.querySelectorAll<HTMLInputElement>('input[type="radio"]')]
-  for (const radio of radios) {
-    radio.addEventListener('change', () => {
-      for (const other of radios) other.checked = other === radio
-      // ラベルは採取物の文字（「PVの多い順」など）。親のテキストから読む
-      const label = (radio.closest('label')?.textContent ?? radio.parentElement?.textContent ?? '')
-        .trim()
-      onChange(label)
-    })
-  }
-  modal.append(
-    cloneNote('「手動」（ドラッグで並べ替え）はまだできません。他の並び順は列に効きます。'),
-  )
-}
-
-/**
- * ソートモーダルで選んだ順に列を並べ替える（採取物の9択の文字で判断する）。
- * 「手動」と、判断できない文字はそのままの順で返す。
+ * ソートの一覧で選んだ順に列を並べ替える（一覧の文字で判断する）。
+ * 判断できない文字はそのままの順で返す（「手動」は画面に出していない・heatmap-sort-modal.ts）。
  */
 export function sortColumnSpecs<T extends { versionName: string; pv: number; cv: number; ctr: number | null }>(
   specs: readonly T[],

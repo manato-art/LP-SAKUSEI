@@ -6,8 +6,9 @@
  * CSSは書き足さない（採取済みの `capture/clean/<slug>/<state>/cssom.css` を読み込むだけ）。
  */
 import { PANEL_BODY_CLASS, PANEL_OPEN_CLASS } from '../panels/panel-group.ts'
-import { T, el, toast } from '../ui.ts'
+import { toast } from '../ui.ts'
 import { overrideDarkBackgrounds } from '../white-base.ts'
+import { keepDropdownVisible } from './dropdown-placement.ts'
 import { extractCapturedAbTestUid, stripShellFromFragment, toHashHref } from './report-substrate.ts'
 import { buildThemeSwap, extractThemeTokens, swapClassName, type ThemeSwap } from './report-theme.ts'
 import { openReportSettingsModal } from '../panels/report-settings-modal.ts'
@@ -160,19 +161,6 @@ export function wireThemeToggle(root: HTMLElement): void {
   })
 }
 
-/**
- * クローン側の注記（実物には無い）。
- * 「まだ配線していない」ことを黙って隠さないための表示（main.ts の renderNotBuilt と同じ方針）。
- * 画面には「※」で出す（「クローン」は作る側の言葉なので使う人には出さない・2026-10-13）。
- */
-export function cloneNote(message: string): HTMLElement {
-  return el('div', {
-    text: `※${message}`,
-    style: `font-family:${T.font};font-size:11px;line-height:1.8;color:${T.sub};
-      padding:6px 12px;border-left:2px solid ${T.sub};margin:0`,
-  })
-}
-
 /* ================================================================
  *  採取ドロップダウン（「広告データ取得日時」「パラメーター設定」の歯車）
  * ================================================================ */
@@ -277,6 +265,8 @@ export function wireCapturedDropdowns(
         other.classList.remove(PANEL_OPEN_CLASS)
       }
       body.classList.toggle(PANEL_OPEN_CLASS, willOpen)
+      // 右へはみ出すなら左へ開く（トリガーが画面の右端にあると、面が切れて読めなかった）
+      if (willOpen) keepDropdownVisible(body)
     })
   }
   wireOutsideClose()
