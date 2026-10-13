@@ -24,7 +24,7 @@ export async function renderAccountSettings(
   const body = el('div', { class: 'sb-page-shell', style: `padding:24px 28px;font-family:${T.font}` })
   // ヘッダー行（タイトル + ログアウトボタン）
   const header = el('div', {
-    style: 'display:flex;justify-content:space-between;align-items:center;margin-bottom:4px',
+    style: 'display:flex;justify-content:space-between;align-items:center;margin-bottom:24px',
   })
   header.append(
     el('div', { text: 'マイページ', style: `font-size:20px;font-weight:700;color:${T.text}` }),
@@ -48,13 +48,7 @@ export async function renderAccountSettings(
   })
   header.append(logoutBtn)
 
-  body.append(
-    header,
-    el('div', {
-      text: '※クローンが自作した画面です（実物とは見た目が異なる場合があります）。',
-      style: `font-size:12px;color:${T.sub};margin-bottom:20px;line-height:1.7`,
-    }),
-  )
+  body.append(header)
   container.append(body)
 
   // タブ

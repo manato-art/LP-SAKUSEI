@@ -103,7 +103,7 @@ export async function renderConversions(container: HTMLElement): Promise<void> {
   const content = pageShell(
     container,
     'CV速報',
-    '※列構成は実物に合わせています。CV計測タグから記録された実際のコンバージョンを新しい順に表示します。',
+    'CV計測タグから記録された実際のコンバージョンを新しい順に表示します。',
   )
 
   /* ── 絞り込み（実物: 期間ピッカー＋「速報を検索」）── */

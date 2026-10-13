@@ -202,7 +202,7 @@ export async function renderDomains(container: HTMLElement): Promise<void> {
   const content = pageShell(
     container,
     'ドメイン',
-    '※クローンが自作した画面です。クイックドメイン（自動発行）と独自ドメインの一覧を表示します。',
+    'クイックドメイン（自動発行）と独自ドメインの一覧を表示します。',
   )
 
   const quick = await api.quickDomain().then(

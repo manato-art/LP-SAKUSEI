@@ -59,7 +59,6 @@ export function ensureTaskFormCss(): void {
       align-self:flex-start; font-size:11px; padding:3px 10px; border-radius:999px;
       background:#EEF2F7; color:var(--sb-c-5b6472, #5B6472);
     }
-    .tc-badge.on { background:var(--sb-accent-tint, #E6F4FF); color:var(--sb-accent, #0091FF); }
 
     /* ── フォーム ── */
     .tc-form { max-width:720px; display:flex; flex-direction:column; gap:20px; }
@@ -158,10 +157,7 @@ export function renderTemplatePicker(host: HTMLElement, deps: TaskCreateDeps): v
     card.append(
       el('div', { class: 'tc-card-title', text: template.title }),
       el('div', { class: 'tc-card-desc', text: template.description }),
-      el('div', {
-        class: `tc-badge${template.badge === 'スポット' ? ' on' : ''}`,
-        text: template.badge,
-      }),
+      el('div', { class: 'tc-badge', text: template.badge }),
     )
     card.addEventListener('click', () => renderTaskForm(host, template, deps))
     cards.append(card)

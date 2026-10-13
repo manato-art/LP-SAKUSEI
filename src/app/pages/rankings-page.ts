@@ -45,7 +45,7 @@ export async function renderRankings(container: HTMLElement): Promise<void> {
   const content = pageShell(
     container,
     'ランキング',
-    '※クローンが自作した画面です。モックのbeyondページを成果順に並べます。',
+    'beyondページを成果順に並べます。',
   )
 
   // ソート切替

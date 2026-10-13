@@ -15,18 +15,27 @@ import {
  * 実物のタスク画面（/tasks・2026-09-09 確認）は
  * モーダルではなく、一覧の中身がテンプレート選択→設定フォームへ差し替わる。
  */
-describe('テンプレートは実物どおり', () => {
-  it('4枚をこの順で出す', () => {
+describe('テンプレートは、タスクができることだけを並べる', () => {
+  it('3枚をこの順で出す', () => {
     expect(TASK_TEMPLATES.map((t) => t.title)).toEqual([
       '週次成果まとめレポート',
       'デイリーCV速報 → Slack',
-      'ページの一括複製',
       '空白から作成',
     ])
   })
 
-  it('種別バッジも実物どおり', () => {
-    expect(TASK_TEMPLATES.map((t) => t.badge)).toEqual(['定期', '定期', 'スポット', '自由設定'])
+  /**
+   * 実物には「ページの一括複製」のテンプレートがあるが、このシステムのタスクは
+   * 「決めた時間にレポートを送る」ことしかできない。選んでも複製はされず、
+   * レポートのタスクができるだけだった（説明と動きが違う）→ 本人の判断で外した（2026-10-13）。
+   * 複製はページ画面の「···」からできる。
+   */
+  it('できないこと（ページの複製）をテンプレートに並べない', () => {
+    expect(TASK_TEMPLATES.filter((t) => /複製/.test(`${t.title}${t.description}`))).toEqual([])
+  })
+
+  it('種別バッジ', () => {
+    expect(TASK_TEMPLATES.map((t) => t.badge)).toEqual(['定期', '定期', '自由設定'])
   })
 
   it('選ぶと初期値が入る（空白だけは空のまま）', () => {
@@ -41,10 +50,7 @@ describe('テンプレートは実物どおり', () => {
     expect(daily?.preset.schedule).toBe('daily')
     expect(daily?.preset.hour).toBe('08')
 
-    const bulk = TASK_TEMPLATES[2]
-    expect(bulk?.preset.schedule).toBe('once')
-
-    const blank = TASK_TEMPLATES[3]
+    const blank = TASK_TEMPLATES[2]
     expect(blank?.preset.name).toBe('')
     expect(blank?.preset.schedule).toBe('once')
   })

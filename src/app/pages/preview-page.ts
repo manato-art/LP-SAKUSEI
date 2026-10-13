@@ -12,9 +12,10 @@ import substrate from '../fragments/ab_tests__UID__articles__UID__previews__defa
 import { api, type ExitPopup, type Version } from '../api.ts'
 import { popupApi } from '../api-popups.ts'
 import { isStale } from '../main.ts'
-import { toast } from '../ui.ts'
 import { mountCapturedPage, setTopBarNames, wireBackLink, wireCapturedLinks } from './report-dom.ts'
 import { setupHorizTabs, setupBreadcrumb } from './tab-nav.ts'
+import { deliveryUrlFor } from './basic-info-form.ts'
+import { wireUrlCards } from './preview-url-cards.ts'
 import { LP_BASE_CSS } from '../lp-base-css.ts'
 import { WIDGET_RESET_CSS, neutralizeWidgetStyles } from '../../shared/sb-preview-css.ts'
 import { masterStyleIframeCss } from '../master-style.ts'
@@ -57,100 +58,15 @@ export async function renderPreview(
   setupHorizTabs(root, 'version', { abTestUid, folderUid: folder?.uid ?? '' })
   setupBreadcrumb(root, folder?.name ?? '', ab_test.title, folder?.uid)
 
-  wireUrlCards(root, abTestUid, version)
+  wireUrlCards(root, {
+    // 実パス（認証不要・SSR）のプレビューURLを使う（ハッシュルートは認証必須で共有できない）
+    previewUrl: version === undefined ? `${location.origin}/preview` : `${location.origin}/preview/${version.uid}`,
+    deliveryUrl: deliveryUrlFor(folder?.domain, location.origin, abTestUid),
+  })
   mountPreviewWarningBanner(root)
   // 配信と同じく、本番反映したポップアップを本番の中身で出す（下書きは編集画面の「下書きを確認」で見る・2026-09-24）
   const livePopups = exit_popups.flatMap((p) => (p.enabled && p.live !== null ? [{ ...p, ...p.live }] : []))
   fillPreviewIframe(root, version, styleCss, livePopups)
-}
-
-/**
- * URLカードを実SBの表示に合わせて配線する。
- *
- * 実SBの構成（指示111・スクショ確認済み）:
- *   配信URL:       「ドメインを設定すると使えるようになります」（更新ボタン付き）
- *   プレビューURL:  https://sb-draft-preview.… + 「※計測されません」
- *
- * クローンではドメイン設定機能が無いので:
- *   配信URL:       「ドメインを設定すると使えるようになります」（そのまま）
- *   プレビューURL:  localhost起点のプレビューURL + 「※計測されません」
- *
- * ⚠️ 実サイトのドメインは使わない（本物のページへ飛んでしまう）。
- */
-function wireUrlCards(root: HTMLElement, _abTestUid: string, version: Version | undefined): void {
-  const origin = location.origin
-  // 実パス（認証不要・SSR）のプレビューURLを使う（ハッシュルートは認証必須で共有できない）
-  const previewUrl =
-    version === undefined ? `${origin}/preview` : `${origin}/preview/${version.uid}`
-
-  // URLの入った <p>（テキストが http で始まる or sample で始まる）を上から拾う
-  const urlNodes = [...root.querySelectorAll<HTMLElement>('p')].filter((p) =>
-    /^https?:\/\//.test((p.textContent ?? '').trim()),
-  )
-
-  // ラベルのテキストノード書き換え（採取DOM: 「作成中の確認用URL」→「プレビューURL」）
-  for (const el of root.querySelectorAll<HTMLElement>('*')) {
-    for (const child of el.childNodes) {
-      if (child.nodeType !== Node.TEXT_NODE) continue
-      const t = child.textContent ?? ''
-      if (t.includes('作成中の確認用URL')) child.textContent = t.replace('作成中の確認用URL', 'プレビューURL')
-    }
-  }
-
-  urlNodes.forEach((node, index) => {
-    const card = node.parentElement
-    if (card === null) return
-
-    if (index === 0) {
-      // ── プレビューURL ──
-      node.textContent = previewUrl
-      // 「※計測されません」注釈を追加
-      const note = document.createElement('span')
-      note.textContent = '※計測されません'
-      note.style.cssText =
-        'margin-left:12px;font-size:12px;color:#999999;white-space:nowrap;flex-shrink:0'
-      card.append(note)
-      wireCardButtons(card, previewUrl)
-    } else {
-      // ── 配信URL ──
-      node.textContent = 'ドメインを設定すると使えるようになります'
-      node.style.color = '#999'
-      // 配信URLはコピー・開くボタンを無効化（URLが無いため）
-      for (const btn of card.querySelectorAll<HTMLElement>('button, a')) {
-        btn.style.opacity = '0.4'
-        btn.style.pointerEvents = 'none'
-      }
-    }
-  })
-
-  // リンクの href も書き換え（採取時の sample*.example.test を排除）
-  for (const a of root.querySelectorAll<HTMLAnchorElement>('a[href*="example.test"]')) {
-    a.href = previewUrl
-    a.addEventListener('click', (e) => {
-      e.preventDefault()
-      window.open(previewUrl, '_blank', 'noopener')
-    })
-  }
-}
-
-/** URLカード内のコピー/別タブボタンを配線 */
-function wireCardButtons(card: HTMLElement, url: string): void {
-  const buttons = [...card.querySelectorAll('button')]
-  const copyBtn = buttons[0]
-  const links = [...card.querySelectorAll<HTMLAnchorElement>('a[target="_blank"]')]
-  const openLink = links[links.length - 1]
-  copyBtn?.addEventListener('click', (event) => {
-    event.stopPropagation()
-    void navigator.clipboard.writeText(url).then(() => toast('URLをコピーしました'))
-  })
-  if (openLink !== undefined) {
-    openLink.href = url
-    openLink.addEventListener('click', (event) => {
-      event.preventDefault()
-      event.stopPropagation()
-      window.open(url, '_blank', 'noopener')
-    })
-  }
 }
 
 /**

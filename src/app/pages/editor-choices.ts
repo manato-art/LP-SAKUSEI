@@ -17,7 +17,7 @@ export interface EditorChoice {
 }
 
 export const EDITOR_CHOICES: readonly EditorChoice[] = [
-  { value: null, label: 'スワイプLPエディター（β）', note: '値が未観測のため選べません' },
+  { value: null, label: 'スワイプLPエディター（β）', note: '準備中' },
   { value: 2, label: 'beyondエディター' },
-  { value: 3, label: 'HTMLエディター', note: '今回のクローンでは未実装' },
+  { value: 3, label: 'HTMLエディター', note: '準備中' },
 ]

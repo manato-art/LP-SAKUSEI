@@ -92,7 +92,6 @@ export async function renderDashboard(container: HTMLElement): Promise<void> {
   const content = pageShell(
     container,
     'ダッシュボード',
-    '※クローンが自作した画面です（実物とは見た目が異なる場合があります）。数値はモックの集計です。',
   )
 
   const periods: { label: string; days: number }[] = [

@@ -32,7 +32,6 @@ export function renderSeminarPage(container: HTMLElement): void {
   const content = pageShell(
     container,
     'イベント・セミナー',
-    '※クローンが自作した画面です。',
   )
   content.append(
     emptyState('現在開催予定のイベント・セミナーはありません。'),

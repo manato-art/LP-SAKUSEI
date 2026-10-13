@@ -132,19 +132,29 @@ export async function postJson<T>(path: string, body: unknown): Promise<T | null
 
 
 /** 画面の共通シェル：白カード＋タイトル＋「クローン自作」注記＋本文コンテナを返す */
-export function pageShell(container: HTMLElement, title: string, note: string): HTMLElement {
+export function pageShell(container: HTMLElement, title: string, note = ''): HTMLElement {
   container.style.cssText = `flex:1;min-width:0;background:${T.bg};min-height:100vh`
   container.innerHTML = ''
   // クラスはスマホ用CSS（mobile-css.ts）が余白・角丸を外すための目印
   const body = el('div', { class: 'sb-page-shell', style: `padding:24px 28px;font-family:${T.font}` })
+  // 説明の文が無い画面は、見出しの下の間隔だけを同じにそろえる（空の行を置かない）
+  const hasNote = note !== ''
   body.append(
-    el('div', { class: 'sb-page-title', text: title, style: `font-size:20px;font-weight:700;color:${T.text};margin-bottom:4px` }),
     el('div', {
-      class: 'sb-page-note',
-      text: note,
-      style: `font-size:12px;color:${T.sub};margin-bottom:20px;line-height:1.7`,
+      class: 'sb-page-title',
+      text: title,
+      style: `font-size:20px;font-weight:700;color:${T.text};margin-bottom:${hasNote ? '4px' : '24px'}`,
     }),
   )
+  if (hasNote) {
+    body.append(
+      el('div', {
+        class: 'sb-page-note',
+        text: note,
+        style: `font-size:12px;color:${T.sub};margin-bottom:20px;line-height:1.7`,
+      }),
+    )
+  }
   const content = el('div', {
     class: 'sb-page-card',
     style: `background:${T.surface};border-radius:10px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,.06)`,
