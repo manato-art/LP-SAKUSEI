@@ -4,7 +4,7 @@
  * 実物SquadBeyondで確認した12種のプリセットを再現する。
  * サムネイルはインラインSVGで描く（外部画像は使わない）。
  *
- * 各プリセットは defaultJavascript を持ち、delivery.ts / preview-page.ts の
+ * 各プリセットは defaultJavascript を持ち、delivery.ts / delivery-preview.ts の
  * 統合IIFEスコープ内で実行される。スコープ変数:
  *   - overlay: ポップアップオーバーレイ要素
  *   - epId: ポップアップのDOM ID

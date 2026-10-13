@@ -18,7 +18,6 @@ import { renderReport } from './pages/report.ts'
 import { renderHeatmap } from './pages/heatmap.ts'
 import { renderSplitTestSettings } from './pages/split-test-settings.ts'
 import { renderRedirectPages } from './pages/redirect-pages.ts'
-import { renderPreview } from './pages/preview-page.ts'
 // 指示124: 拡張機能は撤去 — import 削除
 // import { renderAddon } from './pages/addon.ts'
 import { renderTasks } from './pages/tasks.ts'
@@ -119,38 +118,6 @@ async function route(): Promise<void> {
         return
       }
       renderNotBuilt(content, path ?? '')
-      return
-    }
-    /**
-     * プレビュー画面。右レール「プレビュー」から**新しいタブ**で開く実ルート
-     * `/ab_tests/:abTestUid/articles/:stepUid/previews`（末尾 previews で固定）。
-     * エディタ用パターン（末尾 articles）とは衝突しない。
-     */
-    const previewMatch =
-      /^\/ab_tests\/([^/]+)\/articles\/([^/]+)\/previews$/.exec(path ?? '')
-    if (previewMatch !== null) {
-      await renderPreview(
-        content,
-        previewMatch[1] as string,
-        previewMatch[2] as string,
-        generation,
-      )
-      return
-    }
-    /**
-     * プレビュー画面（短縮URL）。エディタの「プレビュー」ボタンや比較モードのURLで
-     * `/preview/:versionUid` 形式のURLが生成される。version uid → ab_test を逆引きして
-     * 既存の renderPreview に委譲する。
-     */
-    const shortPreviewMatch = /^\/preview\/([^/]+)$/.exec(path ?? '')
-    if (shortPreviewMatch !== null) {
-      const versionUid = shortPreviewMatch[1] as string
-      const resolved = await resolveAbTestFromVersion(versionUid)
-      if (resolved !== null) {
-        await renderPreview(content, resolved, versionUid, generation)
-      } else {
-        renderNotBuilt(content, path ?? '')
-      }
       return
     }
     // 中間ページ（redirect_pages）。エディタ上部右の3番目のアイコンから。
@@ -274,22 +241,6 @@ async function route(): Promise<void> {
       emptyState(`読み込みに失敗しました: ${(error as Error).message}`),
     )
   }
-}
-
-/**
- * version uid → abTest uid を逆引きする。
- * モック環境なのでデータ量は少ない。見つからなければ null。
- */
-async function resolveAbTestFromVersion(versionUid: string): Promise<string | null> {
-  const { ab_tests } = await api.abTests()
-  for (const at of ab_tests) {
-    const { articles } = await api.articles(at.uid)
-    for (const art of articles) {
-      const { versions } = await api.versions(art.uid)
-      if (versions.some((v) => v.uid === versionUid)) return at.uid
-    }
-  }
-  return null
 }
 
 /**

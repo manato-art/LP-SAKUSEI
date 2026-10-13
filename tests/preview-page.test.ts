@@ -5,6 +5,10 @@ import { readFileSync } from 'node:fs'
  * プレビュー画面（右レール「プレビュー」→新しいタブで開く実ルート
  * `/ab_tests/:uid/articles/:stepUid/previews`）の土台が、配線に要る目印を保つかの回帰テスト。
  * 見た目は採取した実DOM＋実CSSが担保する（手書きで似せない・§11）。
+ *
+ * この断片を使う画面（preview-page.ts）は 2026-10-13 に外した（どのボタンからも開けない画面だった・
+ * tests/no-orphan-preview-screen.test.ts）。断片は採取物として残る（`npm run rehydrate` が作り直すため）ので、
+ * 本番のドメインなどが混ざっていないことだけは引き続き見張る。アプリには読み込まれない。
  */
 describe('プレビュー画面の土台（採取マークアップ）', () => {
   const fragment = readFileSync(

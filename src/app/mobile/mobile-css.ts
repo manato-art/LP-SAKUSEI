@@ -97,23 +97,6 @@ export function mobileCss(): string {
     `html body .sb-url-sep{display:none !important}`,
     `html body .sb-url-bar .sb-url-field{height:34px !important}`,
     `html body .sb-url-copy-btn{width:34px !important;height:34px !important}`,
-    // プレビュー画面の上のURLカード2枚（プレビューURL / 配信URL）: PCは横並びで合わせて846px。
-    // スマホ幅でも中央寄せのまま並び、プレビューURLの左半分と配信URLの右半分が画面の外で切れていた
-    // （375px幅で 左 -236px 〜 右 611px）。縦に積んで画面幅いっぱいにし、URLの枠（PCは200pxまで）も空いた幅を使う。
-    // 目印のクラスは preview-url-cards.ts が付ける
-    `html body .sb-preview-urls{flex-direction:column !important;align-items:stretch !important;`,
-    `width:100% !important;gap:8px !important;padding:0 8px !important;box-sizing:border-box !important}`,
-    `html body .sb-preview-url-col{width:100% !important;min-width:0 !important}`,
-    // カードの中は2行にする: 1行目＝見出し＋URL、2行目＝ボタン（コピー / QRコード / 別タブ）。
-    // 1行のままだとURLの枠が85pxまで潰れ、見出しも折り返してカードが縦に伸びていた
-    `html body .sb-preview-url-card{width:100% !important;min-width:0 !important;height:auto !important;`,
-    `min-height:40px;flex-wrap:wrap !important;justify-content:flex-start !important;row-gap:4px;`,
-    `white-space:nowrap;box-sizing:border-box !important}`,
-    `html body .sb-preview-url-card p{flex:1 1 0 !important;max-width:none !important;width:auto !important;`,
-    `min-width:0 !important}`,
-    `html body .sb-preview-url-break{display:block !important;flex-basis:100%;height:0}`,
-    // 押しやすい大きさ（Appleの目安44px）
-    `html body .sb-preview-url-card button,html body .sb-preview-url-card a{min-width:44px;min-height:44px}`,
     // ヘッダー画像の枠も同じ68pxのはみ出しで右が切れていた
     `html body [class*="_articleHeaderPhoto_"]{margin-right:0 !important;width:auto !important;`,
     `max-width:100% !important;box-sizing:border-box !important}`,
