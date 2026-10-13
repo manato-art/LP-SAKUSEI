@@ -19,6 +19,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { createEmptyState } from './seed-empty.ts'
+import { completeTasks } from './task-shape.ts'
 import type { State } from './types.ts'
 
 const DATA_DIR = process.env['DATA_DIR']
@@ -77,7 +78,9 @@ function migrateState(raw: Record<string, unknown>): State {
     }
     migrated[key] = saved
   }
-  return migrated as unknown as State
+  const state = migrated as unknown as State
+  // 1件ずつの中身も見るもの: スケジュールなどを足す前に保存したタスク（task-shape.ts）
+  return { ...state, tasks: completeTasks(state.tasks) }
 }
 
 /**

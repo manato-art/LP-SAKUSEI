@@ -11,6 +11,7 @@ import type { Conversion, DeviceKind, State, Task, TaskNotify, TaskReportSpan, T
 import { bumpDeviceMetric } from './device-metrics.ts'
 import { nowTs, freshUid } from './actions-shared.ts'
 import { DEFAULT_REPORT_ITEMS, type ReportItems } from '../report-items.ts'
+import { taskDefaults } from './task-shape.ts'
 
 // ── タスク ───────────────────────────────────────────────
 export function createTask(
@@ -27,6 +28,7 @@ export function createTask(
   },
 ): { state: State; task: Task } {
   const id = state.nextId
+  const defaults = taskDefaults()
   const task: Task = {
     id,
     uid: freshUid(state.tasks, id, (n) => makeUid('task', n)),
@@ -36,15 +38,13 @@ export function createTask(
     status: 'todo',
     due_at: input.due_at,
     created_at: nowTs(),
-    description: input.description ?? '',
-    // 既定は単発。指定が無いタスクを勝手に定期実行しない。
-    schedule: input.schedule ?? { kind: 'once', hour: '09', minute: '00', weekdays: [] },
-    span: input.span ?? 'today',
+    // 指定が無い項目は既定値（古い保存データの穴埋めと同じ値・task-shape.ts）
+    ...defaults,
+    description: input.description ?? defaults.description,
+    schedule: input.schedule ?? defaults.schedule,
+    span: input.span ?? defaults.span,
     report_items: input.report_items ?? { ...DEFAULT_REPORT_ITEMS },
-    notify: input.notify ?? null,
-    last_run_slot: null,
-    last_run_status: null,
-    last_run_error: null,
+    notify: input.notify ?? defaults.notify,
   }
   return { state: { ...state, tasks: [...state.tasks, task], nextId: id + 1 }, task }
 }
