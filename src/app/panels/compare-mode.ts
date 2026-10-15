@@ -24,6 +24,7 @@ import { MIN_H, MIN_W } from './compare-mode-metrics.ts'
 import { closeQrPopover, toggleQrPopover } from './compare-qr.ts'
 import { savedPreviewUrl, showInFrame } from './compare-preview-doc.ts'
 import { renderHistoryTab, type CompareHistoryDeps } from './compare-history-tab.ts'
+import { isCreator } from '../session.ts'
 
 /* ──────────────────── SVG アイコン ──────────────────── */
 
@@ -217,6 +218,9 @@ function buildPanel(deps: ComparePanelDeps): HTMLElement {
   for (let i = 0; i < TABS.length; i += 1) {
     const tab = TABS[i]
     if (tab === undefined) continue
+    // LP作成者には数字（ヒートマップ）のタブを出さない（サーバーでも断っている）。
+    // 中身は番号（tabIndex）で描き分けているので、配列は変えずにボタンだけ作らない
+    if (isCreator() && tab.label === 'ヒートマップ') continue
     const btn = document.createElement('button')
     btn.className = `sb-cmp-tab${i === 0 ? ' active' : ''}`
 

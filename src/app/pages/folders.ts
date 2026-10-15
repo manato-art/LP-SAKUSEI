@@ -44,6 +44,7 @@ import { folderHistoryUids, recordHistory, renderHistoryList } from './folders-h
 import { updateStarAppearance } from './folders-detail-panel.ts'
 import { listState, updateListState } from './folders-list-state.ts'
 import { UNFILED_FOLDER_NAME, UNFILED_FOLDER_UID } from '../../shared/unfiled-folder.ts'
+import { isCreator } from '../session.ts'
 
 /** 採取物から切り出したフォルダ1行ぶんのマークアップ（読み込み時に一度だけ） */
 const FOLDER_ROW_TEMPLATE = extractFolderRowTemplate(substrate)
@@ -394,6 +395,8 @@ function wireTreeControls(body: HTMLElement, context: PageContext): void {
   // 新規フォルダ作成ボタン
   const create = tree.querySelector(FOLDERS_HOOK.createFolderIcon)?.closest('button') ?? null
   if (create === null) console.warn('[folders] 新規フォルダ作成のボタンが土台に見つかりませんでした')
+  // LP作成者はフォルダを作れない（サーバーでも断っている）
+  else if (isCreator()) create.style.display = 'none'
   else create.addEventListener('click', openCreateFolder)
 
   // 検索ボタン: クリックで検索欄を開く/閉じる
@@ -481,6 +484,11 @@ function wireRowActions(row: HTMLElement, folder: Folder, rerender: () => void):
   const buttons = actions.querySelectorAll<HTMLElement>('button')
   const starBtn = buttons[0] ?? null
   const gearBtn = buttons[1] ?? null
+  // LP作成者には、フォルダのお気に入り・名前変更・削除・ドメインを触らせない（全員で共通の設定・サーバーでも断っている）
+  if (isCreator()) {
+    for (const button of [starBtn, gearBtn]) if (button !== null) button.style.display = 'none'
+    return
+  }
 
   // 星アイコン: お気に入りトグル（指示㉝: 押しても「お気に入り」タブに反映されない不具合を修正）。
   // 以前は API 呼び出しと星の見た目だけ更新し、手元の folder とツリーを更新していなかったため、

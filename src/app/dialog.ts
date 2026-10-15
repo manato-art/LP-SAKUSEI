@@ -37,6 +37,8 @@ export interface PromptOptions {
   submitLabel?: string
   /** 入力が不正なら理由を返す。null なら通す */
   validate?: (value: string) => string | null
+  /** パスワードを入れる欄にするとき 'password'（打った文字を伏せる） */
+  inputType?: 'text' | 'password'
 }
 
 export interface ChooseOption {
@@ -108,7 +110,7 @@ export function promptCard(options: PromptOptions): Promise<string | null> {
       body.append(label)
     }
     const input = document.createElement('input')
-    input.type = 'text'
+    input.type = options.inputType ?? 'text'
     input.className = 'sbd-input'
     input.value = options.value ?? ''
     input.placeholder = options.placeholder ?? ''

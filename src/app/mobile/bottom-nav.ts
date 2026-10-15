@@ -8,6 +8,8 @@
 import { T, el } from '../ui.ts'
 import { BOTTOM_NAV_HEIGHT } from './mobile-css.ts'
 import { INSPECTIONS_CANONICAL_ROUTE, TOOL_PAGE_ROUTES } from '../pages/tool-subnav.ts'
+import { isCreator } from '../session.ts'
+import { creatorBottomNavHrefs, creatorMoreItemLabels } from '../creator-ui.ts'
 
 const NAV_ID = 'sb-bottom-nav'
 const SHEET_ID = 'sb-more-sheet'
@@ -120,7 +122,10 @@ function openMoreSheet(): void {
       style: `width:36px;height:4px;border-radius:2px;background:${T.line};margin:8px auto 12px`,
     }),
   )
+  // LP作成者には、LPづくりの画面へ行く項目だけ（creator-ui.ts）
+  const creatorLabels = isCreator() ? creatorMoreItemLabels(MORE_ITEMS) : null
   for (const item of MORE_ITEMS) {
+    if (creatorLabels !== null && !creatorLabels.includes(item.label)) continue
     const row = el('div', {
       text: item.label,
       class: 'sb-mobile-tap',
@@ -152,7 +157,10 @@ export function mountBottomNav(): void {
       ].join(';'),
     })
     nav.id = NAV_ID
+    // LP作成者には「ページ」と「その他」だけ（creator-ui.ts）
+    const creatorHrefs = isCreator() ? creatorBottomNavHrefs(BOTTOM_NAV_ITEMS) : null
     for (const item of BOTTOM_NAV_ITEMS) {
+      if (creatorHrefs !== null && item.href !== '' && !creatorHrefs.includes(item.href)) continue
       const tab = el('button', {
         style: [
           `flex:1;min-width:0;height:${BOTTOM_NAV_HEIGHT}px;border:none;background:transparent`,

@@ -28,6 +28,7 @@ import { drawPopupThumb } from './popup-content-card.ts'
 import { closedPanelNotice, publishStatusPill } from './popup-list-parts.ts'
 import { popupDeliveryControl } from './popup-delivery-control.ts'
 import { RATIO_HELP, mainVersionUid } from './popup-draft.ts'
+import { isCreator } from '../session.ts'
 
 const ADD_ICON = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`
 const TRASH_ICON = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left:auto" aria-hidden="true"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>`
@@ -368,7 +369,8 @@ function toggleDropdown(cardEl: HTMLElement, state: PopupPageState, uid: string)
     })
   })
 
-  dropdown.append(editBtn, previewBtn, copyBtn, deleteBtn)
+  // LP作成者は削除できない（サーバーでも断っている）
+  dropdown.append(editBtn, previewBtn, copyBtn, ...(isCreator() ? [] : [deleteBtn]))
   cardEl.append(dropdown)
 
   const close = (e: MouseEvent): void => {

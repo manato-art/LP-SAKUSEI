@@ -25,6 +25,8 @@ export function duplicateAbTest(
   state: State,
   uid: string,
   folderId: number | null,
+  /** 複製した人が LP作成者なら、そのアカウントの uid。写しは複製した人のものになる（元の作った人は写さない） */
+  createdBy?: string,
 ): { state: State; abTest: AbTest } | null {
   const source = state.abTests.find((t) => t.uid === uid)
   if (source === undefined) return null
@@ -37,9 +39,16 @@ export function duplicateAbTest(
 
   const abTestId = takeId()
   // Meta広告の紐付けと外部LPの所在は写さない（残りはそのまま）
-  const { meta_level: _metaLevel, meta_object_id: _metaObjectId, external_url: _externalUrl, ...settings } = source
+  const {
+    meta_level: _metaLevel,
+    meta_object_id: _metaObjectId,
+    external_url: _externalUrl,
+    created_by: _createdBy,
+    ...settings
+  } = source
   const abTest: AbTest = {
     ...settings,
+    ...(createdBy === undefined ? {} : { created_by: createdBy }),
     id: abTestId,
     uid: freshUid(state.abTests, abTestId, makeAbTestUid),
     title: copyTitle(source.title),

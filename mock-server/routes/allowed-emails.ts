@@ -11,6 +11,7 @@ import {
   removeAllowedEmailSafely,
 } from '../store/allowed-emails.ts'
 import { ADMIN_PATH } from '../config.ts'
+import { isCreatorEmail } from '../store/creator-accounts.ts'
 
 export const allowedEmailsRouter: Router = Router()
 
@@ -30,6 +31,11 @@ allowedEmailsRouter.post('/allowed_emails', (req, res) => {
   // 簡易バリデーション（@を含む最低限チェック）
   if (!email.includes('@') || email.length < 5) {
     res.status(400).json(errorEnvelope('validation_error', '有効なメールアドレスを入力してください。'))
+    return
+  }
+  // LP作成者のメールを管理者にも入れると、同じメールで共通のパスワードからも入れてしまう
+  if (isCreatorEmail(email)) {
+    res.status(409).json(errorEnvelope('conflict', 'このメールアドレスはLP作成者として登録されています。'))
     return
   }
   const entry = addAllowedEmail(email)

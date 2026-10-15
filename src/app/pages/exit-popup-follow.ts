@@ -15,6 +15,7 @@ import type { PopupPageState } from './exit-popup-state.ts'
 import { drawPopupThumb } from './popup-content-card.ts'
 import { isCornerPosition, openFollowEditor, previewFollowPopup } from './exit-popup-follow-editor.ts'
 import { copyTabList, publishStatusPill } from './popup-list-parts.ts'
+import { isCreator } from '../session.ts'
 
 export function renderFollowCard(state: PopupPageState, fp: FollowPopup): HTMLElement {
   const card = el('div', { class: 'ep-card' })
@@ -114,7 +115,8 @@ function toggleFollowDropdown(cardEl: HTMLElement, state: PopupPageState, fp: Fo
     })
   })
 
-  dropdown.append(editBtn, previewBtn, deleteBtn)
+  // LP作成者は削除できない（サーバーでも断っている）
+  dropdown.append(editBtn, previewBtn, ...(isCreator() ? [] : [deleteBtn]))
   cardEl.append(dropdown)
 
   const close = (e: MouseEvent): void => {

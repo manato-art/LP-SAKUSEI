@@ -7,6 +7,7 @@ import { chooseCard, confirmCard, promptCard } from '../dialog.ts'
 import { toast } from '../ui.ts'
 import type { EditorContext } from './editor-context.ts'
 import { stepLabel } from './editor-step-list.ts'
+import { isCreator } from '../session.ts'
 
 /** ステップを作るときの見本と同じ色（採取物の7色） */
 const STEP_COLORS: readonly { value: string; label: string }[] = [
@@ -37,7 +38,8 @@ export async function openStepMenu(ctx: EditorContext, index: number, deps: Step
     options: [
       { value: 'rename', label: '名前を変える' },
       { value: 'color', label: '色を変える' },
-      ...(isFirst ? [] : [{ value: 'delete', label: 'このステップを削除', hint: 'ステップの中のVersionもまとめて消えます' }]),
+      // LP作成者は削除できない（サーバーでも断っている）
+      ...(isFirst || isCreator() ? [] : [{ value: 'delete', label: 'このステップを削除', hint: 'ステップの中のVersionもまとめて消えます' }]),
     ],
   })
   try {

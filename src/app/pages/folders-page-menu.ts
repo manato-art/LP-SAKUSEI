@@ -19,6 +19,7 @@ import { T, el, toast } from '../ui.ts'
 import { UNFILED_FOLDER_NAME } from '../../shared/unfiled-folder.ts'
 import type { PageContext } from './folders-shared.ts'
 import { deliveryUrlFor } from './basic-info-form.ts'
+import { isCreator } from '../session.ts'
 
 /** 保存したあと、一覧をサーバーの値で描き直す（絞り込み・並び・検索はそのまま残る） */
 function redrawList(): void {
@@ -152,7 +153,8 @@ export function openPageMoreMenu(anchor: HTMLElement, abTest: AbTest, context: P
     ...(abTest.ad_status === 'finished'
       ? []
       : [{ label: 'ステータスを終了にする', action: () => void finishStatus(abTest) }]),
-    { label: 'beyondページを削除', danger: true, action: () => void removePage(abTest, context) },
+    // LP作成者は削除できない（サーバーでも断っている）
+    ...(isCreator() ? [] : [{ label: 'beyondページを削除', danger: true, action: () => void removePage(abTest, context) }]),
   ]
 
   for (const item of items) {

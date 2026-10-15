@@ -21,6 +21,7 @@ import { wireBeyondNavAnchors } from './beyond-nav.ts'
 import { applyLightTheme } from './report-dom.ts'
 import { stripShellFromFragment } from './report-substrate.ts'
 import { wireAbTestTabs, setupHorizTabs, setupBreadcrumb } from './tab-nav.ts'
+import { isCreator } from '../session.ts'
 
 const HOOK = {
   left: '[class*="_left_1tjuv"]',
@@ -276,7 +277,8 @@ function createTagCard(pageUid: string, tag: RedirectPageTag): HTMLElement {
   title.textContent = tag.name
   const destroy = document.createElement('div')
   destroy.className = TAG_CARD.destroy
-  titleWrapper.append(title, destroy)
+  // LP作成者は削除できない（サーバーでも断っている）
+  titleWrapper.append(title, ...(isCreator() ? [] : [destroy]))
 
   const nameLabel = document.createElement('label')
   nameLabel.textContent = 'タグ名'
@@ -398,6 +400,11 @@ function wireCopyLink(root: HTMLElement): void {
 function wireDelete(root: HTMLElement, abTestUid: string, template: HTMLElement | null): void {
   const deleteBtn = root.querySelector<HTMLElement>(HOOK.deleteButton)
   if (deleteBtn === null || deleteBtn.dataset['cloneDeleteWired'] === 'true') return
+  // LP作成者は削除できない（サーバーでも断っている）
+  if (isCreator()) {
+    deleteBtn.style.display = 'none'
+    return
+  }
   deleteBtn.dataset['cloneDeleteWired'] = 'true'
   deleteBtn.style.cursor = 'pointer'
   deleteBtn.addEventListener('click', () => {

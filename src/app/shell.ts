@@ -8,6 +8,8 @@ import { toast } from './ui.ts'
 import { openThemeColorMenu } from './panels/theme-color-menu.ts'
 import { THEME_MODE_EVENT, setThemeMode, storedMode, type ThemeMode } from './theme-mode.ts'
 import { api } from './api.ts'
+import { isCreator } from './session.ts'
+import { CREATOR_HIDDEN_SIDEBAR_LABELS } from './creator-ui.ts'
 import { ensureMobileCss } from './mobile/mobile-css.ts'
 import {
   mountBottomNav,
@@ -163,6 +165,8 @@ function wireSidebar(nav: HTMLElement): void {
 
   // 設定リンクをサイドバー下部に追加（FAQ: 設定・管理）
   appendSettingsLink(nav)
+  // LP作成者には、LPづくり以外の項目を出さない（サーバーでも断っている・creator-ui.ts）
+  if (isCreator()) hideCreatorItems(nav)
 
   // クリックは1つの委譲ハンドラで受ける（項目内のどこを押しても、対応ルートへ遷移）。
   nav.addEventListener('click', (event) => {
@@ -188,9 +192,32 @@ function wireSidebar(nav: HTMLElement): void {
     logoLink.addEventListener('click', (e) => {
       e.preventDefault()
       e.stopPropagation()
-      location.hash = '/dashboard'
+      // LP作成者はダッシュボードを使えないので、ページ一覧へ
+      location.hash = isCreator() ? '/folders' : '/dashboard'
     })
   }
+}
+
+/** サイドバーの1行（項目）。押すところ・名前・アイコンをまとめた入れ物 */
+function railRowOf(node: HTMLElement, nav: HTMLElement): HTMLElement {
+  return node.closest<HTMLElement>('li') ?? node.closest<HTMLElement>('[data-testid="list-menu-item"]') ?? (node.parentElement === nav ? node : node.parentElement ?? node)
+}
+
+/** LP作成者には、名前が CREATOR_HIDDEN_SIDEBAR_LABELS の項目を出さない（アコーディオンの中の項目も） */
+function hideCreatorItems(nav: HTMLElement): void {
+  const hidden = new Set(CREATOR_HIDDEN_SIDEBAR_LABELS)
+  const rows = new Set<HTMLElement>()
+  for (const node of nav.querySelectorAll<HTMLElement>('*')) {
+    // その要素が直に持つ文字だけを見る＝親の行の文字の連結で誤って当たらない。
+    // 「ツール」「外部連携」の名前には開閉の印（子の要素）が付くので、子を持つかどうかでは見分けない
+    const text = [...node.childNodes]
+      .filter((child) => child.nodeType === Node.TEXT_NODE)
+      .map((child) => child.textContent ?? '')
+      .join('')
+      .trim()
+    if (hidden.has(text)) rows.add(railRowOf(node, nav))
+  }
+  for (const row of rows) row.remove()
 }
 
 /** 月（＝押すとダークになる）。共通指示「UIは絵文字をやめSVGアイコンに」 */

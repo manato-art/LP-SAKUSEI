@@ -12,6 +12,7 @@ import { confirmCard, type ConfirmOptions } from '../dialog.ts'
 import { el } from '../ui.ts'
 import type { PopupPublishStatus } from '../../shared/popup-content.ts'
 import { publishStatusPill } from './popup-list-parts.ts'
+import { isCreator } from '../session.ts'
 
 export interface PopupEditorHeaderOptions {
   readonly status: () => PopupPublishStatus
@@ -194,7 +195,8 @@ function toggleMenu(
     })
   })
 
-  menu.append(copyBtn, deleteBtn)
+  // LP作成者は削除できない（サーバーでも断っている）
+  menu.append(copyBtn, ...(isCreator() ? [] : [deleteBtn]))
   wrap.append(menu)
   setTimeout(() => document.addEventListener('click', onOutside), 0)
 }

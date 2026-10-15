@@ -11,6 +11,9 @@ import { buildThemeColorSection } from '../panels/theme-color-section.ts'
 import { jstDateKey, jstHhmm } from '../jst.ts'
 import { mountAlertSettings } from './alert-settings-section.ts'
 import { renderMembers } from './team-members.ts'
+import { renderCreatorAccounts } from './creator-accounts-tab.ts'
+import { renderCreatorMyPage } from './creator-mypage.ts'
+import { isCreator } from '../session.ts'
 
 export async function renderAccountSettings(
   container: HTMLElement,
@@ -19,6 +22,11 @@ export async function renderAccountSettings(
 ): Promise<void> {
   container.style.cssText = `flex:1;min-width:0;background:${T.bg};min-height:100vh`
   container.innerHTML = ''
+  // LP作成者には、名前・メールとログアウトだけ（管理のタブは出さない）
+  if (isCreator()) {
+    renderCreatorMyPage(container)
+    return
+  }
 
   // クラスはスマホ用CSSの目印（左右の余白を外す・data-ui.ts の pageShell と同じ扱い）
   const body = el('div', { class: 'sb-page-shell', style: `padding:24px 28px;font-family:${T.font}` })
@@ -52,7 +60,7 @@ export async function renderAccountSettings(
   container.append(body)
 
   // タブ
-  const tabs = ['アカウント', '通知設定', 'チームメンバー', 'アクセス管理'] as const
+  const tabs = ['アカウント', '通知設定', 'チームメンバー', 'アクセス管理', 'LP作成者'] as const
   let activeTab: (typeof tabs)[number] = initialTab ?? 'アカウント'
 
   // クラスはスマホで横スクロールにするための目印（mobile-css.ts）
@@ -90,6 +98,7 @@ export async function renderAccountSettings(
     else if (activeTab === '通知設定') await renderNotifications(contentArea)
     else if (activeTab === 'チームメンバー') await renderMembers(contentArea)
     else if (activeTab === 'アクセス管理') await renderAccessManagement(contentArea)
+    else if (activeTab === 'LP作成者') await renderCreatorAccounts(contentArea)
   }
 
   renderTabs()

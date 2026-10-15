@@ -158,6 +158,12 @@ export interface AbTest {
   created_at: number
   updated_at: number
   creator_member_id: number
+  /**
+   * LP作成者が作ったページなら、そのアカウントの uid（store/creator-accounts.ts・2026-10-15）。
+   * LP作成者は、これが自分の uid のページだけを見て直せる（lib/creator-access.ts）。
+   * 管理者が作ったページ・それより前のページには無い。
+   */
+  created_by?: string
 }
 
 /** 基本情報「成果測定方法」の値 */

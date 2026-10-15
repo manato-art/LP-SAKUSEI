@@ -100,6 +100,8 @@ export interface CreateAbTestInput {
   editor_version?: number
   conversion_condition?: 'click' | 'access'
   conversion_unit_price?: number
+  /** LP作成者が作るとき、そのアカウントの uid（管理者が作るときは無し） */
+  created_by?: string
 }
 
 /**
@@ -139,6 +141,7 @@ export function createAbTest(
     created_at: nowTs(),
     updated_at: nowTs(),
     creator_member_id: owner?.id ?? 1,
+    ...(input.created_by === undefined ? {} : { created_by: input.created_by }),
   }
   const article: Article = {
     id: articleId,

@@ -29,6 +29,9 @@ import { relationCountsFor } from '../store/relation-counts.ts'
 import { folderIdForUid, isKnownFolderId } from '../store/unfiled.ts'
 import { duplicateAbTest } from '../store/duplicate-ab-test.ts'
 import { abTestsMediaRouter } from './ab-tests-media.ts'
+import { creatorOf } from '../lib/creator-access.ts'
+import type { AbTest } from '../store/types.ts'
+import type { Request } from 'express'
 
 export const abTestsRouter: Router = Router()
 
@@ -38,6 +41,12 @@ abTestsRouter.use(abTestsReportsRouter)
 abTestsRouter.use(abTestsMediaRouter)
 
 
+
+/** このリクエストで見せてよいページ（LP作成者は自分が作ったページだけ・lib/creator-access.ts） */
+function visibleAbTests(abTests: readonly AbTest[], req: Request): AbTest[] {
+  const creator = creatorOf(req)
+  return creator === null ? [...abTests] : abTests.filter((t) => t.created_by === creator.uid)
+}
 
 /**
  * 実APIの一覧は **フォルダ配下の v2 エンドポイント**（2026-08-31 実測）:
@@ -50,7 +59,7 @@ abTestsRouter.get('/folders/:folderUid/ab_tests', (req, res) => {
   if (folder === undefined) return notFound(res, 'フォルダが見つかりません。')
 
   const adStatus = str(req.query, 'ad_status') ?? 'except_finished'
-  const inFolder = state.abTests.filter((t) => t.folder_id === folder.id)
+  const inFolder = visibleAbTests(state.abTests, req).filter((t) => t.folder_id === folder.id)
   const byStatus =
     adStatus === 'all'
       ? inFolder
@@ -98,14 +107,15 @@ abTestsRouter.get('/folders/:folderUid/ab_tests/reports_total', (req, res) => {
 /** 関連数（行のアイコンと右パネルの件数）。実測: GET /api/v1/.../relation_counts?ids= */
 abTestsRouter.get('/folders/:folderUid/ab_tests/relation_counts', (req, res) => {
   const state = getState()
-  const ids = (str(req.query, 'ids') ?? '').split(',').map(Number).filter(Number.isFinite)
+  const visibleIds = new Set(visibleAbTests(state.abTests, req).map((t) => t.id))
+  const ids = (str(req.query, 'ids') ?? '').split(',').map(Number).filter((id) => Number.isFinite(id) && visibleIds.has(id))
   res.json({ relation_counts: ids.map((id) => relationCountsFor(state, id)) })
 })
 
 // ── 一覧 / 作成 ──────────────────────────────────────────
 abTestsRouter.get('/ab_tests', (req, res) => {
   const state = getState()
-  const filtered = filterItems(searchItems([...state.abTests], req.query), req.query, {
+  const filtered = filterItems(searchItems(visibleAbTests(state.abTests, req), req.query), req.query, {
     media_id: 'media_id',
     folder_id: 'folder_id',
     published: 'published',
@@ -128,6 +138,8 @@ abTestsRouter.post('/ab_tests', (req, res) => {
     return
   }
   let created: ReturnType<typeof createAbTest> | null = null
+  // LP作成者が作ったページには、作った人の印を付ける（その人はこのページだけを見て直せる）
+  const creator = creatorOf(req)
   setState((state) => {
     const out = createAbTest(state, {
       title: title.value,
@@ -136,6 +148,7 @@ abTestsRouter.post('/ab_tests', (req, res) => {
       media_id: optionalNumber(req.body, 'media_id') ?? null,
       editor_version: optionalNumber(req.body, 'editor_version') ?? 2,
       conversion_unit_price: optionalNumber(req.body, 'conversion_unit_price') ?? 0,
+      ...(creator === null ? {} : { created_by: creator.uid }),
     })
     created = out
     return out.state
@@ -175,7 +188,7 @@ abTestsRouter.post('/ab_tests/:uid/duplicate', (req, res) => {
     res.status(422).json(errorEnvelope('validation_failed', '複製先のフォルダが見つかりません。'))
     return
   }
-  const out = duplicateAbTest(state, source.uid, folderId)
+  const out = duplicateAbTest(state, source.uid, folderId, creatorOf(req)?.uid)
   if (out === null) return notFound(res, 'beyondページが見つかりません。')
   setState(() => out.state)
   res.status(201).json({ ab_test: serializeAbTest(out.state, out.abTest) })

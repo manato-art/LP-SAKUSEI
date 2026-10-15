@@ -14,6 +14,7 @@ import { cardDetailMetrics, cardMetrics } from './page-card.ts'
 import { openCreateFolder, openCreatePage } from '../pages/folders-create.ts'
 import { pageListApi } from '../api-page-list.ts'
 import { UNFILED_FOLDER_NAME, UNFILED_FOLDER_UID } from '../../shared/unfiled-folder.ts'
+import { isCreator } from '../session.ts'
 
 /** 配信ステータスの色（実物の配色に合わせる） */
 const STATUS_COLOR: Readonly<Record<string, string>> = {
@@ -101,11 +102,14 @@ export async function renderMobileFolders(container: HTMLElement): Promise<void>
   body.append(backBar('ページ', null))
   // フォルダが1つも無いと、ここから先へ進む道が無くなる（本人指摘「新規で作成できない」）。
   // 空のときも出したいので、一覧より前に置く。
-  body.append(
-    el('div', { style: 'display:flex;flex-direction:column;padding:12px 12px 0' }, [
-      createButton('＋ 新規フォルダを作成', () => { openCreateFolder() }),
-    ]),
-  )
+  // LP作成者はフォルダを作れない（サーバーでも断っている）
+  if (!isCreator()) {
+    body.append(
+      el('div', { style: 'display:flex;flex-direction:column;padding:12px 12px 0' }, [
+        createButton('＋ 新規フォルダを作成', () => { openCreateFolder() }),
+      ]),
+    )
+  }
   const area = el('div', {
     style: 'display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px',
   })
@@ -241,10 +245,15 @@ function pageCard(abTest: AbTest, folder: Folder | null): HTMLElement {
       kpis.append(cell)
     }
   }
-  paint(null)
-  void api
-    .report(abTest.uid, toRangeQuery(defaultRange()))
-    .then(({ totals }) => paint(totals), () => paint(null))
+  // LP作成者には数字を出さない（サーバーでも断っている）。数字の段ごと出さず、読みにも行かない
+  if (isCreator()) {
+    kpis.remove()
+  } else {
+    paint(null)
+    void api
+      .report(abTest.uid, toRangeQuery(defaultRange()))
+      .then(({ totals }) => paint(totals), () => paint(null))
+  }
 
   box.append(pageActions(abTest, folder))
   return box
@@ -270,9 +279,11 @@ function pageActions(abTest: AbTest, folder: Folder | null): HTMLElement {
   }
   row.append(
     make('編集', () => { location.hash = `/ab_tests/${abTest.uid}/articles` }, true),
-    make('レポート', () => { location.hash = `/ab_tests/${abTest.uid}/reports` }),
+    // LP作成者には数字の画面へのボタンを出さない
+    ...(isCreator() ? [] : [make('レポート', () => { location.hash = `/ab_tests/${abTest.uid}/reports` })]),
     make('配信URLをコピー', () => { void copyDeliveryUrl(abTest, folder) }),
-    make('くわしく', () => { openDetails(abTest) }),
+    // 「くわしく」は残りの数字を出すだけなので、LP作成者には出さない
+    ...(isCreator() ? [] : [make('くわしく', () => { openDetails(abTest) })]),
   )
   return row
 }

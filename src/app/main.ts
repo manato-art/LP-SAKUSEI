@@ -38,6 +38,8 @@ import { renderToolPage } from './pages/tool-pages.ts'
 import { isSplitTestTab } from './pages/beyond-nav.ts'
 import { T, button, el, emptyState } from './ui.ts'
 import { api } from './api.ts'
+import { isCreator, loadSession } from './session.ts'
+import { isCreatorRoute } from './creator-ui.ts'
 
 /**
  * 描画の世代。ルートの描画はAPI待ちを含むため、
@@ -82,6 +84,12 @@ async function route(): Promise<void> {
   // エディタのミニマップはページ遷移で残る可能性がある。除去する。
   for (const orphan of document.querySelectorAll('[data-clone-minimap]')) orphan.remove()
   markActiveNav(path ?? '')
+
+  // LP作成者は、LPづくりの画面だけ（サーバーでも同じ範囲で断っている・creator-ui.ts）
+  if (isCreator() && !isCreatorRoute(path ?? '')) {
+    renderCreatorBlocked(content)
+    return
+  }
 
   try {
     const editorMatch = /^\/ab_tests\/([^/]+)\/articles$/.exec(path ?? '')
@@ -266,6 +274,25 @@ function renderNotBuilt(content: HTMLElement, path: string): void {
   )
 }
 
+/** LP作成者のアカウントで、使えない画面を開いたとき */
+function renderCreatorBlocked(content: HTMLElement): void {
+  content.innerHTML = ''
+  const goFolders = button('ページ画面へ')
+  goFolders.addEventListener('click', () => {
+    location.hash = '/folders'
+  })
+  content.append(
+    el('div', { style: `padding:60px 40px;font-family:${T.font}` }, [
+      el('strong', { text: 'この画面はLP作成者のアカウントでは使えません', style: 'display:block;font-size:16px;margin-bottom:10px' }),
+      el('div', {
+        text: 'LP作成者のアカウントで使えるのは、ページの作成とLPづくり（Version・離脱防止ポップ・中間ページ・切り替え・基本情報）です。',
+        style: `font-size:13px;color:${T.sub};line-height:1.9;margin-bottom:20px`,
+      }),
+      goFolders,
+    ]),
+  )
+}
+
 /**
  * テーマカラーは描画より先に当てる。
  * 後から当てると、既定色の画面が一瞬見えてから切り替わる。
@@ -290,5 +317,8 @@ initThemeMode(async () => {
   }
 })
 
-addEventListener('hashchange', () => void route())
-void route()
+// 誰がログインしているか（管理者 / LP作成者）を読んでから最初の画面を描く
+void loadSession().then(() => {
+  addEventListener('hashchange', () => void route())
+  void route()
+})

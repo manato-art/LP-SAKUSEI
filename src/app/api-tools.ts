@@ -59,6 +59,24 @@ export interface TeamMember {
   team_id: number
 }
 
+/** マイページ > LP作成者（管理者だけ）。パスワードは返ってこない */
+export interface CreatorAccountEntry {
+  uid: string
+  email: string
+  name: string
+  created_at: number
+}
+
+export const creatorAccountsApi = {
+  list: () => request<{ creator_accounts: CreatorAccountEntry[] }>('GET', '/creator_accounts'),
+  create: (input: { email: string; name: string; password: string }) =>
+    request<{ creator_account: CreatorAccountEntry }>('POST', '/creator_accounts', input),
+  /** パスワードを変えると、その人のログインは切れる（新しいパスワードで入り直す） */
+  update: (uid: string, patch: { name?: string; password?: string }) =>
+    request<{ creator_account: CreatorAccountEntry }>('PUT', `/creator_accounts/${encodeURIComponent(uid)}`, patch),
+  remove: (uid: string) => request<void>('DELETE', `/creator_accounts/${encodeURIComponent(uid)}`),
+}
+
 export const accountApi = {
   /** ログアウト。ログインしていたならログインの入口（redirect）が返る */
   logout: async (): Promise<{ ok: boolean; redirect?: string }> => {

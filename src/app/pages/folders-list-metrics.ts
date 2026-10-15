@@ -15,6 +15,7 @@ import { toast } from '../ui.ts'
 import { defaultRange, toRangeQuery, type DateRange } from './report-period.ts'
 import { formatPeriodLabel } from '../panels/period-picker.ts'
 import { EMPTY_CELL, formatCell, type ReportColumn } from './report-columns.ts'
+import { isCreator } from '../session.ts'
 
 /** 一覧KPIの集計期間。既定は「今日1日」＝レポート画面の既定と同じ数え方に揃える。 */
 let listRange: DateRange = defaultRange()
@@ -91,6 +92,11 @@ export function clearRowMetrics(row: HTMLElement): void {
 export async function applyListMetrics(area: HTMLElement): Promise<Map<string, { pv: number; cv: number }>> {
   const rows = [...area.querySelectorAll<HTMLElement>('[data-ab-test-uid]')]
   const loaded = new Map<string, { pv: number; cv: number }>()
+  // LP作成者には数字を出さない（サーバーでも断っている）。読みに行かず「-」のまま
+  if (isCreator()) {
+    for (const row of rows) blankCells(rowMetricCells(row), null)
+    return loaded
+  }
   const failures: string[] = []
   await Promise.all(
     rows.map(async (row) => {
@@ -126,7 +132,7 @@ export async function applyTotalRow(
 ): Promise<void> {
   const cells = [...area.querySelectorAll<HTMLElement>(`.en4zj406 ${TOTAL_CELL}`)]
   blankCells(cells, null)
-  if (visibleUids.length === 0) return
+  if (visibleUids.length === 0 || isCreator()) return
   try {
     const { reports_total } = await pageListApi.reportsTotal(folderUid, visibleUids, toRangeQuery(listRange))
     LIST_METRIC_CELLS.forEach(({ column }, i) => {

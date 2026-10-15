@@ -13,6 +13,7 @@ import { serializeAbTest } from '../lib/serialize.ts'
 import { makeUid } from '../store/ids.ts'
 import { normalizeFolderDomain } from '../store/folder-domain.ts'
 import { issueQuickDomainHost } from '../store/quick-domain.ts'
+import { creatorOf } from '../lib/creator-access.ts'
 
 export const foldersRouter: Router = Router()
 
@@ -28,9 +29,18 @@ foldersRouter.get('/folders', (req, res) => {
   const visible = applyEmptyState(req, filtered)
   const sorted = sortItems(visible, sortParams(req.query), [...FOLDER_SORT_KEYS])
   const page = pageParams(req.query)
+  // LP作成者には、フォルダの中の「自分が作ったページ」の数だけを見せる（ほかの人のページの数を出さない）
+  const creator = creatorOf(req)
+  const counted =
+    creator === null
+      ? paginate(sorted, page)
+      : paginate(sorted, page).map((f) => ({
+          ...f,
+          ab_tests_count: state.abTests.filter((t) => t.folder_id === f.id && t.created_by === creator.uid).length,
+        }))
   res.json({
     pagination: pagination(sorted.length, page.perPage, page.page),
-    folders: paginate(sorted, page),
+    folders: counted,
   })
 })
 
@@ -57,10 +67,15 @@ foldersRouter.get('/folders/:uid', (req, res) => {
     res.status(404).json(errorEnvelope('not_found', 'フォルダが見つかりません。'))
     return
   }
+  // LP作成者には、自分が作ったページだけ（ページ画面の一覧はここから作る・lib/creator-access.ts）
+  const creator = creatorOf(req)
   const abTests = state.abTests
-    .filter((t) => t.folder_id === folder.id)
+    .filter((t) => t.folder_id === folder.id && (creator === null || t.created_by === creator.uid))
     .map((t) => serializeAbTest(state, t))
-  res.json({ folder, ab_tests: abTests })
+  res.json({
+    folder: creator === null ? folder : { ...folder, ab_tests_count: abTests.length },
+    ab_tests: abTests,
+  })
 })
 
 foldersRouter.patch('/folders/:uid/favorite', (req, res) => {

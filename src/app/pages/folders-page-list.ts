@@ -22,6 +22,7 @@ import { applyRowCounts } from './folders-row-icons.ts'
 import { pageRowRoutes } from './folders-list-view.ts'
 import { openPageMoreMenu } from './folders-page-menu.ts'
 import { refreshListView, reloadListMetrics, wireListControls } from './folders-list-controls.ts'
+import { isCreator } from '../session.ts'
 
 /**
  * 採取した実一覧（KPI列つきの行＋右の詳細パネル）を土台に、モックのbeyondページへ配線する。
@@ -213,12 +214,14 @@ function wirePageRowActions(row: HTMLElement, abTest: AbTest, context: PageConte
   ;(item.style as CSSStyleDeclaration).position = 'relative'
 
   const routes = pageRowRoutes(abTest.uid, abTest.folder?.uid ?? null)
-  const navButtons: { label: string; hash: string; bg: string; color: string }[] = [
+  const allNavButtons: { label: string; hash: string; bg: string; color: string }[] = [
     { label: '分析', hash: routes.report, bg: '#6C63FF', color: '#FFF' },
     { label: 'ヒートマップ', hash: routes.heatmap, bg: '#444', color: '#FFF' },
     { label: 'レポート', hash: routes.report, bg: 'var(--sb-accent, #0091FF)', color: '#FFF' },
     { label: 'バージョン', hash: routes.editor, bg: '#7B61FF', color: '#FFF' },
   ]
+  // LP作成者には数字の画面へのボタンを出さない（サーバーでも断っている）
+  const navButtons = isCreator() ? allNavButtons.filter((nav) => nav.label === 'バージョン') : allNavButtons
 
   for (const nav of navButtons) {
     const btn = el('button', {

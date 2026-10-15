@@ -7,6 +7,7 @@
 import { tabHashRoutes } from './basic-info-form.ts'
 import { splitTestSettingsHash, redirectPagesHash } from './beyond-nav.ts'
 import { UNFILED_FOLDER_NAME, UNFILED_FOLDER_UID } from '../../shared/unfiled-folder.ts'
+import { isCreator } from '../session.ts'
 
 export type TabId = 'info' | 'version' | 'popup' | 'report' | 'split-test' | 'redirect'
 
@@ -290,6 +291,8 @@ export function setupHorizTabs(
   bar.className = 'sb-tab-bar topnav'
 
   for (const id of TAB_IDS) {
+    // LP作成者には数字の画面（レポート）を出さない（creator-ui.ts・サーバーでも断っている）
+    if (id === 'report' && isCreator()) continue
     const link = document.createElement('a')
     link.className = 'topnav-tab'
     link.textContent = TAB_LABELS[id]

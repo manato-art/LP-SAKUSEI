@@ -9,7 +9,7 @@ import { join, resolve, sep } from 'node:path'
 import { PREFIX, SERVE_DIST } from './config.ts'
 import { mockStateMiddleware } from './lib/mock-state.ts'
 import { errorEnvelope } from './lib/envelope.ts'
-import { resetState } from './store/store.ts'
+import { getState, resetState } from './store/store.ts'
 import { captureSinkRouter } from './capture-sink.ts'
 import { versionSettingsRouter } from './routes/panel-version-settings.ts'
 import { tagSettingsRouter } from './routes/panel-tag-settings.ts'
@@ -36,7 +36,9 @@ import { articlesEditRouter } from './routes/articles-edit.ts'
 import { previewRouter } from './routes/delivery-preview.ts'
 import { redirectPageTagsRouter } from './routes/redirect-page-tags.ts'
 import { redirectPageDeliveryRouter } from './routes/redirect-page-delivery.ts'
-import { adminAuthRouter, isAdminAuthenticated, render404Page } from './lib/admin-auth.ts'
+import { adminAuthRouter, isAdminAuthenticated, principalOf, render404Page } from './lib/admin-auth.ts'
+import { checkCreatorAccess, markCreator } from './lib/creator-access.ts'
+import { creatorAccountsRouter } from './routes/creator-accounts.ts'
 import { allowedEmailsRouter } from './routes/allowed-emails.ts'
 import { bulkReplaceRouter } from './routes/bulk-replace.ts'
 import { mediaRouter } from './routes/media.ts'
@@ -59,14 +61,24 @@ function resetMiddleware(req: Request, _res: Response, next: NextFunction): void
   next()
 }
 
-/** API 認証ミドルウェア: Cookie が無ければ 401 を返す（本番のみ有効）。 */
+/**
+ * API 認証ミドルウェア: Cookie が無ければ 401 を返す（本番のみ有効）。
+ * LP作成者の印があれば、開発中でも「LP作成者が使えるものか・自分のページか」を確かめる（lib/creator-access.ts）。
+ */
 function apiAuthMiddleware(req: Request, res: Response, next: NextFunction): void {
-  // 開発モード（Vite経由）では認証をスキップ＝ログインなしで開発できるように。
-  if (SERVE_DIST === undefined) {
+  const principal = principalOf(req)
+  if (principal?.role === 'creator') {
+    const access = checkCreatorAccess(getState(), principal.account, req.method, req.path, req.body)
+    if (!access.ok) {
+      res.status(access.status).json(errorEnvelope(access.code, access.message))
+      return
+    }
+    markCreator(req, principal.account)
     next()
     return
   }
-  if (isAdminAuthenticated(req)) {
+  // 開発モード（Vite経由）では認証をスキップ＝ログインなしで開発できるように。
+  if (SERVE_DIST === undefined || principal?.role === 'admin') {
     next()
     return
   }
@@ -167,6 +179,8 @@ export function createApp(): Express {
     teamMembersRouter,
     // ドメイン（一覧・独自ドメインの登録・「確認する」）
     domainsRouter,
+    // マイページ > LP作成者（管理者だけ・LP作成者には lib/creator-access.ts が通さない）
+    creatorAccountsRouter,
   ]
 
   // [A] メインREST API（実物は v1 / v2 が混在するため両方に同じルーターを載せる）
@@ -218,7 +232,8 @@ export function createApp(): Express {
     // メールゲートは ADMIN_PATH 側で処理する（ここでフォームを出すとセキュリティが壊れる）。
     const serveIndexOr404 = (req: Request, res: Response): void => {
       res.setHeader('Cache-Control', 'no-cache')
-      if (isAdminAuthenticated(req)) {
+      // 管理者・LP作成者のどちらでもログインしていれば画面を返す（使える範囲は API と画面の側で分ける）
+      if (principalOf(req) !== null) {
         res.sendFile(join(distDir, 'index.html'))
         return
       }

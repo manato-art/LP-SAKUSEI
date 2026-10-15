@@ -18,8 +18,17 @@
 import { createHash, timingSafeEqual } from 'node:crypto'
 import { Router } from 'express'
 import type { Request, Response } from 'express'
-import { ADMIN_PASSWORD, ADMIN_PATH } from '../config.ts'
+import { ADMIN_PASSWORD, ADMIN_PATH, SERVE_DIST } from '../config.ts'
 import { hasAllowedEmail, isEmailGateEnabled } from '../store/allowed-emails.ts'
+import { isCreatorEmail, verifyCreatorPassword, type CreatorAccount } from '../store/creator-accounts.ts'
+import {
+  CREATOR_SESSION_COOKIE,
+  CREATOR_SESSION_MAX_AGE_SECONDS,
+  creatorOfSession,
+  creatorSessionToken,
+  emailGateToken,
+  gateEmailOf,
+} from './creator-session.ts'
 
 export const ADMIN_SESSION_COOKIE = 'admin_session'
 export const EMAIL_GATE_COOKIE = 'email_gate'
@@ -81,10 +90,35 @@ export function adminSessionTokenForTest(): string {
   return EXPECTED_TOKEN
 }
 
-/** メールゲートを通過済みか（email_gate Cookieの検証） */
+/**
+ * メールゲートを通過済みか（email_gate Cookieの検証）。
+ * 以前の固定の印（メールを持たない）と、入れたメールを持つ印（2026-10-15〜）の両方を受け付ける。
+ */
 export function isEmailGateVerified(req: Request): boolean {
   const value = parseCookies(req.headers['cookie'])[EMAIL_GATE_COOKIE]
-  return value !== undefined && safeEqual(value, EMAIL_GATE_TOKEN)
+  if (value === undefined) return false
+  return safeEqual(value, EMAIL_GATE_TOKEN) || gateEmailOf(value) !== null
+}
+
+/** 入口で入れたメール（以前の固定の印・印なし・書き換えられた印なら null） */
+function gateEmail(req: Request): string | null {
+  return gateEmailOf(parseCookies(req.headers['cookie'])[EMAIL_GATE_COOKIE])
+}
+
+/**
+ * 今ログインしている人。管理者の印が先（両方あるときは管理者）。
+ * LP作成者の印は、パスワード変更・アカウント削除のあとは使えない（creator-session.ts）。
+ */
+export type Principal = { role: 'admin' } | { role: 'creator'; account: CreatorAccount }
+
+export function principalOfCookieHeader(header: string | undefined): Principal | null {
+  if (isAdminCookieHeader(header)) return { role: 'admin' }
+  const account = creatorOfSession(parseCookies(header)[CREATOR_SESSION_COOKIE])
+  return account === null ? null : { role: 'creator', account }
+}
+
+export function principalOf(req: Request): Principal | null {
+  return principalOfCookieHeader(req.headers['cookie'])
 }
 
 /** リクエストが https 経由か（Railway等のプロキシ配下＝x-forwarded-proto も見る） */
@@ -160,7 +194,7 @@ adminAuthRouter.post('/__auth/login', (req, res) => {
 
   const body = req.body as { password?: unknown } | null
   const password = typeof body?.password === 'string' ? body.password : ''
-  if (!safeEqual(password, ADMIN_PASSWORD)) {
+  const fail = (): void => {
     recordFailedLogin(ip)
     const attempt = loginAttempts.get(ip)
     const remaining = MAX_LOGIN_ATTEMPTS - (attempt?.count ?? 0)
@@ -168,18 +202,57 @@ adminAuthRouter.post('/__auth/login', (req, res) => {
       ? `パスワードが違います。（残り${remaining}回）`
       : `試行回数の上限に達しました。${Math.ceil(LOCKOUT_MS / 1000)}秒後に再試行してください。`
     res.status(401).json({ ok: false, message })
+  }
+
+  // 入口で LP作成者のメールを入れた人は、その人のパスワードでだけ入れる（共通のパスワードでは管理者になれない）
+  const email = gateEmail(req)
+  if (email !== null && isCreatorEmail(email)) {
+    const account = verifyCreatorPassword(email, password)
+    if (account === null) {
+      fail()
+      return
+    }
+    clearLoginAttempts(ip)
+    res.setHeader('Set-Cookie', [
+      `${CREATOR_SESSION_COOKIE}=${creatorSessionToken(account)}; ${cookieAttributes(req, CREATOR_SESSION_MAX_AGE_SECONDS)}`,
+      `${ADMIN_SESSION_COOKIE}=; ${cookieAttributes(req, 0)}`,
+    ])
+    res.json({ ok: true })
+    return
+  }
+
+  if (!safeEqual(password, ADMIN_PASSWORD)) {
+    fail()
     return
   }
   clearLoginAttempts(ip)
-  res.setHeader(
-    'Set-Cookie',
+  res.setHeader('Set-Cookie', [
     `${ADMIN_SESSION_COOKIE}=${EXPECTED_TOKEN}; ${cookieAttributes(req, SESSION_MAX_AGE_SECONDS)}`,
-  )
+    `${CREATOR_SESSION_COOKIE}=; ${cookieAttributes(req, 0)}`,
+  ])
   res.json({ ok: true })
 })
 
 adminAuthRouter.get('/__auth/check', (req, res) => {
-  res.json({ authenticated: isAdminAuthenticated(req) })
+  const principal = principalOf(req)
+  res.json({ authenticated: principal !== null, role: principal?.role ?? null })
+})
+
+/**
+ * 今ログインしている人（画面が「LP作成者なら出さない」を決めるのに使う）。
+ * 開発（SERVE_DIST なし）でログインしていなければ、これまでどおり管理者として扱う。
+ */
+adminAuthRouter.get('/__auth/me', (req, res) => {
+  const principal = principalOf(req)
+  if (principal?.role === 'creator') {
+    res.json({ role: 'creator', email: principal.account.email, name: principal.account.name })
+    return
+  }
+  if (principal?.role === 'admin' || SERVE_DIST === undefined) {
+    res.json({ role: 'admin' })
+    return
+  }
+  res.status(401).json({ role: null })
 })
 
 adminAuthRouter.post('/__auth/logout', (req, res) => {
@@ -188,9 +261,10 @@ adminAuthRouter.post('/__auth/logout', (req, res) => {
   // 行き先（ログインの入口）は、ログインしていた人にだけ返す。
   // `/` は未ログインだと404なので、ログアウト後にそこへ飛ぶと「ページが見つかりません」になっていた。
   // 未ログインの人が叩いても入口のパスは教えない（入口を知っている人だけが使える作りを崩さない）。
-  const wasLoggedIn = isAdminAuthenticated(req)
+  const wasLoggedIn = principalOf(req) !== null
   res.setHeader('Set-Cookie', [
     `${ADMIN_SESSION_COOKIE}=; ${expire}`,
+    `${CREATOR_SESSION_COOKIE}=; ${expire}`,
     `${EMAIL_GATE_COOKIE}=; ${expire}`,
   ])
   res.json(wasLoggedIn ? { ok: true, redirect: ADMIN_PATH } : { ok: true })
@@ -210,7 +284,7 @@ adminAuthRouter.post('/__auth/verify-email', (req, res) => {
 
   const body = req.body as { email?: unknown } | null
   const email = typeof body?.email === 'string' ? body.email.trim().toLowerCase() : ''
-  if (email === '' || !hasAllowedEmail(email)) {
+  if (email === '' || (!hasAllowedEmail(email) && !isCreatorEmail(email))) {
     // 許可リストに無いメール → 不正試行としてカウント（レート制限の対象にする）
     recordFailedLogin(ip)
     // 404を返す（「許可リストに無い」こと自体を悟らせない）
@@ -222,14 +296,14 @@ adminAuthRouter.post('/__auth/verify-email', (req, res) => {
   clearLoginAttempts(ip)
   res.setHeader(
     'Set-Cookie',
-    `${EMAIL_GATE_COOKIE}=${EMAIL_GATE_TOKEN}; ${cookieAttributes(req, SESSION_MAX_AGE_SECONDS)}`,
+    `${EMAIL_GATE_COOKIE}=${emailGateToken(email)}; ${cookieAttributes(req, SESSION_MAX_AGE_SECONDS)}`,
   )
   res.json({ ok: true, redirect: ADMIN_PATH })
 })
 
 /** 管理画面入口（ADMIN_PATH）にログイン画面またはメールゲートを返す */
 adminAuthRouter.get(ADMIN_PATH, (req: Request, res: Response) => {
-  if (isAdminAuthenticated(req)) {
+  if (principalOf(req) !== null) {
     // ログイン済みならSPAのルート（`/`）へ飛ばす（本番では serveIndexOrLogin がSPAを返す）
     res.redirect('/')
     return

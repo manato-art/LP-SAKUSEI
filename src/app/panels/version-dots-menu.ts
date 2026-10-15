@@ -27,6 +27,7 @@ import { withAutoplayVideos } from '../lp-video.ts'
 import { openDuplicateModal } from './version-duplicate-modal.ts'
 import { openDuplicateToOtherModal } from './version-duplicate-to-other-modal.ts'
 import { normalizeDotsMenuHtml } from './dots-menu-normalize.ts'
+import { isCreator } from '../session.ts'
 
 /**
  * 採取物の不正な入れ子（span 内の li）を平らな `<li>` 群に正規化した土台。
@@ -204,6 +205,8 @@ function openMenu(deps: DotsMenuDeps, onClosed: () => void): void {
  * 実採取メニューには無い項目なので、既存の破壊系項目を複製して見た目を合わせる（手書きで似せない）。
  */
 function injectDeleteItem(portal: { root: HTMLElement; close: () => void }, deps: DotsMenuDeps): void {
+  // LP作成者は削除できない（アーカイブはできる・サーバーでも断っている）
+  if (isCreator()) return
   const archiveSpan = findByExactText(portal.root, DOTS_MENU_HOOK.label, DOTS_MENU_LABELS.archive)
   const archiveItem = archiveSpan?.closest<HTMLElement>(DOTS_MENU_HOOK.item) ?? null
   if (archiveItem === null) return

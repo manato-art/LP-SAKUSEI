@@ -12,6 +12,7 @@ import { api, type ScheduledSwitch, type Version } from '../api.ts'
 import { confirmCard, formCard } from '../dialog.ts'
 import { T, el, toast } from '../ui.ts'
 import { jstParts } from '../jst.ts'
+import { isCreator } from '../session.ts'
 
 const NOTE_STYLE = `font-size:12px;color:${T.sub};line-height:1.8`
 const SECTION_STYLE = `font-size:12.5px;font-weight:700;color:${T.text};margin:14px 0 6px`
@@ -53,7 +54,8 @@ function switchRow(sw: ScheduledSwitch, onCancel: (sw: ScheduledSwitch) => void)
     ...(sw.note === '' ? [] : [el('div', { text: sw.note, style: NOTE_STYLE })]),
   ])
   row.append(text)
-  if (sw.status === 'pending') {
+  // LP作成者は取り消せない（削除にあたる・サーバーでも断っている）
+  if (sw.status === 'pending' && !isCreator()) {
     const cancel = document.createElement('button')
     cancel.type = 'button'
     cancel.textContent = '取り消す'
