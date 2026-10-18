@@ -6,6 +6,8 @@
 import type Quill from 'quill'
 import { ANIM_PRESETS, ANIM_SPEEDS } from '../anim/anim-presets.ts'
 import { group, row } from './properties-parts.ts'
+import { imageAlignOf, lineAlignOf } from './media-align.ts'
+import { buildMediaAlignGroup, syncMediaAlign } from './properties-media-align.ts'
 
 const IMG_SVG = {
   replace: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>',
@@ -94,6 +96,18 @@ export function buildImageBody(
 
   sizeGrid.append(wLabel, wInput, wUnit, hLabel, hInput, hUnit)
   sizeGroup.append(sizeGrid)
+
+  // ── 配置（左・中央・右。画像のある行を寄せる・2026-10-18 本人「動画や画像の位置も左右で選びたい」） ──
+  const alignGroup = buildMediaAlignGroup((align) => {
+    const img = getImg()
+    if (img === null) return
+    const blot = quill.scroll.find(img)
+    if (blot === null) return
+    const index = quill.getIndex(blot)
+    quill.formatLine(index, 1, 'align', lineAlignOf(align), 'user')
+    syncMediaAlign(alignGroup, imageAlignOf(img))
+  })
+  alignGroup.setAttribute('data-image-align', 'true')
 
   // ── リンク設定 ──
   const linkGroup = group('リンク設定')
@@ -304,7 +318,7 @@ export function buildImageBody(
   })
   animGroup.append(loopRowImg)
 
-  container.append(previewGroup, srcRow, altRow, sizeGroup, animGroup, linkGroup, trackGroup, actGroup)
+  container.append(previewGroup, srcRow, altRow, sizeGroup, alignGroup, animGroup, linkGroup, trackGroup, actGroup)
 
   // データ属性で内部要素への参照を保持（refreshImageBody で使う）
   container.dataset['ready'] = 'true'
@@ -325,6 +339,10 @@ export function refreshImageBody(container: HTMLElement, img: HTMLImageElement):
 
   const altInput = container.querySelector<HTMLInputElement>('input[placeholder="代替テキスト"]')
   if (altInput !== null) altInput.value = img.alt
+
+  // 配置（画像のある行の寄せ。Widget の中の画像は寄せられないので欄を隠す）
+  const alignEl = container.querySelector<HTMLElement>('[data-image-align]')
+  if (alignEl !== null) syncMediaAlign(alignEl, imageAlignOf(img))
 
   const sizeInputs = container.querySelectorAll<HTMLInputElement>('.sb-pr-size-input')
   if (sizeInputs[0] !== undefined) sizeInputs[0].value = String(img.naturalWidth || img.width)

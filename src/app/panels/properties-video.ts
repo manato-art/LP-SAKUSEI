@@ -13,6 +13,8 @@ import type Quill from 'quill'
 import { toast } from '../ui.ts'
 import { readFileAsDataUrl } from './webp-convert.ts'
 import { group, row } from './properties-parts.ts'
+import { applyVideoAlign, videoAlignOf } from './media-align.ts'
+import { buildMediaAlignGroup, syncMediaAlign } from './properties-media-align.ts'
 import { duplicateVideo, hasFlag, toggleFlag, willBlockAutoplay, type VideoFlag } from './video-controls.ts'
 
 /**
@@ -154,6 +156,9 @@ export function buildVideoBody(deps: VideoBodyDeps): VideoBody {
   })
   fitBtn.addEventListener('click', applyFullWidth)
 
+  // ── 配置（左・中央・右。動画自身を寄せる・2026-10-18 本人「動画や画像の位置も左右で選びたい」） ──
+  const alignGroup = buildMediaAlignGroup((align) => withVideo((video) => applyVideoAlign(video, align)))
+
   // ── 再生設定 ──
   const playGroup = group('再生設定')
   const flip = (flag: VideoFlag): void => {
@@ -237,7 +242,7 @@ export function buildVideoBody(deps: VideoBodyDeps): VideoBody {
   // 指示: 差し替えを先、複製を後
   actionGroup.append(swapBtn, dupBtn)
 
-  container.append(srcRow, sizeGroup, playGroup, actionGroup)
+  container.append(srcRow, sizeGroup, alignGroup, playGroup, actionGroup)
 
   container.sync = (video: HTMLVideoElement): void => {
     const src = video.getAttribute('src') ?? ''
@@ -249,6 +254,7 @@ export function buildVideoBody(deps: VideoBodyDeps): VideoBody {
     loop.sync(hasFlag(video, 'loop'))
     auto.sync(hasFlag(video, 'autoplay'))
     mute.sync(hasFlag(video, 'muted'))
+    syncMediaAlign(alignGroup, videoAlignOf(video))
   }
   return container
 }

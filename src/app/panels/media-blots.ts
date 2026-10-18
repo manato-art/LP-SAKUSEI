@@ -8,6 +8,7 @@
  */
 import Quill from 'quill'
 import { stripLeakedEditorImgBorder } from './widget-css-sanitize.ts'
+import { applyVideoAlign, videoAlignOf } from './media-align.ts'
 
 type BlotConstructor = new (...args: unknown[]) => object
 
@@ -63,6 +64,9 @@ export function registerMediaBlots(): void {
         node.muted = muted
       }
       node.style.maxWidth = '100%'
+      // 位置（左・中央・右）も付け直す。値に無い古いデータは左（今までどおり）
+      const align = typeof value === 'string' ? 'left' : value['align']
+      applyVideoAlign(node, align === 'center' || align === 'right' ? align : 'left')
       return node
     }
     static value(node: HTMLElement): Record<string, string> {
@@ -72,6 +76,7 @@ export function registerMediaBlots(): void {
         loop: flag('loop'),
         autoplay: flag('autoplay'),
         muted: flag('muted'),
+        align: videoAlignOf(node),
       }
     }
   }
