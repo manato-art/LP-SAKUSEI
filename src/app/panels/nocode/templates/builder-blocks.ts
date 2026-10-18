@@ -166,7 +166,9 @@ export const BLOCK_TYPES: readonly BlockType[] = [
         options: SHAPE_KINDS.map((kind) => ({ value: kind, label: SHAPE_LABELS[kind], icon: SHAPE_ICONS[kind] })),
       },
       { kind: 'color', key: 'color', label: '色', presets: SHAPE_PRESETS },
-      { kind: 'text', key: 'text', label: '中の文字（任意）', rich: true },
+      // 改行できる欄・文字の大きさ（2026-10-18 本人「改行とか文字の大きさを変更できるようにしたい」）
+      { kind: 'textarea', key: 'text', label: '中の文字（任意・改行できます）', rows: 2, rich: true },
+      { kind: 'number', key: 'textSize', label: '文字の大きさ', min: 10, max: 48, unit: 'px', fallback: 17 },
       ...actionFields(),
     ],
     newItem: () => ({ type: 'shape', shape: 'round', size: 100, color: '#1F7AE0', text: '', ...NO_ACTION }),
@@ -416,7 +418,8 @@ function renderBlockBody(item: ItemData, i: number, s: string, seen: Set<string>
         href !== null
           ? `<a class="${shapeClass}"${linkAttrs(href, { track: bool(item, 'track'), newTab: false })}>${inner}</a>`
           : `<div class="${shapeClass}"${act(false)}>${inner}</div>`
-      return { html, css: `${s} .${cls}{background:${color};color:${inkOn(color)}}` }
+      const textSize = int(item, 'textSize', 10, 48, 17)
+      return { html, css: `${s} .${cls}{background:${color};color:${inkOn(color)};font-size:${textSize}px}` }
     }
     case 'video': {
       const video = safeVideo(str(item, 'video'))

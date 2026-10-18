@@ -103,7 +103,8 @@ export function readBlockFromCanvas(original: HTMLElement, block: ItemData): Ite
     }
     case 'shape': {
       const text = pick('.nc-b-shape__text')
-      return { ...block, text: oneLine(richTextOf(text ?? el)) }
+      // 図形の中の文字は改行できる（2026-10-18）
+      return { ...block, text: richTextOf(text ?? el) }
     }
     case 'list': {
       const lines = [...el.querySelectorAll('.nc-b-list__text')].map((item) => richTextOf(item))
