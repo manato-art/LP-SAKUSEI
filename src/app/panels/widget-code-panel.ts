@@ -8,8 +8,8 @@
  *   コードだけ … 見え方を畳んで右を横いっぱいにする
  * 実際に左ペインを畳むのは呼び出し側なので、`onViewChange` で知らせる。
  *
- * 部品で作ったWidget（設定データつき・2026-09-23）では、コードは設定から書き出したものなので見るだけ。
- * 直接直したいときは「部品を解除」でHTMLのWidgetにする（readOnly）。
+ * 部品で作ったWidgetでも、コードを直して「このコードで直す」で入れられる（apply・2026-10-18 本人
+ * 「コード上でも修正・変更できるようにして」）。入れたあとの扱いは呼び出し側（widget-studio.ts）が決める。
  */
 import { COLOR, FONT, MONO, type WidgetEditTarget } from './widget-editor-theme.ts'
 import { highlightHtml, highlightCss } from './syntax-highlight.ts'
@@ -30,8 +30,8 @@ export interface CodePanelOptions {
   readonly design?: { readonly element: HTMLElement; readonly refresh: () => void }
   /** CSS欄が書き換えられたとき（手入力でも「要素ごとに編集」からでも）。プレビューへ流す */
   readonly onCssInput?: (css: string) => void
-  /** コードを見るだけにする（部品で作ったWidget）。ボタンがあれば帯の右に出す */
-  readonly readOnly?: { readonly note: string; readonly detachLabel?: string; readonly onDetach?: () => void }
+  /** 直したコードを入れるボタン（帯に説明とボタンを出す）。押すと今の HTML・CSS の欄の中身を渡す */
+  readonly apply?: { readonly note: string; readonly label: string; readonly onApply: (html: string, css: string) => void }
   /** 「デフォルト時のコードを表示」をONにした直後（部品で作ったWidgetは、ここで今のコードを入れ直す） */
   readonly onShowCode?: () => void
 }
@@ -51,7 +51,7 @@ export interface CodePanel {
 export const RIGHT_PANE_FLEX = '0 0 360px'
 
 export function buildCodePanels(target: WidgetEditTarget, options: CodePanelOptions = {}): CodePanel {
-  const { onViewChange, design, onCssInput, readOnly, onShowCode } = options
+  const { onViewChange, design, onCssInput, apply, onShowCode } = options
   const pane = document.createElement('div')
   pane.style.cssText = `flex:1;display:flex;flex-direction:column;min-width:0;min-height:0`
 
@@ -112,14 +112,14 @@ export function buildCodePanels(target: WidgetEditTarget, options: CodePanelOpti
   toggleRow.append(toggleLabel, toggle, viewBtn)
 
   // HTML(カスタム) パネル
-  const htmlPanel = createCodeEditor('HTML(カスタム)', target.html, 'data-code-html', 'html', readOnly !== undefined)
+  const htmlPanel = createCodeEditor('HTML(カスタム)', target.html, 'data-code-html', 'html', false)
 
   // 分割線
   const codeDivider = document.createElement('div')
   codeDivider.style.cssText = `height:10px;background:${COLOR.container};flex-shrink:0`
 
   // CSS(カスタム) パネル
-  const cssPanel = createCodeEditor('CSS(カスタム)', target.css, 'data-code-css', 'css', readOnly !== undefined)
+  const cssPanel = createCodeEditor('CSS(カスタム)', target.css, 'data-code-css', 'css', false)
   const htmlArea = htmlPanel.querySelector<HTMLTextAreaElement>('[data-code-html]')
   const cssArea = cssPanel.querySelector<HTMLTextAreaElement>('[data-code-css]')
   cssArea?.addEventListener('input', (e) => onCssInput?.((e.currentTarget as HTMLTextAreaElement).value))
@@ -127,7 +127,9 @@ export function buildCodePanels(target: WidgetEditTarget, options: CodePanelOpti
   // HTML と CSS はひとまとめにして、トグルで「要素ごとに編集」と入れ替える
   const codeArea = document.createElement('div')
   codeArea.style.cssText = 'flex:1;display:flex;flex-direction:column;min-height:0'
-  if (readOnly !== undefined) codeArea.append(buildReadOnlyBar(readOnly))
+  if (apply !== undefined) {
+    codeArea.append(buildApplyBar(apply, () => apply.onApply(htmlArea?.value ?? '', cssArea?.value ?? '')))
+  }
   codeArea.append(htmlPanel, codeDivider, cssPanel)
 
   // 「デフォルト時のコードを表示」: 押すと今のコードを出す／戻すと「要素ごとに編集」（本人指定）
@@ -165,27 +167,24 @@ export function buildCodePanels(target: WidgetEditTarget, options: CodePanelOpti
   return { pane, setCode, isCodeVisible: () => isCodeVisible }
 }
 
-/** 見るだけのコードの上に出す帯（理由と「部品を解除」） */
-function buildReadOnlyBar(readOnly: NonNullable<CodePanelOptions['readOnly']>): HTMLElement {
+/** コードの上に出す帯（説明と「このコードで直す」） */
+function buildApplyBar(apply: NonNullable<CodePanelOptions['apply']>, onClick: () => void): HTMLElement {
   const bar = document.createElement('div')
-  bar.dataset['codeReadonly'] = 'true'
+  bar.dataset['codeApply'] = 'true'
   bar.style.cssText =
     `display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 12px;flex-shrink:0;` +
     `background:#1f1f1f;color:#bbb;font:12px/1.5 ${FONT}`
   const note = document.createElement('span')
-  note.textContent = readOnly.note
+  note.textContent = apply.note
   note.style.cssText = 'flex:1;min-width:180px'
-  bar.append(note)
-  if (readOnly.detachLabel !== undefined && readOnly.onDetach !== undefined) {
-    const detach = document.createElement('button')
-    detach.type = 'button'
-    detach.textContent = readOnly.detachLabel
-    detach.style.cssText =
-      `border:1px solid #666;background:transparent;color:#eee;border-radius:4px;padding:5px 10px;` +
-      `font:600 12px/1 ${FONT};cursor:pointer;white-space:nowrap`
-    detach.addEventListener('click', readOnly.onDetach)
-    bar.append(detach)
-  }
+  const button = document.createElement('button')
+  button.type = 'button'
+  button.textContent = apply.label
+  button.style.cssText =
+    `border:none;background:var(--sb-accent, #0091FF);color:#fff;border-radius:6px;padding:7px 12px;` +
+    `font:700 12px/1 ${FONT};cursor:pointer;white-space:nowrap`
+  button.addEventListener('click', onClick)
+  bar.append(note, button)
   return bar
 }
 

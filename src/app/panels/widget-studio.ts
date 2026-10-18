@@ -23,7 +23,7 @@
  */
 import type Quill from 'quill'
 import { toast } from '../ui.ts'
-import { promptCard } from '../dialog.ts'
+import { confirmCard, promptCard } from '../dialog.ts'
 import { saveCreatedWidget } from './widget-library-storage.ts'
 import { extractBuilderData, wrapHtmlAsBuilder } from './nocode/builder-data.ts'
 import { BUILDER_TEMPLATE } from './nocode/templates/builder.ts'
@@ -249,18 +249,48 @@ export function mountStudio(host: StudioHost): void {
     tabsHost,
     partsHost: { list: partsList, palette: partsPalette },
     pickSample,
+    // 戻す・やり直すのあと、コード欄を開いていれば今の中身に読み直す（古いコードを直して入れないように）
+    onRestore: () => {
+      if (codePanel.isCodeVisible()) showCode()
+    },
   })
   const current = session
+  const showCode = (): void => {
+    const code = current.editableCode()
+    codePanel.setCode(code.html, code.css)
+  }
+  /**
+   * コード欄で直したコードを入れる（2026-10-18 本人「コード上でも修正・変更できるようにして」・本人の選択「全体のコードを直す」）。
+   * 部品で組み立てたWidgetは全体が「見本」の部品1つになるので、入れる前に確かめる
+   */
+  const applyCode = async (html: string, css: string): Promise<void> => {
+    const before = current.editableCode()
+    if (before.html === html && before.css === css) {
+      toast('コードは変わっていません')
+      return
+    }
+    if (before.mode === 'parts') {
+      const ok = await confirmCard({
+        title: 'このコードで直しますか？',
+        message: 'Widget全体が「見本」の部品1つになり、部品ごとの入力欄では直せなくなります。',
+        detail: '文字のダブルクリックと上の書式のボタンは、今までどおり使えます。左上の「戻す」で元の部品に戻せます。',
+        submitLabel: 'このコードで直す',
+      })
+      if (!ok) return
+    }
+    current.applyCode({ html, css })
+    showCode()
+    toast('コードを入れました')
+  }
   const codePanel = buildCodePanels(target, {
     onViewChange,
     design: { element: current.panel, refresh: () => undefined },
-    readOnly: {
-      note: 'Widget全体のコードは、部品の設定から書き出したものです（見るだけ）。見本の部品のコードは、その部品の「コードで直す」から直せます。',
+    apply: {
+      note: 'HTML・CSSを直して「このコードで直す」を押すと、見え方に入ります。部品で組み立てたWidgetは、全体が「見本」の部品1つになります。',
+      label: 'このコードで直す',
+      onApply: (html, css) => void applyCode(html, css),
     },
-    onShowCode: () => {
-      const code = current.currentCode()
-      codePanel.setCode(code.html, code.css)
-    },
+    onShowCode: showCode,
   })
   partsPane.append(tabsHost, partsList, partsPalette)
   rightPane.append(codePanel.pane)

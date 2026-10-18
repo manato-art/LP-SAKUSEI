@@ -36,6 +36,7 @@ import { attachPartKeys, type CanvasPart } from './widget-studio-delete-key.ts'
 import { emptyHint, suggestBuilderName } from './widget-studio-helpers.ts'
 import { createPartOps } from './widget-studio-part-ops.ts'
 import { attachUndoKeys, createHistory } from './widget-studio-history.ts'
+import { dataWithEditedCode, editableCodeOf, type EditableCode } from './nocode/whole-code.ts'
 import { createToolbarHooks, type ToolbarHooks } from './widget-studio-toolbar.ts'
 import { hotspotHandles, hotspotMove, markEmptyHotspotHosts, type HotspotEditDeps } from './widget-studio-hotspot.ts'
 
@@ -54,6 +55,8 @@ export interface BuilderSessionDeps {
   readonly partsHost?: { readonly list: HTMLElement; readonly palette: HTMLElement }
   /** 見本の部品: いつもの見本の一覧から見本を選んでもらう（やめたら null）。無い画面（ポップアップ）では見本を選ばせない */
   readonly pickSample?: () => Promise<{ title: string; html: string } | null>
+  /** 戻す・やり直すで中身が入れ替わったあと（開いているコード欄を今の中身に読み直す） */
+  readonly onRestore?: () => void
 }
 
 export interface BuilderSession {
@@ -65,8 +68,14 @@ export interface BuilderSession {
   readonly getUid: () => string
   /** LPに入れる・登録するHTML（設定データつき）。入れられない中身なら理由 */
   readonly finalHtml: () => { html: string } | { error: string }
-  /** コード欄に出す今のHTMLとCSS */
-  readonly currentCode: () => { html: string; css: string }
+  /** コード欄に出すコード（「コードの部品」1つだけならその部品のコード、ほかは全体＝whole-code.ts） */
+  readonly editableCode: () => EditableCode
+  /**
+   * コード欄で直したコードを入れる（2026-10-18 本人「コード上でも修正・変更できるようにして」）。
+   * 部品で組み立てたWidgetは全体が「コードの部品」1つになる（名前＝CSSのクラスも付け直す。中の古い名前とまざらない）。
+   * 「戻す」で戻せる
+   */
+  readonly applyCode: (code: { html: string; css: string }) => void
   /** 見たまま画面を押した（部品を選ぶ。見本の部品の中なら、その中の要素も） */
   readonly onCanvasClick: (target: EventTarget | null) => void
   /** 左の道具（画像の操作パネル・リンクの吹き出し・並んだ部品の操作）を効かせてよい要素か＝見本の部品の中 */
@@ -733,6 +742,7 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
     form.load(next, Math.min(form.activeScreen(), Math.max(0, items(next, 'screens').length - 1)), null)
     restoring = false
     paint()
+    deps.onRestore?.()
     return true
   }
   attachUndoKeys([editorBody, panel, ...(deps.partsHost === undefined ? [] : [deps.partsHost.list, deps.partsHost.palette])], {
@@ -772,9 +782,18 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
       }
       return { html: rendered() }
     },
-    currentCode: () => {
-      const { css, body } = splitStyles(rendered())
-      return { html: body, css }
+    editableCode: () => editableCodeOf(data, uid),
+    applyCode: (code) => {
+      const wasParts = editableCodeOf(data, uid).mode === 'parts'
+      const next = dataWithEditedCode(data, uid, code, suggestBuilderName(data))
+      // 全体を「コードの部品」にしたら、外側の名前を付け直す（中に入った古い名前の CSS が外側にも効かないように）
+      if (wasParts) uid = newUid()
+      // form.load → onChange で data が変わり、「戻す」の履歴にも入る
+      form.load(next, 0, null)
+      lastBody = ''
+      paint()
+      const screens = items(data, 'screens')
+      if (screens.length === 1 && items(screens[0] ?? {}, 'blocks').length === 1) form.select(0, 0)
     },
     onCanvasClick,
     toolScope,
