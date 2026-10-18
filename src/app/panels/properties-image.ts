@@ -6,7 +6,8 @@
 import type Quill from 'quill'
 import { ANIM_PRESETS, ANIM_SPEEDS } from '../anim/anim-presets.ts'
 import { group, row } from './properties-parts.ts'
-import { imageAlignOf, lineAlignOf } from './media-align.ts'
+import { applyImageAlign, imageAlignOf, lineAlignOf } from './media-align.ts'
+import { notifyEditorChanged } from './editor-change.ts'
 import { buildMediaAlignGroup, syncMediaAlign } from './properties-media-align.ts'
 
 const IMG_SVG = {
@@ -103,8 +104,12 @@ export function buildImageBody(
     if (img === null) return
     const blot = quill.scroll.find(img)
     if (blot === null) return
+    // 大きさを変えた画像は画像自身の余白で、変えていない画像は行の寄せで動く（両方そろえる）
+    applyImageAlign(img, align)
     const index = quill.getIndex(blot)
     quill.formatLine(index, 1, 'align', lineAlignOf(align), 'user')
+    // 画像自身の余白だけが変わったとき（行の寄せは同じ）は Quill が気づかないので、保存の合図を出す
+    notifyEditorChanged(quill.root)
     syncMediaAlign(alignGroup, imageAlignOf(img))
   })
   alignGroup.setAttribute('data-image-align', 'true')

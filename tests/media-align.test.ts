@@ -9,8 +9,10 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { parseHTML } from 'linkedom'
 import {
+  applyImageAlign,
   applyVideoAlign,
   imageAlignOf,
+  keepAlignOnResize,
   lineAlignOf,
   videoAlignOf,
 } from '../src/app/panels/media-align.ts'
@@ -42,6 +44,75 @@ describe('画像の位置＝その行の寄せ方', () => {
   it('Widget の中の画像は選べない（Widget は Widget編集で直す）', () => {
     const doc = dom('<div class="ql-editor"><section class="sb-widget-block"><div><img id="w"></div></section></div>')
     expect(imageAlignOf(doc.getElementById('w') as unknown as HTMLImageElement)).toBeNull()
+  })
+})
+
+/**
+ * 本人「配置変わらない」（2026-10-18）: 大きさをつまんで変えた画像は、画像自身に
+ * `display:block; margin-left:auto; margin-right:auto`（真ん中）が付いていて、行を寄せても動かなかった。
+ * 欄も実際（真ん中）と違う「左」が光っていた。
+ */
+describe('大きさを変えた画像（画像自身に余白で位置が付いている）', () => {
+  const BLOCK = 'width: 405px; height: auto; display: block; margin-left: auto; margin-right: auto;'
+  const img = (line: string, style: string): HTMLImageElement => {
+    const doc = dom(`<div class="ql-editor"><p${line}><img id="i" style="${style}"></p></div>`)
+    return doc.getElementById('i') as unknown as HTMLImageElement
+  }
+
+  it('今の位置は画像自身の余白から読む（行が左でも真ん中なら「中央」）', () => {
+    expect(imageAlignOf(img('', BLOCK))).toBe('center')
+  })
+
+  it('右・左を選ぶと画像自身の余白を変える（幅はそのまま）', () => {
+    const i = img('', BLOCK)
+    applyImageAlign(i, 'right')
+    expect([i.style.marginLeft, i.style.marginRight]).toEqual(['auto', '0px'])
+    expect(imageAlignOf(i)).toBe('right')
+    applyImageAlign(i, 'left')
+    expect([i.style.marginLeft, i.style.marginRight]).toEqual(['0px', 'auto'])
+    expect(imageAlignOf(i)).toBe('left')
+    expect(i.style.width).toBe('405px')
+  })
+
+  it('大きさを変えていない画像は余白を付けない（行の寄せで動く）', () => {
+    const i = img(' class="ql-align-center"', '')
+    applyImageAlign(i, 'right')
+    expect(i.getAttribute('style') ?? '').toBe('')
+  })
+})
+
+describe('大きさをつまんで変えても、今の位置を保つ', () => {
+  it('右に寄せた行の画像は、塊にしても右のまま（以前は必ず真ん中になった）', () => {
+    const doc = dom('<div class="ql-editor"><p class="ql-align-right"><img id="i"></p></div>')
+    const i = doc.getElementById('i') as unknown as HTMLImageElement
+    keepAlignOnResize(i)
+    expect([i.style.display, i.style.marginLeft, i.style.marginRight]).toEqual(['block', 'auto', '0px'])
+  })
+
+  it('左の行の画像は左のまま・もう余白で右にした画像は右のまま', () => {
+    const doc = dom(
+      '<div class="ql-editor"><p><img id="l"></p><p><img id="r" style="display: block; margin-left: auto; margin-right: 0px;"></p></div>',
+    )
+    const l = doc.getElementById('l') as unknown as HTMLImageElement
+    const r = doc.getElementById('r') as unknown as HTMLImageElement
+    keepAlignOnResize(l)
+    keepAlignOnResize(r)
+    expect(imageAlignOf(l)).toBe('left')
+    expect(imageAlignOf(r)).toBe('right')
+  })
+
+  it('動画は選んだ位置のまま', () => {
+    const doc = dom('<div class="ql-editor"><video id="v" data-sb-align="right"></video></div>')
+    const v = doc.getElementById('v') as unknown as HTMLVideoElement
+    keepAlignOnResize(v)
+    expect(videoAlignOf(v)).toBe('right')
+    expect([v.style.marginLeft, v.style.marginRight]).toEqual(['auto', '0px'])
+  })
+
+  it('大きさのつまみは、真ん中の余白を決め打ちで付けない', () => {
+    const src = readFileSync('src/app/panels/image-resize.ts', 'utf8')
+    expect(src).not.toContain("img.style.marginLeft = 'auto'")
+    expect(src).toContain('keepAlignOnResize(img)')
   })
 })
 
@@ -77,6 +148,11 @@ describe('動画の位置＝動画自身の左右の余白', () => {
     expect(videoAlignOf(v)).toBe('left')
   })
 
+  it('印の無い動画でも、大きさを変えたときの真ん中の余白があれば「中央」', () => {
+    const doc = dom('<div class="ql-editor"><video id="v" style="display: block; margin-left: auto; margin-right: auto;"></video></div>')
+    expect(videoAlignOf(doc.getElementById('v') as unknown as HTMLVideoElement)).toBe('center')
+  })
+
   it('知らない印は左として読む', () => {
     const v = video()
     v.setAttribute('data-sb-align', 'ななめ')
@@ -108,6 +184,8 @@ describe('画像・動画の右の欄への組み込み', () => {
     const src = readFileSync('src/app/panels/properties-image.ts', 'utf8')
     expect(src).toContain('buildMediaAlignGroup(')
     expect(src).toMatch(/quill\.formatLine\(index, 1, 'align', lineAlignOf\(align\), 'user'\)/)
+    expect(src).toContain('applyImageAlign(img, align)')
+    expect(src).toContain('notifyEditorChanged(quill.root)')
     expect(src).toMatch(/previewGroup, srcRow, altRow, sizeGroup, alignGroup,/)
     expect(src).toMatch(/syncMediaAlign\(alignEl, imageAlignOf\(img\)\)/)
   })

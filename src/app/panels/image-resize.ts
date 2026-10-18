@@ -14,6 +14,7 @@
  * 除去・ラップしてしまい、ハンドルが表示されない。
  * position:absolute をスクロール量込みで計算し、画像とともにスクロールする。
  */
+import { keepAlignOnResize } from './media-align.ts'
 import type Quill from 'quill'
 import { attachImageActionBar } from './image-link.ts'
 
@@ -208,9 +209,8 @@ export function wireImageResize(quill: Quill): void {
     const newWidth = Math.max(30, Math.round(startWidth + delta))
     img.style.width = `${newWidth}px`
     img.style.height = 'auto'
-    img.style.display = 'block'
-    img.style.marginLeft = 'auto'
-    img.style.marginRight = 'auto'
+    // 今の位置（左・中央・右）を保つ。以前は必ず真ん中の余白を付けていて、「配置」で寄せても動かなかった
+    keepAlignOnResize(img)
     img.setAttribute('width', String(newWidth))
     img.removeAttribute('height')
     reposition()
