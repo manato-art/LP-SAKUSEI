@@ -31,6 +31,7 @@ import { renderStepList as renderStepListView } from './editor-step-list.ts'
 import { openStepMenu } from './editor-step-actions.ts'
 import { stepsApi } from '../api-steps.ts'
 import { registerMediaBlots } from '../panels/media-blots.ts'
+import { registerUnderlineBlot } from '../panels/underline-blot.ts'
 import { wireMediaDrop } from '../panels/media-insert.ts'
 import { wireImageResize } from '../panels/image-resize.ts'
 import { wireAbTestTabs, setupHorizTabs, setupBreadcrumb } from './tab-nav.ts'
@@ -230,6 +231,8 @@ export async function renderEditor(
 
   // 動画（<video>）ブロットを Quill 生成前に登録しておく（保存HTMLからの復元でも消えないように）。
   registerMediaBlots()
+  // 下線も同じ（色・太さ・不透明度つきの `<u style>` を開いたときに見た目を読むため）
+  registerUnderlineBlot()
   // ── プレビュー枠の iframe を、動くQuillに差し替える ──
   const quill = mountQuill(root)
   // キャンバスへのドラッグ＆ドロップで、カーソル位置へ画像/GIF/動画を挿入できるようにする。

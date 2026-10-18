@@ -23,6 +23,8 @@ import { ANIM_PRESETS, ANIM_SPEEDS } from '../anim/anim-presets.ts'
 import { colorPicker, fmtBtn, group, row } from './properties-parts.ts'
 import { buildImageBody, refreshImageBody } from './properties-image.ts'
 import { notifyEditorChanged } from './editor-change.ts'
+import { buildUnderlineLookGroup } from './properties-underline.ts'
+import { isFormatOn } from './underline-look.ts'
 import {
   ALIGN_LABELS,
   SVG,
@@ -119,8 +121,10 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
     quill.setSelection(r.index, r.length, 'silent')
     refresh()
   }
+  // 下線は見た目つき（値が文字列）のこともあるので、「付いているか」で外す／付けるを決める
+  // （=== true だと見た目つきの下線を「付いていない」と見て、見た目を消した下線に付け直していた）
   const toggleInline = (name: string): void => {
-    applyInline(name, getFormats()[name] === true ? false : true)
+    applyInline(name, isFormatOn(getFormats()[name]) ? false : true)
   }
 
   // ── テキスト ──
@@ -423,6 +427,9 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
   fmtBtns.append(boldBtn, italicBtn, ulBtn, stBtn, linkBtn, clearBtn)
   fmtGroup.append(fmtBtns)
 
+  // ── 下線の見た目（色・太さ・不透明度。下線が付いているときだけ出す・2026-10-18 本人指定） ──
+  const underlineLook = buildUnderlineLookGroup((value) => applyInline('underline', value))
+
   // ── 挿入 ──
   const insGroup = group('挿入')
   const insBtns = document.createElement('div')
@@ -590,6 +597,7 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
     textGroup,
     fontRow, sizeRow,
     fmtGroup, // 指示170: 書式(B I U S リンク)を太字/斜体があった位置（サイズの直下）へ移動
+    underlineLook.el,
     textColorRow, bgColorRow,
     lsRow, lhRow,
     alignGroup,
@@ -700,7 +708,8 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
     }
 
     // 書式ボタン
-    ulBtn.classList.toggle('active', fmt['underline'] === true)
+    ulBtn.classList.toggle('active', isFormatOn(fmt['underline']))
+    underlineLook.sync(fmt['underline'], tc)
     stBtn.classList.toggle('active', fmt['strike'] === true)
     linkBtn.classList.toggle('active', fmt['link'] !== undefined && fmt['link'] !== false)
 
