@@ -24,6 +24,8 @@ import { colorPicker, fmtBtn, group, row } from './properties-parts.ts'
 import { buildImageBody, refreshImageBody } from './properties-image.ts'
 import { notifyEditorChanged } from './editor-change.ts'
 import { buildUnderlineLookGroup } from './properties-underline.ts'
+import { buildMarkerLookGroup } from './properties-marker.ts'
+import { DEFAULT_MARKER_LOOK, encodeMarker } from './marker-look.ts'
 import { isFormatOn } from './underline-look.ts'
 import {
   ALIGN_LABELS,
@@ -399,6 +401,12 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
   const ulBtn = fmtBtn(SVG.underline, '下線')
   ulBtn.addEventListener('click', () => toggleInline('underline'))
 
+  // マーカー（文字の下側に敷く太い帯。引いてあれば外す・2026-10-18 本人指定）
+  const markerBtn = fmtBtn(SVG.marker, 'マーカー')
+  markerBtn.addEventListener('click', () => {
+    applyInline('marker', isFormatOn(getFormats()['marker']) ? false : encodeMarker(DEFAULT_MARKER_LOOK))
+  })
+
   const stBtn = fmtBtn(SVG.strike, '打消し線')
   stBtn.addEventListener('click', () => toggleInline('strike'))
 
@@ -424,11 +432,12 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
     refresh()
   })
 
-  fmtBtns.append(boldBtn, italicBtn, ulBtn, stBtn, linkBtn, clearBtn)
+  fmtBtns.append(boldBtn, italicBtn, ulBtn, markerBtn, stBtn, linkBtn, clearBtn)
   fmtGroup.append(fmtBtns)
 
   // ── 下線の見た目（色・太さ・不透明度。下線が付いているときだけ出す・2026-10-18 本人指定） ──
   const underlineLook = buildUnderlineLookGroup((value) => applyInline('underline', value))
+  const markerLook = buildMarkerLookGroup((value) => applyInline('marker', value))
 
   // ── 挿入 ──
   const insGroup = group('挿入')
@@ -598,6 +607,7 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
     fontRow, sizeRow,
     fmtGroup, // 指示170: 書式(B I U S リンク)を太字/斜体があった位置（サイズの直下）へ移動
     underlineLook.el,
+    markerLook.el,
     textColorRow, bgColorRow,
     lsRow, lhRow,
     alignGroup,
@@ -710,6 +720,8 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
     // 書式ボタン
     ulBtn.classList.toggle('active', isFormatOn(fmt['underline']))
     underlineLook.sync(fmt['underline'], tc)
+    markerBtn.classList.toggle('active', isFormatOn(fmt['marker']))
+    markerLook.sync(fmt['marker'])
     stBtn.classList.toggle('active', fmt['strike'] === true)
     linkBtn.classList.toggle('active', fmt['link'] !== undefined && fmt['link'] !== false)
 

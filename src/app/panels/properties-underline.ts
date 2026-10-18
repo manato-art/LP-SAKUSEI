@@ -5,7 +5,7 @@
  * 選んだ文字の下線へ当てる（値の形は underline-look.ts）。
  * 色を変えていない下線は文字と同じ色。そのまま不透明度だけ下げたときは、文字の色を薄くした線にする。
  */
-import { colorPicker, group, row } from './properties-parts.ts'
+import { colorPicker, group, numberInput, row, unit } from './properties-parts.ts'
 import {
   DEFAULT_UNDERLINE_LOOK,
   UNDERLINE_THICKNESS_MAX,
@@ -22,25 +22,6 @@ export interface UnderlineLookGroup {
   el: HTMLElement
   /** 選んだ文字の `underline` の値と文字の色で、出す・出さないと中身をそろえる */
   sync: (underline: unknown, textColor: string) => void
-}
-
-function numberInput(min: number, max: number, placeholder: string): HTMLInputElement {
-  const input = document.createElement('input')
-  input.className = 'sb-pr-input'
-  input.type = 'number'
-  input.min = String(min)
-  input.max = String(max)
-  input.step = '1'
-  input.placeholder = placeholder
-  input.style.cssText = 'width:52px;flex:none;font-variant-numeric:tabular-nums'
-  return input
-}
-
-function unit(text: string): HTMLElement {
-  const el = document.createElement('span')
-  el.className = 'sb-pr-unit'
-  el.textContent = text
-  return el
 }
 
 export function buildUnderlineLookGroup(apply: (value: UnderlineFormatValue) => void): UnderlineLookGroup {

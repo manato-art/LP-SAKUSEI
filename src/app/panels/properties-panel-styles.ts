@@ -238,6 +238,7 @@ export function injectStyles(): void {
 export const SVG = {
   close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
   underline: '<svg viewBox="0 0 18 18" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3v6a4 4 0 0 0 8 0V3"/><line x1="3" y1="16" x2="15" y2="16"/></svg>',
+  marker: '<svg viewBox="0 0 18 18" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M11 2.5l4.5 4.5-6 6H5v-4.5z"/><path d="M5 13.5l-1.5 1.5"/><path d="M2 16.5h14" stroke-width="2.6" opacity=".45"/></svg>',
   strike: '<svg viewBox="0 0 18 18" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="2" y1="9" x2="16" y2="9"/><path d="M12.5 5C12 3.5 10.5 3 9 3c-2 0-3.5 1-3.5 2.5S7 8 9 9c2.5 1 3.5 1.5 3.5 3S11 15 9 15c-1.5 0-3-.5-3.5-2"/></svg>',
   link: '<svg viewBox="0 0 18 18" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7.5 10.5a3.5 3.5 0 0 0 5 0l2-2a3.5 3.5 0 0 0-5-5l-1 1"/><path d="M10.5 7.5a3.5 3.5 0 0 0-5 0l-2 2a3.5 3.5 0 0 0 5 5l1-1"/></svg>',
   clearFmt: '<svg viewBox="0 0 18 18" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 3h8l-3 12"/><line x1="3" y1="15" x2="10" y2="15"/><line x1="13" y1="3" x2="3" y2="15" stroke-width="1.5" stroke-dasharray="2 2"/></svg>',

@@ -57,3 +57,22 @@ export function fmtBtn(svg: string, titleText: string): HTMLButtonElement {
   btn.innerHTML = svg
   return btn
 }
+/** 整数の入力欄（下線・マーカーの見た目の太さ・不透明度） */
+export function numberInput(min: number, max: number, placeholder: string): HTMLInputElement {
+  const input = document.createElement('input')
+  input.className = 'sb-pr-input'
+  input.type = 'number'
+  input.min = String(min)
+  input.max = String(max)
+  input.step = '1'
+  input.placeholder = placeholder
+  input.style.cssText = 'width:52px;flex:none;font-variant-numeric:tabular-nums'
+  return input
+}
+/** 入力欄の右の単位（px・%） */
+export function unit(text: string): HTMLElement {
+  const el = document.createElement('span')
+  el.className = 'sb-pr-unit'
+  el.textContent = text
+  return el
+}
