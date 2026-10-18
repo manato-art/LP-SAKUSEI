@@ -1,7 +1,11 @@
 /**
  * 画像・GIF・動画をエディタ（Quill）へ挿入する共通処理。
  * ①ツールバーの「画像」ボタン ②右レール「外部サーバー画像アップロード」 の2つのボタンと、
- * ③キャンバスへの**ドラッグ＆ドロップ**（カーソル位置へ挿入）から使う。
+ * ③キャンバスへの**ドラッグ＆ドロップ・貼り付け**（落とした・貼った位置へ挿入）から使う。
+ *
+ * ③は Quill の uploader 1か所で受ける（mediaUploaderOptions）。以前は自前のドロップの受け口も持っていて、
+ * Quill の uploader（PNG・JPEG を自分で入れる）と両方が入れ、PNG・JPEG を落とすと2枚入っていた
+ * （2026-10-18 本人「画像とか動画貼ると、2まい貼られてしまう」）。
  *
  * - GIF は画像（image/gif）なので `<img>` 埋め込みでそのまま動く（アニメGIF可）。
  * - 動画（video/*）は、Quill 標準の video ブロット（URL埋め込み用の iframe）では
@@ -56,7 +60,44 @@ export function pickAndInsertMedia(quill: Quill): void {
   input.click()
 }
 
-/** ③ キャンバスへのドラッグ＆ドロップを配線する（ドロップ位置のカーソルへ挿入） */
+/**
+ * ③ 落とす・貼り付けるで受ける形式（Quill の uploader は形式の一覧で選ぶ。既定は PNG・JPEG だけ）。
+ * 以前の自前の受け口と同じく、画像（GIF・WebP 含む）と動画を受ける
+ */
+export const MEDIA_MIMETYPES: readonly string[] = [
+  'image/png',
+  'image/jpeg',
+  'image/gif',
+  'image/webp',
+  'image/avif',
+  'image/bmp',
+  'image/svg+xml',
+  'video/mp4',
+  'video/webm',
+  'video/quicktime',
+  'video/ogg',
+  'video/x-m4v',
+]
+
+/** Quill の uploader の設定（Quill を作るときに modules.uploader へ渡す）。落とした・貼った位置へ自前の入れ方で入れる */
+export function mediaUploaderOptions(): {
+  mimetypes: string[]
+  handler: (this: { quill: Quill }, range: { index: number; length: number }, files: File[]) => Promise<void>
+} {
+  return {
+    mimetypes: [...MEDIA_MIMETYPES],
+    handler(range, files) {
+      // 文字を選んだまま貼ったときは、選んだ文字と入れ替える（Quill の既定と同じ）
+      if (range.length > 0) this.quill.deleteText(range.index, range.length, 'user')
+      return insertMediaFilesAt(this.quill, files, range.index)
+    },
+  }
+}
+
+/**
+ * ③ キャンバスへのドラッグで「ここに落とせる」を出す。落としたファイルを入れるのは Quill の uploader
+ * （mediaUploaderOptions）。ここで入れると Quill の分と合わせて2枚入る
+ */
 export function wireMediaDrop(quill: Quill): void {
   const root = quill.root
   if (root.dataset['sbMediaDrop'] === 'true') return
@@ -68,15 +109,6 @@ export function wireMediaDrop(quill: Quill): void {
     event.preventDefault()
     const dt = event.dataTransfer
     if (dt !== null) dt.dropEffect = 'copy'
-  })
-  root.addEventListener('drop', (event) => {
-    const files = [...(event.dataTransfer?.files ?? [])].filter(isInsertableMedia)
-    // 画像・動画以外のドロップ（テキスト等）は Quill 既定の挙動に任せる
-    if (files.length === 0) return
-    event.preventDefault()
-    event.stopPropagation()
-    const index = insertionIndexAt(quill, event.clientX, event.clientY)
-    void insertMediaFilesAt(quill, files, index)
   })
 }
 
@@ -105,36 +137,4 @@ export async function insertMediaFilesAt(
 
 function dragHasFiles(event: DragEvent): boolean {
   return [...(event.dataTransfer?.types ?? [])].includes('Files')
-}
-
-/** ドロップ座標 → Quill 上の挿入インデックス（ネイティブのキャレットを Quill に読ませる） */
-function insertionIndexAt(quill: Quill, x: number, y: number): number {
-  const fallback = quill.getSelection()?.index ?? Math.max(0, quill.getLength() - 1)
-  const doc = quill.root.ownerDocument
-  const caret = caretRangeFromPoint(doc, x, y)
-  if (caret === null || !quill.root.contains(caret.startContainer)) return fallback
-  quill.focus()
-  const selection = doc.getSelection()
-  if (selection === null) return fallback
-  selection.removeAllRanges()
-  selection.addRange(caret)
-  quill.update('user')
-  return quill.getSelection()?.index ?? fallback
-}
-
-interface CaretDoc {
-  caretRangeFromPoint?: (x: number, y: number) => Range | null
-  caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node; offset: number } | null
-}
-
-/** Chrome/Safari=caretRangeFromPoint / Firefox=caretPositionFromPoint の差を吸収する */
-function caretRangeFromPoint(doc: Document, x: number, y: number): Range | null {
-  const d = doc as unknown as CaretDoc
-  if (typeof d.caretRangeFromPoint === 'function') return d.caretRangeFromPoint(x, y)
-  const pos = d.caretPositionFromPoint?.(x, y) ?? null
-  if (pos === null) return null
-  const range = doc.createRange()
-  range.setStart(pos.offsetNode, pos.offset)
-  range.collapse(true)
-  return range
 }

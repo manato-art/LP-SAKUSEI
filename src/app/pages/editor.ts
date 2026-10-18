@@ -33,7 +33,7 @@ import { stepsApi } from '../api-steps.ts'
 import { registerMediaBlots } from '../panels/media-blots.ts'
 import { registerUnderlineBlot } from '../panels/underline-blot.ts'
 import { registerMarkerBlot } from '../panels/marker-blot.ts'
-import { wireMediaDrop } from '../panels/media-insert.ts'
+import { mediaUploaderOptions, wireMediaDrop } from '../panels/media-insert.ts'
 import { wireImageResize } from '../panels/image-resize.ts'
 import { wireAbTestTabs, setupHorizTabs, setupBreadcrumb } from './tab-nav.ts'
 import { wireBeyondNavAnchors } from './beyond-nav.ts'
@@ -402,7 +402,8 @@ function mountQuill(root: HTMLElement): Quill {
 
   return new Quill(host, {
     placeholder: 'ここにLPの内容を入力してください',
-    modules: { toolbar: false },
+    // 落とす・貼り付けるで入れる画像・動画は uploader 1か所で（media-insert.ts。自前の受け口と二重に入れていた）
+    modules: { toolbar: false, uploader: mediaUploaderOptions() },
   })
 }
 
