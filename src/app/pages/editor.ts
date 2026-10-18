@@ -33,6 +33,7 @@ import { stepsApi } from '../api-steps.ts'
 import { registerMediaBlots } from '../panels/media-blots.ts'
 import { registerUnderlineBlot } from '../panels/underline-blot.ts'
 import { registerMarkerBlot } from '../panels/marker-blot.ts'
+import { registerBackgroundPadding } from '../panels/background-padding-format.ts'
 import { mediaUploaderOptions, wireMediaDrop } from '../panels/media-insert.ts'
 import { wireImageResize } from '../panels/image-resize.ts'
 import { wireAbTestTabs, setupHorizTabs, setupBreadcrumb } from './tab-nav.ts'
@@ -235,6 +236,8 @@ export async function renderEditor(
   // 下線も同じ（色・太さ・不透明度つきの `<u style>` を開いたときに見た目を読むため）
   registerUnderlineBlot()
   registerMarkerBlot()
+  // 背景色の余白（`<span style="padding">`）も、保存HTMLを開いたときに読めるよう先に登録する
+  registerBackgroundPadding()
   // ── プレビュー枠の iframe を、動くQuillに差し替える ──
   const quill = mountQuill(root)
   // キャンバスへのドラッグ＆ドロップで、カーソル位置へ画像/GIF/動画を挿入できるようにする。

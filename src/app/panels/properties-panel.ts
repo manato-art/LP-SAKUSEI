@@ -25,6 +25,7 @@ import { buildImageBody, refreshImageBody } from './properties-image.ts'
 import { notifyEditorChanged } from './editor-change.ts'
 import { buildUnderlineLookGroup } from './properties-underline.ts'
 import { buildMarkerLookGroup } from './properties-marker.ts'
+import { buildBackgroundRows } from './properties-background.ts'
 import { DEFAULT_MARKER_LOOK, encodeMarker } from './marker-look.ts'
 import { isFormatOn } from './underline-look.ts'
 import {
@@ -235,24 +236,11 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
   })
   textColorRow.append(tcWrap)
 
-  // ── 背景色 ──
-  const bgColorRow = row('背景色')
-  const { wrap: bgWrap, swatch: bgSwatch, picker: bgPicker, hex: bgHex } = colorPicker('#FFFFFF')
-  bgPicker.addEventListener('input', () => {
-    const c = bgPicker.value
-    bgSwatch.style.background = c
-    bgHex.value = c.toUpperCase()
-    applyInline('background', c)
+  // ── 背景色（＋その下の余白・不透明度・2026-10-18 本人指定） ──
+  const background = buildBackgroundRows({
+    background: (value) => applyInline('background', value),
+    padding: (value) => applyInline('bgpad', value),
   })
-  bgHex.addEventListener('change', () => {
-    const c = bgHex.value.trim()
-    if (/^#[0-9a-f]{6}$/i.test(c)) {
-      bgSwatch.style.background = c
-      bgPicker.value = c
-      applyInline('background', c)
-    }
-  })
-  bgColorRow.append(bgWrap)
 
   // ── 文字間隔 ──
   const lsRow = row('文字間隔')
@@ -608,7 +596,7 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
     fmtGroup, // 指示170: 書式(B I U S リンク)を太字/斜体があった位置（サイズの直下）へ移動
     underlineLook.el,
     markerLook.el,
-    textColorRow, bgColorRow,
+    textColorRow, ...background.rows,
     lsRow, lhRow,
     alignGroup,
     animGroup,
@@ -698,12 +686,8 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
     tcHex.value = tcNorm.toUpperCase()
     tcPicker.value = tcNorm
 
-    // 背景色（swatch + hex + picker全て同期）
-    const bg = typeof fmt['background'] === 'string' ? fmt['background'] : '#FFFFFF'
-    const bgNorm = normalizeColor(bg)
-    bgSwatch.style.background = bgNorm
-    bgHex.value = bgNorm.toUpperCase()
-    bgPicker.value = bgNorm
+    // 背景色・余白・不透明度
+    background.sync(fmt['background'], fmt['bgpad'])
 
     // 配置
     const align = fmt['align']

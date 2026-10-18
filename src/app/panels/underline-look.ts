@@ -71,6 +71,12 @@ export function hexColorOf(text: string): string | null {
   return rgba === null ? null : toHex(rgba)
 }
 
+/** 色（#rrggbb）と不透明度（0〜100%）。読めない色は null（背景色の rgba を読むのにも使う） */
+export function colorWithOpacityOf(text: string): { color: string; opacity: number } | null {
+  const rgba = parseColor(text)
+  return rgba === null ? null : { color: toHex(rgba), opacity: Math.round(clamp(rgba.a, 0, 1) * 100) }
+}
+
 /** style の文字列（`a: b; c: d`）を読む */
 function declarationsOf(styleText: string): Map<string, string> {
   const map = new Map<string, string>()
