@@ -269,9 +269,9 @@ textarea.ncf-input{resize:vertical;min-height:64px}
   .ncf-cat__grid{grid-template-columns:repeat(3,minmax(0,1fr))}
 }
 @media (prefers-reduced-motion:reduce){[data-widget-pane="parts"]{transition:none}}
-/* 並び: 移行先は、被せた部品（すぐ上）の下に一段下げる */
-.ncf-parts .ncf-item--hotspot>.ncf-item__head[role="button"]{position:relative;padding-left:26px}
-.ncf-parts .ncf-item--hotspot>.ncf-item__head[role="button"]::before{content:"";position:absolute;left:12px;top:8px;width:8px;height:11px;
+/* 並び: 移行先・重ねた部品は、乗っている部品（すぐ上）の下に一段下げる */
+.ncf-parts :is(.ncf-item--hotspot,.ncf-item--float)>.ncf-item__head[role="button"]{position:relative;padding-left:26px}
+.ncf-parts :is(.ncf-item--hotspot,.ncf-item--float)>.ncf-item__head[role="button"]::before{content:"";position:absolute;left:12px;top:8px;width:8px;height:11px;
   border-left:1.5px solid #C4C9D1;border-bottom:1.5px solid #C4C9D1;border-bottom-left-radius:4px}
 /* 右の設定: 選んだ部品の名前と段（レイアウト・中身・押したとき） */
 .ncf-inspector__head{display:flex;align-items:center;gap:8px;padding:2px 0 12px;border-bottom:1px solid #EEF0F2}

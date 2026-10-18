@@ -20,7 +20,7 @@ export interface BlockInspectorDeps extends Pick<FormCore, 'data' | 'onRefresh'>
   /** 型の部品の中の並び（よくある質問の1問・口コミの1件など） */
   readonly listEl: (field: ListField, basePath: Path) => HTMLElement
   readonly samples: Pick<SampleFields, 'el'>
-  readonly screen: Pick<ScreenSettings, 'place' | 'press' | 'goto'>
+  readonly screen: Pick<ScreenSettings, 'place' | 'layer' | 'press' | 'goto'>
 }
 
 export interface BlockInspector {
@@ -45,7 +45,8 @@ export function createBlockInspector(deps: BlockInspectorDeps): BlockInspector {
     // 移行先は被せた部品と同じ画面にしか置けない（「この部品を出す画面」は出さない。部品を移すと一緒に移る）
     const block = (getAt(deps.data(), [field.key, screenIndex, 'blocks', index]) as ItemData | undefined) ?? {}
     const parts = {
-      layout: isHotspot(block) ? [] : [deps.screen.place(field, screenIndex, index, type.label)],
+      // 重ねる（すぐ上の部品の上に浮かべる）は、移行先には出さない（移行先はもともと被さる部品）
+      layout: isHotspot(block) ? [] : [deps.screen.place(field, screenIndex, index, type.label), deps.screen.layer(field, screenIndex, index)],
       content: [] as HTMLElement[],
       press: [] as HTMLElement[],
     }

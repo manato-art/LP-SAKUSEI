@@ -20,14 +20,15 @@ import { blockElementAt, isTextEditableBlock, outermostBlock, syncCanvasBlock } 
 import { getAt, setAt, type Path } from './nocode/form-state.ts'
 import { ensureNocodeFormCss } from './nocode/nocode-form-css.ts'
 import { buildTemplateForm } from './nocode/template-form.ts'
-import { hotspotRect, isHotspot, moveGroupBefore } from './nocode/hotspot-model.ts'
+import { coveredIndexOf, hotspotRect, isFloating, isHotspot, isRider, moveGroupBefore } from './nocode/hotspot-model.ts'
+import { floatOffset, setFloating } from './nocode/float-model.ts'
 import { MORE_PREVIEW_CSS } from './nocode/templates/builder-blocks-more-render.ts'
 import { BUILDER_PADDING, BUILDER_TEMPLATE } from './nocode/templates/builder.ts'
 import { HEADING_SIZES, PLACES, SPACER_SIZES, TEXT_SIZES, blockLabel, sizeOf, widthKeyOf, type Place } from './nocode/templates/builder-blocks.ts'
 import { newUid } from './nocode/templates/kit.ts'
 import { int, items, pick, str, type ItemData, type TemplateData } from './nocode/templates/types.ts'
 import { placeGuideX, placeLeft, snapPlace, snapThreshold, widthGuideXs, widthSnaps } from './drag-math.ts'
-import { contentBoxOf, createSelectionLayer, type SelectionHandle, type SelectionMove, type SnapPoint } from './selection-layer.ts'
+import { contentBoxOf, createSelectionLayer, type SelectionAction, type SelectionHandle, type SelectionMove, type SnapPoint } from './selection-layer.ts'
 import { canvasEditTarget } from './widget-canvas-events.ts'
 import { FONT } from './widget-editor-theme.ts'
 import { runWidgetScripts } from './widget-run-scripts.ts'
@@ -39,6 +40,7 @@ import { attachUndoKeys, createHistory } from './widget-studio-history.ts'
 import { dataWithEditedCode, editableCodeOf, type EditableCode } from './nocode/whole-code.ts'
 import { createToolbarHooks, type ToolbarHooks } from './widget-studio-toolbar.ts'
 import { hotspotHandles, hotspotMove, markEmptyHotspotHosts, type HotspotEditDeps } from './widget-studio-hotspot.ts'
+import { floatMove, type FloatEditDeps } from './widget-studio-float.ts'
 
 export interface BuilderSessionDeps {
   readonly data: TemplateData
@@ -172,7 +174,7 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
    * 描き直すときに必ず外す（CSSだけの変化では要素を入れ替えないので、外さないと古い見た目が勝ち続ける）
    */
   const previewed = new Set<HTMLElement>()
-  const PREVIEW_PROPS = ['width', 'height', 'font-size', 'padding-top', 'padding-bottom', 'transform', 'left', 'top'] as const
+  const PREVIEW_PROPS = ['width', 'height', 'font-size', 'padding-top', 'padding-bottom', 'transform', 'left', 'right', 'top'] as const
   const clearPreviews = (): void => {
     for (const el of previewed) for (const prop of PREVIEW_PROPS) el.style.removeProperty(prop)
     previewed.clear()
@@ -315,10 +317,10 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
     /** 動かし始めたときの四角（動かしている間は translate が乗るので、最初に測っておく）。null＝まだ動かしていない */
     let from: { target: DOMRect; block: DOMRect } | null = null
     /** この画面の部品の要素（自分を除く並び・元の番号つき） */
-    // 移行先は被せた部品の中にあるので、並びの目安にしない（部品は移行先ごと動く）
+    // 移行先・重ねた部品は土台に乗っているので、並びの目安にしない（部品は乗っている部品ごと動く）
     const others = (): { el: HTMLElement; index: number }[] =>
       items(items(data, 'screens')[screenIndex] ?? {}, 'blocks')
-        .map((block, index) => ({ el: isHotspot(block) ? null : blockElementAt(data, contentDiv, screenIndex, index), index }))
+        .map((block, index) => ({ el: isRider(block) ? null : blockElementAt(data, contentDiv, screenIndex, index), index }))
         .filter((o): o is { el: HTMLElement; index: number } => o.el !== null && o.index !== blockIndex)
     /** 自分より前にある部品の数（並びを変えていなければ、入る位置はこれ） */
     const originalAt = (list: readonly { index: number }[]): number => list.filter((o) => o.index < blockIndex).length
@@ -449,6 +451,57 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
     },
   })
 
+  /** 重ねた部品を見たまま画面で動かすときの、読み書き（土台に対する %） */
+  const floatDeps = (screenIndex: number, blockIndex: number): FloatEditDeps => ({
+    selection,
+    previewed,
+    offset: () => floatOffset(blockAt(screenIndex, blockIndex) ?? {}),
+    commit: (next) => {
+      const path = pathOf(screenIndex, blockIndex)
+      data = setAt(setAt(data, [...path, 'floatX'], next.x), [...path, 'floatY'], next.y)
+      track()
+      form.setData(data)
+      paint()
+    },
+  })
+
+  /** 土台がある重ねた部品か（いちばん上で重ねた部品は、ふつうに並んでいる） */
+  const isFloatingAt = (screenIndex: number, blockIndex: number): boolean => {
+    const blocks = items(items(data, 'screens')[screenIndex] ?? {}, 'blocks')
+    return isFloating(blocks[blockIndex]) && coveredIndexOf(blocks, blockIndex) !== null
+  }
+
+  /**
+   * 選んだ部品の枠の右下に出すボタン（2026-10-18 本人「複製できるようにしたい。重ねたり左右上下に配置できるようにして」）。
+   * 複製＝⌘D と同じ（乗っている部品ごと）。重ねる＝すぐ上の部品の上に浮かべる／やめる＝ふつうの並びに戻す（float-model.ts）。
+   * 見本の中の要素を選んでいるときも、その見本の部品に効く
+   */
+  const blockActions = (screenIndex: number, blockIndex: number): SelectionAction[] => {
+    const blocks = items(items(data, 'screens')[screenIndex] ?? {}, 'blocks')
+    const block = blocks[blockIndex]
+    if (block === undefined) return []
+    const duplicate: SelectionAction = { label: '複製', title: '複製する（⌘D）', run: () => void partOps.duplicate() }
+    if (isHotspot(block)) return [duplicate]
+    const floating = isFloating(block)
+    const canFloat = floating || coveredIndexOf(blocks, blockIndex) !== null
+    const layer: SelectionAction = {
+      label: floating ? '重ねるのをやめる' : '重ねる',
+      title: floating
+        ? 'ふつうの並びに戻す'
+        : canFloat
+          ? 'すぐ上の部品の上に重ねる（重ねたら、つかんで上下左右へ動かせる）'
+          : 'いちばん上の部品は重ねられません（すぐ上に、重ねる土台の部品が要ります）',
+      disabled: !canFloat,
+      run: () => {
+        const now = items(items(data, 'screens')[screenIndex] ?? {}, 'blocks')
+        const changed = setFloating(now, blockIndex, !floating)
+        if (changed === null || changed.list === now) return
+        form.load(setAt(data, ['screens', screenIndex, 'blocks'], changed.list), screenIndex, changed.index)
+      },
+    }
+    return [duplicate, layer]
+  }
+
   /** 左の選択枠を、右で選んでいる部品に合わせる（何も選んでいなければ Widget全体を薄い枠で） */
   const showSelection = (): void => {
     const blockIndex = form.selectedBlock()
@@ -468,11 +521,24 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
     const type = str(block, 'type')
     if (isHotspot(block)) {
       const deps = hotspotDeps(screenIndex, blockIndex)
-      selection.select(el, '移行先（つかんで動かす・四辺で大きさ）', hotspotHandles(el, deps), { move: hotspotMove(el, deps) })
+      selection.select(el, '移行先（つかんで動かす・四辺で大きさ）', hotspotHandles(el, deps), {
+        move: hotspotMove(el, deps),
+        actions: blockActions(screenIndex, blockIndex),
+      })
+      return
+    }
+    const actions = blockActions(screenIndex, blockIndex)
+    // 重ねた部品は、つかんで上下左右どこへでも（土台に対する %）。幅などのつまみは、ふつうの部品と同じ
+    if (isFloatingAt(screenIndex, blockIndex)) {
+      selection.select(frameTarget(el, type), `${blockLabel(type)}（重ねた部品・つかんで上下左右へ）`, blockHandles(el, screenIndex, blockIndex), {
+        move: floatMove(el, floatDeps(screenIndex, blockIndex)),
+        actions,
+      })
       return
     }
     selection.select(frameTarget(el, type), blockLabel(type), blockHandles(el, screenIndex, blockIndex), {
       move: blockMove(el, screenIndex, blockIndex),
+      actions,
     })
   }
 
@@ -543,7 +609,10 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
     ],
     onSelect: () => showSelection(),
     blockElement: (screenIndex, blockIndex) => blockElementAt(data, contentDiv, screenIndex, blockIndex),
-    onInnerSelected: (node, label, handles) => selection.select(node, label, handles),
+    onInnerSelected: (node, label, handles) => {
+      const blockIndex = form.selectedBlock()
+      selection.select(node, label, handles, { actions: blockIndex === null ? [] : blockActions(form.activeScreen(), blockIndex) })
+    },
   })
   panel.append(form.element)
 
@@ -666,7 +735,9 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
    * （少し動かすと動き出す。そのまま離せば、ただ選ぶだけ）。文字の部品・見本は、つかみ所（枠の上のまん中）で動かす
    */
   // どの部品も本体をつかんで動かせる（Canva式・2026-09-24）。文字を打っている途中の部品と、見本の部品（中の要素を選ぶ）は除く
-  const isDirectMove = (block: ItemData, el: HTMLElement): boolean => str(block, 'type') !== 'sample' && !partKeys.isEditing(el)
+  // 重ねた見本の部品は本体をつかんで動かせる（少し動かすと動き出す。押すだけなら今までどおり中の要素を選ぶ）
+  const isDirectMove = (block: ItemData, el: HTMLElement): boolean =>
+    (str(block, 'type') !== 'sample' || isFloating(block)) && !partKeys.isEditing(el)
   contentDiv.addEventListener('pointerdown', (event) => {
     if (event.button !== 0 || event.ctrlKey || event.metaKey) return
     const el = outermostBlock(event.target, contentDiv)
@@ -676,7 +747,9 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
     if (form.selectedBlock() !== place.blockIndex) form.select(place.screenIndex, place.blockIndex)
     const move = isHotspot(place.block)
       ? hotspotMove(el, hotspotDeps(place.screenIndex, place.blockIndex))
-      : blockMove(el, place.screenIndex, place.blockIndex)
+      : isFloatingAt(place.screenIndex, place.blockIndex)
+        ? floatMove(el, floatDeps(place.screenIndex, place.blockIndex))
+        : blockMove(el, place.screenIndex, place.blockIndex)
     selection.startMove(event, {
       update: move.update,
       commit: (x, y) => {
@@ -693,13 +766,23 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
   attachBlockDrop({ editorBody, contentDiv, selection, form, data: () => data })
 
   const removeSelected = (): boolean => ((i) => i !== null && form.removeBlock(i))(form.selectedBlock())
+  /** 部品の操作（キーと、枠のそばの「複製」で使う） */
+  const partOps = createPartOps({
+    data: () => data,
+    screen: () => form.activeScreen(),
+    selected: () => form.selectedBlock(),
+    load: (next, screenIndex, blockIndex) => form.load(next, screenIndex, blockIndex),
+    select: (screenIndex, blockIndex) => form.select(screenIndex, blockIndex),
+    blockMax: BUILDER_BLOCK_MAX,
+    toast: (message) => toast(message, 'error'),
+  })
   /** 見たまま画面の部品（1回押す＝選ぶ・ダブルクリック＝文字を打つ・Backspace/Delete＝消す＝widget-studio-delete-key.ts） */
   const partAt = (el: HTMLElement | null): CanvasPart | null => {
     const place = el === null ? null : placeOf(el)
     if (el === null || place === null) return null
     const isSelected = place.blockIndex === form.selectedBlock()
     const select = (): void => form.select(place.screenIndex, place.blockIndex)
-    return { el, editable: isTextEditableBlock(place.block), isHotspot: isHotspot(place.block), isSelected, select }
+    return { el, editable: isTextEditableBlock(place.block), nudges: isRider(place.block), isSelected, select }
   }
   const partKeys = attachPartKeys({
     editorBody,
@@ -707,16 +790,8 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
     partOf: (node) => partAt(outermostBlock(node, contentDiv)),
     selectedPart: () => partAt(((i) => (i === null ? null : blockElementAt(data, contentDiv, form.activeScreen(), i)))(form.selectedBlock())),
     remove: () => void removeSelected(),
-    // ⌘C・⌘V・⌘D・↑↓・⌥↑↓・移行先の矢印（左の並びでも）＝widget-studio-part-ops.ts
-    ops: createPartOps({
-      data: () => data,
-      screen: () => form.activeScreen(),
-      selected: () => form.selectedBlock(),
-      load: (next, screenIndex, blockIndex) => form.load(next, screenIndex, blockIndex),
-      select: (screenIndex, blockIndex) => form.select(screenIndex, blockIndex),
-      blockMax: BUILDER_BLOCK_MAX,
-      toast: (message) => toast(message, 'error'),
-    }),
+    // ⌘C・⌘V・⌘D・↑↓・⌥↑↓・移行先と重ねた部品の矢印（左の並びでも）＝widget-studio-part-ops.ts
+    ops: partOps,
     extraRoots: deps.partsHost === undefined ? [] : [deps.partsHost.list],
   })
 

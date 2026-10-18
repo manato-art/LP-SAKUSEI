@@ -9,7 +9,7 @@
  * 文字として貼り付かないよう、既定の動きは止める
  */
 import { blockElementAt } from './nocode/canvas-sync.ts'
-import { HOTSPOT_TYPE, dropRect, groupEndOf, isHotspot } from './nocode/hotspot-model.ts'
+import { HOTSPOT_TYPE, dropRect, groupEndOf, isRider } from './nocode/hotspot-model.ts'
 import { NC_BLOCK_MIME, NC_HOTSPOT_MIME, type TemplateForm } from './nocode/template-form.ts'
 import { items, str, type ItemData, type TemplateData } from './nocode/templates/types.ts'
 import type { SelectionLayer } from './selection-layer.ts'
@@ -30,11 +30,11 @@ export function attachBlockDrop(deps: BlockDropDeps): void {
   const blocksNow = (): readonly ItemData[] => items(items(deps.data(), 'screens')[form.activeScreen()] ?? {}, 'blocks')
   const elementAt = (index: number): HTMLElement | null => blockElementAt(deps.data(), contentDiv, form.activeScreen(), index)
 
-  /** 入る位置（移行先でない部品の、真ん中より上か下か）。移行先を被せた部品のまとまりは分けない */
+  /** 入る位置（移行先・重ねた部品でない部品の、真ん中より上か下か）。土台と、乗っている部品のまとまりは分けない */
   const insertPointAt = (y: number): { index: number; lineY: number } => {
     const blocks = blocksNow()
     const parts = [...blocks.keys()]
-      .filter((index) => !isHotspot(blocks[index]))
+      .filter((index) => !isRider(blocks[index]))
       .map((index) => ({ index, rect: elementAt(index)?.getBoundingClientRect() ?? null }))
       .filter((p): p is { index: number; rect: DOMRect } => p.rect !== null)
     const at = parts.filter((p) => p.rect.top + p.rect.height / 2 < y).length
@@ -53,11 +53,11 @@ export function attachBlockDrop(deps: BlockDropDeps): void {
     return { index, lineY }
   }
 
-  /** 移行先を被せる部品（手の下にある、移行先・区切り線でない部品） */
+  /** 移行先を被せる部品（手の下にある、移行先・重ねた部品・区切り線でない部品。重ねた部品の下なら土台） */
   const coverAt = (x: number, y: number): { index: number; el: HTMLElement; rect: DOMRect } | null => {
     const blocks = blocksNow()
     for (const [index, block] of blocks.entries()) {
-      if (isHotspot(block) || str(block, 'type') === 'divider') continue
+      if (isRider(block) || str(block, 'type') === 'divider') continue
       const el = elementAt(index)
       const rect = el?.getBoundingClientRect()
       if (el === null || el === undefined || rect === undefined) continue

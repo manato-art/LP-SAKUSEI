@@ -10,7 +10,7 @@ import { toast } from '../../ui.ts'
 import { node } from './form-controls.ts'
 import { addAt, moveTo, type Path } from './form-state.ts'
 import { textButton, type FormCore } from './form-core.ts'
-import { HOTSPOT_TYPE, coveredIndexOf, groupEndOf, isHotspot } from './hotspot-model.ts'
+import { HOTSPOT_TYPE, coveredIndexOf, groupEndOf, isRider } from './hotspot-model.ts'
 import { createPalette } from './palette.ts'
 import { splitSampleScreens } from './sample-to-screens.ts'
 import { addSampleParts } from './screens-state.ts'
@@ -70,8 +70,9 @@ export function createBlockAdder(deps: BlockAdderDeps): BlockAdder {
     const blocks = items(items(deps.data(), field.key)[screenIndex] ?? {}, 'blocks')
     const selectedBlock = deps.selectedBlock()
     const selected = selectedBlock === null || blocks[selectedBlock] === undefined ? null : selectedBlock
-    const chosen = selected === null ? null : isHotspot(blocks[selected]) ? coveredIndexOf(blocks, selected) : selected
-    const lastPart = [...blocks.keys()].reverse().find((i) => !isHotspot(blocks[i]))
+    // 移行先・重ねた部品を選んでいたら、その土台に被せる
+    const chosen = selected === null ? null : isRider(blocks[selected]) ? coveredIndexOf(blocks, selected) : selected
+    const lastPart = [...blocks.keys()].reverse().find((i) => !isRider(blocks[i]))
     const cover = chosen ?? lastPart ?? null
     if (at === undefined && cover === null) {
       toast('移行先は、ボタンや画像などの部品の上に被せて使います。先に部品を置いてください', 'error')

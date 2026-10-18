@@ -119,6 +119,15 @@ describe('↑↓・⌥↑↓・移行先の矢印', () => {
     expect(t.item(1)?.['x']).toBe(50)
     expect(setup([[b('A')]], 0).ops.nudge(1, 0)).toBe(false)
   })
+
+  it('重ねた部品も矢印で 1% ずつ（土台に対する左右・上下のずれ。2026-10-18）', () => {
+    const t = setup([[b('A'), { ...b('a1'), float: true, floatX: 10, floatY: 0 }]], 1)
+    expect(t.ops.nudge(1, 0)).toBe(true)
+    expect(t.item(1)?.['floatX']).toBe(11)
+    expect(t.ops.nudge(0, -10)).toBe(true)
+    expect(t.item(1)?.['floatY']).toBe(-10)
+    expect(t.selected()).toBe(1)
+  })
 })
 
 describe('どのキーが何をするか', () => {
@@ -130,7 +139,7 @@ describe('どのキーが何をするか', () => {
     shiftKey: false,
     ...mods,
   })
-  const picked = { hasSelected: true, isTyping: false, selectedIsHotspot: false, selectedIsText: true }
+  const picked = { hasSelected: true, isTyping: false, selectedNudges: false, selectedIsText: true }
 
   it('⌘C・⌘V・⌘D（Ctrl でも）', () => {
     expect(partKeyAction(key('c', { metaKey: true }), picked)).toBe('copy')
@@ -141,7 +150,7 @@ describe('どのキーが何をするか', () => {
   it('↑↓ は隣を選ぶ、⌥ と一緒なら並べ替え。移行先は矢印で動かす（⇧で10%）', () => {
     expect(partKeyAction(key('ArrowDown'), picked)).toBe('next')
     expect(partKeyAction(key('ArrowUp', { altKey: true }), picked)).toBe('moveUp')
-    const hot = { ...picked, selectedIsHotspot: true, selectedIsText: false }
+    const hot = { ...picked, selectedNudges: true, selectedIsText: false }
     expect(partKeyAction(key('ArrowLeft'), hot)).toBe('nudge')
     expect(partKeyAction(key('ArrowDown', { shiftKey: true }), hot)).toBe('nudge')
   })

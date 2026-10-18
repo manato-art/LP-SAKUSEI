@@ -12,7 +12,7 @@ import { node } from './form-controls.ts'
 import { getAt, setAt, type Path } from './form-state.ts'
 import { screenNameAt, textButton, type FormCore } from './form-core.ts'
 import { isBlank } from './block-adder.ts'
-import { duplicateGroup, groupStep, isHotspot, moveGroupBefore, removeGroup } from './hotspot-model.ts'
+import { duplicateGroup, groupStep, isFloating, isHotspot, moveGroupBefore, removeGroup } from './hotspot-model.ts'
 import { itemHead, type HeadOps } from './list-field.ts'
 import { LP_PRESS_CHIPS } from './lp-press-rows.ts'
 import { items, str, type BlockType, type ItemData, type ScreensField, type TemplateData } from './templates/types.ts'
@@ -100,6 +100,8 @@ export function blockListEl(deps: BlockListDeps, field: ScreensField, screenInde
     itemEl.dataset['ncfBlock'] = String(index)
     // 移行先は、被せた部品（すぐ上）の下に一段下げて並べる
     if (isHotspot(block)) itemEl.classList.add('ncf-item--hotspot')
+    // 重ねた部品も、土台（すぐ上）の下に一段下げる
+    else if (isFloating(block)) itemEl.classList.add('ncf-item--float')
     itemEl.addEventListener('dragover', (event) => {
       if (dragFrom === null || dragFrom === index) return
       event.preventDefault()

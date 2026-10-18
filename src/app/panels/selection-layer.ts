@@ -78,11 +78,22 @@ export interface SelectionMove {
   readonly cancel: () => void
 }
 
+/** 枠のそばに出すボタン（複製・重ねる＝2026-10-18 本人「複製できるようにしたい。重ねたり…」） */
+export interface SelectionAction {
+  readonly label: string
+  /** マウスを乗せたときの説明（押せないときは、その理由） */
+  readonly title: string
+  readonly disabled?: boolean
+  readonly run: () => void
+}
+
 export interface SelectOptions {
   /** 薄い枠（Widget全体） */
   readonly soft?: boolean
   /** 部品ごと動かせる（つかみ所を出す） */
   readonly move?: SelectionMove
+  /** 枠の右下の外に並べるボタン */
+  readonly actions?: readonly SelectionAction[]
 }
 
 export interface SelectionLayer {
@@ -204,7 +215,32 @@ export function createSelectionLayer(editorBody: HTMLElement, contentDiv: HTMLEl
   tip.style.cssText =
     `position:absolute;display:none;z-index:1;padding:3px 8px;border-radius:4px;background:#1F2A37;color:#fff;` +
     `font:600 11px/1.4 ${FONT};white-space:nowrap;transform:translate(-50%,-140%);pointer-events:none`
-  frame.append(tag, handleBox, grip, tip)
+  /** 枠の右下の外に並べるボタン（複製・重ねる） */
+  const actionBar = document.createElement('div')
+  actionBar.dataset['widgetSelectionActions'] = 'true'
+  actionBar.style.cssText =
+    'position:absolute;right:-2px;bottom:-2px;transform:translateY(calc(100% + 6px));display:none;gap:4px;pointer-events:auto'
+  frame.append(tag, handleBox, grip, tip, actionBar)
+
+  const actionButton = (action: SelectionAction): HTMLButtonElement => {
+    const button = document.createElement('button')
+    button.type = 'button'
+    button.textContent = action.label
+    button.title = action.title
+    button.disabled = action.disabled === true
+    button.style.cssText =
+      `padding:3px 9px;border:1px solid ${ACCENT};border-radius:4px;background:#fff;color:${ACCENT};` +
+      `font:600 11px/1.4 ${FONT};white-space:nowrap;cursor:${action.disabled === true ? 'not-allowed' : 'pointer'};` +
+      `opacity:${action.disabled === true ? '.45' : '1'};box-shadow:0 1px 3px rgba(0,0,0,.12)`
+    // 見たまま画面の「押したら選ぶ・つかんだら動かす」に渡さない
+    button.addEventListener('pointerdown', (event) => event.stopPropagation())
+    button.addEventListener('click', (event) => {
+      event.preventDefault()
+      event.stopPropagation()
+      if (action.disabled !== true) action.run()
+    })
+    return button
+  }
 
   /** マウスを乗せた部品の薄い枠 */
   const hoverFrame = document.createElement('div')
@@ -410,6 +446,9 @@ export function createSelectionLayer(editorBody: HTMLElement, contentDiv: HTMLEl
       tag.style.opacity = options.soft === true ? '.8' : '1'
       handleBox.replaceChildren(...handles.map(buildHandle))
       grip.style.display = move === null ? 'none' : 'flex'
+      const actions = options.actions ?? []
+      actionBar.replaceChildren(...actions.map(actionButton))
+      actionBar.style.display = actions.length === 0 ? 'none' : 'flex'
       place()
     },
     current: () => current,

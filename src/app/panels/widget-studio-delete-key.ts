@@ -38,7 +38,8 @@ export interface CanvasPart {
   readonly el: HTMLElement
   /** 見たまま画面で文字を打てる部品か */
   readonly editable: boolean
-  readonly isHotspot: boolean
+  /** 矢印で位置を動かす部品か（移行先・重ねた部品） */
+  readonly nudges: boolean
   readonly isSelected: boolean
   /** この部品を選ぶ */
   readonly select: () => void
@@ -132,7 +133,7 @@ export function attachPartKeys(deps: PartKeysDeps): PartKeys {
     const action = partKeyAction(event, {
       hasSelected: part !== null,
       isTyping: editing !== null && caret() !== null,
-      selectedIsHotspot: part?.isHotspot === true,
+      selectedNudges: part?.nudges === true,
       selectedIsText: part?.editable === true,
     })
     if (action === 'none') return false

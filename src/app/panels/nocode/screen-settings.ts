@@ -8,7 +8,7 @@
 import { confirmCard } from '../../dialog.ts'
 import { toast } from '../../ui.ts'
 import { node, type ScalarField } from './form-controls.ts'
-import { addAt, duplicateAt, getAt, moveAt, removeAt, type Path } from './form-state.ts'
+import { addAt, duplicateAt, getAt, moveAt, removeAt, setAt, type Path } from './form-state.ts'
 import { foldable, screenNameAt, textButton, type FormCore } from './form-core.ts'
 import { buildLpPressRows } from './lp-press-rows.ts'
 import { chipRow, type Chip } from './press-chips.ts'
@@ -24,7 +24,8 @@ import {
   screenLabel,
   withPress,
 } from './screens-state.ts'
-import { groupEndOf } from './hotspot-model.ts'
+import { coveredIndexOf, groupEndOf, isFloating } from './hotspot-model.ts'
+import { setFloating } from './float-model.ts'
 import { SCREEN_ID } from './templates/builder-blocks.ts'
 import { items, str, type ItemData, type ScreensField } from './templates/types.ts'
 
@@ -48,6 +49,8 @@ export interface ScreenSettings {
   readonly settings: (field: ScreensField, screens: readonly ItemData[], index: number) => HTMLElement
   /** 部品の「この部品を出す画面」 */
   readonly place: (field: ScreensField, screenIndex: number, blockIndex: number, noun: string) => HTMLElement
+  /** 部品の「重ねる」（すぐ上の部品の上に浮かべて、自由な位置に置く・2026-10-18 本人指定） */
+  readonly layer: (field: ScreensField, screenIndex: number, blockIndex: number) => HTMLElement
   /** 部品の「押したとき」 */
   readonly press: (field: ScreensField, screenIndex: number, itemPath: Path, label: string) => HTMLElement
   /** 部品の下の「◯◯を開いて編集する →」 */
@@ -185,6 +188,43 @@ export function createScreenSettings(deps: ScreenSettingsDeps): ScreenSettings {
     return row.el
   }
 
+  /**
+   * 部品の「重ねる」。重ねると、すぐ上の部品（土台）の上に浮かび、見たまま画面でつかんで上下左右へ動かせる（float-model.ts）。
+   * いちばん上の部品は土台が無いので押せない（理由を出す）
+   */
+  const layer = (field: ScreensField, screenIndex: number, blockIndex: number): HTMLElement => {
+    const blocks = (): readonly ItemData[] => items(items(deps.data(), field.key)[screenIndex] ?? {}, 'blocks')
+    const state = (): { chips: Chip[]; selected: string; warn: string } => {
+      const list = blocks()
+      const canFloat = coveredIndexOf(list, blockIndex) !== null
+      return {
+        chips: [
+          { value: 'off', label: '重ねない' },
+          { value: 'on', label: 'すぐ上の部品に重ねる', disabled: !canFloat },
+        ],
+        selected: isFloating(list[blockIndex]) ? 'on' : 'off',
+        warn: canFloat ? '' : 'いちばん上の部品は重ねられません（すぐ上に、重ねる土台の部品が要ります）',
+      }
+    }
+    const first = state()
+    const row = chipRow({
+      label: '重ねる',
+      chips: first.chips,
+      selected: first.selected,
+      warn: first.warn,
+      onPick: (value) => {
+        const changed = setFloating(blocks(), blockIndex, value === 'on')
+        if (changed === null || changed.list === blocks()) return
+        if (deps.replace(setAt(deps.data(), [field.key, screenIndex, 'blocks'], changed.list))) deps.openScreen(screenIndex, changed.index)
+      },
+    })
+    deps.onRefresh(() => {
+      const next = state()
+      row.update(next.chips, next.selected, next.warn)
+    })
+    return row.el
+  }
+
   /** 部品の「押したとき」（なし・画面②③…・＋新しい画面・リンクを開く） */
   const press = (field: ScreensField, screenIndex: number, itemPath: Path, label: string): HTMLElement => {
     const item = (): ItemData => (getAt(deps.data(), itemPath) as ItemData | undefined) ?? {}
@@ -251,5 +291,5 @@ export function createScreenSettings(deps: ScreenSettingsDeps): ScreenSettings {
     return b
   }
 
-  return { tabs, note, settings, place, press, goto }
+  return { tabs, note, settings, place, layer, press, goto }
 }

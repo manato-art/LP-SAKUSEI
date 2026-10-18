@@ -26,7 +26,8 @@ import { TRANSITION_ICONS } from './option-icons.ts'
 import { moreBlockProblem } from './builder-blocks-more.ts'
 import { moreBaseCss, renderHotspot } from './builder-blocks-more-render.ts'
 import { ACTIONS_SCRIPT, MODAL_LAYER, lpActionProblem, popsCss, pressContext } from './press-actions.ts'
-import { coveredIndexOf, isHotspot } from '../hotspot-model.ts'
+import { coveredIndexOf, isFloating, isHotspot } from '../hotspot-model.ts'
+import { floatOffset } from '../float-model.ts'
 
 export { ALL_BLOCK_TYPES, BLOCK_TYPES } from './builder-blocks.ts'
 
@@ -280,6 +281,8 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
     const start = previewStart ?? str(screens[0] ?? {}, 'id')
 
     let counter = 0
+    /** 重ねた部品を1つでも書き出したか（外枠のCSSを出すか） */
+    let hasStack = false
     const blockCss: string[] = []
     // 同じ見本を分けた部品の <style>・<script> は1回だけ出す（見本のスクリプトが画面の数だけ動かないように）
     const seenAssets = new Set<string>()
@@ -291,11 +294,28 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
     const screenHtml = screens
       .map((screen, index) => {
         const blocks: string[] = []
-        /** 移行先が被さる部品（直前の、移行先でない部品）の、blocks の中の位置と通し番号 */
+        /** 移行先・重ねた部品が乗る土台（直前の、乗る部品でない部品）の、blocks の中の位置と通し番号 */
         let cover: { at: number; n: number } | null = null
         const covered = new Set<number>()
+        /** 土台（blocks の中の位置）ごとの、重ねた部品のHTML（あとで土台と一緒に .nc-stack で包む） */
+        const floats = new Map<number, string[]>()
         for (const item of items(screen, 'blocks')) {
           counter += 1
+          // 重ねた部品は、土台と同じ外枠に入れて、土台に対する % の位置に浮かべる（土台の中には入れない＝土台が h2・p・a・hr でも壊れない）。
+          // いちばん上で重ねた（土台が無い）部品は、ふつうに並べる
+          if (isFloating(item) && cover !== null) {
+            const part = renderBlock(item, counter, s, ids, seenAssets, press)
+            const { x, y } = floatOffset(item)
+            // 左右は右も同じだけずらす（ふつうの並びと同じ幅のまま動く＝幅・置く位置の指定がそのまま効く）
+            blockCss.push(
+              part.css,
+              `${s} .nc-stack>.nc-b-${counter}{position:absolute;left:${x}%;right:${-x}%;top:${y}%;margin-top:0;margin-bottom:0;z-index:1}`,
+            )
+            floats.set(cover.at, [...(floats.get(cover.at) ?? []), part.html])
+            usedTypes.add(str(item, 'type'))
+            hasStack = true
+            continue
+          }
           if (isHotspot(item)) {
             // 移行先は、被せる部品の中（閉じるタグの前）に入れる。被せる部品が無い・中に入れられない部品なら出さない（保存の前に知らせる）
             const host = cover === null ? undefined : blocks[cover.at]
@@ -319,9 +339,13 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
           usedTypes.add(str(item, 'type'))
           cover = { at: blocks.length - 1, n: counter }
         }
+        const html = blocks.map((block, at) => {
+          const over = floats.get(at)
+          return over === undefined ? block : `<div class="nc-stack">${block}${over.join('')}</div>`
+        })
         const id = str(screen, 'id')
         const hidden = id === start ? '' : ' hidden'
-        return `<div class="nc-screen" data-nc-screen="${id}" data-nc-name="${esc(screenName(screen, index))}"${hidden}>${blocks.join('')}</div>`
+        return `<div class="nc-screen" data-nc-screen="${id}" data-nc-name="${esc(screenName(screen, index))}"${hidden}>${html.join('')}</div>`
       })
       .join('')
 
@@ -333,6 +357,12 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
       `${s} .nc-b-sample{margin-left:-16px;margin-right:-16px;color:#000000;font-size:16px;line-height:1.5;` +
       `text-align:left;font-weight:400;letter-spacing:normal}` +
       `${s} .nc-b+.nc-b{margin-top:14px}` +
+      // 重ねた部品の外枠（土台と同じ大きさ。前後は部品どうしと同じ間）。重ねた部品が無ければ出さない。
+      // 横にずらしてWidgetの外へはみ出した分は切る（スマホで画面が横に揺れないように。clip はスクロールの箱にならないので上下は切らない）
+      (hasStack
+        ? `${s}{overflow-x:clip}${s} .nc-stack{position:relative}` +
+          `${s} .nc-b+.nc-stack,${s} .nc-stack+.nc-b,${s} .nc-stack+.nc-stack{margin-top:14px}`
+        : '') +
       `${s} .nc-b--center{text-align:center}` +
       `${s} .nc-b--right{text-align:right}` +
       `${s} [data-nc-go]{cursor:pointer;-webkit-tap-highlight-color:transparent}` +

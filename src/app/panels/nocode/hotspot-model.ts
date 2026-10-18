@@ -6,6 +6,8 @@
  * - 部品と、その下に続く移行先を「まとまり」と呼ぶ。部品を動かす・複製する・消すときはまとまりごと
  *   （被せたボタンを動かしたら、移行先も付いていく。別の部品に被さり直さない）
  * - 移行先そのものを動かしたときは1つだけ動き、動かした先の上の部品に被さり直す
+ * - 「重ねた部品」（float・2026-10-18 本人「重ねたり左右上下に配置できるようにして」）も同じ決まりで土台に乗る
+ *   （移行先と重ねた部品をまとめて「乗る部品」と呼ぶ。位置などは float-model.ts）
  */
 import { newUid } from './templates/kit.ts'
 import type { ItemData } from './templates/types.ts'
@@ -27,17 +29,27 @@ export function isHotspot(block: ItemData | undefined): boolean {
   return block?.['type'] === HOTSPOT_TYPE
 }
 
-/** 移行先が被さる部品（すぐ上の、移行先でない部品）。無ければ null */
+/** 重ねた部品（すぐ上の部品の上に浮かべて、自由な位置に置く）。移行先は印があっても移行先のまま */
+export function isFloating(block: ItemData | undefined): boolean {
+  return block !== undefined && block['float'] === true && !isHotspot(block)
+}
+
+/** すぐ上の部品に乗る部品（移行先・重ねた部品） */
+export function isRider(block: ItemData | undefined): boolean {
+  return isHotspot(block) || isFloating(block)
+}
+
+/** 乗る部品が乗る土台（すぐ上の、乗る部品でない部品）。無ければ null */
 export function coveredIndexOf(blocks: readonly ItemData[], index: number): number | null {
-  for (let j = index - 1; j >= 0; j -= 1) if (!isHotspot(blocks[j])) return j
+  for (let j = index - 1; j >= 0; j -= 1) if (!isRider(blocks[j])) return j
   return null
 }
 
-/** まとまりの終わり（その次の番号）。部品ならその下に続く移行先まで、移行先なら自分だけ */
+/** まとまりの終わり（その次の番号）。部品ならその下に続く乗る部品まで、乗る部品なら自分だけ */
 export function groupEndOf(blocks: readonly ItemData[], index: number): number {
-  if (isHotspot(blocks[index])) return index + 1
+  if (isRider(blocks[index])) return index + 1
   let end = index + 1
-  while (end < blocks.length && isHotspot(blocks[end])) end += 1
+  while (end < blocks.length && isRider(blocks[end])) end += 1
   return end
 }
 
@@ -53,7 +65,7 @@ export function moveGroupBefore(
   if (blocks[from] === undefined) return null
   const end = groupEndOf(blocks, from)
   let at = Math.max(0, Math.min(blocks.length, before))
-  if (!isHotspot(blocks[from])) while (at < blocks.length && isHotspot(blocks[at])) at += 1
+  if (!isRider(blocks[from])) while (at < blocks.length && isRider(blocks[at])) at += 1
   if (at >= from && at <= end) return null
   const group = blocks.slice(from, end)
   const without = [...blocks.slice(0, from), ...blocks.slice(end)]
@@ -68,7 +80,7 @@ export function groupStep(
   direction: -1 | 1,
 ): { list: readonly ItemData[]; index: number } | null {
   if (blocks[index] === undefined) return null
-  if (isHotspot(blocks[index])) {
+  if (isRider(blocks[index])) {
     const target = index + direction
     if (target < 0 || target >= blocks.length) return null
     return moveGroupBefore(blocks, index, direction < 0 ? target : target + 1)

@@ -3,12 +3,13 @@
  *
  * 7 ⌘C（Ctrl+C）で選んだ部品を覚え、⌘V で選んでいる部品の下へ貼る（別の画面・別のWidgetへも。何も選んでいなければいちばん下）。
  *   ⌘D でその場に複製。どれも被せた移行先ごと。型の部品は名前（uid）を付け直す（hotspot-model.ts `freshCopy`）
- * 8 ↑↓ で隣の部品を選ぶ・⌥↑↓ で並べ替え（移行先ごと）。移行先を選んでいるときは、矢印で 1% ずつ動かす（⇧で 10%）
+ * 8 ↑↓ で隣の部品を選ぶ・⌥↑↓ で並べ替え（移行先ごと）。移行先・重ねた部品を選んでいるときは、矢印で 1% ずつ動かす（⇧で 10%）
  * 9 1回押して（部品を選んで）そのまま打つと、その部品の文字の末尾から打ち始める（日本語入力の最初のキーも）
  * 文字を打っている途中は、どのキーも文字の操作に任せる（⌘C は文字のコピー、矢印は入力の印の移動）
  */
 import { setAt } from './nocode/form-state.ts'
-import { clampRect, coveredIndexOf, duplicateGroup, freshCopy, groupEndOf, groupStep, hotspotRect, isHotspot } from './nocode/hotspot-model.ts'
+import { clampRect, coveredIndexOf, duplicateGroup, freshCopy, groupEndOf, groupStep, hotspotRect, isFloating, isHotspot, isRider } from './nocode/hotspot-model.ts'
+import { floatOffset } from './nocode/float-model.ts'
 import { items, type ItemData, type TemplateData } from './nocode/templates/types.ts'
 
 export type PartKeyAction = 'copy' | 'paste' | 'duplicate' | 'prev' | 'next' | 'moveUp' | 'moveDown' | 'nudge' | 'startTyping' | 'none'
@@ -17,7 +18,8 @@ export interface PartKeyState {
   readonly hasSelected: boolean
   /** 文字を打っている途中（ダブルクリック・Enter・打ち始めたあと） */
   readonly isTyping: boolean
-  readonly selectedIsHotspot: boolean
+  /** 選んでいる部品が、矢印で位置を動かす部品か（移行先・重ねた部品） */
+  readonly selectedNudges: boolean
   /** 選んでいる部品が、見たまま画面で文字を打てる部品か */
   readonly selectedIsText: boolean
 }
@@ -36,7 +38,7 @@ export function partKeyAction(
   }
   if (!state.hasSelected || event.metaKey || event.ctrlKey) return 'none'
   if (event.key.startsWith('Arrow')) {
-    if (state.selectedIsHotspot && !event.altKey) return 'nudge'
+    if (state.selectedNudges && !event.altKey) return 'nudge'
     if (event.key === 'ArrowUp') return event.altKey ? 'moveUp' : 'prev'
     if (event.key === 'ArrowDown') return event.altKey ? 'moveDown' : 'next'
     return 'none'
@@ -89,8 +91,8 @@ export function createPartOps(deps: PartOpsDeps): PartOps {
       const screen = deps.screen()
       const list = blocksOf(screen)
       const sel = deps.selected()
-      // 移行先を選んでいたら、その移行先が被さる部品のまとまりの後ろへ（ほかの部品と移行先の間に入れない）
-      const base = sel === null || list[sel] === undefined ? null : isHotspot(list[sel]) ? (coveredIndexOf(list, sel) ?? sel) : sel
+      // 移行先・重ねた部品を選んでいたら、その土台のまとまりの後ろへ（ほかの部品と、乗っている部品の間に入れない）
+      const base = sel === null || list[sel] === undefined ? null : isRider(list[sel]) ? (coveredIndexOf(list, sel) ?? sel) : sel
       const at = base === null ? list.length : groupEndOf(list, base)
       const pasted = clipboard.map(freshCopy)
       if (isHotspot(pasted[0]) && coveredIndexOf([...list.slice(0, at), ...pasted], at) === null) {
@@ -131,7 +133,16 @@ export function createPartOps(deps: PartOpsDeps): PartOps {
       const sel = deps.selected()
       const list = blocksOf(screen)
       const item = sel === null ? undefined : list[sel]
-      if (sel === null || item === undefined || !isHotspot(item)) return false
+      if (sel === null || item === undefined) return false
+      // 重ねた部品は、土台に対する位置を 1%（⇧で 10%）ずつ
+      if (isFloating(item)) {
+        const at = floatOffset(item)
+        const next = floatOffset({ floatX: at.x + dx, floatY: at.y + dy })
+        if (next.x === at.x && next.y === at.y) return true
+        deps.load(withBlocks(screen, list.map((b, i) => (i === sel ? { ...b, floatX: next.x, floatY: next.y } : b))), screen, sel)
+        return true
+      }
+      if (!isHotspot(item)) return false
       const rect = hotspotRect(item)
       const next = clampRect({ ...rect, x: rect.x + dx, y: rect.y + dy })
       if (next.x === rect.x && next.y === rect.y) return true
