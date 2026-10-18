@@ -10,6 +10,9 @@
  *   - カード: 224×90px, padding: 4px 12px, cursor: pointer
  *   - 名前行: SVG 13×13 + テキスト (10px, var(--sb-accent, #0091FF))
  *   - プレビュー: 200×64px, bg: #fff, border: 1px solid #eaeaea, radius: 4px
+ *
+ * 開け閉め（2026-10-18 本人指定「開いたり閉まったりできるようにして」）: 閉じると列ごと細い帯にたたみ、
+ * その分キャンバスが広がる。帯を押すと開く。開け閉めはブラウザに覚えておく。
  */
 import type Quill from 'quill'
 import { guessWidgetName, openWidgetEditorForNode } from './widget-editor.ts'
@@ -18,6 +21,8 @@ import { containWidgetStyles } from './widget-style-scope.ts'
 /* ── 定数 ── */
 
 const SIDEBAR_W = 220
+const COLLAPSED_W = 28
+const COLLAPSED_KEY = 'sb-widget-nav-collapsed'
 const CARD_W = 196
 const CARD_PAD_H = 12
 const CARD_PAD_V = 4
@@ -35,6 +40,38 @@ function svgPuzzle(): string {
     <path d="M4.5 2C4.5 1.17 5.17.5 6 .5s1.5.67 1.5 1.5h2A1.5 1.5 0 0 1 11 3.5v2c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5v2A1.5 1.5 0 0 1 9.5 12h-2c0 .83-.67 1.5-1.5 1.5S4.5 12.83 4.5 12h-2A1.5 1.5 0 0 1 1 10.5v-2c-.83 0-1.5-.67-1.5-1.5S.17 5.5 1 5.5v-2A1.5 1.5 0 0 1 2.5 2h2z"
       fill="#999" stroke="#999" stroke-width=".3"/>
   </svg>`
+}
+
+/** 開け閉めの矢印（left＝閉じる・right＝開く） */
+function svgChevron(direction: 'left' | 'right'): string {
+  const d = direction === 'left' ? 'M10 3.5L5.5 8l4.5 4.5' : 'M6 3.5L10.5 8 6 12.5'
+  return `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0">
+    <path d="${d}" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`
+}
+
+/* ── 開け閉めの状態（ブラウザに覚えておく） ── */
+
+interface NavState {
+  readonly collapsed: boolean
+  readonly toggle: () => void
+}
+
+function loadCollapsed(): boolean {
+  try {
+    return localStorage.getItem(COLLAPSED_KEY) === '1'
+  } catch {
+    // 保存先が使えないブラウザ（シークレット等）では、毎回開いた状態から始める
+    return false
+  }
+}
+
+function saveCollapsed(collapsed: boolean): void {
+  try {
+    localStorage.setItem(COLLAPSED_KEY, collapsed ? '1' : '0')
+  } catch {
+    // 保存先が使えないブラウザでは、その場の開け閉めだけ効く（次に開いたときは開いた状態）
+  }
 }
 
 /* ── 公開 API ── */
@@ -75,7 +112,13 @@ export function mountWidgetNav(root: HTMLElement, quill: Quill): void {
   // 初回スキャン＋MutationObserver で Widget の増減を検知
   // デバウンスして過剰な再描画を防止（カードクリック直後の DOM 変化で再構築されるのを回避）
   let debounceTimer: ReturnType<typeof setTimeout> | null = null
-  const refresh = (): void => refreshCards(sidebar, editor, quill)
+  let collapsed = loadCollapsed()
+  const toggle = (): void => {
+    collapsed = !collapsed
+    saveCollapsed(collapsed)
+    refresh()
+  }
+  const refresh = (): void => refreshCards(sidebar, editor, quill, { collapsed, toggle })
   const debouncedRefresh = (): void => {
     if (debounceTimer !== null) clearTimeout(debounceTimer)
     debounceTimer = setTimeout(refresh, 200)
@@ -87,7 +130,7 @@ export function mountWidgetNav(root: HTMLElement, quill: Quill): void {
 
 /* ── カード描画 ── */
 
-function refreshCards(sidebar: HTMLElement, editor: HTMLElement, quill: Quill): void {
+function refreshCards(sidebar: HTMLElement, editor: HTMLElement, quill: Quill, nav: NavState): void {
   const widgets = editor.querySelectorAll<HTMLElement>('section.sb-widget-block')
   if (widgets.length === 0) {
     sidebar.style.display = 'none'
@@ -95,24 +138,75 @@ function refreshCards(sidebar: HTMLElement, editor: HTMLElement, quill: Quill): 
   }
 
   sidebar.style.display = 'flex'
+  sidebar.style.width = `${nav.collapsed ? COLLAPSED_W : SIDEBAR_W}px`
   // 既存カードを全削除して再構築（Widget の並び順が変わる可能性があるため）
   sidebar.innerHTML = ''
 
-  // ヘッダーラベル
-  const header = document.createElement('div')
-  header.textContent = '設置済みWidget'
-  header.style.cssText =
-    `padding:4px ${CARD_PAD_H}px;font:600 10px/1.4 ${FONT};color:#999;letter-spacing:.5px`
-  sidebar.append(header)
+  if (nav.collapsed) {
+    sidebar.append(createCollapsedStrip(nav.toggle))
+    return
+  }
 
+  sidebar.append(createHeader(nav.toggle))
   for (const widgetNode of widgets) {
     const card = createWidgetCard(widgetNode, quill)
     sidebar.append(card)
   }
 }
 
+/** 開け閉めのボタンの共通部分（押したら toggle・今の開閉を読み上げに伝える） */
+function toggleButton(label: string, expanded: boolean, toggle: () => void): HTMLButtonElement {
+  const button = document.createElement('button')
+  button.type = 'button'
+  button.dataset['widgetNavToggle'] = 'true'
+  button.setAttribute('aria-label', label)
+  button.setAttribute('aria-expanded', String(expanded))
+  button.title = label
+  button.addEventListener('mouseenter', () => { button.style.background = '#f5f5f5' })
+  button.addEventListener('mouseleave', () => { button.style.background = 'transparent' })
+  button.addEventListener('click', toggle)
+  return button
+}
+
+/** 開いているときの見出し（「設置済みWidget」＋閉じるボタン） */
+function createHeader(toggle: () => void): HTMLElement {
+  const header = document.createElement('div')
+  header.style.cssText =
+    `display:flex;align-items:center;justify-content:space-between;gap:4px;padding:0 4px 0 ${CARD_PAD_H}px`
+
+  const label = document.createElement('span')
+  label.textContent = '設置済みWidget'
+  label.style.cssText = `font:600 10px/1.4 ${FONT};color:#999;letter-spacing:.5px`
+
+  const close = toggleButton('設置済みWidgetを閉じる', true, toggle)
+  close.innerHTML = svgChevron('left')
+  close.style.cssText =
+    'display:flex;align-items:center;justify-content:center;width:24px;height:24px;padding:0;' +
+    'border:0;border-radius:4px;background:transparent;color:#999;cursor:pointer'
+
+  header.append(label, close)
+  return header
+}
+
+/** 閉じているときの細い帯（どこを押しても開く） */
+function createCollapsedStrip(toggle: () => void): HTMLElement {
+  const strip = toggleButton('設置済みWidgetを開く', false, toggle)
+  strip.style.cssText =
+    `display:flex;flex-direction:column;align-items:center;gap:8px;flex:1;width:100%;padding:4px 0;` +
+    `border:0;background:transparent;color:#999;cursor:pointer;font:600 10px/1.4 ${FONT};letter-spacing:.5px`
+
+  const label = document.createElement('span')
+  label.textContent = '設置済みWidget'
+  label.style.cssText = 'writing-mode:vertical-rl'
+
+  strip.innerHTML = svgChevron('right')
+  strip.append(label)
+  return strip
+}
+
 function createWidgetCard(widgetNode: HTMLElement, quill: Quill): HTMLElement {
   const card = document.createElement('div')
+  card.dataset['widgetNavCard'] = 'true'
   card.style.cssText =
     `display:flex;flex-direction:column;gap:4px;` +
     `padding:${CARD_PAD_V}px ${CARD_PAD_H}px;cursor:pointer;border-radius:4px;` +
