@@ -18,6 +18,7 @@ import { MORE_BLOCK_TYPES } from './builder-blocks-more.ts'
 import { EXTRA_BLOCK_TYPES } from './builder-blocks-extra.ts'
 import { renderMoreBlock } from './builder-blocks-more-render.ts'
 import { pressAttrs, pressContext, type PressContext } from './press-actions.ts'
+import { scopeSampleStyles } from '../sample-css-scope.ts'
 import { ACCENT_PRESETS, bool, int, pick, str, type BlockType, type ItemData, type NocodeTemplate } from './types.ts'
 import {
   ALIGN_OPTIONS,
@@ -468,9 +469,12 @@ function renderBlockBody(item: ItemData, i: number, s: string, seen: Set<string>
       const style = pick(item, 'style', ['solid', 'dotted'] as const, 'solid')
       return { html: `<hr class="nc-b nc-b-divider nc-b-divider--${style} ${cls}">`, css: '' }
     }
-    case 'sample':
-      // ライブラリの見本（採取した見本のHTML。style・script ごとそのまま）。中身は入力の画面で直してある
-      return { html: `<div class="nc-b nc-b-sample ${cls}">${dedupeSampleAssets(str(item, 'html'), seen)}</div>`, css: '' }
+    case 'sample': {
+      // ライブラリの見本・手で書いたHTML（style・script ごと）。中身は入力の画面で直してある。
+      // 見本の CSS はこの部品の中だけに効かせる（範囲の無い `.downArrow{…}` が別の Widget にも効いていた・2026-10-18）
+      const html = scopeSampleStyles(str(item, 'html'), `${s} .${cls}`)
+      return { html: `<div class="nc-b nc-b-sample ${cls}">${dedupeSampleAssets(html, seen)}</div>`, css: '' }
+    }
     default: {
       // 増やした部品（builder-blocks-more-render.ts）
       const more = renderMoreBlock(item, i, s, press)

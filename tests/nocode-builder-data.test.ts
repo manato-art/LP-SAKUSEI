@@ -148,7 +148,11 @@ describe('設定データを持たないWidgetを見本の部品1つにする（
     expect(wrapped['background']).toBe('none')
     expect(wrapped['screens']).toEqual([{ id: 's1', name: '画面①', blocks: [{ type: 'sample', title: '見出し', html: sample }] }])
     const html = BUILDER_TEMPLATE.render(wrapped, UID)
-    expect(html).toContain(`<div class="nc-b nc-b-sample nc-b-1">${sample}</div>`)
+    // 見本のCSSはその部品の中だけに効かせる（2026-10-18）。本文はそのまま
+    expect(html).toContain(
+      `<div class="nc-b nc-b-sample nc-b-1"><style>.${UID} .nc-b-1 .nc-abcdefgh .t{color:red}</style>` +
+        '<div class="nc nc-sample nc-abcdefgh" data-nocode="sample"><p class="t">x</p></div></div>',
+    )
     expect(html).toMatch(new RegExp(`\\.${UID}\\{padding:0px 16px;\\}`))
     expect(html).not.toMatch(new RegExp(`\\.${UID}\\{[^}]*background`))
     expect(BUILDER_TEMPLATE.validate(wrapped, NOW)).toBeNull()

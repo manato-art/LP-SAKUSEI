@@ -252,12 +252,15 @@ describe('入れる前の確かめ', () => {
 describe('見本の部品（ライブラリの見本を部品として積む）', () => {
   const SAMPLE = '<style>.q{color:red}</style><div class="q"><a class="yes" href="#" data-nc-go="s2">はい</a></div><script>var a=1</script>'
 
-  it('見本のHTMLはそのまま、部品の箱に入れる（見本のstyle・scriptも残す）', () => {
+  it('見本のHTMLはそのまま部品の箱に入れる（scriptも残す）。見本のCSSはその部品の中だけに効かせる（2026-10-18）', () => {
     const html = render([
       screen('s1', '画面①', [{ type: 'sample', title: 'アンケート', html: SAMPLE }]),
       screen('s2', '画面②', [{ type: 'text', text: 'ありがとう', align: 'center' }]),
     ])
-    expect(html).toContain(`<div class="nc-b nc-b-sample nc-b-1">${SAMPLE}</div>`)
+    expect(html).toContain(
+      `<div class="nc-b nc-b-sample nc-b-1"><style>.${UID} .nc-b-1 .q{color:red}</style>` +
+        '<div class="q"><a class="yes" href="#" data-nc-go="s2">はい</a></div><script>var a=1</script></div>',
+    )
   })
 
   it('「部品を積んで作る」の土台の見た目（画像の出し方・余白など）は、見本の中には効かせない', () => {
@@ -302,16 +305,24 @@ describe('見本の部品（ライブラリの見本を部品として積む）'
 describe('分けた見本の部品', () => {
   const SAMPLE = '<style>.q{color:red}</style><script>window.q=(window.q||0)+1</script><div class="q">問い</div>'
 
-  it('同じCSS・同じスクリプトは1回だけ出す（中身の違う部品はそのまま）', () => {
+  it('同じスクリプトは1回だけ出す（中身の違う部品はそのまま）', () => {
     const html = render([
       screen('s1', '画面①', [{ type: 'sample', title: 'アンケート', html: SAMPLE }]),
       screen('s2', '画面②', [{ type: 'sample', title: 'アンケート', html: SAMPLE.replace('問い', '問い2') }]),
       screen('s3', '画面③', [{ type: 'sample', title: 'ほかの見本', html: '<style>.r{color:blue}</style><p>別</p>' }]),
     ])
-    expect(html.split('<style>.q{color:red}</style>')).toHaveLength(2)
     expect(html.split('window.q=(window.q||0)+1')).toHaveLength(2)
     expect(html).toContain('問い2')
-    expect(html).toContain('.r{color:blue}')
+    expect(html).toContain(`.${UID} .nc-b-3 .r{color:blue}`)
+  })
+
+  it('CSSはどの部品にもその部品の分が残る（2026-10-18・部品ごとに範囲を付けたので、1つ目だけに残すと2つ目以降に効かない）', () => {
+    const html = render([
+      screen('s1', '画面①', [{ type: 'sample', title: 'アンケート', html: SAMPLE }]),
+      screen('s2', '画面②', [{ type: 'sample', title: 'アンケート', html: SAMPLE.replace('問い', '問い2') }]),
+    ])
+    expect(html).toContain(`<style>.${UID} .nc-b-1 .q{color:red}</style>`)
+    expect(html).toContain(`<style>.${UID} .nc-b-2 .q{color:red}</style>`)
   })
 })
 
