@@ -7,6 +7,10 @@
  * **非スコープ**で当て直す必要がある（これが無いと配信で全部左揃えになる）。
  */
 export const LP_BASE_CSS = [
+  // 本文の段落（Quill の1行＝<body> の直下の <p>）の上下の空きを、編集画面（`.ql-editor p{margin:0}`）と同じ0にする。
+  // これが無いとブラウザ既定の上下1文字分が付き、配信だけ行と行の間が広かった（2026-10-18 本人指摘・本体も `.article-body p{margin:0}`）。
+  // Widget の中の段落は <section> の中なので当たらない（これまでの配信の見た目のまま）。
+  'body>p{margin:0}',
   '.ql-align-center{text-align:center}',
   '.ql-align-right{text-align:right}',
   '.ql-align-justify{text-align:justify}',
