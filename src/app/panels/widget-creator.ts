@@ -180,10 +180,13 @@ export function openWidgetCreator(
       return
     }
 
-    // 作成したWidgetは localStorage に保存し、「作成したWidget」カテゴリーから再利用できるようにする（指示147）。
+    // 作成したWidgetはサーバーに保存し、全員の「作成したWidget」カテゴリーから再利用できるようにする（指示147・2026-10-24 サーバーへ）。
+    // LPへはそのまま入れる。保存だけ通らなかったときは知らせる（作ったつもりで一覧に無い、を黙ってやらない）
     const category = catSelect.value === '選択してください' ? '' : catSelect.value
     const description = (descGroup.querySelector('input') as HTMLInputElement | null)?.value ?? ''
-    saveCreatedWidget(widgetName, finalHtml, undefined, { category, description })
+    void saveCreatedWidget(widgetName, finalHtml, undefined, { category, description }).then((ok) => {
+      if (!ok) toast(`「${widgetName}」を作成したWidgetに保存できませんでした（LPには入っています）`, 'error')
+    })
 
     creator.remove()
     libraryClose()

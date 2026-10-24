@@ -320,13 +320,16 @@ export function mountStudio(host: StudioHost): void {
         validate: (v) => (v === '' ? '名前を入れてください' : null),
       }).then((name) => {
         if (name === null) return
-        if (!saveCreatedWidget(name, html)) {
-          toast('登録できませんでした。画像が大きいと、このブラウザに保存しきれないことがあります', 'error')
-          return
-        }
-        // このあと入れる分は別の名前にする（登録した分と同じLPに並んでも、色がまざらない）
-        current.rekey()
-        toast(`「${name}」を作成したWidgetに登録しました`)
+        // 全員で共有する「作成したWidget」へ（サーバーに入ったか確かめてから知らせる・2026-10-24）
+        void saveCreatedWidget(name, html).then((ok) => {
+          if (!ok) {
+            toast('登録できませんでした。Widgetが大きすぎるか、つながっていません。もう一度お試しください', 'error')
+            return
+          }
+          // このあと入れる分は別の名前にする（登録した分と同じLPに並んでも、色がまざらない）
+          current.rekey()
+          toast(`「${name}」を作成したWidgetに登録しました（ほかのアカウントからも使えます）`)
+        })
       })
     },
     onPrimary: () => {

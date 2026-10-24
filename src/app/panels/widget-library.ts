@@ -28,8 +28,10 @@ import {
   isFavorite,
   loadCreatedWidgets,
   loadFavorites,
+  refreshWidgetLibrary,
   toggleFavorite,
 } from './widget-library-storage.ts'
+import { isCreator } from '../session.ts'
 import { insertWidget, openWidgetCreator } from './widget-creator.ts'
 // 見本の中身（106本ぶんのHTML・約0.8MB）は、ライブラリを開いたときだけ読む（LPの編集画面を軽くする）。
 // 種類の一覧と型は軽いので、そのまま読み込む
@@ -56,10 +58,10 @@ const HOOK = {
   cardTitle: '.MuiCardHeader-title p',
 } as const
 
-/** 「お気に入り」カテゴリーのインデックス（採取物の2番目のボタン）。指示157で localStorage 連動に。 */
+/** 「お気に入り」カテゴリーのインデックス（採取物の2番目のボタン）。指示157・2026-10-24 からアカウントごとにサーバーへ。 */
 const FAVORITE_CAT = 1
 
-/** 「作成したWidget」カテゴリーのセンチネル値（localStorage の自作Widgetを出す）。 */
+/** 「作成したWidget」カテゴリーのセンチネル値（全員で共有している作成したWidgetを出す）。 */
 const CREATED_CAT = -2
 
 /** 「作成したWidget」の空メッセージ。 */
@@ -164,6 +166,12 @@ function open(quill: Quill | null, extra: { onClose?: () => void } = {}): void {
   wireSearch(portal.root)
   // 開いた直後は「見本」（自作の見本）を出す
   renderNewSamples(portal.root, quill, portal.close)
+  // 作成したWidget・お気に入りはサーバーから読む（2026-10-24。以前はブラウザの中だけ＝ほかのアカウントから見えなかった）。
+  // 読めたら見本のカードの★を塗り直す
+  void refreshWidgetLibrary().then(
+    () => repaintFavoriteStars(portal.root),
+    () => toast('作成したWidget・お気に入りを読み込めませんでした。開き直してください', 'error'),
+  )
 }
 
 /* ================================================================
@@ -321,17 +329,36 @@ function wireCategories(root: HTMLElement, quill: Quill | null, close: () => voi
       }
       const catIndex = Number(cat.dataset['catIndex'] ?? String(NEW_SAMPLES_CAT))
       if (catIndex === CREATED_CAT) {
-        // 作成したWidget: localStorage の自作Widgetをカードで表示
-        renderCreatedWidgets(root, quill, close)
+        // 作成したWidget: 全員の分をサーバーから読み直してカードで表示（ほかの人が作った分も出る）
+        showFromServer(root, () => renderCreatedWidgets(root, quill, close))
       } else if (catIndex === FAVORITE_CAT) {
-        // お気に入り: localStorage のお気に入りをカードで表示
-        renderFavoriteWidgets(root, quill, close)
+        // お気に入り: 自分の分をサーバーから読み直してカードで表示
+        showFromServer(root, () => renderFavoriteWidgets(root, quill, close))
       } else {
         // 見本: 自作の見本（samples/）をカードで表示
         renderNewSamples(root, quill, close)
       }
     })
   }
+}
+
+/** 読み直しの番号（読んでいる間にほかのカテゴリーを押したら、前の読み直しの結果では描かない） */
+let serverLoad = 0
+
+/** サーバーから読み直してから描く（読めなければ一覧に知らせる） */
+function showFromServer(root: HTMLElement, render: () => void): void {
+  const grid = root.querySelector<HTMLElement>(HOOK.grid)
+  grid?.replaceChildren(gridMessage('読み込み中…'))
+  serverLoad += 1
+  const mine = serverLoad
+  void refreshWidgetLibrary().then(
+    () => {
+      if (mine === serverLoad) render()
+    },
+    () => {
+      if (mine === serverLoad) grid?.replaceChildren(gridMessage('読み込めませんでした。開き直してください。'))
+    },
+  )
 }
 
 /**
@@ -448,10 +475,10 @@ function newSampleCard(sample: NewSample): HTMLElement {
 }
 
 /* ================================================================
- *  作成したWidget（localStorage）の一覧描画
+ *  作成したWidget（サーバー・全員で共有）の一覧描画
  * ================================================================ */
 
-/** 「作成したWidget」カテゴリー: localStorage の自作Widgetをカードで描画する。 */
+/** 「作成したWidget」カテゴリー: 全員で共有している作成したWidget（最後に読み直した中身）をカードで描画する。 */
 function renderCreatedWidgets(root: HTMLElement, quill: Quill | null, close: () => void): void {
   const grid = root.querySelector<HTMLElement>(HOOK.grid)
   if (grid === null) return
@@ -503,10 +530,10 @@ function renderCreatedWidgets(root: HTMLElement, quill: Quill | null, close: () 
         detail: '元に戻せません。',
         submitLabel: '削除する',
         danger: true,
-      }).then((ok) => {
+      }).then(async (ok) => {
         if (!ok) return
-        deleteCreatedWidget(w.id)
-        renderCreatedWidgets(root, quill, close)
+        if (await deleteCreatedWidget(w.id)) renderCreatedWidgets(root, quill, close)
+        else toast('削除できませんでした。開き直してから、もう一度お試しください', 'error')
       })
     })
 
@@ -530,13 +557,15 @@ function renderCreatedWidgets(root: HTMLElement, quill: Quill | null, close: () 
       })
     })
 
-    actions.append(del, add)
+    // 消せるのは管理者だけ（2026-10-24 本人の選択。LP作成者には出さない・サーバーでも断る）
+    if (!isCreator()) actions.append(del)
+    actions.append(add)
     card.append(frame, titleEl, actions)
     grid.append(card)
   }
 }
 
-/** 「お気に入り」カテゴリー: localStorage のお気に入りWidgetをカードで描画する（指示157）。 */
+/** 「お気に入り」カテゴリー: 自分のお気に入りWidget（最後に読み直した中身）をカードで描画する（指示157）。 */
 function renderFavoriteWidgets(root: HTMLElement, quill: Quill | null, close: () => void): void {
   const grid = root.querySelector<HTMLElement>(HOOK.grid)
   if (grid === null) return
@@ -578,8 +607,10 @@ function renderFavoriteWidgets(root: HTMLElement, quill: Quill | null, close: ()
       'cursor:pointer;font:12px "Hiragino Sans",sans-serif'
     unfav.addEventListener('click', (e) => {
       e.stopPropagation()
-      toggleFavorite(w.key, w.name, w.html)
-      renderFavoriteWidgets(root, quill, close)
+      void toggleFavorite(w.key, w.name, w.html).then(
+        () => renderFavoriteWidgets(root, quill, close),
+        () => toast('お気に入りを外せませんでした。もう一度お試しください', 'error'),
+      )
     })
 
     const add = document.createElement('button')
@@ -765,21 +796,31 @@ function addUseAsScreens(card: HTMLElement, preview: HTMLElement, title: string,
   preview.parentElement?.insertBefore(button, preview)
 }
 
+/** ★の塗り（お気に入りなら濃く） */
+function paintStar(svg: SVGElement, key: string): void {
+  const on = isFavorite(key)
+  svg.style.setProperty('opacity', on ? '1' : '0.3')
+  svg.setAttribute('aria-label', on ? 'お気に入り解除' : 'お気に入りに登録')
+}
+
+/** 開いている一覧の★を、最後に読み直したお気に入りで塗り直す（開いた直後はサーバーの読み直しより先に描くため） */
+function repaintFavoriteStars(root: HTMLElement): void {
+  for (const svg of root.querySelectorAll<SVGElement>('svg[data-favorite-key]')) paintStar(svg, svg.dataset['favoriteKey'] ?? '')
+}
+
 /** カードのブックマークSVGをお気に入りトグルにする。登録状態で色/不透明度を切り替える。 */
 function wireFavoriteToggle(card: HTMLElement, title: string): void {
   const svg = card.querySelector<SVGElement>('.MuiCardActions-root > svg')
   if (svg === null) return
-  const paint = (): void => {
-    const on = isFavorite(title)
-    svg.style.opacity = on ? '1' : '0.3'
-    svg.setAttribute('aria-label', on ? 'お気に入り解除' : 'お気に入りに登録')
-  }
+  svg.dataset['favoriteKey'] = title
   svg.style.cursor = 'pointer'
-  paint()
+  paintStar(svg, title)
   svg.addEventListener('click', (event) => {
     event.stopPropagation()
-    toggleFavorite(title, title, widgetBodyHtml(card) ?? '')
-    paint()
+    void toggleFavorite(title, title, widgetBodyHtml(card) ?? '').then(
+      () => paintStar(svg, title),
+      () => toast('お気に入りを変えられませんでした。もう一度お試しください', 'error'),
+    )
   })
 }
 

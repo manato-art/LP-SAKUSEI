@@ -101,7 +101,7 @@ export function isEmailGateVerified(req: Request): boolean {
 }
 
 /** 入口で入れたメール（以前の固定の印・印なし・書き換えられた印なら null） */
-function gateEmail(req: Request): string | null {
+export function gateEmail(req: Request): string | null {
   return gateEmailOf(parseCookies(req.headers['cookie'])[EMAIL_GATE_COOKIE])
 }
 

@@ -124,6 +124,12 @@ export const CREATOR_RULES: readonly Rule[] = [
   rule('PUT', '/ab_tests/:id/split_test_settings/:id', 'abTest'),
   rule('GET', '/ab_tests/:id/options/devide', 'abTest'),
   rule('PUT', '/ab_tests/:id/options/devide', 'abTest'),
+
+  // ── 作成したWidget・お気に入り（2026-10-24 本人の選択「全員で全部を共有」。消すのは管理者だけ＝DELETE は通さない）──
+  rule('GET', '/widget_library', 'global'),
+  rule('POST', '/widget_library/created', 'global'),
+  rule('POST', '/widget_library/favorites/toggle', 'global'),
+  rule('POST', '/widget_library/import', 'global'),
 ]
 
 export type CreatorAccessResult =

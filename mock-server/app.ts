@@ -39,6 +39,7 @@ import { redirectPageDeliveryRouter } from './routes/redirect-page-delivery.ts'
 import { adminAuthRouter, isAdminAuthenticated, principalOf, render404Page } from './lib/admin-auth.ts'
 import { checkCreatorAccess, markCreator } from './lib/creator-access.ts'
 import { creatorAccountsRouter } from './routes/creator-accounts.ts'
+import { widgetLibraryRouter } from './routes/widget-library.ts'
 import { allowedEmailsRouter } from './routes/allowed-emails.ts'
 import { bulkReplaceRouter } from './routes/bulk-replace.ts'
 import { mediaRouter } from './routes/media.ts'
@@ -181,6 +182,7 @@ export function createApp(): Express {
     domainsRouter,
     // マイページ > LP作成者（管理者だけ・LP作成者には lib/creator-access.ts が通さない）
     creatorAccountsRouter,
+    widgetLibraryRouter,
   ]
 
   // [A] メインREST API（実物は v1 / v2 が混在するため両方に同じルーターを載せる）
