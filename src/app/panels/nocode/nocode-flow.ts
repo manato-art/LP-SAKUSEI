@@ -7,8 +7,18 @@
  * （「Widgetの最初の画面と同じだからいらない」）。
  */
 
+/**
+ * ライブラリで選んだ見本。isWholeWidget＝部品で作ったWidgetそのものの見本（アンケート・2026-10-24）で、
+ * 部品の1つにせず Widget の中身ごと置き換える（widget-studio-builder.ts）
+ */
+export interface PickedSample {
+  readonly title: string
+  readonly html: string
+  readonly isWholeWidget?: boolean
+}
+
 /** 見本を受け取る先 */
-export type SamplePick = (sample: { title: string; html: string }) => void
+export type SamplePick = (sample: PickedSample) => void
 
 let pending: SamplePick | null = null
 

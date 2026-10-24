@@ -38,7 +38,9 @@ import { insertWidget, openWidgetCreator } from './widget-creator.ts'
 // 見本の中身（106本ぶんのHTML・約0.8MB）は、ライブラリを開いたときだけ読む（LPの編集画面を軽くする）。
 // 種類の一覧と型は軽いので、そのまま読み込む
 import { SAMPLE_CATEGORIES, type NewSample, type SampleCategory } from './nocode/samples/kit.ts'
-import { armSamplePick, cancelSamplePick, isSamplePickArmed, takeSamplePick, type SamplePick } from './nocode/nocode-flow.ts'
+import { LIBRARY_SAMPLES, WHOLE_SAMPLE_NAMES } from './nocode/library-surveys.ts'
+import { extractBuilderData } from './nocode/builder-data.ts'
+import { armSamplePick, cancelSamplePick, isSamplePickArmed, takeSamplePick, type PickedSample, type SamplePick } from './nocode/nocode-flow.ts'
 import { showLibraryHint } from './nocode/library-hint.ts'
 import { sampleScreens } from './nocode/sample-to-screens.ts'
 import { BUILDER_TEMPLATE, blankBuilderData } from './nocode/templates/builder.ts'
@@ -96,7 +98,7 @@ let currentPortal: Portal | null = null
  */
 export function openWidgetLibraryForPick(quill: Quill | null, handlers: { onPick: SamplePick; onCancel: () => void }): void {
   let done = false
-  const finish = (sample: { title: string; html: string } | null): void => {
+  const finish = (sample: PickedSample | null): void => {
     if (done) return
     done = true
     currentPortal?.close()
@@ -399,21 +401,18 @@ function gridMessage(text: string): HTMLElement {
  * カードの形は採取したカードと同じ目印（`.MuiCard-root` / `.MuiCardHeader-title p` / iframe /
  * `.MuiCardActions-root` の「プレビュー」「追加」）にして、配線は `wireCards` にそのまま任せる
  * （「画面を作って使う」・部品への受け渡し・仮のリンクの知らせも同じ動きになる）。
+ *
+ * 見本は画面と一緒に読む（2026-10-24）。以前はライブラリを開いたときに別のファイルを読んでいて、本番を更新すると
+ * 更新の前から開いていた画面で「見本を読み込めませんでした」になっていた（tests/no-lazy-chunks.test.ts）。
  */
 function renderNewSamples(root: HTMLElement, quill: Quill | null, close: () => void, category?: SampleCategory): void {
   const grid = root.querySelector<HTMLElement>(HOOK.grid)
   if (grid === null) return
-  grid.replaceChildren(gridMessage('読み込み中…'))
-  void import('./nocode/samples/index.ts').then(
-    ({ NEW_SAMPLES }) => {
-      const list = category === undefined ? NEW_SAMPLES : NEW_SAMPLES.filter((sample) => sample.category === category)
-      grid.replaceChildren(...list.map((sample) => newSampleCard(sample)))
-      if (list.length === 0) grid.append(gridMessage('この種類の見本はまだありません。'))
-      wireCards(root, quill, close)
-      applySearchFilter(root)
-    },
-    () => grid.replaceChildren(gridMessage('見本を読み込めませんでした。開き直してください。')),
-  )
+  const list = category === undefined ? LIBRARY_SAMPLES : LIBRARY_SAMPLES.filter((sample) => sample.category === category)
+  grid.replaceChildren(...list.map((sample) => newSampleCard(sample)))
+  if (list.length === 0) grid.append(gridMessage('この種類の見本はまだありません。'))
+  wireCards(root, quill, close)
+  applySearchFilter(root)
 }
 
 function cardActionButton(text: string, primary: boolean): HTMLButtonElement {
@@ -472,6 +471,8 @@ function newSampleCard(sample: NewSample): HTMLElement {
   star.append(path)
   actions.append(star, cardActionButton('プレビュー', false), cardActionButton('追加', true))
 
+  // 部品で作ったWidgetそのものの見本（アンケート）。Widget編集で選んだときは中身ごと置き換える（wireCards）
+  if (sample.isWholeWidget === true) card.dataset['ncWholeWidget'] = 'true'
   card.append(head, frame, actions)
   return card
 }
@@ -642,8 +643,8 @@ function renderFavoriteWidgets(root: HTMLElement, quill: Quill | null, close: ()
       'cursor:pointer;font:12px "Hiragino Sans",sans-serif'
     add.addEventListener('click', (e) => {
       e.stopPropagation()
-      // 「部品を積んで作る」で見本を選んでいるときは、LPへは入れずに部品として渡す
-      if (handOverToBuilder(w.name, rekeyUid(w.html, newUid()))) return
+      // 「部品を積んで作る」で見本を選んでいるときは、LPへは入れずに部品として渡す（アンケートの型の見本は中身ごと）
+      if (handOverToBuilder(w.name, rekeyUid(w.html, newUid()), WHOLE_SAMPLE_NAMES.has(w.key))) return
       // LPの無い画面（ポップアップの中身）で開いたときは、上で必ず渡している（ここへは来ない）
       if (quill === null) return
       close()
@@ -755,7 +756,7 @@ function wireCards(root: HTMLElement, quill: Quill | null, close: () => void): v
       // 画面①②…に作り変えた見本は、入れるたびに名前（nc-xxxxxxxx）を付け直す（同じLPに2つ入れても、画面の切り替えがぶつからない）
       const bodyHtml = raw === null ? null : rekeyUid(raw, newUid())
       // 「部品を積んで作る」で見本を選んでいるときは、LPへは入れずに部品として渡す
-      if (handOverToBuilder(title, bodyHtml)) return
+      if (handOverToBuilder(title, bodyHtml, card.dataset['ncWholeWidget'] === 'true')) return
       // LPの無い画面（ポップアップの中身）で開いたときは、上で必ず渡している（ここへは来ない）
       if (quill === null) return
       close()
@@ -807,6 +808,16 @@ function addUseAsScreens(card: HTMLElement, preview: HTMLElement, title: string,
       toast(`「${title}」は部品にできません。ほかの見本を選んでください`, 'error')
       return
     }
+    // 部品で作ったWidgetそのものの見本（アンケート）は、その部品のまま開く（見本の部品に分けない）
+    const built = extractBuilderData(bodyHtml)
+    if (built !== null) {
+      close()
+      requestAnimationFrame(() => {
+        openWidgetStudio(quill, { kind: 'new', data: built.data, uid: built.uid })
+        toast(`「${title}」を開きました。質問・答え・移る先の画面は、部品を選んで右で直せます`)
+      })
+      return
+    }
     const screens = sampleScreens({ title, html: bodyHtml })
     close()
     requestAnimationFrame(() => {
@@ -848,15 +859,16 @@ function wireFavoriteToggle(card: HTMLElement, title: string): void {
 /**
  * 「部品を積んで作る」で見本を選んでいる途中なら、その見本を部品として渡す（LPには入れない）。渡したら true。
  * 見本の中身が取れないカードは部品にできない（知らせて、選び直してもらう）。
+ * isWholeWidget＝部品で作ったWidgetそのものの見本（アンケート）。受け取る側が Widget の中身ごと置き換える。
  */
-function handOverToBuilder(title: string, html: string | null): boolean {
+function handOverToBuilder(title: string, html: string | null, isWholeWidget = false): boolean {
   const receive = takeSamplePick()
   if (receive === null) return false
   if (html === null || html.trim() === '') {
     toast(`「${title}」は部品にできません。ほかの見本を選んでください`, 'error')
     return true
   }
-  receive({ title, html })
+  receive(isWholeWidget ? { title, html, isWholeWidget } : { title, html })
   return true
 }
 

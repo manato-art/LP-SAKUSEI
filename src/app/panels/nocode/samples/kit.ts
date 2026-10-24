@@ -111,6 +111,11 @@ export interface NewSample {
   readonly summary: string
   /** LPに入れるHTML（`<style>` ＋ `<div class="nc nc-sample nc-xxxxxxxx" data-nocode="sample">` ＋ 必要なら `<script>`） */
   readonly html: string
+  /**
+   * 部品で作ったWidgetそのもの（設定データつき）の見本（2026-10-24 アンケート・nocode/library-surveys.ts）。
+   * 見本の部品にはせず、Widget編集では中身ごと置き換える。samples/ の見本（見本の部品になる形）には付けない
+   */
+  readonly isWholeWidget?: boolean
 }
 
 /**

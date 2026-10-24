@@ -33,7 +33,7 @@ import { loadGoogleFonts } from './toolbar/text-format.ts'
 import { svgPlus } from './widget-editor-icons.ts'
 import { COLOR, FONT, type WidgetEditTarget } from './widget-editor-theme.ts'
 import { templateNameOf, visibleTextOf } from './widget-editor-html.ts'
-import { defaultRegisterName } from './nocode/nocode-flow.ts'
+import { defaultRegisterName, type PickedSample } from './nocode/nocode-flow.ts'
 import { closeMediaControl } from './widget-media-control.ts'
 import { RIGHT_PANE_FLEX, buildCodePanels } from './widget-code-panel.ts'
 import { buildVisualEditor, type PreviewDevice, type PreviewFrame } from './widget-visual-editor.ts'
@@ -155,12 +155,13 @@ export function mountStudio(host: StudioHost): void {
     panel.style.display = 'flex'
     backdrop.style.display = 'block'
   }
-  const pickSample = (): Promise<{ title: string; html: string } | null> =>
+  const pickSample = (): Promise<PickedSample | null> =>
     new Promise((resolve) => {
       hide()
-      const finish = (sample: { title: string; html: string } | null): void => {
+      const finish = (sample: PickedSample | null): void => {
         show()
-        if (sample !== null) toast(`「${sample.title}」を部品に入れました`)
+        // アンケートの型の見本は、部品にせず中身ごと置き換える（確かめてから・知らせるのは置き換える側）
+        if (sample !== null && sample.isWholeWidget !== true) toast(`「${sample.title}」を部品に入れました`)
         resolve(sample)
       }
       openWidgetLibraryForPick(host.libraryQuill, { onPick: finish, onCancel: () => finish(null) })

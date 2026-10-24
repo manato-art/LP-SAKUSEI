@@ -12,7 +12,8 @@ vi.mock('../src/app/dialog.ts', () => ({
   confirmCard: (options: unknown) => dialog.confirm(options),
 }))
 
-const { askSurveyData } = await import('../src/app/panels/widget-studio-survey.ts')
+const { askSurveyData, askWholeSample } = await import('../src/app/panels/widget-studio-survey.ts')
+const { SURVEY_SAMPLES } = await import('../src/app/panels/nocode/library-surveys.ts')
 const names = (data: Record<string, unknown> | null): string[] =>
   ((data?.['screens'] ?? []) as { name: string }[]).map((s) => s.name)
 
@@ -52,6 +53,29 @@ describe('「アンケート」を押したとき', () => {
   })
 })
 
+describe('ライブラリのアンケートを Widget編集で選んだとき（2026-10-24 本人「ここにも反映してほしい」）', () => {
+  const sample = { title: SURVEY_SAMPLES[0]?.name ?? '', html: SURVEY_SAMPLES[0]?.html ?? '' }
+
+  it('部品が無ければ、そのままアンケートの中身にする（部品のまま直せる中身）', async () => {
+    expect(names(await askWholeSample(sample, false))).toEqual(['はじめ', 'Q1', 'Q2', 'Q3', '結果A', '結果B'])
+    expect(dialog.confirm).not.toHaveBeenCalled()
+  })
+
+  it('もう部品があるときは、置き換える前に確かめる（やめたら何もしない）', async () => {
+    dialog.confirm.mockResolvedValue(false)
+    expect(await askWholeSample(sample, true)).toBeNull()
+    const confirmed = dialog.confirm.mock.calls[0]?.[0] as { title: string; detail: string }
+    expect(confirmed.title).toContain(sample.title)
+    expect(confirmed.detail).toContain('戻す')
+    dialog.confirm.mockResolvedValue(true)
+    expect(names(await askWholeSample(sample, true))).toHaveLength(6)
+  })
+
+  it('中身が読めない見本は、黙って何もしないのではなく、失敗として返す（呼ぶ側が知らせる）', async () => {
+    await expect(askWholeSample({ title: '壊れた見本', html: '<div>中身</div>' }, false)).rejects.toThrow('壊れた見本')
+  })
+})
+
 describe('画面への組み込み', () => {
   it('部品を足す所の「まとまった型」の段に「アンケート」', () => {
     const palette = readFileSync('src/app/panels/nocode/palette.ts', 'utf8')
@@ -64,6 +88,8 @@ describe('画面への組み込み', () => {
   it('押すとアンケートの中身に入れ替える（「戻す」の履歴にも入る）', () => {
     const builder = readFileSync('src/app/panels/widget-studio-builder.ts', 'utf8')
     expect(builder).toMatch(/onSurvey: \(\) =>[\s\S]{0,200}askSurveyData\(/)
-    expect(builder).toMatch(/askSurveyData\([\s\S]{0,300}form\.load\(next, 0, null\)/)
+    // 入れ替えは loadWhole（form.load＝「戻す」の履歴にも入る）。ライブラリのアンケートを選んだときも同じ道
+    expect(builder).toMatch(/askSurveyData\([\s\S]{0,200}loadWhole\(next,/)
+    expect(builder).toMatch(/const loadWhole = [\s\S]{0,120}form\.load\(next, 0, null\)/)
   })
 })

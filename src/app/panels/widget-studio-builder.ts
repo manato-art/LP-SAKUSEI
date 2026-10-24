@@ -38,7 +38,8 @@ import { emptyHint, suggestBuilderName } from './widget-studio-helpers.ts'
 import { createPartOps } from './widget-studio-part-ops.ts'
 import { attachUndoKeys, createHistory } from './widget-studio-history.ts'
 import { dataWithEditedCode, editableCodeOf, type EditableCode } from './nocode/whole-code.ts'
-import { askSurveyData } from './widget-studio-survey.ts'
+import { askSurveyData, askWholeSample } from './widget-studio-survey.ts'
+import type { PickedSample } from './nocode/nocode-flow.ts'
 import { createToolbarHooks, type ToolbarHooks } from './widget-studio-toolbar.ts'
 import { hotspotHandles, hotspotMove, markEmptyHotspotHosts, type HotspotEditDeps } from './widget-studio-hotspot.ts'
 import { floatMove, type FloatEditDeps } from './widget-studio-float.ts'
@@ -57,7 +58,7 @@ export interface BuilderSessionDeps {
    */
   readonly partsHost?: { readonly list: HTMLElement; readonly palette: HTMLElement }
   /** 見本の部品: いつもの見本の一覧から見本を選んでもらう（やめたら null）。無い画面（ポップアップ）では見本を選ばせない */
-  readonly pickSample?: () => Promise<{ title: string; html: string } | null>
+  readonly pickSample?: () => Promise<PickedSample | null>
   /** 戻す・やり直すで中身が入れ替わったあと（開いているコード欄を今の中身に読み直す） */
   readonly onRestore?: () => void
 }
@@ -581,6 +582,37 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
     paintTimer = window.setTimeout(paint, PAINT_DELAY_MS)
   }
 
+  const hasParts = (): boolean => items(data, 'screens').some((screen) => items(screen, 'blocks').length > 0)
+  /** 中身ごと入れ替える（form.load で「戻す」の履歴にも入る） */
+  const loadWhole = (next: TemplateData, message: string): void => {
+    form.load(next, 0, null)
+    lastBody = ''
+    paint()
+    toast(message)
+  }
+  /**
+   * ライブラリから見本を選ぶ。アンケートの見本（部品で作ったWidgetそのもの・2026-10-24）は部品の1つにせず、
+   * 確かめてから Widget の中身ごと置き換える（受け取る側には何も渡さない＝部品は足さない）
+   */
+  const pickFromLibrary = deps.pickSample
+  const pickSample =
+    pickFromLibrary === undefined
+      ? undefined
+      : async (): Promise<PickedSample | null> => {
+          const sample = await pickFromLibrary()
+          if (sample === null || sample.isWholeWidget !== true) return sample
+          askWholeSample(sample, hasParts()).then(
+            (next) => {
+              if (next !== null) loadWhole(next, `「${sample.title}」を入れました。質問・答え・移る先の画面は、部品を選んで右で直せます`)
+            },
+            (error: unknown) => {
+              console.error('[widget-studio] アンケートの見本を入れられませんでした', error)
+              toast(`「${sample.title}」を入れられませんでした。もう一度選んでください`, 'error')
+            },
+          )
+          return null
+        }
+
   const form = buildTemplateForm({
     fields: BUILDER_TEMPLATE.fields,
     data,
@@ -590,7 +622,7 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
       schedulePaint()
     },
     onScreenChange: () => paint(),
-    ...(deps.pickSample === undefined ? {} : { pickSample: deps.pickSample }),
+    ...(pickSample === undefined ? {} : { pickSample }),
     onPreviewOverride: (key, path, html) => {
       if (html === null) previewOverrides.delete(key)
       else previewOverrides.set(key, { path, html })
@@ -610,13 +642,8 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
     ],
     // まとまった型の「アンケート」: Widget を Q1〜Q3・結果の画面にする（form.load で「戻す」の履歴にも入る・2026-10-24）
     onSurvey: () => {
-      const hasParts = items(data, 'screens').some((screen) => items(screen, 'blocks').length > 0)
-      void askSurveyData(hasParts).then((next) => {
-        if (next === null) return
-        form.load(next, 0, null)
-        lastBody = ''
-        paint()
-        toast('アンケートの形を入れました。質問・答え・移る先の画面は、部品を選んで右で直せます')
+      void askSurveyData(hasParts()).then((next) => {
+        if (next !== null) loadWhole(next, 'アンケートの形を入れました。質問・答え・移る先の画面は、部品を選んで右で直せます')
       })
     },
     onSelect: () => showSelection(),
