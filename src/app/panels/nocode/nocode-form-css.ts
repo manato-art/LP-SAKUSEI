@@ -112,6 +112,13 @@ textarea.ncf-input{resize:vertical;min-height:64px}
 .ncf-screen-head{display:grid;grid-template-columns:minmax(0,1fr);gap:4px}
 .ncf-screen-head .ncf-field{margin-bottom:6px}
 .ncf-screen-actions{display:flex;flex-wrap:wrap;gap:2px;margin:0 0 6px -8px}
+.ncf-overview{margin:0 0 14px}
+.ncf-overview>.ncf-label{display:block;margin-bottom:2px}
+.ncf-overview__row{padding:10px 0 2px;border-bottom:1px solid var(--sb-line,#DDD)}
+.ncf-overview__row .ncf-field{margin-bottom:8px}
+.ncf-overview__head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+.ncf-overview__name{min-width:0;font-size:13px;font-weight:700;color:var(--sb-text,#151515);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ncf-overview__select{flex:0 0 auto;font-size:12px}
 .ncf-btn.ncf-danger{color:#C0392B}
 .ncf-btn:disabled{opacity:.4;cursor:default}
 .ncf-screen-note{margin:0 0 14px;font-size:12px;line-height:1.7;color:var(--sb-sub,#808080)}

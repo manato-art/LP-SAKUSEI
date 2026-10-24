@@ -151,6 +151,19 @@ export function syncCanvasBlock(
   return { data: setAt(data, path, next), path, block: next }
 }
 
+/**
+ * 見たまま画面の部品の要素から、どの画面の何番目の部品か（通し番号 → 場所）。部品のいちばん外の要素でなければ null。
+ * いま開いている画面でなくても見つける（2026-10-24 本人「移行先ないよ」: 積み重ねの出方で試すと、ほかの画面も見たまま画面に出る）
+ */
+export function canvasPlaceOf(data: TemplateData, contentDiv: HTMLElement, el: HTMLElement): { screenIndex: number; blockIndex: number } | null {
+  if (outermostBlock(el, contentDiv) !== el) return null
+  const n = blockNumberOf(el.className)
+  const path = n === null ? null : blockPathAt(data, n)
+  if (path === null) return null
+  const [, screenIndex, , blockIndex] = path
+  return typeof screenIndex === 'number' && typeof blockIndex === 'number' ? { screenIndex, blockIndex } : null
+}
+
 /** 部品の場所（path）から、見たまま画面のその部品の要素（画面の中の何番目か → 通し番号） */
 export function blockElementAt(data: TemplateData, contentDiv: HTMLElement, screenIndex: number, blockIndex: number): HTMLElement | null {
   let n = 0

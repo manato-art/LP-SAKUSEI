@@ -16,7 +16,7 @@
  */
 import { toast } from '../ui.ts'
 import { embedBuilderData, splitStyles } from './nocode/builder-data.ts'
-import { blockElementAt, isTextEditableBlock, outermostBlock, syncCanvasBlock } from './nocode/canvas-sync.ts'
+import { blockElementAt, canvasPlaceOf, isTextEditableBlock, outermostBlock, syncCanvasBlock } from './nocode/canvas-sync.ts'
 import { getAt, setAt, type Path } from './nocode/form-state.ts'
 import { ensureNocodeFormCss } from './nocode/nocode-form-css.ts'
 import { buildTemplateForm } from './nocode/template-form.ts'
@@ -159,17 +159,19 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
     getAt(data, ['screens', screenIndex, 'blocks', blockIndex]) as ItemData | undefined
 
   /** 見たまま画面の部品の要素 → 設定データの中の場所（画面・何番目） */
+  /**
+   * 見たまま画面の部品の要素から、その部品の場所。いま開いている画面でなくても見つける
+   * （積み重ねの出方を ⌘＋クリックで試すと、ほかの画面も見たまま画面に出る。そこを押しても選べなかった・2026-10-24）
+   */
   const placeOf = (el: HTMLElement): { screenIndex: number; blockIndex: number; block: ItemData } | null => {
-    const screenIndex = form.activeScreen()
-    const blocks = items(items(data, 'screens')[screenIndex] ?? {}, 'blocks')
-    for (const blockIndex of blocks.keys()) {
-      if (blockElementAt(data, contentDiv, screenIndex, blockIndex) === el) {
-        const block = blocks[blockIndex]
-        return block === undefined ? null : { screenIndex, blockIndex, block }
-      }
-    }
-    return null
+    const place = canvasPlaceOf(data, contentDiv, el)
+    if (place === null) return null
+    const block = items(items(data, 'screens')[place.screenIndex] ?? {}, 'blocks')[place.blockIndex]
+    return block === undefined ? null : { ...place, block }
   }
+  /** いま選んでいる部品か（画面も同じ） */
+  const isSelectedPlace = (place: { screenIndex: number; blockIndex: number }): boolean =>
+    place.screenIndex === form.activeScreen() && place.blockIndex === form.selectedBlock()
 
   /**
    * 動かしている間だけ要素に直に当てた見た目（幅・余白・高さ・文字の大きさ）。
@@ -782,8 +784,14 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
     const el = outermostBlock(event.target, contentDiv)
     const place = el === null ? null : placeOf(el)
     if (el === null || place === null) return
+    // ほかの画面の部品は、その画面を開いて選ぶだけ（開くと描き直すので、つかんで動かすのは選んでから）
+    if (place.screenIndex !== form.activeScreen()) {
+      form.select(place.screenIndex, place.blockIndex)
+      suppressClickUntil = Date.now() + 400
+      return
+    }
     if (!isDirectMove(place.block, el)) return
-    if (form.selectedBlock() !== place.blockIndex) form.select(place.screenIndex, place.blockIndex)
+    if (!isSelectedPlace(place)) form.select(place.screenIndex, place.blockIndex)
     const move = isHotspot(place.block)
       ? hotspotMove(el, hotspotDeps(place.screenIndex, place.blockIndex))
       : isFloatingAt(place.screenIndex, place.blockIndex)
@@ -819,7 +827,7 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
   const partAt = (el: HTMLElement | null): CanvasPart | null => {
     const place = el === null ? null : placeOf(el)
     if (el === null || place === null) return null
-    const isSelected = place.blockIndex === form.selectedBlock()
+    const isSelected = isSelectedPlace(place)
     const select = (): void => form.select(place.screenIndex, place.blockIndex)
     return { el, editable: isTextEditableBlock(place.block), nudges: isRider(place.block), isSelected, select }
   }

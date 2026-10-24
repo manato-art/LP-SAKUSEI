@@ -8,6 +8,7 @@ import { parseHTML } from 'linkedom'
 import { buildTemplateForm, type TemplateForm } from '../src/app/panels/nocode/template-form.ts'
 import { ALL_BLOCK_TYPES, BUILDER_TEMPLATE } from '../src/app/panels/nocode/templates/builder.ts'
 import { FAQ_TEMPLATE } from '../src/app/panels/nocode/templates/faq.ts'
+import { surveyData } from '../src/app/panels/nocode/templates/survey.ts'
 import { items, str, type ItemData, type TemplateData } from '../src/app/panels/nocode/templates/types.ts'
 
 const { document, window } = parseHTML('<!doctype html><html><body></body></html>')
@@ -81,13 +82,14 @@ describe('左の列の並びと、右の設定', () => {
     expect([...m.tabs.querySelectorAll('.ncf-screen-tab')].map((t) => t.textContent)).toEqual(['画面①', '画面②'])
   })
 
-  it('並びの行を押すと、右にその部品の設定が「レイアウト／中身／押したとき」の段で出る。ボタンには「LPの上で」もある', () => {
+  // ボタンは「押したとき」をいちばん上に出す（2026-10-24 本人「横の画面でボタンの移行先を決めたい」→「両方」）
+  it('並びの行を押すと、右にその部品の設定が段で出る。ボタンは「押したとき」がいちばん上で、「LPの上で」もある', () => {
     const m = mountSplit(withHotspot())
     click(rowHead(m, 2))
     expect(m.form.selectedBlock()).toBe(2)
     expect(m.selects.at(-1)).toEqual([0, 2])
     expect(m.panel.querySelector('.ncf-inspector__name')?.textContent).toBe('ボタン')
-    expect(sectionTitles(m)).toEqual(['レイアウト', '中身', '押したとき'])
+    expect(sectionTitles(m)).toEqual(['押したとき', 'レイアウト', '中身'])
     const pressText = m.panel.querySelector('.ncf-press')?.textContent ?? ''
     expect(pressText).toContain('LPの上で')
     // もう一度押すと畳む（選ぶのをやめる）
@@ -102,9 +104,64 @@ describe('左の列の並びと、右の設定', () => {
     layout.open = false
     layout.dispatchEvent(new window.Event('toggle') as unknown as Event)
     click(rowHead(m, 2))
-    const again = m.panel.querySelector('.ncf-fold--section') as unknown as HTMLDetailsElement
-    expect(again.textContent).toContain('レイアウト')
+    // ボタンは「押したとき」が先頭なので、レイアウトの段を名前で探す
+    const again = [...m.panel.querySelectorAll('.ncf-fold--section')].find(
+      (s) => s.querySelector('summary')?.textContent === 'レイアウト',
+    ) as unknown as HTMLDetailsElement
     expect(again.open).toBe(false)
+  })
+})
+
+describe('この画面のボタンの移る先を、右の「この画面の設定」でまとめて決める（2026-10-24 本人「横の画面でボタンの移行先を決めたい」→「両方」）', () => {
+  const NOW = new Date('2026-10-24T12:00:00+09:00')
+  /** アンケートの Q3（はじめ・Q1・Q2・Q3・結果A・結果B の4番目＝手軽さ・値段・効き目・安心して続けられるか） */
+  const atQ3 = (): Mounted => {
+    const m = mountSplit(surveyData(NOW, { startButton: true }))
+    m.form.select(3, null)
+    return m
+  }
+  const rows = (m: Mounted): Element[] => [...m.panel.querySelectorAll('[data-ncf-overview-block]')]
+  const chip = (row: Element | undefined, label: string): Element | undefined =>
+    [...(row?.querySelectorAll('.ncf-chip') ?? [])].find((c) => c.textContent === label)
+
+  it('何も選んでいないとき「この画面の設定」は開いていて、この画面のボタン（押したときを持つ部品）が全部並ぶ', () => {
+    const m = atQ3()
+    const fold = [...m.panel.querySelectorAll('.ncf-fold')].find((f) => f.querySelector('summary')?.textContent === 'この画面の設定（Q3）')
+    expect((fold as unknown as HTMLDetailsElement | undefined)?.open).toBe(true)
+    expect(rows(m).map((r) => r.getAttribute('data-ncf-overview-block'))).toEqual(['2', '3', '4', '5'])
+    expect(rows(m)[1]?.textContent).toContain('値段')
+    // いまの移る先に印（値段 → 結果A）。自分の画面（Q3）は出さない
+    expect(chip(rows(m)[1], '結果A')?.getAttribute('aria-pressed')).toBe('true')
+    expect(chip(rows(m)[1], 'Q3')).toBeUndefined()
+  })
+
+  it('ボタンごとに移る先を選び直せる（値段 → 結果B）', () => {
+    const m = atQ3()
+    click(chip(rows(m)[1], '結果B'))
+    const block = items(items(m.changes.at(-1) ?? {}, 'screens')[3] ?? {}, 'blocks')[3] ?? {}
+    expect([str(block, 'action'), str(block, 'target')]).toEqual(['screen', 's6'])
+    expect(chip(rows(m)[1], '結果B')?.getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('「リンクを開く」を選ぶと、そのボタンを選んでリンク先を入れられるようにする', () => {
+    const m = atQ3()
+    click(chip(rows(m)[0], 'リンクを開く'))
+    expect(str(items(items(m.changes.at(-1) ?? {}, 'screens')[3] ?? {}, 'blocks')[2] ?? {}, 'action')).toBe('link')
+    expect(m.form.selectedBlock()).toBe(2)
+    expect(sectionTitles(m)[0]).toBe('押したとき')
+  })
+
+  it('「この部品を選ぶ」でそのボタンの設定を開ける', () => {
+    const m = atQ3()
+    click(rows(m)[3]?.querySelector('.ncf-overview__select'))
+    expect(m.form.selectedBlock()).toBe(5)
+  })
+
+  it('ボタンが無い画面には並びを出さない', () => {
+    const m = mountSplit(surveyData(NOW, { startButton: true }))
+    m.form.select(4, null)
+    m.form.select(0, null)
+    expect(rows(m).map((r) => r.textContent?.includes('回答をはじめる'))).toEqual([true])
   })
 })
 

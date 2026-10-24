@@ -1,6 +1,7 @@
 /**
  * 部品1つの設定（2026-09-24・template-form.ts から分けた）。
  * 部品の型の fields を段に分ける: レイアウト＝出す画面・幅・置く位置／中身／押したとき＝移る先・リンク・LPの上で。
+ * ボタンだけは「押したとき」をいちばん上に出す（2026-10-24）。
  *  - inspector: 右の設定（左右に分けたとき）。選んだ部品の名前と、畳める段。段の開き具合は組み立て直しても残す（ここで持つ）
  *  - body: 並びの中で広げるとき（左右に分けないとき）。段に分けずに上から並べる
  */
@@ -103,9 +104,12 @@ export function createBlockInspector(deps: BlockInspectorDeps): BlockInspector {
       fold.classList.add('ncf-fold--section')
       wrap.append(fold)
     }
+    // ボタンは「押したとき」（移る先）をいちばん上に（2026-10-24 本人「横の画面でボタンの移行先を決めたい」→「両方」）
+    const pressFirst = type.type === 'button'
+    if (pressFirst) section('press', '押したとき', parts.press)
     section('layout', 'レイアウト', parts.layout)
     section('content', '中身', parts.content)
-    section('press', '押したとき', parts.press)
+    if (!pressFirst) section('press', '押したとき', parts.press)
     return wrap
   }
 

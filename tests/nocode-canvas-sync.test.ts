@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { parseHTML } from 'linkedom'
-import { blockElementAt, isTextEditableBlock, outermostBlock, plainTextOf, readBlockFromCanvas, syncCanvasBlock } from '../src/app/panels/nocode/canvas-sync.ts'
+import { blockElementAt, canvasPlaceOf, isTextEditableBlock, outermostBlock, plainTextOf, readBlockFromCanvas, syncCanvasBlock } from '../src/app/panels/nocode/canvas-sync.ts'
 import type { ItemData, TemplateData } from '../src/app/panels/nocode/templates/types.ts'
 
 function dom(html: string): { root: HTMLElement; win: Window } {
@@ -115,6 +115,16 @@ describe('打ち直した要素から部品の場所を見つけて戻す', () =
     )
     const inner = root.querySelector('h2') as HTMLElement
     expect(outermostBlock(inner, root)).toBe(root.firstElementChild)
+  })
+
+  // 2026-10-24 本人「移行先ないよ」: 積み重ねの出方で ⌘＋クリックで試すと、ほかの画面も見たまま画面に出る。
+  // そこのボタンを押しても、いま開いている画面の中しか探していなかったので選べず、右に「押したとき」が出なかった
+  it('見たまま画面の要素から、どの画面の何番目の部品か（いま開いている画面でなくても見つける）', () => {
+    const { root } = dom(html)
+    expect(canvasPlaceOf(data, root, root.querySelector('.nc-b-3') as HTMLElement)).toEqual({ screenIndex: 1, blockIndex: 1 })
+    expect(canvasPlaceOf(data, root, root.querySelector('.nc-b-1') as HTMLElement)).toEqual({ screenIndex: 0, blockIndex: 0 })
+    // 部品の外・部品の中の要素（いちばん外でない）は null
+    expect(canvasPlaceOf(data, root, root.querySelector('.nc-screen') as HTMLElement)).toBeNull()
   })
 
   it('場所（画面・何番目）から見たまま画面の要素', () => {
