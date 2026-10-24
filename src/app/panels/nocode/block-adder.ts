@@ -28,7 +28,7 @@ export interface BlockAdderDeps extends Pick<FormCore, 'data' | 'replace'> {
   readonly reselect: (block: number) => void
   /** 中身をまるごと入れ替えて、最初の画面を開く（「何から作りますか？」で例を選んだとき） */
   readonly startFrom: (field: ScreensField, next: TemplateData) => void
-  readonly options: Pick<TemplateFormOptions, 'pickSample' | 'examples'>
+  readonly options: Pick<TemplateFormOptions, 'pickSample' | 'examples' | 'onSurvey'>
 }
 
 export interface BlockAdder {
@@ -113,6 +113,7 @@ export function createBlockAdder(deps: BlockAdderDeps): BlockAdder {
     paletteState.render(field, items(items(deps.data(), field.key)[screenIndex] ?? {}, 'blocks').length, {
       add: (type) => add(field, screenIndex, type),
       canPickSample: options.pickSample !== undefined,
+      ...(options.onSurvey === undefined ? {} : { survey: options.onSurvey }),
     })
 
   const adder = (field: ScreensField, screenIndex: number, count: number): HTMLElement => {

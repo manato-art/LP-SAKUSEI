@@ -23,8 +23,8 @@ describe('部品を足す', () => {
     expect([...grouped].sort()).toEqual([...parts].sort())
   })
 
-  it('部品（型を除く）は増えて、全部で36種になった（ロード中を足した）', () => {
-    expect(ALL_BLOCK_TYPES.filter((t) => t.type !== 'sample' && !isTemplateBlock(t.type)).length).toBe(36)
+  it('部品（型を除く）は増えて、全部で37種になった（ロード中・進み具合を足した）', () => {
+    expect(ALL_BLOCK_TYPES.filter((t) => t.type !== 'sample' && !isTemplateBlock(t.type)).length).toBe(37)
   })
 })
 

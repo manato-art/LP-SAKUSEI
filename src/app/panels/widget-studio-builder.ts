@@ -38,6 +38,7 @@ import { emptyHint, suggestBuilderName } from './widget-studio-helpers.ts'
 import { createPartOps } from './widget-studio-part-ops.ts'
 import { attachUndoKeys, createHistory } from './widget-studio-history.ts'
 import { dataWithEditedCode, editableCodeOf, type EditableCode } from './nocode/whole-code.ts'
+import { askSurveyData } from './widget-studio-survey.ts'
 import { createToolbarHooks, type ToolbarHooks } from './widget-studio-toolbar.ts'
 import { hotspotHandles, hotspotMove, markEmptyHotspotHosts, type HotspotEditDeps } from './widget-studio-hotspot.ts'
 import { floatMove, type FloatEditDeps } from './widget-studio-float.ts'
@@ -607,6 +608,17 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
         data: () => BUILDER_TEMPLATE.defaults(new Date()),
       },
     ],
+    // まとまった型の「アンケート」: Widget を Q1〜Q3・結果の画面にする（form.load で「戻す」の履歴にも入る・2026-10-24）
+    onSurvey: () => {
+      const hasParts = items(data, 'screens').some((screen) => items(screen, 'blocks').length > 0)
+      void askSurveyData(hasParts).then((next) => {
+        if (next === null) return
+        form.load(next, 0, null)
+        lastBody = ''
+        paint()
+        toast('アンケートの形を入れました。質問・答え・移る先の画面は、部品を選んで右で直せます')
+      })
+    },
     onSelect: () => showSelection(),
     blockElement: (screenIndex, blockIndex) => blockElementAt(data, contentDiv, screenIndex, blockIndex),
     onInnerSelected: (node, label, handles) => {

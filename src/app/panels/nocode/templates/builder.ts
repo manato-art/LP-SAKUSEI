@@ -17,7 +17,7 @@
  *  - 部品「ロード中」（data-nc-wait・2026-09-24）は、その画面が出たら（最初の画面は見えたら）数え始め、秒数のあと
  *    data-nc-then の画面へ移る（リンクなら隠したリンクを押す）。Widget編集の見たまま画面（data-widget-preview）では移らない
  */
-import { SCREEN_ID, ALL_BLOCK_TYPES, actionOf, blockLabel, goTarget, renderBlock, sizeOf, templateOfBlock } from './builder-blocks.ts'
+import { SCREEN_ID, ALL_BLOCK_TYPES, actionOf, blockLabel, goTarget, layoutCss, renderBlock, sizeOf, templateOfBlock } from './builder-blocks.ts'
 import { goTargetsIn } from '../sample-model.ts'
 import { baseCss, esc, safeColor, safeImage, safeVideo, shade, wrapWidget } from './kit.ts'
 import { ACCENT_PRESETS, items, pick, str, type ItemData, type NocodeTemplate } from './types.ts'
@@ -28,6 +28,7 @@ import { moreBaseCss, renderHotspot } from './builder-blocks-more-render.ts'
 import { ACTIONS_SCRIPT, MODAL_LAYER, lpActionProblem, popsCss, pressContext } from './press-actions.ts'
 import { coveredIndexOf, isFloating, isHotspot } from '../hotspot-model.ts'
 import { floatOffset } from '../float-model.ts'
+import { PROGRESS_TYPE, renderProgress } from './progress-part.ts'
 
 export { ALL_BLOCK_TYPES, BLOCK_TYPES } from './builder-blocks.ts'
 
@@ -36,95 +37,14 @@ export const NO_BACKGROUND = 'none'
 const BACKGROUND_PRESETS: readonly string[] = [NO_BACKGROUND, '#FFFFFF', '#F7F8FA', '#FFF8E7', '#FDF1EE', '#EEF6FF', '#EEF8F1']
 /** 以前の「狭い/普通/広い」を px に読み替える表（上下の余白は数で持つ・2026-09-23。選択枠のハンドルからも読む） */
 export const BUILDER_PADDING: Readonly<Record<string, number>> = { s: 24, m: 40, l: 56 }
-const TRANSITIONS = ['none', 'fade', 'slide'] as const
+const TRANSITIONS = ['none', 'fade', 'slide', 'stack'] as const
 
 const svg = (body: string): string =>
   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`
 
-/** 固定の文（入力の文字は入らない）。ES5 */
-export const SCREENS_SCRIPT = `(function(){
-var roots=document.querySelectorAll('[data-nc-screens]');
-for(var i=0;i<roots.length;i++)start(roots[i]);
-function start(root){
-if(root.__ncScreens)return;
-if(root.closest&&root.closest('.ql-editor'))return;
-root.__ncScreens=true;
-var screens=[];
-for(var k=0;k<root.children.length;k++)if(root.children[k].hasAttribute('data-nc-screen'))screens.push(root.children[k]);
-if(!screens.length)return;
-var effect=root.getAttribute('data-nc-transition')||'none';
-var reduce=!!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-var editing=!!(root.closest&&root.closest('[data-widget-preview]'));
-function wait(el,screen){
-if(el.closest('[data-nc-screens]')!==root)return;
-clearTimeout(el.__ncWait);
-el.classList.remove('is-run');void el.offsetWidth;el.classList.add('is-run');
-var ms=parseInt(el.getAttribute('data-nc-wait'),10);if(!(ms>0))ms=3000;
-el.__ncWait=setTimeout(function(){
-if(screen.hidden||editing)return;
-var to=el.getAttribute('data-nc-then');
-if(to){show(to,true);return;}
-var a=el.querySelector('.nc-b-loading__go');if(a)a.click();
-},ms);
-}
-function arm(screen){
-var list=screen.querySelectorAll('[data-nc-wait]');
-for(var w=0;w<list.length;w++)wait(list[w],screen);
-}
-function seen(screen){
-var list=screen.querySelectorAll('[data-nc-wait]');
-if(!list.length)return;
-if(!window.IntersectionObserver){arm(screen);return;}
-var io=new IntersectionObserver(function(es){
-for(var q=0;q<es.length;q++)if(es[q].isIntersecting){io.disconnect();if(!screen.hidden)arm(screen);return;}
-},{threshold:0.3});
-for(var v=0;v<list.length;v++)io.observe(list[v]);
-}
-function videos(screen,on){
-var list=screen.querySelectorAll('video');
-for(var v=0;v<list.length;v++){try{if(on){if(list[v].hasAttribute('autoplay'))list[v].play();}else{list[v].pause();}}catch(e){}}
-}
-function show(id,moved){
-var next=null;
-for(var j=0;j<screens.length;j++)if(screens[j].getAttribute('data-nc-screen')===id)next=screens[j];
-if(!next)return;
-for(var n=0;n<screens.length;n++){var on=screens[n]===next;screens[n].hidden=!on;videos(screens[n],on);}
-if(moved)arm(next);else seen(next);
-if(!moved)return;
-if(effect!=='none'&&!reduce&&next.animate){
-next.animate(effect==='slide'?[{opacity:0,transform:'translateX(24px)'},{opacity:1,transform:'none'}]:[{opacity:0},{opacity:1}],{duration:240,easing:'ease-out'});
-}
-if(root.getBoundingClientRect().top<0)root.scrollIntoView({block:'start',behavior:reduce?'auto':'smooth'});
-}
-function go(e){
-var t=e.target&&e.target.closest?e.target.closest('[data-nc-go]'):null;
-if(!t||!root.contains(t))return null;
-if(t.closest('[data-nc-screens]')!==root)return null;
-return t;
-}
-function off(t){
-return t.hasAttribute('disabled')||t.getAttribute('aria-disabled')==='true'||/(^|\\s)(is-)?disabled(\\s|$)/.test(t.getAttribute('class')||'');
-}
-root.addEventListener('click',function(e){
-var t=go(e);
-if(!t)return;
-e.preventDefault();
-e.stopPropagation();
-if(off(t))return;
-show(t.getAttribute('data-nc-go'),true);
-},true);
-root.addEventListener('keydown',function(e){
-if(e.key!=='Enter'&&e.key!==' ')return;
-var t=go(e);
-if(!t||t.tagName==='A'||t.tagName==='BUTTON')return;
-e.preventDefault();
-e.stopPropagation();
-if(off(t))return;
-show(t.getAttribute('data-nc-go'),true);
-},true);
-show(root.getAttribute('data-nc-start')||screens[0].getAttribute('data-nc-screen'),false);
-}
-})();`
+// 画面の切り替えのスクリプトは screens-script.ts（2026-10-24 に「下に積み重ねる」を足すときに分けた）
+import { SCREENS_SCRIPT } from './screens-script.ts'
+export { SCREENS_SCRIPT }
 
 /** 見本の中身（そのまま入れられる例。1画面目で答えを選ぶと2画面目へ移る） */
 const DEFAULT_SCREENS: readonly ItemData[] = [
@@ -209,6 +129,8 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
         { value: 'none', label: '瞬時に切り替える', short: '瞬時', icon: TRANSITION_ICONS.none },
         { value: 'fade', label: 'ふわっと切り替える', short: 'ふわっと', icon: TRANSITION_ICONS.fade },
         { value: 'slide', label: '横から切り替える', short: '横から', icon: TRANSITION_ICONS.slide },
+        // 答えると次の画面が下に出て、前の画面は残る（2026-10-24 本人「アンケート」・手本は発酵本家のLP）
+        { value: 'stack', label: '下に積み重ねる（前の画面は残す）', short: '積み重ね', icon: TRANSITION_ICONS.stack },
       ],
       showIf: (data) => items(data, 'screens').length > 1,
     },
@@ -280,6 +202,11 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
     const previewStart = view?.screen !== undefined && ids.has(view.screen) ? view.screen : null
     const start = previewStart ?? str(screens[0] ?? {}, 'id')
 
+    // 進み具合（Q1 › Q2 › Q3）: 進み具合を置いた画面の数が全体の数、その画面が何番目かが今の番号
+    const progressScreens = screens
+      .filter((screen) => items(screen, 'blocks').some((block) => str(block, 'type') === PROGRESS_TYPE))
+      .map((screen) => str(screen, 'id'))
+
     let counter = 0
     /** 重ねた部品を1つでも書き出したか（外枠のCSSを出すか） */
     let hasStack = false
@@ -333,8 +260,12 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
             }
             continue
           }
-          const part = renderBlock(item, counter, s, ids, seenAssets, press)
-          blockCss.push(part.css)
+          const isProgress = str(item, 'type') === PROGRESS_TYPE
+          const part = isProgress
+            ? renderProgress(item, counter, s, progressScreens.indexOf(str(screen, 'id')) + 1, progressScreens.length)
+            : renderBlock(item, counter, s, ids, seenAssets, press)
+          // 進み具合は番号を数えてここで描くので、幅と置く位置もここで足す（ほかの部品は renderBlock が足す）
+          blockCss.push(part.css + (isProgress ? layoutCss(s, `nc-b-${counter}`, item) : ''))
           blocks.push(part.html)
           usedTypes.add(str(item, 'type'))
           cover = { at: blocks.length - 1, n: counter }
@@ -362,6 +293,10 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
       (hasStack
         ? `${s}{overflow-x:clip}${s} .nc-stack{position:relative}` +
           `${s} .nc-b+.nc-stack,${s} .nc-stack+.nc-b,${s} .nc-stack+.nc-stack{margin-top:14px}`
+        : '') +
+      // 下に積み重ねる出方: 出ている画面どうしの間をあけ、画面が動いたとき上を少し空ける（2026-10-24 アンケート）
+      (transition === 'stack'
+        ? `${s} .nc-screen:not([hidden])~.nc-screen:not([hidden]){margin-top:40px}${s} .nc-screen{scroll-margin-top:16px}`
         : '') +
       `${s} .nc-b--center{text-align:center}` +
       `${s} .nc-b--right{text-align:right}` +

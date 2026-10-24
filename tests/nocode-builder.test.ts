@@ -288,7 +288,9 @@ describe('見本の部品（ライブラリの見本を部品として積む）'
     const click = /addEventListener\('click',function\(e\)\{([\s\S]*?)\},true\)/.exec(SCREENS_SCRIPT)?.[1] ?? ''
     expect(click.indexOf('stopPropagation()')).toBeGreaterThan(-1)
     expect(click.indexOf('off(t)')).toBeGreaterThan(click.indexOf('stopPropagation()'))
-    expect(click.indexOf('off(t)')).toBeLessThan(click.indexOf('show('))
+    // 移るのは press(t)（選んだ答えに印を付けてから show する・2026-10-24 アンケート）
+    expect(click.indexOf('press(t)')).toBeGreaterThan(-1)
+    expect(click.indexOf('off(t)')).toBeLessThan(click.indexOf('press(t)'))
     expect(SCREENS_SCRIPT).toContain("hasAttribute('disabled')")
     expect(SCREENS_SCRIPT).toContain("getAttribute('aria-disabled')==='true'")
     // 見本によって is-disabled / disabled のどちらかを付け外しする

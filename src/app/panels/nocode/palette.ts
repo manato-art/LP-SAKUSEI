@@ -40,7 +40,7 @@ export const PALETTE_GROUPS: readonly { readonly title: string; readonly types: 
   { title: '文字', types: ['heading', 'text', 'band', 'marker', 'list', 'note', 'accordion'] },
   { title: '伝える・見せる', types: ['speech', 'quote', 'box', 'point', 'iconText', 'profile'] },
   { title: '画像・動画', types: ['image', 'imageText', 'gallery', 'cover', 'beforeAfter', 'video'] },
-  { title: '押す・移る', types: ['button', HOTSPOT_TYPE, 'tel', 'loading'] },
+  { title: '押す・移る', types: ['button', HOTSPOT_TYPE, 'tel', 'loading', 'progress'] },
   { title: '数字・評価', types: ['price', 'coupon', 'stat', 'numbers', 'rating', 'ranking', 'badge', 'table'] },
   { title: 'かざり・すき間', types: ['shape', 'divider', 'ornament', 'spacer', 'cue'] },
 ]
@@ -61,7 +61,13 @@ export interface PaletteHost {
   readonly add: (type: BlockType) => void
   /** 見本を選べる（ライブラリの一覧を開ける） */
   readonly canPickSample: boolean
+  /** まとまった型の「アンケート」（Widget をアンケートの画面にする・2026-10-24）。無い画面（ポップアップ）では出さない */
+  readonly survey?: () => void
 }
+
+const SURVEY_ICON =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12.5h1M11 12.5h5M8 16.5h1M11 16.5h5"/></svg>'
 
 export interface Palette {
   /** 今の状態（ふだん／もっと見る）で作る。count はその画面の部品の数 */
@@ -128,6 +134,16 @@ export function createPalette(): Palette {
   /** まとまった型の段（2列）。部品とは別の機能なので、どちらの状態でも部品の下に出す */
   const templateSection = (field: ScreensField, full: boolean, host: PaletteHost): HTMLElement[] => {
     const grid = node('div', 'ncf-palette__tpl')
+    // アンケート（1つの部品ではなく、Widget の画面を Q1〜Q3・結果にする）
+    if (host.survey !== undefined) {
+      const survey = button('ncf-palette__chip', '', host.survey, true)
+      survey.dataset['ncfSurvey'] = 'true'
+      survey.title = 'アンケート（「回答をはじめる」→ Q1〜Q3 → 結果。答えると次の質問が下に出ます）'
+      const icon = node('span', 'ncf-palette__icon')
+      icon.innerHTML = SURVEY_ICON
+      survey.append(icon, node('span', 'ncf-palette__label', 'アンケート'))
+      grid.append(survey)
+    }
     for (const type of field.types) if (isTemplateBlock(type.type)) grid.append(tile(type, full, field.blockMax, host))
     return grid.children.length === 0 ? [] : [node('span', 'ncf-palette__title ncf-palette__title--sub', 'まとまった型'), grid]
   }

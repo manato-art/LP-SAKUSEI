@@ -19,6 +19,7 @@ import { EXTRA_BLOCK_TYPES } from './builder-blocks-extra.ts'
 import { renderMoreBlock } from './builder-blocks-more-render.ts'
 import { pressAttrs, pressContext, type PressContext } from './press-actions.ts'
 import { scopeSampleStyles } from '../sample-css-scope.ts'
+import { PROGRESS_BLOCK_TYPE, PROGRESS_TYPE, renderProgress } from './progress-part.ts'
 import { ACCENT_PRESETS, bool, int, pick, str, type BlockType, type ItemData, type NocodeTemplate } from './types.ts'
 import {
   ALIGN_OPTIONS,
@@ -282,7 +283,13 @@ const TEMPLATE_BLOCKS: readonly BlockType[] = TEMPLATES.map((template) => ({
 }))
 
 /** 積める部品（ふつうの部品＋増やした部品＋型の部品） */
-export const ALL_BLOCK_TYPES: readonly BlockType[] = [...BLOCK_TYPES, ...MORE_BLOCK_TYPES, ...EXTRA_BLOCK_TYPES, ...TEMPLATE_BLOCKS]
+export const ALL_BLOCK_TYPES: readonly BlockType[] = [
+  ...BLOCK_TYPES,
+  ...MORE_BLOCK_TYPES,
+  ...EXTRA_BLOCK_TYPES,
+  PROGRESS_BLOCK_TYPE,
+  ...TEMPLATE_BLOCKS,
+]
 
 export function blockLabel(type: string): string {
   return ALL_BLOCK_TYPES.find((t) => t.type === type)?.label ?? '部品'
@@ -307,6 +314,8 @@ function choiceButtonCss(sel: string, color: string): string {
     `-webkit-tap-highlight-color:transparent}` +
     `${sel}:active{transform:translateY(2px);box-shadow:0 1px 0 ${shade(color, 0.55)};background:${shade(color, 0.92)}}` +
     `${sel}:focus-visible{outline:3px solid ${shade(color, -0.4)};outline-offset:3px}` +
+    // 選んだ答え（画面の切り替えのスクリプトが aria-pressed を付ける。「下に積み重ねる」で前の答えが分かる・2026-10-24）
+    `${sel}[aria-pressed="true"]{background:${color};color:${inkOn(color)};box-shadow:0 3px 0 ${shade(color, -0.3)}}` +
     `@media (prefers-reduced-motion:reduce){${sel}{transition:none}}`
   )
 }
@@ -472,6 +481,9 @@ function renderBlockBody(item: ItemData, i: number, s: string, seen: Set<string>
       const style = pick(item, 'style', ['solid', 'dotted'] as const, 'solid')
       return { html: `<hr class="nc-b nc-b-divider nc-b-divider--${style} ${cls}">`, css: '' }
     }
+    case PROGRESS_TYPE:
+      // 部品だけを描くとき（サムネ）。Widget の中では builder.ts が今の番号と全体の数を数えて renderProgress を呼ぶ
+      return renderProgress(item, i, s, 1, 3)
     case 'sample': {
       // ライブラリの見本・手で書いたHTML（style・script ごと）。中身は入力の画面で直してある。
       // 見本の CSS はこの部品の中だけに効かせる（範囲の無い `.downArrow{…}` が別の Widget にも効いていた・2026-10-18）

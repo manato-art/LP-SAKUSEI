@@ -55,6 +55,8 @@ export interface TemplateFormOptions {
   onScreenChange?: (screenId: string) => void
   /** 見本の部品: いつもの見本の一覧から見本を選んでもらう（やめたら null） */
   pickSample?: () => Promise<{ title: string; html: string } | null>
+  /** まとまった型の「アンケート」を押したとき（Widget をアンケートの画面にする・2026-10-24）。無ければ出さない */
+  onSurvey?: () => void
   /** 見本の部品: 見え方だけ、その部品のHTMLを差し替える（選んだ設問を出す）。null で元に戻す */
   onPreviewOverride?: (key: string, path: Path, html: string | null) => void
   /** 組み立て直すとき、見え方だけの差し替えを全部やめる（部品の並びが変わると場所がずれるため） */

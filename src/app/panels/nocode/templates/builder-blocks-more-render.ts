@@ -14,6 +14,7 @@ import { hotspotRect } from '../hotspot-model.ts'
 import { tableRows } from './builder-blocks-more.ts'
 import { bool, int, pick, str, type ItemData } from './types.ts'
 import { EXTRA_BASE_CSS, EXTRA_PREVIEW_CSS, renderExtraBlock } from './builder-blocks-extra-render.ts'
+import { PROGRESS_TYPE, progressBaseCss } from './progress-part.ts'
 
 type Part = { html: string; css: string }
 
@@ -260,6 +261,7 @@ export function renderMoreBlock(item: ItemData, i: number, s: string, press?: Pr
 
 /** 部品の形の土台（使っている部品の分だけ、Widgetに1回） */
 const BASE_CSS: Readonly<Record<string, (s: string) => string>> = {
+  [PROGRESS_TYPE]: progressBaseCss,
   hotspot: (s) =>
     // 被せた部品の中の、透明な押せる範囲（位置と大きさは部品ごとのクラス）。部品の間の余白は付けない
     `${s} .nc-b.nc-b-hotspot{position:absolute;z-index:5;display:block;margin:0;padding:0;border:0;background:transparent;` +
