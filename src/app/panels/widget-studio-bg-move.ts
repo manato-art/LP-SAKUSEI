@@ -13,8 +13,8 @@ import { BG_POSITION_MAX, BG_POSITION_MIN, bgDeclarations, bgTargetOf, type BgLo
 import { items, str, type ItemData, type TemplateData } from './nocode/templates/types.ts'
 
 /**
- * 背景を持つ所（[]＝Widget全体・[画面の欄, 画面]・[画面の欄, 画面, 'blocks', 部品]）の、見たまま画面で背景を敷いた面。
- * 部品は色の付いた面（ボタンなら押す所＝bg-image.ts の bgTargetOf）
+ * 背景を持つ所（[]＝Widget全体・[画面の欄, 画面]・[画面の欄, 画面, 'blocks', 部品]・見本の中の箱＝[…, 'bgs', 何番目]）の、
+ * 見たまま画面で背景を敷いた面。部品は色の付いた面（ボタンなら押す所＝bg-image.ts の bgTargetOf）
  */
 export function bgSurfaceOf(data: TemplateData, contentDiv: HTMLElement, uid: string, itemPath: Path): HTMLElement | null {
   const root = contentDiv.querySelector<HTMLElement>(`.${uid}`)
@@ -27,6 +27,11 @@ export function bgSurfaceOf(data: TemplateData, contentDiv: HTMLElement, uid: st
   }
   if (typeof blockIndex !== 'number') return null
   const el = blockElementAt(data, contentDiv, screenIndex, blockIndex)
+  // 見本の部品の中の箱（[…, 'bgs', 何番目]）は、印の付いた要素
+  if (itemPath.length === 6) {
+    const id = str((getAt(data, itemPath) as ItemData | undefined) ?? {}, 'id')
+    return /^b\d{1,4}$/.test(id) ? (el?.querySelector<HTMLElement>(`[data-nc-bg="${id}"]`) ?? null) : null
+  }
   const suffix = bgTargetOf(str((getAt(data, itemPath) as ItemData | undefined) ?? {}, 'type'))
   if (el === null || suffix === null) return null
   return suffix === '' ? el : el.querySelector<HTMLElement>(suffix.trim())

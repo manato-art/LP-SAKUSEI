@@ -13,7 +13,7 @@
  */
 import { safeImage } from './kit.ts'
 import { BG_FIT_ICONS } from './option-icons.ts'
-import { int, pick, str, type Field, type ItemData } from './types.ts'
+import { int, items, pick, str, type Field, type ItemData } from './types.ts'
 
 export const BG_FITS = ['cover', 'free'] as const
 export type BgFit = (typeof BG_FITS)[number]
@@ -90,12 +90,45 @@ export function bgCss(selector: string, item: ItemData): string {
 
 /** 部品1つの背景の画像のCSS（吹き出しの形の図形は、しっぽ＝::after が背景を受け継ぐので外す） */
 export function blockBgCss(s: string, cls: string, item: ItemData): string {
+  // 見本の部品は、中の箱ごと（印の付いた要素）
+  if (str(item, 'type') === 'sample') return sampleBgCss(s, cls, item)
   const target = bgTargetOf(str(item, 'type'))
   if (target === null) return ''
   const css = bgCss(`${s} .${cls}${target}`, item)
   if (css === '') return ''
   const tail = str(item, 'type') === 'shape' && str(item, 'shape') === 'bubble' ? `${s} .${cls}::after{background-image:none!important}` : ''
   return css + tail
+}
+
+/* ── 見本の部品の中の箱（2026-10-24 本人の選択「見本の中の箱も」） ──
+ * 見本の中の要素には印（data-nc-bg="b1"）を付け、設定は見本の部品の bgs（{ id, bgImage, bgFit, … } の並び）に持つ。
+ * 要素は増やさない（見本の要素の番号がずれない）。書き出しは「その部品の中の、その印の要素」にだけ効く */
+
+const SAMPLE_BG_ID = /^b\d{1,4}$/
+
+/** 見本の部品の中の箱の背景の画像のCSS */
+export function sampleBgCss(s: string, cls: string, item: ItemData): string {
+  return items(item, 'bgs')
+    .map((entry) => {
+      const id = str(entry, 'id')
+      return SAMPLE_BG_ID.test(id) ? bgCss(`${s} .${cls} [data-nc-bg="${id}"]`, entry) : ''
+    })
+    .join('')
+}
+
+/** 次に付ける印の名前（設定にも見本の中にも無い b1・b2…） */
+export function nextSampleBgId(bgs: readonly ItemData[], html: string): string {
+  const used = new Set([...bgs.map((entry) => str(entry, 'id')), ...[...html.matchAll(/data-nc-bg="(b\d{1,4})"/g)].map((m) => m[1] ?? '')])
+  let n = 1
+  while (used.has(`b${n}`)) n += 1
+  return `b${n}`
+}
+
+/** 印 id の設定を直した並び（無ければ足す）。画像を外したら、その印の設定ごと外す */
+export function withSampleBg(bgs: readonly ItemData[], id: string, values: ItemData): readonly ItemData[] {
+  const found = bgs.some((entry) => str(entry, 'id') === id)
+  const next = found ? bgs.map((entry) => (str(entry, 'id') === id ? { ...entry, ...values } : entry)) : [...bgs, { id, ...values }]
+  return next.filter((entry) => str(entry, 'id') !== id || hasBgImage(entry))
 }
 
 /** 背景の画像を選んでいるか */

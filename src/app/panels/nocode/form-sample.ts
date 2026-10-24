@@ -28,6 +28,7 @@ import { SCREEN_ID } from './templates/builder-blocks.ts'
 import { createCodeEditor } from '../widget-code-panel.ts'
 import { buildDesignPanel } from '../widget-design-panel.ts'
 import type { SelectionHandle } from '../selection-layer.ts'
+import { sampleBgSection, type SampleBgDeps } from './sample-bg-field.ts'
 
 export interface SampleEditorOptions {
   read: () => { title: string; html: string }
@@ -53,6 +54,10 @@ export interface SampleEditorOptions {
   initialInner?: HTMLElement | null
   /** コードを直し終わったら入力欄を組み立て直す（中身の番号がずれるため） */
   rebuild?: () => void
+  /** 中の箱の背景の画像（2026-10-24・sample-bg-field.ts）。いまの中身は read から読む */
+  background?: Omit<SampleBgDeps, 'readHtml'>
+  /** 組み立て直す前に背景の画像を直していた要素の印（あれば、組み立て直したあとにその要素を選ぶ） */
+  rememberedBg?: string | null
 }
 
 export interface SampleEditor {
@@ -118,6 +123,10 @@ export function sampleEditor(options: SampleEditorOptions): SampleEditor {
       if (pendingInner !== null) {
         api.selectInner(pendingInner)
         pendingInner = null
+      } else if (options.rememberedBg !== undefined && options.rememberedBg !== null) {
+        // 背景の画像の印を付けると中身が読み直されて組み立て直される。そのあとも同じ要素を選んだままにする
+        const marked = options.getElement?.()?.querySelector<HTMLElement>(`[data-nc-bg="${options.rememberedBg}"]`) ?? null
+        if (marked !== null) api.selectInner(marked)
       }
     },
     () => body.replaceChildren(node('p', 'ncf-warn', '見本の中身を読み込めませんでした。選び直してください')),
@@ -141,6 +150,10 @@ function fold(title: string, open = false): { details: HTMLDetailsElement; body:
  */
 function appendFineTuning(wrap: HTMLElement, options: SampleEditorOptions): { selectInner: (target: HTMLElement) => void } {
   const current = (): string => options.read().html
+
+  // ── 選んだ要素の背景の画像（2026-10-24 本人の選択「見本の中の箱も」）。左で要素を押すと出る ──
+  const background = options.background === undefined ? null : sampleBgSection({ ...options.background, readHtml: current })
+  if (background !== null) wrap.append(background.element)
 
   // ── 要素ごとのカード ──
   const cards = fold('見た目の細かい設定（色・大きさ・余白・動き）')
@@ -189,6 +202,7 @@ function appendFineTuning(wrap: HTMLElement, options: SampleEditorOptions): { se
     selectInner: (target) => {
       cards.details.open = true
       const picked = design.select(target)
+      background?.select(picked?.node ?? target)
       if (picked === null) return
       options.onInnerSelected?.(picked.node, picked.label, design.handlesFor(picked.node))
       cards.details.scrollIntoView({ block: 'nearest' })

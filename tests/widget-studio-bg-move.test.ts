@@ -43,6 +43,31 @@ describe('背景を敷いた面', () => {
   })
 })
 
+describe('見本の中の箱', () => {
+  it('[…, "bgs", 何番目] は、その見本の部品の中の印の付いた要素', () => {
+    const withSample: TemplateData = {
+      ...data,
+      screens: [
+        {
+          id: 's1',
+          name: '画面①',
+          blocks: [
+            {
+              type: 'sample',
+              title: 'カード',
+              html: '<div class="nc nc-sample nc-aaaa1111" data-nocode="sample"><div class="card" data-nc-bg="b1">カード</div></div>',
+              bgs: [{ id: 'b1', bgImage: 'data:image/png;base64,AAAA' }],
+            },
+          ],
+        },
+      ],
+    }
+    const content = window.document.createElement('div') as unknown as HTMLElement
+    content.innerHTML = BUILDER_TEMPLATE.render(withSample, UID).replace(/<script>[\s\S]*?<\/script>/g, '')
+    expect(bgSurfaceOf(withSample, content, UID, ['screens', 0, 'blocks', 0, 'bgs', 0])?.textContent).toBe('カード')
+  })
+})
+
 describe('動かした結果を書く所', () => {
   it('合わせ方・大きさ・位置を、その所の値として書く（画像はそのまま）', () => {
     const next = withBgLook(data, ['screens', 0, 'blocks', 1], { image: 'x', fit: 'free', size: 70, x: 10, y: 90 })

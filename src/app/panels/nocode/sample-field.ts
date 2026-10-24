@@ -12,13 +12,14 @@ import type { FormCore } from './form-core.ts'
 import { addScreenFor, goChoices } from './screens-state.ts'
 import { items, str, type ItemData, type ScreensField } from './templates/types.ts'
 import type { TemplateFormOptions } from './template-form.ts'
+import { notifyCanvasEdit } from '../widget-canvas-events.ts'
 
 export interface SampleFieldDeps extends FormCore {
   /** 1つの値を書いて知らせる（組み立て直さない） */
   readonly write: (path: Path, value: Scalar) => void
   /** 入力欄を組み立て直す */
   readonly rebuild: () => void
-  readonly options: Pick<TemplateFormOptions, 'pickSample' | 'onPreviewOverride' | 'blockElement' | 'onInnerSelected'>
+  readonly options: Pick<TemplateFormOptions, 'pickSample' | 'onPreviewOverride' | 'blockElement' | 'onInnerSelected' | 'onBgMove'>
 }
 
 export interface SampleFields {
@@ -40,6 +41,8 @@ export function createSampleFields(deps: SampleFieldDeps): SampleFields {
   let sampleApis = new Map<string, { selectInner: (target: HTMLElement) => void }>()
   /** 組み立て直したあとに選んでおく、見本の中の要素 */
   let pendingInner: { key: string; target: HTMLElement } | null = null
+  /** 見本の部品ごとの、背景の画像を直している要素の印（組み立て直しても同じ要素を選んだままにする） */
+  const rememberedBgs = new Map<string, string | null>()
 
   const el = (field: ScreensField, screenIndex: number, blockIndex: number, itemPath: Path): HTMLElement => {
     const key = JSON.stringify(itemPath)
@@ -65,7 +68,23 @@ export function createSampleFields(deps: SampleFieldDeps): SampleFields {
       getElement: () => options.blockElement?.(screenIndex, blockIndex) ?? null,
       onInnerSelected: options.onInnerSelected,
       initialInner,
+      rememberedBg: rememberedBgs.get(key) ?? null,
       rebuild: deps.rebuild,
+      // 中の箱の背景の画像: 印は見たまま画面の要素に付けて、いつもの読み戻し（canvas-sync）で中身へ入る
+      background: {
+        readBgs: () => items(item(), 'bgs'),
+        writeBgs: (list) => {
+          deps.replace(setAt(deps.data(), [...itemPath, 'bgs'], list))
+        },
+        mark: (element, id) => {
+          element.setAttribute('data-nc-bg', id)
+          notifyCanvasEdit(element, element)
+        },
+        data: deps.data,
+        onRefresh: deps.onRefresh,
+        remember: (id) => rememberedBgs.set(key, id),
+        ...(options.onBgMove === undefined ? {} : { bgMove: (index: number) => options.onBgMove?.([...itemPath, 'bgs', index]) }),
+      },
     })
     sampleApis.set(key, { selectInner: editor.selectInner })
     return editor.element
