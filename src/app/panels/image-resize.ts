@@ -7,6 +7,8 @@
  * - 四隅に丸いドラッグハンドル（青い円）
  * - 右下にサイズ表示バッジ（「570 × 320」）
  * - エディタ外クリックで選択解除
+ * - 選んだまま Backspace / Delete で消す（2026-10-24。以前は Quill の文字のカーソルが前の場所のままで、
+ *   Backspace は何も消えず、Delete はカーソルのあった所の文字を消していた）
  *
  * 実装上のポイント:
  * overlay 要素は **quill.container**（.ql-container = スクロールホスト）に置く。
@@ -15,6 +17,7 @@
  * position:absolute をスクロール量込みで計算し、画像とともにスクロールする。
  */
 import { keepAlignOnResize } from './media-align.ts'
+import { isMediaDeleteKey } from './media-delete-key.ts'
 import type Quill from 'quill'
 import { attachImageActionBar } from './image-link.ts'
 
@@ -223,6 +226,24 @@ export function wireImageResize(quill: Quill): void {
     document.body.style.cursor = ''
     document.body.style.userSelect = ''
   })
+
+  // 選んだ画像・動画を Backspace / Delete で消す。Quill のキー操作（文字を消す）より先に受ける。
+  // Widget の中の画像など、Quill の部品でないものは消さない（Widget は Widget編集で直す）
+  root.addEventListener(
+    'keydown',
+    (e: KeyboardEvent) => {
+      if (activeImg === null || !isMediaDeleteKey(e)) return
+      const blot = quill.scroll.find(activeImg)
+      if (blot === null) return
+      e.preventDefault()
+      e.stopPropagation()
+      const index = quill.getIndex(blot)
+      removeOverlay()
+      quill.deleteText(index, 1, 'user')
+      quill.setSelection(index, 0, 'silent')
+    },
+    true,
+  )
 
   // エディタ外のクリックで選択解除
   document.addEventListener('mousedown', (e: MouseEvent) => {
