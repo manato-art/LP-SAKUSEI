@@ -17,6 +17,8 @@
 import type Quill from 'quill'
 import { guessWidgetName, openWidgetEditorForNode } from './widget-editor.ts'
 import { containWidgetStyles } from './widget-style-scope.ts'
+import { duplicatePlacedWidget } from './widget-duplicate.ts'
+import { toast } from '../ui.ts'
 
 /* ── 定数 ── */
 
@@ -230,7 +232,23 @@ function createWidgetCard(widgetNode: HTMLElement, quill: Quill): HTMLElement {
     `color:${NAME_COLOR};font:${NAME_FONT_SIZE}/1.4 ${FONT};` +
     `overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0`
 
-  nameRow.append(icon, nameEl)
+  // 複製（そのすぐ下にもう1つ置く・中の名前は付け直す＝片方の色を変えても、もう片方は変わらない。2026-10-24 本人指定）
+  const duplicate = document.createElement('button')
+  duplicate.type = 'button'
+  duplicate.dataset['widgetNavDuplicate'] = 'true'
+  duplicate.textContent = '複製'
+  duplicate.title = 'このWidgetを、すぐ下にもう1つ置きます'
+  duplicate.style.cssText =
+    `margin-left:auto;flex-shrink:0;padding:2px 8px;border:1px solid #d5d5d5;border-radius:4px;background:#fff;` +
+    `color:#555;font:600 10px/1.4 ${FONT};cursor:pointer`
+  duplicate.addEventListener('click', (event) => {
+    // カードを押したとき（編集を開く）にしない
+    event.stopPropagation()
+    if (duplicatePlacedWidget(quill, widgetNode)) toast('すぐ下に複製しました')
+    else toast('このWidgetは複製できませんでした。編集画面を開き直してください', 'error')
+  })
+
+  nameRow.append(icon, nameEl, duplicate)
 
   // 縮小プレビュー
   const previewWrap = document.createElement('div')

@@ -29,8 +29,10 @@ import {
   loadCreatedWidgets,
   loadFavorites,
   refreshWidgetLibrary,
+  saveCreatedWidget,
   toggleFavorite,
 } from './widget-library-storage.ts'
+import { copyName } from './widget-duplicate.ts'
 import { isCreator } from '../session.ts'
 import { insertWidget, openWidgetCreator } from './widget-creator.ts'
 // 見本の中身（106本ぶんのHTML・約0.8MB）は、ライブラリを開いたときだけ読む（LPの編集画面を軽くする）。
@@ -557,9 +559,28 @@ function renderCreatedWidgets(root: HTMLElement, quill: Quill | null, close: () 
       })
     })
 
+    // 複製（コピーを作る・全員の一覧に入る。2026-10-24 本人「一度作ったウィジェットを複製する機能が欲しい」）
+    const dup = document.createElement('button')
+    dup.type = 'button'
+    dup.textContent = '複製'
+    dup.style.cssText =
+      'border:1px solid #d5d5d5;background:#fff;color:#333;border-radius:6px;padding:6px 10px;' +
+      'cursor:pointer;font:12px "Hiragino Sans",sans-serif'
+    dup.addEventListener('click', (e) => {
+      e.stopPropagation()
+      void saveCreatedWidget(copyName(w.name), w.html, w.source, { category: w.category, description: w.description }).then((ok) => {
+        if (!ok) {
+          toast('複製できませんでした。もう一度お試しください', 'error')
+          return
+        }
+        renderCreatedWidgets(root, quill, close)
+        toast(`「${copyName(w.name)}」を作りました`)
+      })
+    })
+
     // 消せるのは管理者だけ（2026-10-24 本人の選択。LP作成者には出さない・サーバーでも断る）
     if (!isCreator()) actions.append(del)
-    actions.append(add)
+    actions.append(dup, add)
     card.append(frame, titleEl, actions)
     grid.append(card)
   }
