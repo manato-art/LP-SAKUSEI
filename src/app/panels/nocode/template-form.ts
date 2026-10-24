@@ -29,7 +29,8 @@
 import { toast } from '../../ui.ts'
 import { node, scalarControl, type ControlEnv, type Scalar, type ScalarField } from './form-controls.ts'
 import { getAt, setAt, type Path } from './form-state.ts'
-import { foldable, type FormCore } from './form-core.ts'
+import { foldable, textButton, type FormCore } from './form-core.ts'
+import { hasBgImage } from './templates/bg-image.ts'
 import { applyPlainEdit, plainTextOfRich } from './rich-text.ts'
 import type { SelectionHandle } from '../selection-layer.ts'
 import { screenLabel } from './screens-state.ts'
@@ -79,6 +80,11 @@ export interface TemplateFormOptions {
    * 選んだ部品の設定だけを段に分けて出す
    */
   partsHost?: { readonly list: HTMLElement; readonly palette: HTMLElement }
+  /**
+   * 背景の画像を見たまま画面でつかんで動かす（2026-10-24）。itemPath は背景を持つ所（[]＝Widget全体・[画面]・[画面, 部品]）。
+   * 渡すと「背景の画像」の下に「画面でつかんで動かす」が出る（画像を選んでから）
+   */
+  onBgMove?: (itemPath: Path) => void
 }
 
 export interface TemplateForm {
@@ -243,9 +249,29 @@ export function buildTemplateForm(options: TemplateFormOptions): TemplateForm {
   const core: FormCore = { data: () => data, replace, restructure, refreshAll, onRefresh: (fn) => refreshers.push(fn) }
   const listDeps: ListFieldDeps = { ...core, fieldEl, nextListKey: () => `l${(listSeq += 1)}` }
   const listEl = (field: ListField, basePath?: Path): HTMLElement => listFieldEl(listDeps, field, basePath)
-  const screenSettings = createScreenSettings({ ...core, screensKey, activeScreen: () => activeScreen, openScreen, fieldEl })
+  /** 「画面でつかんで動かす」（背景の画像を選んでいるときだけ出す） */
+  const onBgMove = options.onBgMove
+  const bgMove =
+    onBgMove === undefined
+      ? undefined
+      : (itemPath: Path): HTMLElement => {
+          const b = textButton('画面でつかんで動かす', 'ncf-btn ncf-bg-move', () => onBgMove(itemPath))
+          refreshers.push(() => {
+            const holder = itemPath.length === 0 ? data : (getAt(data, itemPath) as ItemData | undefined)
+            b.hidden = holder === undefined || !hasBgImage(holder)
+          })
+          return b
+        }
+  const screenSettings = createScreenSettings({
+    ...core,
+    screensKey,
+    activeScreen: () => activeScreen,
+    openScreen,
+    fieldEl,
+    ...(bgMove === undefined ? {} : { bgMove }),
+  })
   const samples = createSampleFields({ ...core, write, rebuild: () => build(), options })
-  const inspector = createBlockInspector({ ...core, fieldEl, listEl, samples, screen: screenSettings })
+  const inspector = createBlockInspector({ ...core, fieldEl, listEl, samples, screen: screenSettings, ...(bgMove === undefined ? {} : { bgMove }) })
   const adder = createBlockAdder({ ...core, isSplit: split !== undefined, root, selectedBlock: () => selectedBlock, reselect, startFrom, options })
   const blockListDeps: BlockListDeps = {
     ...core,
@@ -314,7 +340,13 @@ export function buildTemplateForm(options: TemplateFormOptions): TemplateForm {
     const others = options.fields.filter((field) => field.kind !== 'screens' && field.kind !== 'sample' && field.kind !== 'goto')
     // 左右に分けたとき、部品を選んでいる間の右はその部品の設定だけ（Widget全体の設定は、部品を選んでいないときに出す）
     const showGlobal = split === undefined || selectedBlock === null
-    const otherEls = showGlobal ? others.map((field) => (field.kind === 'list' ? listEl(field) : fieldEl(field, [field.key]))) : []
+    // Widget全体の背景の画像は、位置の下に「画面でつかんで動かす」
+    const otherEls = showGlobal
+      ? others.flatMap((field) => [
+          field.kind === 'list' ? listEl(field) : fieldEl(field, [field.key]),
+          ...(field.key === 'bgY' && bgMove !== undefined ? [bgMove([])] : []),
+        ])
+      : []
     root.replaceChildren(
       ...screens.map((field) => screensEl(field)),
       // Widget全体の設定（背景・余白・切り替わり方）は畳んでおく。画面を持たない型ではそのまま並べる

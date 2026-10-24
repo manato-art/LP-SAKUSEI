@@ -13,6 +13,7 @@ import { node, type ScalarField } from './form-controls.ts'
 import { addAt, duplicateAt, getAt, moveAt, removeAt, setAt, type Path } from './form-state.ts'
 import { foldable, screenNameAt, textButton, type FormCore } from './form-core.ts'
 import { blockSnippet } from './builder-data.ts'
+import { bgFields } from './templates/bg-image.ts'
 import { buildLpPressRows } from './lp-press-rows.ts'
 import { chipRow, type Chip } from './press-chips.ts'
 import {
@@ -39,8 +40,10 @@ export interface ScreenSettingsDeps extends FormCore {
   readonly activeScreen: () => number
   /** 画面を開く（block はその画面で選んでおく部品） */
   readonly openScreen: (index: number, block?: number | null) => void
-  /** 1つの入力欄（template-form.ts の fieldEl。画面の名前に使う） */
-  readonly fieldEl: (field: ScalarField, path: Path) => HTMLElement
+  /** 1つの入力欄（template-form.ts の fieldEl。画面の名前・背景の画像に使う。itemPath は出し分けを見る所） */
+  readonly fieldEl: (field: ScalarField, path: Path, itemPath?: Path) => HTMLElement
+  /** 背景の画像を見たまま画面でつかんで動かすボタン（Widget編集だけ） */
+  readonly bgMove?: (itemPath: Path) => HTMLElement
 }
 
 export interface ScreenSettings {
@@ -155,8 +158,20 @@ export function createScreenSettings(deps: ScreenSettingsDeps): ScreenSettings {
       (open) => {
         screenSettingsOpen = open
       },
-      [...pressOverview(field, index), screenHead(field, screens, index)],
+      [...pressOverview(field, index), screenHead(field, screens, index), screenBackground(field, index)],
     )
+
+  /** この画面の背景の画像（2026-10-24・bg-image.ts。Widget全体の背景の上に、この画面の後ろだけに敷く） */
+  const screenBackground = (field: ScreensField, index: number): HTMLElement => {
+    const wrap = node('div', 'ncf-screen-bg')
+    const itemPath: Path = [field.key, index]
+    for (const bgField of bgFields('item')) {
+      const labeled = bgField.key === 'bgImage' ? { ...bgField, label: 'この画面の背景の画像', note: 'この画面の後ろに敷きます。文字や部品はこの上に出ます' } : bgField
+      wrap.append(deps.fieldEl(labeled as ScalarField, [...itemPath, bgField.key], itemPath))
+    }
+    if (deps.bgMove !== undefined) wrap.append(deps.bgMove(itemPath))
+    return wrap
+  }
 
   /**
    * 「ボタンの移る先」: この画面のボタン（押したときを持つ部品）を上から並べ、ボタンごとに移る先を選ぶ。

@@ -44,6 +44,7 @@ const svg = (body: string): string =>
 
 // 画面の切り替えのスクリプトは screens-script.ts（2026-10-24 に「下に積み重ねる」を足すときに分けた）
 import { SCREENS_SCRIPT } from './screens-script.ts'
+import { bgCss, bgFields } from './bg-image.ts'
 export { SCREENS_SCRIPT }
 
 /** 見本の中身（そのまま入れられる例。1画面目で答えを選ぶと2画面目へ移る） */
@@ -118,6 +119,8 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
   fields: [
     { kind: 'screens', key: 'screens', label: '画面と部品', min: 1, max: 20, blockMax: 30, types: ALL_BLOCK_TYPES },
     { kind: 'color', key: 'background', label: '背景の色', presets: BACKGROUND_PRESETS },
+    // 背景の画像（2026-10-24 本人「枠の背景…を全部添付してその画像にできるように」）
+    ...bgFields('root'),
     // 数で持つ（以前の 狭い/普通/広い は 24/40/56px として読める）。左の選択枠の上下の辺でもドラッグできる
     { kind: 'number', key: 'padding', label: '上下の余白', min: 0, max: 120, unit: 'px', legacy: BUILDER_PADDING },
     { kind: 'color', key: 'accent', label: '箇条書きの印の色', presets: ACCENT_PRESETS },
@@ -284,6 +287,9 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
       // ライブラリの見本の部品には土台を効かせない（見本は自分のCSSで描く）
       baseCss(s, '.nc-b-sample') +
       `${s}{padding:${padding}px 16px;${background}}` +
+      // 背景の画像（Widget全体・画面ごと。色はその下に見える・2026-10-24）
+      bgCss(s, data) +
+      screens.map((screen) => bgCss(`${s} [data-nc-screen="${str(screen, 'id')}"]`, screen)).join('') +
       // 見本は、LPに1つで置いたときと同じ見え方にする（文字の色・大きさ・行間は配信の土台と同じ。左右いっぱい）
       `${s} .nc-b-sample{margin-left:-16px;margin-right:-16px;color:#000000;font-size:16px;line-height:1.5;` +
       `text-align:left;font-weight:400;letter-spacing:normal}` +

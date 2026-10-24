@@ -22,6 +22,8 @@ export interface BlockInspectorDeps extends Pick<FormCore, 'data' | 'onRefresh'>
   readonly listEl: (field: ListField, basePath: Path) => HTMLElement
   readonly samples: Pick<SampleFields, 'el'>
   readonly screen: Pick<ScreenSettings, 'place' | 'layer' | 'press' | 'goto'>
+  /** 背景の画像を見たまま画面でつかんで動かすボタン（Widget編集だけ・画像が無いときは隠れている） */
+  readonly bgMove?: (itemPath: Path) => HTMLElement
 }
 
 export interface BlockInspector {
@@ -41,7 +43,7 @@ export function createBlockInspector(deps: BlockInspectorDeps): BlockInspector {
     screenIndex: number,
     index: number,
     type: BlockType,
-  ): { layout: HTMLElement[]; content: HTMLElement[]; press: HTMLElement[] } => {
+  ): { layout: HTMLElement[]; content: HTMLElement[]; background: HTMLElement[]; press: HTMLElement[] } => {
     const itemPath: Path = [field.key, screenIndex, 'blocks', index]
     // 移行先は被せた部品と同じ画面にしか置けない（「この部品を出す画面」は出さない。部品を移すと一緒に移る）
     const block = (getAt(deps.data(), [field.key, screenIndex, 'blocks', index]) as ItemData | undefined) ?? {}
@@ -49,6 +51,7 @@ export function createBlockInspector(deps: BlockInspectorDeps): BlockInspector {
       // 重ねる（すぐ上の部品の上に浮かべる）は、移行先には出さない（移行先はもともと被さる部品）
       layout: isHotspot(block) ? [] : [deps.screen.place(field, screenIndex, index, type.label), deps.screen.layer(field, screenIndex, index)],
       content: [] as HTMLElement[],
+      background: [] as HTMLElement[],
       press: [] as HTMLElement[],
     }
     for (const sub of type.fields) {
@@ -62,7 +65,7 @@ export function createBlockInspector(deps: BlockInspectorDeps): BlockInspector {
               sub.kind === 'list'
               ? deps.listEl(sub, itemPath)
               : deps.fieldEl(sub, [...itemPath, sub.key], itemPath)
-      ;(sub.section === 'layout' ? parts.layout : sub.section === 'press' ? parts.press : parts.content).push(el)
+      ;(sub.section === undefined ? parts.content : parts[sub.section]).push(el)
     }
     if (type.fields.some((f) => f.kind === 'goto')) parts.press.push(deps.screen.goto(itemPath))
     return parts
@@ -71,7 +74,7 @@ export function createBlockInspector(deps: BlockInspectorDeps): BlockInspector {
   const body = (field: ScreensField, screenIndex: number, index: number, type: BlockType): HTMLElement => {
     const el = node('div', 'ncf-item__body')
     const parts = blockParts(field, screenIndex, index, type)
-    el.append(...parts.layout, ...parts.content, ...parts.press)
+    el.append(...parts.layout, ...parts.content, ...parts.background, ...parts.press)
     return el
   }
 
@@ -109,6 +112,9 @@ export function createBlockInspector(deps: BlockInspectorDeps): BlockInspector {
     if (pressFirst) section('press', '押したとき', parts.press)
     section('layout', 'レイアウト', parts.layout)
     section('content', '中身', parts.content)
+    // 背景の画像（2026-10-24・bg-image.ts）。画面で動かすボタンは画像を選んでから出る
+    const canMove = parts.background.length > 0 && deps.bgMove !== undefined
+    section('background', '背景の画像', [...parts.background, ...(canMove && deps.bgMove !== undefined ? [deps.bgMove(itemPath)] : [])])
     if (!pressFirst) section('press', '押したとき', parts.press)
     return wrap
   }

@@ -20,6 +20,7 @@ import { renderMoreBlock } from './builder-blocks-more-render.ts'
 import { pressAttrs, pressContext, type PressContext } from './press-actions.ts'
 import { scopeSampleStyles } from '../sample-css-scope.ts'
 import { PROGRESS_BLOCK_TYPE, PROGRESS_TYPE, renderProgress } from './progress-part.ts'
+import { bgFields, bgTargetOf, blockBgCss } from './bg-image.ts'
 import { ACCENT_PRESETS, bool, int, pick, str, type BlockType, type ItemData, type NocodeTemplate } from './types.ts'
 import {
   ALIGN_OPTIONS,
@@ -283,13 +284,17 @@ const TEMPLATE_BLOCKS: readonly BlockType[] = TEMPLATES.map((template) => ({
 }))
 
 /** 積める部品（ふつうの部品＋増やした部品＋型の部品） */
+/** 背景の画像を敷ける部品には「背景の画像」の入力を足す（2026-10-24・bg-image.ts） */
+const withBackground = (type: BlockType): BlockType =>
+  bgTargetOf(type.type) === null ? type : { ...type, fields: [...type.fields, ...bgFields('item')] }
+
 export const ALL_BLOCK_TYPES: readonly BlockType[] = [
   ...BLOCK_TYPES,
   ...MORE_BLOCK_TYPES,
   ...EXTRA_BLOCK_TYPES,
   PROGRESS_BLOCK_TYPE,
   ...TEMPLATE_BLOCKS,
-]
+].map(withBackground)
 
 export function blockLabel(type: string): string {
   return ALL_BLOCK_TYPES.find((t) => t.type === type)?.label ?? '部品'
@@ -362,8 +367,9 @@ export function renderBlock(
   press: PressContext = pressContext(screenIds, s.slice(1)),
 ): { html: string; css: string } {
   const part = renderBlockBody(item, i, s, seen, press)
-  const layout = layoutCss(s, `nc-b-${i}`, item)
-  return layout === '' ? part : { html: part.html, css: part.css + layout }
+  // 部品の型のCSS（背景の色）のあとに、幅・置く位置と背景の画像を重ねる
+  const extra = layoutCss(s, `nc-b-${i}`, item) + blockBgCss(s, `nc-b-${i}`, item)
+  return extra === '' ? part : { html: part.html, css: part.css + extra }
 }
 
 function renderBlockBody(item: ItemData, i: number, s: string, seen: Set<string>, press: PressContext): { html: string; css: string } {

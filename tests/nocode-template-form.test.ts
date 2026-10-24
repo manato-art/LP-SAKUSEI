@@ -58,6 +58,13 @@ const click = (el: Element | null | undefined): void => {
 }
 const rowHead = (m: Mounted, index: number): Element | null => m.list.querySelector(`[data-ncf-block="${index}"] > .ncf-item__head`)
 const types = (data: TemplateData, screen = 0): string[] => items(items(data, 'screens')[screen] ?? {}, 'blocks').map((b) => str(b, 'type'))
+/** 画面 screen の部品 block に値を足した中身 */
+const setBlock = (data: TemplateData, screen: number, block: number, values: ItemData): TemplateData => ({
+  ...data,
+  screens: items(data, 'screens').map((s, si) =>
+    si !== screen ? s : { ...s, blocks: items(s, 'blocks').map((b, bi) => (bi === block ? { ...b, ...values } : b)) },
+  ),
+})
 const sectionTitles = (m: Mounted): string[] => [...m.panel.querySelectorAll('.ncf-fold--section > summary')].map((s) => s.textContent ?? '')
 
 function withHotspot(): TemplateData {
@@ -89,7 +96,7 @@ describe('左の列の並びと、右の設定', () => {
     expect(m.form.selectedBlock()).toBe(2)
     expect(m.selects.at(-1)).toEqual([0, 2])
     expect(m.panel.querySelector('.ncf-inspector__name')?.textContent).toBe('ボタン')
-    expect(sectionTitles(m)).toEqual(['押したとき', 'レイアウト', '中身'])
+    expect(sectionTitles(m)).toEqual(['押したとき', 'レイアウト', '中身', '背景の画像'])
     const pressText = m.panel.querySelector('.ncf-press')?.textContent ?? ''
     expect(pressText).toContain('LPの上で')
     // もう一度押すと畳む（選ぶのをやめる）
@@ -162,6 +169,53 @@ describe('この画面のボタンの移る先を、右の「この画面の設�
     m.form.select(4, null)
     m.form.select(0, null)
     expect(rows(m).map((r) => r.textContent?.includes('回答をはじめる'))).toEqual([true])
+  })
+})
+
+describe('背景の画像（2026-10-24 本人「ボタンの背景だったり枠の背景だったり…その画像にできるように。位置や大きさは自由に」）', () => {
+  const IMG = `data:image/png;base64,${'A'.repeat(40)}`
+  const moves: (string | number)[][] = []
+  /** Widget編集と同じ形に「画面でつかんで動かす」の受け口を足して組み立てる */
+  function mountWithMove(data: TemplateData): Mounted {
+    const tabs = document.createElement('div') as unknown as HTMLElement
+    const list = document.createElement('div') as unknown as HTMLElement
+    const palette = document.createElement('div') as unknown as HTMLElement
+    const changes: TemplateData[] = []
+    const form = buildTemplateForm({
+      fields: BUILDER_TEMPLATE.fields,
+      data,
+      onChange: (next) => changes.push(next),
+      tabsHost: tabs,
+      partsHost: { list, palette },
+      onBgMove: (path) => moves.push([...path]),
+    })
+    document.body.replaceChildren(tabs, list, palette, form.element)
+    return { form, list, panel: form.element, tabs, changes, selects: [] }
+  }
+  const moveButtons = (m: Mounted): HTMLElement[] =>
+    [...m.panel.querySelectorAll('.ncf-bg-move')] as unknown as HTMLElement[]
+
+  it('部品: 「背景の画像」の段。画像を選ぶまで「画面でつかんで動かす」は出ない。押すとその部品の場所を渡す', () => {
+    const m = mountWithMove(withHotspot())
+    click(rowHead(m, 2))
+    expect(moveButtons(m).map((b) => b.hidden)).toEqual([true])
+    const withImage = setBlock(m.form.getData(), 0, 2, { bgImage: IMG })
+    m.form.setData(withImage)
+    expect(moveButtons(m).map((b) => b.hidden)).toEqual([false])
+    click(moveButtons(m)[0])
+    expect(moves.at(-1)).toEqual(['screens', 0, 'blocks', 2])
+  })
+
+  it('Widget全体の設定と、この画面の設定にも「背景の画像」', () => {
+    const m = mountWithMove({ ...withHotspot(), bgImage: IMG })
+    const labels = [...m.panel.querySelectorAll('.ncf-label')].map((l) => l.textContent)
+    expect(labels).toContain('この画面の背景の画像')
+    expect(labels).toContain('背景の画像')
+    // Widget全体は画像があるので動かせる・画面①はまだ画像が無い
+    const shown = moveButtons(m).filter((b) => !b.hidden)
+    expect(shown).toHaveLength(1)
+    click(shown[0])
+    expect(moves.at(-1)).toEqual([])
   })
 })
 

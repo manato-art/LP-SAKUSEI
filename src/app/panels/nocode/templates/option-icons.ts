@@ -83,6 +83,14 @@ export const TRANSITION_ICONS = {
   stack: svg('<rect x="7" y="2" width="18" height="8" rx="2" fill="currentColor" opacity=".4"/><rect x="7" y="13" width="18" height="9" rx="2" fill="currentColor"/>'),
 } as const
 
+/* ── 背景の画像の合わせ方（2026-10-24） ── */
+export const BG_FIT_ICONS = {
+  // 枠いっぱいに覆う（画像が枠からはみ出して、枠の中は全部うまる）
+  cover: svg('<rect x="4" y="4" width="24" height="16" rx="2" fill="currentColor" opacity=".35"/><rect x="8" y="6" width="16" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/>'),
+  // 大きさを自分で決める（枠の中に小さく置く）
+  free: svg('<rect x="3" y="4" width="26" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="7" y="8" width="10" height="8" rx="1" fill="currentColor"/><path d="M21 15 L25 19 M25 15 V19 H21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>'),
+} as const
+
 /* ── ボタンの型（形・幅・動き） ── */
 export const CTA_SHAPE_ICONS = {
   soft: fill('<rect x="2" y="6" width="28" height="12" rx="3"/>'),

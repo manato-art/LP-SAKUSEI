@@ -43,6 +43,8 @@ import type { PickedSample } from './nocode/nocode-flow.ts'
 import { createToolbarHooks, type ToolbarHooks } from './widget-studio-toolbar.ts'
 import { hotspotHandles, hotspotMove, markEmptyHotspotHosts, type HotspotEditDeps } from './widget-studio-hotspot.ts'
 import { floatMove, type FloatEditDeps } from './widget-studio-float.ts'
+import { bgSurfaceOf, startBgMove, withBgLook, type BgMoveSession } from './widget-studio-bg-move.ts'
+import { bgLookOf } from './nocode/templates/bg-image.ts'
 
 export interface BuilderSessionDeps {
   readonly data: TemplateData
@@ -584,6 +586,8 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
     paintTimer = window.setTimeout(paint, PAINT_DELAY_MS)
   }
 
+  /** 背景の画像を動かしている間（終わるまで1つだけ） */
+  let bgSession: BgMoveSession | null = null
   const hasParts = (): boolean => items(data, 'screens').some((screen) => items(screen, 'blocks').length > 0)
   /** 中身ごと入れ替える（form.load で「戻す」の履歴にも入る） */
   const loadWhole = (next: TemplateData, message: string): void => {
@@ -643,6 +647,27 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
       },
     ],
     // まとまった型の「アンケート」: Widget を Q1〜Q3・結果の画面にする（form.load で「戻す」の履歴にも入る・2026-10-24）
+    // 背景の画像を見たまま画面でつかんで動かす（2026-10-24・widget-studio-bg-move.ts）
+    onBgMove: (itemPath) => {
+      bgSession?.stop()
+      const holder = (): ItemData => (itemPath.length === 0 ? data : ((getAt(data, itemPath) as ItemData | undefined) ?? {}))
+      void startBgMove({
+        target: () => bgSurfaceOf(data, contentDiv, uid, itemPath),
+        look: () => bgLookOf(holder()),
+        commit: (next) => {
+          data = withBgLook(data, itemPath, next)
+          track()
+          form.setData(data)
+          paint()
+        },
+        onEnd: () => {
+          bgSession = null
+        },
+      }).then((session) => {
+        bgSession = session
+        if (session === null) toast('背景の画像を読み込めませんでした。画像を選び直してください', 'error')
+      })
+    },
     onSurvey: () => {
       void askSurveyData(hasParts()).then((next) => {
         if (next !== null) loadWhole(next, 'アンケートの形を入れました。質問・答え・移る先の画面は、部品を選んで右で直せます')

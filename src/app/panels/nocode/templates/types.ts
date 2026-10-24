@@ -29,9 +29,9 @@ interface FieldBase {
   readonly showIfItem?: (item: ItemData) => boolean
   /**
    * Widget編集の右の設定で入れる段（2026-09-24 画面の作り直し）。layout＝「レイアウト」（幅・置く位置）、
-   * press＝「押したとき」。無ければ「中身」
+   * press＝「押したとき」・background＝「背景の画像」（2026-10-24）。無ければ「中身」
    */
-  readonly section?: 'layout' | 'press'
+  readonly section?: 'layout' | 'press' | 'background'
 }
 
 export type Field =
