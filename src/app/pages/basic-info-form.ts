@@ -87,7 +87,7 @@ const TITLE_MAX_LENGTH = 50
 /** 編集タイプの表示名（実機の実測・docs/findings-live-observation.md） */
 export const EDITOR_VERSION_LABELS: Readonly<Record<number, string>> = {
   1: '該当なし',
-  2: 'beyondエディター',
+  2: 'エディター',
   3: 'HTMLエディター',
 }
 
@@ -197,9 +197,9 @@ function isEmptyOrCount(raw: string | undefined): boolean {
 
 export function validateBasicInfo(input: BasicInfoValues): BasicInfoValidation {
   const title = input.title.trim()
-  if (title === '') return { ok: false, message: 'beyondページ名を入力してください。' }
+  if (title === '') return { ok: false, message: 'ページ名を入力してください。' }
   if (title.length > TITLE_MAX_LENGTH) {
-    return { ok: false, message: `beyondページ名は${TITLE_MAX_LENGTH}文字まで入力できます。` }
+    return { ok: false, message: `ページ名は${TITLE_MAX_LENGTH}文字まで入力できます。` }
   }
   const raw = input.conversion_unit_price.trim()
   const price = raw === '' ? 0 : Number(raw)

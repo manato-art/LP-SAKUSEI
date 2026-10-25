@@ -50,7 +50,7 @@ describe('採取物に、配線が前提にする文言・クラスが実在す�
 describe('採取物に、配線が前提にする文言・クラスが実在する（AI）', () => {
   const html = read(SB_AI)
   const marks = [
-    'Squad beyond AI',
+    'AIアシスタント',
     'ホーム',
     'チャット履歴',
     '新しいチャット',
@@ -81,7 +81,7 @@ describe('グローバルサイドバーを落とす純粋関数', () => {
     expect(body).not.toContain('Squadbeyond Logo')
     expect(body).not.toContain('CV速報')
     // 本体（AIパネル）は残る。AIサブナビは同じ data-testid を使うので残ってよい
-    expect(body).toContain('Squad beyond AI')
+    expect(body).toContain('AIアシスタント')
     expect(body).toContain('チャット履歴')
     expect(body).toContain('data-testid="list-menu-item"')
   })

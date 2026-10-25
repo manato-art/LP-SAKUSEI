@@ -47,7 +47,7 @@ export const HEADER_IMAGE_HOOK = {
 export const HEADER_IMAGE_TABS: readonly string[] = [
   '全て',
   'フォルダ内',
-  'beyondページ内',
+  'ページ内',
   'Version内',
 ]
 

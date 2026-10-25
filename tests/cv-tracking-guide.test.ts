@@ -28,11 +28,11 @@ describe('CV計測連携の案内', () => {
     expect(guide.steps.join('\n')).toContain('CV計測タグ')
   })
 
-  it('AFFILICODE だけは一括タグで選ぶとリンクに連携用パラメーターが付くと案内する（実装どおりの3つだけ）', () => {
+  // 2026-10-25 本人の選択: 説明の中の名前（squadbeyond_uid など）は「計測用の目印」と言い換える（URLに付く名前・計測はそのまま）
+  it('AFFILICODE だけは一括タグで選ぶとリンクに計測用の目印が付くと案内する（名前は出さない）', () => {
     const text = cvTrackingGuide('AFFILICODE').steps.join('\n')
-    expect(text).toContain('squadbeyond_uid')
-    expect(text).toContain('sb_tracking')
-    expect(text).toContain('sb_article_uid')
-    expect(cvTrackingGuide('A8.net').steps.join('\n')).not.toContain('squadbeyond_uid')
+    expect(text).toContain('計測用の目印')
+    expect(text).not.toMatch(/beyond/i)
+    expect(cvTrackingGuide('A8.net').steps.join('\n')).not.toContain('計測用の目印')
   })
 })

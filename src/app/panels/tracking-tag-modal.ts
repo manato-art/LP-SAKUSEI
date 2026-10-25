@@ -123,14 +123,14 @@ export function openTrackingTagModal(deliveryUrl: string): void {
   const lead = document.createElement('p')
   lead.className = 'sb-tt-lead'
   lead.textContent =
-    '別アカウント（別のSquadBeyond等）で配信しているLPに貼ると、そのLPのPV・クリックを' +
-    'この beyondページのレポートに計上します。'
+    '別アカウント（別の配信ツール等）で配信しているLPに貼ると、そのLPのPV・クリックを' +
+    'このページのレポートに計上します。'
 
   const steps = document.createElement('ol')
   steps.className = 'sb-tt-steps'
   for (const t of [
     '下のタグをコピーする',
-    '相手のSquadBeyondで対象LPを開き、「タグ設定」を開く',
+    '相手の配信ツールで対象LPを開き、「タグ設定」を開く',
     'body（本文）側にそのまま貼り付けて保存する',
     '広告からの流入が始まると、このLPのレポートにPV・クリックが積み上がる',
   ]) {
@@ -204,11 +204,11 @@ export function openTrackingTagModal(deliveryUrl: string): void {
   notes.className = 'sb-tt-notes'
   for (const t of [
     'クリックは「計測機能付きリンク」のみ（相手LPのリンクが計測機能付きである必要があります）',
-    'CVは、LPで計測機能付きリンクを押してから1日以内に届いた成果だけを、見ていたVersionに数えます（SquadBeyond本体と同じ。同じ人の成果は1回だけ）',
-    'サンクスページがLPと別のドメインのときは、③を広告主サイトの最初のページにも貼ってください（URLの squadbeyond_uid をサンクスページまで引き継げるなら不要）',
+    'CVは、LPで計測機能付きリンクを押してから1日以内に届いた成果だけを、見ていたVersionに数えます（同じ人の成果は1回だけ）',
+    'サンクスページがLPと別のドメインのときは、③を広告主サイトの最初のページにも貼ってください（URLの計測用の目印をサンクスページまで引き継げるなら不要）',
     '売上も入れたい場合は、CVタグより前に window.__sbCvAmount = 金額 を置いてください',
     'タグを貼った時点からの計測です。過去には遡れません',
-    'SquadBeyond側のレポート数値とは独立したカウンタなので、完全一致はしません',
+    '配信ツール側のレポート数値とは独立したカウンタなので、完全一致はしません',
   ]) {
     const li = document.createElement('li')
     li.textContent = t

@@ -5,17 +5,17 @@ import { EDITOR_VERSION_LABELS } from '../src/app/pages/basic-info-form.ts'
 
 /**
  * D-011（全1016ページをAPI走査して確定）:
- *   2 = beyondエディター（1013件） / 3 = HTMLエディター（3件） / 1 = 0件
+ *   2 = エディター（1013件） / 3 = HTMLエディター（3件） / 1 = 0件
  * 作成モーダルと基本情報タブで対応が食い違うと、保存した値と表示が合わなくなる。
  *
- * 2026-10-25 本人「beyondエディターって書いてるのしか今選択できないから他の二個いらない。
+ * 2026-10-25 本人「エディターって書いてるのしか今選択できないから他の二個いらない。
  * あと選択じゃなくて、そもそもそれに移行するようにしてほしい」→ 作成モーダルのエディターの選択をなくし、
- * いつも beyondエディターで作る。
+ * いつも エディターで作る。
  */
-describe('新しいページは beyondエディターで作る', () => {
-  it('作る値は 2（基本情報タブでは beyondエディター）', () => {
+describe('新しいページは エディターで作る', () => {
+  it('作る値は 2（基本情報タブでは エディター）', () => {
     expect(NEW_PAGE_EDITOR_VERSION).toBe(2)
-    expect(EDITOR_VERSION_LABELS[2]).toBe('beyondエディター')
+    expect(EDITOR_VERSION_LABELS[2]).toBe('エディター')
     expect(EDITOR_VERSION_LABELS[3]).toBe('HTMLエディター')
   })
 

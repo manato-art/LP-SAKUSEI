@@ -64,7 +64,7 @@ export const TASK_TEMPLATES: readonly TaskTemplate[] = [
     id: 'weekly-report',
     title: '週次成果まとめレポート',
     description:
-      '毎週決まった曜日に、指定した範囲のbeyondページの成果を集計してレポートします。',
+      '毎週決まった曜日に、指定した範囲のページの成果を集計してレポートします。',
     badge: '定期',
     preset: {
       name: '週次成果まとめレポート',

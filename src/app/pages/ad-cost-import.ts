@@ -81,7 +81,7 @@ export async function mountAdCostImport(host: HTMLElement): Promise<void> {
   if (pages.length === 0) {
     section.append(
       el('div', {
-        text: 'beyondページがまだありません。ページを作ってから取り込んでください。',
+        text: 'ページがまだありません。ページを作ってから取り込んでください。',
         style: `font-size:13px;color:${T.sub}`,
       }),
     )

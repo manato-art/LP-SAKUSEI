@@ -104,8 +104,8 @@ export const ADDON_CATALOG: readonly Addon[] = [
 ] as const
 
 export const PERMISSION_CATALOG: readonly Permission[] = [
-  { id: 1, key: 'ab_test.create', label: 'beyondページの作成', granted: true },
-  { id: 2, key: 'ab_test.delete', label: 'beyondページの削除', granted: true },
+  { id: 1, key: 'ab_test.create', label: 'ページの作成', granted: true },
+  { id: 2, key: 'ab_test.delete', label: 'ページの削除', granted: true },
   { id: 3, key: 'folder.manage', label: 'フォルダの管理', granted: true },
   { id: 4, key: 'team.invite', label: 'メンバーの招待', granted: true },
   { id: 5, key: 'report.view', label: 'レポートの閲覧', granted: true },

@@ -70,7 +70,7 @@ export function lastUpdatedLabel(value: unknown): string {
 /** CV速報のCSV（実物の「CSVダウンロード」）。列は画面と同じ8列 */
 export function conversionsCsv(rows: readonly ConversionRow[]): string {
   const head = [
-    'フォルダ', 'beyondページ', 'Versionメモ', 'メディア',
+    'フォルダ', 'ページ', 'Versionメモ', 'メディア',
     'アクセス日時', 'CV日時', 'CVソース', '成果識別ID',
   ]
   const cell = (v: string): string => `"${v.replace(/"/g, '""')}"`
@@ -250,7 +250,7 @@ export async function renderConversions(container: HTMLElement): Promise<void> {
         shown,
         [
           { head: 'フォルダ', cell: (r) => r.folder_name ?? '-' },
-          { head: 'beyondページ', cell: (r) => r.ab_test_title ?? '-' },
+          { head: 'ページ', cell: (r) => r.ab_test_title ?? '-' },
           { head: 'Versionメモ', cell: (r) => r.version_memo ?? '-' },
           { head: 'メディア', cell: (r) => r.media?.name ?? '-' },
           { head: 'アクセス日時', cell: (r) => r.access_at ?? '-' },

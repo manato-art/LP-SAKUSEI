@@ -137,7 +137,7 @@ function deviceCoverage(state: State, abTestUid: string, startDate: string, endD
 heatmapStatsRouter.get('/ab_tests/:uid/heatmaps/stats', (req, res) => {
   const state = getState()
   const abTest = findAbTest(state, req.params.uid)
-  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
+  if (abTest === undefined) return notFound(res, 'ページが見つかりません。')
   const { startDate, endDate } = dateRangeParams(req.query)
 
   // 広告パラメータでの絞り込み。指定が無ければ合算（param='')を見る。

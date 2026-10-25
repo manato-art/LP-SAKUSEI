@@ -150,7 +150,7 @@ inspectionsRouter.get('/inspections/lookup', (req, res) => {
   if (ref === null) {
     res
       .status(422)
-      .json(errorEnvelope('invalid', 'beyondページURL（…/lp/…）・プレビューURL（…/preview/…）・中間ページURL・uid のどれかを入れてください。'))
+      .json(errorEnvelope('invalid', 'ページURL（…/lp/…）・プレビューURL（…/preview/…）・中間ページURL・uid のどれかを入れてください。'))
     return
   }
   const state = getState()
@@ -162,7 +162,7 @@ inspectionsRouter.get('/inspections/lookup', (req, res) => {
   })()
   const abTest = state.abTests.find((t) => t.id === abTestId)
   if (abTest === undefined) {
-    res.status(404).json(errorEnvelope('not_found', 'そのURLのbeyondページは見つかりませんでした。'))
+    res.status(404).json(errorEnvelope('not_found', 'そのURLのページは見つかりませんでした。'))
     return
   }
   res.json({ ab_test_uid: abTest.uid, title: abTest.title })

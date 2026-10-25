@@ -243,7 +243,7 @@ function renderTotals(wrap: HTMLElement, data: DashboardData): void {
 /** 表の列。数値の並びは「全体」のKPIカードと同じ順にしてある。 */
 const PAGE_COLUMNS: readonly Column<PageBreakdown>[] = [
   {
-    head: 'beyondページ',
+    head: 'ページ',
     cell: (r) => r.title,
     href: (r) => `#/ab_tests/${r.uid}/reports`,
     width: 'minmax(180px,1.8fr)',

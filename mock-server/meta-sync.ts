@@ -30,7 +30,7 @@ export async function syncMetaMedia(input: {
   const level = abTest?.meta_level
   const objectId = abTest?.meta_object_id ?? ''
   if (abTest === undefined || level === undefined || objectId === '') {
-    return { ok: false, reason: 'not_linked', message: 'この beyondページにMeta広告が紐付いていません。' }
+    return { ok: false, reason: 'not_linked', message: 'このページにMeta広告が紐付いていません。' }
   }
   const fetcher = input.fetcher ?? fetchMetaInsights
   const result: MetaFetchResult = await fetcher({ level, objectId, since: input.since, until: input.until })

@@ -167,7 +167,7 @@ describe('フォルダ行のテンプレートを採取物から取り出す', (
     expect(template).toContain('<svg')
   })
 
-  it('採取物のフォルダ行には beyondページ数のバッジが無い', () => {
+  it('採取物のフォルダ行には ページ数のバッジが無い', () => {
     // バッジを持つのはフォルダ「グループ」行だけ。
     // クローンが行に件数を出さないのは、実物がそうだから（作り足していない）。
     expect(capturedHtml).toContain('css-1kcsw0t eth7yzt0')
@@ -189,9 +189,9 @@ describe('フォルダ選択後の状態を採取済み（KPI一覧＋右詳細�
     expect(isSelectorInCapture(capturedHtml, FOLDERS_HOOK.detailPanel)).toBe(true)
   })
 
-  it('右詳細パネルに実物の見出し（URL情報 / beyondページ情報 / 配信情報）が在る', () => {
+  it('右詳細パネルに実物の見出し（URL情報 / ページ情報 / 配信情報）が在る', () => {
     expect(capturedHtml).toContain('URL情報')
-    expect(capturedHtml).toContain('beyondページ情報')
+    expect(capturedHtml).toContain('ページ情報')
     expect(capturedHtml).toContain('配信情報')
   })
 

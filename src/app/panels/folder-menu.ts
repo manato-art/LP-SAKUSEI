@@ -316,7 +316,7 @@ function confirmDeleteFolder(folder: Folder): void {
     title: 'フォルダを削除',
     message: `「${folder.name}」を削除しますか？`,
     detail:
-      `フォルダ内のbeyondページは削除されません。「${UNFILED_FOLDER_NAME}」に移り、あとから別のフォルダへ移せます。` +
+      `フォルダ内のページは削除されません。「${UNFILED_FOLDER_NAME}」に移り、あとから別のフォルダへ移せます。` +
       'このフォルダに設定したドメインの設定は消えます。フォルダの削除は取り消せません。',
     submitLabel: '削除する',
     danger: true,

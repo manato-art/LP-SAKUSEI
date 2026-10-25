@@ -108,7 +108,7 @@ async function finishStatus(abTest: AbTest): Promise<void> {
 async function removePage(abTest: AbTest, context: PageContext): Promise<void> {
   const url = deliveryUrlFor(context.folder?.domain, location.origin, abTest.uid) ?? `${location.origin}/lp/${abTest.uid}`
   const ok = await confirmCard({
-    title: 'beyondページを削除',
+    title: 'ページを削除',
     message: `「${abTest.title}」を削除します。`,
     detail:
       `配信URL（${url}）は開けなくなります。広告のリンク先にしている場合、その広告からは表示されなくなります。` +
@@ -149,12 +149,12 @@ export function openPageMoreMenu(anchor: HTMLElement, abTest: AbTest, context: P
   const items: { label: string; danger?: boolean; action: () => void }[] = [
     { label: 'フォルダ移動', action: () => void moveToFolder(abTest, context) },
     { label: '別フォルダへ複製', action: () => void duplicate(abTest, context, true) },
-    { label: 'beyondページ複製', action: () => void duplicate(abTest, context, false) },
+    { label: 'ページ複製', action: () => void duplicate(abTest, context, false) },
     ...(abTest.ad_status === 'finished'
       ? []
       : [{ label: 'ステータスを終了にする', action: () => void finishStatus(abTest) }]),
     // LP作成者は削除できない（サーバーでも断っている）
-    ...(isCreator() ? [] : [{ label: 'beyondページを削除', danger: true, action: () => void removePage(abTest, context) }]),
+    ...(isCreator() ? [] : [{ label: 'ページを削除', danger: true, action: () => void removePage(abTest, context) }]),
   ]
 
   for (const item of items) {

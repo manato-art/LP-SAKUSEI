@@ -177,7 +177,7 @@ function buildForm(
     fieldBlock(
       '計測ツール・ASP',
       aspSel,
-      'AFFILICODE を選ぶと、配信するLP内のリンク（http/https）に squadbeyond_uid / sb_tracking=true / sb_article_uid を自動で付けます。ほかのASPを選んでもパラメーターは付きません（記録として残るだけです）。',
+      'AFFILICODE を選ぶと、配信するLP内のリンク（http/https）に計測用の目印を自動で付けます。ほかのASPを選んでもパラメーターは付きません（記録として残るだけです）。',
     ),
     fieldBlock('noindexを含める', noindexToggle.el, 'メタタグ設定で「noindexを含める」としていた場合、noindexは含まれます。'),
   )

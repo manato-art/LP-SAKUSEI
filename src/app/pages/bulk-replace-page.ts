@@ -240,7 +240,7 @@ export async function renderBulkReplacePage(host: HTMLElement): Promise<void> {
       return
     }
     if (model.selectedPages.size === 0) {
-      midPane.append(h('div', 'br-hint', '置換対象のbeyondページを選択してください'))
+      midPane.append(h('div', 'br-hint', '置換対象のページを選択してください'))
       return
     }
     const head = h('div', 'br-list-head')
@@ -525,7 +525,7 @@ export async function renderBulkReplacePage(host: HTMLElement): Promise<void> {
     const guide = buildToolGuide({
       id: 'bulk-replace',
       summary:
-        '複数のbeyondページの画像・テキスト・リンクを、まとめて置き換える画面です。置き換えた直後なら「元に戻す」で戻せます。',
+        '複数のページの画像・テキスト・リンクを、まとめて置き換える画面です。置き換えた直後なら「元に戻す」で戻せます。',
       steps: [
         { label: 'フォルダを追加する', done: model.nodes.length > 0 },
         {

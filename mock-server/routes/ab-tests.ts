@@ -164,7 +164,7 @@ abTestsRouter.post('/ab_tests', (req, res) => {
 abTestsRouter.get('/ab_tests/:uid', (req, res) => {
   const state = getState()
   const abTest = findAbTest(state, req.params.uid)
-  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
+  if (abTest === undefined) return notFound(res, 'ページが見つかりません。')
   res.json({ ab_test: serializeAbTest(state, abTest) })
 })
 
@@ -180,7 +180,7 @@ abTestsRouter.get('/ab_tests/:uid', (req, res) => {
 abTestsRouter.post('/ab_tests/:uid/duplicate', (req, res) => {
   const state = getState()
   const source = findAbTest(state, req.params.uid)
-  if (source === undefined) return notFound(res, 'beyondページが見つかりません。')
+  if (source === undefined) return notFound(res, 'ページが見つかりません。')
   const body = (req.body ?? {}) as Record<string, unknown>
   const raw = 'folder_id' in body ? body['folder_id'] : source.folder_id
   const folderId = raw === null ? null : typeof raw === 'number' && Number.isInteger(raw) ? raw : undefined
@@ -189,7 +189,7 @@ abTestsRouter.post('/ab_tests/:uid/duplicate', (req, res) => {
     return
   }
   const out = duplicateAbTest(state, source.uid, folderId, creatorOf(req)?.uid)
-  if (out === null) return notFound(res, 'beyondページが見つかりません。')
+  if (out === null) return notFound(res, 'ページが見つかりません。')
   setState(() => out.state)
   res.status(201).json({ ab_test: serializeAbTest(out.state, out.abTest) })
 })
@@ -201,7 +201,7 @@ abTestsRouter.delete('/ab_tests/:uid', (req, res) => {
     deleted = out.deleted
     return out.state
   })
-  if (!deleted) return notFound(res, 'beyondページが見つかりません。')
+  if (!deleted) return notFound(res, 'ページが見つかりません。')
   res.status(204).end()
 })
 
@@ -209,7 +209,7 @@ abTestsRouter.delete('/ab_tests/:uid', (req, res) => {
 abTestsRouter.get('/ab_tests/:uid/articles', (req, res) => {
   const state = getState()
   const abTest = findAbTest(state, req.params.uid)
-  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
+  if (abTest === undefined) return notFound(res, 'ページが見つかりません。')
   const articles = state.articles.filter((a) => a.ab_test_id === abTest.id)
   res.json({ articles: applyEmptyState(req, articles.map(serializeArticle)) })
 })
@@ -218,7 +218,7 @@ abTestsRouter.get('/ab_tests/:uid/articles', (req, res) => {
 abTestsRouter.post('/ab_tests/:uid/articles', (req, res) => {
   const name = optionalString(req.body, 'name')
   const out = addArticle(getState(), req.params.uid, { name })
-  if (out === null) return notFound(res, 'beyondページが見つかりません。')
+  if (out === null) return notFound(res, 'ページが見つかりません。')
   setState(() => out.state)
   res.status(201).json({ article: serializeArticle(out.article) })
 })
@@ -228,7 +228,7 @@ abTestsRouter.post('/ab_tests/:uid/articles', (req, res) => {
 abTestsRouter.get('/ab_tests/:uid/redirect_pages', (req, res) => {
   const state = getState()
   const abTest = findAbTest(state, req.params.uid)
-  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
+  if (abTest === undefined) return notFound(res, 'ページが見つかりません。')
   // 旧形式（名前なしの2欄）で保存したタグは、名前付きのタグに置き換えてから返す（画面で1件ずつ直せるように）
   const migrated = migrateLegacyRedirectPageTags(state, abTest.id)
   if (migrated !== state) setState(() => migrated)
@@ -239,14 +239,14 @@ abTestsRouter.get('/ab_tests/:uid/redirect_pages', (req, res) => {
 abTestsRouter.put('/ab_tests/:uid/redirect_pages', (req, res) => {
   const state = getState()
   const abTest = findAbTest(state, req.params.uid)
-  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
+  if (abTest === undefined) return notFound(res, 'ページが見つかりません。')
   res.json({ redirect_pages: state.redirectPages.filter((p) => p.ab_test_id === abTest.id) })
 })
 
 /** 中間ページを1つ追加（指示⑮ 中間ページを追加） */
 abTestsRouter.post('/ab_tests/:uid/redirect_pages/create', (req, res) => {
   const out = addRedirectPage(getState(), req.params.uid)
-  if (out.page === null) return notFound(res, 'beyondページが見つかりません。')
+  if (out.page === null) return notFound(res, 'ページが見つかりません。')
   setState(() => out.state)
   res.status(201).json({ redirect_page: out.page })
 })
@@ -294,7 +294,7 @@ abTestsRouter.delete('/redirect_pages/:uid', (req, res) => {
 abTestsRouter.get('/ab_tests/:uid/split_test_settings/:type', (req, res) => {
   const state = getState()
   const abTest = findAbTest(state, req.params.uid)
-  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
+  if (abTest === undefined) return notFound(res, 'ページが見つかりません。')
   const type = req.params.type
   if (!isSplitTestType(type)) return notFound(res, '設定種別が不正です。')
   const stored = state.splitTestSettings.find((s) => s.ab_test_id === abTest.id && s.type === type)
@@ -311,7 +311,7 @@ abTestsRouter.get('/ab_tests/:uid/split_test_settings/:type', (req, res) => {
 abTestsRouter.put('/ab_tests/:uid/split_test_settings/:type', (req, res) => {
   const state = getState()
   const abTest = findAbTest(state, req.params.uid)
-  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
+  if (abTest === undefined) return notFound(res, 'ページが見つかりません。')
   const type = req.params.type
   if (!isSplitTestType(type)) return notFound(res, '設定種別が不正です。')
   const body = req.body as { rules?: unknown }
@@ -332,14 +332,14 @@ abTestsRouter.put('/ab_tests/:uid/split_test_settings/:type', (req, res) => {
 abTestsRouter.get('/ab_tests/:uid/options/devide', (req, res) => {
   const state = getState()
   const abTest = findAbTest(state, req.params.uid)
-  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
+  if (abTest === undefined) return notFound(res, 'ページが見つかりません。')
   res.json({ devide: { ab_test_uid: abTest.uid, mode: 'ratio', enabled: false } })
 })
 
 abTestsRouter.put('/ab_tests/:uid/options/devide', (req, res) => {
   const state = getState()
   const abTest = findAbTest(state, req.params.uid)
-  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
+  if (abTest === undefined) return notFound(res, 'ページが見つかりません。')
   res.json({
     devide: {
       ab_test_uid: abTest.uid,
@@ -359,7 +359,7 @@ abTestsRouter.put('/ab_tests/:uid/options/devide', (req, res) => {
 abTestsRouter.put('/ab_tests/:uid/meta_link', (req, res) => {
   const state = getState()
   const abTest = findAbTest(state, req.params.uid)
-  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
+  if (abTest === undefined) return notFound(res, 'ページが見つかりません。')
 
   const body = req.body as Record<string, unknown>
   const level = body.meta_level

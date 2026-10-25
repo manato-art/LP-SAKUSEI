@@ -45,7 +45,7 @@ export async function renderRankings(container: HTMLElement): Promise<void> {
   const content = pageShell(
     container,
     'ランキング',
-    'beyondページを成果順に並べます。',
+    'ページを成果順に並べます。',
   )
 
   // ソート切替
@@ -94,7 +94,7 @@ export async function renderRankings(container: HTMLElement): Promise<void> {
       table<RankRow>(
         rows,
         [
-          { head: 'beyondページ', cell: (r) => r.title ?? '-' },
+          { head: 'ページ', cell: (r) => r.title ?? '-' },
           { head: '売上', cell: (r) => (r.sales === undefined ? '-' : yen(r.sales)), align: 'right' },
           { head: 'CV', cell: (r) => (r.cv === undefined ? '-' : int(r.cv)), align: 'right' },
           { head: 'PV', cell: (r) => (r.pv === undefined ? '-' : int(r.pv)), align: 'right' },

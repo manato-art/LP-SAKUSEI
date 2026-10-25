@@ -20,9 +20,11 @@ describe('一括タグの設定項目', () => {
     expect(page).not.toContain('cv_condition:')
   })
 
-  it('ASPの説明は、AFFILICODEのときに付く3つだけを書く', () => {
+  // 2026-10-25 本人の選択: 説明の中の名前は「計測用の目印」と言い換える。配信で付ける名前（計測の仕組み）はそのまま
+  it('ASPの説明は、AFFILICODEのときに計測用の目印が付くことだけを書く（付ける名前は配信のまま）', () => {
+    expect(page).toContain('計測用の目印を自動で付けます')
+    expect(page).not.toContain('squadbeyond_uid')
     for (const param of ['squadbeyond_uid', 'sb_tracking=true', 'sb_article_uid']) {
-      expect(page).toContain(param)
       expect(delivery).toContain(param)
     }
     expect(page).not.toContain('ASPを設定すると連携用パラメーターを自動で付与します')

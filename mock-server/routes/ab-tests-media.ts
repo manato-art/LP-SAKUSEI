@@ -34,7 +34,7 @@ const MEDIA_FIELDS = ['ad_cost', 'imp', 'media_click', 'media_cv'] as const
  */
 abTestsMediaRouter.post('/ab_tests/:uid/ad_costs', (req, res) => {
   const abTest = findAbTest(getState(), req.params.uid)
-  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
+  if (abTest === undefined) return notFound(res, 'ページが見つかりません。')
 
   const body = req.body as { rows?: unknown; legacy?: unknown }
   const incoming = Array.isArray(body.rows) ? body.rows : []
@@ -96,7 +96,7 @@ abTestsMediaRouter.post('/ab_tests/:uid/ad_costs', (req, res) => {
 abTestsMediaRouter.get('/ab_tests/:uid/media_sources', (req, res) => {
   const state = getState()
   const abTest = findAbTest(state, req.params.uid)
-  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
+  if (abTest === undefined) return notFound(res, 'ページが見つかりません。')
   const { startDate, endDate } = dateRangeParams(req.query)
   res.json({ days: mediaSourcesByDate(state, abTest.uid, dateRange(startDate, endDate)) })
 })
@@ -105,7 +105,7 @@ abTestsMediaRouter.get('/ab_tests/:uid/media_sources', (req, res) => {
 abTestsMediaRouter.get('/ab_tests/:uid/media_imports', (req, res) => {
   const state = getState()
   const abTest = findAbTest(state, req.params.uid)
-  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
+  if (abTest === undefined) return notFound(res, 'ページが見つかりません。')
   res.json({ imports: mediaImportsOf(state, abTest.uid) })
 })
 
@@ -115,7 +115,7 @@ abTestsMediaRouter.get('/ab_tests/:uid/media_imports', (req, res) => {
  */
 abTestsMediaRouter.post('/ab_tests/:uid/meta_sync', (req, res) => {
   const abTest = findAbTest(getState(), req.params.uid)
-  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
+  if (abTest === undefined) return notFound(res, 'ページが見つかりません。')
 
   const body = req.body as Record<string, unknown>
   const since = typeof body.start_date === 'string' ? body.start_date : ''

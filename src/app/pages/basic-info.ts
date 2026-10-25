@@ -100,7 +100,7 @@ export async function renderBasicInfoLegacy(
 
   const form = root.querySelector<HTMLElement>(HOOK.form)
   if (form === null) {
-    container.textContent = '基本情報タブの土台が壊れています（beyond-page-form が見つかりません）'
+    container.textContent = '基本情報タブを表示できませんでした。ページを読み込み直してください'
     return
   }
 
@@ -164,7 +164,7 @@ function applyAbTest(ctx: PageContext, medias: readonly MediaOption[]): void {
   const { root, abTest } = ctx
   const values = toFormValues(abTest)
 
-  const title = textFieldByLabel(root, 'beyondページ名')
+  const title = textFieldByLabel(root, 'ページ名')
   if (title !== null) title.value = values.title
   const memo = textAreaByLabel(root, 'メモ')
   if (memo !== null) memo.value = values.memo
@@ -415,7 +415,7 @@ function injectPageTitleField(ctx: PageContext): void {
   })
 
   const hint = document.createElement('p')
-  hint.textContent = '未入力の場合はbeyondページ名がタブに表示されます'
+  hint.textContent = '未入力の場合はページ名がタブに表示されます'
   hint.style.cssText =
     'margin:4px 0 0;font-size:11px;color:rgba(0,0,0,.4);' +
     'font-family:"Hiragino Sans",sans-serif'
@@ -481,7 +481,7 @@ function selectValueByLabel(root: HTMLElement, label: string): string | undefine
 
 function collectValues(root: HTMLElement): BasicInfoValues {
   return {
-    title: textFieldByLabel(root, 'beyondページ名')?.value ?? '',
+    title: textFieldByLabel(root, 'ページ名')?.value ?? '',
     page_title: root.querySelector<HTMLInputElement>('[data-clone-page-title]')?.value ?? '',
     memo: textAreaByLabel(root, 'メモ')?.value ?? '',
     affiliate_service_provider: textFieldByLabel(root, '計測ツール・ASP')?.value ?? '',

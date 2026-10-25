@@ -51,7 +51,7 @@ describe('normalizeDotsMenuHtml', () => {
     const items = topLevelMenuItems(normalizeDotsMenuHtml(raw))
     expect(items).toEqual([
       '複製',
-      '別のbeyondページに複製',
+      '別のページに複製',
       'HTMLをダウンロード',
       'アーカイブする',
       '選択してアーカイブする',

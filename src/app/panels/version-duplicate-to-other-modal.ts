@@ -74,7 +74,7 @@ async function fillDestinations(select: HTMLSelectElement | null, selfUid: strin
       option.textContent = test.title
       select.append(option)
     }
-    if (others.length === 0) head.textContent = '複製先のbeyondページがありません'
+    if (others.length === 0) head.textContent = '複製先のページがありません'
   } catch {
     // 取得失敗時は採取物のまま（複製時に検証する）
   }
@@ -88,14 +88,14 @@ async function runDuplicateToOther(
 ): Promise<void> {
   const targetAbTestUid = select?.value ?? ''
   if (targetAbTestUid === '') {
-    toast('複製先のbeyondページを選んでください', 'error')
+    toast('複製先のページを選んでください', 'error')
     return
   }
   try {
     const { articles } = await api.articles(targetAbTestUid)
     const articleUid = articles[0]?.uid
     if (articleUid === undefined) {
-      toast('複製先のbeyondページに記事がありません', 'error')
+      toast('複製先のページに記事がありません', 'error')
       return
     }
     const { version } = await api.duplicateVersionToArticle(current.uid, articleUid)

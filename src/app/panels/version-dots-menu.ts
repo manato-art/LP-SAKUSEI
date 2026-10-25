@@ -54,7 +54,7 @@ export const DOTS_MENU_HOOK = {
 /** 採取物に実在するメニュー項目の文言（順番も実物のとおり） */
 export const DOTS_MENU_LABELS = {
   duplicate: '複製',
-  duplicateToOther: '別のbeyondページに複製',
+  duplicateToOther: '別のページに複製',
   downloadHtml: 'HTMLをダウンロード',
   archive: 'アーカイブする',
   archiveSelected: '選択してアーカイブする',

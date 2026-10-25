@@ -31,7 +31,7 @@ function findPopupIndex(state: State, abTestId: number, popupUid: string): numbe
 followPopupsRouter.get('/ab_tests/:uid/follow_popups', (req, res) => {
   const state = getState()
   const abTest = findAbTest(state, req.params.uid)
-  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
+  if (abTest === undefined) return notFound(res, 'ページが見つかりません。')
   const popups = state.followPopups.filter((p) => p.ab_test_id === abTest.id).map(serializeFollowPopup)
   res.json({ follow_popups: applyEmptyState(req, popups) })
 })
@@ -44,7 +44,7 @@ followPopupsRouter.post('/ab_tests/:uid/follow_popups', (req, res) => {
   }
   const state = getState()
   const abTest = findAbTest(state, req.params.uid)
-  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
+  if (abTest === undefined) return notFound(res, 'ページが見つかりません。')
   const body = req.body as Record<string, unknown>
   const created: FollowPopup = {
     id: state.nextId,
@@ -75,7 +75,7 @@ followPopupsRouter.post('/ab_tests/:uid/follow_popups', (req, res) => {
 followPopupsRouter.put('/ab_tests/:uid/follow_popups/:popup_uid', (req, res) => {
   const state = getState()
   const abTest = findAbTest(state, req.params.uid)
-  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
+  if (abTest === undefined) return notFound(res, 'ページが見つかりません。')
   const idx = findPopupIndex(state, abTest.id, req.params.popup_uid)
   if (idx === -1) {
     res.status(404).json(errorEnvelope('not_found', '追尾ポップアップが見つかりません。'))
@@ -110,7 +110,7 @@ followPopupsRouter.put('/ab_tests/:uid/follow_popups/:popup_uid', (req, res) => 
 followPopupsRouter.post('/ab_tests/:uid/follow_popups/:popup_uid/publish', (req, res) => {
   const state = getState()
   const abTest = findAbTest(state, req.params.uid)
-  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
+  if (abTest === undefined) return notFound(res, 'ページが見つかりません。')
   const idx = findPopupIndex(state, abTest.id, req.params.popup_uid)
   if (idx === -1) {
     res.status(404).json(errorEnvelope('not_found', '追尾ポップアップが見つかりません。'))
@@ -125,7 +125,7 @@ followPopupsRouter.post('/ab_tests/:uid/follow_popups/:popup_uid/publish', (req,
 followPopupsRouter.post('/ab_tests/:uid/follow_popups/:popup_uid/duplicate', (req, res) => {
   const state = getState()
   const abTest = findAbTest(state, req.params.uid)
-  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
+  if (abTest === undefined) return notFound(res, 'ページが見つかりません。')
   const idx = findPopupIndex(state, abTest.id, req.params.popup_uid)
   if (idx === -1) {
     res.status(404).json(errorEnvelope('not_found', '追尾ポップアップが見つかりません。'))
@@ -146,7 +146,7 @@ followPopupsRouter.post('/ab_tests/:uid/follow_popups/:popup_uid/duplicate', (re
 followPopupsRouter.delete('/ab_tests/:uid/follow_popups/:popup_uid', (req, res) => {
   const state = getState()
   const abTest = findAbTest(state, req.params.uid)
-  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
+  if (abTest === undefined) return notFound(res, 'ページが見つかりません。')
   const idx = findPopupIndex(state, abTest.id, req.params.popup_uid)
   if (idx === -1) {
     res.status(404).json(errorEnvelope('not_found', '追尾ポップアップが見つかりません。'))

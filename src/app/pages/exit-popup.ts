@@ -352,7 +352,7 @@ function toggleDropdown(cardEl: HTMLElement, state: PopupPageState, uid: string)
     dropdown.remove()
     void confirmCard({
       title: 'このポップアップを削除しますか？',
-      message: 'このbeyondページから外れ、配信ページにも出なくなります。',
+      message: 'このページから外れ、配信ページにも出なくなります。',
       detail: '削除すると元に戻せません。',
       submitLabel: '削除する',
       danger: true,

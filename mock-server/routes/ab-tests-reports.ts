@@ -21,25 +21,25 @@ abTestsReportsRouter.use(heatmapStatsRouter)
 
 abTestsReportsRouter.get('/ab_tests/:uid/reports', (req, res) => {
   const out = reportRows(getState(), req.params.uid, 'version', req.query)
-  if (out === null) return notFound(res, 'beyondページが見つかりません。')
+  if (out === null) return notFound(res, 'ページが見つかりません。')
   res.json({ ...out, rows: applyEmptyState(req, out.rows) })
 })
 
 abTestsReportsRouter.get('/ab_tests/:uid/reports/lp', (req, res) => {
   const out = reportRows(getState(), req.params.uid, 'lp', req.query)
-  if (out === null) return notFound(res, 'beyondページが見つかりません。')
+  if (out === null) return notFound(res, 'ページが見つかりません。')
   res.json({ ...out, rows: applyEmptyState(req, out.rows) })
 })
 
 abTestsReportsRouter.get('/ab_tests/:uid/reports/swipe', (req, res) => {
   const out = reportRows(getState(), req.params.uid, 'version', req.query)
-  if (out === null) return notFound(res, 'beyondページが見つかりません。')
+  if (out === null) return notFound(res, 'ページが見つかりません。')
   res.json({ ...out, rows: applyEmptyState(req, out.rows) })
 })
 
 abTestsReportsRouter.get('/ab_tests/:uid/creative_report', (req, res) => {
   const out = reportRows(getState(), req.params.uid, 'creative', req.query)
-  if (out === null) return notFound(res, 'beyondページが見つかりません。')
+  if (out === null) return notFound(res, 'ページが見つかりません。')
   res.json({ ...out, rows: applyEmptyState(req, out.rows) })
 })
 
@@ -47,7 +47,7 @@ abTestsReportsRouter.get('/ab_tests/:uid/creative_report', (req, res) => {
 abTestsReportsRouter.get('/ab_tests/:uid/heatmaps/comparisons', (req, res) => {
   const state = getState()
   const abTest = findAbTest(state, req.params.uid)
-  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
+  if (abTest === undefined) return notFound(res, 'ページが見つかりません。')
   const heatmaps = state.heatmaps.filter((h) => h.ab_test_uid === abTest.uid)
   res.json({ heatmaps: applyEmptyState(req, heatmaps) })
 })
@@ -106,7 +106,7 @@ abTestsReportsRouter.put('/creative_report_user_columns', (req, res) => {
 abTestsReportsRouter.get('/ab_tests/:uid/funnel_steps', (req, res) => {
   const state = getState()
   const abTest = findAbTest(state, req.params.uid)
-  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
+  if (abTest === undefined) return notFound(res, 'ページが見つかりません。')
   const { startDate, endDate } = dateRangeParams(req.query)
 
   const articles = state.articles.filter((a) => a.ab_test_id === abTest.id)
@@ -138,13 +138,13 @@ abTestsReportsRouter.get('/ab_tests/:uid/funnel_steps', (req, res) => {
 abTestsReportsRouter.get('/ab_tests/:uid/parameter_scopes', (req, res) => {
   const state = getState()
   const abTest = findAbTest(state, req.params.uid)
-  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
+  if (abTest === undefined) return notFound(res, 'ページが見つかりません。')
   res.json({ parameter_scopes: parameterScopesOf(state, abTest.uid) })
 })
 
 abTestsReportsRouter.put('/ab_tests/:uid/parameter_scopes', (req, res) => {
   const abTest = findAbTest(getState(), req.params.uid)
-  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
+  if (abTest === undefined) return notFound(res, 'ページが見つかりません。')
   const body = req.body as { parameter_scopes?: unknown }
   const incoming = Array.isArray(body.parameter_scopes) ? body.parameter_scopes : []
 
@@ -201,7 +201,7 @@ const EXTERNAL_PAGE_TTL_MS = 10 * 60 * 1000
 abTestsReportsRouter.get('/ab_tests/:uid/external_page', (req, res) => {
   const state = getState()
   const abTest = findAbTest(state, req.params.uid)
-  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
+  if (abTest === undefined) return notFound(res, 'ページが見つかりません。')
 
   const url = abTest.external_url
   if (url === undefined || url === '') {

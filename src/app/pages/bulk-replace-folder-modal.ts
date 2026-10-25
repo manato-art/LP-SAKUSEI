@@ -54,7 +54,7 @@ export function openFolderPicker(folders: readonly Folder[]): Promise<FolderPick
 
     /* ── 終了済みbeyondページ ── */
     const finishedRow = el('div', 'brf-row brf-finished')
-    finishedRow.append(el('span', 'brf-label', '終了済みbeyondページ'))
+    finishedRow.append(el('span', 'brf-label', '終了済みページ'))
     const [noFinished, noFinishedInput] = radio('brf-finished', '含まない', true)
     const [yesFinished, yesFinishedInput] = radio('brf-finished', '含む', false)
     finishedRow.append(noFinished, yesFinished)

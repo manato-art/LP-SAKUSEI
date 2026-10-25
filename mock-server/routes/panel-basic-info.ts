@@ -25,7 +25,7 @@ import type { AbTest } from '../store/types.ts'
 
 export const basicInfoRouter: Router = Router()
 
-const NOT_FOUND = errorEnvelope('not_found', 'beyondページが見つかりません。')
+const NOT_FOUND = errorEnvelope('not_found', 'ページが見つかりません。')
 
 basicInfoRouter.get('/ab_tests/:uid/edit', (req, res) => {
   const state = getState()

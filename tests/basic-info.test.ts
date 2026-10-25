@@ -34,7 +34,7 @@ function createRouterApp(): express.Express {
   return app
 }
 
-/** フォルダ1件 + beyondページ1件を作り、uid を返す */
+/** フォルダ1件 + ページ1件を作り、uid を返す */
 function seedAbTest(title = 'サンプル施策001'): { abTestUid: string; folderId: number } {
   let abTestUid = ''
   let folderId = 0
@@ -101,7 +101,7 @@ describe('採取した基本情報タブの土台', () => {
   it('11個のラベル（＝フォーム項目）がすべて実在する', () => {
     const labels = [...html.matchAll(/<label\b[^>]*>([^<]*)<\/label>/g)].map((m) => m[1])
     expect(labels).toEqual([
-      'beyondページ名',
+      'ページ名',
       '編集タイプ',
       '配信タイプ',
       'CV条件',
@@ -274,16 +274,16 @@ describe('validateBasicInfo', () => {
     expect(validateBasicInfo(ok)).toEqual({ ok: true })
   })
 
-  it('beyondページ名が空なら止める', () => {
+  it('ページ名が空なら止める', () => {
     const result = validateBasicInfo({ ...ok, title: '   ' })
-    expect(result).toEqual({ ok: false, message: 'beyondページ名を入力してください。' })
+    expect(result).toEqual({ ok: false, message: 'ページ名を入力してください。' })
   })
 
-  it('beyondページ名は50文字まで（実物のヘルプ文言と同じ境界）', () => {
+  it('ページ名は50文字まで（実物のヘルプ文言と同じ境界）', () => {
     expect(validateBasicInfo({ ...ok, title: 'あ'.repeat(50) })).toEqual({ ok: true })
     expect(validateBasicInfo({ ...ok, title: 'あ'.repeat(51) })).toEqual({
       ok: false,
-      message: 'beyondページ名は50文字まで入力できます。',
+      message: 'ページ名は50文字まで入力できます。',
     })
   })
 
@@ -331,14 +331,14 @@ describe('parseAbTestPatch', () => {
     expect(bad).toEqual({ ok: false, message: 'CV条件はクリックかアクセスのいずれかを指定してください。' })
   })
 
-  it('beyondページ名は空にできず、50文字まで', () => {
+  it('ページ名は空にできず、50文字まで', () => {
     expect(parseAbTestPatch({ title: '   ' })).toEqual({
       ok: false,
-      message: 'beyondページ名を入力してください。',
+      message: 'ページ名を入力してください。',
     })
     expect(parseAbTestPatch({ title: 'あ'.repeat(51) })).toEqual({
       ok: false,
-      message: 'beyondページ名は50文字まで入力できます。',
+      message: 'ページ名は50文字まで入力できます。',
     })
   })
 

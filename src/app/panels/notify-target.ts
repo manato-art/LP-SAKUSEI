@@ -23,7 +23,7 @@ export type NotifyService = 'none' | 'slack' | 'chatwork' | 'line'
 /** Slackアプリを作ってもらう手順（未設定のときだけ出す） */
 const SLACK_STEPS: readonly string[] = [
   'api.slack.com/apps を開き「Create New App」→「From scratch」でアプリを作る',
-  'アプリ名（例: SquadBeyond通知）と、通知を送りたいワークスペースを選ぶ',
+  'アプリ名（例: LP通知）と、通知を送りたいワークスペースを選ぶ',
   '「OAuth & Permissions」→ Bot Token Scopes に channels:join / channels:read / chat:write / groups:read / im:read / mpim:read を追加する',
   '同じ画面の User Token Scopes に groups:write.invites を追加する',
   '同じ画面の「Redirect URLs」に、下に表示されている戻り先URLをそのまま登録する',

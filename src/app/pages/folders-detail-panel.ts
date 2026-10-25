@@ -234,7 +234,7 @@ export function wireRealDetailPanel(body: HTMLElement, context: PageContext): vo
       metaButton.addEventListener('click', () => {
         const current = currentPanelAbTest(panel, context)
         if (current === null) {
-          toast('beyondページを選んでから押してください', 'error')
+          toast('ページを選んでから押してください', 'error')
           return
         }
         openMetaLinkModal(current.uid, current.title)
@@ -549,7 +549,7 @@ function currentPanelAbTest(
 function currentDeliveryUrl(panel: HTMLElement, context: PageContext): string | null {
   const current = currentPanelAbTest(panel, context)
   if (current === null) {
-    toast('beyondページを選んでから押してください', 'error')
+    toast('ページを選んでから押してください', 'error')
     return null
   }
   const url = deliveryUrlFor(context.folder?.domain, location.origin, current.uid)
@@ -574,7 +574,7 @@ export function formatAbsoluteTime(ts: number | undefined): string {
 }
 /** editor_version を表示名に変換 */
 function editorTypeName(v: number): string {
-  if (v === 2) return 'beyondエディター'
+  if (v === 2) return 'エディター'
   if (v === 3) return 'HTMLエディター'
   return '-'
 }

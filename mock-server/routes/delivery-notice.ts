@@ -28,7 +28,7 @@ export function renderNotice(res: import('express').Response, uid: string): void
     `.desc{font-size:13px;color:#555}</style></head><body>` +
     `<div class="card">` +
     `<div class="title">このURLの配信ページは見つかりません</div>` +
-    `<div class="desc">指定されたID「${escapeHtml(uid)}」のbeyondページが存在しません。` +
+    `<div class="desc">指定されたID「${escapeHtml(uid)}」のページが存在しません。` +
     (looksLikePlaceholder
       ? '<br><b>&lt;uid&gt; は差し込み用の記号です。</b>実際のIDに置き換えてください。'
       : '') +

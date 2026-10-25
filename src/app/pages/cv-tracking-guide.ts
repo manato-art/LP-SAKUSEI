@@ -23,7 +23,7 @@ export function cvTrackingGuide(service: string): CvTrackingGuide {
   ]
   if (service === 'AFFILICODE') {
     steps.push(
-      '一括タグの「計測ツール・ASP」で AFFILICODE を選ぶと、配信するLP内のリンクに squadbeyond_uid / sb_tracking=true / sb_article_uid が付きます',
+      '一括タグの「計測ツール・ASP」で AFFILICODE を選ぶと、配信するLP内のリンクに計測用の目印が付きます',
     )
   }
   return {

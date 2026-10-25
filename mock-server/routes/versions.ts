@@ -118,7 +118,7 @@ versionsRouter.post('/versions/:uid/duplicate', (req, res) => {
 versionsRouter.post('/versions/:uid/duplicate_to', (req, res) => {
   const targetArticleUid = optionalString(req.body, 'target_article_uid')
   if (targetArticleUid === '') {
-    res.status(422).json(errorEnvelope('validation_failed', '複製先のbeyondページを選んでください。'))
+    res.status(422).json(errorEnvelope('validation_failed', '複製先のページを選んでください。'))
     return
   }
   let created: Version | null = null
@@ -130,7 +130,7 @@ versionsRouter.post('/versions/:uid/duplicate_to', (req, res) => {
     return out.state
   })
   if (created === null) {
-    const msg = reason === 'target-notfound' ? '複製先のbeyondページが見つかりません。' : 'Versionが見つかりません。'
+    const msg = reason === 'target-notfound' ? '複製先のページが見つかりません。' : 'Versionが見つかりません。'
     res.status(404).json(errorEnvelope('not_found', msg))
     return
   }

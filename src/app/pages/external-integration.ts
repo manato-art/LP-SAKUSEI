@@ -281,7 +281,7 @@ function buildAccountsTable(model: MetaModel, unlink: (acc: LinkedMetaAccount) =
   const card = document.createElement('div')
   card.style.cssText = 'background:var(--sb-c-ffffff, #FFFFFF);margin:0 16px;border-radius:10px;overflow:hidden'
 
-  const cols = ['ステータス', '登録日', 'アカウントID', 'アカウント名', 'beyondページ数', '削除']
+  const cols = ['ステータス', '登録日', 'アカウントID', 'アカウント名', 'ページ数', '削除']
   const grid = 'grid-template-columns:110px 120px 200px 1fr 130px 70px'
   const head = document.createElement('div')
   // スマホでは「1行＝1カード（列名 値）」に組み替わる（mobile-css.ts）。
@@ -305,7 +305,7 @@ function buildAccountsTable(model: MetaModel, unlink: (acc: LinkedMetaAccount) =
     return card
   }
   for (const acc of model.accounts) card.append(buildAccountRow(acc, grid, cols, unlink))
-  card.append(notice('beyondページ数は、ページの「Meta広告連携」で「広告アカウント」単位にこのIDを紐付けたページの数です（キャンペーン・広告セット・広告の単位で紐付けたページは数えていません）。'))
+  card.append(notice('ページ数は、ページの「Meta広告連携」で「広告アカウント」単位にこのIDを紐付けたページの数です（キャンペーン・広告セット・広告の単位で紐付けたページは数えていません）。'))
   return card
 }
 

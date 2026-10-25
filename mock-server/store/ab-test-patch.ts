@@ -86,10 +86,10 @@ export function parseAbTestPatch(input: unknown): ValidationResult<AbTestPatch> 
   if (has(body, 'title')) {
     const raw = body['title']
     if (typeof raw !== 'string' || raw.trim() === '') {
-      return { ok: false, message: 'beyondページ名を入力してください。' }
+      return { ok: false, message: 'ページ名を入力してください。' }
     }
     if (raw.trim().length > TITLE_MAX_LENGTH) {
-      return { ok: false, message: `beyondページ名は${TITLE_MAX_LENGTH}文字まで入力できます。` }
+      return { ok: false, message: `ページ名は${TITLE_MAX_LENGTH}文字まで入力できます。` }
     }
     patch = { ...patch, title: raw.trim() }
   }

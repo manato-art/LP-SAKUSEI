@@ -72,12 +72,12 @@ export async function renderInspectionTargets(host: HTMLElement): Promise<void> 
 
   const bar = h('div', 'ins-bar')
   const sort = iconButton('↑↓', '並び替え')
-  const search = searchInput('グループ/フォルダ/ドメイン/beyondページ名')
-  const urlSearch = h('button', 'ins-link', 'beyondページURL検索') as HTMLButtonElement
+  const search = searchInput('グループ/フォルダ/ドメイン/ページ名')
+  const urlSearch = h('button', 'ins-link', 'ページURL検索') as HTMLButtonElement
   urlSearch.type = 'button'
   urlSearch.addEventListener('click', openUrlSearch)
   bar.append(sort, search, urlSearch)
-  const note = h('div', 'ins-note', '※beyondページ名はお気に入りのみ有効')
+  const note = h('div', 'ins-note', '※ページ名はお気に入りのみ有効')
   const body = h('div', 'ins-target-body')
   root.append(bar, note, body)
 
@@ -195,14 +195,14 @@ export async function renderInspections(host: HTMLElement): Promise<void> {
 
   const bar = h('div', 'ins-bar')
   const sort = iconButton('↑↓', '並び替え')
-  const urlSearch = h('button', 'ins-link', 'beyondページURL検索') as HTMLButtonElement
+  const urlSearch = h('button', 'ins-link', 'ページURL検索') as HTMLButtonElement
   urlSearch.type = 'button'
   urlSearch.addEventListener('click', openUrlSearch)
   const chips = h('div', 'ins-chips')
   bar.append(sort, urlSearch, chips)
 
-  const search = searchInput('グループ/フォルダ/ドメイン/beyondページ名')
-  const note = h('div', 'ins-note', '※beyondページ名はお気に入りのみ有効')
+  const search = searchInput('グループ/フォルダ/ドメイン/ページ名')
+  const note = h('div', 'ins-note', '※ページ名はお気に入りのみ有効')
   // 案内帯（閉じられる）とは別に、常に出しておく
   const deliveryNote = h(
     'div',
@@ -318,11 +318,11 @@ export async function renderInspections(host: HTMLElement): Promise<void> {
 function openUrlSearch(): void {
   const overlay = h('div', 'ins-overlay')
   const box = h('div', 'ins-modal')
-  box.append(h('div', 'ins-modal-title', 'beyondページURL検索'))
+  box.append(h('div', 'ins-modal-title', 'ページURL検索'))
   const url = document.createElement('input')
   url.type = 'text'
   url.className = 'ins-input'
-  url.placeholder = 'beyondページURL / プレビューURL / 中間ページURL'
+  url.placeholder = 'ページURL / プレビューURL / 中間ページURL'
   box.append(url)
   box.append(h('div', 'ins-note', 'パス検索(URL先頭が優先されます)'))
   const pathRow = h('div', 'ins-path-row')

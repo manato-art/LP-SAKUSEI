@@ -453,7 +453,7 @@ describe('レポート画面の採取ドロップダウン', () => {
 
   it('採取物に「広告データ取得日時」の中身がある（推測で作らない）', () => {
     expect(dom).toContain('広告データ取得日時')
-    expect(dom).toContain('beyondページ 広告データ取得日時')
+    expect(dom).toContain('ページ 広告データ取得日時')
     expect(dom).toContain('※ 配信金額、クリエイティブ画像/テキストを取得しています')
   })
 

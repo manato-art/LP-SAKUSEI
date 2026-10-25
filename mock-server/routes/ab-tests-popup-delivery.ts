@@ -47,7 +47,7 @@ function row(version: Version, step: number): PopupDeliveryRow {
 popupDeliveryRouter.get('/ab_tests/:uid/popup_delivery', (req, res) => {
   const state = getState()
   const abTest = findAbTest(state, req.params.uid)
-  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
+  if (abTest === undefined) return notFound(res, 'ページが見つかりません。')
   res.json({ versions: versionsOfPage(state, abTest.id).map((v) => row(v.version, v.step)) })
 })
 
@@ -59,7 +59,7 @@ popupDeliveryRouter.put('/ab_tests/:uid/popup_delivery/:version_uid', (req, res)
   }
   const state = getState()
   const abTest = findAbTest(state, req.params.uid)
-  if (abTest === undefined) return notFound(res, 'beyondページが見つかりません。')
+  if (abTest === undefined) return notFound(res, 'ページが見つかりません。')
   // このLPの Version だけを変えられる（別のLPの Version の uid を渡されても変えない）
   const found = versionsOfPage(state, abTest.id).find((v) => v.version.uid === req.params.version_uid)
   if (found === undefined) return notFound(res, 'Versionが見つかりません。')
