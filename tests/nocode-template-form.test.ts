@@ -220,6 +220,60 @@ describe('背景の画像（2026-10-24 本人「ボタンの背景だったり�
   })
 })
 
+describe('見た目のコピーと貼り付け（2026-10-25 本人「全部一括か選択して一括かを貼り付けしたい」）', () => {
+  const NOW = new Date('2026-10-25T12:00:00+09:00')
+  const buttonsOf = (m: Mounted, screen: number): ItemData[] =>
+    items(items(m.form.getData(), 'screens')[screen] ?? {}, 'blocks').filter((b) => str(b, 'type') === 'button')
+  const textButtonIn = (root: ParentNode, label: string): HTMLElement | undefined =>
+    [...root.querySelectorAll('button')].find((b) => b.textContent === label) as unknown as HTMLElement | undefined
+
+  it('部品の設定の頭に「見た目をコピー」「見た目を貼る」。コピーするまで貼れない', () => {
+    const m = mountSplit(surveyData(NOW, { startButton: false }))
+    m.form.select(0, 2)
+    expect(textButtonIn(m.panel, '見た目をコピー')).toBeDefined()
+    expect((textButtonIn(m.panel, '見た目を貼る') as unknown as HTMLButtonElement).disabled).toBe(true)
+    click(textButtonIn(m.panel, '見た目をコピー'))
+    m.form.select(0, 3)
+    expect((textButtonIn(m.panel, '見た目を貼る') as unknown as HTMLButtonElement).disabled).toBe(false)
+    // ちがう種類の部品（見出し）には貼れない
+    m.form.select(0, 1)
+    expect((textButtonIn(m.panel, '見た目を貼る') as unknown as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it('貼る窓: 写すもの（まとまりを選ぶ）と貼る先（全部の画面のボタン・全部選ぶ）を選んで、まとめて貼る', async () => {
+    const data = surveyData(NOW, { startButton: false })
+    const first = items(items(data, 'screens')[0] ?? {}, 'blocks')[2] ?? {}
+    const m = mountSplit({
+      ...data,
+      screens: items(data, 'screens').map((s, i) =>
+        i === 0 ? { ...s, blocks: items(s, 'blocks').map((b, j) => (j === 2 ? { ...first, color: '#1F7AE0', height: 90 } : b)) } : s,
+      ),
+    })
+    m.form.select(0, 2)
+    click(textButtonIn(m.panel, '見た目をコピー'))
+    m.form.select(0, 3)
+    click(textButtonIn(m.panel, '見た目を貼る'))
+    const dialog = document.querySelector('.sbd-card') as unknown as HTMLElement
+    expect(dialog.textContent).toContain('写すもの')
+    // 背景の画像ははじめは外してある（必要なときだけ選ぶ）
+    const groupBox = (label: string): HTMLInputElement =>
+      [...dialog.querySelectorAll('label')].find((l) => l.textContent === label)?.querySelector('input') as unknown as HTMLInputElement
+    expect(groupBox('色').checked).toBe(true)
+    expect(groupBox('背景の画像').checked).toBe(false)
+    // 貼る先: 押した部品だけ選んである → 全部選ぶ
+    const targets = (): HTMLInputElement[] => [...dialog.querySelectorAll('[data-look-target] input')] as unknown as HTMLInputElement[]
+    expect(targets().filter((b) => b.checked)).toHaveLength(1)
+    click(textButtonIn(dialog, '全部選ぶ'))
+    expect(targets().every((b) => b.checked)).toBe(true)
+    click(textButtonIn(dialog, '貼り付ける'))
+    await new Promise((r) => setTimeout(r, 0))
+    const all = [0, 1, 2].flatMap((s) => buttonsOf(m, s))
+    expect(all.every((b) => b['color'] === '#1F7AE0' && b['height'] === 90)).toBe(true)
+    // 文字・移る先はそのまま
+    expect(buttonsOf(m, 0).map((b) => b['label'])).toEqual(['はい', 'いいえ'])
+  })
+})
+
 describe('並びの複製・上へ・下へ・消す', () => {
   it('複製すると、すぐ下の複製を選ぶ。消すと選ぶのをやめる', () => {
     const m = mountSplit(withHotspot())

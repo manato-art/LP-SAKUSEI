@@ -116,6 +116,15 @@ textarea.ncf-input{resize:vertical;min-height:64px}
 .ncf-screen-head .ncf-field{margin-bottom:6px}
 .ncf-screen-actions{display:flex;flex-wrap:wrap;gap:2px;margin:0 0 6px -8px}
 .ncf-overview{margin:0 0 14px}
+.ncf-look-actions{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px}
+.ncf-look-paste{display:grid;gap:8px;min-width:0}
+.ncf-look-paste .ncf-label{margin:0}
+.ncf-look-paste__head{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:8px}
+.ncf-look-paste__head .ncf-label{margin-right:auto}
+.ncf-check-list{display:flex;flex-wrap:wrap;gap:8px 16px}
+.ncf-check-list--targets{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));max-height:240px;overflow:auto;padding:10px;border:1px solid var(--sb-line,#DDD);border-radius:8px}
+.ncf-check{display:inline-flex;align-items:flex-start;gap:6px;min-width:0;font-size:13px;line-height:1.5;cursor:pointer;overflow-wrap:anywhere}
+.ncf-check input{margin-top:3px;flex:0 0 auto}
 .ncf-screen-bg{margin:4px 0 12px;padding-top:12px;border-top:1px solid var(--sb-line,#DDD)}
 .ncf-bg-move{margin:2px 0 12px}
 .ncf-bg-move:not([hidden]){display:block}

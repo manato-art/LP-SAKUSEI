@@ -13,6 +13,7 @@ import { isHotspot } from './hotspot-model.ts'
 import type { ListField } from './list-field.ts'
 import type { SampleFields } from './sample-field.ts'
 import type { ScreenSettings } from './screen-settings.ts'
+import { lookActions, type LookActionDeps } from './look-actions.ts'
 import type { BlockType, ItemData, ScreensField } from './templates/types.ts'
 
 export interface BlockInspectorDeps extends Pick<FormCore, 'data' | 'onRefresh'> {
@@ -24,6 +25,8 @@ export interface BlockInspectorDeps extends Pick<FormCore, 'data' | 'onRefresh'>
   readonly screen: Pick<ScreenSettings, 'place' | 'layer' | 'press' | 'goto'>
   /** 背景の画像を見たまま画面でつかんで動かすボタン（Widget編集だけ・画像が無いときは隠れている） */
   readonly bgMove?: (itemPath: Path) => HTMLElement
+  /** 見た目のコピー・貼り付け（2026-10-25・look-actions.ts） */
+  readonly look?: LookActionDeps
 }
 
 export interface BlockInspector {
@@ -94,6 +97,7 @@ export function createBlockInspector(deps: BlockInspectorDeps): BlockInspector {
     })
     head.append(icon, node('span', 'ncf-inspector__name', type.label), snippet)
     wrap.append(head)
+    if (deps.look !== undefined) wrap.append(lookActions(deps.look, type, itemPath, () => (getAt(deps.data(), itemPath) as ItemData | undefined) ?? {}))
     const parts = blockParts(field, screenIndex, index, type)
     const section = (key: string, title: string, els: readonly HTMLElement[]): void => {
       if (els.length === 0) return

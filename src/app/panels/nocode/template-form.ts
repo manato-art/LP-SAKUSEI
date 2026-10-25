@@ -271,7 +271,9 @@ export function buildTemplateForm(options: TemplateFormOptions): TemplateForm {
     ...(bgMove === undefined ? {} : { bgMove }),
   })
   const samples = createSampleFields({ ...core, write, rebuild: () => build(), options })
-  const inspector = createBlockInspector({ ...core, fieldEl, listEl, samples, screen: screenSettings, ...(bgMove === undefined ? {} : { bgMove }) })
+  // 見た目のコピー・貼り付け（この Widget編集の中のどの部品から写したか見分ける印）
+  const look = { data: core.data, replace: core.replace, refreshAll: core.refreshAll, formId: Symbol('template-form') }
+  const inspector = createBlockInspector({ ...core, fieldEl, listEl, samples, screen: screenSettings, look, ...(bgMove === undefined ? {} : { bgMove }) })
   const adder = createBlockAdder({ ...core, isSplit: split !== undefined, root, selectedBlock: () => selectedBlock, reselect, startFrom, options })
   const blockListDeps: BlockListDeps = {
     ...core,
