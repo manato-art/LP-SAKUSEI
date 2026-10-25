@@ -11,7 +11,6 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { EDITOR_CHOICES } from '../src/app/pages/editor-choices.ts'
 
 /** 画面に出していた、作る側の言い回し */
 const MAKER_PHRASES = [
@@ -58,10 +57,4 @@ describe('画面に作る側の言葉を出さない', () => {
     expect(hits).toEqual([])
   })
 
-  it('新規ページ作成で選べないエディターは「準備中」と出す', () => {
-    const notes = EDITOR_CHOICES.filter((choice) => choice.note !== undefined).map(
-      (choice) => `${choice.label}=${choice.note}`,
-    )
-    expect(notes).toEqual(['スワイプLPエディター（β）=準備中', 'HTMLエディター=準備中'])
-  })
 })

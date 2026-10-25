@@ -203,6 +203,8 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
     const screens = items(data, 'screens').filter((screen) => SCREEN_ID.test(str(screen, 'id')))
     const ids = new Set(screens.map((screen) => str(screen, 'id')))
     const previewStart = view?.screen !== undefined && ids.has(view.screen) ? view.screen : null
+    // 見たまま画面で試して積み重ねていた画面の並び（ある画面だけ・2つ以上のときだけ。配信には出さない）
+    const previewPath = (view?.path ?? []).filter((id) => ids.has(id))
     const start = previewStart ?? str(screens[0] ?? {}, 'id')
 
     // 進み具合（Q1 › Q2 › Q3）: 進み具合を置いた画面の数が全体の数、その画面が何番目かが今の番号
@@ -369,7 +371,9 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
     const needsScreens = screens.length > 1 || usedTypes.has('loading')
     const scripts = [...(needsScreens ? [SCREENS_SCRIPT] : []), ...(press.flags.has('act') ? [ACTIONS_SCRIPT] : [])]
     const attrs =
-      ` data-nc-screens="true" data-nc-transition="${transition}"` + (previewStart === null ? '' : ` data-nc-start="${previewStart}"`)
+      ` data-nc-screens="true" data-nc-transition="${transition}"` +
+      (previewStart === null ? '' : ` data-nc-start="${previewStart}"`) +
+      (transition === 'stack' && previewPath.length > 1 ? ` data-nc-path="${previewPath.join(' ')}"` : '')
     return wrapWidget({
       uid,
       type: 'builder',

@@ -16,7 +16,7 @@
  */
 import { toast } from '../ui.ts'
 import { embedBuilderData, splitStyles } from './nocode/builder-data.ts'
-import { blockElementAt, canvasPlaceOf, isTextEditableBlock, outermostBlock, syncCanvasBlock } from './nocode/canvas-sync.ts'
+import { blockElementAt, canvasPlaceOf, isTextEditableBlock, outermostBlock, syncCanvasBlock, visibleScreenPath } from './nocode/canvas-sync.ts'
 import { getAt, setAt, type Path } from './nocode/form-state.ts'
 import { ensureNocodeFormCss } from './nocode/nocode-form-css.ts'
 import { buildTemplateForm } from './nocode/template-form.ts'
@@ -24,7 +24,18 @@ import { coveredIndexOf, hotspotRect, isFloating, isHotspot, isRider, moveGroupB
 import { floatOffset, setFloating } from './nocode/float-model.ts'
 import { MORE_PREVIEW_CSS } from './nocode/templates/builder-blocks-more-render.ts'
 import { BUILDER_PADDING, BUILDER_TEMPLATE } from './nocode/templates/builder.ts'
-import { HEADING_SIZES, PLACES, SPACER_SIZES, TEXT_SIZES, blockLabel, sizeOf, widthKeyOf, type Place } from './nocode/templates/builder-blocks.ts'
+import {
+  BUTTON_DEFAULT_HEIGHT,
+  BUTTON_HEIGHT_RANGE,
+  HEADING_SIZES,
+  PLACES,
+  SPACER_SIZES,
+  TEXT_SIZES,
+  blockLabel,
+  sizeOf,
+  widthKeyOf,
+  type Place,
+} from './nocode/templates/builder-blocks.ts'
 import { newUid } from './nocode/templates/kit.ts'
 import { int, items, pick, str, type ItemData, type TemplateData } from './nocode/templates/types.ts'
 import { placeGuideX, placeLeft, snapPlace, snapThreshold, widthGuideXs, widthSnaps } from './drag-math.ts'
@@ -180,7 +191,7 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
    * 描き直すときに必ず外す（CSSだけの変化では要素を入れ替えないので、外さないと古い見た目が勝ち続ける）
    */
   const previewed = new Set<HTMLElement>()
-  const PREVIEW_PROPS = ['width', 'height', 'font-size', 'padding-top', 'padding-bottom', 'transform', 'left', 'right', 'top'] as const
+  const PREVIEW_PROPS = ['width', 'height', 'min-height', 'font-size', 'padding-top', 'padding-bottom', 'transform', 'left', 'right', 'top'] as const
   const clearPreviews = (): void => {
     for (const el of previewed) for (const prop of PREVIEW_PROPS) el.style.removeProperty(prop)
     previewed.clear()
@@ -283,6 +294,29 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
           el.style.height = `${n}px`
         },
         commit: (n) => commitField(path, 'size', n),
+      })
+    }
+    // ボタンの高さ（下の辺・2026-10-25 本人「ボタンの縦の大きさも変えたい」）。押す所（.nc-b-button__a）の高さを変える
+    if (type === 'button') {
+      const face = el.querySelector<HTMLElement>('.nc-b-button__a') ?? el
+      const look = str(block(), 'look') === 'choice' ? 'choice' : 'cta'
+      handles.push({
+        kind: 'height',
+        label: '高さ',
+        unit: 'px',
+        range: { ...BUTTON_HEIGHT_RANGE, step: 1 },
+        read: () => {
+          const value = block()['height']
+          return typeof value === 'number' ? value : BUTTON_DEFAULT_HEIGHT[look]
+        },
+        pxPerUnit: () => 1,
+        preview: (n) => {
+          previewed.add(face)
+          face.style.minHeight = `${n}px`
+          face.style.paddingTop = '4px'
+          face.style.paddingBottom = '4px'
+        },
+        commit: (n) => commitField(path, 'height', n),
       })
     }
     if (type === 'heading' || type === 'text') {
@@ -562,7 +596,11 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
     let previewData = data
     for (const override of previewOverrides.values()) previewData = setAt(previewData, override.path, override.html)
     const screen = activeScreenId()
-    const html = BUILDER_TEMPLATE.render(previewData, uid, screen === undefined ? undefined : { screen })
+    // 積み重ねの出方を ⌘＋クリックで試して出ている画面は、部品を選んで描き直しても積み重ねたまま出す
+    // （2026-10-25 本人「移行先の文言や色をそのまま直したい」）。開いている画面がその中に無ければ、その画面だけに戻す
+    const shown = visibleScreenPath(contentDiv)
+    const path = screen !== undefined && shown.length > 1 && shown.includes(screen) ? shown : null
+    const html = BUILDER_TEMPLATE.render(previewData, uid, screen === undefined ? undefined : { screen, ...(path === null ? {} : { path }) })
     const { css, body } = splitStyles(html)
     deps.setPreviewCss(css + EMPTY_PLACEHOLDER_CSS + MORE_PREVIEW_CSS)
     clearPreviews()

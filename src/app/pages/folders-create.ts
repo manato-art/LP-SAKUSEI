@@ -16,7 +16,7 @@
  * 起点のボタンだけは実物が採取できている（ツリー左上の `generate-folder-icon`）。
  * そちらは `folders.ts` が採取物のボタンにそのまま配線している。
  */
-import { EDITOR_CHOICES } from './editor-choices.ts'
+import { NEW_PAGE_EDITOR_VERSION } from './editor-choices.ts'
 import { api, fetchMedia, type Folder, type Media } from '../api.ts'
 import { T, el, field, modal, textInput, toast } from '../ui.ts'
 
@@ -37,7 +37,8 @@ export function openCreateFolder(): void {
 }
 
 /**
- * 新規beyondページ作成。3項目は実機の基本情報タブの実測（`docs/findings-live-observation.md`）に合わせる。
+ * 新規beyondページ作成。項目は実機の基本情報タブの実測（`docs/findings-live-observation.md`）に合わせる。
+ * エディターの選択はなくした（いつも beyondエディター・editor-choices.ts）。
  * 作成が通ったらエディタへ移る（企画書 §1-4 の作成フローの終点）。
  */
 export async function openCreatePage(folder: Folder): Promise<void> {
@@ -48,29 +49,6 @@ export async function openCreatePage(folder: Folder): Promise<void> {
   if (mediaCache.length === 0) {
     toast('媒体リストを取得できませんでした。npm run mock が動いているか確認してください。', 'error')
     return
-  }
-
-  const editorWrap = el('div', {})
-  let editorValue = 2
-  for (const choice of EDITOR_CHOICES) {
-    const option = el('label', {
-      style: `display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--sb-c-e5e5e5, #E5E5E5);
-        border-radius:4px;margin-bottom:8px;cursor:pointer;font-size:13px`,
-    })
-    const radio = el('input')
-    radio.type = 'radio'
-    radio.name = 'editor'
-    radio.checked = choice.value === 2
-    radio.addEventListener('change', () => {
-      // 値が未観測の選択肢は保存できない（推測の番号を保存すると壊れたデータになる・D-011）
-      if (choice.value !== null) editorValue = choice.value
-    })
-    option.append(radio, el('span', { text: choice.label }))
-    if (choice.note !== undefined) {
-      option.append(el('span', { text: choice.note, style: `margin-left:auto;font-size:11px;color:${T.sub}` }))
-      if (choice.value !== 2) radio.disabled = true
-    }
-    editorWrap.append(option)
   }
 
   const title = textInput('未入力でも作成できます')
@@ -85,9 +63,8 @@ export async function openCreatePage(folder: Folder): Promise<void> {
   }
 
   const body = el('div', {}, [
-    field('1. エディターを選択（必須）', editorWrap, '作成後は変更できません'),
-    field('2. ページ名', title, 'ページ名は未入力のままでも設定可能です。後から変更可能です。'),
-    field('3. 広告媒体（必須）', mediaSelect),
+    field('1. ページ名', title, 'ページ名は未入力のままでも設定可能です。後から変更可能です。'),
+    field('2. 広告媒体（必須）', mediaSelect),
   ])
 
   modal('新規ページ作成', body, async () => {
@@ -95,7 +72,8 @@ export async function openCreatePage(folder: Folder): Promise<void> {
       title: title.value.trim() === '' ? '無題のページ' : title.value.trim(),
       folder_id: folder.id,
       media_id: Number(mediaSelect.value),
-      editor_version: editorValue,
+      // エディターは選ばずに、いつも beyondエディター（2026-10-25 本人「選択じゃなくて、そもそもそれに移行するように」）
+      editor_version: NEW_PAGE_EDITOR_VERSION,
     })
     toast(`「${created.ab_test.title}」を作成しました`)
     location.hash = `/ab_tests/${created.ab_test.uid}/articles`

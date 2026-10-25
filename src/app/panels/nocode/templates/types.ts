@@ -131,7 +131,11 @@ export interface NocodeTemplate {
    * LPに入れるHTML（<style>＋中身＋必要なら固定の<script>）。
    * view は見え方（プレビュー）だけの指定（編集している画面から見せる）。LPに入れるときは渡さない
    */
-  readonly render: (data: TemplateData, uid: string, view?: { readonly screen?: string }) => string
+  /**
+   * view: Widget編集の見たまま画面の出し方。screen＝開いている画面、path＝積み重ねの出方で試して出ている画面の並び
+   * （描き直しても積み重ねたまま出す・2026-10-25）。配信の書き出しでは渡さない
+   */
+  readonly render: (data: TemplateData, uid: string, view?: { readonly screen?: string; readonly path?: readonly string[] }) => string
 }
 
 /* ── 値の読み出し（入力は信用しない。型が違えば既定の値） ── */

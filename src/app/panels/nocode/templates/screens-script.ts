@@ -6,6 +6,7 @@
  * - stack＝下に積み重ねる（2026-10-24 本人「アンケート」・手本は発酵本家のLP）… 押した画面の下に次の画面を出し、前の画面は残す。
  *   前の画面の答えを選び直すと、その下を出し直す。出した画面まで画面が動く
  * - 押した答えには aria-pressed="true" を付ける（同じ画面のほかの答えからは外す）＝選んだ答えが分かる
+ * - data-nc-path（Widget編集の見たまま画面だけ）: 積み重ねの出方で試して出ていた画面の並びを、描き直しても同じに出す
  * - 編集画面（.ql-editor の中）では動かない。Widget編集のプレビューでは「ロード中」の自動の移動をしない
  */
 
@@ -121,6 +122,8 @@ e.stopPropagation();
 if(off(t))return;
 press(t);
 },true);
+var kept=stack?(root.getAttribute('data-nc-path')||'').split(' '):[];
+if(kept.length>1){for(var q=0;q<kept.length;q++){show(kept[q],false,q>0?path[path.length-1]:null);}return;}
 show(root.getAttribute('data-nc-start')||screens[0].getAttribute('data-nc-screen'),false);
 }
 })();`

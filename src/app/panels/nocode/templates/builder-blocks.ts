@@ -21,7 +21,7 @@ import { pressAttrs, pressContext, type PressContext } from './press-actions.ts'
 import { scopeSampleStyles } from '../sample-css-scope.ts'
 import { PROGRESS_BLOCK_TYPE, PROGRESS_TYPE, renderProgress } from './progress-part.ts'
 import { bgFields, bgTargetOf, blockBgCss } from './bg-image.ts'
-import { ACCENT_PRESETS, bool, int, pick, str, type BlockType, type ItemData, type NocodeTemplate } from './types.ts'
+import { ACCENT_PRESETS, bool, int, pick, str, type BlockType, type Field, type ItemData, type NocodeTemplate } from './types.ts'
 import {
   ALIGN_OPTIONS,
   ALIGNS,
@@ -48,6 +48,23 @@ const SHAPE_PRESETS: readonly string[] = ['#E5573F', '#F2A516', '#06C755', '#1F7
 export const HEADING_SIZES: Readonly<Record<string, number>> = { l: 26, m: 21, s: 17 }
 export const TEXT_SIZES: Readonly<Record<string, number>> = { m: 15, s: 12.5 }
 export const SPACER_SIZES: Readonly<Record<string, number>> = { s: 16, m: 32, l: 56 }
+
+/** ボタンの高さ（px）の範囲と、決めていないときの今の大きさ */
+export const BUTTON_HEIGHT_RANGE = { min: 32, max: 200 } as const
+export const BUTTON_DEFAULT_HEIGHT: Readonly<Record<'cta' | 'choice', number>> = { cta: 62, choice: 56 }
+
+const BUTTON_HEIGHT_FIELDS: readonly Field[] = (['cta', 'choice'] as const).map((look) => ({
+  kind: 'number',
+  key: 'height',
+  label: '高さ',
+  min: BUTTON_HEIGHT_RANGE.min,
+  max: BUTTON_HEIGHT_RANGE.max,
+  unit: 'px',
+  fallback: BUTTON_DEFAULT_HEIGHT[look],
+  section: 'layout',
+  showIfItem: (item: ItemData) => (str(item, 'look') === 'choice') === (look === 'choice'),
+}))
+
 
 /** 部品の「幅」の欄の名前（画像・動画は width、図形は size、ほかは boxWidth）。余白は幅を持たない＝null */
 export function widthKeyOf(type: string): string | null {
@@ -125,6 +142,8 @@ export const BLOCK_TYPES: readonly BlockType[] = [
     icon: svg('<rect x="3" y="8" width="18" height="8" rx="4"/><path d="M13 12h4"/>'),
     fields: [
       ...layoutFields('boxWidth'),
+      // 高さ（2026-10-25 本人「ボタンの縦の大きさも変えたい」）。値が無いときは今の大きさ（目立つ 62px・選択肢 56px）を見せる
+      ...BUTTON_HEIGHT_FIELDS,
       { kind: 'text', key: 'label', label: 'ボタンの文字', placeholder: '今すぐ申し込む', maxLength: 40, rich: true },
       {
         kind: 'select',
@@ -310,6 +329,13 @@ function withActIn(html: string, attrs: string): string {
 }
 
 /** 選択肢のボタン（白地に色の枠。押すと少し沈む） */
+/** 高さを決めたボタン: その高さにし、上下の余白を詰める（文字は真ん中のまま）。決めていなければ何も書かない */
+function buttonHeightCss(sel: string, item: ItemData): string {
+  if (typeof item['height'] !== 'number') return ''
+  const height = int(item, 'height', BUTTON_HEIGHT_RANGE.min, BUTTON_HEIGHT_RANGE.max, BUTTON_DEFAULT_HEIGHT.cta)
+  return `${sel}{min-height:${height}px;padding-top:4px;padding-bottom:4px}`
+}
+
 function choiceButtonCss(sel: string, color: string): string {
   return (
     `${sel}{display:flex;width:100%;max-width:520px;margin:0 auto;align-items:center;justify-content:center;gap:8px;` +
@@ -411,7 +437,7 @@ function renderBlockBody(item: ItemData, i: number, s: string, seen: Set<string>
       const sel = `${s} .${cls} .nc-b-button__a`
       return {
         html: `<div class="nc-b nc-b-button nc-b-button--${look} ${cls}">${anchor}</div>`,
-        css: look === 'cta' ? pressButtonCss(sel, { color, radius: '12px', full: true }) : choiceButtonCss(sel, color),
+        css: (look === 'cta' ? pressButtonCss(sel, { color, radius: '12px', full: true }) : choiceButtonCss(sel, color)) + buttonHeightCss(sel, item),
       }
     }
     case 'image': {

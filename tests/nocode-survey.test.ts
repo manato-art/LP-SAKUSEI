@@ -117,9 +117,12 @@ describe('出方「下に積み重ねる」', () => {
     expect(BUILDER_TEMPLATE.render(surveyData(NOW, { startButton: true }), UID)).toContain('data-nc-transition="stack"')
   })
 
-  /** 書き出したWidgetを linkedom に置いて、画面の切り替えのスクリプトを動かす */
-  function mount(data: TemplateData): { doc: Document; visible: () => string[]; press: (screen: string, label: string) => void } {
-    const html = BUILDER_TEMPLATE.render(data, UID)
+  /** 書き出したWidgetを linkedom に置いて、画面の切り替えのスクリプトを動かす（view＝Widget編集の見たまま画面の出し方） */
+  function mount(
+    data: TemplateData,
+    view?: { readonly screen?: string; readonly path?: readonly string[] },
+  ): { doc: Document; visible: () => string[]; press: (screen: string, label: string) => void } {
+    const html = BUILDER_TEMPLATE.render(data, UID, view)
     const { window } = parseHTML(`<!doctype html><html><body>${html.replace(/<script>[\s\S]*?<\/script>/g, '')}</body></html>`)
     const doc = window.document as unknown as Document
     const proto = (window as unknown as { HTMLElement: { prototype: Record<string, unknown> } }).HTMLElement.prototype
@@ -167,6 +170,34 @@ describe('出方「下に積み重ねる」', () => {
     page.press('Q1', 'いいえ')
     const pressed = [...page.doc.querySelectorAll('[data-nc-name="Q1"] [data-nc-go]')].map((el) => el.getAttribute('aria-pressed'))
     expect(pressed).toEqual([null, 'true'])
+  })
+
+  // 2026-10-25 本人「コントロールキーでポツンと反応させた時、移行先の文言や色をそのまま直したい。Q1・Q2のところを押さないとできない」:
+  // Widget編集で試して積み重ねた画面は、部品を選んで描き直しても積み重ねたまま出す（data-nc-path・見たまま画面だけ）
+  it('Widget編集の見たまま画面: 積み重ねていた画面を、描き直しても同じ並びで出す', () => {
+    const data = surveyData(NOW, { startButton: true })
+    expect(BUILDER_TEMPLATE.render(data, UID, { screen: 's3', path: ['s1', 's2', 's3'] })).toContain('data-nc-path="s1 s2 s3"')
+    const page = mount(data, { screen: 's3', path: ['s1', 's2', 's3'] })
+    expect(page.visible()).toEqual(['はじめ', 'Q1', 'Q2'])
+    // その先も今までどおり積み重なる
+    page.press('Q2', 'はい')
+    expect(page.visible()).toEqual(['はじめ', 'Q1', 'Q2', 'Q3'])
+  })
+
+  it('並びは配信には出さない（見たまま画面だけ）。無い画面・積み重ねでない出方では使わない', () => {
+    const data = surveyData(NOW, { startButton: true })
+    // 切り替えのスクリプトの文にも名前が入るので、属性の形（data-nc-path="）で見る
+    expect(BUILDER_TEMPLATE.render(data, UID)).not.toContain('data-nc-path="')
+    expect(BUILDER_TEMPLATE.render(data, UID, { screen: 's2', path: ['s1', 's9', 's2'] })).toContain('data-nc-path="s1 s2"')
+    expect(BUILDER_TEMPLATE.render({ ...data, transition: 'fade' }, UID, { screen: 's2', path: ['s1', 's2'] })).not.toContain('data-nc-path="')
+    expect(BUILDER_TEMPLATE.render(data, UID, { screen: 's1', path: ['s1'] })).not.toContain('data-nc-path="')
+  })
+
+  it('Widget編集は、いま出ている画面の並びを描き直しに渡す（開いている画面がその中にあるときだけ）', async () => {
+    const { readFileSync } = await import('node:fs')
+    const builder = readFileSync('src/app/panels/widget-studio-builder.ts', 'utf8')
+    expect(builder).toMatch(/const shown = visibleScreenPath\(contentDiv\)[\s\S]{0,200}shown\.includes\(screen\)/)
+    expect(builder).toContain('{ screen, ...(path === null ? {} : { path }) }')
   })
 
   it('「同じ場所で入れ替わる」（瞬時）は今までどおり1画面だけ', () => {

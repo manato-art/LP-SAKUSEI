@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { parseHTML } from 'linkedom'
-import { blockElementAt, canvasPlaceOf, isTextEditableBlock, outermostBlock, plainTextOf, readBlockFromCanvas, syncCanvasBlock } from '../src/app/panels/nocode/canvas-sync.ts'
+import { blockElementAt, canvasPlaceOf, visibleScreenPath, isTextEditableBlock, outermostBlock, plainTextOf, readBlockFromCanvas, syncCanvasBlock } from '../src/app/panels/nocode/canvas-sync.ts'
 import type { ItemData, TemplateData } from '../src/app/panels/nocode/templates/types.ts'
 
 function dom(html: string): { root: HTMLElement; win: Window } {
@@ -125,6 +125,14 @@ describe('打ち直した要素から部品の場所を見つけて戻す', () =
     expect(canvasPlaceOf(data, root, root.querySelector('.nc-b-1') as HTMLElement)).toEqual({ screenIndex: 0, blockIndex: 0 })
     // 部品の外・部品の中の要素（いちばん外でない）は null
     expect(canvasPlaceOf(data, root, root.querySelector('.nc-screen') as HTMLElement)).toBeNull()
+  })
+
+  it('見たまま画面にいま出ている画面の並び（積み重ねの出方で試したとき）', () => {
+    const { root } = dom(
+      '<div class="nc nc-builder nc-abcdefgh" data-nc-screens="true"><div class="nc-screen" data-nc-screen="s2" hidden></div>' +
+        '<div class="nc-screen" data-nc-screen="s1"></div><div class="nc-screen" data-nc-screen="s3"></div></div>',
+    )
+    expect(visibleScreenPath(root)).toEqual(['s1', 's3'])
   })
 
   it('場所（画面・何番目）から見たまま画面の要素', () => {

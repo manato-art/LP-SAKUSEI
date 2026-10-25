@@ -164,6 +164,15 @@ export function canvasPlaceOf(data: TemplateData, contentDiv: HTMLElement, el: H
   return typeof screenIndex === 'number' && typeof blockIndex === 'number' ? { screenIndex, blockIndex } : null
 }
 
+/** 見たまま画面にいま出ている画面の並び（積み重ねの出方で試したとき、上から。描き直しても同じ並びで出すため） */
+export function visibleScreenPath(contentDiv: HTMLElement): string[] {
+  const root = contentDiv.querySelector('[data-nc-screens]')
+  if (root === null) return []
+  return Array.from(root.children)
+    .filter((child) => child.hasAttribute('data-nc-screen') && !child.hasAttribute('hidden'))
+    .map((child) => child.getAttribute('data-nc-screen') ?? '')
+}
+
 /** 部品の場所（path）から、見たまま画面のその部品の要素（画面の中の何番目か → 通し番号） */
 export function blockElementAt(data: TemplateData, contentDiv: HTMLElement, screenIndex: number, blockIndex: number): HTMLElement | null {
   let n = 0
