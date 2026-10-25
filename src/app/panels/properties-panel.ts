@@ -35,6 +35,7 @@ import {
   injectStyles,
   normalizeColor,
 } from './properties-panel-styles.ts'
+import { pageLife } from '../page-life.ts'
 
 
 /* ── CSS ── */
@@ -730,13 +731,17 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
   })
   quill.on('text-change', () => refresh())
   // ブラウザの selectionchange イベントでも検知する（Quill が発火しないケースの補完）
-  document.addEventListener('selectionchange', () => {
-    const r = quill.getSelection()
-    if (r !== null && r.length > 0) {
-      lastKnownRange = r
-      refresh()
-    }
-  })
+  document.addEventListener(
+    'selectionchange',
+    () => {
+      const r = quill.getSelection()
+      if (r !== null && r.length > 0) {
+        lastKnownRange = r
+        refresh()
+      }
+    },
+    { signal: pageLife() },
+  )
   setTimeout(refresh, 100)
 
   // 指示101: 画像クリックで右パネルに詳細を表示

@@ -16,6 +16,7 @@
 import { codeCopyButton } from './code-copy.ts'
 import type Quill from 'quill'
 import { modal, toast } from '../ui.ts'
+import { pageLife } from '../page-life.ts'
 
 /** 実DOMの目印 */
 const HOOK = {
@@ -91,11 +92,15 @@ export function mountWidgetManager(root: HTMLElement, quill: Quill): void {
     if (isOpen()) close()
     else open()
   })
-  document.addEventListener('click', (event) => {
-    const target = event.target as HTMLElement | null
-    if (target !== null && icon.contains(target)) return
-    close()
-  })
+  document.addEventListener(
+    'click',
+    (event) => {
+      const target = event.target as HTMLElement | null
+      if (target !== null && icon.contains(target)) return
+      close()
+    },
+    { signal: pageLife() },
+  )
 
   const target = (): WidgetTarget | null => currentWidget(quill, lastRange)
 

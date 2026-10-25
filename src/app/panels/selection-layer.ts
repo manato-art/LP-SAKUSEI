@@ -183,7 +183,11 @@ function dragLoop(
   el.addEventListener('pointercancel', cancel)
 }
 
-export function createSelectionLayer(editorBody: HTMLElement, contentDiv: HTMLElement): SelectionLayer {
+/**
+ * life: Widget編集の寿命。止まったら（閉じたら）画面全体への見張りを外す（2026-10-25 外していなかったので、閉じたWidget編集が
+ * 丸ごとメモリに残り、開くたびに溜まっていた）
+ */
+export function createSelectionLayer(editorBody: HTMLElement, contentDiv: HTMLElement, life: AbortSignal): SelectionLayer {
   const layer = document.createElement('div')
   layer.dataset['widgetSelectionLayer'] = 'true'
   layer.style.cssText = 'position:relative;height:0;width:0'
@@ -308,9 +312,13 @@ export function createSelectionLayer(editorBody: HTMLElement, contentDiv: HTMLEl
   }
   editorBody.addEventListener('scroll', schedule)
   contentDiv.addEventListener('input', schedule)
-  window.addEventListener('resize', schedule)
+  window.addEventListener('resize', schedule, { signal: life })
   const observer = new ResizeObserver(schedule)
   observer.observe(contentDiv)
+  life.addEventListener('abort', () => {
+    observer.disconnect()
+    cancelAnimationFrame(raf)
+  })
 
   const showGuides = (lines: readonly GuideLine[]): void => {
     const o = layer.getBoundingClientRect()

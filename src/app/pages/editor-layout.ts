@@ -44,6 +44,7 @@ import {
   injectHeaderExtrasCss,
   injectSideToolbarStyles,
 } from './editor-styles.ts'
+import { pageLife } from '../page-life.ts'
 
 /** 打ち終わってから保存するまでの待ち時間。1文字ごとに保存すると通信が飽和する。 */
 const AUTOSAVE_DELAY_MS = 900
@@ -186,7 +187,7 @@ export function mountHeaderExtras(
   spacer.style.flex = '1'
 
   // ── 保存ステータス（未保存・保存中・保存済み・失敗を出す。点検11） ──
-  const saveStatus = createSaveStatus(() => ctx.retrySave?.())
+  const saveStatus = createSaveStatus(() => ctx.retrySave?.(), pageLife())
   ctx.saveStatus = saveStatus
 
   // ── セパレータ ──

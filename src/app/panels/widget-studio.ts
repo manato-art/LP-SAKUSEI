@@ -49,9 +49,17 @@ export type StudioSource =
   /** 新しく部品で作る */
   | { readonly kind: 'new'; readonly data: TemplateData; readonly uid: string }
 
+/**
+ * いま開いているWidget編集の寿命。閉じたら止めて、画面全体への見張り（window の resize など）を外す
+ * （2026-10-25 本人「クロームのメモリ見たら1.2Gだった」＝外していなかったので、閉じたWidget編集が丸ごと残り、開くたびに溜まっていた）
+ */
+let studioLife: AbortController | null = null
+
 /** いま開いているWidget編集を閉じる（開いていなければ何もしない） */
 export function closeWidgetStudio(): void {
   closeMediaControl()
+  studioLife?.abort()
+  studioLife = null
   document.querySelector('[data-widget-backdrop]')?.remove()
   document.querySelector('[data-widget-editor]')?.remove()
 }
@@ -130,6 +138,8 @@ export function mountStudio(host: StudioHost): void {
   // 指示158: フォント選択で確実に見た目が変わるよう、日本語Webフォントを読み込んでおく。
   loadGoogleFonts()
   closeWidgetStudio()
+  const life = new AbortController()
+  studioLife = life
   const { target, start } = host
 
   // 画面いっぱい（本人の指示 2026-09-23「カードではなく画面全体で大きく・別ページみたいに」）
@@ -254,6 +264,7 @@ export function mountStudio(host: StudioHost): void {
     onRestore: () => {
       if (codePanel.isCodeVisible()) showCode()
     },
+    life: life.signal,
   })
   const current = session
   const showCode = (): void => {

@@ -18,6 +18,7 @@ import { ALL_PARAMS_LABEL, formatAdParam } from './heatmap-params.ts'
 import { deviceNoteLines, reachBasisNote } from './heatmap-notes.ts'
 import { ROW_COUNT, bandStrength, rowValue, type LineMode } from './heatmap-rows.ts'
 import { paintLpLayer } from './heatmap-lp-layer.ts'
+import { pageLife } from '../page-life.ts'
 
 export type { LineMode } from './heatmap-rows.ts'
 
@@ -732,7 +733,7 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
   }
   refresh()
   setTimeout(refresh, 0)
-  window.addEventListener('resize', refresh)
+  window.addEventListener('resize', refresh, { signal: pageLife() })
   // 最初に選ばれているのは SP（採取物のまま）。数字も SP の記録で出す
   void switchDevice('sp')
   return col

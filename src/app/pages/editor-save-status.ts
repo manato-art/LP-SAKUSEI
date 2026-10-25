@@ -44,7 +44,8 @@ export interface SaveStatus {
 }
 
 /** 見出しに置く保存状態。onRetry は「保存できませんでした」を押したとき */
-export function createSaveStatus(onRetry: () => void): SaveStatus {
+/** life: この見出しを置いた画面の寿命（画面を移ったら「N分前」のタイマーを止める） */
+export function createSaveStatus(onRetry: () => void, life: AbortSignal): SaveStatus {
   const el = document.createElement('span')
   el.className = 'sb-header-save-status save-status'
   el.setAttribute('data-header-save-status', 'true')
@@ -72,9 +73,10 @@ export function createSaveStatus(onRetry: () => void): SaveStatus {
     if (saveStatusView(current).canRetry) onRetry()
   })
   // 「N分前」を進める
-  setInterval(() => {
+  const timer = setInterval(() => {
     if (current === 'saved' && el.isConnected) paint()
   }, 60_000)
+  life.addEventListener('abort', () => clearInterval(timer), { once: true })
   paint()
   return {
     el,

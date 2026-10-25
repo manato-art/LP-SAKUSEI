@@ -74,6 +74,8 @@ export interface BuilderSessionDeps {
   readonly pickSample?: () => Promise<PickedSample | null>
   /** 戻す・やり直すで中身が入れ替わったあと（開いているコード欄を今の中身に読み直す） */
   readonly onRestore?: () => void
+  /** Widget編集の寿命。閉じたら止まる（画面全体への見張りを外す・2026-10-25） */
+  readonly life: AbortSignal
 }
 
 export interface BuilderSession {
@@ -159,7 +161,7 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
   panel.dataset['ncfScroll'] = 'true'
   panel.style.cssText = `flex:1;min-height:0;overflow-y:auto;padding:12px 16px 28px;background:var(--sb-c-ffffff, #FFFFFF);box-sizing:border-box;font-family:${FONT}`
 
-  const selection = createSelectionLayer(editorBody, contentDiv)
+  const selection = createSelectionLayer(editorBody, contentDiv, deps.life)
 
   const activeScreenId = (): string | undefined => {
     const screen = items(data, 'screens')[form.activeScreen()]

@@ -18,6 +18,7 @@
  *  - task 3 の「配信割合 (?)」ツールチップ本文も**未採取**（`data-testid="help-icon-wrapper"` は
  *    アイコンSVGのみで、`_tooltipDescription` 本体が付いていない）。文言が無いので作らない。
  */
+import { pageLife } from '../page-life.ts'
 /** 採取物のクラス（実物・書き換えていない）。テストが採取HTMLと突き合わせる。 */
 export const VERSION_LIST_HOOK = {
   /** Version▼ 全体 */
@@ -92,11 +93,15 @@ export function mountVersionListDropdown(root: HTMLElement, deps?: VersionListDe
     if (isOpen()) close()
     else open()
   })
-  document.addEventListener('click', (event) => {
-    const target = event.target as HTMLElement | null
-    if (target !== null && dropdown.contains(target)) return
-    close()
-  })
+  document.addEventListener(
+    'click',
+    (event) => {
+      const target = event.target as HTMLElement | null
+      if (target !== null && dropdown.contains(target)) return
+      close()
+    },
+    { signal: pageLife() },
+  )
 
   // 選択肢（本体直下の div から矢印を除いたもの）。ラベルは採取した実文言。
   const options = optionsOf(dropdown)

@@ -45,6 +45,7 @@ import { updateStarAppearance } from './folders-detail-panel.ts'
 import { listState, updateListState } from './folders-list-state.ts'
 import { UNFILED_FOLDER_NAME, UNFILED_FOLDER_UID } from '../../shared/unfiled-folder.ts'
 import { isCreator } from '../session.ts'
+import { pageLife } from '../page-life.ts'
 
 /** 採取物から切り出したフォルダ1行ぶんのマークアップ（読み込み時に一度だけ） */
 const FOLDER_ROW_TEMPLATE = extractFolderRowTemplate(substrate)
@@ -560,6 +561,8 @@ function wireResizeHandle(body: HTMLElement): void {
     document.body.style.userSelect = 'none'
   })
 
+  // 画面全体への見張りは、画面を移ったら外す（前の一覧をつかみ続けないように・page-life.ts）
+  const life = pageLife()
   document.addEventListener('mousemove', (e: MouseEvent) => {
     if (!isDragging) return
     const delta = e.clientX - startX
@@ -569,7 +572,7 @@ function wireResizeHandle(body: HTMLElement): void {
     treeContainer.style.width = `${newWidth}px`
     mainPane.style.flex = '1'
     mainPane.style.minWidth = '300px'
-  })
+  }, { signal: life })
 
   document.addEventListener('mouseup', () => {
     if (!isDragging) return
@@ -578,7 +581,7 @@ function wireResizeHandle(body: HTMLElement): void {
     handle.classList.remove('sb-handle-active')
     document.body.style.cursor = ''
     document.body.style.userSelect = ''
-  })
+  }, { signal: life })
 }
 
 /** リサイズハンドルの hover / active スタイルを1回だけ注入 */

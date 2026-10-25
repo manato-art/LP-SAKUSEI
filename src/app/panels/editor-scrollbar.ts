@@ -10,6 +10,7 @@
  * `.ql-container`（overflow-y:scroll）のままで、このバーはその scrollTop を
  * 読み書きするだけ。ミニマップと同じ alignToCanvas でキャンバス高さに追従する。
  */
+import { pageLife } from '../page-life.ts'
 
 /** バー帯の幅（触れる当たり判定込み）。ツールバー配置(指示135)でも参照する */
 export const SCROLLBAR_BAR_WIDTH = 14
@@ -116,6 +117,8 @@ export function mountEditorScrollbar(
     document.body.style.userSelect = 'none'
   })
 
+  // 画面全体への見張りは、画面を移ったら外す（前の編集画面をつかみ続けないように・page-life.ts）
+  const life = pageLife()
   document.addEventListener('mousemove', (e: MouseEvent) => {
     if (!isDragging) return
     const scrollH = scrollContainer.scrollHeight
@@ -127,14 +130,14 @@ export function mountEditorScrollbar(
     const deltaY = e.clientY - dragStartY
     const scrollDelta = (deltaY / travel) * (scrollH - clientH)
     scrollContainer.scrollTop = dragStartScrollTop + scrollDelta
-  })
+  }, { signal: life })
 
   document.addEventListener('mouseup', () => {
     if (!isDragging) return
     isDragging = false
     thumb.style.background = 'var(--sb-c-b0b0b3, #B0B0B3)'
     document.body.style.userSelect = ''
-  })
+  }, { signal: life })
 
   // ── トラッククリックでその位置へジャンプ ──
   track.addEventListener('mousedown', (e: MouseEvent) => {
@@ -152,7 +155,7 @@ export function mountEditorScrollbar(
 
   // ── 追従: スクロール・リサイズ・本文変更 ──
   scrollContainer.addEventListener('scroll', updateThumb, { passive: true })
-  addEventListener('resize', alignToCanvas)
+  addEventListener('resize', alignToCanvas, { signal: life })
   const qlEditor = editorRoot.querySelector<HTMLElement>('.ql-editor')
   if (qlEditor !== null) {
     const mo = new MutationObserver(() => {

@@ -20,6 +20,7 @@ import { keepAlignOnResize } from './media-align.ts'
 import { isMediaDeleteKey } from './media-delete-key.ts'
 import type Quill from 'quill'
 import { attachImageActionBar } from './image-link.ts'
+import { pageLife } from '../page-life.ts'
 
 /** リサイズできる要素。画像も動画も「幅を変えて高さは比率維持」で同じ扱いにする。 */
 export type ResizeTarget = HTMLImageElement | HTMLVideoElement
@@ -205,6 +206,8 @@ export function wireImageResize(quill: Quill): void {
   })
 
   // ドラッグリサイズ（width のみ変更。height は auto で比率維持）
+  // 画面全体への見張りは、画面を移ったら外す（前の編集画面をつかみ続けないように・page-life.ts）
+  const life = pageLife()
   document.addEventListener('mousemove', (e: MouseEvent) => {
     if (resizeState === null) return
     const { img, startX, startWidth, direction } = resizeState
@@ -218,14 +221,14 @@ export function wireImageResize(quill: Quill): void {
     img.removeAttribute('height')
     reposition()
     updateBadge()
-  })
+  }, { signal: life })
 
   document.addEventListener('mouseup', () => {
     if (resizeState === null) return
     resizeState = null
     document.body.style.cursor = ''
     document.body.style.userSelect = ''
-  })
+  }, { signal: life })
 
   // 選んだ画像・動画を Backspace / Delete で消す。Quill のキー操作（文字を消す）より先に受ける。
   // Widget の中の画像など、Quill の部品でないものは消さない（Widget は Widget編集で直す）
@@ -255,7 +258,7 @@ export function wireImageResize(quill: Quill): void {
       if (popover !== null && popover.contains(target)) return
       removeOverlay()
     }
-  })
+  }, { signal: life })
 
   // スクロール追従（安全弁: absolute 配置なので通常は不要だが、edge case をカバー）
   container.addEventListener(

@@ -14,6 +14,7 @@ import {
 } from './toolbar/text-format.ts'
 import { makeFontDropdown } from './toolbar/font-dropdown.ts'
 import { pickAndInsertMedia } from './media-insert.ts'
+import { pageLife } from '../page-life.ts'
 
 // ── SVG アイコン（16px）──
 
@@ -384,12 +385,16 @@ export function mountContentToolbar(quill: Quill): HTMLElement {
   })
 
   // 外部クリックで閉じる
-  document.addEventListener('mousedown', (e) => {
-    const pop = linkWrap.querySelector('.sb-ct-link-pop')
-    if (pop !== null && !pop.contains(e.target as Node) && !linkBtn.contains(e.target as Node)) {
-      closeLinkPop()
-    }
-  })
+  document.addEventListener(
+    'mousedown',
+    (e) => {
+      const pop = linkWrap.querySelector('.sb-ct-link-pop')
+      if (pop !== null && !pop.contains(e.target as Node) && !linkBtn.contains(e.target as Node)) {
+        closeLinkPop()
+      }
+    },
+    { signal: pageLife() },
+  )
 
   linkWrap.append(linkBtn)
   bar.append(linkWrap)

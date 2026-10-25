@@ -4,6 +4,7 @@
  */
 import { CLS, HOOK } from './hooks.ts'
 import type { QuillRange } from './placement.ts'
+import { pageLife } from '../../page-life.ts'
 
 /** 開いたドロップダウンに実物が付ける inline style（toolbar-align-open/dom.html より verbatim） */
 const DROPDOWN_OPEN_STYLE = 'top: 24px; border-top: 8px solid transparent; left: 50%; margin-left: -15px;'
@@ -78,11 +79,15 @@ export function createDropdown(item: HTMLElement | null, ctx: ToolbarState): Dro
     if (isOpen()) close()
     else open()
   })
-  document.addEventListener('click', (event) => {
-    const target = event.target as HTMLElement | null
-    if (target !== null && item.contains(target)) return
-    close()
-  })
+  document.addEventListener(
+    'click',
+    (event) => {
+      const target = event.target as HTMLElement | null
+      if (target !== null && item.contains(target)) return
+      close()
+    },
+    { signal: pageLife() },
+  )
   return { body, open, close, isOpen }
 }
 

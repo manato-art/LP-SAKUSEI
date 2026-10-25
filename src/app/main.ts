@@ -40,6 +40,7 @@ import { T, button, el, emptyState } from './ui.ts'
 import { api } from './api.ts'
 import { isCreator, loadSession } from './session.ts'
 import { isCreatorRoute } from './creator-ui.ts'
+import { startPageLife } from './page-life.ts'
 
 /**
  * 描画の世代。ルートの描画はAPI待ちを含むため、
@@ -59,6 +60,8 @@ export function isStale(generation: number): boolean {
 async function route(): Promise<void> {
   renderGeneration += 1
   const generation = renderGeneration
+  // 前の画面の、画面全体への見張り・タイマーを外す（外さないと前の画面が丸ごとメモリに残る・2026-10-25）
+  startPageLife()
   // 画面が変わったら、エディタ用に開いていたパネルの合図を消す
   teardownMobileEditor()
   // 比較モードは body 直下に出すので、ほかの画面へ移ったら閉じる（残っていた・2026-09-24 点検17）

@@ -15,6 +15,7 @@
  */
 import { toast } from '../ui.ts'
 import { DELIVERY_DOMAIN_UNSET_NOTE, deliveryUrlFor } from '../pages/basic-info-form.ts'
+import { pageLife } from '../page-life.ts'
 
 /** 採取物の目印（実物のクラス／属性。書き換えていない） */
 export const VERSION_LINK_HOOK = {
@@ -113,9 +114,13 @@ export function mountVersionLinkPopup(root: HTMLElement, deps: VersionLinkDeps):
 
   // popup 内クリックは閉じない・外側クリックで閉じる
   popup.addEventListener('click', (event) => event.stopPropagation())
-  document.addEventListener('click', () => {
-    if (isOpen()) close()
-  })
+  document.addEventListener(
+    'click',
+    () => {
+      if (isOpen()) close()
+    },
+    { signal: pageLife() },
+  )
 
   // 「コピーする」（見出しの span）でクリップボードへ
   const copyLabel = popup.querySelector<HTMLElement>(`${VERSION_LINK_HOOK.title} span`)
