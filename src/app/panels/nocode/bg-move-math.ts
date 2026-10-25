@@ -1,6 +1,7 @@
 /**
  * 背景の画像を見たまま画面でつかんで動かす・角を引っぱって大きさを変えるときの計算（2026-10-24・DOMを使わない）。
- * 位置は背景の決まり（0＝左端・50＝真ん中・100＝右端）＝「枠と画像の差」に対する%。大きさは枠の横幅に対する%。
+ * 位置は背景の決まり（0＝左端・50＝真ん中・100＝右端）＝「枠と画像の差」に対する%。大きさは「枠いっぱいに覆う大きさ」に対する%
+ * （2026-10-25 横幅に対する%だと、スマホで細くなった枠の上下に色が出た。配信では bg-fit-script.ts が同じ計算で当てる）。
  * 画面の上の場所（px）は、枠の外側（線を含む）を基準にする（bg-image.ts の background-origin:border-box と同じ）。
  */
 import { BG_POSITION_MAX, BG_POSITION_MIN, BG_SIZE_MAX, BG_SIZE_MIN, type BgLook } from './templates/bg-image.ts'
@@ -22,15 +23,22 @@ export type Corner = 'nw' | 'ne' | 'sw' | 'se'
 
 const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value))
 
+/** 枠いっぱいに覆う大きさ（px）＝自由な大きさの 100% */
+function coverSize(box: Box, natural: Natural): { width: number; height: number } {
+  const scale = Math.max(box.width / Math.max(natural.width, 1), box.height / Math.max(natural.height, 1))
+  return { width: natural.width * scale, height: natural.height * scale }
+}
+
 /** 画像の大きさ（px） */
 function imageSize(box: Box, natural: Natural, look: BgLook): { width: number; height: number } {
-  const ratio = natural.width > 0 && natural.height > 0 ? natural.height / natural.width : 1
-  if (look.fit === 'cover') {
-    const scale = Math.max(box.width / Math.max(natural.width, 1), box.height / Math.max(natural.height, 1))
-    return { width: natural.width * scale, height: natural.height * scale }
-  }
-  const width = (box.width * look.size) / 100
-  return { width, height: width * ratio }
+  const cover = coverSize(box, natural)
+  const scale = look.fit === 'cover' ? 1 : look.size / 100
+  return { width: cover.width * scale, height: cover.height * scale }
+}
+
+/** 見たまま画面で当てる background-size（配信のスクリプトが当てるのと同じ px） */
+export function bgSizeCss(box: Box, natural: Natural, look: BgLook): string {
+  return look.fit === 'cover' ? 'cover' : `${Math.round(imageSize(box, natural, look).width * 100) / 100}px auto`
 }
 
 /** 画像のいる場所（px・はみ出した所も含む） */
@@ -72,8 +80,9 @@ export function resizedLook(look: BgLook, box: Box, natural: Natural, corner: Co
   const fromX = rect.width + (east ? dx : -dx)
   const fromY = (rect.height + (south ? dy : -dy)) / ratio
   const wanted = Math.abs(fromX - rect.width) >= Math.abs(fromY - rect.width) ? fromX : fromY
-  const size = Math.round(clamp((wanted / box.width) * 100, BG_SIZE_MIN, BG_SIZE_MAX))
-  const width = (box.width * size) / 100
+  const full = coverSize(box, natural).width
+  const size = Math.round(clamp((wanted / full) * 100, BG_SIZE_MIN, BG_SIZE_MAX))
+  const width = (full * size) / 100
   const height = width * ratio
   const left = east ? rect.left : rect.left + rect.width - width
   const top = south ? rect.top : rect.top + rect.height - height

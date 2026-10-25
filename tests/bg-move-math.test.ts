@@ -1,6 +1,7 @@
 /**
  * 背景の画像を見たまま画面でつかんで動かす・角を引っぱって大きさを変えるときの計算（2026-10-24 本人の選択「画面でつかんで動かす」）。
- * 位置は背景の決まり（0＝左端・50＝真ん中・100＝右端）、大きさは枠の横幅に対する%。
+ * 位置は背景の決まり（0＝左端・50＝真ん中・100＝右端）、大きさは「枠いっぱいに覆う大きさ」に対する%
+ * （2026-10-25 スマホで細くなったボタンの上下に色が出た＝横幅だけに対する%だった、を直した）。
  */
 import { describe, expect, it } from 'vitest'
 import { bgRect, movedLook, resizedLook, type Box } from '../src/app/panels/nocode/bg-move-math.ts'
@@ -19,6 +20,19 @@ describe('画像のいる場所', () => {
   it('左上（0%・0%）と右下（100%・100%）', () => {
     expect(bgRect(BOX, NATURAL, look({ x: 0, y: 0 }))).toMatchObject({ left: 100, top: 50 })
     expect(bgRect(BOX, NATURAL, look({ x: 100, y: 100 }))).toMatchObject({ left: 300, top: 150 })
+  })
+
+  it('大きさは枠いっぱいに覆う大きさに対して%: スマホで枠が細くなっても、100%以上なら枠を覆う（上下に色が出ない）', () => {
+    // 本人のボタン（2026-10-25）: 画像 460×168・大きさ108%・高さ151px。PCでは幅520、スマホでは幅343
+    const photo = { width: 460, height: 168 }
+    const button = look({ size: 108, x: 76, y: 58 })
+    const pc = bgRect({ left: 0, top: 0, width: 520, height: 159 }, photo, button)
+    expect(pc.width).toBeCloseTo(520 * 1.08, 1) // PCは今までと同じ（横幅の108%）
+    const phone = bgRect({ left: 0, top: 0, width: 343, height: 159 }, photo, button)
+    expect(phone.height).toBeGreaterThanOrEqual(159)
+    expect(phone.height).toBeCloseTo(159 * 1.08, 1)
+    expect(phone.top).toBeLessThanOrEqual(0)
+    expect(phone.top + phone.height).toBeGreaterThanOrEqual(159)
   })
 
   it('枠いっぱいに覆う: 縦横どちらも枠を覆う大きさ（はみ出す方は真ん中）', () => {

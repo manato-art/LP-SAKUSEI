@@ -6,9 +6,11 @@
  * 位置と大きさは見たまま画面でつかんで動かす（右の欄の数字でも直せる）。
  *
  * 画像は部品の「背景」に敷く（要素も並びも増やさない＝見た目の箱の形・角の丸みで切り取られ、文字はその上に出る）。
- * 合わせ方は「枠いっぱいに覆う」と「大きさを自分で決める（横幅に対して%）」。位置は 0＝左端（上端）・50＝真ん中・100＝右端（下端）。
+ * 合わせ方は「枠いっぱいに覆う」と「大きさを自分で決める（枠いっぱいに覆う大きさに対して%・2026-10-25 までは横幅に対して%）」。
+ * 位置は 0＝左端（上端）・50＝真ん中・100＝右端（下端）。
  */
 import { describe, expect, it } from 'vitest'
+import { BG_FIT_SCRIPT } from '../src/app/panels/nocode/templates/bg-fit-script.ts'
 import { bgCss, bgTargetOf } from '../src/app/panels/nocode/templates/bg-image.ts'
 import { ALL_BLOCK_TYPES, BUILDER_TEMPLATE } from '../src/app/panels/nocode/templates/builder.ts'
 import type { ItemData, TemplateData } from '../src/app/panels/nocode/templates/types.ts'
@@ -62,10 +64,32 @@ describe('書き出し', () => {
     )
   })
 
-  it('大きさを自分で決める: 横幅に対して%・位置は 0〜100（はみ出す所も置ける）', () => {
+  it('大きさを自分で決める: 印（--nc-bgfree＝大きさ%）を付ける。スクリプトが動くまでは横幅に対して%・位置は 0〜100（はみ出す所も置ける）', () => {
     const css = bgCss('.x', { bgImage: IMG, bgFit: 'free', bgSize: 60, bgX: 10, bgY: -20 })
+    expect(css).toContain('--nc-bgfree:60!important')
     expect(css).toContain('background-size:60% auto!important')
     expect(css).toContain('background-position:10% -20%!important')
+    expect(bgCss('.x', { bgImage: IMG })).not.toContain('--nc-bgfree')
+  })
+
+  it('自由な大きさの画像があるWidgetだけ、配信で大きさを合わせるスクリプトと印を付ける（中の要素は印を受け継がない）', () => {
+    const button = { type: 'button', label: '申し込む', look: 'cta', color: '#E5573F', action: 'none', target: '', url: '', bgImage: IMG }
+    const free = renderOne({ ...button, bgFit: 'free', bgSize: 108 })
+    expect(free).toContain(' data-nc-bgfree="true"')
+    expect(free).toContain(`.${UID} *{--nc-bgfree:initial}`)
+    expect(free).toContain(BG_FIT_SCRIPT)
+    // 見本の中の箱・画面・Widget全体の自由な大きさでも付く
+    const screenFree = BUILDER_TEMPLATE.render(
+      { ...BUILDER_TEMPLATE.defaults(new Date(0)), screens: [{ id: 's1', name: '画面①', blocks: [], bgImage: IMG, bgFit: 'free' }] },
+      UID,
+    )
+    expect(screenFree).toContain(BG_FIT_SCRIPT)
+    const sampleFree = renderOne({ type: 'sample', html: '<div data-nc-bg="b1">あ</div>', bgs: [{ id: 'b1', bgImage: IMG, bgFit: 'free' }] })
+    expect(sampleFree).toContain(BG_FIT_SCRIPT)
+    // 枠いっぱいだけ・画像なしは付けない
+    const cover = renderOne(button)
+    expect(cover).not.toContain('data-nc-bgfree')
+    expect(cover).not.toContain(BG_FIT_SCRIPT)
   })
 
   it('画像が無い・決まった形でない画像（よそのURL・スクリプト）は何も書かない', () => {

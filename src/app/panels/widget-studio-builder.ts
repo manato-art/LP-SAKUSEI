@@ -54,7 +54,7 @@ import type { PickedSample } from './nocode/nocode-flow.ts'
 import { createToolbarHooks, type ToolbarHooks } from './widget-studio-toolbar.ts'
 import { hotspotHandles, hotspotMove, markEmptyHotspotHosts, type HotspotEditDeps } from './widget-studio-hotspot.ts'
 import { floatMove, type FloatEditDeps } from './widget-studio-float.ts'
-import { bgSurfaceOf, startBgMove, withBgLook, type BgMoveSession } from './widget-studio-bg-move.ts'
+import { bgSurfaceOf, refitBgImages, startBgMove, withBgLook, type BgMoveSession } from './widget-studio-bg-move.ts'
 import { bgLookOf } from './nocode/templates/bg-image.ts'
 
 export interface BuilderSessionDeps {
@@ -607,6 +607,8 @@ export function createBuilderSession(deps: BuilderSessionDeps): BuilderSession {
     // CSSだけの変化（カードのスライダーなど）は中身を入れ替えない（要素が入れ替わると、開いているカードや選択枠がずれる）。
     // 枠とつまみは今の値で作り直す（置く位置で幅のつまみの側が変わる）
     if (body === lastBody) {
+      // 自由な大きさの背景の画像は、配信のスクリプトが測って当てている（CSSだけ変わったので測り直してもらう）
+      refitBgImages(contentDiv)
       showSelection()
       return
     }

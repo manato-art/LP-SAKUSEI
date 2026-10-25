@@ -44,7 +44,8 @@ const svg = (body: string): string =>
 
 // 画面の切り替えのスクリプトは screens-script.ts（2026-10-24 に「下に積み重ねる」を足すときに分けた）
 import { SCREENS_SCRIPT } from './screens-script.ts'
-import { bgCss, bgFields } from './bg-image.ts'
+import { BG_FIT_SCRIPT } from './bg-fit-script.ts'
+import { bgCss, bgFields, bgFreeReset, usesFreeBg } from './bg-image.ts'
 export { SCREENS_SCRIPT }
 
 /** 見本の中身（そのまま入れられる例。1画面目で答えを選ぶと2画面目へ移る） */
@@ -206,6 +207,8 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
     // 見たまま画面で試して積み重ねていた画面の並び（ある画面だけ・2つ以上のときだけ。配信には出さない）
     const previewPath = (view?.path ?? []).filter((id) => ids.has(id))
     const start = previewStart ?? str(screens[0] ?? {}, 'id')
+    /** 自由な大きさの背景の画像があるか（あれば配信で枠いっぱいに覆う大きさに合わせるスクリプトを付ける・2026-10-25） */
+    const freeBg = usesFreeBg(data)
 
     // 進み具合（Q1 › Q2 › Q3）: 進み具合を置いた画面の数が全体の数、その画面が何番目かが今の番号
     const progressScreens = screens
@@ -292,6 +295,8 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
       // 背景の画像（Widget全体・画面ごと。色はその下に見える・2026-10-24）
       bgCss(s, data) +
       screens.map((screen) => bgCss(`${s} [data-nc-screen="${str(screen, 'id')}"]`, screen)).join('') +
+      // 自由な大きさの背景の画像の印は、中の要素へ受け継がせない（配信のスクリプトが印の付いた面だけを測る）
+      (freeBg ? bgFreeReset(s) : '') +
       // 見本は、LPに1つで置いたときと同じ見え方にする（文字の色・大きさ・行間は配信の土台と同じ。左右いっぱい）
       `${s} .nc-b-sample{margin-left:-16px;margin-right:-16px;color:#000000;font-size:16px;line-height:1.5;` +
       `text-align:left;font-weight:400;letter-spacing:normal}` +
@@ -369,9 +374,14 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
     const pops = press.pops.join('') + (press.flags.has('modal') ? MODAL_LAYER : '')
     // 画面の切り替え（2画面以上か、「ロード中」で移るとき）と、LP上のアクション
     const needsScreens = screens.length > 1 || usedTypes.has('loading')
-    const scripts = [...(needsScreens ? [SCREENS_SCRIPT] : []), ...(press.flags.has('act') ? [ACTIONS_SCRIPT] : [])]
+    const scripts = [
+      ...(needsScreens ? [SCREENS_SCRIPT] : []),
+      ...(press.flags.has('act') ? [ACTIONS_SCRIPT] : []),
+      ...(freeBg ? [BG_FIT_SCRIPT] : []),
+    ]
     const attrs =
       ` data-nc-screens="true" data-nc-transition="${transition}"` +
+      (freeBg ? ' data-nc-bgfree="true"' : '') +
       (previewStart === null ? '' : ` data-nc-start="${previewStart}"`) +
       (transition === 'stack' && previewPath.length > 1 ? ` data-nc-path="${previewPath.join(' ')}"` : '')
     return wrapWidget({

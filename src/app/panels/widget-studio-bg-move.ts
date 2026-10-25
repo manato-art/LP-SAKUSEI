@@ -6,7 +6,7 @@
  * - 矢印のキーで 1%（⇧で 10%）動く。Esc・「終わる」・枠の外を押すと終わる
  * - 動かしている間は面に直に見た目を当てる。離したら設定データへ（commit）。計算は nocode/bg-move-math.ts
  */
-import { bgRect, movedLook, resizedLook, type Box, type Corner, type Natural } from './nocode/bg-move-math.ts'
+import { bgRect, bgSizeCss, movedLook, resizedLook, type Box, type Corner, type Natural } from './nocode/bg-move-math.ts'
 import { blockElementAt } from './nocode/canvas-sync.ts'
 import { getAt, setAt, type Path } from './nocode/form-state.ts'
 import { BG_POSITION_MAX, BG_POSITION_MIN, bgDeclarations, bgTargetOf, type BgLook } from './nocode/templates/bg-image.ts'
@@ -77,14 +77,32 @@ const boxOf = (el: HTMLElement): Box => {
   return { left: r.left, top: r.top, width: r.width, height: r.height }
 }
 
-/** 面に直に当てた見た目（描き直せば消える）を外す */
-function clearPreview(el: HTMLElement | null): void {
-  if (el === null) return
-  for (const property of Object.keys(bgDeclarations({ image: '', fit: 'cover', size: 100, x: 50, y: 50 }))) el.style.removeProperty(property)
+const PREVIEW_PROPERTIES = Object.keys(bgDeclarations({ image: '', fit: 'cover', size: 100, x: 50, y: 50 }))
+
+/**
+ * 自由な大きさの背景の画像を測り直す（配信のスクリプト bg-fit-script.ts が外枠に付けた __ncBgFit を呼ぶ）。
+ * Widget編集で見た目（CSS）だけ変えたときは要素が入れ替わらず、スクリプトも動き直さないので、ここから呼ぶ
+ */
+export function refitBgImages(container: Element): void {
+  const roots = new Set([container.closest('[data-nc-bgfree]'), ...container.querySelectorAll('[data-nc-bgfree]')])
+  for (const root of roots) (root as (Element & { __ncBgFit?: () => void }) | null)?.__ncBgFit?.()
 }
 
-function applyPreview(el: HTMLElement, look: BgLook): void {
-  for (const [property, value] of Object.entries(bgDeclarations(look))) el.style.setProperty(property, value, 'important')
+/** 面に直に当てた見た目（描き直せば消える）を外し、自由な大きさは配信のスクリプトに当て直してもらう */
+function clearPreview(el: HTMLElement | null): void {
+  if (el === null) return
+  for (const property of PREVIEW_PROPERTIES) el.style.removeProperty(property)
+  refitBgImages(el)
+}
+
+/**
+ * 動かしている間の見た目。自由な大きさは、配信のスクリプトと同じく枠いっぱいに覆う大きさに対する%を px で当てる
+ * （CSSの px なので、画面の拡大縮小を受けない offsetWidth・offsetHeight で測る＝スクリプトと同じ）
+ */
+function applyPreview(el: HTMLElement, look: BgLook, natural: Natural): void {
+  const layoutBox: Box = { left: 0, top: 0, width: el.offsetWidth, height: el.offsetHeight }
+  const declarations = { ...bgDeclarations(look), 'background-size': bgSizeCss(layoutBox, natural, look) }
+  for (const [property, value] of Object.entries(declarations)) el.style.setProperty(property, value, 'important')
 }
 
 /** 画像を読めたら始める（読めなければ null＝呼ぶ側が知らせる） */
@@ -165,7 +183,7 @@ export async function startBgMove(deps: BgMoveDeps): Promise<BgMoveSession | nul
     if (target === null) return
     if (previewTarget !== target) clearPreview(previewTarget)
     previewTarget = target
-    applyPreview(target, next)
+    applyPreview(target, next, natural)
     layout()
   }
 

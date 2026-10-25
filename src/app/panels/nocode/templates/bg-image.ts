@@ -9,7 +9,12 @@
  * （押したとき・選んだ答えの色が変わっても画像は残る）。位置は背景の決まり（0＝左端・50＝真ん中・100＝右端）のまま持つ。
  *
  * 持ち方（部品・Widget全体・画面のどれも同じ名前）: bgImage＝画像／bgFit＝cover（枠いっぱいに覆う）か free（大きさを自分で決める）／
- * bgSize＝free のときの横幅に対する%／bgX・bgY＝位置（%）
+ * bgSize＝free のときの「枠いっぱいに覆う大きさ」に対する%／bgX・bgY＝位置（%）
+ *
+ * free の大きさ（2026-10-25 本人「スマホで確認すると、画像入れるところがおかしい」）: 横幅に対する%だと、スマホで枠が細くなっても
+ * 高さ（ボタンの高さ・文字の量）は縮まないので、画像の上下に色が出た。CSSだけでは「覆う大きさ×%」を書けないので、
+ * 面に印（--nc-bgfree＝大きさ%）を付け、配信では bg-fit-script.ts が枠と画像を測って px で当てる。
+ * スクリプトが動くまで（LPの編集画面の中も）は横幅に対する%で出す（横長の枠＝PCではほぼ同じ見え方）
  */
 import { safeImage } from './kit.ts'
 import { BG_FIT_ICONS } from './option-icons.ts'
@@ -78,14 +83,29 @@ export function bgDeclarations(look: BgLook): Readonly<Record<string, string>> {
   }
 }
 
+/** 自由な大きさの面に付ける印（大きさ%。中の要素は受け継がない＝ BG_FREE_RESET） */
+export const BG_FREE_MARK = '--nc-bgfree'
+
+/** Widgetの中の要素に印を受け継がせない（印は面ごとに !important で付く） */
+export const bgFreeReset = (s: string): string => `${s} *{${BG_FREE_MARK}:initial}`
+
 /** selector の面に背景の画像を敷くCSS。画像が無ければ '' */
 export function bgCss(selector: string, item: ItemData): string {
   const look = bgLookOf(item)
   if (look === null) return ''
-  const body = Object.entries(bgDeclarations(look))
+  const mark: Readonly<Record<string, string>> = look.fit === 'free' ? { [BG_FREE_MARK]: String(look.size) } : {}
+  const body = Object.entries({ ...bgDeclarations(look), ...mark })
     .map(([property, value]) => `${property}:${value}!important`)
     .join(';')
   return `${selector}{${body}}`
+}
+
+/** 中身のどこか（Widget全体・画面・部品・見本の中の箱）に、自由な大きさの背景の画像があるか */
+export function usesFreeBg(value: ItemData): boolean {
+  if (bgLookOf(value)?.fit === 'free') return true
+  return Object.values(value).some(
+    (child) => Array.isArray(child) && child.some((entry: unknown) => typeof entry === 'object' && entry !== null && usesFreeBg(entry as ItemData)),
+  )
 }
 
 /** 部品1つの背景の画像のCSS（吹き出しの形の図形は、しっぽ＝::after が背景を受け継ぐので外す） */
@@ -159,7 +179,18 @@ export function bgFields(scope: 'item' | 'root'): readonly Field[] {
       section: 'background',
       ...when(hasImage),
     },
-    { kind: 'number', key: 'bgSize', label: '大きさ（横幅に対して）', min: BG_SIZE_MIN, max: BG_SIZE_MAX, unit: '%', fallback: 100, section: 'background', ...when(isFree) },
+    {
+      kind: 'number',
+      key: 'bgSize',
+      label: '大きさ',
+      note: '100＝枠いっぱい。スマホで枠が細くなっても、100以上なら枠を覆います',
+      min: BG_SIZE_MIN,
+      max: BG_SIZE_MAX,
+      unit: '%',
+      fallback: 100,
+      section: 'background',
+      ...when(isFree),
+    },
     {
       kind: 'number',
       key: 'bgX',
