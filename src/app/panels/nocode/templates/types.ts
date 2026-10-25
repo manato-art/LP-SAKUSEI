@@ -29,9 +29,9 @@ interface FieldBase {
   readonly showIfItem?: (item: ItemData) => boolean
   /**
    * Widget編集の右の設定で入れる段（2026-09-24 画面の作り直し）。layout＝「レイアウト」（幅・置く位置）、
-   * press＝「押したとき」・background＝「背景の画像」（2026-10-24）。無ければ「中身」
+   * press＝「押したとき」・background＝「背景の画像」（2026-10-24）・text＝「文字の見た目」（2026-10-25）。無ければ「中身」
    */
-  readonly section?: 'layout' | 'press' | 'background'
+  readonly section?: 'layout' | 'press' | 'background' | 'text'
 }
 
 export type Field =
@@ -39,7 +39,11 @@ export type Field =
   | (FieldBase & { readonly kind: 'text'; readonly placeholder?: string; readonly maxLength?: number; readonly rich?: boolean })
   | (FieldBase & { readonly kind: 'textarea'; readonly rows?: number; readonly maxLength?: number; readonly rich?: boolean })
   | (FieldBase & { readonly kind: 'url'; readonly placeholder?: string })
-  | (FieldBase & { readonly kind: 'color'; readonly presets: readonly string[] })
+  /**
+   * 色。右の欄では色の下に「不透明度」も出る（値は #RRGGBB か #RRGGBBAA・2026-10-25）。
+   * auto: 決めなければ部品の色に合わせる色（ボタンの文字の色など）。その名前の候補（値 ''）をいちばん前に出す
+   */
+  | (FieldBase & { readonly kind: 'color'; readonly presets: readonly string[]; readonly auto?: string })
   | (FieldBase & { readonly kind: 'image' })
   /** 動画のファイル（mp4・webm） */
   | (FieldBase & { readonly kind: 'video' })

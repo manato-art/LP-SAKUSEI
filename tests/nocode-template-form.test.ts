@@ -96,7 +96,8 @@ describe('左の列の並びと、右の設定', () => {
     expect(m.form.selectedBlock()).toBe(2)
     expect(m.selects.at(-1)).toEqual([0, 2])
     expect(m.panel.querySelector('.ncf-inspector__name')?.textContent).toBe('ボタン')
-    expect(sectionTitles(m)).toEqual(['押したとき', 'レイアウト', '中身', '背景の画像'])
+    // 文字の見た目（文字の色・縁取り）は 2026-10-25 本人「ボタンの色と文字の色は別で決めたい」
+    expect(sectionTitles(m)).toEqual(['押したとき', 'レイアウト', '中身', '文字の見た目', '背景の画像'])
     const pressText = m.panel.querySelector('.ncf-press')?.textContent ?? ''
     expect(pressText).toContain('LPの上で')
     // もう一度押すと畳む（選ぶのをやめる）

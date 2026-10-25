@@ -8,7 +8,21 @@
  *  - 色は #RRGGBB だけ。画像は選んだファイル（data:image/…）だけ
  */
 import { describe, expect, it } from 'vitest'
-import { esc, inkOn, linkAttrs, newUid, rekeyUid, safeColor, safeImage, safeVideo, shade, textHtml } from '../src/app/panels/nocode/templates/kit.ts'
+import {
+  baseColor,
+  esc,
+  inkOn,
+  linkAttrs,
+  newUid,
+  opacityOf,
+  rekeyUid,
+  safeColor,
+  safeImage,
+  safeVideo,
+  shade,
+  textHtml,
+  withOpacity,
+} from '../src/app/panels/nocode/templates/kit.ts'
 
 describe('文字', () => {
   it('HTMLとして読まれる文字をすべてエスケープする', () => {
@@ -91,6 +105,30 @@ describe('色・画像', () => {
     expect(inkOn('#E5573F')).toBe('#FFFFFF')
     expect(inkOn('#FFE14D')).toBe('#1F2A37')
     expect(inkOn('#F4F4F4')).toBe('#1F2A37')
+  })
+})
+
+describe('色の不透明度（2026-10-25 本人「不透明度は全部を分解してそれぞれ決めれるように」）', () => {
+  it('不透明度つきの色（#RRGGBBAA）も使える。形の違うものは使わない', () => {
+    expect(safeColor('#e5573f80', '#000000')).toBe('#E5573F80')
+    expect(safeColor('#E5573F', '#000000')).toBe('#E5573F')
+    expect(safeColor('#e5573f8', '#000000')).toBe('#000000')
+    expect(safeColor('#e5573f80;x', '#000000')).toBe('#000000')
+  })
+
+  it('色と不透明度（0〜100%）の行き来（100%は #RRGGBB のまま）', () => {
+    expect(withOpacity('#E5573F', 50)).toBe('#E5573F80')
+    expect(withOpacity('#E5573F80', 100)).toBe('#E5573F')
+    expect(withOpacity('#E5573F', 0)).toBe('#E5573F00')
+    expect(opacityOf('#E5573F')).toBe(100)
+    expect(opacityOf('#E5573F80')).toBe(50)
+    expect(opacityOf('#E5573F00')).toBe(0)
+    expect(baseColor('#E5573F80')).toBe('#E5573F')
+  })
+
+  it('濃く・薄くしても不透明度はそのまま。文字の色の判断は不透明度を見ない', () => {
+    expect(shade('#80808080', -0.5)).toBe('#40404080')
+    expect(inkOn('#1F2A3780')).toBe('#FFFFFF')
   })
 })
 

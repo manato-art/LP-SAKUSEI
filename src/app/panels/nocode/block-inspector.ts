@@ -43,7 +43,7 @@ export function createBlockInspector(deps: BlockInspectorDeps): BlockInspector {
     screenIndex: number,
     index: number,
     type: BlockType,
-  ): { layout: HTMLElement[]; content: HTMLElement[]; background: HTMLElement[]; press: HTMLElement[] } => {
+  ): { layout: HTMLElement[]; content: HTMLElement[]; text: HTMLElement[]; background: HTMLElement[]; press: HTMLElement[] } => {
     const itemPath: Path = [field.key, screenIndex, 'blocks', index]
     // 移行先は被せた部品と同じ画面にしか置けない（「この部品を出す画面」は出さない。部品を移すと一緒に移る）
     const block = (getAt(deps.data(), [field.key, screenIndex, 'blocks', index]) as ItemData | undefined) ?? {}
@@ -51,6 +51,7 @@ export function createBlockInspector(deps: BlockInspectorDeps): BlockInspector {
       // 重ねる（すぐ上の部品の上に浮かべる）は、移行先には出さない（移行先はもともと被さる部品）
       layout: isHotspot(block) ? [] : [deps.screen.place(field, screenIndex, index, type.label), deps.screen.layer(field, screenIndex, index)],
       content: [] as HTMLElement[],
+      text: [] as HTMLElement[],
       background: [] as HTMLElement[],
       press: [] as HTMLElement[],
     }
@@ -74,7 +75,7 @@ export function createBlockInspector(deps: BlockInspectorDeps): BlockInspector {
   const body = (field: ScreensField, screenIndex: number, index: number, type: BlockType): HTMLElement => {
     const el = node('div', 'ncf-item__body')
     const parts = blockParts(field, screenIndex, index, type)
-    el.append(...parts.layout, ...parts.content, ...parts.background, ...parts.press)
+    el.append(...parts.layout, ...parts.content, ...parts.text, ...parts.background, ...parts.press)
     return el
   }
 
@@ -112,6 +113,8 @@ export function createBlockInspector(deps: BlockInspectorDeps): BlockInspector {
     if (pressFirst) section('press', '押したとき', parts.press)
     section('layout', 'レイアウト', parts.layout)
     section('content', '中身', parts.content)
+    // 文字の色・縁取り（2026-10-25・part-colors.ts）
+    section('text', '文字の見た目', parts.text)
     // 背景の画像（2026-10-24・bg-image.ts）。画面で動かすボタンは画像を選んでから出る
     const canMove = parts.background.length > 0 && deps.bgMove !== undefined
     section('background', '背景の画像', [...parts.background, ...(canMove && deps.bgMove !== undefined ? [deps.bgMove(itemPath)] : [])])

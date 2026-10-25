@@ -12,6 +12,7 @@ import { applySymbol } from './form-state.ts'
 import { pickLpImage } from './lp-image.ts'
 import { pickLpVideo } from './lp-video.ts'
 import { COLOR_NAMES, type Field, type TemplateData } from './templates/types.ts'
+import { baseColor, opacityOf, withOpacity } from './templates/kit.ts'
 
 export type Scalar = string | boolean | number
 /** 並びではない入力（見本の部品は form-sample.ts の専用の入力） */
@@ -297,18 +298,54 @@ export function scalarControl(field: ScalarField, env: ControlEnv, id: string): 
       return label
     }
     case 'color': {
+      const box = node('div', 'ncf-color')
       const wrap = node('div', 'ncf-swatches')
       wrap.setAttribute('role', 'group')
       const current = (): string => (typeof env.read() === 'string' ? String(env.read()).toUpperCase() : '')
+      const isColor = (value: string): boolean => /^#[0-9A-F]{6}([0-9A-F]{2})?$/.test(value)
+      /** 候補を選び直しても、いまの不透明度はそのまま */
+      const keepOpacity = (color: string): string => (isColor(current()) ? withOpacity(color, opacityOf(current())) : color)
       // 「ほかの色」も今の色を映す（候補を選んだあとに古い色のまま残らないように）
       const picker = node('input')
       picker.type = 'color'
       picker.id = id
+      // 不透明度（2026-10-25 本人「不透明度は…全部を分解してそれぞれ決めれるように」）。色を決めているときだけ
+      const opacityRow = node('div', 'ncf-opacity')
+      const opacity = scalarControl(
+        { kind: 'number', key: `${field.key}Opacity`, label: '不透明度', min: 0, max: 100, unit: '%', fallback: 100 },
+        {
+          read: () => (isColor(current()) ? opacityOf(current()) : 100),
+          write: (n) => {
+            if (isColor(current()) && typeof n === 'number') env.write(withOpacity(current(), n))
+          },
+          data: env.data,
+          onRefresh: env.onRefresh,
+        },
+        `${id}-opacity`,
+      )
+      const opacityLabel = node('label', 'ncf-label', '不透明度')
+      opacityLabel.htmlFor = `${id}-opacity`
+      opacityRow.append(opacityLabel, opacity)
       const paint = (): void => {
+        const now = current()
         for (const b of wrap.querySelectorAll<HTMLButtonElement>('.ncf-swatch')) {
-          b.setAttribute('aria-pressed', String(b.dataset['color'] === current()))
+          const color = b.dataset['color'] ?? ''
+          b.setAttribute('aria-pressed', String(color === '' ? now === '' : isColor(now) ? color === baseColor(now) : color === now))
         }
-        if (/^#[0-9A-F]{6}$/.test(current())) picker.value = current().toLowerCase()
+        if (isColor(now)) picker.value = baseColor(now).toLowerCase()
+        opacityRow.hidden = !isColor(now)
+      }
+      if (field.auto !== undefined) {
+        // 決めなければ部品の色に合わせる（値 ''）
+        const auto = node('button', 'ncf-swatch ncf-swatch--auto', field.auto)
+        auto.type = 'button'
+        auto.dataset['color'] = ''
+        auto.title = `${field.auto}（部品の色に合わせる）`
+        auto.addEventListener('click', () => {
+          env.write('')
+          paint()
+        })
+        wrap.append(auto)
       }
       for (const color of field.presets) {
         const b = node('button', color === 'none' ? 'ncf-swatch ncf-swatch--none' : 'ncf-swatch')
@@ -319,21 +356,22 @@ export function scalarControl(field: ScalarField, env: ControlEnv, id: string): 
         b.setAttribute('aria-label', color === 'none' ? 'なし（LPの地のまま）' : (COLOR_NAMES[color] ?? color))
         b.title = color === 'none' ? 'なし（LPの地のまま）' : (COLOR_NAMES[color] ?? color)
         b.addEventListener('click', () => {
-          env.write(color)
+          env.write(color === 'none' ? color : keepOpacity(color))
           paint()
         })
         wrap.append(b)
       }
       picker.addEventListener('input', () => {
-        env.write(picker.value.toUpperCase())
+        env.write(keepOpacity(picker.value.toUpperCase()))
         paint()
       })
       const custom = node('label', 'ncf-custom')
       custom.append(picker, node('span', '', 'ほかの色'))
       wrap.append(custom)
+      box.append(wrap, opacityRow)
       paint()
       env.onRefresh(paint)
-      return wrap
+      return box
     }
     case 'image':
       return mediaControl(env, id, 'image')

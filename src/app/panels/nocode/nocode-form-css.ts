@@ -58,6 +58,9 @@ textarea.ncf-input{resize:vertical;min-height:64px}
 .ncf-swatch{width:30px;height:30px;border-radius:50%;border:0;padding:0;cursor:pointer;box-shadow:inset 0 0 0 1px rgba(0,0,0,.15)}
 .ncf-swatch[aria-pressed="true"]{box-shadow:0 0 0 2px var(--sb-surface,#FFF),0 0 0 4px var(--sb-text,#151515)}
 .ncf-swatch--none{background:linear-gradient(135deg,transparent 45%,#C0392B 45%,#C0392B 55%,transparent 55%) var(--sb-surface,#FFF)}
+.ncf-swatch--auto{width:auto;min-width:30px;padding:0 10px;border-radius:999px;background:var(--sb-surface,#FFF);color:var(--sb-text,#151515);font-size:12px;font-weight:700;white-space:nowrap}
+.ncf-opacity{margin-top:8px}
+.ncf-opacity>.ncf-label{font-size:12px}
 .ncf-custom{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--sb-sub,#808080);cursor:pointer}
 .ncf-custom input{width:30px;height:30px;border:0;padding:0;background:none;cursor:pointer}
 .ncf-image{display:flex;align-items:center;gap:10px;flex-wrap:wrap}

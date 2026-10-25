@@ -47,8 +47,31 @@ export function linkAttrs(url: string, options: { track: boolean; newTab: boolea
 }
 
 /** #RRGGBB だけ受け付ける（大文字にそろえる）。それ以外は fallback */
+/**
+ * 色（#RRGGBB）か、不透明度つきの色（#RRGGBBAA・2026-10-25 本人「不透明度は全部を分解してそれぞれ決めれるように」）だけ。
+ * それ以外は fallback
+ */
 export function safeColor(value: string, fallback: string): string {
-  return /^#[0-9a-f]{6}$/i.test(value) ? value.toUpperCase() : fallback
+  return /^#[0-9a-f]{6}([0-9a-f]{2})?$/i.test(value) ? value.toUpperCase() : fallback
+}
+
+/** 不透明度を抜いた色（#RRGGBB） */
+export function baseColor(color: string): string {
+  return color.slice(0, 7).toUpperCase()
+}
+
+/** 色の不透明度（0〜100%）。#RRGGBB は 100 */
+export function opacityOf(color: string): number {
+  if (color.length !== 9) return 100
+  return Math.round((Number.parseInt(color.slice(7, 9), 16) / 255) * 100)
+}
+
+/** 色に不透明度（0〜100%）を付ける。100% は #RRGGBB のまま */
+export function withOpacity(color: string, opacity: number): string {
+  const base = baseColor(color)
+  const clamped = Math.min(100, Math.max(0, Math.round(opacity)))
+  if (clamped >= 100) return base
+  return `${base}${Math.round((clamped / 100) * 255).toString(16).padStart(2, '0').toUpperCase()}`
 }
 
 const DATA_IMAGE = /^data:image\/(png|jpe?g|gif|webp|avif);base64,[A-Za-z0-9+/]+=*$/
@@ -73,7 +96,8 @@ export function safeVideo(value: string): string {
 }
 
 function channels(hex: string): [number, number, number] {
-  const n = Number.parseInt(hex.slice(1), 16)
+  // 不透明度つき（#RRGGBBAA）も、色の明るさは #RRGGBB で見る
+  const n = Number.parseInt(hex.slice(1, 7), 16)
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255]
 }
 
@@ -83,7 +107,8 @@ function toHex(values: readonly number[]): string {
 
 /** 濃くする（-1〜0＝黒へ）・薄くする（0〜1＝白へ） */
 export function shade(hex: string, amount: number): string {
-  return toHex(channels(hex).map((c) => (amount < 0 ? c * (1 + amount) : c + (255 - c) * amount)))
+  // 不透明度はそのまま残す
+  return toHex(channels(hex).map((c) => (amount < 0 ? c * (1 + amount) : c + (255 - c) * amount))) + hex.slice(7, 9).toUpperCase()
 }
 
 function luminance(hex: string): number {

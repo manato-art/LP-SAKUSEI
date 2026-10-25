@@ -21,6 +21,7 @@ import { pressAttrs, pressContext, type PressContext } from './press-actions.ts'
 import { scopeSampleStyles } from '../sample-css-scope.ts'
 import { PROGRESS_BLOCK_TYPE, PROGRESS_TYPE, renderProgress } from './progress-part.ts'
 import { bgFields, bgTargetOf, blockBgCss } from './bg-image.ts'
+import { faceFields, partColorsCss, textLookFields } from './part-colors.ts'
 import { ACCENT_PRESETS, bool, int, pick, str, type BlockType, type Field, type ItemData, type NocodeTemplate } from './types.ts'
 import {
   ALIGN_OPTIONS,
@@ -307,13 +308,26 @@ const TEMPLATE_BLOCKS: readonly BlockType[] = TEMPLATES.map((template) => ({
 const withBackground = (type: BlockType): BlockType =>
   bgTargetOf(type.type) === null ? type : { ...type, fields: [...type.fields, ...bgFields('item')] }
 
+/**
+ * 部品ごとに分けた色（2026-10-25・part-colors.ts）: ボタン・電話ボタンは色のすぐ下に枠の色・影の色、
+ * 文字を出す部品は「文字の見た目」（文字の色・縁取り）
+ */
+const withPartColors = (type: BlockType): BlockType => {
+  const face = faceFields(type.type)
+  const text = textLookFields(type.type)
+  if (face.length === 0 && text.length === 0) return type
+  const at = type.fields.findIndex((f) => f.kind === 'color')
+  const fields = face.length === 0 || at < 0 ? type.fields : [...type.fields.slice(0, at + 1), ...face, ...type.fields.slice(at + 1)]
+  return { ...type, fields: [...fields, ...text] }
+}
+
 export const ALL_BLOCK_TYPES: readonly BlockType[] = [
   ...BLOCK_TYPES,
   ...MORE_BLOCK_TYPES,
   ...EXTRA_BLOCK_TYPES,
   PROGRESS_BLOCK_TYPE,
   ...TEMPLATE_BLOCKS,
-].map(withBackground)
+].map((type) => withBackground(withPartColors(type)))
 
 export function blockLabel(type: string): string {
   return ALL_BLOCK_TYPES.find((t) => t.type === type)?.label ?? '部品'
@@ -394,7 +408,7 @@ export function renderBlock(
 ): { html: string; css: string } {
   const part = renderBlockBody(item, i, s, seen, press)
   // 部品の型のCSS（背景の色）のあとに、幅・置く位置と背景の画像を重ねる
-  const extra = layoutCss(s, `nc-b-${i}`, item) + blockBgCss(s, `nc-b-${i}`, item)
+  const extra = layoutCss(s, `nc-b-${i}`, item) + partColorsCss(s, `nc-b-${i}`, item) + blockBgCss(s, `nc-b-${i}`, item)
   return extra === '' ? part : { html: part.html, css: part.css + extra }
 }
 
