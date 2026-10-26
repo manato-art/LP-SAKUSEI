@@ -17,6 +17,7 @@
  * 本人の決定: 架空への置き換え（匿名化）はかけない／画像はEBIyonに写して持つ（SBの置き場のURLは /uploads/… に書き換える）。
  * SB本体（管理画面・サービスサイト）を指す見本のリンク先は、LPを見る人には開けないので「仮のリンク」（#）にする
  * （SBの見本がもともと使う仮の書き方と同じ扱い＝Widget編集で「リンク先が仮」と知らせる・link-placeholder.ts）。
+ * 他の会社・個人の置き場を直接読む見本（4571・2549・2470）は、その読み込みを外す（2026-10-27 本人選択・下の THIRD_PARTY_*）。
  */
 import { createHash } from 'node:crypto'
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
@@ -102,13 +103,25 @@ const withoutSbLinks = (id: number, text: string): string => {
   return out
 }
 
+/**
+ * 他の会社・個人の置き場を直接読む見本（2026-10-27 本人選択「読み込みを外して一覧に残す」）。相手が消すと崩れ、他人のファイルに頼るため。
+ * 4571 のスライダーの部品は、あるお店の置き場にあった Swiper 7.0.0 と同じ版を公開の配布元から読む（中身は同じ・スライダーとして動くまま）。
+ * 2549 の背景画像・2470 の書体（矢印アイコン）は読まない（url(…) を none に＝その部分の見た目は変わる）。
+ */
+const THIRD_PARTY_SWIPER = /https:\/\/ec-force\.s3\.amazonaws\.com\/[^"'\s]*\/swiper-bundle\.min\.(js|css)/g
+const THIRD_PARTY_URL = /url\(\s*(['"]?)https?:\/\/(?:antiaging-sign\.com|dl\.dropboxusercontent\.com)\/[^)'"]*\1\s*\)/gi
+const withoutThirdParty = (text: string): string =>
+  text
+    .replace(THIRD_PARTY_SWIPER, 'https://cdn.jsdelivr.net/npm/swiper@7.0.0/swiper-bundle.min.$1')
+    .replace(THIRD_PARTY_URL, 'none')
+
 const byCategory = new Map<number, { name: string; parts: { id: number; name: string; html: string; css: string }[] }>()
 let leftover = 0
 for (const part of raw.parts) {
   const id = part.category_id ?? NO_CATEGORY_ID
   const group = byCategory.get(id) ?? { name: part.category_name ?? '分類なし', parts: [] }
-  const html = withoutSbLinks(part.id, externalize(rewrite(part.html ?? '')))
-  const css = withoutSbLinks(part.id, externalize(rewrite(part.css ?? '')))
+  const html = withoutThirdParty(withoutSbLinks(part.id, externalize(rewrite(part.html ?? ''))))
+  const css = withoutThirdParty(withoutSbLinks(part.id, externalize(rewrite(part.css ?? ''))))
   leftover += (html.match(SB_HOST)?.length ?? 0) + (css.match(SB_HOST)?.length ?? 0)
   group.parts.push({ id: part.id, name: part.name, html, css })
   byCategory.set(id, group)

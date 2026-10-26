@@ -73,6 +73,22 @@ describe('分類と中身を配る', () => {
     }
   })
 
+  it('他の会社・個人の置き場を直接読まない（2026-10-27 本人選択「読み込みを外して一覧に残す」）', async () => {
+    const { json } = await get<{ categories: Category[] }>('/sb_widgets')
+    const all: Part[] = []
+    for (const category of json.categories) all.push(...(await get<{ parts: Part[] }>(`/sb_widgets/${category.id}`)).json.parts)
+    const text = (id: number): string => {
+      const part = all.find((p) => p.id === id)
+      return `${part?.html ?? ''}${part?.css ?? ''}`
+    }
+    // 一覧には残す
+    expect([4571, 2549, 2470].every((id) => all.some((p) => p.id === id))).toBe(true)
+    for (const part of all) expect(`${part.html}${part.css}`).not.toMatch(/ec-force\.s3\.amazonaws\.com|antiaging-sign\.com|dropboxusercontent\.com/)
+    // 4571 のスライダーは、同じ版（Swiper 7.0.0）を公開の配布元から読む（スライダーとして動くまま）
+    expect(text(4571)).toContain('https://cdn.jsdelivr.net/npm/swiper@7.0.0/swiper-bundle.min.js')
+    expect(text(4571)).toContain('https://cdn.jsdelivr.net/npm/swiper@7.0.0/swiper-bundle.min.css')
+  })
+
   it('無い分類は 404', async () => {
     expect((await get('/sb_widgets/999')).status).toBe(404)
     expect((await get('/sb_widgets/abc')).status).toBe(404)
