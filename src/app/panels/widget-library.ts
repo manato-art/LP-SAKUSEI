@@ -47,6 +47,7 @@ import { BUILDER_TEMPLATE, blankBuilderData } from './nocode/templates/builder.t
 import { openWidgetStudio } from './widget-studio.ts'
 import { newUid, rekeyUid } from './nocode/templates/kit.ts'
 import { placeholderLinkCount } from './link-placeholder.ts'
+import { loadSbCategories, loadSbParts, matchingSbParts, sbPartHtml, visibleSbParts, type SbPart } from './widget-library-sb.ts'
 
 const HOOK = {
   trigger: '[aria-label="Widget管理"]',
@@ -167,7 +168,7 @@ function open(quill: Quill | null, extra: { onClose?: () => void } = {}): void {
   patchPortalLayout(portal.root, quill, portal.close)
 
   wireCategories(portal.root, quill, portal.close)
-  wireSearch(portal.root)
+  wireSearch(portal.root, quill, portal.close)
   // 開いた直後は「見本」（自作の見本）を出す
   renderNewSamples(portal.root, quill, portal.close)
   // 作成したWidget・お気に入りはサーバーから読む（2026-10-24。以前はブラウザの中だけ＝ほかのアカウントから見えなかった）。
@@ -274,6 +275,7 @@ function patchPortalLayout(root: HTMLElement, quill: Quill | null, close: () => 
       after.after(btn)
       after = btn
     }
+    addSbCategories(root, after, quill, close)
   }
 
   /* ---- 6. 「+ Widgetを作成」「+ ノーコードで作る」（LPへ入れる入口。LPの無い画面＝ポップアップでは出さない） ---- */
@@ -324,7 +326,8 @@ function wireCategories(root: HTMLElement, quill: Quill | null, close: () => voi
   const categories = [...root.querySelectorAll<HTMLElement>(HOOK.category)]
   for (const cat of categories) {
     cat.addEventListener('click', () => {
-      activateCategory(categories, cat)
+      activateCategory([...root.querySelectorAll<HTMLElement>(HOOK.category)], cat)
+      delete root.dataset['sbCategory']
       const sampleCategory = cat.dataset['sampleCategory']
       if (sampleCategory !== undefined) {
         // 見本を種類でしぼる
@@ -415,6 +418,94 @@ function renderNewSamples(root: HTMLElement, quill: Quill | null, close: () => v
   applySearchFilter(root)
 }
 
+/* ================================================================
+ *  SquadBeyond の Widget（2026-10-26・widget-library-sb.ts）
+ * ================================================================ */
+
+/** 「取り込んだ見本」（SquadBeyond の Widget）の見出しと分類のボタン（分類はサーバーから読んで、after の後ろに並べる） */
+function addSbCategories(root: HTMLElement, after: HTMLElement, quill: Quill | null, close: () => void): void {
+  const header = document.createElement('h6')
+  // 見出しは「取り込んだ見本」（画面に beyond を出さない・2026-10-25 の決定／名前は 2026-10-26 本人の選択）
+  header.textContent = '取り込んだ見本'
+  header.dataset['sbHeader'] = 'true'
+  header.style.cssText = 'font:600 13px/1.4 "Hiragino Sans",sans-serif;color:#333;margin:16px 0 4px;padding:0 8px'
+  const note = document.createElement('p')
+  note.textContent = '読み込み中…'
+  note.style.cssText = 'margin:0;padding:0 8px;font:12px/1.6 "Hiragino Sans",sans-serif;color:#999'
+  after.after(header, note)
+  void loadSbCategories().then(
+    (categories) => {
+      let last: HTMLElement = header
+      for (const category of categories) {
+        const btn = createCategoryButton(`${category.name}（${category.count}）`)
+        btn.dataset['sbCategory'] = String(category.id)
+        btn.addEventListener('click', () => {
+          activateCategory([...root.querySelectorAll<HTMLElement>(HOOK.category)], btn)
+          renderSbCategory(root, quill, close, category.id)
+        })
+        last.after(btn)
+        last = btn
+      }
+      note.remove()
+    },
+    () => {
+      note.textContent = '取り込んだ見本を読み込めませんでした。開き直してください。'
+    },
+  )
+}
+
+/** SquadBeyond の Widget 1件のカード（自作の見本と同じ形・同じ配線） */
+function sbWidgetCard(part: SbPart): HTMLElement {
+  const card = newSampleCard({ name: part.name, summary: `番号 ${part.id}`, html: sbPartHtml(part) })
+  card.dataset['sbWidgetId'] = String(part.id)
+  return card
+}
+
+/**
+ * SquadBeyond の分類を出す。はじめは24件・「もっと見る」で24件ずつ足す。検索に何か入っていれば、その分類の全件から探す
+ */
+function renderSbCategory(root: HTMLElement, quill: Quill | null, close: () => void, id: number): void {
+  const grid = root.querySelector<HTMLElement>(HOOK.grid)
+  if (grid === null) return
+  root.dataset['sbCategory'] = String(id)
+  grid.replaceChildren(gridMessage('読み込み中…'))
+  void loadSbParts(id).then(
+    (parts) => {
+      // 読んでいる間にほかの分類を選んだら描かない
+      if (root.dataset['sbCategory'] !== String(id)) return
+      const query = root.querySelector<HTMLInputElement>(HOOK.search)?.value ?? ''
+      const list = matchingSbParts(parts, query)
+      if (list.length === 0) {
+        grid.replaceChildren(gridMessage(query.trim() === '' ? 'この分類の Widget はありません。' : '検索に合う Widget はありません。'))
+        return
+      }
+      grid.replaceChildren()
+      let pages = 0
+      const more = cardActionButton('', false)
+      more.dataset['sbMore'] = 'true'
+      more.style.flex = '0 0 100%'
+      const showMore = (): void => {
+        const before = visibleSbParts(list, pages).length
+        pages += 1
+        const cards = visibleSbParts(list, pages).slice(before).map(sbWidgetCard)
+        more.remove()
+        grid.append(...cards)
+        wireCards(root, quill, close, cards)
+        const rest = list.length - visibleSbParts(list, pages).length
+        if (rest > 0) {
+          more.textContent = `もっと見る（残り ${rest}件）`
+          grid.append(more)
+        }
+      }
+      more.addEventListener('click', showMore)
+      showMore()
+    },
+    () => {
+      if (root.dataset['sbCategory'] === String(id)) grid.replaceChildren(gridMessage('読み込めませんでした。開き直してください。'))
+    },
+  )
+}
+
 function cardActionButton(text: string, primary: boolean): HTMLButtonElement {
   const b = document.createElement('button')
   b.type = 'button'
@@ -426,7 +517,7 @@ function cardActionButton(text: string, primary: boolean): HTMLButtonElement {
   return b
 }
 
-function newSampleCard(sample: NewSample): HTMLElement {
+function newSampleCard(sample: Pick<NewSample, 'name' | 'summary' | 'html' | 'isWholeWidget'>): HTMLElement {
   const card = document.createElement('div')
   card.className = 'MuiCard-root' // グリッドの3列CSS(.css-ojejk4>.MuiCard-root)を再利用
   card.style.cssText =
@@ -665,10 +756,20 @@ function renderFavoriteWidgets(root: HTMLElement, quill: Quill | null, close: ()
  *  検索
  * ================================================================ */
 
-function wireSearch(root: HTMLElement): void {
+function wireSearch(root: HTMLElement, quill: Quill | null, close: () => void): void {
   const input = root.querySelector<HTMLInputElement>(HOOK.search)
   if (input === null) return
-  input.addEventListener('input', () => applySearchFilter(root))
+  let timer = 0
+  input.addEventListener('input', () => {
+    const sb = root.dataset['sbCategory']
+    if (sb === undefined) {
+      applySearchFilter(root)
+      return
+    }
+    // SquadBeyond の分類は、まだ出していないカードも探す（打ち終わってから出し直す）
+    window.clearTimeout(timer)
+    timer = window.setTimeout(() => renderSbCategory(root, quill, close, Number(sb)), 200)
+  })
 }
 
 function applySearchFilter(root: HTMLElement): void {
@@ -738,8 +839,9 @@ function addLpEntries(root: HTMLElement, sidebar: HTMLElement | null, quill: Qui
  *  カード操作（プレビュー / 追加）
  * ================================================================ */
 
-function wireCards(root: HTMLElement, quill: Quill | null, close: () => void): void {
-  for (const card of root.querySelectorAll<HTMLElement>(HOOK.card)) {
+/** cards を渡したらそのカードだけ配線する（「もっと見る」で足したカード。前のカードに二重に付けない） */
+function wireCards(root: HTMLElement, quill: Quill | null, close: () => void, cards?: readonly HTMLElement[]): void {
+  for (const card of cards ?? root.querySelectorAll<HTMLElement>(HOOK.card)) {
     const title = (card.querySelector(HOOK.cardTitle)?.textContent ?? 'Widget').trim()
     const buttons = [...card.querySelectorAll<HTMLElement>('.MuiCardActions-root button')]
     const preview = buttons.find((b) => b.textContent?.trim() === 'プレビュー')

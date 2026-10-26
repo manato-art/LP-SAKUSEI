@@ -12,6 +12,7 @@ import { extname, join } from 'node:path'
 import {
   EXCLUDED_BUILD_DIR,
   EXTERNAL_HOST_ALLOWLIST,
+  EXTERNAL_HOST_EXEMPT_DIRS,
   EXTERNAL_HOST_PATTERN,
   EXTERNAL_SAAS_PATTERNS,
   MONEY_SCAN_DIRS,
@@ -120,7 +121,8 @@ function scanFallbackAssets(): Hit[] {
 /** §13-F: 許可リスト外の外部ホストを検出する */
 function scanExternalHosts(files: readonly string[]): Hit[] {
   const hits: Hit[] = []
-  for (const file of files) {
+  // 外部ホストだけを見ない場所（理由は denylist.ts の EXTERNAL_HOST_EXEMPT_DIRS）
+  for (const file of files.filter((f) => !EXTERNAL_HOST_EXEMPT_DIRS.some((dir) => f.startsWith(dir)))) {
     const lines = readFileSync(file, 'utf8').split('\n')
     lines.forEach((line, index) => {
       const matches = line.match(EXTERNAL_HOST_PATTERN) ?? []

@@ -11,9 +11,14 @@ import { attachCable } from './ws/cable.ts'
 import { startTaskRunner } from './task-runner.ts'
 import { startArticleHistoryPersistence } from './store/article-history-file.ts'
 import { getState } from './store/store.ts'
+import { seedSbWidgetMedia } from './lib/sb-widget-media.ts'
 
 // 変更・復元履歴を読み戻し、以後はファイルにも書く（DATA_DIR があるときだけ。デプロイで消えていた）
 startArticleHistoryPersistence(getState())
+
+// SquadBeyond の Widget が使う画像など（SBの置き場から写したもの）を /uploads に置く（2026-10-26・あるものは書き直さない）
+const placedSbMedia = seedSbWidgetMedia()
+if (placedSbMedia > 0) console.log(`[mock] 取り込んだ見本の画像などを /uploads に ${placedSbMedia}個 置きました`)
 
 const app = createApp()
 const server = createServer(app)

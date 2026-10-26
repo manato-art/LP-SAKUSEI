@@ -2,7 +2,8 @@ import js from '@eslint/js'
 import tseslint from 'typescript-eslint'
 
 export default tseslint.config(
-  { ignores: ['dist/**', 'node_modules/**', 'capture/**', 'coverage/**', 'src/pages/**/*.html'] },
+  // mock-server/seed/sb-widget-media は SquadBeyond の Widget が読むスクリプト（SBの置き場から写したもの・こちらのコードではない）
+  { ignores: ['dist/**', 'node_modules/**', 'capture/**', 'coverage/**', 'src/pages/**/*.html', 'mock-server/seed/sb-widget-media/**'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

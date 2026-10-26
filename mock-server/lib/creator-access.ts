@@ -130,6 +130,9 @@ export const CREATOR_RULES: readonly Rule[] = [
   rule('POST', '/widget_library/created', 'global'),
   rule('POST', '/widget_library/favorites/toggle', 'global'),
   rule('POST', '/widget_library/import', 'global'),
+  // SquadBeyond の Widget 一覧（読むだけ・2026-10-26）
+  rule('GET', '/sb_widgets', 'global'),
+  rule('GET', '/sb_widgets/:id', 'global'),
 ]
 
 export type CreatorAccessResult =

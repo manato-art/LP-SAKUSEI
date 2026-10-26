@@ -38,8 +38,13 @@ export const PRODUCTION_TOKEN_PATTERNS: readonly { name: string; pattern: RegExp
     // 英単語をつないだ識別子を「トークン」と誤検知して、本物の違反が埋もれる。
     name: '長い不透明トークン(32文字以上)',
     // 公開ライブラリの改ざんチェック（integrity="sha512-…"）の値は、公開ファイルから計算した値でトークンではない
-    // （2026-09-22 見本の点検で、匿名化が壊した値を正しい値に戻した）。sha256/384/512- に続く値の中は拾わない
-    pattern: /\b(?<!sha(?:256|384|512)-[A-Za-z0-9+/]*)(?![A-Z]+_\d{4}\b)(?=[A-Za-z0-9]*\d)[A-Za-z0-9]{32,}\b/g,
+    // （2026-09-22 見本の点検で、匿名化が壊した値を正しい値に戻した）。sha256/384/512- に続く値の中は拾わない。
+    // /uploads/ の後ろのファイル名は中身の sha256（lib/uploads.ts の決まり・2026-10-26 SBのWidgetの画像）で、トークンではない。
+    // SquadBeyond の Widget の中にある、トークンでないと確かめた値（2026-10-26・mock-server/seed/sb-widgets）:
+    //   sbObserverCountdownTimer20250401 … カウントダウンの見本のスクリプトの変数名
+    //   1dSUgsZFKTESWK1bDkyal9WLymDFFVyhZ … Googleドライブの動画の見本の、使い方の説明に書かれた公開ファイルの番号
+    //   2z5p2x5Lqs44K544Kr44Kk44OE44Oq44O8 … 店舗住所フッターの Googleマップ埋め込みURLの一部（「東京スカイツリー」）
+    pattern: /\b(?<!sha(?:256|384|512)-[A-Za-z0-9+/]*)(?<!\/uploads\/)(?!(?:sbObserverCountdownTimer20250401|1dSUgsZFKTESWK1bDkyal9WLymDFFVyhZ|2z5p2x5Lqs44K544Kr44Kk44OE44Oq44O8)\b)(?![A-Z]+_\d{4}\b)(?=[A-Za-z0-9]*\d)[A-Za-z0-9]{32,}\b/g,
   },
   { name: 'Bearerヘッダ', pattern: /\bBearer\s+(?!sample_token_)[A-Za-z0-9._-]{20,}/g },
 ]
@@ -120,6 +125,16 @@ export const EXTERNAL_HOST_ALLOWLIST: readonly RegExp[] = [
   /^https?:\/\/b\.hatena\.ne\.jp$/,
   /^https?:\/\/getpocket\.com$/,
 ]
+
+/**
+ * 外部ホストの検出（§13-F）だけをかけない場所。実名・トークン・本番ドメインのゲートはここにもかける。
+ * 足すときは docs/scrub-policy.md に「誰の決定で・何のために」を書く。
+ *
+ * - SquadBeyond の Widget 一覧（2026-10-26・本人の決定「SBのものを戻す・架空への置き換えはかけない」）。
+ *   中身は SB本体の見本そのもので、公開ライブラリ・動画やチャットの埋め込み・見本のリンク先（google.com 等）は
+ *   Widget の機能そのもの（LPを見る人のブラウザが読む）。SB本体と配信の試しのドメインは tools/sb-widgets/build.ts が仮のリンクにしてある
+ */
+export const EXTERNAL_HOST_EXEMPT_DIRS: readonly string[] = ['mock-server/seed/sb-widgets/', 'mock-server/seed/sb-widget-media/']
 
 /** 実金額らしいパターン（§13-E 実金額パターン）。合成データは桁が撹拌済みなので通る想定。 */
 export const SUSPICIOUS_MONEY_PATTERN = /[¥￥]\s?\d{1,3}(?:,\d{3})+|[¥￥]\s?\d{4,}/g
