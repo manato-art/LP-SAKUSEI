@@ -7,7 +7,7 @@
  */
 import type Quill from 'quill'
 import { COLOR, type WidgetEditTarget } from './widget-editor-theme.ts'
-import { widgetResetCss } from '../../shared/sb-preview-css.ts'
+import { widgetBaseCss } from '../../shared/sb-part-css.ts'
 import { scopeWidgetCss } from './widget-style-scope.ts'
 import { widgetSelectionCss } from './widget-canvas-css.ts'
 import { extractCss, extractHtml } from './widget-editor-html.ts'
@@ -106,7 +106,7 @@ function refreshWidgetCanvasCss(editor: HTMLElement): void {
   // 配信と同じ「Widget の見た目に要る土台」を Widget 自身の指定より前に置く（同じ強さなら Widget が勝つ）。
   // @import は先頭にしか書けないので、さらにその前へまとめる。
   const hasWidget = editor.querySelector('section.sb-widget-block') !== null
-  const next = hasWidget ? imports + widgetResetCss(CANVAS_SCOPE) + CANVAS_LIST_RESET + rules : ''
+  const next = hasWidget ? imports + widgetBaseCss(CANVAS_SCOPE) + CANVAS_LIST_RESET + rules : ''
   let head = document.getElementById('sb-widget-canvas-scope') as HTMLStyleElement | null
   if (head === null) {
     head = document.createElement('style')

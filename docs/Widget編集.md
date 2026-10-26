@@ -410,3 +410,11 @@ LPの中の場所へ移動＋ほかにも色々（文字をコピー・動画を
   CSS の決まりの頭に「#sb-part-番号.印 」を付けてその Widget の中だけに効かせる（@media の中も・@keyframes/@font-face は囲わない・body から始まる決まりも機械的に頭を付ける＝SBでは効いていない）。
   EBIyon も同じ形で入れる（`sb-widget-scope.ts`・外側の .sb-custom は部品の枠に配信で付く）。検証ページの4件で SB本体の囲ったCSSと一字一句同じ（空白・コメント以外）を確かめた。
   以前は囲わずに入れていたので、SBでは効いていない決まりが EBIyon でだけ効き、同じ名前の決まりを持つ Widget どうしで見た目が混ざるおそれがあった
+- **土台の見た目も SB本体の配信ページと同じ**（2026-10-26・検証ページで15950を比べて発覚）: SB本体の配信ページには本文（.article-body）の中のすべてに効く指定がある
+  （div・p・span・見出しは max-width:100%／Widget の画像は display:block!important・height:auto!important・上下の余白0（記事設定の既定値）／p の余白0／h2 は27px／
+  リンクは下線の #4682b4／動画・iframe は上下20px／normalize は配信ページのもの＝figure の余白0・表と入力欄はブラウザの既定）。
+  EBIyon は SB の「編集画面の見本の枠」の土台（WIDGET_RESET_CSS）を当てていたので、15950 の左のロゴが SB では幅0で見えず EBIyon では見えていた。
+  `src/shared/sb-part-css.ts`: 取り込んだ見本（.sb-custom-part）の中だけ、WIDGET_RESET_CSS の指定をブラウザの既定に戻して（revert）SB本体の指定を置く。
+  頭に id が無いので Widget 自身の指定には SB と同じく負ける。配信・プレビュー・ダウンロード・ヒートマップ・編集画面・Widget編集の写しのすべてで同じものを使う
+  （WIDGET_BASE_CSS / widgetBaseCss）。Widget の中の素のリンクを青くする指示161の指定は、取り込んだ見本の中には効かせない。
+  記事設定から来る文字の大きさ・行間（SBは .sb-custom に 17px・1.8 を !important）と、SBのページ全体の文字選択できない指定（user-select:none）は入れていない（本人に聞く）

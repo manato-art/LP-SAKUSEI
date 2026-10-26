@@ -32,5 +32,6 @@ export const LP_BASE_CSS = [
   'section.sb-widget-block{line-height:1.5}',
   // 指示161: Widget内でツールバーから付けた素のリンク(<a href>・クラス無し)を、配信でも
   // リンクと分かる見た目にする（青＋下線）。Widget独自の装飾リンク(class付き)は対象外。
-  'section.sb-widget-block a:not([class]){color:#0d6efd;text-decoration:underline}',
+  // 取り込んだ見本（SBの Widget）の中は、SB本体と同じ指定（sb-part-css.ts）にするので対象外（2026-10-26）。
+  'section.sb-widget-block a:not([class]):not(.sb-custom-part a){color:#0d6efd;text-decoration:underline}',
 ].join('')

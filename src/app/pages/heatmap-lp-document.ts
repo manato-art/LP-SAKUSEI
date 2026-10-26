@@ -15,7 +15,8 @@
 import { LP_BASE_CSS } from '../lp-base-css.ts'
 import { withAutoplayVideos } from '../lp-video.ts'
 import { LP_WIDTH } from '../panels/lp-width-media.ts'
-import { WIDGET_RESET_CSS, neutralizeWidgetStyles } from '../../shared/sb-preview-css.ts'
+import { neutralizeWidgetStyles } from '../../shared/sb-preview-css.ts'
+import { WIDGET_BASE_CSS } from '../../shared/sb-part-css.ts'
 import { LP_FONTS_URL, externalWidgetStylesheets } from '../../shared/lp-page-assets.ts'
 import { splitHeaderImage } from '../../shared/header-image.ts'
 
@@ -38,7 +39,7 @@ export function buildHeatmapLpDocument(source: HeatmapLpSource): string {
     `<meta name="viewport" content="width=device-width, initial-scale=1">` +
     `<link rel="stylesheet" href="${LP_FONTS_URL}">` +
     `<style>body{margin:0 auto;max-width:${LP_WIDTH}px;font-family:"Hiragino Sans",sans-serif;background:var(--sb-c-ffffff, #FFFFFF)}` +
-    `${LP_BASE_CSS}${source.css}${source.styleCss}${lp.hasWidget ? WIDGET_RESET_CSS : ''}</style>` +
+    `${LP_BASE_CSS}${source.css}${source.styleCss}${lp.hasWidget ? WIDGET_BASE_CSS : ''}</style>` +
     externalWidgetStylesheets(lp.html) +
     `</head><body>${headerHtml}${withAutoplayVideos(lp.html)}</body></html>`
   )

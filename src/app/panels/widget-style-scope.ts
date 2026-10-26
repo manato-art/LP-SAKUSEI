@@ -15,7 +15,8 @@
  *   - `:root` / `html` / `body` そのものへの指定は、CSS変数だけを scope に移す（背景・高さ等は移さない）
  *   - @media は LPの幅（620px）で判定し直す（本人指定）
  */
-import { stripSbPreviewCss, widgetResetCss } from '../../shared/sb-preview-css.ts'
+import { stripSbPreviewCss } from '../../shared/sb-preview-css.ts'
+import { widgetBaseCss } from '../../shared/sb-part-css.ts'
 import { LP_WIDTH, mediaAtLpWidth } from './lp-width-media.ts'
 
 export interface ScopedCss {
@@ -161,7 +162,7 @@ export const PREVIEW_LEAK_RESET = 'i{margin-right:0;font-size:inherit}label{disp
  */
 export function widgetPreviewCss(css: string, scope: string, width = LP_WIDTH): string {
   const scoped = scopeWidgetCss(css, scope, width)
-  return scoped.imports + widgetResetCss(scope) + scoped.rules
+  return scoped.imports + widgetBaseCss(scope) + scoped.rules
 }
 
 /**
@@ -175,7 +176,7 @@ export function containWidgetStyles(container: HTMLElement, root: 'widget' | 'lp
   if (styles.length === 0) return
   const scope = markStyleScope(container)
   const hasWidget = root === 'widget' || container.querySelector('.sb-widget-block') !== null
-  const reset = hasWidget ? widgetResetCss(root === 'widget' ? scope : `${scope} .sb-widget-block`) : ''
+  const reset = hasWidget ? widgetBaseCss(root === 'widget' ? scope : `${scope} .sb-widget-block`) : ''
   for (const [i, style] of styles.entries()) {
     const scoped = scopeWidgetCss(style.textContent ?? '', scope)
     style.textContent = scoped.imports + (i === 0 ? reset : '') + scoped.rules

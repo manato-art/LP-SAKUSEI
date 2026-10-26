@@ -13,7 +13,8 @@ import { getState } from '../store/store.ts'
 import { getMasterStyleSheet } from '../store/master-style-sheet.ts'
 import type { State, Version } from '../store/types.ts'
 import { LP_BASE_CSS } from '../../src/app/lp-base-css.ts'
-import { WIDGET_RESET_CSS, neutralizeWidgetStyles } from '../../src/shared/sb-preview-css.ts'
+import { neutralizeWidgetStyles } from '../../src/shared/sb-preview-css.ts'
+import { WIDGET_BASE_CSS } from '../../src/shared/sb-part-css.ts'
 import { LP_FONTS_URL, externalWidgetLibs } from '../../src/shared/lp-page-assets.ts'
 import { splitHeaderImage } from '../../src/shared/header-image.ts'
 import { masterStyleIframeCss } from '../../src/app/master-style.ts'
@@ -82,7 +83,7 @@ export function renderPreviewDocument(state: State, version: Version, options: P
     `cursor:pointer;padding:4px;display:flex;align-items:center;flex-shrink:0}` +
     `.preview-close:hover{color:#fff}` +
     buildAnimCss() +
-    (lp.hasWidget ? WIDGET_RESET_CSS : '') +
+    (lp.hasWidget ? WIDGET_BASE_CSS : '') +
     `</style>` +
     externalWidgetLibs(lp.html) +
     `</head><body>` +

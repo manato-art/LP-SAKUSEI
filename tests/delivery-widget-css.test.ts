@@ -11,6 +11,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { createApp } from '../mock-server/app.ts'
 import { resetState } from '../mock-server/store/store.ts'
 import { WIDGET_RESET_CSS } from '../src/shared/sb-preview-css.ts'
+import { WIDGET_BASE_CSS } from '../src/shared/sb-part-css.ts'
 import { postJson } from './helpers/server.ts'
 
 let server: Server
@@ -103,6 +104,16 @@ describe('Widget 入りの LP を配信する', () => {
     }
     const saved = versions.versions.find((v) => v.uid === page.versionUid)?.html ?? ''
     expect(saved).toContain('background-color:#ececec')
+  })
+
+  it('取り込んだ見本の入った LP には、SB本体と同じ土台（取り込んだ見本の中だけ）も <head> に1回置く', async () => {
+    const part = '<section class="sb-widget-block" data-widget-block="true"><div id="sb-part-15950" class="sb-custom-part sbtoken1"><div class="logo"><img src="/logo.png" alt=""></div><p>見本の文</p></div></section>'
+    const page = await createPage(part)
+    for (const url of [`${origin}/preview/${page.versionUid}`, `${origin}/lp/${page.abTestUid}`]) {
+      const html = await (await fetch(url)).text()
+      expect(html.split(WIDGET_BASE_CSS), url).toHaveLength(2)
+      expect(html.indexOf(WIDGET_BASE_CSS), url).toBeLessThan(html.indexOf('</head>'))
+    }
   })
 
   it('Widget の無い LP には土台を置かない', async () => {

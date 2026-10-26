@@ -22,7 +22,8 @@ import { toast } from '../ui.ts'
 import { confirmCard } from '../dialog.ts'
 import { bindBackdropClose, findByExactText, openPortal } from './portal.ts'
 import { LP_BASE_CSS } from '../lp-base-css.ts'
-import { WIDGET_RESET_CSS, neutralizeWidgetStyles } from '../../shared/sb-preview-css.ts'
+import { neutralizeWidgetStyles } from '../../shared/sb-preview-css.ts'
+import { WIDGET_BASE_CSS } from '../../shared/sb-part-css.ts'
 import { withAutoplayVideos } from '../lp-video.ts'
 import { openDuplicateModal } from './version-duplicate-modal.ts'
 import { openDuplicateToOtherModal } from './version-duplicate-to-other-modal.ts'
@@ -75,7 +76,7 @@ export function buildVersionHtmlDocument(version: Pick<Version, 'name' | 'html' 
     '<head>',
     '<meta charset="utf-8">',
     `<title>${escapeHtml(version.name)}</title>`,
-    `<style>${LP_BASE_CSS}${css}${lp.hasWidget ? WIDGET_RESET_CSS : ''}</style>`,
+    `<style>${LP_BASE_CSS}${css}${lp.hasWidget ? WIDGET_BASE_CSS : ''}</style>`,
     '</head>',
     `<body>${withAutoplayVideos(lp.html)}</body>`,
     '</html>',

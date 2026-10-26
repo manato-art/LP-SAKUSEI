@@ -9,7 +9,7 @@
  * どれも見本を <div id="nc-sample-root"> に包んで組み立てる（先頭の <style> も中に残る＝番号がそろう）。
  */
 import { LP_BASE_CSS } from '../../lp-base-css.ts'
-import { WIDGET_RESET_CSS } from '../../../shared/sb-preview-css.ts'
+import { WIDGET_BASE_CSS } from '../../../shared/sb-part-css.ts'
 import { isAllowedLinkUrl, isTrackingLink, withTrackingParam } from '../../../shared/link-html.ts'
 import { elementsInOrder, findStepGroup, nestedScreens, nodeAt, sampleSlots, setGoOn, type Slot, type SlotNode } from './sample-model.ts'
 import { safeImage, safeVideo } from './templates/kit.ts'
@@ -53,7 +53,7 @@ async function findSteps(html: string): Promise<string[]> {
   const loaded = new Promise<void>((resolve) => frame.addEventListener('load', () => resolve(), { once: true }))
   frame.srcdoc =
     '<!doctype html><html lang="ja"><head><meta charset="utf-8">' +
-    `<style>body{margin:0 auto;max-width:620px;font-family:"Hiragino Sans",sans-serif}${LP_BASE_CSS}${WIDGET_RESET_CSS}</style></head>` +
+    `<style>body{margin:0 auto;max-width:620px;font-family:"Hiragino Sans",sans-serif}${LP_BASE_CSS}${WIDGET_BASE_CSS}</style></head>` +
     `<body><section class="sb-widget-block"><div id="${ROOT_ID}">${html}</div></section></body></html>`
   document.body.append(frame)
   try {

@@ -24,7 +24,8 @@ import { broadcastConversion, type ConversionPush } from '../ws/cable.ts'
 import { toDateKey } from '../store/metrics.ts'
 import type { AbTest, Article, State } from '../store/types.ts'
 import { LP_BASE_CSS } from '../../src/app/lp-base-css.ts'
-import { WIDGET_RESET_CSS, neutralizeWidgetStyles } from '../../src/shared/sb-preview-css.ts'
+import { neutralizeWidgetStyles } from '../../src/shared/sb-preview-css.ts'
+import { WIDGET_BASE_CSS } from '../../src/shared/sb-part-css.ts'
 import { LP_FONTS_URL, externalWidgetLibs } from '../../src/shared/lp-page-assets.ts'
 import { buildLpLinkParamsScript } from './lp-link-params-script.ts'
 import { splitHeaderImage } from '../../src/shared/header-image.ts'
@@ -318,7 +319,7 @@ deliveryRouter.get('/lp/:uid', (req, res) => {
     `<title>${escapeHtml(abTest.page_title || abTest.title)}</title>` +
     `<link rel="stylesheet" href="${LP_FONTS_URL}">` +
     `<style>body{margin:0 auto;max-width:${DELIVERY_WIDTH}px;font-family:"Hiragino Sans",sans-serif;background:#fff}` +
-    `${LP_BASE_CSS}${version.css}${styleCss}${buildAnimCss()}${lp.hasWidget ? WIDGET_RESET_CSS : ''}</style>` +
+    `${LP_BASE_CSS}${version.css}${styleCss}${buildAnimCss()}${lp.hasWidget ? WIDGET_BASE_CSS : ''}</style>` +
     externalWidgetLibs(lp.html) +
     headTags +
     `</head><body>${headerHtml}${withAutoplayVideos(lp.html)}${bodyTags}${popupHtml}` +

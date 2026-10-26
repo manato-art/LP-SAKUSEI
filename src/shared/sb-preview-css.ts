@@ -58,7 +58,7 @@ export function stripSbPreviewCss(css: string): string {
  * ページ全体の指定（html / body の高さ・背景・余白・フォント、スクロールバー）は入れない。
  * `body` の `word-wrap:break-word` だけは Widget 内の長い文字の折り返しに効いていたので残す。
  */
-const RESET_RULES: readonly (readonly [string, string])[] = [
+export const WIDGET_RESET_RULES: readonly (readonly [string, string])[] = [
   ['a', 'color:#000;text-decoration:none'],
   ['[data-is-disable=true]', 'pointer-events:none;opacity:.5'],
   ['', 'word-wrap:break-word'],
@@ -104,7 +104,7 @@ const RESET_RULES: readonly (readonly [string, string])[] = [
 
 /** Widget の見た目に要る土台を、scope（Widget の外枠を指すセレクタ）の中に限って書き出す */
 export function widgetResetCss(scope: string): string {
-  return RESET_RULES.map(([selectors, declarations]) =>
+  return WIDGET_RESET_RULES.map(([selectors, declarations]) =>
     selectors === ''
       ? `${scope}{${declarations}}`
       : `${selectors
