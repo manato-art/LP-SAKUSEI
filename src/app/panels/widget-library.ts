@@ -47,7 +47,8 @@ import { BUILDER_TEMPLATE, blankBuilderData } from './nocode/templates/builder.t
 import { openWidgetStudio } from './widget-studio.ts'
 import { newUid, rekeyUid } from './nocode/templates/kit.ts'
 import { placeholderLinkCount } from './link-placeholder.ts'
-import { loadSbCategories, loadSbParts, matchingSbParts, sbPartHtml, visibleSbParts, type SbPart } from './widget-library-sb.ts'
+import { loadSbCategories, loadSbParts, matchingSbParts, visibleSbParts, type SbPart } from './widget-library-sb.ts'
+import { newSbToken, sbInsertMarkup } from './sb-widget-scope.ts'
 
 const HOOK = {
   trigger: '[aria-label="Widget管理"]',
@@ -454,9 +455,12 @@ function addSbCategories(root: HTMLElement, after: HTMLElement, quill: Quill | n
   )
 }
 
-/** SquadBeyond の Widget 1件のカード（自作の見本と同じ形・同じ配線） */
+/**
+ * SquadBeyond の Widget 1件のカード（自作の見本と同じ形・同じ配線）。中身は SB本体と同じ形で入れるもの
+ * （プレビューも LP に入るのと同じ見え方）。印はカードを作るたびに変わる
+ */
 function sbWidgetCard(part: SbPart): HTMLElement {
-  const card = newSampleCard({ name: part.name, summary: `番号 ${part.id}`, html: sbPartHtml(part) })
+  const card = newSampleCard({ name: part.name, summary: `番号 ${part.id}`, html: sbInsertMarkup(part, newSbToken()) })
   card.dataset['sbWidgetId'] = String(part.id)
   return card
 }

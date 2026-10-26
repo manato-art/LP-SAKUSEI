@@ -2,6 +2,7 @@
  * Widget一覧の「SquadBeyond」（2026-10-26 本人「SquadBeyondのものを戻して、1個1個SB本体のLPに入れて動きを確かめて再現して」）。
  *
  * 中身は SB本体の Widget一覧（html_parts）から取ったまま（架空への置き換えはしない・画像は /uploads に写してある）。
+ * LP に入れる形は SB本体と同じ（sb-custom-part で包み、CSS をその Widget の中だけに効くよう囲う・sb-widget-scope.ts）。
  * サーバーの /sb_widgets から分類を、/sb_widgets/:id からその分類の Widget を読む（読んだ分は覚えておく）。
  * 画面に出す部分は widget-library.ts（カードの形・プレビュー・追加は自作の見本と同じ仕組み）。
  */
@@ -22,11 +23,6 @@ export interface SbPart {
 
 /** 一度に出すカードの数（1つの分類に最大280件・全部を一度に出すと重い） */
 export const SB_PAGE_SIZE = 24
-
-/** LPに入れる中身（SB と同じく CSS＋HTML。CSS は <style> にして頭に付ける） */
-export function sbPartHtml(part: SbPart): string {
-  return part.css.trim() === '' ? part.html : `<style>${part.css}</style>${part.html}`
-}
 
 /** pages 回ぶん出したときに出ている分（はじめの1回で24件・0回なら0件） */
 export function visibleSbParts(parts: readonly SbPart[], pages: number): readonly SbPart[] {
