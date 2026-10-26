@@ -18,11 +18,17 @@
  * SB本体（管理画面・サービスサイト）を指す見本のリンク先は、LPを見る人には開けないので「仮のリンク」（#）にする
  * （SBの見本がもともと使う仮の書き方と同じ扱い＝Widget編集で「リンク先が仮」と知らせる・link-placeholder.ts）。
  * 他の会社・個人の置き場を直接読む見本（4571・2549・2470）は、その読み込みを外す（2026-10-27 本人選択・下の THIRD_PARTY_*）。
+ * 1問ずつ別ページへ移る前提の見本（8本）は、画面①②③に分けた形にする（2026-10-27 本人「今まで通り分けるのが理想」・screens/・9月と同じ作り変え）。
  */
 import { createHash } from 'node:crypto'
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
+import { convertAccordionLink } from './screens/accordion-link.ts'
+import { convertMultiQuestions } from './screens/multi-questions.ts'
+import { convertOnePerWidget } from './screens/one-per-widget.ts'
+import { convertQuestionLink } from './screens/question-link.ts'
+import { convertQuizBox } from './screens/quiz-box.ts'
 
 /** 元のまま取ったもの（リポジトリの外の隔離場所・docs/scrub-policy.md の決まり） */
 const RAW = join(homedir(), 'squadbeyond-capture-quarantine', 'sb-widgets-2026-10-26')
@@ -115,12 +121,26 @@ const withoutThirdParty = (text: string): string =>
     .replace(THIRD_PARTY_SWIPER, 'https://cdn.jsdelivr.net/npm/swiper@7.0.0/swiper-bundle.min.$1')
     .replace(THIRD_PARTY_URL, 'none')
 
+/**
+ * 1問ずつ別ページへ移る前提の見本（SBのファネル・ページ遷移で使う「1ページ目・2ページ目…」）を、画面①②③に分けた形にする
+ * （2026-10-27 本人「すでに展開されているものは、1ページ目2ページ目3ページ目のように今まで通り分けるのが理想」）。
+ * 9月（8949d30）に同じ見本を作り変えたものと同じ（screens/）。押すと同じ Widget の中で次の画面へ移り、最後の問いは元のリンク。
+ * Widget編集・「画面を作って使う」では画面①②③に分かれる（data-nc-screens・sample-to-screens.ts）。当てはまらない見本はそのまま
+ */
+const SCREEN_CONVERTERS = [convertQuestionLink, convertOnePerWidget, convertAccordionLink, convertQuizBox, convertMultiQuestions] as const
+const screened: number[] = []
+const intoScreens = (id: number, html: string): string => {
+  const out = SCREEN_CONVERTERS.reduce((text, convert) => convert(text), html)
+  if (out !== html) screened.push(id)
+  return out
+}
+
 const byCategory = new Map<number, { name: string; parts: { id: number; name: string; html: string; css: string }[] }>()
 let leftover = 0
 for (const part of raw.parts) {
   const id = part.category_id ?? NO_CATEGORY_ID
   const group = byCategory.get(id) ?? { name: part.category_name ?? '分類なし', parts: [] }
-  const html = withoutThirdParty(withoutSbLinks(part.id, externalize(rewrite(part.html ?? ''))))
+  const html = intoScreens(part.id, withoutThirdParty(withoutSbLinks(part.id, externalize(rewrite(part.html ?? '')))))
   const css = withoutThirdParty(withoutSbLinks(part.id, externalize(rewrite(part.css ?? ''))))
   leftover += (html.match(SB_HOST)?.length ?? 0) + (css.match(SB_HOST)?.length ?? 0)
   group.parts.push({ id: part.id, name: part.name, html, css })
@@ -143,3 +163,4 @@ console.log(`Widget ${raw.parts.length}件・分類 ${categories.length}・写�
 console.log(`SBの置き場を指したまま残ったURL: ${leftover}か所（スクリプトの中で組み立てているものなど）`)
 console.log(`埋め込みの画像・書体をファイルにした: ${embedded}か所`)
 console.log(`SB本体を指していたリンク先を仮（#）にした Widget: ${linkedToSb.length}件（${linkedToSb.join(', ')}）`)
+console.log(`画面①②③に分けた Widget: ${screened.length}件（${screened.join(', ')}）`)

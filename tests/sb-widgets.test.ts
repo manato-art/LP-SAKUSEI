@@ -89,6 +89,21 @@ describe('分類と中身を配る', () => {
     expect(text(4571)).toContain('https://cdn.jsdelivr.net/npm/swiper@7.0.0/swiper-bundle.min.css')
   })
 
+  it('1問ずつ別ページへ移る前提の見本8本は、画面①②③に分けた形で配る（2026-10-27 本人「今まで通り分けるのが理想」・9月と同じ作り変え）', async () => {
+    const { json } = await get<{ categories: Category[] }>('/sb_widgets')
+    const all: Part[] = []
+    for (const category of json.categories) all.push(...(await get<{ parts: Part[] }>(`/sb_widgets/${category.id}`)).json.parts)
+    const screened = all.filter((part) => part.html.includes('data-nc-screens')).map((part) => part.id).sort((a, b) => a - b)
+    expect(screened).toEqual([8690, 9575, 9577, 10150, 15296, 19424, 20020, 20021])
+    for (const id of screened) {
+      const part = all.find((p) => p.id === id)
+      // 画面は2つ以上。最初の画面だけが見え、ほかは隠れている
+      const screens = [...(part?.html ?? '').matchAll(/<div class="nc-screen" data-nc-screen="s\d+"[^>]*>/g)].map((m) => m[0])
+      expect(screens.length).toBeGreaterThan(1)
+      expect(screens.map((tag) => !/\shidden(="")?>$/.test(tag))).toEqual(screens.map((_, i) => i === 0))
+    }
+  })
+
   it('無い分類は 404', async () => {
     expect((await get('/sb_widgets/999')).status).toBe(404)
     expect((await get('/sb_widgets/abc')).status).toBe(404)
