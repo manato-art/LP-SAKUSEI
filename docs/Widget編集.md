@@ -425,3 +425,7 @@ LPの中の場所へ移動＋ほかにも色々（文字をコピー・動画を
 - **動画は書かれたまま**（2026-10-26）: EBIyon は配信のとき本文の動画に autoplay・muted・loop・playsinline を足す（指示⑬・lp-video.ts）が、
   SB本体は取り込んだ見本の動画に足さない。足すと「押して再生」の見本（例 18909 動画の上にサムネイル）が読み込み時から再生され、押すと止まっていた。
   取り込んだ見本（.sb-custom-part）の中の動画には足さない（sb-parts.ts の mapOutsideSbParts）。
+- **外枠は div**（2026-10-26）: SB本体の Widget の外枠は `.article-body` の直下の div.sb-custom。EBIyon は section だったので、
+  `.article-body` の直下の div を探す見本（15305・9530 サイドバー＝本文を70%にして右に並べる）が何もしていなかった。
+  配信のときに、取り込んだ見本の外枠だけ div にする（sb-parts.ts の sbPartBlocksAsDiv・sb-page-structure.ts）。指示155の行間は要素名なしの `.sb-widget-block` で当てる。
+  本文を .article-body で包んだLPでも、本文の段落の空きを0にする（`body>.article-body>p`）。

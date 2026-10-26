@@ -10,10 +10,14 @@
  *
  * 使っている見本が入っているLPにだけ足す（入っていないLPは1文字も変えない）。保存データは書き換えない（配信時に足す）。
  * `.article-body` はLPの本文（Widgetを含む）を包む。SBと同じく、その見本のCSSは本文全体に効く。
+ *
+ * 取り込んだ見本の外枠は、SB本体と同じ div にする（2026-10-26・`.article-body` の直下の div を探す見本のため・sb-parts.ts）。
  */
+import { sbPartBlocksAsDiv } from './sb-parts.ts'
 import { addWidgetBlockClass } from './widget-editor-attrs.ts'
 
 export function withSbPageStructure(html: string): string {
   const withCustom = html.includes('sb-custom') ? addWidgetBlockClass(html, 'sb-custom') : html
-  return withCustom.includes('article-body') ? `<div class="article-body">${withCustom}</div>` : withCustom
+  const shaped = sbPartBlocksAsDiv(withCustom)
+  return shaped.includes('article-body') ? `<div class="article-body">${shaped}</div>` : shaped
 }

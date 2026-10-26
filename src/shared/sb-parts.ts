@@ -66,3 +66,22 @@ export function mapOutsideSbParts(html: string, change: (outside: string) => str
   }
   return out + change(html.slice(from))
 }
+
+/**
+ * 取り込んだ見本をちょうど包む Widget の外枠（`<section class="sb-widget-block" …>`）を、SB本体と同じ div にした HTML。
+ * SB本体では Widget の外枠が `.article-body` の直下の div.sb-custom で、その div を探す見本がある（15305・9530 サイドバー）。
+ * 見本を入れたときの形（外枠の開始タグ・見本・囲ったCSS・`</section>` が並ぶ）のときだけ変える。属性はそのまま。
+ */
+export function sbPartBlocksAsDiv(html: string): string {
+  let out = ''
+  let from = 0
+  for (const [start, end] of sbPartRanges(html)) {
+    const open = html.lastIndexOf('<section', start)
+    const head = open < from ? null : /^<section\b([^>]*\bsb-widget-block\b[^>]*)>\s*$/.exec(html.slice(open, start))
+    const tail = /^\s*<\/section>/.exec(html.slice(end))
+    if (head === null || tail === null) continue
+    out += `${html.slice(from, open)}<div${head[1]}>${html.slice(open + head[0].length, end)}${tail[0].replace('</section>', '</div>')}`
+    from = end + tail[0].length
+  }
+  return out + html.slice(from)
+}

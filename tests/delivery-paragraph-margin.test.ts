@@ -15,7 +15,7 @@ import { resetState } from '../mock-server/store/store.ts'
 import { LP_BASE_CSS } from '../src/app/lp-base-css.ts'
 import { postJson } from './helpers/server.ts'
 
-const PARAGRAPH_RULE = 'body>p{margin:0}'
+const PARAGRAPH_RULE = 'body>p,body>.article-body>p{margin:0}'
 
 const LP_HTML =
   '<p class="ql-align-center">一行目</p>' +

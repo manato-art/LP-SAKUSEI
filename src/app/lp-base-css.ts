@@ -10,7 +10,8 @@ export const LP_BASE_CSS = [
   // 本文の段落（Quill の1行＝<body> の直下の <p>）の上下の空きを、編集画面（`.ql-editor p{margin:0}`）と同じ0にする。
   // これが無いとブラウザ既定の上下1文字分が付き、配信だけ行と行の間が広かった（2026-10-18 本人指摘・本体も `.article-body p{margin:0}`）。
   // Widget の中の段落は <section> の中なので当たらない（これまでの配信の見た目のまま）。
-  'body>p{margin:0}',
+  // 見本のために本文を .article-body で包んだLP（sb-page-structure.ts）でも同じにする。
+  'body>p,body>.article-body>p{margin:0}',
   '.ql-align-center{text-align:center}',
   '.ql-align-right{text-align:right}',
   '.ql-align-justify{text-align:justify}',
@@ -29,7 +30,8 @@ export const LP_BASE_CSS = [
   // 指示155: Widget内テキストの行間の既定を詰める。配信LPの本文(body)は行間1.8だが、
   // Widgetの見出し等(<br>で改行)がそれを継ぐと改行幅が大きすぎるため、Widgetブロック内は1.5を既定にする。
   // Widget自身が line-height を明示している要素は、その要素の直接指定が継承値より優先されるので影響しない。
-  'section.sb-widget-block{line-height:1.5}',
+  // 取り込んだ見本の外枠は SB本体と同じ div なので（sb-page-structure.ts）、要素名は付けない。
+  '.sb-widget-block{line-height:1.5}',
   // 指示161: Widget内でツールバーから付けた素のリンク(<a href>・クラス無し)を、配信でも
   // リンクと分かる見た目にする（青＋下線）。Widget独自の装飾リンク(class付き)は対象外。
   // 取り込んだ見本（SBの Widget）の中は、SB本体と同じ指定（sb-part-css.ts）にするので対象外（2026-10-26）。
