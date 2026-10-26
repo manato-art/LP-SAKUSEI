@@ -6,7 +6,8 @@
  * EBIyon が Swiper 11 の CSS を足すと、取り込んだスライダーの並び・見えている枚数が SB と変わっていた。
  */
 import { describe, expect, it } from 'vitest'
-import { externalWidgetLibs, withoutSbParts } from '../src/shared/lp-page-assets.ts'
+import { externalWidgetLibs } from '../src/shared/lp-page-assets.ts'
+import { withoutSbParts } from '../src/shared/sb-parts.ts'
 
 const SWIPER8 = '<script src="https://cdn.jsdelivr.net/npm/swiper@8.4.7/swiper-bundle.min.js"></script>'
 

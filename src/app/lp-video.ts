@@ -9,7 +9,12 @@
  * 右パネルでOFFにしたものには `data-sb-<名前>="off"` が入るので、
  * それが付いている項目は付け直さない。この印が無い動画（トグルを作る前に
  * 保存されたもの）は、これまで通り既定の「常に再生」で配信する。
+ *
+ * 取り込んだ見本（.sb-custom-part）の中の動画は書かれたままにする（2026-10-26）。
+ * SB本体は足さない。足すと、押して再生する見本が読み込み時から再生され、押すと止まってしまう。
  */
+import { mapOutsideSbParts } from '../shared/sb-parts.ts'
+
 const AUTOPLAY_ATTRS = ['autoplay', 'muted', 'loop', 'playsinline'] as const
 
 /** その動画タグで、この項目が明示的にOFFにされているか */
@@ -31,18 +36,23 @@ function dropAttr(attrs: string, name: string): string {
   return attrs.replace(new RegExp(`(^|\\s)${name}(=("[^"]*"|'[^']*'|[^\\s>]*))?`, 'gi'), ' ')
 }
 
+/** 1つの `<video>` の属性に、再生設定を補う（切ったものは外す） */
+function playbackAttrs(attrs: string): string {
+  let next = attrs
+  for (const attr of AUTOPLAY_ATTRS) {
+    if (isTurnedOff(attrs, attr)) {
+      // エディタで切ったものは、付いていても外す
+      next = dropAttr(next, attr)
+      continue
+    }
+    if (!hasAttr(next, attr)) next += ` ${attr}`
+  }
+  return next.replace(/\s+/g, ' ').replace(/\s+$/, '')
+}
+
 /** 保存済みHTML内の各 `<video>` の再生設定を、配信用に整える（純粋関数） */
 export function withAutoplayVideos(html: string): string {
-  return html.replace(/<video\b([^>]*)>/gi, (_match, attrs: string) => {
-    let next = attrs
-    for (const attr of AUTOPLAY_ATTRS) {
-      if (isTurnedOff(attrs, attr)) {
-        // エディタで切ったものは、付いていても外す
-        next = dropAttr(next, attr)
-        continue
-      }
-      if (!hasAttr(next, attr)) next += ` ${attr}`
-    }
-    return `<video${next.replace(/\s+/g, ' ').replace(/\s+$/, '')}>`
-  })
+  return mapOutsideSbParts(html, (outside) =>
+    outside.replace(/<video\b([^>]*)>/gi, (_match, attrs: string) => `<video${playbackAttrs(attrs)}>`),
+  )
 }

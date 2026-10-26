@@ -420,5 +420,8 @@ LPの中の場所へ移動＋ほかにも色々（文字をコピー・動画を
   記事設定から来る文字の大きさ・行間（SBは .sb-custom に 17px・1.8 を !important）と、SBのページ全体の文字選択できない指定（user-select:none）は入れていない（本人に聞く）
 - **外部ライブラリも SB本体と同じ**（2026-10-26）: SB本体の配信ページが共通で置くのは LazyLoad・URI.js・smooth-scroll 16.1.3 だけで、jQuery・Swiper・GLightbox は置かない
   （取り込んだ見本は自分で Swiper 8 等を読み込む）。EBIyon は本文に Swiper を使う見本があると Swiper 11 の CSS・JS を足していたので、
-  取り込んだ見本（.sb-custom-part）の中身はこの判定に使わない（lp-page-assets.ts の withoutSbParts）。smooth-scroll は SB と同じく足す。
+  取り込んだ見本（.sb-custom-part）の中身はこの判定に使わない（sb-parts.ts の withoutSbParts）。smooth-scroll は SB と同じく足す。
   LazyLoad は置かない（取り込んだ見本は「LazyLoad が無ければそのまま進む」作りで、画像がすぐ全部読まれるだけ）
+- **動画は書かれたまま**（2026-10-26）: EBIyon は配信のとき本文の動画に autoplay・muted・loop・playsinline を足す（指示⑬・lp-video.ts）が、
+  SB本体は取り込んだ見本の動画に足さない。足すと「押して再生」の見本（例 18909 動画の上にサムネイル）が読み込み時から再生され、押すと止まっていた。
+  取り込んだ見本（.sb-custom-part）の中の動画には足さない（sb-parts.ts の mapOutsideSbParts）。
