@@ -427,5 +427,9 @@ LPの中の場所へ移動＋ほかにも色々（文字をコピー・動画を
   取り込んだ見本（.sb-custom-part）の中の動画には足さない（sb-parts.ts の mapOutsideSbParts）。
 - **外枠は div**（2026-10-26）: SB本体の Widget の外枠は `.article-body` の直下の div.sb-custom。EBIyon は section だったので、
   `.article-body` の直下の div を探す見本（15305・9530 サイドバー＝本文を70%にして右に並べる）が何もしていなかった。
-  配信のときに、取り込んだ見本の外枠だけ div にする（sb-parts.ts の sbPartBlocksAsDiv・sb-page-structure.ts）。指示155の行間は要素名なしの `.sb-widget-block` で当てる。
+  配信のときに、取り込んだ見本の外枠だけ div にする（sb-parts.ts の sbPartBlocksAsDiv・sb-page-structure.ts）。
   本文を .article-body で包んだLPでも、本文の段落の空きを0にする（`body>.article-body>p`）。
+- **行間は記事設定のまま**（2026-10-27 本人選択）: SB本体は `body .article-body .sb-custom{line-height:1.8 !important}`（記事設定の行間）で、取り込んだ見本はこれを継ぐ。
+  指示155の1.5は自作の Widget だけ（配信は `section.sb-widget-block`＝取り込んだ見本の外枠は div なので当たらない・編集画面は `:has(> .sb-custom-part)` で inherit・Widget編集の見たまま画面は widget-preview-line-height.ts）。
+- **空のリンクは押しても何も起きない**（2026-10-27 本人選択）: SB本体の編集画面（TinyMCE）は保存のときに `<a href="">` の href を消す。配信のとき取り込んだ見本の中だけ同じく外す（sb-parts.ts の withoutEmptyLinksInSbParts）。
+  `javascript:` のリンク（SNSシェア等）は SB では消されるが、EBIyon は押せるまま（本人選択）。SBのページの「文字を選べない」設定も EBIyon は選べるまま（本人選択）。

@@ -18,6 +18,8 @@ export function widgetSelectionCss(selectBorder: string): string {
        広がりすぎる。配信LP・編集プレビューと同じく1.5を既定にして揃える（Widget自身が
        line-heightを明示した要素は直接指定が継承より優先されるので影響しない）。 */
     .ql-editor section.sb-widget-block { line-height:1.5; white-space:normal; min-height:32px; }
+    /* 取り込んだ見本は配信と同じく記事設定の行間（.ql-editor に当たっている値）を継ぐ（2026-10-27 本人選択） */
+    .ql-editor section.sb-widget-block:has(> .sb-custom-part) { line-height:inherit; }
     section.sb-widget-block { cursor:pointer; transition:outline .15s, box-shadow .15s; position:relative; }
     section.sb-widget-block:hover { outline:2px solid ${selectBorder}; outline-offset:-2px; }
     section.sb-widget-block[data-widget-selected="true"] {

@@ -17,6 +17,7 @@
  * 配信時にこれを行い、保存済みのデータは書き換えない。
  */
 import { withSbPageStructure } from './sb-page-structure.ts'
+import { withoutEmptyLinksInSbParts } from './sb-parts.ts'
 import { stripEditorWidgetAttributes } from './widget-editor-attrs.ts'
 
 /** 1つ目: `#articlePartPreview { … }`（記事設定の既定値。LPにこの id は無いので効き目も無い） */
@@ -133,6 +134,7 @@ export function neutralizeWidgetStyles(html: string): { html: string; hasWidget:
     return stripped === body ? whole : `${open}${stripped}${close}`
   })
   // SBの配信ページの形（.article-body・.sb-custom）を前提にした見本のために、同じ形を足す（使っているLPだけ）
-  const shaped = withSbPageStructure(out)
+  // 取り込んだ見本の空のリンクは、SB本体と同じく押しても何も起きないようにする（sb-parts.ts）
+  const shaped = withSbPageStructure(withoutEmptyLinksInSbParts(out))
   return { html: shaped, hasWidget: shaped.includes('sb-widget-block') }
 }

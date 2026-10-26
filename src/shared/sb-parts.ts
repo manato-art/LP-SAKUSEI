@@ -85,3 +85,39 @@ export function sbPartBlocksAsDiv(html: string): string {
   }
   return out + html.slice(from)
 }
+
+/** 取り込んだ見本の中（外枠の div と囲ったCSS）だけを change で変えた HTML */
+function mapInsideSbParts(html: string, change: (part: string) => string): string {
+  let out = ''
+  let from = 0
+  for (const [start, end] of sbPartRanges(html)) {
+    out += html.slice(from, start) + change(html.slice(start, end))
+    from = end
+  }
+  return out + html.slice(from)
+}
+
+/** <script>・<style> の中を除いた所だけを change で変えた HTML */
+function mapOutsideRawText(html: string, change: (markup: string) => string): string {
+  let out = ''
+  let from = 0
+  for (const open of html.matchAll(/<(script|style)\b/gi)) {
+    const start = open.index ?? 0
+    if (start < from) continue
+    const end = skipRawText(html, start)
+    out += change(html.slice(from, start)) + html.slice(start, end)
+    from = end
+  }
+  return out + change(html.slice(from))
+}
+
+/**
+ * 取り込んだ見本の中の、中身が空のリンク（`<a href="">`）から href を外した HTML（2026-10-27 本人選択）。
+ * SB本体の編集画面（TinyMCE）は保存のときに空の href を消すので、SBでは押しても何も起きない。
+ * 書かれたままだと押すと同じページを読み込み直すので、SBに合わせる。リンク先が入っているもの（javascript: も）はそのまま。
+ */
+export function withoutEmptyLinksInSbParts(html: string): string {
+  return mapInsideSbParts(html, (part) =>
+    mapOutsideRawText(part, (markup) => markup.replace(/(<a\b[^>]*?)\s+href=(?:""|'')/gi, '$1')),
+  )
+}

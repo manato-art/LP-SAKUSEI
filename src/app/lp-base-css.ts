@@ -30,8 +30,9 @@ export const LP_BASE_CSS = [
   // 指示155: Widget内テキストの行間の既定を詰める。配信LPの本文(body)は行間1.8だが、
   // Widgetの見出し等(<br>で改行)がそれを継ぐと改行幅が大きすぎるため、Widgetブロック内は1.5を既定にする。
   // Widget自身が line-height を明示している要素は、その要素の直接指定が継承値より優先されるので影響しない。
-  // 取り込んだ見本の外枠は SB本体と同じ div なので（sb-page-structure.ts）、要素名は付けない。
-  '.sb-widget-block{line-height:1.5}',
+  // 取り込んだ見本は SB本体と同じく記事設定の行間を継ぐ（2026-10-27 本人選択）。取り込んだ見本の外枠は配信のとき div にするので
+  // （sb-page-structure.ts）、section だけに当てれば自作の Widget だけが1.5になる。
+  'section.sb-widget-block{line-height:1.5}',
   // 指示161: Widget内でツールバーから付けた素のリンク(<a href>・クラス無し)を、配信でも
   // リンクと分かる見た目にする（青＋下線）。Widget独自の装飾リンク(class付き)は対象外。
   // 取り込んだ見本（SBの Widget）の中は、SB本体と同じ指定（sb-part-css.ts）にするので対象外（2026-10-26）。

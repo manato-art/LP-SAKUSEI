@@ -75,7 +75,7 @@ describe('取り込んだ見本の外枠は SB本体と同じ div', () => {
     expect(direct.map((c) => c.querySelector('.sb-custom-part')?.id)).toEqual(['sb-part-4', 'sb-part-15305'])
   })
 
-  it('EBIyon の配信の土台（指示155 の行間・本文の段落の空き）は、div の外枠と .article-body の中にも効く', () => {
+  it('指示155 の行間（1.5）は自作の Widget だけ。取り込んだ見本の外枠（div）は記事設定の行間を継ぐ（SB本体と同じ・2026-10-27 本人選択）。本文の段落の空きは .article-body の中にも効く', () => {
     const out = neutralizeWidgetStyles(`<p>本文</p>${WIDGET("<p>自作</p><script>document.querySelector('.article-body')</script>")}${WIDGET(PART(5, '<a href="#">x</a>'))}`).html
     const { document } = parseHTML(`<html><body>${out}</body></html>`)
     const selectorOf = (prop: string): string => {
@@ -83,7 +83,9 @@ describe('取り込んだ見本の外枠は SB本体と同じ div', () => {
       if (rule === undefined) throw new Error(`${prop} の決まりがありません`)
       return rule.slice(0, rule.indexOf('{'))
     }
-    expect(document.querySelectorAll(selectorOf('line-height:1.5')).length).toBe(2)
+    const narrowed = [...document.querySelectorAll(selectorOf('line-height:1.5'))]
+    expect(narrowed.map((el) => el.tagName)).toEqual(['SECTION'])
+    expect(narrowed[0]?.querySelector('.sb-custom-part')).toBeNull()
     expect(document.querySelectorAll(selectorOf('margin:0')).length).toBe(1)
   })
 })

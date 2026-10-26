@@ -22,6 +22,7 @@ import { closeAlignMenu, openAlignMenu, type AlignTarget } from './align-menu.ts
 import { ensureWidgetToolbarCss } from './widget-toolbar-css.ts'
 import { attachPopupUnderlay, type UnderlayStyle } from './popup-underlay.ts'
 import { LP_WIDTH, SP_WIDTH } from './lp-width-media.ts'
+import { previewLineHeight } from './widget-preview-line-height.ts'
 import {
   svgToolAlign,
   svgToolBgColor,
@@ -82,6 +83,8 @@ export interface VisualEditorOptions {
   readonly underlay?: Promise<string | null>
   /** 後ろにLPを敷いたときの見せ方（暗い幕・出る所）。既定は離脱防止（暗い幕・まん中） */
   readonly underlayStyle?: UnderlayStyle
+  /** LPの記事設定の行間（取り込んだ見本の見たまま画面に使う・widget-preview-line-height.ts）。無ければ空文字 */
+  readonly articleLineHeight?: string
 }
 
 /** 見たまま画面の白い紙の影（灰色の地から浮いて見える） */
@@ -542,7 +545,7 @@ export function buildVisualEditor(
   // WYSIWYG: 編集プレビューを **配信LPと同じ幅(620px)** で表示する。
   // 以前は左ペインの可変幅で表示していたため、編集時の見た目とLPの見た目（画像幅など）がズレていた。
   // 620px = 配信SSRの body max-width（mock-server/routes/delivery.ts の DELIVERY_WIDTH）。
-  // line-height:1.5 は配信LPの section.sb-widget-block と揃える（指示155・WYSIWYG）。
+  // 行間は配信LPと揃える（自作は section.sb-widget-block の1.5＝指示155・取り込んだ見本は記事設定の行間・widget-preview-line-height.ts）。
   contentDiv.dataset['widgetPreview'] = 'true'
   // サイズの数字を、今の文字（無ければ選んだ部品）の大きさにそろえる（部品を選ぶ click の後で読む）
   for (const type of ['mouseup', 'keyup'] as const) contentDiv.addEventListener(type, () => window.setTimeout(refreshSizeNum, 0))
@@ -550,7 +553,7 @@ export function buildVisualEditor(
   // ポップアップの中身は、配信と同じく中身の幅の箱（frameStyle）。
   // 文字は配信と同じ黒（ダークの html は color-scheme:dark なので、何もしないと継いだ文字が白くなり白い紙に消える）
   contentDiv.style.cssText =
-    `outline:none;min-height:100px;${frame.box};box-sizing:border-box;line-height:1.5;color:#000;color-scheme:light`
+    `outline:none;min-height:100px;${frame.box};box-sizing:border-box;line-height:${previewLineHeight(target.html, options.articleLineHeight ?? '')};color:#000;color-scheme:light`
   contentDiv.innerHTML = target.html
   editorBody.append(contentDiv)
   const underlay =

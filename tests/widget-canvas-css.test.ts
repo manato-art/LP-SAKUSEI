@@ -29,6 +29,8 @@ describe('編集画面のWidget', () => {
 
   it('行間の既定（1.5）は今までどおり', () => {
     expect(css).toMatch(/\.ql-editor section\.sb-widget-block\s*\{[^}]*line-height:1\.5/)
+    // 取り込んだ見本は、編集画面でも記事設定の行間（.ql-editor に当たっている値）を継ぐ（配信と同じ・2026-10-27 本人選択）
+    expect(css).toMatch(/\.ql-editor section\.sb-widget-block:has\(> \.sb-custom-part\)\s*\{[^}]*line-height:inherit/)
   })
 })
 

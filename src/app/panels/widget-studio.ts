@@ -198,6 +198,8 @@ export function mountStudio(host: StudioHost): void {
     onUndo: () => session?.undo() ?? false,
     onRedo: () => session?.redo() ?? false,
     ...(host.previewFrame === undefined ? {} : { previewFrame: host.previewFrame }),
+    // 取り込んだ見本の行間は、LPの記事設定の行間（編集画面の本文に当たっている値・editor-layout.ts）
+    articleLineHeight: host.libraryQuill?.root.style.lineHeight ?? '',
     ...(host.underlay === undefined ? {} : { underlay: host.underlay }),
     ...(host.underlayStyle === undefined ? {} : { underlayStyle: host.underlayStyle }),
   })
