@@ -5,11 +5,13 @@
  * - 画像のいる場所に枠（はみ出した所も薄く見せる）。枠の中をつかむと動き、四隅を引っぱると大きさが変わる（縦横の比はそのまま）
  * - 矢印のキーで 1%（⇧で 10%）動く。Esc・「終わる」・枠の外を押すと終わる
  * - 動かしている間は面に直に見た目を当てる。離したら設定データへ（commit）。計算は nocode/bg-move-math.ts
+ * - 背景が動画（2026-10-27）のときは、面のいちばん後ろの動画の層（bg-image.ts の .nc-bgv）の動画に当てる
  */
 import { bgRect, bgSizeCss, movedLook, resizedLook, type Box, type Corner, type Natural } from './nocode/bg-move-math.ts'
 import { blockElementAt } from './nocode/canvas-sync.ts'
 import { getAt, setAt, type Path } from './nocode/form-state.ts'
-import { BG_POSITION_MAX, BG_POSITION_MIN, bgDeclarations, bgTargetOf, type BgLook } from './nocode/templates/bg-image.ts'
+import { BG_POSITION_MAX, BG_POSITION_MIN, BG_VIDEO_CLASS, bgDeclarations, bgTargetOf, bgVideoDeclarations, isBgVideo, type BgLook } from './nocode/templates/bg-image.ts'
+import { isVideoMedia } from './nocode/templates/kit.ts'
 import { items, str, type ItemData, type TemplateData } from './nocode/templates/types.ts'
 
 /**
@@ -62,9 +64,18 @@ const ACCENT = '#0091FF'
 const CORNERS: readonly Corner[] = ['nw', 'ne', 'sw', 'se']
 const CORNER_CURSOR: Readonly<Record<Corner, string>> = { nw: 'nwse-resize', se: 'nwse-resize', ne: 'nesw-resize', sw: 'nesw-resize' }
 
-/** 画像の元の大きさ（読めなければ null） */
+/** 画像・動画の元の大きさ（読めなければ null） */
 function loadNatural(src: string): Promise<Natural | null> {
   return new Promise((resolve) => {
+    if (isVideoMedia(src)) {
+      const video = document.createElement('video')
+      video.muted = true
+      video.preload = 'metadata'
+      video.onloadedmetadata = () => resolve({ width: video.videoWidth, height: video.videoHeight })
+      video.onerror = () => resolve(null)
+      video.src = src
+      return
+    }
     const img = new Image()
     img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight })
     img.onerror = () => resolve(null)
@@ -78,6 +89,15 @@ const boxOf = (el: HTMLElement): Box => {
 }
 
 const PREVIEW_PROPERTIES = Object.keys(bgDeclarations({ image: '', fit: 'cover', size: 100, x: 50, y: 50 }))
+const VIDEO_PREVIEW_PROPERTIES = Object.keys(bgVideoDeclarations({ image: '', fit: 'cover', size: 100, x: 50, y: 50 }))
+
+/** 面の背景の動画（動画の層の中の動画）。無ければ null */
+function bgVideoOf(el: HTMLElement): HTMLVideoElement | null {
+  for (const child of el.children) {
+    if (child.classList.contains(BG_VIDEO_CLASS)) return child.querySelector('video')
+  }
+  return null
+}
 
 /**
  * 自由な大きさの背景の画像を測り直す（配信のスクリプト bg-fit-script.ts が外枠に付けた __ncBgFit を呼ぶ）。
@@ -92,6 +112,8 @@ export function refitBgImages(container: Element): void {
 function clearPreview(el: HTMLElement | null): void {
   if (el === null) return
   for (const property of PREVIEW_PROPERTIES) el.style.removeProperty(property)
+  const video = bgVideoOf(el)
+  if (video !== null) for (const property of VIDEO_PREVIEW_PROPERTIES) video.style.removeProperty(property)
   refitBgImages(el)
 }
 
@@ -100,6 +122,12 @@ function clearPreview(el: HTMLElement | null): void {
  * （CSSの px なので、画面の拡大縮小を受けない offsetWidth・offsetHeight で測る＝スクリプトと同じ）
  */
 function applyPreview(el: HTMLElement, look: BgLook, natural: Natural): void {
+  if (isBgVideo(look)) {
+    const video = bgVideoOf(el)
+    if (video === null) return
+    for (const [property, value] of Object.entries(bgVideoDeclarations(look))) video.style.setProperty(property, value, 'important')
+    return
+  }
   const layoutBox: Box = { left: 0, top: 0, width: el.offsetWidth, height: el.offsetHeight }
   const declarations = { ...bgDeclarations(look), 'background-size': bgSizeCss(layoutBox, natural, look) }
   for (const [property, value] of Object.entries(declarations)) el.style.setProperty(property, value, 'important')
@@ -125,7 +153,10 @@ export async function startBgMove(deps: BgMoveDeps): Promise<BgMoveSession | nul
   frame.style.cssText =
     `position:fixed;box-sizing:border-box;outline:2px dashed ${ACCENT};outline-offset:0;cursor:move;pointer-events:auto;touch-action:none`
   const ghost = document.createElement('div')
-  ghost.style.cssText = `position:absolute;inset:0;opacity:.35;pointer-events:none;background:url("${first.image}") center/100% 100% no-repeat`
+  // 動画は CSS の背景で写せないので、はみ出した所を薄く見せない（枠と四隅だけ）
+  ghost.style.cssText = isBgVideo(first)
+    ? 'position:absolute;inset:0;pointer-events:none'
+    : `position:absolute;inset:0;opacity:.35;pointer-events:none;background:url("${first.image}") center/100% 100% no-repeat`
   frame.append(ghost)
   const handles = CORNERS.map((corner) => {
     const h = document.createElement('div')
@@ -143,7 +174,7 @@ export async function startBgMove(deps: BgMoveDeps): Promise<BgMoveSession | nul
     'position:fixed;display:flex;align-items:center;gap:8px;padding:6px 8px 6px 12px;border-radius:999px;background:#1F2A37;color:#fff;' +
     'font:600 12.5px "Hiragino Sans",sans-serif;pointer-events:auto;white-space:nowrap;box-shadow:0 4px 14px rgba(0,0,0,.18)'
   const barText = document.createElement('span')
-  barText.textContent = '背景の画像を動かしています（四隅で大きさ）'
+  barText.textContent = isBgVideo(first) ? '背景の動画を動かしています（四隅で大きさ）' : '背景の画像を動かしています（四隅で大きさ）'
   const done = document.createElement('button')
   done.type = 'button'
   done.textContent = '終わる'

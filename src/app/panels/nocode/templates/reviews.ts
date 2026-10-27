@@ -5,7 +5,7 @@
  * 同じ箱を並べず、大きな引用符と細い線で区切る（ui-forge anti-ai-look）。
  * 星は飾りの文字なので琥珀色でよい（contrast-discipline の例外）。読み上げでは「5段階中4」と伝える。
  */
-import { baseCss, esc, safeColor, safeImage, shade, textHtml, titleHtml, wrapWidget } from './kit.ts'
+import { baseCss, esc, mediaTag, safeColor, safeMedia, shade, textHtml, titleHtml, wrapWidget } from './kit.ts'
 import { ACCENT_PRESETS, items, pick, str, type ItemData, type NocodeTemplate } from './types.ts'
 import { RATING_ICONS } from './option-icons.ts'
 
@@ -23,8 +23,8 @@ function stars(rating: (typeof RATINGS)[number]): string {
 }
 
 function review(item: ItemData): string {
-  const image = safeImage(str(item, 'image'))
-  const avatar = image === '' ? SILHOUETTE : `<img src="${image}" alt="">`
+  const image = safeMedia(str(item, 'image'))
+  const avatar = image === '' ? SILHOUETTE : mediaTag(image)
   const headline = str(item, 'headline').trim()
   return (
     `<figure class="nc-rv__item">` +
@@ -123,7 +123,7 @@ export const REVIEWS_TEMPLATE: NocodeTemplate = {
       `${s} .nc-rv__body{font-size:14.5px;line-height:1.85;color:#3A4452}` +
       `${s} .nc-rv__who{display:flex;align-items:center;gap:12px;margin:14px 0 0 34px}` +
       `${s} .nc-rv__avatar{flex:0 0 44px;width:44px;height:44px;border-radius:50%;overflow:hidden;background:#E3E6EA}` +
-      `${s} .nc-rv__avatar img,${s} .nc-rv__avatar svg{width:100%;height:100%;object-fit:cover;display:block}` +
+      `${s} .nc-rv__avatar img,${s} .nc-rv__avatar video,${s} .nc-rv__avatar svg{width:100%;height:100%;object-fit:cover;display:block}` +
       `${s} .nc-rv__meta{display:flex;flex-direction:column;min-width:0}` +
       `${s} .nc-rv__name{font-size:13px;font-weight:700;color:#3A4452}` +
       `${s} .nc-rv__stars{font-size:14px;letter-spacing:.08em;color:#E0A100;line-height:1.4}` +

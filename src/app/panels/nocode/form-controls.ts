@@ -9,10 +9,9 @@ import { isAllowedLinkUrl } from '../../../shared/link-html.ts'
 import { toast } from '../../ui.ts'
 import { attachScrub, makeSlider } from '../number-scrub.ts'
 import { applySymbol } from './form-state.ts'
-import { pickLpImage } from './lp-image.ts'
-import { pickLpVideo } from './lp-video.ts'
+import { pickLpMedia } from './lp-media.ts'
 import { COLOR_NAMES, type Field, type TemplateData } from './templates/types.ts'
-import { baseColor, opacityOf, withOpacity } from './templates/kit.ts'
+import { baseColor, isVideoMedia, opacityOf, withOpacity } from './templates/kit.ts'
 
 export type Scalar = string | boolean | number
 /** 並びではない入力（見本の部品は form-sample.ts の専用の入力） */
@@ -45,7 +44,11 @@ function nowJstInput(): string {
   return new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 16)
 }
 
-/** 画像・動画を選ぶ入力（小さな見本・選ぶ／変える・外す・大きさ） */
+/**
+ * 画像・動画を選ぶ入力（小さな見本・選ぶ／変える・外す・大きさ）。
+ * 画像の欄にも動画の欄にも、画像・動画のどちらでも入る（2026-10-27 本人「画像を入れられる所は動画も、動画の所は画像も入ればいい」）。
+ * 見本は、選んだ中身が画像か動画かで出し分ける
+ */
 function mediaControl(env: ControlEnv, id: string, kind: 'image' | 'video'): HTMLElement {
   const wrap = node('div', 'ncf-image')
   let shown: string | null = null
@@ -57,7 +60,7 @@ function mediaControl(env: ControlEnv, id: string, kind: 'image' | 'video'): HTM
     wrap.replaceChildren()
     if (src === '') {
       wrap.append(node('span', 'ncf-image__empty', kind === 'image' ? '画像なし' : '動画なし'))
-    } else if (kind === 'image') {
+    } else if (!isVideoMedia(src)) {
       const img = node('img', 'ncf-image__thumb')
       img.src = src
       img.alt = ''
@@ -70,19 +73,18 @@ function mediaControl(env: ControlEnv, id: string, kind: 'image' | 'video'): HTM
       video.preload = 'metadata'
       wrap.append(video)
     }
-    const noun = kind === 'image' ? '画像' : '動画'
-    const choose = node('button', 'ncf-btn', src === '' ? `${noun}を選ぶ` : '変える')
+    const choose = node('button', 'ncf-btn', src === '' ? (kind === 'image' ? '画像・動画を選ぶ' : '動画・画像を選ぶ') : '変える')
     choose.type = 'button'
     choose.id = id
+    choose.title = '画像（png・jpg・webp・gif・avif）でも動画（mp4・webm・30MBまで）でも選べます。動画は自動で再生・音なし・くり返しで出ます'
     choose.addEventListener('click', () => {
-      const pick = kind === 'image' ? pickLpImage() : pickLpVideo()
-      void pick.then(
+      void pickLpMedia().then(
         (picked) => {
           if (picked === null) return
           env.write(picked)
           paint()
         },
-        () => toast(`${noun}を読み込めませんでした`, 'error'),
+        () => toast('読み込めませんでした', 'error'),
       )
     })
     wrap.append(choose)

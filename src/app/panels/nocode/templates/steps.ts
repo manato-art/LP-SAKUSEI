@@ -6,11 +6,11 @@
  * 自動で 01, 02… と付け直される（② serial-numbers）。
  * つなぎの線は色を付けない点線（色付きの左線に見せない）。
  */
-import { baseCss, esc, inkOn, safeColor, safeImage, shade, textHtml, titleHtml, wrapWidget } from './kit.ts'
+import { baseCss, esc, inkOn, mediaTag, safeColor, safeMedia, shade, textHtml, titleHtml, wrapWidget } from './kit.ts'
 import { ACCENT_PRESETS, items, str, type ItemData, type NocodeTemplate } from './types.ts'
 
 function step(item: ItemData, index: number, label: string): string {
-  const image = safeImage(str(item, 'image'))
+  const image = safeMedia(str(item, 'image'))
   const body = str(item, 'body').trim()
   return (
     `<li class="nc-st__item">` +
@@ -20,7 +20,7 @@ function step(item: ItemData, index: number, label: string): string {
     `<div class="nc-st__content">` +
     `<h3 class="nc-st__title">${esc(str(item, 'title').trim())}</h3>` +
     (body === '' ? '' : `<p class="nc-st__body">${textHtml(body)}</p>`) +
-    (image === '' ? '' : `<img class="nc-st__img" src="${image}" alt="">`) +
+    (image === '' ? '' : mediaTag(image, { cls: 'nc-st__img' })) +
     `</div></li>`
   )
 }

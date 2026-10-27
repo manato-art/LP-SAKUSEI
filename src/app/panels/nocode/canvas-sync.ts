@@ -11,6 +11,7 @@
 import { blockNumberOf, blockPathAt, withSampleAssets } from './builder-data.ts'
 import { getAt, setAt, type Path } from './form-state.ts'
 import { sanitizeRichHtml } from './rich-text.ts'
+import { BG_VIDEO_CLASS } from './templates/bg-image.ts'
 import { str, type ItemData, type TemplateData } from './templates/types.ts'
 
 /** 塊になる要素（この切れ目は改行として読む） */
@@ -35,12 +36,14 @@ export function outermostBlock(target: EventTarget | null, contentDiv: HTMLEleme
   return hotspot !== null && hotspot.parentElement === found ? hotspot : found
 }
 
-/** 部品の要素から、中に入れた移行先を外した写し（部品の文字・見本の中身を読み戻すときに、移行先を混ぜない） */
+/** 部品の要素から、中に入れた移行先・背景の動画の層を外した写し（部品の文字・見本の中身を読み戻すときに混ぜない） */
 function withoutHotspots(el: HTMLElement): HTMLElement {
   const copy = el.cloneNode(true) as HTMLElement
   for (const hot of copy.querySelectorAll('.nc-b-hotspot')) {
     if (hot.parentElement === copy) hot.remove()
   }
+  // 背景の動画の層（書き出しで足したもの・bg-image.ts）も読まない。読むと文字や見本の中身に混ざり、描き直すたびに増える
+  for (const layer of copy.querySelectorAll(`.${BG_VIDEO_CLASS}`)) layer.remove()
   return copy
 }
 

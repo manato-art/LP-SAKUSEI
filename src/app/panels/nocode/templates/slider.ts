@@ -7,7 +7,7 @@
  *  - 動きを減らす設定の人には自動で送らない
  *  - 「動かし始めた」目印は要素のプロパティに持ち、編集中の本文（.ql-editor）では動かさない（countdown と同じ理由）
  */
-import { INK_DARK, baseCss, esc, linkAttrs, safeColor, safeImage, shade, wrapWidget } from './kit.ts'
+import { INK_DARK, baseCss, esc, linkAttrs, mediaTag, safeColor, safeMedia, shade, wrapWidget } from './kit.ts'
 import { ACCENT_PRESETS, bool, items, pick, str, type ItemData, type NocodeTemplate } from './types.ts'
 import { AUTOPLAY_ICONS, RATIO_ICONS } from './option-icons.ts'
 
@@ -60,13 +60,13 @@ window.setInterval(function(){if(!stopped&&!hold&&seen&&!document.hidden)go(inde
 })();`
 
 function slide(item: ItemData, ratio: (typeof RATIOS)[number], track: boolean): string {
-  const image = safeImage(str(item, 'image'))
+  const image = safeMedia(str(item, 'image'))
   const caption = str(item, 'caption').trim()
   const url = str(item, 'url').trim()
   const picture =
     image === ''
       ? `<div class="nc-sl__ph"><span>画像を選んでください</span></div>`
-      : `<img src="${image}" alt="${esc(str(item, 'alt').trim())}"${ratio === 'auto' ? '' : ' class="nc-sl__fit"'}>`
+      : mediaTag(image, { alt: str(item, 'alt').trim(), cls: ratio === 'auto' ? '' : 'nc-sl__fit' })
   const linked = image !== '' && url !== '' ? `<a class="nc-sl__link"${linkAttrs(url, { track, newTab: false })}>${picture}</a>` : picture
   return (
     `<figure class="nc-sl__slide">${linked}` +
@@ -136,9 +136,10 @@ export const SLIDER_TEMPLATE: NocodeTemplate = {
   }),
   validate: (data) => {
     const list = items(data, 'items')
-    if (list.length === 0 || list.every((item) => safeImage(str(item, 'image')) === '')) return '画像を1枚以上選んでください'
-    if (list.some((item) => safeImage(str(item, 'image')) === '')) {
-      return '画像が選ばれていない1枚があります。画像を選ぶか、その1枚を消してください'
+    // 1枚ずつ、画像でも動画でも入る（2026-10-27）
+    if (list.length === 0 || list.every((item) => safeMedia(str(item, 'image')) === '')) return '画像を1枚以上選んでください（動画でも入ります）'
+    if (list.some((item) => safeMedia(str(item, 'image')) === '')) {
+      return '画像が選ばれていない1枚があります。画像か動画を選ぶか、その1枚を消してください'
     }
     return null
   },
@@ -157,7 +158,7 @@ export const SLIDER_TEMPLATE: NocodeTemplate = {
       `${s} .nc-sl__track::-webkit-scrollbar{display:none}` +
       `${s} .nc-sl__track:focus-visible{outline:2px solid ${shade(color, -0.2)};outline-offset:2px}` +
       `${s} .nc-sl__slide{flex:0 0 100%;min-width:0;margin:0;scroll-snap-align:center;scroll-snap-stop:always}` +
-      `${s} .nc-sl__slide img{width:100%}` +
+      `${s} .nc-sl__slide img,${s} .nc-sl__slide video{width:100%}` +
       `${s} .nc-sl__slide .nc-sl__fit{aspect-ratio:${aspect};object-fit:cover}` +
       `${s} .nc-sl__link{display:block}` +
       `${s} .nc-sl__ph{aspect-ratio:${aspect};display:flex;align-items:center;justify-content:center;` +

@@ -187,10 +187,11 @@ describe('図形・動画・選択肢のボタン', () => {
 
   it('画像・図形の幅は 10〜100% の数（範囲の外・読めない値は既定の 100%）', () => {
     const wide = render([screen('s1', '画面①', [{ type: 'image', image: PNG, alt: '', action: 'none', width: 75 }])])
-    expect(wide).toMatch(/\.nc-b-1 img\{width:75%;/)
+    // 画像の部品には動画も入る（2026-10-27）ので、幅は中の画像にも動画にも当てる
+    expect(wide).toMatch(/\.nc-b-1 img,[^{]*\.nc-b-1 video\{width:75%;/)
     expect(wide).not.toContain('nc-b-image--w')
     const legacy = render([screen('s1', '画面①', [{ type: 'image', image: PNG, alt: '', action: 'none', width: '60' }])])
-    expect(legacy).toMatch(/\.nc-b-1 img\{width:60%;/)
+    expect(legacy).toMatch(/\.nc-b-1 img,[^{]*\.nc-b-1 video\{width:60%;/)
     const broken = render([screen('s1', '画面①', [{ type: 'shape', shape: 'rect', size: 'huge', color: '#E5573F', text: '', action: 'none' }])])
     expect(broken).toMatch(/\.nc-b-1\{[^}]*width:100%/)
     const tiny = render([screen('s1', '画面①', [{ type: 'shape', shape: 'rect', size: 3, color: '#E5573F', text: '', action: 'none' }])])
@@ -498,7 +499,7 @@ describe('どの部品も幅と置く位置を持つ（2026-09-24・本人「部
         { type: 'button', label: 'C', look: 'cta', color: '#E5573F', action: 'none', boxWidth: 80, place: 'weird' },
       ]),
     ])
-    expect(html).toContain('.nc-b-1 img{width:50%;margin-left:0;margin-right:auto}')
+    expect(html).toMatch(/\.nc-b-1 img,[^{]*\.nc-b-1 video\{width:50%;margin-left:0;margin-right:auto\}/)
     expect(html).toContain('.nc-b-2 .nc-b-video__v{width:70%;margin-left:auto;margin-right:0}')
     expect(html).toContain('.nc-b-3{width:40%;margin-left:auto;margin-right:auto}')
     expect(html).toContain('.nc-b-4{width:60%;margin-left:auto;margin-right:0}')

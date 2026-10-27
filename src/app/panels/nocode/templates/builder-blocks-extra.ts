@@ -8,7 +8,7 @@
  */
 import { isRichEmpty } from '../rich-text.ts'
 import { ALIGN_OPTIONS, NO_ACTION, actionOf, layoutFields, telDigits } from './block-kit.ts'
-import { safeImage } from './kit.ts'
+import { safeMedia } from './kit.ts'
 import { BAND_LOOK_ICONS, LOADING_ICONS, ORNAMENT_ICONS } from './option-icons.ts'
 import { ACCENT_PRESETS, str, type BlockType, type ItemData } from './types.ts'
 
@@ -292,8 +292,8 @@ export function extraBlockProblem(item: ItemData, where: string): string | null 
         ? `画像に重ねる文字が空です（${where}）。見出しか文章を書くか、その部品を消してください`
         : null
     case 'beforeAfter':
-      return safeImage(str(item, 'before')) === '' || safeImage(str(item, 'after')) === ''
-        ? `画像が選ばれていません（${where}。前と後の画像を選びます）`
+      return safeMedia(str(item, 'before')) === '' || safeMedia(str(item, 'after')) === ''
+        ? `画像が選ばれていません（${where}。前と後の画像か動画を選びます）`
         : null
     case 'tel':
       return telDigits(str(item, 'number')).replace('+', '').length < 3

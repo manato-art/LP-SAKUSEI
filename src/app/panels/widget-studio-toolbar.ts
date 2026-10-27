@@ -13,6 +13,7 @@
 import type { AlignTarget } from './align-menu.ts'
 import { groupEndOf } from './nocode/hotspot-model.ts'
 import { ALIGNS, ALL_BLOCK_TYPES, HEADING_SIZES, PLACES, TEXT_SIZES, sizeOf, widthKeyOf } from './nocode/templates/builder-blocks.ts'
+import { isVideoMedia } from './nocode/templates/kit.ts'
 import { int, items, pick, str, type ItemData, type TemplateData } from './nocode/templates/types.ts'
 import type { Path } from './nocode/form-state.ts'
 import { openSizePopover } from './size-popover.ts'
@@ -131,7 +132,9 @@ export function createToolbarHooks(deps: ToolbarDeps): ToolbarHooks {
       if (s !== null && str(s.block, 'type') === 'sample') return false
       const blocks = s === null ? [] : items(items(deps.data(), 'screens')[s.screenIndex] ?? {}, 'blocks')
       const at = s === null ? Number.MAX_SAFE_INTEGER : groupEndOf(blocks, s.blockIndex)
-      deps.insertBlock('image', at, { image: dataUrl })
+      // 動画を選んだら動画の部品（自動で再生・音なし・くり返し・2026-10-27）
+      if (isVideoMedia(dataUrl)) deps.insertBlock('video', at, { video: dataUrl, autoplay: true })
+      else deps.insertBlock('image', at, { image: dataUrl })
       return true
     },
   }

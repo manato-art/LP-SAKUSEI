@@ -4,7 +4,7 @@
  * 見分け方は sample-model.ts（DOMを使わない形）。ここはブラウザで見本のHTMLを組み立てて使う。
  *  - readSample: 中身の一覧と、もともとある設問①②…。設問は、見本を画面の外で（スクリプトなしで）描いて、
  *    見えている・隠れているで見つける（HTMLだけでは、どれが隠れているか分からない）
- *  - editSample: 文字・ボタンの文字・画像・動画・リンク先・押したときを1か所直した新しいHTMLを返す
+ *  - editSample: 文字・ボタンの文字・画像・動画・リンク先・押したときを1か所直した新しいHTMLを返す（画像⇄動画の差し替えも）
  *  - previewWithStep: 見え方だけ、選んだ設問を出したHTML（保存するHTMLには入れない）
  * どれも見本を <div id="nc-sample-root"> に包んで組み立てる（先頭の <style> も中に残る＝番号がそろう）。
  */
@@ -13,6 +13,7 @@ import { WIDGET_BASE_CSS } from '../../../shared/sb-part-css.ts'
 import { isAllowedLinkUrl, isTrackingLink, withTrackingParam } from '../../../shared/link-html.ts'
 import { elementsInOrder, findStepGroup, nestedScreens, nodeAt, sampleSlots, setGoOn, type Slot, type SlotNode } from './sample-model.ts'
 import { safeImage, safeVideo } from './templates/kit.ts'
+import { swapImageForVideo, swapVideoForImage } from '../media-swap.ts'
 
 const ROOT_ID = 'nc-sample-root'
 /** 見え方だけで使う目印（保存するHTMLには入れない） */
@@ -106,6 +107,12 @@ export type SampleChange =
   | { readonly kind: 'href'; readonly value: string }
   /** 押したら移る画面（null＝見本のまま） */
   | { readonly kind: 'go'; readonly value: string | null }
+  /**
+   * 画像を選んだ動画に・動画を選んだ画像に差し替える（2026-10-27 本人「画像を動画に・その逆も」・media-swap.ts）。
+   * 要素の数が変わることがある（<picture>・<source>）ので、呼ぶ側は差し替えたあと中身の一覧を作り直す
+   */
+  | { readonly kind: 'toVideo'; readonly value: string }
+  | { readonly kind: 'toImage'; readonly value: string }
 
 /** 1か所直した新しいHTML。直せない（場所が無い・値が使えない）ときは元のHTML */
 export function editSample(html: string, id: string, change: SampleChange): string {
@@ -173,6 +180,18 @@ export function editSample(html: string, id: string, change: SampleChange): stri
       if (!(node instanceof Element)) return html
       setGoOn(node, change.value)
       break
+    case 'toVideo': {
+      const src = safeVideo(change.value)
+      if (!(node instanceof Element) || node.tagName !== 'IMG' || src === '') return html
+      swapImageForVideo(node, src)
+      break
+    }
+    case 'toImage': {
+      const src = safeImage(change.value)
+      if (!(node instanceof Element) || node.tagName !== 'VIDEO' || src === '') return html
+      swapVideoForImage(node, src)
+      break
+    }
   }
   return root.innerHTML
 }

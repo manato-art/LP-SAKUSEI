@@ -3,12 +3,12 @@
  *
  * - 部品ごとの色などは、その部品だけのクラス（nc-b-12）に書く。形の土台（どの部品でも同じCSS）は、
  *   その部品を使っているWidgetにだけ1回出す（moreBaseCss。使っていない部品のCSSでLPを重くしない）
- * - 入力の文字は esc か richText を通す（タグにしない）。色は safeColor、画像は safeImage を通す
+ * - 入力の文字は esc か richText を通す（タグにしない）。色は safeColor、画像・動画は safeMedia を通す
  * - 移行先（renderHotspot）は builder.ts が、被せる部品の中（閉じるタグの前）に入れる
  */
 import { PLACES, hrefOf } from './block-kit.ts'
 import { pressAttrs, pressLabel, type PressContext } from './press-actions.ts'
-import { esc, inkOn, linkAttrs, safeColor, safeImage, shade } from './kit.ts'
+import { esc, inkOn, linkAttrs, mediaTag, safeColor, safeMedia, shade } from './kit.ts'
 import { richText } from '../rich-text.ts'
 import { hotspotRect } from '../hotspot-model.ts'
 import { tableRows } from './builder-blocks-more.ts'
@@ -72,9 +72,9 @@ export function renderMoreBlock(item: ItemData, i: number, s: string, press?: Pr
     case 'speech': {
       const side = pick(item, 'side', ['left', 'right'] as const, 'left')
       const color = safeColor(str(item, 'color'), '#F1F3F5')
-      const avatar = safeImage(str(item, 'avatar'))
+      const avatar = safeMedia(str(item, 'avatar'))
       const name = str(item, 'name').trim()
-      const face = avatar === '' ? PERSON_SVG : `<img src="${avatar}" alt="">`
+      const face = avatar === '' ? PERSON_SVG : mediaTag(avatar)
       return {
         html:
           `<div class="nc-b nc-b-speech nc-b-speech--${side} ${cls}">` +
@@ -190,11 +190,11 @@ export function renderMoreBlock(item: ItemData, i: number, s: string, press?: Pr
       }
     }
     case 'gallery': {
-      const images = [str(item, 'image1'), str(item, 'image2'), str(item, 'image3')].map(safeImage)
+      const images = [str(item, 'image1'), str(item, 'image2'), str(item, 'image3')].map(safeMedia)
       const count = images[2] === '' ? 2 : 3
       const cells = images
         .slice(0, count)
-        .map((src) => `<div class="nc-b-gallery__cell">${src === '' ? '' : `<img src="${src}" alt="">`}</div>`)
+        .map((src) => `<div class="nc-b-gallery__cell">${src === '' ? '' : mediaTag(src)}</div>`)
         .join('')
       const round = bool(item, 'round') ? ' nc-b-gallery--round' : ''
       return {
@@ -273,7 +273,7 @@ const BASE_CSS: Readonly<Record<string, (s: string) => string>> = {
     `${s} .nc-b-speech__who{flex:0 0 64px;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0}` +
     `${s} .nc-b-speech__face{width:56px;height:56px;border-radius:50%;overflow:hidden;background:#E6EAF0;color:#9AA3AE;` +
     `display:flex;align-items:flex-end;justify-content:center}` +
-    `${s} .nc-b-speech__face img{width:100%;height:100%;object-fit:cover}` +
+    `${s} .nc-b-speech__face img,${s} .nc-b-speech__face video{width:100%;height:100%;object-fit:cover}` +
     `${s} .nc-b-speech__face svg{width:44px;height:44px;display:block}` +
     `${s} .nc-b-speech__name{font-size:11px;line-height:1.35;color:#5B6572;text-align:center;overflow-wrap:anywhere}` +
     `${s} .nc-b-speech__bubble{position:relative;flex:1 1 auto;min-width:0;margin-top:4px;padding:12px 16px;border-radius:14px;` +
@@ -329,8 +329,8 @@ const BASE_CSS: Readonly<Record<string, (s: string) => string>> = {
     `${s} .nc-b-gallery--2{grid-template-columns:repeat(2,minmax(0,1fr))}` +
     `${s} .nc-b-gallery--3{grid-template-columns:repeat(3,minmax(0,1fr))}` +
     `${s} .nc-b-gallery__cell{min-width:0}` +
-    `${s} .nc-b-gallery__cell img{width:100%;height:auto;display:block}` +
-    `${s} .nc-b-gallery--round .nc-b-gallery__cell img{border-radius:10px}`,
+    `${s} .nc-b-gallery__cell img,${s} .nc-b-gallery__cell video{width:100%;height:auto;display:block}` +
+    `${s} .nc-b-gallery--round .nc-b-gallery__cell img,${s} .nc-b-gallery--round .nc-b-gallery__cell video{border-radius:10px}`,
   point: (s) =>
     `${s} .nc-b-point__kicker{display:flex;align-items:center;gap:8px;margin:0 0 6px;font-size:12.5px;font-weight:900;letter-spacing:.14em}` +
     `${s} .nc-b-point__kicker::after{content:"";flex:0 0 28px;height:2px;background:currentColor;opacity:.5}` +

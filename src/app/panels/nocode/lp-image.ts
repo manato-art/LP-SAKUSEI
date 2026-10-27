@@ -25,7 +25,11 @@ function loadImage(src: string): Promise<HTMLImageElement | null> {
   })
 }
 
-async function prepare(file: File): Promise<string | null> {
+/** 受け付ける画像の形（画像と動画を一緒に選ぶとき＝lp-media.ts も使う） */
+export const LP_IMAGE_TYPES: readonly string[] = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/avif']
+
+/** 選んだ画像を、LPに入れてよい大きさの data URL に（読めなければ null） */
+export async function prepareLpImage(file: File): Promise<string | null> {
   const original = await readAsDataUrl(file)
   if (original === null) return null
   const img = await loadImage(original)
@@ -52,7 +56,7 @@ export function pickLpImage(): Promise<string | null> {
   return new Promise((resolve) => {
     const input = document.createElement('input')
     input.type = 'file'
-    input.accept = 'image/png,image/jpeg,image/webp,image/gif,image/avif'
+    input.accept = LP_IMAGE_TYPES.join(',')
     input.style.display = 'none'
     input.addEventListener('change', () => {
       const file = input.files?.[0]
@@ -61,7 +65,7 @@ export function pickLpImage(): Promise<string | null> {
         resolve(null)
         return
       }
-      prepare(file).then(resolve, () => resolve(null))
+      prepareLpImage(file).then(resolve, () => resolve(null))
     })
     // 選ぶ画面を閉じただけのとき（対応しているブラウザ）
     input.addEventListener('cancel', () => {

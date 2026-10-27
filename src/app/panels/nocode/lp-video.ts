@@ -20,6 +20,22 @@ function readAsDataUrl(file: File): Promise<string | null> {
   })
 }
 
+/** 受け付ける動画の形（画像と一緒に選ぶとき＝lp-media.ts も使う） */
+export const LP_VIDEO_TYPES: readonly string[] = ACCEPTED
+
+/** 選んだ動画ファイルを data URL に（使えない動画なら null。使えない理由はその場で知らせる） */
+export function readLpVideo(file: File): Promise<string | null> {
+  if (!ACCEPTED.includes(file.type)) {
+    toast('mp4 か webm の動画を選んでください（iPhoneの動画は「互換性優先」で撮るか、mp4に書き出してください）', 'error')
+    return Promise.resolve(null)
+  }
+  if (file.size > LP_VIDEO_MAX_BYTES) {
+    toast('動画が大きすぎます（30MBまで）。短く切るか、画質を下げて書き出してください', 'error')
+    return Promise.resolve(null)
+  }
+  return readAsDataUrl(file)
+}
+
 /** 動画を選んでもらう（やめた・使えない動画なら null。使えない理由はその場で知らせる） */
 export function pickLpVideo(): Promise<string | null> {
   return new Promise((resolve) => {
@@ -34,17 +50,7 @@ export function pickLpVideo(): Promise<string | null> {
         resolve(null)
         return
       }
-      if (!ACCEPTED.includes(file.type)) {
-        toast('mp4 か webm の動画を選んでください（iPhoneの動画は「互換性優先」で撮るか、mp4に書き出してください）', 'error')
-        resolve(null)
-        return
-      }
-      if (file.size > LP_VIDEO_MAX_BYTES) {
-        toast('動画が大きすぎます（30MBまで）。短く切るか、画質を下げて書き出してください', 'error')
-        resolve(null)
-        return
-      }
-      readAsDataUrl(file).then(resolve, () => resolve(null))
+      readLpVideo(file).then(resolve, () => resolve(null))
     })
     // 選ぶ画面を閉じただけのとき（対応しているブラウザ）
     input.addEventListener('cancel', () => {

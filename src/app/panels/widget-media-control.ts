@@ -1,35 +1,17 @@
 /**
  * Widget内の画像・動画をクリックしたときに出る小さな操作パネル（widget-editor.ts から分離）。
  *
- * 幅（%）のスライダーと、画像の差し替え。変更したら contentDiv に input を投げて
+ * 幅（%）のスライダーと、差し替え。差し替えは画像でも動画でも選べる（2026-10-27 本人「画像を入れられる所は動画も、動画の所は画像も入ればいい」）。
+ * 種類が変わるときは要素ごと入れ替える（media-swap.ts）。変更したら contentDiv に input を投げて
  * コードパネル側の textarea を追従させる（そうしないと「更新する」で変更が失われる）。
  */
 import { FONT, COLOR } from './widget-editor-theme.ts'
 import { notifyCanvasEdit } from './widget-canvas-events.ts'
+import { swapImageForVideo, swapVideoForImage } from './media-swap.ts'
+import { pickLpMedia } from './nocode/lp-media.ts'
+import { isVideoMedia } from './nocode/templates/kit.ts'
+import { toast } from '../ui.ts'
 
-/** PCから画像ファイルを選ばせ、data URL として返す（キャンセル時は null）。 */
-export function pickImageDataUrl(): Promise<string | null> {
-  return new Promise((resolve) => {
-    const input = document.createElement('input')
-    input.type = 'file'
-    input.accept = 'image/*'
-    input.style.display = 'none'
-    input.addEventListener('change', () => {
-      const file = input.files?.[0]
-      input.remove()
-      if (file === undefined) {
-        resolve(null)
-        return
-      }
-      const reader = new FileReader()
-      reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : null)
-      reader.onerror = () => resolve(null)
-      reader.readAsDataURL(file)
-    })
-    document.body.append(input)
-    input.click()
-  })
-}
 /** 画像・動画の今の幅（親に対する%）。計測できない（幅0＝レイアウト前など）ときは 100 */
 export function currentMediaWidthPct(media: HTMLElement): number {
   const parentW = media.parentElement?.getBoundingClientRect().width || media.getBoundingClientRect().width || 1
@@ -83,23 +65,36 @@ export function openMediaControl(media: HTMLElement, contentDiv: HTMLElement): v
     `gap:8px;font:12px/1.4 ${FONT};min-width:236px`
   box.addEventListener('click', (e) => e.stopPropagation())
 
-  if (isImg) {
-    const rep = document.createElement('button')
-    rep.type = 'button'
-    rep.textContent = 'PCから画像を差し替え'
-    rep.style.cssText =
-      `border:none;background:${COLOR.brand};color:#fff;border-radius:6px;padding:8px 10px;` +
-      `cursor:pointer;font:12px/1 ${FONT}`
-    rep.addEventListener('click', () => {
-      void pickImageDataUrl().then((dataUrl) => {
-        if (dataUrl === null) return
-        media.setAttribute('src', dataUrl)
+  // 差し替え（画像・動画のどちらでも）。種類が変わると別の要素になるので、この小窓は閉じる（もう一度押すと新しい要素の小窓が出る）
+  const rep = document.createElement('button')
+  rep.type = 'button'
+  rep.textContent = 'PCから画像・動画を差し替え'
+  rep.title = '画像でも動画でも選べます（動画は自動で再生・音なし・くり返し）'
+  rep.style.cssText =
+    `border:none;background:${COLOR.brand};color:#fff;border-radius:6px;padding:8px 10px;` +
+    `cursor:pointer;font:12px/1 ${FONT}`
+  rep.addEventListener('click', () => {
+    void pickLpMedia().then(
+      (picked) => {
+        if (picked === null || !media.isConnected) return
+        const toVideo = isVideoMedia(picked)
+        if (toVideo === isImg) {
+          const next = isImg ? swapImageForVideo(media, picked) : swapVideoForImage(media, picked)
+          closeMediaControl()
+          notifyCanvasEdit(contentDiv, next)
+          return
+        }
+        // 同じ種類なら中身だけ。画面の幅で出し分ける画像の候補・動画の <source> は外す（選んだものが出るように）
+        media.setAttribute('src', picked)
         media.removeAttribute('srcset')
+        for (const source of media.querySelectorAll('source')) source.remove()
+        if (media instanceof HTMLVideoElement) media.load()
         sync()
-      })
-    })
-    box.append(rep)
-  }
+      },
+      () => toast('読み込めませんでした', 'error'),
+    )
+  })
+  box.append(rep)
 
   // サイズ（幅%）。親要素に対する現在幅から初期値を出す（計測できないときは 100%＝10%に潰れるのを防ぐ）。
   const curPct = currentMediaWidthPct(media)

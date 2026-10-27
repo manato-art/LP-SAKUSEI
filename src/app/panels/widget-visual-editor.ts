@@ -7,7 +7,9 @@
  */
 import { COLOR, FONT, WIDGET_PREVIEW_WIDTH, type WidgetEditTarget } from './widget-editor-theme.ts'
 import { notifyCanvasEdit } from './widget-canvas-events.ts'
-import { closeMediaControl, openMediaControl, pickImageDataUrl } from './widget-media-control.ts'
+import { closeMediaControl, openMediaControl } from './widget-media-control.ts'
+import { pickLpMedia } from './nocode/lp-media.ts'
+import { isVideoMedia } from './nocode/templates/kit.ts'
 import { toast } from '../ui.ts'
 import { PREVIEW_LEAK_RESET, markStyleScope, widgetPreviewCss } from './widget-style-scope.ts'
 import {
@@ -72,7 +74,7 @@ export interface VisualEditorOptions {
   readonly fontSizeStep?: (delta: number) => number | null
   /** リンク: 部品の「押したとき」をリンクにする（見本の部品でなければ）。受け持ったら true */
   readonly onLink?: () => boolean
-  /** 画像（PCから追加）: 画像の部品として足す（見本の部品でなければ）。受け持ったら true */
+  /** 画像・動画（PCから追加）: 画像・動画の部品として足す（見本の部品でなければ）。受け持ったら true */
   readonly onImage?: (dataUrl: string) => boolean
   /** 元に戻す・やり直す（部品の操作も含む）。戻せたら true */
   readonly onUndo?: () => boolean
@@ -472,13 +474,18 @@ export function buildVisualEditor(
     mkBtn(svgToolItalic(), '斜体', () => onText(() => exec('italic'))),
     mkBtn(svgToolTextColor(), '文字色', (btn) => pickColor(btn, 'foreColor', '文字色')),
     mkBtn(svgToolBgColor(), '背景色', (btn) => pickColor(btn, 'hiliteColor', '背景色')),
-    mkBtn(svgToolImage(), '画像（PCから追加）', () => {
-      void pickImageDataUrl().then((dataUrl) => {
+    // 画像でも動画でも足せる（2026-10-27 本人「画像を入れられる所は動画も入ればいい」・動画は自動で再生・音なし・くり返し）
+    mkBtn(svgToolImage(), '画像・動画（PCから追加）', () => {
+      void pickLpMedia().then((dataUrl) => {
         if (dataUrl === null) return
-        // 部品で作ったWidgetでは、画像の部品として足す（部品の文字の中には画像を持てない）
+        // 部品で作ったWidgetでは、画像・動画の部品として足す（部品の文字の中には画像を持てない）
         if (options.onImage?.(dataUrl) === true) return
         contentRef?.focus()
-        document.execCommand('insertImage', false, dataUrl)
+        if (isVideoMedia(dataUrl)) {
+          document.execCommand('insertHTML', false, `<video src="${dataUrl}" autoplay muted loop playsinline preload="metadata" style="max-width:100%"></video>`)
+        } else {
+          document.execCommand('insertImage', false, dataUrl)
+        }
       })
     }),
     // 指示154: 画像サイズ変更を上のツールバーからも開ける。直近クリックした画像、無ければ唯一の画像を対象にする。

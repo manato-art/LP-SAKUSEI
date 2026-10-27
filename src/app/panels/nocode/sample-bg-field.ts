@@ -71,7 +71,7 @@ export function sampleBgSection(deps: SampleBgDeps): SampleBgSection {
       return
     }
     const fields = bgFields('item').map((field) =>
-      field.key === 'bgImage' ? { ...field, label: 'この要素の背景の画像', note: '選んだ要素の後ろに敷きます。文字はこの上に出ます' } : field,
+      field.key === 'bgImage' ? { ...field, label: 'この要素の背景の画像', note: '選んだ要素の後ろに敷きます。画像でも動画でも入ります（動画は自動で再生・音なし・くり返し）。文字はこの上に出ます' } : field,
     )
     const rows = fields.map((field) => {
       const row = node('div', 'ncf-field')

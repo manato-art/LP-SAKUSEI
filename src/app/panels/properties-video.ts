@@ -11,11 +11,12 @@
  */
 import type Quill from 'quill'
 import { toast } from '../ui.ts'
-import { readFileAsDataUrl } from './webp-convert.ts'
+import { convertImageToWebP, readFileAsDataUrl } from './webp-convert.ts'
 import { group, row } from './properties-parts.ts'
 import { applyVideoAlign, videoAlignOf } from './media-align.ts'
 import { buildMediaAlignGroup, syncMediaAlign } from './properties-media-align.ts'
 import { duplicateVideo, hasFlag, toggleFlag, willBlockAutoplay, type VideoFlag } from './video-controls.ts'
+import { swapBodyVideoForImage } from './body-media-swap.ts'
 
 /**
  * ON/OFF のスイッチ1つ。
@@ -54,6 +55,8 @@ export interface VideoBodyDeps {
   getVideo: () => HTMLVideoElement | null
   /** 複製したあとに選択を移すため */
   setVideo: (video: HTMLVideoElement | null) => void
+  /** 画像に差し替えたあと、右の欄を画像の設定にする */
+  showImage: (img: HTMLImageElement) => void
 }
 
 interface VideoBody extends HTMLElement {
@@ -206,19 +209,35 @@ export function buildVideoBody(deps: VideoBodyDeps): VideoBody {
   const swapBtn = document.createElement('button')
   swapBtn.type = 'button'
   swapBtn.style.cssText = ACTION_BTN_CSS
-  swapBtn.textContent = '動画を差し替える'
-  swapBtn.title = '大きさや再生設定はそのままに、中身の動画だけを入れ替えます'
+  swapBtn.textContent = '動画・画像に差し替える'
+  swapBtn.title = '動画なら大きさや再生設定はそのままに中身だけを、画像ならこの場所を画像にします（位置と幅はそのまま）'
   swapBtn.addEventListener('click', () => {
     const video = deps.getVideo()
     if (video === null) return
     const picker = document.createElement('input')
     picker.type = 'file'
-    picker.accept = 'video/*'
+    // 動画でも画像でも（2026-10-27 本人「動画を入れられる所は画像も入ればいい」）
+    picker.accept = 'video/*,image/*'
     picker.addEventListener('change', () => {
       const file = picker.files?.[0]
       if (file === undefined) return
+      if (file.type.startsWith('image/')) {
+        // 本文に入れる画像と同じく WebP にしてから（media-insert.ts）
+        void convertImageToWebP(file).then((src) => {
+          const target = deps.getVideo()
+          const img = src === '' || target === null ? null : swapBodyVideoForImage(deps.quill, target, src)
+          if (img === null) {
+            toast('画像に差し替えられませんでした', 'error')
+            return
+          }
+          deps.setVideo(null)
+          deps.showImage(img)
+          toast('画像に差し替えました')
+        })
+        return
+      }
       if (!file.type.startsWith('video/')) {
-        toast('動画ファイルを選んでください', 'error')
+        toast('動画か画像のファイルを選んでください', 'error')
         return
       }
       void readFileAsDataUrl(file).then((url) => {

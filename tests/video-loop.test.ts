@@ -163,7 +163,8 @@ describe('右パネルの動画プロパティ', () => {
 
   it('差し替えは中身だけ入れ替え、大きさと再生設定は残す', () => {
     const swap = panel.slice(panel.indexOf("swapBtn.addEventListener"))
-    expect(swap).toContain("picker.accept = 'video/*'")
+    // 動画でも画像でも選べる（2026-10-27）。動画を選んだときは中身だけ入れ替える
+    expect(swap).toContain("picker.accept = 'video/*,image/*'")
     expect(swap).toContain('target.load()')
     // 幅や再生設定を触っていないこと
     expect(swap).not.toContain("removeAttribute('width')")

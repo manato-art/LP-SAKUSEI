@@ -10,7 +10,7 @@
  */
 import { isRichEmpty } from '../rich-text.ts'
 import { NO_ACTION, actionFields, layoutFields } from './block-kit.ts'
-import { safeImage } from './kit.ts'
+import { safeMedia } from './kit.ts'
 import { BADGE_LOOK_ICONS, BOX_LOOK_ICONS, SIDE_ICONS } from './option-icons.ts'
 import { ACCENT_PRESETS, str, type BlockType, type ItemData } from './types.ts'
 import { extraBlockProblem } from './builder-blocks-extra.ts'
@@ -266,8 +266,8 @@ export function moreBlockProblem(item: ItemData, where: string): string | null {
     case 'badge':
       return empty('text') ? `バッジの文字が空です（${where}）。文字を書くか、その部品を消してください` : null
     case 'gallery':
-      return safeImage(str(item, 'image1')) === '' || safeImage(str(item, 'image2')) === ''
-        ? `画像が選ばれていません（${where}。1枚目と2枚目は必ず選びます）`
+      return safeMedia(str(item, 'image1')) === '' || safeMedia(str(item, 'image2')) === ''
+        ? `画像が選ばれていません（${where}。1枚目と2枚目は必ず選びます。画像でも動画でも入ります）`
         : null
     case 'point':
       return isRichEmpty(str(item, 'heading')) && isRichEmpty(str(item, 'text'))

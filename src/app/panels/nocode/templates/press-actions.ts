@@ -13,7 +13,7 @@
  *  - 小窓は Widget の中に置く（Widgetだけに効くCSSのまま出すため）。position:fixed で画面いっぱいに重ねる
  */
 import { SCREEN_ID, actionOf, goAttrs, goTarget, telDigits } from './block-kit.ts'
-import { esc, safeColor, safeImage, safeVideo, shade, inkOn } from './kit.ts'
+import { esc, isVideoMedia, safeColor, safeMedia, shade, inkOn } from './kit.ts'
 import { str, type ItemData } from './types.ts'
 
 /** 書き出しの途中で集めるもの（小窓の中身と、使ったアクションの種類） */
@@ -100,13 +100,14 @@ export function pressAttrs(item: ItemData, i: number, ctx: PressContext, isContr
       ctx.flags.add('modal')
       return ` data-nc-modal="${target}"${role}`
     }
-    case 'image': {
-      const src = safeImage(str(item, 'actImage'))
-      return src === '' ? '' : pop('image', '画像', `<img class="nc-pop__img" src="${src}" alt="">`)
-    }
+    // 「画像を大きく表示」「動画を大きく再生」は、どちらも画像・動画のどちらでも出せる（2026-10-27）。画像は大きく見せ、動画は操作ボタン付きで再生する
+    case 'image':
     case 'video': {
-      const src = safeVideo(str(item, 'actVideo'))
-      return src === '' ? '' : pop('video', '動画', `<video class="nc-pop__video" src="${src}" controls playsinline preload="none"></video>`)
+      const src = safeMedia(str(item, actionOf(item) === 'image' ? 'actImage' : 'actVideo'))
+      if (src === '') return ''
+      return isVideoMedia(src)
+        ? pop('video', '動画', `<video class="nc-pop__video" src="${src}" controls playsinline preload="none"></video>`)
+        : pop('image', '画像', `<img class="nc-pop__img" src="${src}" alt="">`)
     }
     case 'coupon': {
       if (str(item, 'actAmount').trim() === '') return ''
@@ -165,9 +166,9 @@ export function pressLabel(item: ItemData, screenName: string): string {
 export function lpActionProblem(item: ItemData, where: string, screenIds: ReadonlySet<string>): string | null {
   switch (actionOf(item)) {
     case 'image':
-      return safeImage(str(item, 'actImage')) === '' ? `大きく見せる画像が選ばれていません（${where}）。「押したとき」で画像を選んでください` : null
+      return safeMedia(str(item, 'actImage')) === '' ? `大きく見せる画像が選ばれていません（${where}）。「押したとき」で画像か動画を選んでください` : null
     case 'video':
-      return safeVideo(str(item, 'actVideo')) === '' ? `大きく再生する動画が選ばれていません（${where}）。「押したとき」で動画を選んでください` : null
+      return safeMedia(str(item, 'actVideo')) === '' ? `大きく再生する動画が選ばれていません（${where}）。「押したとき」で動画か画像を選んでください` : null
     case 'coupon':
       return str(item, 'actAmount').trim() === '' ? `クーポンの割引が空です（${where}）。「500円OFF」などを書いてください` : null
     case 'modal': {

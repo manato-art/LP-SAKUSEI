@@ -1,13 +1,13 @@
 /**
  * もっと増やした部品の書き出し（2026-09-24・入力欄は builder-blocks-extra.ts）。
  * 決まりは builder-blocks-more-render.ts と同じ: 部品ごとの色はその部品だけのクラスに、形の土台は使っている部品の分だけ1回、
- * 入力の文字は esc か richText、色は safeColor、画像は safeImage を通す。
+ * 入力の文字は esc か richText、色は safeColor、画像・動画は safeMedia を通す。
  * 飾りの擬似要素は ::after に置く（::before は見たまま画面の空の案内に使う＝ui-forge pseudo-element-slot-collision）。
  */
 import { ALIGNS, goTarget, hrefOf } from './block-kit.ts'
 import type { PressContext } from './press-actions.ts'
 import { FEATURE_ICONS, splitRows, telDigits } from './builder-blocks-extra.ts'
-import { esc, inkOn, linkAttrs, safeColor, safeImage, shade } from './kit.ts'
+import { esc, inkOn, linkAttrs, mediaTag, safeColor, safeMedia, shade } from './kit.ts'
 import { richText } from '../rich-text.ts'
 import { bool, int, pick, str, type ItemData } from './types.ts'
 
@@ -82,12 +82,12 @@ export function renderExtraBlock(item: ItemData, i: number, s: string, press?: P
     }
     case 'quote': {
       const stars = int(item, 'stars', 0, 5, 5)
-      const photo = safeImage(str(item, 'photo'))
+      const photo = safeMedia(str(item, 'photo'))
       const name = str(item, 'name').trim()
       const who =
         name === '' && photo === ''
           ? ''
-          : `<figcaption class="nc-b-quote__who">${photo === '' ? '' : `<img src="${photo}" alt="">`}<span>${esc(name)}</span></figcaption>`
+          : `<figcaption class="nc-b-quote__who">${photo === '' ? '' : mediaTag(photo)}<span>${esc(name)}</span></figcaption>`
       return {
         html:
           `<figure class="nc-b nc-b-quote ${cls}">` +
@@ -101,11 +101,11 @@ export function renderExtraBlock(item: ItemData, i: number, s: string, press?: P
     }
     case 'profile': {
       const color = safeColor(str(item, 'color'), '#1F7AE0')
-      const photo = safeImage(str(item, 'photo'))
+      const photo = safeMedia(str(item, 'photo'))
       const role = str(item, 'role').trim()
       return {
         html:
-          `<div class="nc-b nc-b-profile ${cls}"><span class="nc-b-profile__photo">${photo === '' ? PERSON_SVG : `<img src="${photo}" alt="">`}</span>` +
+          `<div class="nc-b nc-b-profile ${cls}"><span class="nc-b-profile__photo">${photo === '' ? PERSON_SVG : mediaTag(photo)}</span>` +
           `<div class="nc-b-profile__body">` +
           (role === '' ? '' : `<p class="nc-b-profile__role">${esc(role)}</p>`) +
           `<p class="nc-b-profile__name">${esc(str(item, 'name').trim())}</p>` +
@@ -114,12 +114,12 @@ export function renderExtraBlock(item: ItemData, i: number, s: string, press?: P
       }
     }
     case 'cover': {
-      const image = safeImage(str(item, 'image'))
+      const image = safeMedia(str(item, 'image'))
       const align = pick(item, 'align', ALIGNS, 'center')
       const shadeAlpha = int(item, 'shade', 0, 80, 35) / 100
       return {
         html:
-          `<div class="nc-b nc-b-cover nc-b--${align} ${cls}"><div class="nc-b-cover__bg">${image === '' ? '' : `<img src="${image}" alt="">`}</div>` +
+          `<div class="nc-b nc-b-cover nc-b--${align} ${cls}"><div class="nc-b-cover__bg">${image === '' ? '' : mediaTag(image)}</div>` +
           `<div class="nc-b-cover__body"><h3 class="nc-b-cover__heading">${richText(str(item, 'heading'))}</h3>` +
           `<p class="nc-b-cover__text">${richText(str(item, 'text'))}</p></div></div>`,
         css: `${sel}{min-height:${int(item, 'height', 120, 520, 240)}px}${sel} .nc-b-cover__bg::after{background:rgba(0,0,0,${shadeAlpha})}`,
@@ -128,11 +128,11 @@ export function renderExtraBlock(item: ItemData, i: number, s: string, press?: P
     case 'beforeAfter': {
       const color = safeColor(str(item, 'color'), '#E5573F')
       const side = (key: string, labelKey: string, fallback: string, isAfter: boolean): string => {
-        const src = safeImage(str(item, key))
+        const src = safeMedia(str(item, key))
         const label = str(item, labelKey).trim() || fallback
         return (
           `<figure class="nc-b-beforeAfter__side${isAfter ? ' nc-b-beforeAfter__side--after' : ''}">` +
-          `<div class="nc-b-beforeAfter__img">${src === '' ? '' : `<img src="${src}" alt="">`}</div>` +
+          `<div class="nc-b-beforeAfter__img">${src === '' ? '' : mediaTag(src)}</div>` +
           `<figcaption class="nc-b-beforeAfter__label">${esc(label)}</figcaption></figure>`
         )
       }
@@ -260,12 +260,12 @@ export const EXTRA_BASE_CSS: Readonly<Record<string, (s: string) => string>> = {
     `${s} .nc-b-quote__on{color:#F2A516}${s} .nc-b-quote__off{color:#DADFE6}` +
     `${s} .nc-b-quote__text{position:relative;z-index:1;margin:0;font-size:15px;line-height:1.85;color:#1F2A37}` +
     `${s} .nc-b-quote__who{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12.5px;color:#5B6572}` +
-    `${s} .nc-b-quote__who img{width:32px;height:32px;border-radius:50%;object-fit:cover}`,
+    `${s} .nc-b-quote__who img,${s} .nc-b-quote__who video{width:32px;height:32px;border-radius:50%;object-fit:cover}`,
   profile: (s) =>
     `${s} .nc-b-profile{display:flex;align-items:flex-start;gap:16px}` +
     `${s} .nc-b-profile__photo{flex:0 0 88px;width:88px;height:88px;border-radius:50%;overflow:hidden;background:#E6EAF0;color:#9AA3AE;` +
     `display:flex;align-items:flex-end;justify-content:center}` +
-    `${s} .nc-b-profile__photo img{width:100%;height:100%;object-fit:cover}` +
+    `${s} .nc-b-profile__photo img,${s} .nc-b-profile__photo video{width:100%;height:100%;object-fit:cover}` +
     `${s} .nc-b-profile__photo svg{width:70px;height:70px;display:block}` +
     `${s} .nc-b-profile__body{min-width:0;flex:1 1 auto}` +
     `${s} .nc-b-profile__role{display:inline-block;margin:0 0 4px;padding:2px 10px;border:1.5px solid;border-radius:999px;font-size:12px;font-weight:800}` +
@@ -274,7 +274,7 @@ export const EXTRA_BASE_CSS: Readonly<Record<string, (s: string) => string>> = {
   cover: (s) =>
     `${s} .nc-b-cover{position:relative;display:flex;align-items:center;overflow:hidden;border-radius:12px;background:#3A4452;color:#FFFFFF}` +
     `${s} .nc-b-cover__bg{position:absolute;inset:0}` +
-    `${s} .nc-b-cover__bg img{width:100%;height:100%;object-fit:cover}` +
+    `${s} .nc-b-cover__bg img,${s} .nc-b-cover__bg video{width:100%;height:100%;object-fit:cover}` +
     `${s} .nc-b-cover__bg::after{content:"";position:absolute;inset:0}` +
     `${s} .nc-b-cover__body{position:relative;z-index:1;width:100%;padding:24px 22px;text-shadow:0 1px 8px rgba(0,0,0,.35)}` +
     `${s} .nc-b-cover__heading{margin:0 0 6px;font-size:23px;font-weight:900;line-height:1.45}` +
@@ -282,7 +282,7 @@ export const EXTRA_BASE_CSS: Readonly<Record<string, (s: string) => string>> = {
   beforeAfter: (s) =>
     `${s} .nc-b-beforeAfter{display:grid;grid-template-columns:minmax(0,1fr) 22px minmax(0,1fr);align-items:center;gap:6px}` +
     `${s} .nc-b-beforeAfter__side{position:relative;margin:0}` +
-    `${s} .nc-b-beforeAfter__img img{width:100%;height:auto;display:block;border-radius:10px}` +
+    `${s} .nc-b-beforeAfter__img img,${s} .nc-b-beforeAfter__img video{width:100%;height:auto;display:block;border-radius:10px}` +
     `${s} .nc-b-beforeAfter__label{position:absolute;left:8px;top:8px;padding:3px 10px;border-radius:999px;background:#5B6572;color:#FFFFFF;` +
     `font-size:12px;font-weight:800;line-height:1.4}` +
     `${s} .nc-b-beforeAfter__arrow{justify-self:center;width:0;height:0;border-style:solid;border-width:10px 0 10px 14px;border-color:transparent}`,

@@ -95,6 +95,28 @@ export function safeVideo(value: string): string {
   return DATA_VIDEO.test(value) || UPLOADED_VIDEO.test(value) ? value : ''
 }
 
+/**
+ * 画像か動画（2026-10-27 本人「画像を入れられる所は動画も、動画の所は画像も入ればいい」）。
+ * 画像・動画の欄はどちらも、選んだのが画像か動画かを中身（data URL・/uploads/ の拡張子）で見分けて描く
+ */
+export function safeMedia(value: string): string {
+  return safeImage(value) || safeVideo(value)
+}
+
+/** 中身が動画か（safeMedia を通したあとの値で見る） */
+export const isVideoMedia = (src: string): boolean => safeVideo(src) !== ''
+
+/**
+ * 画像なら <img>、動画なら <video>（本人の決定: 自動で再生・音なし・くり返し）。
+ * 動画も画像と同じ場所・同じ見た目で出す（各部品のCSSは img と video の両方に当てる）
+ */
+export function mediaTag(src: string, options: { readonly cls?: string; readonly alt?: string } = {}): string {
+  const cls = options.cls === undefined || options.cls === '' ? '' : ` class="${options.cls}"`
+  return isVideoMedia(src)
+    ? `<video${cls} src="${src}" autoplay muted loop playsinline preload="metadata"></video>`
+    : `<img${cls} src="${src}" alt="${esc(options.alt ?? '')}">`
+}
+
 function channels(hex: string): [number, number, number] {
   // 不透明度つき（#RRGGBBAA）も、色の明るさは #RRGGBB で見る
   const n = Number.parseInt(hex.slice(1, 7), 16)
@@ -155,7 +177,7 @@ export function baseCss(scope: string, isolate?: string): string {
     `${scope}{box-sizing:border-box;margin:0;padding:28px 16px;color:${INK_DARK};line-height:1.7;` +
     `font-size:15px;font-family:inherit;text-align:left}` +
     `${scope} *${not},${scope} *${not}::before,${scope} *${not}::after{box-sizing:border-box}` +
-    `${scope} img${not}{max-width:100%;height:auto;display:block}` +
+    `${scope} img${not},${scope} video${not}{max-width:100%;height:auto;display:block}` +
     `${scope} [hidden]${not},${scope}[hidden]{display:none !important}` +
     // 画面には出さず、読み上げだけで伝える文字（◎→「とても良い」など）
     `${scope} .nc-sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}` +

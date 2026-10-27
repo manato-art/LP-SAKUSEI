@@ -10,7 +10,7 @@
  * - 移る先は決まった形のid（s1, s2…）で、今ある画面だけ。入力の文字は属性にエスケープして入れる
  */
 import { ARROW_SVG, pressButtonCss } from './cta.ts'
-import { esc, inkOn, linkAttrs, newUid, safeColor, safeImage, safeVideo, shade } from './kit.ts'
+import { inkOn, isVideoMedia, linkAttrs, mediaTag, newUid, safeColor, safeMedia, shade } from './kit.ts'
 import { richText } from '../rich-text.ts'
 import { BUTTON_LOOK_ICONS, DIVIDER_ICONS, MARKER_ICONS, SHAPE_ICONS, SIDE_ICONS } from './option-icons.ts'
 import { TEMPLATES } from './list.ts'
@@ -20,7 +20,7 @@ import { renderMoreBlock } from './builder-blocks-more-render.ts'
 import { pressAttrs, pressContext, type PressContext } from './press-actions.ts'
 import { scopeSampleStyles } from '../sample-css-scope.ts'
 import { PROGRESS_BLOCK_TYPE, PROGRESS_TYPE, renderProgress } from './progress-part.ts'
-import { bgFields, bgTargetOf, blockBgCss } from './bg-image.ts'
+import { bgFields, bgTargetOf, blockBgCss, withBlockBgVideo } from './bg-image.ts'
 import { faceFields, partColorsCss, textLookFields } from './part-colors.ts'
 import { ACCENT_PRESETS, bool, int, pick, str, type BlockType, type Field, type ItemData, type NocodeTemplate } from './types.ts'
 import {
@@ -391,7 +391,7 @@ export function layoutCss(s: string, cls: string, item: ItemData): string {
   if (key === null) return ''
   const width = int(item, key, 10, 100, 100)
   const margins = placeMargins(pick(item, 'place', PLACES, 'center'))
-  if (type === 'image') return `${s} .${cls} img{width:${width}%;${margins}}`
+  if (type === 'image') return `${s} .${cls} img,${s} .${cls} video{width:${width}%;${margins}}`
   if (type === 'video') return `${s} .${cls} .nc-b-video__v{width:${width}%;${margins}}`
   if (type === 'shape') return `${s} .${cls}{width:${width}%;${margins}}`
   return width >= 100 ? '' : `${s} .${cls}{width:${width}%;${margins}}`
@@ -409,7 +409,9 @@ export function renderBlock(
   const part = renderBlockBody(item, i, s, seen, press)
   // 部品の型のCSS（背景の色）のあとに、幅・置く位置と背景の画像を重ねる
   const extra = layoutCss(s, `nc-b-${i}`, item) + partColorsCss(s, `nc-b-${i}`, item) + blockBgCss(s, `nc-b-${i}`, item)
-  return extra === '' ? part : { html: part.html, css: part.css + extra }
+  // 背景が動画なら、面のいちばん後ろに動画の層を入れる（2026-10-27・bg-image.ts）
+  const html = withBlockBgVideo(item, part.html)
+  return extra === '' && html === part.html ? part : { html, css: part.css + extra }
 }
 
 function renderBlockBody(item: ItemData, i: number, s: string, seen: Set<string>, press: PressContext): { html: string; css: string } {
@@ -455,9 +457,10 @@ function renderBlockBody(item: ItemData, i: number, s: string, seen: Set<string>
       }
     }
     case 'image': {
-      const image = safeImage(str(item, 'image'))
+      // 画像の部品に動画を選んだら動画で出す（2026-10-27 本人「画像の所は動画も」・自動で再生・音なし・くり返し）
+      const image = safeMedia(str(item, 'image'))
       const round = bool(item, 'round') ? ' nc-b-image--round' : ''
-      const picture = image === '' ? '' : `<img src="${image}" alt="${esc(str(item, 'alt').trim())}">`
+      const picture = image === '' ? '' : mediaTag(image, { alt: str(item, 'alt').trim() })
       return {
         html: `<figure class="nc-b nc-b-image${round} ${cls}"${act(false)}>${withLink(item, 'nc-b-image__link', picture)}</figure>`,
         css: '',
@@ -477,11 +480,17 @@ function renderBlockBody(item: ItemData, i: number, s: string, seen: Set<string>
       return { html, css: `${s} .${cls}{background:${color};color:${inkOn(color)};font-size:${textSize}px}` }
     }
     case 'video': {
-      const video = safeVideo(str(item, 'video'))
+      const video = safeMedia(str(item, 'video'))
       const autoplay = bool(item, 'autoplay') ? ' autoplay muted loop' : ''
       // 押したら移る・開くときは操作ボタンを出さない（押すと再生ではなく、移る・開くにする）
       const controls = actionOf(item) === 'none' ? ' controls' : ''
-      const player = video === '' ? '' : `<video class="nc-b-video__v" src="${video}" playsinline preload="metadata"${autoplay}${controls}></video>`
+      // 動画の部品に画像を選んだら画像で出す（2026-10-27 本人「動画の所は画像も」）
+      const player =
+        video === ''
+          ? ''
+          : isVideoMedia(video)
+            ? `<video class="nc-b-video__v" src="${video}" playsinline preload="metadata"${autoplay}${controls}></video>`
+            : `<img class="nc-b-video__v" src="${video}" alt="">`
       return {
         html: `<div class="nc-b nc-b-video ${cls}"${act(false)}>${withLink(item, 'nc-b-video__link', player)}</div>`,
         css: '',
@@ -506,11 +515,11 @@ function renderBlockBody(item: ItemData, i: number, s: string, seen: Set<string>
       return { html: `<${tag} class="nc-b nc-b-list nc-b-list--${marker} ${cls}">${lis}</${tag}>`, css: '' }
     }
     case 'imageText': {
-      const image = safeImage(str(item, 'image'))
+      const image = safeMedia(str(item, 'image'))
       const side = pick(item, 'side', ['left', 'right'] as const, 'left')
       const heading = richText(str(item, 'heading'))
       const inner =
-        `<div class="nc-b-imageText__img">${image === '' ? '' : `<img src="${image}" alt="">`}</div>` +
+        `<div class="nc-b-imageText__img">${image === '' ? '' : mediaTag(image)}</div>` +
         `<div class="nc-b-imageText__body">` +
         (heading === '' ? '' : `<h3 class="nc-b-imageText__heading">${heading}</h3>`) +
         `<p class="nc-b-imageText__text">${richText(str(item, 'text'))}</p></div>`

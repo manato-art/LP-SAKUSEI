@@ -86,7 +86,7 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
 
   // ── 画像プロパティ（指示101: 画像クリックで右パネルに詳細表示） ──
   let selectedImage: HTMLImageElement | null = null
-  const imageBody = buildImageBody(quill, () => selectedImage, (img) => { selectedImage = img })
+  const imageBody = buildImageBody(quill, () => selectedImage, (img) => { selectedImage = img }, (video) => showVideoMode(video))
 
   // ── 動画プロパティ（動画クリックで再生設定・サイズ・複製をここで操作する） ──
   let selectedVideo: HTMLVideoElement | null = null
@@ -96,6 +96,7 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
     setVideo: (v) => {
       selectedVideo = v
     },
+    showImage: (img) => showImageMode(img),
   })
 
   // ── helpers ──

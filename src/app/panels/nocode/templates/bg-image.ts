@@ -15,8 +15,13 @@
  * 高さ（ボタンの高さ・文字の量）は縮まないので、画像の上下に色が出た。CSSだけでは「覆う大きさ×%」を書けないので、
  * 面に印（--nc-bgfree＝大きさ%）を付け、配信では bg-fit-script.ts が枠と画像を測って px で当てる。
  * スクリプトが動くまで（LPの編集画面の中も）は横幅に対する%で出す（横長の枠＝PCではほぼ同じ見え方）
+ *
+ * 背景に動画も敷ける（2026-10-27 本人「背景を追加とかで、画像を入れられる場所は動画も入ればいい」）。動画は CSS の背景にできないので、
+ * 面のいちばん後ろに動画の層（.nc-bgv・自動で再生・音なし・くり返し）を入れる（bgVideoLayer・withBlockBgVideo）。
+ * 層は面と同じ大きさ・同じ角の丸みで切り取り、文字はその上に出る。位置と大きさは画像と同じ数字（bgVideoDeclarations）。
+ * 書き出した層は保存する中身には入れない（見たまま画面から読み戻すときに外す＝canvas-sync.ts）
  */
-import { safeImage } from './kit.ts'
+import { isVideoMedia, safeMedia } from './kit.ts'
 import { BG_FIT_ICONS } from './option-icons.ts'
 import { int, items, pick, str, type Field, type ItemData } from './types.ts'
 
@@ -60,7 +65,7 @@ export interface BgLook {
 
 /** 背景の画像の今の設定（画像が無い・決まった形でなければ null） */
 export function bgLookOf(item: ItemData): BgLook | null {
-  const image = safeImage(str(item, 'bgImage'))
+  const image = safeMedia(str(item, 'bgImage'))
   if (image === '') return null
   return {
     image,
@@ -89,10 +94,84 @@ export const BG_FREE_MARK = '--nc-bgfree'
 /** Widgetの中の要素に印を受け継がせない（印は面ごとに !important で付く） */
 export const bgFreeReset = (s: string): string => `${s} *{${BG_FREE_MARK}:initial}`
 
-/** selector の面に背景の画像を敷くCSS。画像が無ければ '' */
+/** 背景が動画か */
+export const isBgVideo = (look: BgLook): boolean => isVideoMedia(look.image)
+
+/**
+ * 背景の動画の見え方（動画の要素に当てる）。位置は背景の画像と同じ決まり（0＝左端・50＝真ん中・100＝右端＝object-position）。
+ * 大きさは「枠いっぱいに覆う大きさ」に対する%で、その位置を中心に大きく・小さくする（transform）。
+ * 100%以上は背景の画像とまったく同じ見え方。100%より小さいときは、枠の形に切った動画が小さくなる
+ * （書き出すときには動画の縦横の比が分からないため）
+ */
+export function bgVideoDeclarations(look: BgLook): Readonly<Record<string, string>> {
+  const scale = look.fit === 'cover' ? 1 : look.size / 100
+  return {
+    'object-position': `${look.x}% ${look.y}%`,
+    'transform-origin': `${look.x}% ${look.y}%`,
+    transform: scale === 1 ? 'none' : `scale(${scale})`,
+  }
+}
+
+/** 背景の動画の層の目印 */
+export const BG_VIDEO_CLASS = 'nc-bgv'
+
+/**
+ * selector の面の背景の動画のCSS。面がもともと位置を決めていなければ（ふつうの並び）、層の基準にする（:where＝見本・部品のCSSが決めた位置が勝つ）。
+ * 層は面の中で重なりを閉じ（isolation）、いちばん後ろ（面の色の上・文字の下）に置く
+ */
+function bgVideoCss(selector: string, look: BgLook): string {
+  const video = Object.entries(bgVideoDeclarations(look))
+    .map(([property, value]) => `${property}:${value}`)
+    .join(';')
+  return (
+    `:where(${selector}){position:relative;isolation:isolate}` +
+    `${selector}>.${BG_VIDEO_CLASS}{position:absolute;inset:0;overflow:hidden;border-radius:inherit;z-index:-1;pointer-events:none}` +
+    `${selector}>.${BG_VIDEO_CLASS}>video{position:absolute;inset:0;width:100%;height:100%;max-width:none;margin:0;object-fit:cover;${video}}`
+  )
+}
+
+/** 背景が動画のとき、面のいちばん後ろに入れる層（自動で再生・音なし・くり返し）。動画でなければ '' */
+export function bgVideoLayer(item: ItemData): string {
+  const look = bgLookOf(item)
+  if (look === null || !isBgVideo(look)) return ''
+  return (
+    `<span class="${BG_VIDEO_CLASS}" aria-hidden="true" contenteditable="false">` +
+    `<video src="${look.image}" autoplay muted loop playsinline preload="metadata"></video></span>`
+  )
+}
+
+/** html の中で、opening に当たる最初の開始タグのすぐ後ろに layer を入れる（見つからなければそのまま） */
+function insertAfterOpenTag(html: string, opening: RegExp, layer: string): string {
+  const found = opening.exec(html)
+  if (found === null) return html
+  const end = found.index + found[0].length
+  return html.slice(0, end) + layer + html.slice(end)
+}
+
+/**
+ * 部品1つの背景の動画の層を、背景を敷く面（bgTargetOf）に入れる。見本の部品は、中の箱（印の付いた要素）ごと。
+ * 面が部品そのものなら部品のいちばん外の要素、ボタンなどは色の付いた要素（ボタンなら押す所）
+ */
+export function withBlockBgVideo(item: ItemData, html: string): string {
+  if (str(item, 'type') === 'sample') {
+    return items(item, 'bgs').reduce((out, entry) => {
+      const id = str(entry, 'id')
+      const layer = SAMPLE_BG_ID.test(id) ? bgVideoLayer(entry) : ''
+      return layer === '' ? out : insertAfterOpenTag(out, new RegExp(`<[a-zA-Z][^>]*\\sdata-nc-bg="${id}"[^>]*>`), layer)
+    }, html)
+  }
+  const target = bgTargetOf(str(item, 'type'))
+  const layer = target === null ? '' : bgVideoLayer(item)
+  if (target === null || layer === '') return html
+  const opening = target === '' ? /^\s*<[a-zA-Z][^>]*>/ : new RegExp(`<[a-zA-Z][^>]*\\sclass="(?:[^"]*\\s)?${target.trim().slice(1)}(?:\\s[^"]*)?"[^>]*>`)
+  return insertAfterOpenTag(html, opening, layer)
+}
+
+/** selector の面に背景の画像を敷くCSS（動画なら層のCSS）。画像も動画も無ければ '' */
 export function bgCss(selector: string, item: ItemData): string {
   const look = bgLookOf(item)
   if (look === null) return ''
+  if (isBgVideo(look)) return bgVideoCss(selector, look)
   const mark: Readonly<Record<string, string>> = look.fit === 'free' ? { [BG_FREE_MARK]: String(look.size) } : {}
   const body = Object.entries({ ...bgDeclarations(look), ...mark })
     .map(([property, value]) => `${property}:${value}!important`)
@@ -102,7 +181,9 @@ export function bgCss(selector: string, item: ItemData): string {
 
 /** 中身のどこか（Widget全体・画面・部品・見本の中の箱）に、自由な大きさの背景の画像があるか */
 export function usesFreeBg(value: ItemData): boolean {
-  if (bgLookOf(value)?.fit === 'free') return true
+  // 動画は CSS の % で大きさを決める（配信のスクリプトで測らない）
+  const look = bgLookOf(value)
+  if (look !== null && look.fit === 'free' && !isBgVideo(look)) return true
   return Object.values(value).some(
     (child) => Array.isArray(child) && child.some((entry: unknown) => typeof entry === 'object' && entry !== null && usesFreeBg(entry as ItemData)),
   )
@@ -151,9 +232,9 @@ export function withSampleBg(bgs: readonly ItemData[], id: string, values: ItemD
   return next.filter((entry) => str(entry, 'id') !== id || hasBgImage(entry))
 }
 
-/** 背景の画像を選んでいるか */
+/** 背景の画像（か動画）を選んでいるか */
 export function hasBgImage(value: ItemData): boolean {
-  return safeImage(str(value, 'bgImage')) !== ''
+  return safeMedia(str(value, 'bgImage')) !== ''
 }
 const hasImage = hasBgImage
 const isFree = (value: ItemData): boolean => hasImage(value) && str(value, 'bgFit') === 'free'
@@ -166,7 +247,7 @@ export function bgFields(scope: 'item' | 'root'): readonly Field[] {
   const when = (test: (value: ItemData) => boolean): Pick<Field, 'showIf' | 'showIfItem'> =>
     scope === 'item' ? { showIfItem: test } : { showIf: test }
   return [
-    { kind: 'image', key: 'bgImage', label: '背景の画像', note: '文字はこの画像の上に出ます', section: 'background' },
+    { kind: 'image', key: 'bgImage', label: '背景の画像', note: '画像でも動画でも入ります（動画は自動で再生・音なし・くり返し）。文字はこの上に出ます', section: 'background' },
     {
       kind: 'select',
       key: 'bgFit',

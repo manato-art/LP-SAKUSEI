@@ -19,8 +19,8 @@ import { isAllowedLinkUrl } from '../../../shared/link-html.ts'
 import { toast } from '../../ui.ts'
 import { replaceSampleCss, splitStyles } from './builder-data.ts'
 import { node } from './form-controls.ts'
-import { pickLpImage } from './lp-image.ts'
-import { pickLpVideo } from './lp-video.ts'
+import { pickLpMedia } from './lp-media.ts'
+import { isVideoMedia } from './templates/kit.ts'
 import { chipRow, type Chip } from './press-chips.ts'
 import { editSample, previewWithStep, readSample, type SampleChange, type SampleInfo } from './sample-dom.ts'
 import type { Slot } from './sample-model.ts'
@@ -52,7 +52,7 @@ export interface SampleEditorOptions {
   onInnerSelected?: (nodeEl: HTMLElement, label: string, handles: readonly SelectionHandle[]) => void
   /** 開いた直後に選んでおく、見本の中の要素（左で押した所） */
   initialInner?: HTMLElement | null
-  /** コードを直し終わったら入力欄を組み立て直す（中身の番号がずれるため） */
+  /** コードを直し終わったとき・画像を動画に（動画を画像に）変えたときに入力欄を組み立て直す（中身の番号がずれるため） */
   rebuild?: () => void
   /** 中の箱の背景の画像（2026-10-24・sample-bg-field.ts）。いまの中身は read から読む */
   background?: Omit<SampleBgDeps, 'readHtml'>
@@ -377,21 +377,29 @@ function slotEl(
       // 文字はまとめて並べる（renderBody）。ここへは来ないが、来ても1かけらの欄を出す
       row.append(textPiece(slot, apply))
       break
+    // 画像も動画も、画像・動画のどちらでも選べる（2026-10-27 本人「画像を入れられる所は動画も、動画の所は画像も入ればいい」）。
+    // 種類が変わったら要素が入れ替わる（<picture>・<source> の数も変わる）ので、中身の一覧を作り直す（rebuild）
     case 'image': {
       const box = node('div', 'ncf-image')
       const thumb = node('img', 'ncf-image__thumb')
       thumb.src = slot.src
       thumb.alt = slot.alt
-      const change = node('button', 'ncf-btn', '画像を変える')
+      const change = node('button', 'ncf-btn', '変える')
       change.type = 'button'
+      change.title = '画像でも動画でも選べます（動画は自動で再生・音なし・くり返し）'
       change.addEventListener('click', () => {
-        void pickLpImage().then(
+        void pickLpMedia().then(
           (picked) => {
             if (picked === null) return
+            if (isVideoMedia(picked)) {
+              apply(slot.id, { kind: 'toVideo', value: picked })
+              options.rebuild?.()
+              return
+            }
             apply(slot.id, { kind: 'image', value: picked })
             thumb.src = picked
           },
-          () => toast('画像を読み込めませんでした', 'error'),
+          () => toast('読み込めませんでした', 'error'),
         )
       })
       box.append(thumb, change)
@@ -413,16 +421,22 @@ function slotEl(
           video.preload = 'metadata'
           box.append(video)
         }
-        const change = node('button', 'ncf-btn', src === '' ? '動画を選ぶ' : '動画を変える')
+        const change = node('button', 'ncf-btn', src === '' ? '動画・画像を選ぶ' : '変える')
         change.type = 'button'
+        change.title = '動画でも画像でも選べます'
         change.addEventListener('click', () => {
-          void pickLpVideo().then(
+          void pickLpMedia().then(
             (picked) => {
               if (picked === null) return
+              if (!isVideoMedia(picked)) {
+                apply(slot.id, { kind: 'toImage', value: picked })
+                options.rebuild?.()
+                return
+              }
               apply(slot.id, { kind: 'video', value: picked })
               paint(picked)
             },
-            () => toast('動画を読み込めませんでした', 'error'),
+            () => toast('読み込めませんでした', 'error'),
           )
         })
         box.append(change)

@@ -19,7 +19,7 @@
  */
 import { SCREEN_ID, ALL_BLOCK_TYPES, actionOf, blockLabel, goTarget, layoutCss, renderBlock, sizeOf, templateOfBlock } from './builder-blocks.ts'
 import { goTargetsIn } from '../sample-model.ts'
-import { baseCss, esc, safeColor, safeImage, safeVideo, shade, wrapWidget } from './kit.ts'
+import { baseCss, esc, safeColor, safeMedia, shade, wrapWidget } from './kit.ts'
 import { ACCENT_PRESETS, items, pick, str, type ItemData, type NocodeTemplate } from './types.ts'
 import { isRichEmpty } from '../rich-text.ts'
 import { TRANSITION_ICONS } from './option-icons.ts'
@@ -45,7 +45,7 @@ const svg = (body: string): string =>
 // 画面の切り替えのスクリプトは screens-script.ts（2026-10-24 に「下に積み重ねる」を足すときに分けた）
 import { SCREENS_SCRIPT } from './screens-script.ts'
 import { BG_FIT_SCRIPT } from './bg-fit-script.ts'
-import { bgCss, bgFields, bgFreeReset, usesFreeBg } from './bg-image.ts'
+import { bgCss, bgFields, bgFreeReset, bgVideoLayer, usesFreeBg } from './bg-image.ts'
 export { SCREENS_SCRIPT }
 
 /** 見本の中身（そのまま入れられる例。1画面目で答えを選ぶと2画面目へ移る） */
@@ -164,10 +164,11 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
         const more = moreBlockProblem(item, where)
         if (more !== null) return more
         if (type === 'button' && isRichEmpty(str(item, 'label'))) return `ボタンの文字が空です（${where}）。文字を書くか、その部品を消してください`
-        if ((type === 'image' || type === 'imageText') && safeImage(str(item, 'image')) === '') {
-          return `画像が選ばれていません（${where}）。画像を選ぶか、その部品を消してください`
+        // 画像の欄にも動画の欄にも、画像・動画のどちらでも入る（2026-10-27）
+        if ((type === 'image' || type === 'imageText') && safeMedia(str(item, 'image')) === '') {
+          return `画像が選ばれていません（${where}）。画像か動画を選ぶか、その部品を消してください`
         }
-        if (type === 'video' && safeVideo(str(item, 'video')) === '') return `動画が選ばれていません（${where}）。動画を選ぶか、その部品を消してください`
+        if (type === 'video' && safeMedia(str(item, 'video')) === '') return `動画が選ばれていません（${where}）。動画か画像を選ぶか、その部品を消してください`
         if ((type === 'heading' || type === 'text' || type === 'list') && isRichEmpty(str(item, 'text'))) {
           return `文字が空です（${where}）。文字を書くか、その部品を消してください`
         }
@@ -284,7 +285,7 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
         })
         const id = str(screen, 'id')
         const hidden = id === start ? '' : ' hidden'
-        return `<div class="nc-screen" data-nc-screen="${id}" data-nc-name="${esc(screenName(screen, index))}"${hidden}>${html.join('')}</div>`
+        return `<div class="nc-screen" data-nc-screen="${id}" data-nc-name="${esc(screenName(screen, index))}"${hidden}>${bgVideoLayer(screen)}${html.join('')}</div>`
       })
       .join('')
 
@@ -323,8 +324,8 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
       // 型の部品は自分で余白を持っている（余白は「部品を積んで作る」に任せ、ほかの部品と左右もそろえる）
       `${s} .nc-b-tpl>.nc{padding:0}` +
       `${s} .nc-b-image{margin-left:0;margin-right:0}` +
-      `${s} .nc-b-image img{margin:0 auto}` +
-      `${s} .nc-b-image--round img{border-radius:12px}` +
+      `${s} .nc-b-image img,${s} .nc-b-image video{margin:0 auto}` +
+      `${s} .nc-b-image--round img,${s} .nc-b-image--round video{border-radius:12px}` +
       `${s} .nc-b-image__link,${s} .nc-b-video__link,${s} .nc-b-imageText__link{display:block;color:inherit;text-decoration:none}` +
       `${s} .nc-b-button{margin-top:22px}` +
       `${s} .nc-b-button--choice+.nc-b-button--choice{margin-top:10px}` +
@@ -346,7 +347,7 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
       `${s} .nc-b-shape--arrow{min-height:72px;padding-right:48px;clip-path:polygon(0 0,calc(100% - 34px) 0,100% 50%,calc(100% - 34px) 100%,0 100%)}` +
       `${s} .nc-b-shape--down{min-height:100px;padding-bottom:40px;clip-path:polygon(0 0,100% 0,100% calc(100% - 30px),50% 100%,0 calc(100% - 30px))}` +
       `${s} .nc-b-shape--ribbon{min-height:64px;padding:16px 40px;clip-path:polygon(0 0,100% 0,calc(100% - 22px) 50%,100% 100%,0 100%,22px 50%)}` +
-      `${s} .nc-b-video__v{display:block;width:100%;height:auto;border-radius:10px;background:#000000}` +
+      `${s} .nc-b-video__v{display:block;width:100%;height:auto;border-radius:10px}${s} video.nc-b-video__v{background:#000000}` +
       `${s} .nc-b-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}` +
       `${s} .nc-b-list__item{display:flex;align-items:flex-start;gap:10px}` +
       `${s} .nc-b-list__mark{flex:0 0 22px;width:22px;height:22px;margin-top:2px;color:${shade(accent, -0.15)};` +
@@ -356,7 +357,7 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
       `${s} .nc-b-list__text{min-width:0;font-size:15px;line-height:1.7;font-weight:600}` +
       `${s} .nc-b-imageText,${s} .nc-b-imageText__link{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:16px;align-items:center}` +
       `${s} .nc-b-imageText--right .nc-b-imageText__img{order:2}` +
-      `${s} .nc-b-imageText__img img{border-radius:10px;width:100%}` +
+      `${s} .nc-b-imageText__img img,${s} .nc-b-imageText__img video{border-radius:10px;width:100%}` +
       `${s} .nc-b-imageText__heading{font-size:17px;font-weight:800;line-height:1.5;margin:0 0 6px}` +
       `${s} .nc-b-imageText__text{font-size:14.5px;line-height:1.8;color:#3A4452}` +
       `${s} .nc-b-spacer,${s} .nc-b+.nc-b-spacer,${s} .nc-b-spacer+.nc-b{margin-top:0}` +
@@ -389,7 +390,8 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
       type: 'builder',
       css,
       // 小窓の中身（画像・クーポン・動画）と、画面を出す小窓は、画面の後ろに隠して置く
-      body: screenHtml + (pops === '' ? '' : `<div class="nc-pops">${pops}</div>`),
+      // 背景が動画なら、Widget全体のいちばん後ろに動画の層（2026-10-27・bg-image.ts）
+      body: bgVideoLayer(data) + screenHtml + (pops === '' ? '' : `<div class="nc-pops">${pops}</div>`),
       attrs,
       script: scripts.length === 0 ? undefined : scripts.join('\n'),
     })

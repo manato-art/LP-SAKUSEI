@@ -166,7 +166,7 @@ export function createScreenSettings(deps: ScreenSettingsDeps): ScreenSettings {
     const wrap = node('div', 'ncf-screen-bg')
     const itemPath: Path = [field.key, index]
     for (const bgField of bgFields('item')) {
-      const labeled = bgField.key === 'bgImage' ? { ...bgField, label: 'この画面の背景の画像', note: 'この画面の後ろに敷きます。文字や部品はこの上に出ます' } : bgField
+      const labeled = bgField.key === 'bgImage' ? { ...bgField, label: 'この画面の背景の画像', note: 'この画面の後ろに敷きます。画像でも動画でも入ります（動画は自動で再生・音なし・くり返し）。文字や部品はこの上に出ます' } : bgField
       wrap.append(deps.fieldEl(labeled as ScalarField, [...itemPath, bgField.key], itemPath))
     }
     if (deps.bgMove !== undefined) wrap.append(deps.bgMove(itemPath))

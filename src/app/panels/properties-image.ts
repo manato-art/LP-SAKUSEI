@@ -9,6 +9,9 @@ import { group, row } from './properties-parts.ts'
 import { applyImageAlign, imageAlignOf, lineAlignOf } from './media-align.ts'
 import { notifyEditorChanged } from './editor-change.ts'
 import { buildMediaAlignGroup, syncMediaAlign } from './properties-media-align.ts'
+import { hasImageOnlySettings, swapBodyImageForVideo } from './body-media-swap.ts'
+import { readFileAsDataUrl } from './webp-convert.ts'
+import { toast } from '../ui.ts'
 
 const IMG_SVG = {
   replace: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>',
@@ -19,6 +22,8 @@ export function buildImageBody(
   quill: Quill,
   getImg: () => HTMLImageElement | null,
   setImg: (img: HTMLImageElement | null) => void,
+  /** 動画に差し替えたあと、右の欄を動画の設定にする */
+  showVideo: (video: HTMLVideoElement) => void,
 ): HTMLElement {
   const container = document.createElement('div')
   container.className = 'sb-props-body'
@@ -184,19 +189,39 @@ export function buildImageBody(
   const replaceBtn = document.createElement('button')
   replaceBtn.type = 'button'
   replaceBtn.className = 'sb-pr-action'
-  replaceBtn.innerHTML = `${IMG_SVG.replace}画像を差し替え`
+  replaceBtn.innerHTML = `${IMG_SVG.replace}画像・動画に差し替え`
+  replaceBtn.title = '画像でも動画でも選べます。動画を選ぶと、この場所が動画になります（自動で再生・音なし・くり返し。位置と幅はそのまま）'
   replaceBtn.addEventListener('click', () => {
     const img = getImg()
     if (img === null) return
     const input = document.createElement('input')
     input.type = 'file'
-    input.accept = 'image/*'
+    // 画像でも動画でも（2026-10-27 本人「画像を入れられる所は動画も入ればいい」）
+    input.accept = 'image/*,video/*'
     input.style.display = 'none'
     document.body.append(input)
     input.addEventListener('change', () => {
       const file = input.files?.[0]
       input.remove()
       if (file === undefined) return
+      if (file.type.startsWith('video/')) {
+        void readFileAsDataUrl(file).then((src) => {
+          if (src === '') {
+            toast('動画を読み込めませんでした', 'error')
+            return
+          }
+          const dropped = hasImageOnlySettings(img)
+          const video = swapBodyImageForVideo(quill, img, src)
+          if (video === null) {
+            toast('動画に差し替えられませんでした', 'error')
+            return
+          }
+          setImg(null)
+          showVideo(video)
+          toast(dropped ? '動画に差し替えました（リンク・計測URL・アニメーションは動画には付けられないので外れました）' : '動画に差し替えました')
+        })
+        return
+      }
       const reader = new FileReader()
       reader.onload = () => {
         if (typeof reader.result === 'string') {
