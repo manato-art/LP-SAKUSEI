@@ -1,79 +1,67 @@
 /**
- * ほかから文字をコピーして貼ったとき、コピー元の見た目を持ち込まない（2026-10-27 本人の指示⑩
- * 「他から文字をコピーした際に、フォントや行間がコピー元を引き継ぐことがあるのでやめて欲しい」）。
- * 貼った文字は、LPのふだんの文字と同じ見た目になる。残すのは太字・斜め・リンク（と見出し・箇条書きなどの形）。
+ * ほかのサイト・資料からコピーして貼ったときは、書式を持ち込まず文字だけを貼る（2026-10-27 本人「書式はコピーしないで」）。
+ * 貼った文字は、貼った所の文字と同じ見た目（そこの書体・大きさ・太字など）になる。
  *
- * - ブラウザ（Chrome）はコピーするとき、見えている見た目（書体・大きさ・文字の色・ページの背景の色・字の間 など）を
- *   全部の文字に書き込む。ふつうの文でもコピー元の色・背景のまま入っていた（2026-10-27 本人「コピー元のテキストスタイルが
- *   変わらない」→ 色・背景も外す。選んでもらった「大きさもLPにそろえる」のあと）
- * - Versionの編集画面（Quill）: 貼った文字の書体・大きさ・色・背景の色・寄せ（font・size・color・background・align）を外す。
- *   行間・字の間は Quill の書式に無いので、もともと持ち込まれない
- * - 同じ編集画面の中でコピーした物は、そのまま貼る（コピーのときに印を一緒に入れて見分ける）
- * - Widget編集の見たまま画面（ブラウザの貼り付け）: 貼る HTML の style は太字・斜めだけ残す・class も外す（cleanPastedHtml）
+ * それまで（指示⑩）は、貼った中身から書体・大きさ・色・背景を外し、太字・斜め・リンク・見出しは残していた。
+ * それでも本人「貼っただけで別のフォントになる」「フォントを選んでも変わらない」が起きていた（コピー元の作りによって
+ * 残した形が書体を持ち込む）。外す物を数える形をやめ、文字だけにする。
+ *
+ * - 同じ編集画面の中でコピー・切り取りした物は、書式ごとそのまま貼る（コピーのときに印を一緒に入れて見分ける）
+ * - 文字の無い貼り付け（画像だけ等）は横取りしない（今までどおりの入れ方に任せる）
+ * - Versionの編集画面（Quill）と、Widget編集の見たまま画面（widget-visual-editor.ts）の両方で使う
  */
 import type Quill from 'quill'
-import type { Op } from 'quill'
 
 /** 同じ編集画面からコピーした印（クリップボードに一緒に入れる） */
 export const INTERNAL_COPY_TYPE = 'application/x-lp-sakusei-copy'
 
-/** 貼るときに外す、コピー元の見た目（Quill の書式の名前） */
-const DROPPED_FORMATS: ReadonlySet<string> = new Set(['font', 'size', 'color', 'background', 'align'])
+/** 貼るときに持ち込まない行の書式（貼った所の行のままにする） */
+const LINE_FORMATS: ReadonlySet<string> = new Set(['header', 'list', 'blockquote', 'code-block', 'align', 'indent', 'direction'])
 
-/** 貼った中身（Quill の変更）から、コピー元の見た目を外した新しい ops */
-export function withoutSourceLook(ops: readonly Op[]): Op[] {
-  return ops.map((op) => {
-    if (op.attributes === undefined || !Object.keys(op.attributes).some((name) => DROPPED_FORMATS.has(name))) return op
-    const rest = Object.fromEntries(Object.entries(op.attributes).filter(([name]) => !DROPPED_FORMATS.has(name)))
-    return Object.keys(rest).length === 0 ? Object.fromEntries(Object.entries(op).filter(([key]) => key !== 'attributes')) : { ...op, attributes: rest }
-  })
+/** HTML の文字だけ（文字の貼り付けが無いときの予備。段落・改行は改行にする） */
+function textOfHtml(html: string): string {
+  return html
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/<(script|style)[\s\S]*?<\/\1>/gi, '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|li|h[1-6]|tr)>/gi, '\n')
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#0?39;/g, "'")
+    .replace(/&amp;/g, '&')
+    .replace(/\n+$/, '')
 }
 
-/** style の「名前: 値」の組 */
-const declarations = (style: string): ReadonlyArray<readonly [string, string]> =>
-  style
-    .split(';')
-    .map((part) => part.split(':'))
-    .filter((pair) => pair.length >= 2)
-    .map(([name, ...value]) => [(name ?? '').trim().toLowerCase(), value.join(':').trim().toLowerCase()] as const)
-
-const isBold = (weight: string): boolean => weight.startsWith('bold') || Number.parseInt(weight, 10) >= 700
-
-/**
- * 貼る HTML の style のうち残す物（太字・斜めだけ。無くなったら ''）。tag は大文字のタグ名。
- * Google ドキュメントは全体を <b style="font-weight:normal"> で包むので、b・strong の「太字にしない」は残す
- */
-export function pastedStyle(style: string, tag: string): string {
-  const found = new Map(declarations(style))
-  const weight = found.get('font-weight')
-  const kept = [
-    weight === undefined ? null : isBold(weight) ? 'font-weight: bold' : tag === 'B' || tag === 'STRONG' ? 'font-weight: normal' : null,
-    found.get('font-style') === 'italic' ? 'font-style: italic' : null,
-  ]
-  return kept.filter((part): part is string => part !== null).join('; ')
+/** 貼る文字（書式なし）。文字が何も無ければ null（横取りしない） */
+export function plainPasteText(data: Pick<DataTransfer, 'getData'> | null | undefined): string | null {
+  if (data === null || data === undefined) return null
+  const text = data.getData('text/plain')
+  const plain = text !== '' ? text : textOfHtml(data.getData('text/html'))
+  const normalized = plain.replace(/\r\n?/g, '\n')
+  return normalized === '' ? null : normalized
 }
 
-/** 貼る HTML から、コピー元の見た目を外す（style は太字・斜めだけ・class・<font face size color>）。ブラウザの貼り付けと同じく、文字でない物（script・style・meta 等）も入れない */
-export function cleanPastedHtml(html: string, parse: (html: string) => Element): string {
-  const root = parse(copiedFragment(html))
-  for (const el of Array.from(root.querySelectorAll('script, style, meta, link, title'))) el.remove()
-  for (const el of Array.from(root.querySelectorAll('[style]'))) {
-    const next = pastedStyle(el.getAttribute('style') ?? '', el.tagName.toUpperCase())
-    if (next === '') el.removeAttribute('style')
-    else el.setAttribute('style', next)
-  }
-  for (const el of Array.from(root.querySelectorAll('[class]'))) el.removeAttribute('class')
-  for (const font of Array.from(root.querySelectorAll('font'))) {
-    for (const name of ['face', 'size', 'color']) font.removeAttribute(name)
-  }
-  return root.innerHTML
+/** Versionの編集画面に貼るときに使う Quill の一部（テストでは代わりを渡す） */
+export interface PlainPasteQuill {
+  getSelection(focus?: boolean): { index: number; length: number } | null
+  getFormat(index: number, length: number): Record<string, unknown>
+  deleteText(index: number, length: number, source?: string): unknown
+  insertText(index: number, text: string, formats: Record<string, unknown>, source?: string): unknown
+  setSelection(index: number, length: number, source?: string): unknown
 }
 
-/** コピーした所だけ（ブラウザはクリップボードの HTML を <!--StartFragment-->〜<!--EndFragment--> で区切る。貼るときも中だけ使う） */
-function copiedFragment(html: string): string {
-  const start = html.indexOf('<!--StartFragment-->')
-  const end = html.indexOf('<!--EndFragment-->')
-  return start === -1 || end < start ? html : html.slice(start + '<!--StartFragment-->'.length, end)
+/** 書式なしの文字を、貼った所の文字と同じ見た目で入れる（選んでいた文字は置き換える） */
+export function pastePlainText(quill: PlainPasteQuill, text: string): void {
+  const range = quill.getSelection(true)
+  if (range === null) return
+  // 貼った所の文字の見た目（太字・書体など。行の書式は貼った所の行のまま）
+  const here = Object.fromEntries(Object.entries(quill.getFormat(range.index, 0)).filter(([name]) => !LINE_FORMATS.has(name)))
+  if (range.length > 0) quill.deleteText(range.index, range.length, 'user')
+  quill.insertText(range.index, text, here, 'user')
+  quill.setSelection(range.index + text.length, 0, 'user')
 }
 
 /** 同じ編集画面の中でコピー・切り取りしたとき、印を一緒に入れる（貼るときに見分ける） */
@@ -92,18 +80,17 @@ export const isExternalPaste = (e: ClipboardEvent): boolean => !(e.clipboardData
 export function wireEditorPaste(quill: Quill): void {
   const root = quill.root
   markInternalCopy(root)
-  // 貼り付けの間だけ見た目を外す（Widget を入れるとき等、Quill に HTML を渡すほかの使い方では外さない）
-  let external = false
+  // Quill の貼り付け（中身を書式ごと取り込む）より先に受ける（capture）。ほかからの文字は、ここで文字だけにして入れる
   root.addEventListener(
     'paste',
     (e) => {
-      external = isExternalPaste(e)
-      window.setTimeout(() => {
-        external = false
-      }, 0)
+      if (!isExternalPaste(e)) return
+      const text = plainPasteText(e.clipboardData)
+      if (text === null) return
+      e.preventDefault()
+      e.stopPropagation()
+      pastePlainText(quill as unknown as PlainPasteQuill, text)
     },
     true,
   )
-  const Delta = (quill.constructor as typeof Quill).import('delta') as new (ops: Op[]) => { readonly ops: Op[] }
-  quill.clipboard.addMatcher(Node.ELEMENT_NODE, (_node, delta) => (external ? new Delta(withoutSourceLook(delta.ops)) : delta) as typeof delta)
 }

@@ -250,7 +250,7 @@ export async function renderEditor(
   // 指示⑧（2026-10-27）: 本文のリンク・URLの文字を青い文字＋青い下線で見せる（editor-links.ts）
   injectEditorLinkCss()
   mountUrlTextHighlight(quill)
-  // 指示⑩（2026-10-27）: ほかから貼った文字の書体を持ち込まない（editor-paste.ts）
+  // 指示⑩（2026-10-27）: ほかから貼った文字は書式を持ち込まず文字だけを貼る（editor-paste.ts・本人「書式はコピーしないで」）
   wireEditorPaste(quill)
 
   // ── 指示㊿②: キャンバスのみスクロール ──

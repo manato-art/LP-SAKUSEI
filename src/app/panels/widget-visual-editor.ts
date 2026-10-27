@@ -8,7 +8,7 @@
 import { COLOR, FONT, WIDGET_PREVIEW_WIDTH, type WidgetEditTarget } from './widget-editor-theme.ts'
 import { notifyCanvasEdit } from './widget-canvas-events.ts'
 import { closeMediaControl, openMediaControl } from './widget-media-control.ts'
-import { cleanPastedHtml, isExternalPaste, markInternalCopy } from '../pages/editor-paste.ts'
+import { isExternalPaste, markInternalCopy, plainPasteText } from '../pages/editor-paste.ts'
 import { pickLpMedia } from './nocode/lp-media.ts'
 import { isVideoMedia } from './nocode/templates/kit.ts'
 import { toast } from '../ui.ts'
@@ -108,13 +108,6 @@ function sidePadding(frame: PreviewFrame, padding: VisualEditorOptions['articleP
   if (frame !== 'lp' || padding === undefined) return ''
   const px = (value: string): string => (/^\d+(?:\.\d+)?px$/.test(value) ? value : '0px')
   return `;padding-left:${px(padding.left)};padding-right:${px(padding.right)}`
-}
-
-/** 貼る HTML を読む箱（中身はその箱の innerHTML） */
-function parseFragment(html: string): Element {
-  const box = new DOMParser().parseFromString(`<!doctype html><html><body><div id="paste-root">${html}</div></body></html>`, 'text/html').getElementById('paste-root')
-  if (box === null) throw new Error('貼る中身を読めませんでした')
-  return box
 }
 
 function frameStyle(frame: PreviewFrame): { backdrop: string; box: string } {
@@ -614,14 +607,15 @@ export function buildVisualEditor(
   }
   markImages()
   contentDiv.addEventListener('input', markImages)
-  // ほかから貼った文字は、コピー元の見た目（書体・大きさ・行間・色・背景など）を外して入れる（2026-10-27 本人の指示⑩・editor-paste.ts）。
-  // 同じ編集画面の中でコピーした物（印あり）・文字だけの貼り付けは、ブラウザに任せる
+  // ほかから貼った文字は、書式を持ち込まず文字だけを入れる（まわりの文字と同じ見た目になる・2026-10-27 本人「書式はコピーしないで」・editor-paste.ts）。
+  // 同じ編集画面の中でコピーした物（印あり）・文字の無い貼り付けは、ブラウザに任せる
   markInternalCopy(contentDiv)
   contentDiv.addEventListener('paste', (e) => {
-    const html = e.clipboardData?.getData('text/html') ?? ''
-    if (html === '' || !isExternalPaste(e)) return
+    if (!isExternalPaste(e)) return
+    const text = plainPasteText(e.clipboardData)
+    if (text === null) return
     e.preventDefault()
-    document.execCommand('insertHTML', false, cleanPastedHtml(html, parseFragment))
+    document.execCommand('insertText', false, text)
   })
   contentDiv.addEventListener('click', (e) => {
     // 修飾キー押下時はウィジェットの動作確認モード（指示146）。メディア操作パネルは出さない。
