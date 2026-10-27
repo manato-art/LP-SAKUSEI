@@ -27,7 +27,7 @@ const CARD = `background:#FFFFFF !important;border:1px solid ${LINE};border-radi
 /** KPI の列の幅（見出し・合計・行で同じにする）。配信ステータスの列は札が入るので広く */
 const col = (px: number): string => `width:${px}px !important;min-width:${px}px !important;max-width:${px}px !important;flex:none !important`
 /** 名前の列の幅（採取物は 340px。見本のように数字の列を多く見せるため細くする） */
-const NAME_W = 232
+const NAME_W = 252
 /**
  * 行の数字の列が始まる位置（表の左から）。行の外側の余白 8px＋行の内側 16px＋名前の列＋間 8px
  * （ここから KPI の容器・その中の左の余白 8px のあと列が並ぶ）。見出し・合計もこの位置にそろえる
@@ -60,17 +60,26 @@ const sparkColorRules = Object.entries(SPARK_COLORS)
 const CSS = `
 /* 地 */
 ${R}, ${R} .e11hwzd01, ${R} .efy50tl22, ${R} [data-testid="side-menu"]{background:${CANVAS} !important}
-${R} [data-testid="side-menu"]{border-right:none !important}
+/* 左のフォルダ一覧は見本のように細く（上の段の集計期間・配信ステータスが1行に入るように）。中の部品は一覧の幅に合わせる */
+${R} [data-testid="side-menu"]{border-right:none !important;width:224px !important;min-width:224px !important;max-width:224px !important;flex:none !important}
+${R} [data-testid="side-menu"] > *{max-width:100%}
+${R} .eyrb9321{width:100% !important}
+${R} .e14mj4364, ${R} .efy50tl6 .e1bzrf8x8{width:100% !important;min-width:0 !important}
 
 /* 左: 検索・フォルダ一覧（白い面） */
-${R} [data-testid="side-menu"] .e1krw8ps2{padding:12px 12px 8px !important;border-bottom:none !important}
+${R} [data-testid="side-menu"] .e1krw8ps2{padding:12px 8px 8px !important;border-bottom:none !important;box-sizing:border-box;width:100% !important}
 ${R} [data-testid="side-menu"] .e1krw8ps2 > button.ehjzppn1{flex:1;justify-content:flex-start;height:38px !important;padding:0 12px !important;border:1px solid ${LINE} !important;border-radius:10px !important;background:#FFFFFF !important;color:${SUB} !important}
-${R} .efy50tl25{margin:0 12px 12px;${CARD};overflow:hidden}
+${R} .efy50tl25{margin:0 8px 12px;${CARD};overflow:hidden}
 ${R} .efy50tl14{padding:0 8px !important;border-bottom:1px solid ${LINE} !important;background:#FFFFFF !important}
-${R} .eyrb9320{height:44px !important;padding:0 12px !important;border-radius:0 !important;background:transparent !important;font-size:14px !important;font-weight:600;color:${SUB} !important;border-bottom:2px solid transparent !important}
+${R} .eyrb9320{flex:1;justify-content:center;height:44px !important;padding:0 4px !important;border-radius:0 !important;background:transparent !important;font-size:13px !important;white-space:nowrap;font-weight:600;color:${SUB} !important;border-bottom:2px solid transparent !important}
 ${R} .eyrb9320.css-7nmmet{color:${BLUE} !important;border-bottom-color:${BLUE} !important}
-${R} .efy50tl6{padding:12px 12px 4px !important;border-bottom:none !important}
-${R} .efy50tl6 .e1bzrf8x8{height:36px !important;border:1px solid ${LINE} !important;border-radius:10px !important;background:#FFFFFF !important}
+${R} .efy50tl6{padding:12px 8px 4px !important;border-bottom:none !important}
+/* フォルダの並べ替えの箱は「デフォルト（作成最新順）」が切れないよう、文字を少し小さく・矢印の余白を詰める */
+${R} .efy50tl6 .e1bzrf8x8 .e1bzrf8x12{font-size:11px !important;padding:0 6px 0 10px !important}
+${R} .efy50tl6 .e1bzrf8x11{padding:0 !important;width:16px !important;height:16px !important}
+${R} .efy50tl6 .e1bzrf8x12{height:36px !important;width:100%}
+/* 左のフォルダ一覧の幅を変える取っ手の「←→」（押しても何も起きない・本人「←→消してOK」2026-10-27） */
+${R} .e1krw8ps0{display:none !important}
 ${R} [data-folder-uid]{margin:2px 8px;border-radius:10px;cursor:pointer}
 ${R} [data-folder-uid]:hover{background:#F6F8FA}
 ${R} [data-folder-uid][data-pl-current]{background:${TINT}}
@@ -85,7 +94,19 @@ ${R} .efy50tl22 > .e1ti96lw2{background:transparent !important;padding:12px 12px
 ${R} .efy50tl22:has(> .efy50tl23:not([data-collapsed="true"])) > .e1ti96lw2{padding-right:352px !important}
 ${R} .efy50tl12 button.ehjzppn1, ${R} .efy50tl12 .ehjzppn1{height:38px !important;border-radius:10px !important;font-weight:600}
 ${R} .efy50tl0{background:${TINT} !important;color:${BLUE} !important;border:1px solid transparent !important}
-${R} .e5a3hxd1, ${R} .e8c3jcp1{height:38px !important;border:1px solid ${LINE} !important;border-radius:10px !important;background:#FFFFFF !important;color:${INK} !important}
+/* 選ぶ箱（集計期間・配信ステータス・フォルダの並び）は中の本物のボタンに当てる。
+   外側の箱に当てると、中の灰色のボタン（高さ28px）が箱の中に帯のように残っていた（本人「デザインが収まっていない」2026-10-27） */
+${R} .e5a3hxd1 .e1bzrf8x12, ${R} .e8c3jcp1 .e1bzrf8x12, ${R} .efy50tl6 .e1bzrf8x12{box-sizing:border-box;display:flex !important;align-items:center;gap:4px;height:38px !important;padding:0 8px 0 12px !important;border:1px solid ${LINE} !important;border-radius:10px !important;background:#FFFFFF !important;color:${INK} !important;font-size:12px !important;white-space:nowrap}
+/* 上の段は1行に並べ、入りきらない画面では重ねずに折り返す。集計期間・配信ステータスは右寄せ（見本の並び） */
+${R} .efy50tl12{flex-wrap:wrap !important;gap:8px !important;justify-content:flex-start !important}
+${R} .efy50tl11{flex:none !important;gap:8px !important;width:auto !important}
+${R} .efy50tl11:empty{display:none !important}
+${R} .efy50tl11:has(.e5a3hxd1){margin-left:auto}
+${R} .efy50tl22 > .e1ti96lw2{height:auto !important;min-height:61px}
+${R} .e5a3hxd1 .e1bzrf8x12:hover, ${R} .e8c3jcp1 .e1bzrf8x12:hover, ${R} .efy50tl6 .e1bzrf8x12:hover{border-color:#CDD2DA !important}
+/* 集計期間・配信ステータスは文字を切らない（箱を中身の幅に） */
+${R} .e5a3hxd1 .e1bzrf8x8, ${R} .e8c3jcp1 .e1bzrf8x8, ${R} .e5a3hxd1 .e1bzrf8x12, ${R} .e8c3jcp1 .e1bzrf8x12{width:max-content !important;max-width:none !important}
+${R} .e5a3hxd1 .e1bzrf8x12 > span, ${R} .e8c3jcp1 .e1bzrf8x12 > span{overflow:visible !important;text-overflow:clip !important;max-width:none !important}
 
 /* ページの表（白い面） */
 ${R} .efy50tl20{padding:0 12px 12px !important;box-sizing:border-box}
@@ -130,8 +151,9 @@ ${R} .efy50tl18 > [data-ab-test-uid]{border-bottom:1px solid ${LINE}}
 ${R} [data-ab-test-uid]:hover > [data-testid="list-menu-item"]{background:#F7F9FC !important}
 ${R} [data-ab-test-uid][data-pl-shown] > [data-testid="list-menu-item"]{background:${TINT} !important}
 ${R} .ehlzdh014{align-items:center !important;gap:12px}
-${R} [data-ab-test-uid] .ec7ecxf1{flex:none;display:flex;align-items:center;justify-content:center;width:44px !important;height:56px !important;border-radius:8px;background:#F1F3F6;color:${MUTED};overflow:hidden}
-${R} [data-ab-test-uid] .ec7ecxf1 .pl-thumb{width:100%;height:100%;object-fit:cover;display:block}
+/* 行の左のページの画像: 横長の枠に、画像のいちばん上（LPで最初に見える所）を見せる（本人「サムネは最上部にして、横長にして」2026-10-27） */
+${R} [data-ab-test-uid] .ec7ecxf1{flex:none;display:flex;align-items:center;justify-content:center;width:64px !important;height:40px !important;border-radius:6px;background:#F1F3F6;color:${MUTED};overflow:hidden}
+${R} [data-ab-test-uid] .ec7ecxf1 .pl-thumb{width:100%;height:100%;object-fit:cover;object-position:top center;display:block}
 ${R} .ehlzdh09{font-size:15px !important;font-weight:700 !important;color:${INK} !important}
 /* 状態は右の列の札で出すので、名前の下の「準備中」は出さない */
 ${R} .ehlzdh06{display:none !important}

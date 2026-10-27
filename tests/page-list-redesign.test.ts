@@ -66,3 +66,22 @@ describe('フォルダを選ぶ前の画面', () => {
     expect(css).toContain('.efy50tl23:has(.efy50tl16[style*="display: none"]) > .e1ti96lw2{display:none !important}')
   })
 })
+
+describe('2026-10-27 本人の手直し（サムネ・←→・選ぶ箱）', () => {
+  it('サムネは横長の枠に、画像のいちばん上を見せる', async () => {
+    const css = await styleText()
+    expect(css).toMatch(/\[data-ab-test-uid\] \.ec7ecxf1\{[^}]*width:64px !important;height:40px !important/)
+    expect(css).toMatch(/\.pl-thumb\{[^}]*object-position:top center/)
+  })
+
+  it('左の一覧の幅の取っ手の「←→」は出さない', async () => {
+    expect(await styleText()).toContain('.e1krw8ps0{display:none !important}')
+  })
+
+  it('集計期間・配信ステータスの見た目は中の本物のボタンに当てる（外側の箱には当てない）', async () => {
+    const css = await styleText()
+    expect(css).toContain('.e5a3hxd1 .e1bzrf8x12')
+    expect(css).toContain('.e8c3jcp1 .e1bzrf8x12')
+    expect(css).not.toMatch(/\.e5a3hxd1, [^{]*\.e8c3jcp1\{/)
+  })
+})
