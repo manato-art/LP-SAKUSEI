@@ -15,7 +15,7 @@ import { toast } from '../ui.ts'
 import { mountVersionSettings, openVersionSettings, type SettingsVersion } from '../panels/version-settings.ts'
 import { mountTagSettings, openTagSettings } from '../panels/tag-settings.ts'
 import { followEditorContent, LINK_REPLACE_TOGGLE_ATTR, mountLinkReplace, reloadLinkReplace } from '../panels/link-replace.ts'
-import { mountHistory, refreshHistory, recordArticleHistory } from '../panels/history.ts'
+import { HISTORY_TOGGLE_ATTR, mountHistory, refreshHistory, recordArticleHistory } from '../panels/history.ts'
 import { mountEditorToolbar } from '../panels/editor-toolbar.ts'
 import { mountUrlBar } from '../panels/url-bar.ts'
 import { mountPropertiesPanel } from '../panels/properties-panel.ts'
@@ -437,12 +437,19 @@ export function wireSideToolbar(ctx: EditorContext): void {
     // 履歴パネル（開閉はpanels.toggleに一本化）
     if (index === 1) {
       let historyRegistered = false
+      // 外を押したら閉じる（指示㉚）の「外」から、このアイコンは外す（押すと開け閉めするので）
+      icon.setAttribute(HISTORY_TOGGLE_ATTR, '')
       icon.addEventListener('click', () => {
-        const panel = mountHistory(ctx.root, ctx.articleUid, {
-          versionUid: () => ctx.currentUid,
-          currentHtml: () => buildFullHtml(ctx),
-          apply: (html, version) => applyRestoredContent(ctx, html, version),
-        })
+        const panel = mountHistory(
+          ctx.root,
+          ctx.articleUid,
+          {
+            versionUid: () => ctx.currentUid,
+            currentHtml: () => buildFullHtml(ctx),
+            apply: (html, version) => applyRestoredContent(ctx, html, version),
+          },
+          () => panels.toggle('履歴'),
+        )
         if (panel === null) return
         if (!historyRegistered) {
           panels.register('履歴', panel)

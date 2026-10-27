@@ -16,6 +16,8 @@
 import { editorSessionHeaders } from '../editor-session.ts'
 import { toast } from '../ui.ts'
 import { ensureWhiteBase } from '../white-base.ts'
+import { ensureHistoryStyle } from './history-style.ts'
+import { wireOutsideClose } from './panel-outside-close.ts'
 
 const API_BASE = '/api/v1'
 
@@ -137,6 +139,9 @@ export interface HistoryHooks {
 
 const HOOKS = new WeakMap<HTMLElement, HistoryHooks>()
 
+/** 履歴のパネルを開け閉めするアイコンの印（外を押したら閉じる、の「外」から外す） */
+export const HISTORY_TOGGLE_ATTR = 'data-history-toggle'
+
 /* ────────────────────────────────────────────────────────────
  * パネル本体
  * ──────────────────────────────────────────────────────────── */
@@ -146,9 +151,17 @@ const HOOKS = new WeakMap<HTMLElement, HistoryHooks>()
  * 採取DOMの中に土台があればそれを使い、無いときだけ採取済みmarkupを差し込む。
  * 開閉は呼び出し側の PanelGroup.toggle() に委ねる。
  */
-export function mountHistory(root: HTMLElement, articleUid: string, hooks: HistoryHooks): HTMLElement | null {
+export function mountHistory(
+  root: HTMLElement,
+  articleUid: string,
+  hooks: HistoryHooks,
+  /** 閉じる（開け閉めの記録＝PanelGroup を通す）。戻る・外を押したときに呼ぶ */
+  onClose?: () => void,
+): HTMLElement | null {
   // 指示126: エディタページでも白基調CSSを確実にロードする（履歴パネルの文字色修正に必須）
   ensureWhiteBase()
+  // 見た目（2026-10-27 指示㉛・本人の見本どおり）
+  ensureHistoryStyle()
   const panel = resolvePanel(root)
   if (panel === null) {
     toast('変更・復元履歴パネルの土台が見つかりませんでした', 'error')
@@ -159,7 +172,9 @@ export function mountHistory(root: HTMLElement, articleUid: string, hooks: Histo
 
   if (panel.getAttribute('data-clone-panel') !== 'history') {
     panel.setAttribute('data-clone-panel', 'history')
-    wire(panel)
+    wire(panel, onClose)
+    // 外を押したら閉じる（2026-10-27 指示㉚ 本人「履歴もリンク置換と同じように外を押したら閉じて」）
+    if (onClose !== undefined) wireOutsideClose(panel, HISTORY_TOGGLE_ATTR, onClose)
   }
 
   if (panel.getAttribute('style') === null) panel.setAttribute('style', OPEN_STYLE)
@@ -233,12 +248,16 @@ export function cleanupDropdownHost(host: HTMLElement): void {
   }
 }
 
-function wire(panel: HTMLElement): void {
+function wire(panel: HTMLElement, onClose?: () => void): void {
   // 指示㊺: パネル内のクリックが親（サイドバーアイコン等）へ伝播してパネルが閉じるのを防ぐ
   panel.addEventListener('click', (e) => e.stopPropagation())
 
+  // 戻るは開け閉めの記録を通して閉じる（class を直接外すと、記録は開いたままで、次にアイコンを押しても開かなかった）
   const cancel = panel.querySelector<HTMLElement>(`.${CLS.btnCancel}`)
-  cancel?.addEventListener('click', () => panel.classList.remove(CLS.open))
+  cancel?.addEventListener('click', () => {
+    if (onClose !== undefined) onClose()
+    else panel.classList.remove(CLS.open)
+  })
 
   const header = panel.querySelector<HTMLElement>(`.${CLS.header}`)
   if (header === null) return
@@ -301,7 +320,11 @@ function buildRow(history: ArticleHistoryRow): HTMLElement {
   if (date !== null) date.textContent = history.recorded_at_label
   // 操作ログ（指示⑪）: 現行版は「現行版」、それ以外は「何をしたか」を出す。
   const label = node.querySelector<HTMLElement>(`.${CLS.infoLabel}`)
-  if (label !== null) label.textContent = history.is_current ? CURRENT_LABEL : (history.label ?? '')
+  if (label !== null) {
+    label.textContent = history.is_current ? CURRENT_LABEL : (history.label ?? '')
+    // 「現行版」は小さな札で出す（2026-10-27 指示㉛・history-style.ts）
+    label.classList.toggle('hx-current-tag', history.is_current)
+  }
 
   node.addEventListener('click', (e) => {
     e.stopPropagation()

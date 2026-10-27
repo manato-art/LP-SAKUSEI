@@ -32,7 +32,7 @@ import { cleanupDropdownHost, findLpBody } from './history.ts'
 import { EDITOR_CONTENT_SHOWN_EVENT } from './editor-change.ts'
 import { ensureLinkReplaceStyle, LR_ICONS } from './link-replace-style.ts'
 import { mediaElementsByIndex, mediaThumb } from './link-replace-thumb.ts'
-import { pageLife } from '../page-life.ts'
+import { wireOutsideClose } from './panel-outside-close.ts'
 import {
   buildLinkReplaceRequest,
   EMPTY_LINKS_MESSAGE,
@@ -265,7 +265,8 @@ export function mountLinkReplace(
     wire(root, panel)
     // 指示116: 戻るボタンを追加
     wireBackButton(panel, onClose)
-    wireOutsideClose(panel, onClose)
+    // パネルの外を押したら閉じる（2026-10-27 指示㉓ 本人「範囲外を押したら自動で閉じるようにして。←を押さないでも閉じれるイメージ」）
+    if (onClose !== undefined) wireOutsideClose(panel, LINK_REPLACE_TOGGLE_ATTR, onClose)
   }
 
   if (panel.getAttribute('style') === null) panel.setAttribute('style', OPEN_STYLE)
@@ -396,24 +397,6 @@ function wire(root: HTMLElement, panel: HTMLElement): void {
 /** 右のアイコン（パネルを開け閉めするボタン）の目印。外を押したときの「閉じる」から外す（二重に開け閉めしない） */
 export const LINK_REPLACE_TOGGLE_ATTR = 'data-link-replace-toggle'
 
-/**
- * パネルの外を押したら閉じる（2026-10-27 指示㉓ 本人「範囲外を押したら自動で閉じるようにして。←を押さないでも閉じれるイメージ」）。
- * 見張りは画面の寿命で外す（page-life.ts・前の編集画面をつかみ続けない）
- */
-function wireOutsideClose(panel: HTMLElement, onClose?: () => void): void {
-  if (onClose === undefined) return
-  document.addEventListener(
-    'pointerdown',
-    (event) => {
-      if (!panel.classList.contains(CLS.open)) return
-      const target = event.target
-      if (!(target instanceof Node) || panel.contains(target)) return
-      if (target instanceof Element && target.closest(`[${LINK_REPLACE_TOGGLE_ATTR}]`) !== null) return
-      onClose()
-    },
-    { capture: true, signal: pageLife() },
-  )
-}
 
 /**
  * 指示116: リンク設定パネルに戻るボタンを追加する。
