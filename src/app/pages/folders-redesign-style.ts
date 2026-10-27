@@ -154,6 +154,9 @@ ${R} .ehlzdh014{align-items:center !important;gap:12px}
 /* 行の左のページの画像: 横長の枠に、画像のいちばん上（LPで最初に見える所）を見せる（本人「サムネは最上部にして、横長にして」2026-10-27） */
 ${R} [data-ab-test-uid] .ec7ecxf1{flex:none;display:flex;align-items:center;justify-content:center;width:64px !important;height:40px !important;border-radius:6px;background:#F1F3F6;color:${MUTED};overflow:hidden}
 ${R} [data-ab-test-uid] .ec7ecxf1 .pl-thumb{width:100%;height:100%;object-fit:cover;object-position:top center;display:block}
+/* LP が画像から始まらないページ: LP のいちばん上をそのまま縮めて出す（LP の幅 375px → 枠 64px・高さも同じ割合で 40px ぶん） */
+${R} [data-ab-test-uid] .ec7ecxf1:has(.pl-thumb-page){position:relative;justify-content:flex-start;align-items:flex-start;background:#FFFFFF;box-shadow:inset 0 0 0 1px ${LINE}}
+${R} [data-ab-test-uid] .ec7ecxf1 .pl-thumb-page{flex:none;width:375px;height:234px;border:0;transform:scale(0.1707);transform-origin:0 0;pointer-events:none}
 ${R} .ehlzdh09{font-size:15px !important;font-weight:700 !important;color:${INK} !important}
 /* 状態は右の列の札で出すので、名前の下の「準備中」は出さない */
 ${R} .ehlzdh06{display:none !important}

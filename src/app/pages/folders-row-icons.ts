@@ -55,12 +55,19 @@ export function applyRowCounts(row: HTMLElement, counts: RelationCounts | null):
 const ROW_ICON_BOX = '.ec7ecxf1'
 
 /**
- * 行の左に、そのページの画像を小さく出す（2026-10-27 本人「こんな感じにリデザインしたい」・見本の画像）。
- * 画像が無いページ・読めなかった画像は、今までのページのしるしのまま
+ * 行の左に、そのページのサムネを小さく出す（2026-10-27 本人「こんな感じにリデザインしたい」・見本の画像）。
+ * - LP が画像から始まる: その画像（url）
+ * - 画像から始まらない・画像が無い: LP のいちばん上をそのまま縮めて出す（previewVersionUid・本人「画像じゃないなら同じ範囲でサムネにして・一番上を」）
+ * どちらも無い・読めなかった画像は、今までのページのしるしのまま
  */
-export function applyRowThumbnail(row: HTMLElement, url: string | null): void {
+export function applyRowThumbnail(row: HTMLElement, url: string | null, previewVersionUid: string | null = null): void {
   const box = row.querySelector<HTMLElement>(ROW_ICON_BOX)
-  if (box === null || url === null || url === '') return
+  if (box === null) return
+  if ((url === null || url === '') && previewVersionUid !== null && previewVersionUid !== '') {
+    box.replaceChildren(pagePreview(previewVersionUid))
+    return
+  }
+  if (url === null || url === '') return
   const icon = [...box.children]
   const img = document.createElement('img')
   img.className = 'pl-thumb'
@@ -70,4 +77,21 @@ export function applyRowThumbnail(row: HTMLElement, url: string | null): void {
   img.src = url
   img.addEventListener('error', () => box.replaceChildren(...icon), { once: true })
   box.replaceChildren(img)
+}
+
+/**
+ * LP のいちばん上を縮めて見せる枠（プレビューの本文だけ＝検証用の帯・ポップアップ無し）。
+ * LP のスクリプトは動かす（スクリプトで出す Widget もいちばん上に見えるように）が、allow-same-origin は付けない
+ * ＝ LP の中身がこの画面（ログインしている管理画面）に手を出せない。見えている行の分だけ読む（lazy）。押せない（行を押す）
+ */
+function pagePreview(versionUid: string): HTMLIFrameElement {
+  const frame = document.createElement('iframe')
+  frame.className = 'pl-thumb-page'
+  frame.setAttribute('sandbox', 'allow-scripts')
+  frame.setAttribute('loading', 'lazy')
+  frame.setAttribute('tabindex', '-1')
+  frame.setAttribute('aria-hidden', 'true')
+  frame.setAttribute('title', 'LPのいちばん上')
+  frame.setAttribute('src', `/preview/${encodeURIComponent(versionUid)}?bare=1`)
+  return frame
 }

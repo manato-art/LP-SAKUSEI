@@ -134,7 +134,7 @@ function buildPageRow(
   const media = row.querySelector<HTMLElement>(FOLDERS_HOOK.pageMedia)
   if (media !== null) media.textContent = abTest.media?.name ?? '媒体未設定'
   applyRowCounts(row, counts)
-  applyRowThumbnail(row, counts?.thumbnail_url ?? null)
+  applyRowThumbnail(row, counts?.thumbnail_url ?? null, counts?.preview_version_uid ?? null)
   clearRowMetrics(row)
 
   const item = row.querySelector<HTMLElement>('[data-testid="list-menu-item"]')

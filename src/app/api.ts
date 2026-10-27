@@ -87,6 +87,8 @@ export interface RelationCounts {
   ab_test_uid: string | null
   /** 行の左に出す画像（最初のステップの主な Version の最初の画像・無ければ null・古いサーバーは返さない） */
   thumbnail_url?: string | null
+  /** LP が画像から始まらない・画像が無いときの Version（一覧で LP のいちばん上を縮めて出す・古いサーバーは返さない） */
+  preview_version_uid?: string | null
 }
 
 export interface BulkTag {

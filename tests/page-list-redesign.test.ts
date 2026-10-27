@@ -85,3 +85,23 @@ describe('2026-10-27 本人の手直し（サムネ・←→・選ぶ箱）', ()
     expect(css).not.toMatch(/\.e5a3hxd1, [^{]*\.e8c3jcp1\{/)
   })
 })
+
+describe('LP が画像から始まらないページのサムネ（2026-10-27 本人「画像じゃないなら同じ範囲でサムネにして・一番上を」）', () => {
+  it('LP のいちばん上をそのまま縮めて出す（プレビューの本文だけ・この画面には手が届かない形で開く）', async () => {
+    const { document } = parseHTML('<div class="row"><div class="ec7ecxf1"><svg id="icon"></svg></div></div>')
+    ;(globalThis as unknown as Record<string, unknown>)['document'] = document
+    const { applyRowThumbnail } = await import('../src/app/pages/folders-row-icons.ts')
+    const row = document.querySelector('.row') as unknown as HTMLElement
+    applyRowThumbnail(row, null, 'VERSION_0002')
+    const frame = row.querySelector('iframe.pl-thumb-page')
+    expect(frame?.getAttribute('src')).toBe('/preview/VERSION_0002?bare=1')
+    expect(frame?.getAttribute('sandbox')).toBe('allow-scripts')
+    expect(frame?.getAttribute('loading')).toBe('lazy')
+    expect(row.querySelector('#icon')).toBeNull()
+  })
+
+  it('縮める決まりがある（LP の幅 375px を枠の幅 64px に・押せない）', async () => {
+    const css = await styleText()
+    expect(css).toMatch(/\.pl-thumb-page\{[^}]*width:375px[^}]*transform:scale\(0\.1707\)[^}]*pointer-events:none/)
+  })
+})
