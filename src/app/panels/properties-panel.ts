@@ -179,7 +179,8 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
   // ── サイズ ──
   const sizeRow = row('サイズ')
   const sizeInput = document.createElement('input')
-  sizeInput.className = 'sb-pr-input'
+  // ブラウザの上下の矢印は出さない（すぐ右に自前の ▲▼ がある・2026-10-27 本人「赤丸の矢印いらない」）
+  sizeInput.className = 'sb-pr-input sb-pr-no-spin'
   sizeInput.type = 'number'
   sizeInput.min = '1'
   sizeInput.style.cssText = 'width:52px;flex:none;font-variant-numeric:tabular-nums'

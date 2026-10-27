@@ -203,6 +203,10 @@ export function injectStyles(): void {
     .sb-pr-size-unit {
       font-size:9px; color:#b0b0b0;
     }
+    /* ブラウザの上下の矢印を消す（自前の ▲▼ がある欄だけに付ける） */
+    .sb-pr-no-spin::-webkit-inner-spin-button,
+    .sb-pr-no-spin::-webkit-outer-spin-button { -webkit-appearance:none; margin:0; }
+    .sb-pr-no-spin { -moz-appearance:textfield; appearance:textfield; }
     .sb-pr-stepper-wrap {
       display:flex; flex-direction:column; gap:0; margin-left:2px;
     }
