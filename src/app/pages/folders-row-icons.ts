@@ -92,6 +92,8 @@ function pagePreview(versionUid: string): HTMLIFrameElement {
   frame.setAttribute('tabindex', '-1')
   frame.setAttribute('aria-hidden', 'true')
   frame.setAttribute('title', 'LPのいちばん上')
+  // 小さな枠の中にスクロールバーを出さない（LP は枠より長い・横に広い物もある）
+  frame.setAttribute('scrolling', 'no')
   frame.setAttribute('src', `/preview/${encodeURIComponent(versionUid)}?bare=1`)
   return frame
 }

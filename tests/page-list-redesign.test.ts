@@ -97,6 +97,7 @@ describe('LP が画像から始まらないページのサムネ（2026-10-27 �
     expect(frame?.getAttribute('src')).toBe('/preview/VERSION_0002?bare=1')
     expect(frame?.getAttribute('sandbox')).toBe('allow-scripts')
     expect(frame?.getAttribute('loading')).toBe('lazy')
+    expect(frame?.getAttribute('scrolling')).toBe('no')
     expect(row.querySelector('#icon')).toBeNull()
   })
 
