@@ -13,6 +13,8 @@ export interface PageContext {
   abTests: readonly AbTest[]
   /** 行のアイコン・右パネルの件数（relation_counts API）。取れなかったら null（「-」で出す） */
   relationCounts: readonly RelationCounts[] | null
+  /** 「フォルダなし」（フォルダを消したページ）にページがあるか。左の一覧に「フォルダなし」を出すかに使う */
+  hasUnfiledPages: boolean
 }
 /** 配信ステータスの表示名（正本は `mock-server/store/types.ts`） */
 export const AD_STATUS_LABELS: Readonly<Record<string, string>> = {

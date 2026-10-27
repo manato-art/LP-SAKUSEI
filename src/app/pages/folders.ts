@@ -44,7 +44,7 @@ import { wireListControls } from './folders-list-controls.ts'
 import { folderHistoryUids, recordHistory, renderHistoryList } from './folders-history.ts'
 import { updateStarAppearance } from './folders-detail-panel.ts'
 import { listState, updateListState } from './folders-list-state.ts'
-import { UNFILED_FOLDER_NAME, UNFILED_FOLDER_UID } from '../../shared/unfiled-folder.ts'
+import { UNFILED_FOLDER_NAME, UNFILED_FOLDER_UID, isUnfiledShown } from '../../shared/unfiled-folder.ts'
 import { isCreator } from '../session.ts'
 import { pageLife } from '../page-life.ts'
 
@@ -65,7 +65,8 @@ export async function renderFolders(
   container.style.cssText = 'flex:1;min-width:0'
 
   const selectedUid = params.get('uid')
-  const { folders } = await api.folders()
+  // 「フォルダなし」は中にページがあるときだけ出す（2026-10-28 本人・isUnfiledShown）ので、ある・なしも一緒に聞く
+  const [{ folders }, hasUnfiledPages] = await Promise.all([api.folders(), pageListApi.hasUnfiledPages()])
   // 取得を待つ間に別の描画が始まっていたら、ここで捨てる。
   // これが無いと2本の描画が並走し、レイアウトが2枚積まれる。
   if (isStale(generation)) return
@@ -115,6 +116,7 @@ export async function renderFolders(
     folderUid: selectedUid,
     abTests: detail?.ab_tests ?? [],
     relationCounts,
+    hasUnfiledPages,
   }
 
   // 選択したフォルダを履歴に記録（フォルダなしはフォルダではないので記録しない）
@@ -184,8 +186,11 @@ function renderTree(body: HTMLElement, context: PageContext): void {
 
   // タブに応じてフォルダをフィルタリング
   const filtered = filterFoldersByTab(context.folders)
-  // 「すべて」の最後に「フォルダなし」（フォルダを消したページの置き場）を出す
-  const showUnfiled = activeTreeTab === 'すべて' && matchesTreeQuery(UNFILED_FOLDER_NAME)
+  // 「すべて」の最後に「フォルダなし」（フォルダを消したページの置き場）を出す。中にページがあるときだけ（2026-10-28 本人）
+  const showUnfiled =
+    activeTreeTab === 'すべて' &&
+    matchesTreeQuery(UNFILED_FOLDER_NAME) &&
+    isUnfiledShown(context.hasUnfiledPages, context.folderUid)
 
   if (filtered.length === 0 && !showUnfiled) {
     const msg = document.createElement('div')

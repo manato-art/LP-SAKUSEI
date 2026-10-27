@@ -19,6 +19,10 @@ export const pageListApi = {
         ),
       (res) => res.ab_tests,
     ),
+  /** フォルダなしにページがあるか（1件だけ聞いて件数を見る。一覧に「フォルダなし」を出すかに使う） */
+  hasUnfiledPages: async () =>
+    (await request<{ pagination: PageInfo }>('GET', '/ab_tests?folder_id=null&per_page=1&page=1')).pagination
+      .total_count > 0,
   /** 合計行。`folderUid` は実在するフォルダか `unfiled`。`abTestUids` は表に出ている行 */
   reportsTotal: (folderUid: string, abTestUids: readonly string[], rangeQuery: string) =>
     request<{ reports_total: ReportKpi }>(

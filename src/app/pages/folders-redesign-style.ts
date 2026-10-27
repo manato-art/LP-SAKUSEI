@@ -33,6 +33,8 @@ const NAME_W = 252
  * （ここから KPI の容器・その中の左の余白 8px のあと列が並ぶ）。見出し・合計もこの位置にそろえる
  */
 const KPI_LEFT = 8 + 16 + NAME_W + 8
+/** 右の詳細の幅（採取物は 340px。本人「少しだけ狭めて。340なので320にしてみよう」2026-10-28） */
+const DETAIL_W = 320
 
 /**
  * 棒グラフの色（列＝指標ごと）。見本のとおり、関係の近い指標は同じ色。
@@ -60,8 +62,10 @@ const sparkColorRules = Object.entries(SPARK_COLORS)
 const CSS = `
 /* 地 */
 ${R}, ${R} .e11hwzd01, ${R} .efy50tl22, ${R} [data-testid="side-menu"]{background:${CANVAS} !important}
-/* 左のフォルダ一覧は見本のように細く（上の段の集計期間・配信ステータスが1行に入るように）。中の部品は一覧の幅に合わせる */
-${R} [data-testid="side-menu"]{border-right:none !important;width:224px !important;min-width:224px !important;max-width:224px !important;flex:none !important}
+/* 左のフォルダ一覧は見本のように細く（上の段の集計期間・配信ステータスが1行に入るように）。中の部品は一覧の幅に合わせる。
+   幅は最初の値だけ。端をつまむと folders.ts の wireResizeHandle が style に幅を書くので、!important で決めない
+   （決めていたら、つまんでも広がらなくなっていた・2026-10-28。最小は つまんだときと同じ 160px） */
+${R} [data-testid="side-menu"]{border-right:none !important;width:224px;min-width:160px;flex:none !important}
 ${R} [data-testid="side-menu"] > *{max-width:100%}
 ${R} .eyrb9321{width:100% !important}
 ${R} .e14mj4364, ${R} .efy50tl6 .e1bzrf8x8{width:100% !important;min-width:0 !important}
@@ -78,7 +82,7 @@ ${R} .efy50tl6{padding:12px 8px 4px !important;border-bottom:none !important}
 ${R} .efy50tl6 .e1bzrf8x8 .e1bzrf8x12{font-size:11px !important;padding:0 6px 0 10px !important}
 ${R} .efy50tl6 .e1bzrf8x11{padding:0 !important;width:16px !important;height:16px !important}
 ${R} .efy50tl6 .e1bzrf8x12{height:36px !important;width:100%}
-/* 左のフォルダ一覧の幅を変える取っ手の「←→」（押しても何も起きない・本人「←→消してOK」2026-10-27） */
+/* 左のフォルダ一覧の端に出ていた「←→」（押しても何も起きない・本人「←→消してOK」2026-10-27） */
 ${R} .e1krw8ps0{display:none !important}
 ${R} [data-folder-uid]{margin:2px 8px;border-radius:10px;cursor:pointer}
 ${R} [data-folder-uid]:hover{background:#F6F8FA}
@@ -91,7 +95,7 @@ ${R} [data-folder-uid][data-pl-current] .ea00ncb3{font-weight:700}
 /* 上の段: フォルダ内検索・新規ページを作成・集計期間・配信ステータス */
 ${R} .efy50tl22 > .e1ti96lw2{background:transparent !important;padding:12px 12px 8px !important;border-bottom:none !important}
 /* 右の詳細が出ているあいだは、上の段をその手前で止める（配信ステータスが詳細の下に隠れていた） */
-${R} .efy50tl22:has(> .efy50tl23:not([data-collapsed="true"])) > .e1ti96lw2{padding-right:352px !important}
+${R} .efy50tl22:has(> .efy50tl23:not([data-collapsed="true"])) > .e1ti96lw2{padding-right:${DETAIL_W + 12}px !important}
 ${R} .efy50tl12 button.ehjzppn1, ${R} .efy50tl12 .ehjzppn1{height:38px !important;border-radius:10px !important;font-weight:600}
 ${R} .efy50tl0{background:${TINT} !important;color:${BLUE} !important;border:1px solid transparent !important}
 /* 選ぶ箱（集計期間・配信ステータス・フォルダの並び）は中の本物のボタンに当てる。
@@ -124,6 +128,8 @@ ${R} .en4zj405 [data-testid="folder-icon"]{box-sizing:content-box;width:20px !im
 ${R} .en4zj404{font-size:22px !important;font-weight:800 !important;color:${INK} !important;max-width:none !important}
 ${R} .pl-count{flex:none;font-size:13px;color:${MUTED};white-space:nowrap}
 ${R} .en4zj403 button{height:34px !important;border:1px solid ${LINE} !important;border-radius:10px !important;background:#FFFFFF !important}
+/* 「更新順」の右の ←→（採取物のまま・押しても何も起きない・本人「機能していないなら消して」2026-10-28） */
+${R} .en4zj403 > .css-2f4ijs{display:none !important}
 /* フォルダの合計（列の数字の合計） */
 ${R} .en4zj401{font-size:13px !important;font-weight:700;color:${SUB} !important;text-align:center}
 /* 表の見出し */
@@ -140,6 +146,9 @@ ${R} .efy50tl7{position:absolute !important;right:0;top:0;height:40px !important
 ${R} .e14sgd471{padding-right:48px !important}
 ${R} .el51yfs3, ${R} .en4zj402{padding-right:56px !important}
 ${R} .efy50tl8 *{font-size:12px !important;color:${SUB} !important;font-weight:600}
+/* 名前の列の幅を変える取っ手（採取物のまま・つまんでも何も起きない）。カーソルを当てると青い縦線が出て、
+   名前の列を細くしたので場所も表の途中にずれていた（本人「謎の青線が出る」2026-10-28） */
+${R} .e14iuak30{display:none !important}
 /* KPI の列の幅をそろえる（見出し・合計・行） */
 ${R} .el51yfs1, ${R} .en4zj400, ${R} .e14sgd470:first-child{${col(92)}}
 ${R} .ej9gexd0, ${R} .en4zj401, ${R} .e14sgd470:not(:first-child){${col(68)}}
@@ -182,6 +191,11 @@ ${sparkColorRules}
 
 /* 右の詳細（白い面） */
 ${R} .efy50tl23{background:${CANVAS} !important;padding:12px 12px 12px 0;box-sizing:border-box}
+/* 幅は開いているときだけ決める。畳む（「閉じる」）と folders-detail-panel.ts が data-collapsed を付けて style に幅0を書く。
+   開き直すときは style の幅を消すので、ここで決めていないと中身なりの幅（約300px）で開いていた */
+${R} .efy50tl23:not([data-collapsed="true"]){width:${DETAIL_W}px !important}
+/* 一覧は詳細の幅だけ右を空ける（採取物の style は 340px） */
+${R} .efy50tl20{margin-right:${DETAIL_W}px !important}
 ${R} .efy50tl23:has(.efy50tl16[style*="display: none"]) > .e1ti96lw2{display:none !important}
 ${R} .efy50tl23 > .e1ti96lw2{background:#FFFFFF !important;border:1px solid ${LINE};border-bottom:none;border-radius:14px 14px 0 0;padding:14px 16px !important}
 ${R} .efy50tl3{font-size:17px !important;font-weight:800 !important;color:${INK} !important}

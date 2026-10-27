@@ -76,6 +76,7 @@ function context(): PageContext {
       { id: 10, versions_count: 1, funnel_steps_count: 0, exit_popups_count: 0, follow_popups_count: 0, popups_count: 0, redirect_pages_count: 0, has_conversion: false, ab_test_uid: 'PAGE_ONE' },
       { id: 20, versions_count: 3, funnel_steps_count: 1, exit_popups_count: 1, follow_popups_count: 1, popups_count: 2, redirect_pages_count: 4, has_conversion: true, ab_test_uid: 'PAGE_TWO' },
     ],
+    hasUnfiledPages: false,
   }
 }
 

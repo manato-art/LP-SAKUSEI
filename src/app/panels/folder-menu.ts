@@ -324,6 +324,12 @@ function confirmDeleteFolder(folder: Folder): void {
     if (!ok) return
     try {
       await api.deleteFolder(folder.uid)
+      // ページの無いフォルダは「フォルダなし」へ移るものが無い（「フォルダなし」は中にページがあるときだけ出す・2026-10-28 本人）
+      if (folder.ab_tests_count === 0) {
+        toast('フォルダを削除しました')
+        location.hash = '/folders'
+        return
+      }
       toast(`フォルダを削除しました。ページは「${UNFILED_FOLDER_NAME}」にあります`)
       location.hash = `/folders?uid=${UNFILED_FOLDER_UID}`
     } catch (error) {

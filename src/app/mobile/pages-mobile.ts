@@ -13,7 +13,7 @@ import { defaultRange, toRangeQuery } from '../pages/report-period.ts'
 import { cardDetailMetrics, cardMetrics } from './page-card.ts'
 import { openCreateFolder, openCreatePage } from '../pages/folders-create.ts'
 import { pageListApi } from '../api-page-list.ts'
-import { UNFILED_FOLDER_NAME, UNFILED_FOLDER_UID } from '../../shared/unfiled-folder.ts'
+import { UNFILED_FOLDER_NAME, UNFILED_FOLDER_UID, isUnfiledShown } from '../../shared/unfiled-folder.ts'
 import { isCreator } from '../session.ts'
 
 /** 配信ステータスの色（実物の配色に合わせる） */
@@ -115,8 +115,11 @@ export async function renderMobileFolders(container: HTMLElement): Promise<void>
   })
   body.append(area)
 
-  const { folders } = await api.folders().catch(() => ({ folders: [] as Folder[] }))
-  // フォルダが無くても「フォルダなし」は出す（全部のフォルダを消したあとも、ページにたどり着けるように）
+  const [{ folders }, hasUnfiledPages] = await Promise.all([
+    api.folders().catch(() => ({ folders: [] as Folder[] })),
+    pageListApi.hasUnfiledPages(),
+  ])
+  // フォルダが無くても、中にページがあれば「フォルダなし」は出す（全部のフォルダを消したあとも、ページにたどり着けるように）
   if (folders.length === 0) body.insertBefore(emptyState('フォルダがありません。'), area)
   for (const folder of folders) {
     const tile = el('button', {
@@ -140,7 +143,8 @@ export async function renderMobileFolders(container: HTMLElement): Promise<void>
     })
     area.append(tile)
   }
-  // フォルダを消したページの置き場（PCのフォルダツリーの「フォルダなし」と同じ）
+  // フォルダを消したページの置き場（PCのフォルダツリーの「フォルダなし」と同じ）。中にページがあるときだけ（2026-10-28 本人）
+  if (!isUnfiledShown(hasUnfiledPages, null)) return
   const unfiled = el('button', {
     class: 'sb-mobile-tap',
     style: [

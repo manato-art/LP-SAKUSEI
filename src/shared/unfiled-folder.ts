@@ -9,3 +9,12 @@
 export const UNFILED_FOLDER_UID = 'unfiled'
 
 export const UNFILED_FOLDER_NAME = 'フォルダなし'
+
+/**
+ * 「フォルダなし」を一覧に出すか（2026-10-28 本人「中にページがあるときだけ出す」）。
+ * ふだんは出さない。中にページがあるときと、いま「フォルダなし」を開いているとき
+ * （フォルダの無いページのパンくずから来たとき）だけ出す。PCの左の一覧とスマホのフォルダのカードで同じ決まり。
+ */
+export function isUnfiledShown(hasPages: boolean, selectedUid: string | null): boolean {
+  return hasPages || selectedUid === UNFILED_FOLDER_UID
+}

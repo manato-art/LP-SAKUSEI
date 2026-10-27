@@ -51,6 +51,7 @@ const context = (): PageContext => ({
   folderUid: 'FOLDER_0001',
   abTests: [page('A', 'りんご', 1, 'prepared'), page('B', 'いちご', 3, 'finished'), page('C', 'ぶどう', 2, 'delivered')],
   relationCounts: [],
+  hasUnfiledPages: false,
 })
 
 const order = (main: HTMLElement): string[] =>
