@@ -177,12 +177,12 @@ function backgroundValue(color: string): string {
   return hex(color) ?? ''
 }
 
-/** 土台（LPの外側）＝記事設定の「全体背景設定」。 */
+/** 土台（LPの外側）＝記事設定の「外枠背景」（実物の名前は「全体背景設定」）。 */
 export function masterStyleCanvasBackground(s: MasterStyleSheet): string {
   return backgroundValue(s.outer_background_color)
 }
 
-/** LP本体＝記事設定の「Version背景設定」。 */
+/** LP本体＝記事設定の「LP内背景」（実物の名前は「Version背景設定」）。 */
 export function masterStylePageBackground(s: MasterStyleSheet): string {
   return backgroundValue(s.inner_background_color)
 }

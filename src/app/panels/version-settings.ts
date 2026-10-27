@@ -112,19 +112,43 @@ const BACKGROUND_GROUPS: readonly {
   colorField: keyof MasterStyleSheet
   imageField: keyof MasterStyleSheet
 }[] = [
-  {
-    radioName: 'outerBackgroundRadio',
-    label: '全体背景設定',
-    colorField: 'outer_background_color',
-    imageField: 'outer_background_image',
-  },
+  // 見出しの名前と並び（2026-10-27 本人「Version背景設定→LP内背景・全体背景設定→外枠背景」「順番も逆にしてね」）。
+  // 採取した実物は「全体背景設定」「Version背景設定」の順。画面ではこの並び・この名前にする（arrangeBackgroundSections）
   {
     radioName: 'innerBackgroundRadio',
-    label: 'Version背景設定',
+    label: 'LP内背景',
     colorField: 'inner_background_color',
     imageField: 'inner_background_image',
   },
+  {
+    radioName: 'outerBackgroundRadio',
+    label: '外枠背景',
+    colorField: 'outer_background_color',
+    imageField: 'outer_background_image',
+  },
 ]
+
+/** 背景の見出しを BACKGROUND_GROUPS の名前にし、その並びに置き直す（見出し＋すぐ下の選択肢をひと組で動かす） */
+function arrangeBackgroundSections(wrapper: HTMLElement): void {
+  const sections = BACKGROUND_GROUPS.flatMap((group) => {
+    const groupWrap = wrapper
+      .querySelector<HTMLInputElement>(`input[name="${group.radioName}"]`)
+      ?.closest<HTMLElement>('[class*="backgroundFormWrapper"]')
+    const title = groupWrap?.previousElementSibling
+    if (groupWrap === null || groupWrap === undefined || title === null || title === undefined) return []
+    title.textContent = group.label
+    return [[title, groupWrap] as const]
+  })
+  const wraps = wrapper.querySelectorAll('[class*="backgroundFormWrapper"]')
+  const parent = wraps[0]?.parentElement
+  if (sections.length !== BACKGROUND_GROUPS.length || parent === null || parent === undefined) {
+    console.warn('[version-settings] 背景の見出しが土台に見つかりませんでした')
+    return
+  }
+  // 背景の組のすぐ後ろ（動かさない所）を目印に、決めた並びで入れ直す
+  const after = wraps[wraps.length - 1]?.nextSibling ?? null
+  for (const node of sections.flat()) parent.insertBefore(node, after)
+}
 
 /** モックAPI（localhost固定・本番ドメインは登場させない・§3-2） */
 const API_BASE = '/api/v1'
@@ -206,6 +230,7 @@ async function openPanel(articleUid: string): Promise<void> {
   }
 
   applySheet(wrapper, sheet)
+  arrangeBackgroundSections(wrapper)
   mountPaletteFields(wrapper)
   mountTextAlignButtons(wrapper, sheet.text_align ?? '')
 
