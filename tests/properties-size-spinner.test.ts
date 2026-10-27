@@ -23,3 +23,10 @@ describe('文字のサイズの欄の矢印', () => {
     expect(src.match(/sb-pr-no-spin/g)).toHaveLength(1)
   })
 })
+
+describe('文字のサイズの欄の ↑↓（2026-10-27 本人「十字キーの上下でサイズの調整をしたい」）', () => {
+  it('欄のキーの ↑↓ をその場で文字の大きさに効かせる', () => {
+    const src = readFileSync('src/app/panels/properties-panel.ts', 'utf8')
+    expect(src).toContain("wireStepKeys(sizeInput, 1, (v) => applyInline('size', `${v}px`))")
+  })
+})

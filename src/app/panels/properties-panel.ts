@@ -21,6 +21,7 @@ import { pickAndInsertMedia } from './media-insert.ts'
 import { applyTextLink, openTextLinkDialog, readTextLink, textLinkState } from './text-link.ts'
 import { ANIM_PRESETS, ANIM_SPEEDS } from '../anim/anim-presets.ts'
 import { colorPicker, fmtBtn, group, row } from './properties-parts.ts'
+import { nextStepValue, wireStepKeys } from './number-step-keys.ts'
 import { buildImageBody, refreshImageBody } from './properties-image.ts'
 import { notifyEditorChanged } from './editor-change.ts'
 import { buildUnderlineLookGroup } from './properties-underline.ts'
@@ -189,6 +190,8 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
     if (Number.isNaN(v) || v < 1) return
     applyInline('size', `${v}px`)
   })
+  // 欄を押して ↑↓ でその場で大きさを変える（2026-10-27 本人「十字キーの上下でサイズの調整をしたい」）
+  wireStepKeys(sizeInput, 1, (v) => applyInline('size', `${v}px`))
   const sizeStepWrap = document.createElement('div')
   sizeStepWrap.className = 'sb-pr-stepper-wrap'
   const sizeUp = document.createElement('button')
@@ -196,9 +199,9 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
   sizeUp.className = 'sb-pr-stepper-btn'
   sizeUp.textContent = '▲'
   sizeUp.addEventListener('click', () => {
-    const v = parseInt(sizeInput.value, 10)
-    if (Number.isNaN(v)) return
-    sizeInput.value = String(v + 1)
+    const v = nextStepValue(sizeInput.value, 1, 1)
+    if (v === null) return
+    sizeInput.value = String(v)
     sizeInput.dispatchEvent(new Event('change'))
   })
   const sizeDown = document.createElement('button')
@@ -206,9 +209,9 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
   sizeDown.className = 'sb-pr-stepper-btn'
   sizeDown.textContent = '▼'
   sizeDown.addEventListener('click', () => {
-    const v = parseInt(sizeInput.value, 10)
-    if (Number.isNaN(v) || v <= 1) return
-    sizeInput.value = String(v - 1)
+    const v = nextStepValue(sizeInput.value, -1, 1)
+    if (v === null) return
+    sizeInput.value = String(v)
     sizeInput.dispatchEvent(new Event('change'))
   })
   sizeStepWrap.append(sizeUp, sizeDown)
