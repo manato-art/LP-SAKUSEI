@@ -48,6 +48,7 @@ import { openWidgetStudio } from './widget-studio.ts'
 import { newUid, rekeyUid } from './nocode/templates/kit.ts'
 import { placeholderLinkCount } from './link-placeholder.ts'
 import { loadSbCategories, loadSbParts, matchingSbParts, visibleSbParts, type SbPart } from './widget-library-sb.ts'
+import { sbCategoriesFor, sbOnlyCategories } from './widget-library-merge.ts'
 import { newSbToken, sbInsertMarkup } from './sb-widget-scope.ts'
 
 const HOOK = {
@@ -169,7 +170,7 @@ function open(quill: Quill | null, extra: { onClose?: () => void } = {}): void {
   patchPortalLayout(portal.root, quill, portal.close)
 
   wireCategories(portal.root, quill, portal.close)
-  wireSearch(portal.root, quill, portal.close)
+  wireSearch(portal.root)
   // 開いた直後は「見本」（自作の見本）を出す
   renderNewSamples(portal.root, quill, portal.close)
   // 作成したWidget・お気に入りはサーバーから読む（2026-10-24。以前はブラウザの中だけ＝ほかのアカウントから見えなかった）。
@@ -270,13 +271,15 @@ function patchPortalLayout(root: HTMLElement, quill: Quill | null, close: () => 
     let after: HTMLElement = createdBtn
     after.after(sectionHeader)
     after = sectionHeader
+    const sampleButtons = new Map<SampleCategory, HTMLElement>()
     for (const name of SAMPLE_CATEGORIES) {
       const btn = createCategoryButton(name)
       btn.dataset['sampleCategory'] = name
+      sampleButtons.set(name, btn)
       after.after(btn)
       after = btn
     }
-    addSbCategories(root, after, quill, close)
+    addSbCategories(root, after, quill, close, sampleButtons)
   }
 
   /* ---- 6. 「+ Widgetを作成」「+ ノーコードで作る」（LPへ入れる入口。LPの無い画面＝ポップアップでは出さない） ---- */
@@ -328,11 +331,11 @@ function wireCategories(root: HTMLElement, quill: Quill | null, close: () => voi
   for (const cat of categories) {
     cat.addEventListener('click', () => {
       activateCategory([...root.querySelectorAll<HTMLElement>(HOOK.category)], cat)
-      delete root.dataset['sbCategory']
+      clearSbList(root)
       const sampleCategory = cat.dataset['sampleCategory']
       if (sampleCategory !== undefined) {
-        // 見本を種類でしぼる
-        renderNewSamples(root, quill, close, sampleCategory as SampleCategory)
+        // 見本を種類でしぼる（まとめた取り込んだ見本が上・自作が下）
+        renderSampleCategory(root, quill, close, sampleCategory as SampleCategory)
         return
       }
       const catIndex = Number(cat.dataset['catIndex'] ?? String(NEW_SAMPLES_CAT))
@@ -423,26 +426,35 @@ function renderNewSamples(root: HTMLElement, quill: Quill | null, close: () => v
  *  SquadBeyond の Widget（2026-10-26・widget-library-sb.ts）
  * ================================================================ */
 
-/** 「取り込んだ見本」（SquadBeyond の Widget）の見出しと分類のボタン（分類はサーバーから読んで、after の後ろに並べる） */
-function addSbCategories(root: HTMLElement, after: HTMLElement, quill: Quill | null, close: () => void): void {
-  const header = document.createElement('h6')
-  // 見出しは「取り込んだ見本」（画面に beyond を出さない・2026-10-25 の決定／名前は 2026-10-26 本人の選択）
-  header.textContent = '取り込んだ見本'
-  header.dataset['sbHeader'] = 'true'
-  header.style.cssText = 'font:600 13px/1.4 "Hiragino Sans",sans-serif;color:#333;margin:16px 0 4px;padding:0 8px'
+/**
+ * 取り込んだ見本（SquadBeyond の Widget）の分類のボタン（分類はサーバーから読む）。
+ * 意味の同じ分類は自作の分類にまとめ（widget-library-merge.ts・2026-10-27 本人の指示⑨）、まとめる先の無い分類だけを after の後ろに並べる。
+ * 自作の分類のボタンには、まとめたあとの数（取り込んだ見本＋自作）を付ける
+ */
+function addSbCategories(
+  root: HTMLElement,
+  after: HTMLElement,
+  quill: Quill | null,
+  close: () => void,
+  sampleButtons: ReadonlyMap<SampleCategory, HTMLElement>,
+): void {
   const note = document.createElement('p')
   note.textContent = '読み込み中…'
   note.style.cssText = 'margin:0;padding:0 8px;font:12px/1.6 "Hiragino Sans",sans-serif;color:#999'
-  after.after(header, note)
+  after.after(note)
   void loadSbCategories().then(
     (categories) => {
-      let last: HTMLElement = header
-      for (const category of categories) {
+      for (const [category, btn] of sampleButtons) {
+        const count = sbCategoriesFor(category, categories).reduce((sum, c) => sum + c.count, 0) + ownSamples(category).length
+        setCategoryLabel(btn, `${category}（${count}）`)
+      }
+      let last: HTMLElement = after
+      for (const category of sbOnlyCategories(categories)) {
         const btn = createCategoryButton(`${category.name}（${category.count}）`)
         btn.dataset['sbCategory'] = String(category.id)
         btn.addEventListener('click', () => {
           activateCategory([...root.querySelectorAll<HTMLElement>(HOOK.category)], btn)
-          renderSbCategory(root, quill, close, category.id)
+          renderSbList(root, quill, close, `sb:${category.id}`, () => loadSbParts(category.id))
         })
         last.after(btn)
         last = btn
@@ -451,6 +463,41 @@ function addSbCategories(root: HTMLElement, after: HTMLElement, quill: Quill | n
     },
     () => {
       note.textContent = '取り込んだ見本を読み込めませんでした。開き直してください。'
+    },
+  )
+}
+
+/** ボタンの文字だけ変える（中の波紋の飾りは残す） */
+function setCategoryLabel(btn: HTMLElement, label: string): void {
+  const text = btn.firstChild
+  if (text !== null && text.nodeType === Node.TEXT_NODE) text.textContent = label
+}
+
+/** 自作の見本のうち、その分類の物 */
+const ownSamples = (category: SampleCategory): readonly NewSample[] => LIBRARY_SAMPLES.filter((sample) => sample.category === category)
+
+/**
+ * 自作の分類を出す。まとめた取り込んだ見本の分類があれば、上に取り込んだ見本・下に自作（オリジナル）。
+ * 取り込んだ見本の分類を読めなかったときは、自作だけ出す
+ */
+function renderSampleCategory(root: HTMLElement, quill: Quill | null, close: () => void, category: SampleCategory): void {
+  const key = `merged:${category}`
+  root.dataset['sbList'] = key
+  void loadSbCategories().then(
+    (categories) => {
+      if (root.dataset['sbList'] !== key) return
+      const merged = sbCategoriesFor(category, categories)
+      if (merged.length === 0) {
+        clearSbList(root)
+        renderNewSamples(root, quill, close, category)
+        return
+      }
+      renderSbList(root, quill, close, key, () => Promise.all(merged.map((c) => loadSbParts(c.id))).then((lists) => lists.flat()), category)
+    },
+    () => {
+      if (root.dataset['sbList'] !== key) return
+      clearSbList(root)
+      renderNewSamples(root, quill, close, category)
     },
   )
 }
@@ -465,25 +512,61 @@ function sbWidgetCard(part: SbPart): HTMLElement {
   return card
 }
 
+/** 検索で出し直すための、いま出している取り込んだ見本の並びの描き方（無ければ自作の見本だけ） */
+const sbListRenderers = new WeakMap<HTMLElement, () => void>()
+
+function clearSbList(root: HTMLElement): void {
+  delete root.dataset['sbList']
+  sbListRenderers.delete(root)
+}
+
+/** 一覧の中の見出し（取り込んだ見本／オリジナル） */
+function gridLabel(text: string): HTMLElement {
+  const label = document.createElement('h6')
+  label.textContent = text
+  label.dataset['gridLabel'] = 'true'
+  // 1行まるごと使う（一覧は横に流す並べ方）
+  label.style.cssText = 'flex:0 0 100%;grid-column:1/-1;margin:8px 0 0;font:700 13px/1.4 "Hiragino Sans",sans-serif;color:#555'
+  return label
+}
+
 /**
- * SquadBeyond の分類を出す。はじめは24件・「もっと見る」で24件ずつ足す。検索に何か入っていれば、その分類の全件から探す
+ * 取り込んだ見本の並びを出す。はじめは24件・「もっと見る」で24件ずつ足す。検索に何か入っていれば、全件から探す。
+ * own（自作の分類）を渡すと、上に「取り込んだ見本」・下に「オリジナル」（その分類の自作の見本）を出す（2026-10-27 本人の指示⑨）
  */
-function renderSbCategory(root: HTMLElement, quill: Quill | null, close: () => void, id: number): void {
+function renderSbList(
+  root: HTMLElement,
+  quill: Quill | null,
+  close: () => void,
+  key: string,
+  load: () => Promise<readonly SbPart[]>,
+  own?: SampleCategory,
+): void {
   const grid = root.querySelector<HTMLElement>(HOOK.grid)
   if (grid === null) return
-  root.dataset['sbCategory'] = String(id)
+  root.dataset['sbList'] = key
+  sbListRenderers.set(root, () => renderSbList(root, quill, close, key, load, own))
   grid.replaceChildren(gridMessage('読み込み中…'))
-  void loadSbParts(id).then(
+  void load().then(
     (parts) => {
       // 読んでいる間にほかの分類を選んだら描かない
-      if (root.dataset['sbCategory'] !== String(id)) return
+      if (root.dataset['sbList'] !== key) return
       const query = root.querySelector<HTMLInputElement>(HOOK.search)?.value ?? ''
       const list = matchingSbParts(parts, query)
-      if (list.length === 0) {
+      const ownCards = own === undefined ? [] : ownSamples(own).map((sample) => newSampleCard(sample))
+      if (list.length === 0 && ownCards.length === 0) {
         grid.replaceChildren(gridMessage(query.trim() === '' ? 'この分類の Widget はありません。' : '検索に合う Widget はありません。'))
         return
       }
       grid.replaceChildren()
+      if (own !== undefined && list.length > 0) grid.append(gridLabel('取り込んだ見本'))
+      // 自作の見本は、取り込んだ見本のあと（「もっと見る」で足す分は、この見出しの前に入る）
+      const tail = own === undefined ? null : gridLabel('オリジナル')
+      if (tail !== null && ownCards.length > 0) {
+        grid.append(tail, ...ownCards)
+        wireCards(root, quill, close, ownCards)
+      }
+      const anchor = tail !== null && tail.isConnected ? tail : null
       let pages = 0
       const more = cardActionButton('', false)
       more.dataset['sbMore'] = 'true'
@@ -493,19 +576,21 @@ function renderSbCategory(root: HTMLElement, quill: Quill | null, close: () => v
         pages += 1
         const cards = visibleSbParts(list, pages).slice(before).map(sbWidgetCard)
         more.remove()
-        grid.append(...cards)
+        for (const card of cards) grid.insertBefore(card, anchor)
         wireCards(root, quill, close, cards)
         const rest = list.length - visibleSbParts(list, pages).length
         if (rest > 0) {
           more.textContent = `もっと見る（残り ${rest}件）`
-          grid.append(more)
+          grid.insertBefore(more, anchor)
         }
       }
       more.addEventListener('click', showMore)
-      showMore()
+      if (list.length > 0) showMore()
+      // 自作の見本も検索で絞る（題名に含む物だけ）
+      if (ownCards.length > 0) applySearchFilter(root)
     },
     () => {
-      if (root.dataset['sbCategory'] === String(id)) grid.replaceChildren(gridMessage('読み込めませんでした。開き直してください。'))
+      if (root.dataset['sbList'] === key) grid.replaceChildren(gridMessage('読み込めませんでした。開き直してください。'))
     },
   )
 }
@@ -760,19 +845,19 @@ function renderFavoriteWidgets(root: HTMLElement, quill: Quill | null, close: ()
  *  検索
  * ================================================================ */
 
-function wireSearch(root: HTMLElement, quill: Quill | null, close: () => void): void {
+function wireSearch(root: HTMLElement): void {
   const input = root.querySelector<HTMLInputElement>(HOOK.search)
   if (input === null) return
   let timer = 0
   input.addEventListener('input', () => {
-    const sb = root.dataset['sbCategory']
-    if (sb === undefined) {
+    const again = sbListRenderers.get(root)
+    if (again === undefined) {
       applySearchFilter(root)
       return
     }
-    // SquadBeyond の分類は、まだ出していないカードも探す（打ち終わってから出し直す）
+    // 取り込んだ見本は、まだ出していないカードも探す（打ち終わってから出し直す）
     window.clearTimeout(timer)
-    timer = window.setTimeout(() => renderSbCategory(root, quill, close, Number(sb)), 200)
+    timer = window.setTimeout(again, 200)
   })
 }
 

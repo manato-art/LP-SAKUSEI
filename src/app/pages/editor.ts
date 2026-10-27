@@ -35,6 +35,8 @@ import { registerUnderlineBlot } from '../panels/underline-blot.ts'
 import { registerMarkerBlot } from '../panels/marker-blot.ts'
 import { registerBackgroundPadding } from '../panels/background-padding-format.ts'
 import { mediaUploaderOptions, wireMediaDrop } from '../panels/media-insert.ts'
+import { injectEditorLinkCss, mountUrlTextHighlight } from './editor-links.ts'
+import { wireEditorPaste } from './editor-paste.ts'
 import { wireImageResize } from '../panels/image-resize.ts'
 import { wireAbTestTabs, setupHorizTabs, setupBreadcrumb } from './tab-nav.ts'
 import { wireBeyondNavAnchors } from './beyond-nav.ts'
@@ -245,6 +247,11 @@ export async function renderEditor(
   // 指示㊵: 貼り付けた画像のサイズをドラッグで変更できるようにする
   // 画像・動画のリサイズ枠（動画の再生設定は右パネル側）
   wireImageResize(quill)
+  // 指示⑧（2026-10-27）: 本文のリンク・URLの文字を青い文字＋青い下線で見せる（editor-links.ts）
+  injectEditorLinkCss()
+  mountUrlTextHighlight(quill)
+  // 指示⑩（2026-10-27）: ほかから貼った文字の書体を持ち込まない（editor-paste.ts）
+  wireEditorPaste(quill)
 
   // ── 指示㊿②: キャンバスのみスクロール ──
   // スクロールは Quill ホスト（#quillIframe 跡地）の overflow:auto が担当。
