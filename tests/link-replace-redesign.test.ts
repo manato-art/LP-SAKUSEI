@@ -26,6 +26,19 @@ describe('リンク置換の見た目（㉒）', () => {
   })
 })
 
+describe('下のチェックの ⓘ（2026-10-27 本人「消して」）', () => {
+  it('「計測機能付きリンクに変更」「リンクを別タブで開く」の横の ⓘ と、開かない説明の箱を出さない。チェックと文字は残す', async () => {
+    const t = await setupLinkReplacePanel(HTML)
+    for (const box of t.panel.querySelectorAll('._trackingCheckBox_id5w4_257, ._targetCheckBox_id5w4_9')) {
+      expect(box.querySelector('svg')).toBeNull()
+      expect(box.querySelector('._description_1uihv_17')).toBeNull()
+      expect(box.querySelector('input[type="checkbox"]')).not.toBeNull()
+    }
+    expect(t.panel.querySelector('label[for="trackingCheckBox"]')?.textContent).toBe('計測機能付きリンクに変更')
+    expect(t.panel.querySelector('label[for="targetCheckBox"]')?.textContent).toBe('リンクを別タブで開く')
+  })
+})
+
 describe('外を押したら閉じる（㉓）', () => {
   it('開いているとき、パネルの外を押すと閉じる。中を押しても閉じない', async () => {
     const closed: number[] = []

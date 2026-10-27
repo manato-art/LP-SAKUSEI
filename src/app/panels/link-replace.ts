@@ -381,6 +381,10 @@ function wire(root: HTMLElement, panel: HTMLElement): void {
   for (const id of ['trackingCheckBox', 'targetCheckBox']) {
     checkboxOf(panel, id)?.addEventListener('change', () => updateReplaceButton(panel))
   }
+  // 下の2つのチェックの横の ⓘ と、その説明の箱を外す（説明は採取した見た目だけで開かなかった・2026-10-27 本人「消して」）
+  for (const box of panel.querySelectorAll<HTMLElement>('._trackingCheckBox_id5w4_257, ._targetCheckBox_id5w4_9')) {
+    for (const extra of box.querySelectorAll('._iconCenter_1uihv_9, ._dropdown_x4j8w_1 > ._bodyWrapper_x4j8w_8')) extra.remove()
+  }
 
   panel.querySelector<HTMLElement>(`.${CLS.btnReplace}`)?.addEventListener('click', () => {
     void applyReplacement(root, panel)
