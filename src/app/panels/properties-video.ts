@@ -2,8 +2,9 @@
  * 右パネルの「動画」プロパティ。
  *
  * キャンバスの動画をクリックすると、画像と同じようにここへ設定が出る。
- * 出すのは動画そのものが持っている機能だけ:
- *   再生設定（ループ / 自動再生 / ミュート）・サイズ・複製
+ * 再生設定（ループ / 自動再生 / ミュート）・サイズ・複製に加えて、画像と同じこと
+ * （プレビュー・代替テキスト・リンク設定・計測URL・アニメーション・削除）もできる
+ * （2026-10-27 指示㉑ 本人「動画にもリンク入れたい」「画像でできること全部入れて」・共通の欄は properties-media-extras.ts）
  *
  * 保存は DOM から直列化される（editor.ts の `serializeQuillBody`）ので、
  * `<video>` の属性・スタイルを書き換えれば保存HTMLにそのまま入る。
@@ -17,6 +18,8 @@ import { applyVideoAlign, videoAlignOf } from './media-align.ts'
 import { buildMediaAlignGroup, syncMediaAlign } from './properties-media-align.ts'
 import { duplicateVideo, hasFlag, toggleFlag, willBlockAutoplay, type VideoFlag } from './video-controls.ts'
 import { swapBodyVideoForImage } from './body-media-swap.ts'
+import { buildMediaAnimGroup, buildMediaLinkGroup, buildMediaTrackingGroup } from './properties-media-extras.ts'
+import { VIDEO_LABEL_ATTR } from './media-settings.ts'
 
 /**
  * ON/OFF のスイッチ1つ。
@@ -97,6 +100,18 @@ export function buildVideoBody(deps: VideoBodyDeps): VideoBody {
     container.sync?.(current)
   }
 
+  // ── プレビュー（画像と同じく小さく見せる。音なし・止めたまま） ──
+  const previewGroup = group('プレビュー')
+  const preview = document.createElement('video')
+  preview.muted = true
+  preview.setAttribute('muted', '')
+  preview.setAttribute('playsinline', '')
+  preview.setAttribute('preload', 'metadata')
+  preview.style.cssText =
+    'display:block;width:100%;max-height:140px;object-fit:contain;border:1px solid var(--sb-c-e5e5ea, #E5E5EA);' +
+    'border-radius:4px;background:var(--sb-c-f5f6f8, #F5F6F8);pointer-events:none'
+  previewGroup.append(preview)
+
   // ── ソース ──
   const srcRow = row('ソース')
   const srcField = document.createElement('div')
@@ -105,6 +120,20 @@ export function buildVideoBody(deps: VideoBodyDeps): VideoBody {
     'text-overflow:ellipsis;white-space:nowrap;border:1px solid var(--sb-c-e5e5ea, #E5E5EA);border-radius:4px;' +
     'padding:0 6px;background:var(--sb-c-f5f6f8, #F5F6F8)'
   srcRow.append(srcField)
+
+  // ── 代替テキスト（画像の alt にあたる・aria-label） ──
+  const altRow = row('alt')
+  const altInput = document.createElement('input')
+  altInput.className = 'sb-pr-input'
+  altInput.placeholder = '代替テキスト'
+  altInput.addEventListener('change', () => {
+    const label = altInput.value.trim()
+    withVideo((video) => {
+      if (label === '') video.removeAttribute(VIDEO_LABEL_ATTR)
+      else video.setAttribute(VIDEO_LABEL_ATTR, label)
+    })
+  })
+  altRow.append(altInput)
 
   // ── サイズ ──
   const sizeGroup = group('サイズ')
@@ -161,6 +190,16 @@ export function buildVideoBody(deps: VideoBodyDeps): VideoBody {
 
   // ── 配置（左・中央・右。動画自身を寄せる・2026-10-18 本人「動画や画像の位置も左右で選びたい」） ──
   const alignGroup = buildMediaAlignGroup((align) => withVideo((video) => applyVideoAlign(video, align)))
+
+  // ── アニメーション・リンク設定・計測URL（画像と共通の欄） ──
+  const extrasDeps = { current: (): HTMLElement | null => deps.getVideo(), apply: withVideo }
+  const animSection = buildMediaAnimGroup(extrasDeps)
+  const linkSection = buildMediaLinkGroup(extrasDeps)
+  const linkNote = document.createElement('div')
+  linkNote.style.cssText = 'font-size:10px;color:#999999;line-height:1.5'
+  linkNote.textContent = 'リンクを付けた動画は、押すとリンク先へ移ります（再生ボタンは出しません）'
+  linkSection.el.append(linkNote)
+  const trackSection = buildMediaTrackingGroup(extrasDeps)
 
   // ── 再生設定 ──
   const playGroup = group('再生設定')
@@ -258,16 +297,36 @@ export function buildVideoBody(deps: VideoBodyDeps): VideoBody {
     picker.click()
   })
 
-  // 指示: 差し替えを先、複製を後
-  actionGroup.append(swapBtn, dupBtn)
+  // 削除（画像の「画像を削除」と同じ）
+  const removeBtn = document.createElement('button')
+  removeBtn.type = 'button'
+  removeBtn.className = 'sb-pr-action danger'
+  removeBtn.style.marginTop = '6px'
+  removeBtn.textContent = '動画を削除'
+  removeBtn.addEventListener('click', () => {
+    const video = deps.getVideo()
+    if (video === null) return
+    // Quill の部品として消す（DOMを直接消すと Quill の中身とずれる）。Widget の中の動画は DOM で
+    const blot = deps.quill.scroll.find(video)
+    if (blot !== null) deps.quill.deleteText(deps.quill.getIndex(blot), 1, 'user')
+    else video.remove()
+    deps.setVideo(null)
+    container.style.display = 'none'
+  })
 
-  container.append(srcRow, sizeGroup, alignGroup, playGroup, actionGroup)
+  // 指示: 差し替えを先、複製を後
+  actionGroup.append(swapBtn, dupBtn, removeBtn)
+
+  container.append(previewGroup, srcRow, altRow, sizeGroup, alignGroup, animSection.el, linkSection.el, trackSection.el, playGroup, actionGroup)
 
   container.sync = (video: HTMLVideoElement): void => {
     const src = video.getAttribute('src') ?? ''
     // data: URL は非常に長いので、頭だけ見せる（パネルを壊さない）
     srcField.textContent = src.startsWith('data:') ? `${src.slice(0, 40)}…（埋め込み）` : src
     srcField.title = srcField.textContent
+    if (preview.getAttribute('src') !== src) preview.setAttribute('src', src)
+    altInput.value = video.getAttribute(VIDEO_LABEL_ATTR) ?? ''
+    for (const section of [animSection, linkSection, trackSection]) section.sync(video)
     const w = Math.round(video.getBoundingClientRect().width)
     wInput.value = w > 0 ? String(w) : ''
     loop.sync(hasFlag(video, 'loop'))

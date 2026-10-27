@@ -172,7 +172,7 @@ describe('右パネルの動画プロパティ', () => {
   })
 
   it('操作は 差し替え → 複製 の順に並べる', () => {
-    expect(panel).toContain('actionGroup.append(swapBtn, dupBtn)')
+    expect(panel).toContain('actionGroup.append(swapBtn, dupBtn, removeBtn)')
   })
 
   it('操作のたびに実体を取り直して表示を塗り直す（古いノードを掴んだままにしない）', () => {

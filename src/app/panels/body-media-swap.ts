@@ -5,8 +5,8 @@
  * DOM を直接入れ替えると Quill の中身とずれる。Quill の変更（updateContents）で入れ替える。
  * Widget の中の画像・動画は Quill の部品ではない（Widget はひとかたまり）ので、DOM で入れ替える（media-swap.ts）。
  *
- * 引き継ぐもの: 位置（左・中央・右）・幅。画像→動画は自動で再生・音なし・くり返し（本人の決定）。
- * 画像だけの設定（リンク・計測URL・アニメーション）は、本文の動画には付けられないので外れる（呼ぶ側が知らせる）。
+ * 引き継ぐもの: 位置（左・中央・右）・幅・リンク・計測URL・アニメーション・代替テキスト（media-settings.ts）。
+ * 画像→動画は自動で再生・音なし・くり返し（本人の決定）。動画にもリンクなどが付けられるようになった（2026-10-27 指示㉑）。
  *
  * Quill を読み込まない（型だけ・node のテストから読めるように）。
  */
@@ -15,14 +15,10 @@ import type { Op } from 'quill'
 import { imageAlignOf, lineAlignOf, videoAlignOf, type MediaAlign } from './media-align.ts'
 import { swapImageForVideo, swapVideoForImage } from './media-swap.ts'
 import { notifyEditorChanged } from './editor-change.ts'
+import { mediaSettingsOf, VIDEO_LABEL_ATTR } from './media-settings.ts'
 
-/** 本文の画像だけが持てる設定（動画にすると外れる） */
-const IMAGE_ONLY_SETTINGS = ['data-link-url', 'data-tracking-urls', 'data-anim'] as const
-
-/** 動画にすると外れる設定が付いているか（リンク・計測URL・アニメーション） */
-export function hasImageOnlySettings(img: Element): boolean {
-  return IMAGE_ONLY_SETTINGS.some((name) => (img.getAttribute(name) ?? '') !== '')
-}
+/** 引き継ぐ設定（リンク・計測URL・アニメーション・代替テキスト） */
+export type MediaSettings = Readonly<Record<string, string>>
 
 /** 幅の指定（px の数だけ）。指定が無い・% のときは null */
 function pxWidthOf(el: HTMLElement): string | null {
@@ -34,20 +30,20 @@ function pxWidthOf(el: HTMLElement): string | null {
  * 画像（index の位置）を動画にする変更。画像だけの行なら行ごと動画にする
  * （動画はひとかたまりの行なので、行の終わりを残すと下に空の行が増える）。文の途中の画像なら、そこで行を分ける
  */
-export function imageToVideoOps(index: number, wholeLine: boolean, align: MediaAlign, src: string): Op[] {
+export function imageToVideoOps(index: number, wholeLine: boolean, align: MediaAlign, src: string, settings: MediaSettings = {}): Op[] {
   return [
     ...(index > 0 ? [{ retain: index }] : []),
-    { insert: { sbvideo: { src, loop: 'on', autoplay: 'on', muted: 'on', align } } },
+    { insert: { sbvideo: { src, loop: 'on', autoplay: 'on', muted: 'on', align, ...settings } } },
     { delete: wholeLine ? 2 : 1 },
   ]
 }
 
 /** 動画（index の位置）を画像だけの行にする変更。位置は行の寄せで、幅は画像の幅で持つ */
-export function videoToImageOps(index: number, align: MediaAlign, src: string, width: string | null): Op[] {
+export function videoToImageOps(index: number, align: MediaAlign, src: string, width: string | null, settings: MediaSettings = {}): Op[] {
   const lineAlign = lineAlignOf(align)
   return [
     ...(index > 0 ? [{ retain: index }] : []),
-    { insert: { image: width === null ? { src } : { src, width } } },
+    { insert: { image: width === null ? { src, ...settings } : { src, width, ...settings } } },
     lineAlign === false ? { insert: '\n' } : { insert: '\n', attributes: { align: lineAlign } },
     { delete: 1 },
   ]
@@ -75,7 +71,8 @@ export function swapBodyImageForVideo(quill: Quill, img: HTMLImageElement, src: 
   // 画像だけの行で、そのあとにも行があるとき（最後の行の終わりは Quill が消させない）
   const wholeLine = line !== null && line.length() === 2 && index + 2 < quill.getLength()
   const width = pxWidthOf(img)
-  quill.updateContents(imageToVideoOps(index, wholeLine, imageAlignOf(img) ?? 'left', src), 'user')
+  const settings = { ...mediaSettingsOf(img), ...(img.alt === '' ? {} : { [VIDEO_LABEL_ATTR]: img.alt }) }
+  quill.updateContents(imageToVideoOps(index, wholeLine, imageAlignOf(img) ?? 'left', src, settings), 'user')
   const [placed] = quill.getLine(index)
   const video = placed?.domNode
   if (!(video instanceof HTMLVideoElement)) return null
@@ -97,10 +94,13 @@ export function swapBodyVideoForImage(quill: Quill, video: HTMLVideoElement, src
   }
   const index = quill.getIndex(blot)
   const fullWidth = video.style.width.endsWith('%') ? video.style.width : null
-  quill.updateContents(videoToImageOps(index, videoAlignOf(video), src, pxWidthOf(video)), 'user')
+  const label = video.getAttribute(VIDEO_LABEL_ATTR) ?? ''
+  quill.updateContents(videoToImageOps(index, videoAlignOf(video), src, pxWidthOf(video), mediaSettingsOf(video)), 'user')
   const [leaf] = quill.getLeaf(index)
   const img = leaf?.domNode
   if (!(img instanceof HTMLImageElement)) return null
+  // 代替テキストは画像の部品の値に入らないので、要素に直接
+  if (label !== '') img.alt = label
   if (fullWidth !== null) {
     // 「幅いっぱい」の動画は、画像も幅いっぱいに（保存は DOM から・自動保存へ合図）
     img.style.width = fullWidth

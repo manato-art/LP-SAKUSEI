@@ -9,6 +9,7 @@
 import Quill from 'quill'
 import { stripLeakedEditorImgBorder } from './widget-css-sanitize.ts'
 import { applyVideoAlign, videoAlignOf } from './media-align.ts'
+import { applyMediaSettings, mediaSettingsOf, MEDIA_SETTING_ATTRS, VIDEO_LABEL_ATTR } from './media-settings.ts'
 
 type BlotConstructor = new (...args: unknown[]) => object
 
@@ -67,16 +68,21 @@ export function registerMediaBlots(): void {
       // 位置（左・中央・右）も付け直す。値に無い古いデータは左（今までどおり）
       const align = typeof value === 'string' ? 'left' : value['align']
       applyVideoAlign(node, align === 'center' || align === 'right' ? align : 'left')
+      // リンク・計測URL・アニメーション・代替テキスト（画像と同じ・2026-10-27 指示㉑）
+      if (typeof value !== 'string') applyMediaSettings(node, value)
       return node
     }
     static value(node: HTMLElement): Record<string, string> {
       const flag = (name: string): string => (node.hasAttribute(name) ? 'on' : 'off')
+      const label = node.getAttribute(VIDEO_LABEL_ATTR) ?? ''
       return {
         src: node.getAttribute('src') ?? '',
         loop: flag('loop'),
         autoplay: flag('autoplay'),
         muted: flag('muted'),
         align: videoAlignOf(node),
+        ...mediaSettingsOf(node),
+        ...(label === '' ? {} : { [VIDEO_LABEL_ATTR]: label }),
       }
     }
   }
@@ -117,15 +123,8 @@ export function registerMediaBlots(): void {
     create(value: unknown): HTMLElement
   }
 
-  /** 保持する data 属性のリスト（リンク/計測＋アニメーション） */
-  const LINK_ATTRS = [
-    'data-link-url',
-    'data-link-target',
-    'data-tracking-urls',
-    'data-anim',
-    'data-anim-speed',
-    'data-anim-loop',
-  ] as const
+  /** 保持する data 属性のリスト（リンク/計測＋アニメーション・動画と同じ＝media-settings.ts） */
+  const LINK_ATTRS = MEDIA_SETTING_ATTRS
 
   class SbImageBlot extends BaseImage {
     static blotName = 'image'

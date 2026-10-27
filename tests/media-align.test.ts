@@ -193,7 +193,7 @@ describe('画像・動画の右の欄への組み込み', () => {
   it('動画: 「サイズ」の下に配置。押すと動画自身を寄せる', () => {
     const src = readFileSync('src/app/panels/properties-video.ts', 'utf8')
     expect(src).toMatch(/withVideo\(\(video\) => applyVideoAlign\(video, align\)\)/)
-    expect(src).toMatch(/container\.append\(srcRow, sizeGroup, alignGroup, playGroup, actionGroup\)/)
+    expect(src).toMatch(/sizeGroup, alignGroup,/)
     expect(src).toContain('syncMediaAlign(alignGroup, videoAlignOf(video))')
   })
 

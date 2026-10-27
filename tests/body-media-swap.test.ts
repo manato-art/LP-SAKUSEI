@@ -3,9 +3,8 @@
  * Quill の変更（Delta）を、本文の中身に当てた結果で確かめる。
  */
 import Delta from 'quill-delta'
-import { parseHTML } from 'linkedom'
 import { describe, expect, it } from 'vitest'
-import { hasImageOnlySettings, imageToVideoOps, videoToImageOps } from '../src/app/panels/body-media-swap.ts'
+import { imageToVideoOps, videoToImageOps } from '../src/app/panels/body-media-swap.ts'
 
 const VIDEO = 'data:video/mp4;base64,AAAA'
 const IMAGE = 'data:image/webp;base64,BBBB'
@@ -56,21 +55,19 @@ describe('動画 → 画像', () => {
   })
 })
 
-describe('動画にすると外れる設定', () => {
-  const img = (attrs: string): Element => {
-    const { document } = parseHTML(`<!doctype html><html><body><img src="a.png" ${attrs}></body></html>`)
-    const el = document.querySelector('img')
-    if (el === null) throw new Error('img')
-    return el as unknown as Element
-  }
+describe('画像⇄動画で引き継ぐ設定（2026-10-27 指示㉑・動画にもリンク・計測URL・アニメーションが付けられる）', () => {
+  const SETTINGS = { 'data-link-url': 'https://example.com/?sb_tracking=true', 'data-anim': 'fade', 'aria-label': '写真' }
 
-  it('リンク・計測URL・アニメーションが付いていれば知らせる', () => {
-    expect(hasImageOnlySettings(img('data-link-url="https://example.com/"'))).toBe(true)
-    expect(hasImageOnlySettings(img('data-tracking-urls=\'["https://example.com/t"]\''))).toBe(true)
-    expect(hasImageOnlySettings(img('data-anim="fade"'))).toBe(true)
+  it('画像を動画にしても、リンク・計測URL・アニメーション・代替テキストは残る', () => {
+    const doc = new Delta().insert({ image: { src: 'a.png' } }).insert('\n').insert('後\n')
+    expect(apply(doc, imageToVideoOps(0, true, 'left', VIDEO, SETTINGS))[0]).toEqual({
+      insert: { sbvideo: { src: VIDEO, loop: 'on', autoplay: 'on', muted: 'on', align: 'left', ...SETTINGS } },
+    })
   })
 
-  it('何も付いていなければ知らせない', () => {
-    expect(hasImageOnlySettings(img('alt="写真" width="320"'))).toBe(false)
+  it('動画を画像にしても、リンク・計測URL・アニメーションは残る', () => {
+    const doc = new Delta().insert({ sbvideo: { src: VIDEO } }).insert('後\n')
+    const settings = { 'data-link-url': 'https://example.com/', 'data-anim': 'zoom' }
+    expect(apply(doc, videoToImageOps(0, 'left', IMAGE, null, settings))[0]).toEqual({ insert: { image: { src: IMAGE, ...settings } } })
   })
 })

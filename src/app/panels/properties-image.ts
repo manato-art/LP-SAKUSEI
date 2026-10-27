@@ -4,12 +4,12 @@
  * 幅・配置・リンク・計測タグの付け外しなど、画像1枚ぶんの設定を受け持つ。
  */
 import type Quill from 'quill'
-import { ANIM_PRESETS, ANIM_SPEEDS } from '../anim/anim-presets.ts'
 import { group, row } from './properties-parts.ts'
+import { buildMediaAnimGroup, buildMediaLinkGroup, buildMediaTrackingGroup, type MediaSection } from './properties-media-extras.ts'
 import { applyImageAlign, imageAlignOf, lineAlignOf } from './media-align.ts'
 import { notifyEditorChanged } from './editor-change.ts'
 import { buildMediaAlignGroup, syncMediaAlign } from './properties-media-align.ts'
-import { hasImageOnlySettings, swapBodyImageForVideo } from './body-media-swap.ts'
+import { swapBodyImageForVideo } from './body-media-swap.ts'
 import { readFileAsDataUrl } from './webp-convert.ts'
 import { toast } from '../ui.ts'
 
@@ -18,6 +18,9 @@ const IMG_SVG = {
   remove: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
   link: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>',
 }
+/** 画像の設定の欄ごとの、共通の欄（リンク設定・計測URL・アニメーション） */
+const EXTRA_SECTIONS = new WeakMap<HTMLElement, readonly MediaSection[]>()
+
 export function buildImageBody(
   quill: Quill,
   getImg: () => HTMLImageElement | null,
@@ -119,67 +122,16 @@ export function buildImageBody(
   })
   alignGroup.setAttribute('data-image-align', 'true')
 
-  // ── リンク設定 ──
-  const linkGroup = group('リンク設定')
-  const linkUrlRow = row('URL')
-  const linkUrlInput = document.createElement('input')
-  linkUrlInput.className = 'sb-pr-input'
-  linkUrlInput.placeholder = 'https://'
-  linkUrlInput.addEventListener('change', () => {
-    const img = getImg()
-    if (img === null) return
-    if (linkUrlInput.value.trim() !== '') {
-      img.setAttribute('data-link-url', linkUrlInput.value.trim())
-    } else {
-      img.removeAttribute('data-link-url')
-    }
-  })
-  linkUrlRow.append(linkUrlInput)
-
-  const linkTargetRow = row('ターゲット')
-  const linkTargetSelect = document.createElement('select')
-  linkTargetSelect.className = 'sb-pr-select sb-link-target-select'
-  for (const opt of [
-    { value: '_blank', label: '新しいタブ (_blank)' },
-    { value: '_self', label: '同じタブ (_self)' },
-  ]) {
-    const o = document.createElement('option')
-    o.value = opt.value
-    o.textContent = opt.label
-    linkTargetSelect.append(o)
+  // ── リンク設定・計測URL（動画と共通・properties-media-extras.ts） ──
+  const extrasDeps = {
+    current: (): HTMLElement | null => getImg(),
+    apply: (change: (el: HTMLElement) => void): void => {
+      const img = getImg()
+      if (img !== null) change(img)
+    },
   }
-  linkTargetSelect.addEventListener('change', () => {
-    const img = getImg()
-    if (img !== null) img.setAttribute('data-link-target', linkTargetSelect.value)
-  })
-  linkTargetRow.append(linkTargetSelect)
-  linkGroup.append(linkUrlRow, linkTargetRow)
-
-  // ── 計測URL ──
-  const trackGroup = group('計測URL')
-  const trackDesc = document.createElement('div')
-  trackDesc.style.cssText = 'font-size:10px;color:#999999;line-height:1.5;margin-bottom:2px'
-  trackDesc.textContent = 'クリック時にリクエストを送信するURL'
-
-  const trackList = document.createElement('div')
-  trackList.setAttribute('data-tracking-list', '')
-
-  const trackAddBtn = document.createElement('button')
-  trackAddBtn.type = 'button'
-  trackAddBtn.style.cssText =
-    'display:inline-flex;align-items:center;gap:4px;padding:4px 0;font-size:11px;' +
-    'color:var(--sb-accent, #0091FF);background:none;border:none;cursor:pointer;font-family:inherit'
-  trackAddBtn.textContent = '+ URLを追加'
-  trackAddBtn.addEventListener('click', () => {
-    const img = getImg()
-    if (img === null) return
-    appendTrackingRow(trackList, img, '')
-    const inputs = trackList.querySelectorAll('input')
-    const last = inputs[inputs.length - 1]
-    if (last instanceof HTMLInputElement) last.focus()
-  })
-
-  trackGroup.append(trackDesc, trackList, trackAddBtn)
+  const linkSection = buildMediaLinkGroup(extrasDeps)
+  const trackSection = buildMediaTrackingGroup(extrasDeps)
 
   // ── アクション ──
   const actGroup = group('アクション')
@@ -210,7 +162,6 @@ export function buildImageBody(
             toast('動画を読み込めませんでした', 'error')
             return
           }
-          const dropped = hasImageOnlySettings(img)
           const video = swapBodyImageForVideo(quill, img, src)
           if (video === null) {
             toast('動画に差し替えられませんでした', 'error')
@@ -218,7 +169,8 @@ export function buildImageBody(
           }
           setImg(null)
           showVideo(video)
-          toast(dropped ? '動画に差し替えました（リンク・計測URL・アニメーションは動画には付けられないので外れました）' : '動画に差し替えました')
+          // リンク・計測URL・アニメーションも動画に引き継ぐ（2026-10-27 指示㉑）
+          toast('動画に差し替えました')
         })
         return
       }
@@ -255,102 +207,13 @@ export function buildImageBody(
 
   actGroup.append(replaceBtn, removeBtn)
 
-  // ── 組み立て ──
-  // ── アニメーション（画像用・CapCut風の入場エフェクト） ──
-  const animGroup = group('アニメーション')
-  const animGrid = document.createElement('div')
-  animGrid.className = 'sb-pr-anim-grid'
-  animGrid.setAttribute('data-img-anim-grid', 'true')
-  const replayImgAnim = (): void => {
-    const img = getImg()
-    if (img === null || img.getAttribute('data-anim') === null) return
-    img.classList.remove('sb-anim-run')
-    void img.offsetWidth
-    img.classList.add('sb-anim-run')
-  }
-  const speedSelImg = document.createElement('select')
-  const setActiveImg = (id: string): void => {
-    for (const b of animGrid.querySelectorAll<HTMLElement>('.sb-pr-anim-btn')) {
-      b.classList.toggle('active', b.getAttribute('data-anim-id') === id)
-    }
-  }
-  const applyImgAnim = (id: string): void => {
-    const img = getImg()
-    if (img === null) return
-    if (id === '') {
-      img.removeAttribute('data-anim')
-      img.removeAttribute('data-anim-speed')
-      img.removeAttribute('data-anim-loop')
-      img.classList.remove('sb-anim-run')
-      setActiveImg('')
-      return
-    }
-    img.setAttribute('data-anim', id)
-    img.setAttribute('data-anim-speed', speedSelImg.value || 'normal')
-    if (loopChkImg.checked) img.setAttribute('data-anim-loop', '1')
-    else img.removeAttribute('data-anim-loop')
-    setActiveImg(id)
-    replayImgAnim()
-  }
-  const loopChkImg = document.createElement('input')
-  loopChkImg.type = 'checkbox'
-  const mkImgAnimBtn = (label: string, id: string): HTMLElement => {
-    const b = document.createElement('button')
-    b.type = 'button'
-    b.className = 'sb-pr-anim-btn'
-    b.setAttribute('data-anim-id', id)
-    b.textContent = label
-    b.title = label
-    b.addEventListener('click', () => applyImgAnim(id))
-    return b
-  }
-  animGrid.append(mkImgAnimBtn('なし', ''))
-  for (const p of ANIM_PRESETS) animGrid.append(mkImgAnimBtn(p.label, p.id))
-  animGroup.append(animGrid)
-  const animCtl = document.createElement('div')
-  animCtl.className = 'sb-pr-anim-ctl'
-  speedSelImg.className = 'sb-pr-select'
-  speedSelImg.style.flex = '1'
-  for (const s of ANIM_SPEEDS) {
-    const o = document.createElement('option')
-    o.value = s.id
-    o.textContent = `速度: ${s.label}`
-    if (s.id === 'normal') o.selected = true
-    speedSelImg.append(o)
-  }
-  speedSelImg.addEventListener('change', () => {
-    const img = getImg()
-    if (img !== null && img.getAttribute('data-anim') !== null) {
-      img.setAttribute('data-anim-speed', speedSelImg.value)
-      replayImgAnim()
-    }
-  })
-  const replayBtnImg = document.createElement('button')
-  replayBtnImg.type = 'button'
-  replayBtnImg.className = 'sb-pr-anim-replay'
-  replayBtnImg.textContent = '▶ プレビュー'
-  replayBtnImg.addEventListener('click', replayImgAnim)
-  animCtl.append(speedSelImg, replayBtnImg)
-  animGroup.append(animCtl)
+  // ── アニメーション（動画と共通・CapCut風の入場エフェクト） ──
+  const animSection = buildMediaAnimGroup(extrasDeps)
 
-  // ループ設定（くり返し再生）
-  const loopRowImg = document.createElement('label')
-  loopRowImg.className = 'sb-pr-anim-loop'
-  const loopTxtImg = document.createElement('span')
-  loopTxtImg.textContent = 'ループ再生（くり返す）'
-  loopRowImg.append(loopChkImg, loopTxtImg)
-  loopChkImg.addEventListener('change', () => {
-    const img = getImg()
-    if (img === null || img.getAttribute('data-anim') === null) return
-    if (loopChkImg.checked) img.setAttribute('data-anim-loop', '1')
-    else img.removeAttribute('data-anim-loop')
-    replayImgAnim()
-  })
-  animGroup.append(loopRowImg)
+  container.append(previewGroup, srcRow, altRow, sizeGroup, alignGroup, animSection.el, linkSection.el, trackSection.el, actGroup)
 
-  container.append(previewGroup, srcRow, altRow, sizeGroup, alignGroup, animGroup, linkGroup, trackGroup, actGroup)
-
-  // データ属性で内部要素への参照を保持（refreshImageBody で使う）
+  // 共通の欄の表示合わせ（refreshImageBody で使う）
+  EXTRA_SECTIONS.set(container, [linkSection, trackSection, animSection])
   container.dataset['ready'] = 'true'
 
   return container
@@ -378,81 +241,6 @@ export function refreshImageBody(container: HTMLElement, img: HTMLImageElement):
   if (sizeInputs[0] !== undefined) sizeInputs[0].value = String(img.naturalWidth || img.width)
   if (sizeInputs[1] !== undefined) sizeInputs[1].value = String(img.naturalHeight || img.height)
 
-  const linkInput = container.querySelector<HTMLInputElement>('input[placeholder="https://"]')
-  if (linkInput !== null) linkInput.value = img.getAttribute('data-link-url') ?? ''
-
-  const targetSelect = container.querySelector<HTMLSelectElement>('.sb-link-target-select')
-  if (targetSelect !== null) targetSelect.value = img.getAttribute('data-link-target') ?? '_blank'
-
-  // アニメーション同期（現在の画像の data-anim / data-anim-speed をUIへ反映）
-  const curAnim = img.getAttribute('data-anim') ?? ''
-  for (const b of container.querySelectorAll<HTMLElement>('[data-img-anim-grid] .sb-pr-anim-btn')) {
-    b.classList.toggle('active', b.getAttribute('data-anim-id') === curAnim)
-  }
-  const animSpeedSel = container.querySelector<HTMLSelectElement>('.sb-pr-anim-ctl select')
-  if (animSpeedSel !== null) animSpeedSel.value = img.getAttribute('data-anim-speed') ?? 'normal'
-  const animLoopChk = container.querySelector<HTMLInputElement>('.sb-pr-anim-loop input[type="checkbox"]')
-  if (animLoopChk !== null) animLoopChk.checked = img.getAttribute('data-anim-loop') === '1'
-
-  // 計測URL
-  const trackList = container.querySelector<HTMLElement>('[data-tracking-list]')
-  if (trackList !== null) {
-    trackList.innerHTML = ''
-    const raw = img.getAttribute('data-tracking-urls')
-    if (raw !== null && raw !== '') {
-      try {
-        const parsed: unknown = JSON.parse(raw)
-        if (Array.isArray(parsed)) {
-          const urls = parsed.filter((u): u is string => typeof u === 'string' && u !== '')
-          for (const url of urls) {
-            appendTrackingRow(trackList, img, url)
-          }
-        }
-      } catch { /* invalid JSON → skip */ }
-    }
-  }
-}
-/** 計測URLリストから img の data-tracking-urls 属性を同期 */
-function syncTrackingUrls(list: HTMLElement, img: HTMLImageElement): void {
-  const urls: string[] = []
-  for (const input of list.querySelectorAll<HTMLInputElement>('input[type="url"]')) {
-    const v = input.value.trim()
-    if (v !== '') urls.push(v)
-  }
-  if (urls.length === 0) {
-    img.removeAttribute('data-tracking-urls')
-  } else {
-    img.setAttribute('data-tracking-urls', JSON.stringify(urls))
-  }
-}
-/** 計測URL入力行を1行追加 */
-function appendTrackingRow(list: HTMLElement, img: HTMLImageElement, value: string): void {
-  const rowEl = document.createElement('div')
-  rowEl.style.cssText = 'display:flex;align-items:center;gap:4px;margin-bottom:4px'
-
-  const input = document.createElement('input')
-  input.className = 'sb-pr-input'
-  input.type = 'url'
-  input.placeholder = 'https://tracking.example.com/'
-  input.value = value
-  input.style.cssText = 'flex:1;min-width:0'
-  input.addEventListener('change', () => syncTrackingUrls(list, img))
-
-  const rmBtn = document.createElement('button')
-  rmBtn.type = 'button'
-  rmBtn.title = '削除'
-  rmBtn.textContent = '✕'
-  rmBtn.style.cssText =
-    'flex-shrink:0;width:24px;height:24px;display:flex;align-items:center;' +
-    'justify-content:center;border:none;background:none;color:#e5573f;' +
-    'cursor:pointer;border-radius:4px;font-size:13px'
-  rmBtn.addEventListener('mouseenter', () => { rmBtn.style.background = '#FEE' })
-  rmBtn.addEventListener('mouseleave', () => { rmBtn.style.background = 'none' })
-  rmBtn.addEventListener('click', () => {
-    rowEl.remove()
-    syncTrackingUrls(list, img)
-  })
-
-  rowEl.append(input, rmBtn)
-  list.append(rowEl)
+  // リンク設定・計測URL・アニメーション（共通の欄）
+  for (const section of EXTRA_SECTIONS.get(container) ?? []) section.sync(img)
 }
