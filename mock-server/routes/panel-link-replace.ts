@@ -152,7 +152,8 @@ linkReplaceRouter.post('/articles/:uid/link_replace', (req, res) => {
 
   const after = replaceLinksInHtml(before, indexes, {
     href: url,
-    tracking: optionalBoolean(req.body, 'tracking') ?? true,
+    // 指示⑪（2026-10-27）: 計測するかは画面で選ぶ。言われなければ計測なし
+    tracking: optionalBoolean(req.body, 'tracking') ?? false,
     newTab: optionalBoolean(req.body, 'new_tab') ?? false,
   })
 

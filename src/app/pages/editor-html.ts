@@ -8,6 +8,7 @@
  */
 import type { EditorContext } from './editor-context.ts'
 import { headerImageSrc, syncHeaderImage } from '../panels/header-image-dom.ts'
+import { notifyContentShown } from '../panels/editor-change.ts'
 
 /**
  * 本文が「実質空」か。テキストも画像/動画等のメディアも無ければ空とみなす。
@@ -67,4 +68,5 @@ export function showVersionContent(ctx: Pick<EditorContext, 'root' | 'quill'>, h
   ctx.quill.update('silent')
   ctx.quill.history.clear()
   syncHeaderImage(ctx.root, headerSrc)
+  notifyContentShown(ctx.quill.root)
 }

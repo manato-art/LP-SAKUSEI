@@ -14,7 +14,7 @@ import { api } from '../api.ts'
 import { toast } from '../ui.ts'
 import { mountVersionSettings, openVersionSettings } from '../panels/version-settings.ts'
 import { mountTagSettings, openTagSettings } from '../panels/tag-settings.ts'
-import { mountLinkReplace, reloadLinkReplace } from '../panels/link-replace.ts'
+import { followEditorContent, mountLinkReplace, reloadLinkReplace } from '../panels/link-replace.ts'
 import { mountHistory, refreshHistory, recordArticleHistory } from '../panels/history.ts'
 import { mountEditorToolbar } from '../panels/editor-toolbar.ts'
 import { mountUrlBar } from '../panels/url-bar.ts'
@@ -464,6 +464,7 @@ export function wireSideToolbar(ctx: EditorContext): void {
         if (panel === null) return
         if (!linkRegistered) {
           panels.register('リンク置換', panel)
+          followEditorContent(ctx.root, panel, ctx.quill)
           linkRegistered = true
         }
         panels.toggle('リンク置換')

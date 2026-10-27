@@ -240,6 +240,23 @@ export function extractLinksFromHtml(html: string): LpLink[] {
   })
 }
 
+/** 2つの一覧が同じリンクを同じ順に持つか（一覧が本文とずれていないかを見る） */
+export function sameLinks(a: readonly LpLink[], b: readonly LpLink[]): boolean {
+  return (
+    a.length === b.length &&
+    a.every((link, i) => {
+      const other = b[i]
+      return (
+        other !== undefined &&
+        link.href === other.href &&
+        link.text === other.text &&
+        link.isTracking === other.isTracking &&
+        link.isNewTab === other.isNewTab
+      )
+    })
+  )
+}
+
 export function filterLinks(links: readonly LpLink[], mode: LinkSortMode): LpLink[] {
   if (mode === 'tracking') return links.filter((l) => l.isTracking)
   if (mode === 'untracked') return links.filter((l) => !l.isTracking)

@@ -29,12 +29,14 @@ import { toast } from '../ui.ts'
 import { renderLinkRows, renderPopupRows, renderRedirectPicker } from './link-replace-rows.ts'
 import { ensureWhiteBase, stripDarkThemeClasses } from '../white-base.ts'
 import { cleanupDropdownHost, findLpBody } from './history.ts'
+import { EDITOR_CONTENT_SHOWN_EVENT } from './editor-change.ts'
 import {
   buildLinkReplaceRequest,
   EMPTY_LINKS_MESSAGE,
   extractLinksFromHtml,
   filterLinks,
   isAllowedLinkUrl,
+  sameLinks,
   selectableLinkIndexes,
   type LinkReplaceRequest,
   type LinkSortMode,
@@ -346,6 +348,11 @@ function wire(root: HTMLElement, panel: HTMLElement): void {
     updateReplaceButton(panel)
   })
 
+  // 指示⑪（2026-10-27 本人「入れる際に計測するかどうかを選ぶ。デフォルトは計測なし」）: 最初はチェックなし。
+  // 採取した実物は最初からチェック付き（LINK_REPLACE_MARKUP の checked）
+  const tracking = checkboxOf(panel, 'trackingCheckBox')
+  if (tracking !== null) tracking.checked = false
+
   for (const id of ['trackingCheckBox', 'targetCheckBox']) {
     checkboxOf(panel, id)?.addEventListener('change', () => updateReplaceButton(panel))
   }
@@ -430,6 +437,49 @@ async function reload(root: HTMLElement, panel: HTMLElement): Promise<void> {
 }
 
 /**
+ * 一覧を、いま編集中の本文とVersionに合わせ直す（サーバーには聞かない）。合わせ直したら true。
+ *
+ * 一覧はパネルを開いたときの本文から作るので、開いたままVersionを切り替える・本文を直す・履歴から戻すと
+ * 前の本文のまま残っていた。そのまま置換を押すと「選択してください」で止まり、番号が合うと
+ * 今の本文を前のVersionへ書き込んでいた（2026-10-27 本人「リンク入れても置換されないことがある」）。
+ */
+function syncWithEditor(root: HTMLElement, panel: HTMLElement): boolean {
+  const state = stateOf(panel)
+  if (state.tab !== 'version') return false
+  const body = findLpBody(root)
+  if (body === null) return false
+  const links = extractLinksFromHtml(body.innerHTML)
+  const versionUid = PANEL_VERSION_SOURCE.get(panel)?.() ?? state.versionUid
+  if (versionUid === state.versionUid && sameLinks(links, state.links)) return false
+  patchState(panel, { links, versionUid, selected: new Set() })
+  renderList(panel)
+  return true
+}
+
+/** 打つたびに本文全体を読むと重いので、手が止まってから一覧を合わせる */
+const FOLLOW_DELAY_MS = 200
+
+/**
+ * 本文やVersionが変わったら、開いている一覧を合わせ直す（2026-10-27）。
+ * 本文の変更は Quill の text-change、Versionの切り替え・履歴から戻すは EDITOR_CONTENT_SHOWN_EVENT で知る。
+ */
+export function followEditorContent(
+  root: HTMLElement,
+  panel: HTMLElement,
+  quill: { on(name: 'text-change', handler: () => void): unknown },
+): void {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const later = (): void => {
+    clearTimeout(timer)
+    timer = setTimeout(() => {
+      if (panel.classList.contains(CLS.open)) syncWithEditor(root, panel)
+    }, FOLLOW_DELAY_MS)
+  }
+  quill.on('text-change', later)
+  root.addEventListener(EDITOR_CONTENT_SHOWN_EVENT, later)
+}
+
+/**
  * 一覧枠の描画。
  *
  * **1行ぶんのマークアップは採取できていない**（このファイル冒頭の説明を参照）ので、
@@ -495,7 +545,7 @@ function buildRequest(panel: HTMLElement): ReturnType<typeof buildLinkReplaceReq
     selected: [...state.selected],
     url: textInputOf(panel)?.value ?? '',
     redirectPageUid: state.redirectPageUid,
-    isTracking: checkboxOf(panel, 'trackingCheckBox')?.checked ?? true,
+    isTracking: checkboxOf(panel, 'trackingCheckBox')?.checked ?? false,
     isNewTab: checkboxOf(panel, 'targetCheckBox')?.checked ?? false,
     versionUid: state.versionUid,
   })
@@ -507,6 +557,11 @@ async function applyReplacement(root: HTMLElement, panel: HTMLElement): Promise<
   if (articleUid === '') return
 
   if (state.tab === 'exitPopup') return
+  // 一覧が今の本文・Versionとずれていたら送らない。ずれたまま送ると、別のリンクや別のVersionを書き換える
+  if (syncWithEditor(root, panel)) {
+    toast('一覧を今のVersionの本文に合わせました。置き換えるリンクを選び直してください', 'error')
+    return
+  }
 
   const built = buildRequest(panel)
   if (!built.ok) {
