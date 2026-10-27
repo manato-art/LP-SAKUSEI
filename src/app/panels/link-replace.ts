@@ -98,6 +98,7 @@ interface LinkRow {
   is_new_tab: boolean
   in_widget?: boolean
   kind?: 'text' | 'image' | 'video'
+  tracking_urls?: string[]
 }
 
 export interface RedirectPageRow {
@@ -151,6 +152,7 @@ function toLpLink(row: LinkRow): LpLink {
     isNewTab: row.is_new_tab,
     inWidget: row.in_widget ?? false,
     kind: row.kind ?? 'text',
+    trackingUrls: row.tracking_urls ?? [],
   }
 }
 

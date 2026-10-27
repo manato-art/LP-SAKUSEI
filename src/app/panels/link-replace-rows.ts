@@ -87,6 +87,19 @@ export function renderLinkRows(host: HTMLElement, links: readonly LpLink[], deps
       hrefText.textContent = link.href === '' ? '（行き先なし）' : link.href
       href.append(hrefText)
       body.append(text, href)
+      // 画像・動画の計測URLも同じ行の中に（2026-10-27 本人「下の計測リンクもある場合は、リンク置換の同じ箱の中に」）
+      for (const url of link.trackingUrls) {
+        const line = document.createElement('div')
+        line.className = 'lr-row__track'
+        line.setAttribute('data-link-tracking-url', '')
+        const label = document.createElement('span')
+        label.className = 'lr-row__track-label'
+        label.textContent = '計測URL'
+        const value = document.createElement('span')
+        value.textContent = url
+        line.append(label, value)
+        body.append(line)
+      }
       row.append(box)
       const thumb = link.kind === 'text' ? null : (deps.thumbnail?.(link) ?? null)
       if (thumb !== null) row.append(thumb)

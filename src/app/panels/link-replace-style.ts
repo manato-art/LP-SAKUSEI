@@ -58,6 +58,8 @@ ${S} .lr-row__body{flex:1;min-width:0}
 ${S} .lr-thumb{width:44px;height:44px;flex-shrink:0;border-radius:8px;border:1px solid #E8EAED;background:#F1F2F4}
 ${S} .lr-row__title{font-size:14px;font-weight:700;line-height:1.5;color:#1F2937;overflow-wrap:anywhere}
 ${S} .lr-row__url{display:flex;align-items:flex-start;gap:5px;margin-top:2px;font-size:12px;line-height:1.5;color:#6B7280;overflow-wrap:anywhere}
+${S} .lr-row__track{display:flex;align-items:flex-start;gap:6px;margin-top:3px;font-size:12px;line-height:1.5;color:#6B7280;overflow-wrap:anywhere}
+${S} .lr-row__track-label{flex-shrink:0;padding:0 6px;border-radius:4px;background:#EEF0F3;color:#4B5563;font-size:10px;font-weight:700;line-height:1.8}
 ${S} .lr-row__url svg{width:13px;height:13px;flex-shrink:0;margin-top:2px;color:#9CA3AF}
 ${S} .lr-tag{display:inline-block;margin-right:6px;padding:1px 8px;border-radius:999px;background:#EEF0F3;color:#4B5563;font-size:11px;font-weight:600;line-height:1.6;vertical-align:1px}
 ${S} .lr-pill{flex-shrink:0;padding:4px 10px;border-radius:999px;border:none;font:inherit;font-size:12px;font-weight:600;line-height:1.5;white-space:nowrap}

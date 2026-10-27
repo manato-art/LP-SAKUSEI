@@ -58,6 +58,7 @@ function serializeLink(link: LpLink): Record<string, unknown> {
     is_new_tab: link.isNewTab,
     in_widget: link.inWidget,
     kind: link.kind,
+    tracking_urls: link.trackingUrls,
   }
 }
 

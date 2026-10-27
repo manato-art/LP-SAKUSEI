@@ -43,6 +43,20 @@ export interface LpLink {
   inWidget: boolean
   /** 文字のリンク（<a>）か、画像・動画に付けたリンク（data-link-url・2026-10-27 指示⑲） */
   kind: LinkKind
+  /** 画像・動画の計測URL（押したときに送る先・data-tracking-urls）。文字のリンクは無し（2026-10-27 一覧の同じ行に出す） */
+  trackingUrls: readonly string[]
+}
+
+/** data-tracking-urls（JSON の配列）を読む。読めなければ無し */
+function trackingUrlsOf(raw: string | null): string[] {
+  if (raw === null || raw === '') return []
+  try {
+    const parsed: unknown = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed.filter((u): u is string => typeof u === 'string' && u.trim() !== '') : []
+  } catch {
+    // 壊れた値は計測URL無しとして扱う（画像の設定で保存し直すと消える）
+    return []
+  }
 }
 
 /** text＝文字のリンク（<a>）・image／video＝画像・動画に付けたリンク（data-link-url。配信で <a> で包む） */
@@ -326,6 +340,7 @@ export function extractLinksFromHtml(html: string): LpLink[] {
         isNewTab: (attributeValue(attrs, 'data-link-target') ?? '_blank').toLowerCase() === '_blank',
         inWidget,
         kind: tag.kind,
+        trackingUrls: trackingUrlsOf(attributeValue(attrs, 'data-tracking-urls')),
       }
     }
     const href = attributeValue(attrs, 'href') ?? ''
@@ -337,6 +352,7 @@ export function extractLinksFromHtml(html: string): LpLink[] {
       isNewTab: (attributeValue(attrs, 'target') ?? '').toLowerCase() === '_blank',
       inWidget,
       kind: 'text',
+      trackingUrls: [],
     }
   })
 }
@@ -376,7 +392,8 @@ export function sameLinks(a: readonly LpLink[], b: readonly LpLink[]): boolean {
         link.isTracking === other.isTracking &&
         link.isNewTab === other.isNewTab &&
         link.inWidget === other.inWidget &&
-        link.kind === other.kind
+        link.kind === other.kind &&
+        link.trackingUrls.join('\n') === other.trackingUrls.join('\n')
       )
     })
   )
