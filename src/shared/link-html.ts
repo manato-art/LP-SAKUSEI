@@ -41,7 +41,12 @@ export interface LpLink {
   isNewTab: boolean
   /** Widget（section.sb-widget-block）の中のリンクか（一覧で「Widget」と出す・2026-10-27 指示⑬） */
   inWidget: boolean
+  /** 文字のリンク（<a>）か、画像・動画に付けたリンク（data-link-url・2026-10-27 指示⑲） */
+  kind: LinkKind
 }
+
+/** text＝文字のリンク（<a>）・image／video＝画像・動画に付けたリンク（data-link-url。配信で <a> で包む） */
+export type LinkKind = 'text' | 'image' | 'video'
 
 export interface LinkReplacement {
   href: string
@@ -58,6 +63,13 @@ interface AnchorTag {
   start: number
   end: number
   attrs: string
+}
+
+/** リンクを持つタグ（<a> と、data-link-url の付いた <img>・<video>） */
+interface LinkTag extends AnchorTag {
+  kind: LinkKind
+  /** 書き直すときのタグ名（a / img / video。元の大文字小文字は問わない） */
+  name: string
 }
 
 const NAME_START = /[A-Za-z:_@]/
@@ -102,6 +114,30 @@ function findAnchorOpenTags(html: string): AnchorTag[] {
       }
     }
     i = lower.indexOf('<a', i + 2)
+  }
+  return out
+}
+
+/**
+ * リンクを持つタグを本文の中の順番どおりに拾う（2026-10-27 指示⑲: 画像・動画に付けたリンクも数える）。
+ * 画像・動画は data-link-url が付いている物だけ。番号（出現順）はこの並びで決まる
+ */
+function findLinkTags(html: string): LinkTag[] {
+  const out: LinkTag[] = []
+  // 呼ぶたびに作る（global の正規表現を使い回すと lastIndex が残って取りこぼす・KB global-regex-lastindex-shared-state）
+  const start = /<(a|img|video)(?=[\s>/])/gi
+  let match = start.exec(html)
+  while (match !== null) {
+    const name = (match[1] ?? '').toLowerCase()
+    const end = findTagEnd(html, match.index + 1 + name.length)
+    if (end < 0) break
+    const attrs = html.slice(match.index + 1 + name.length, end - 1)
+    const kind: LinkKind = name === 'img' ? 'image' : name === 'video' ? 'video' : 'text'
+    if (kind === 'text' || (attributeValue(parseAttributes(attrs), 'data-link-url') ?? '') !== '') {
+      out.push({ start: match.index, end, attrs, kind, name })
+    }
+    start.lastIndex = end
+    match = start.exec(html)
   }
   return out
 }
@@ -273,11 +309,25 @@ function widgetRanges(html: string): Array<readonly [number, number]> {
   return out
 }
 
-/** 本文HTMLからリンクを出現順に抽出する */
+/** 本文HTMLからリンクを出現順に抽出する（文字のリンクと、画像・動画に付けたリンク） */
 export function extractLinksFromHtml(html: string): LpLink[] {
   const widgets = widgetRanges(html)
-  return findAnchorOpenTags(html).map((tag, index) => {
+  return findLinkTags(html).map((tag, index) => {
     const attrs = parseAttributes(tag.attrs)
+    const inWidget = widgets.some(([from, to]) => tag.start > from && tag.start < to)
+    if (tag.kind !== 'text') {
+      // 画像・動画: 行き先は data-link-url・開き方は data-link-target（無ければ新しいタブ＝配信と同じ）・文字は代替テキスト
+      const href = attributeValue(attrs, 'data-link-url') ?? ''
+      return {
+        index,
+        href,
+        text: attributeValue(attrs, tag.kind === 'image' ? 'alt' : 'aria-label') ?? '',
+        isTracking: isTrackingLink(href, null),
+        isNewTab: (attributeValue(attrs, 'data-link-target') ?? '_blank').toLowerCase() === '_blank',
+        inWidget,
+        kind: tag.kind,
+      }
+    }
     const href = attributeValue(attrs, 'href') ?? ''
     return {
       index,
@@ -285,7 +335,8 @@ export function extractLinksFromHtml(html: string): LpLink[] {
       text: innerTextAfter(html, tag.end),
       isTracking: isTrackingLink(href, attributeValue(attrs, TRACKING_ATTRIBUTE)),
       isNewTab: (attributeValue(attrs, 'target') ?? '').toLowerCase() === '_blank',
-      inWidget: widgets.some(([from, to]) => tag.start > from && tag.start < to),
+      inWidget,
+      kind: 'text',
     }
   })
 }
@@ -324,7 +375,8 @@ export function sameLinks(a: readonly LpLink[], b: readonly LpLink[]): boolean {
         link.text === other.text &&
         link.isTracking === other.isTracking &&
         link.isNewTab === other.isNewTab &&
-        link.inWidget === other.inWidget
+        link.inWidget === other.inWidget &&
+        link.kind === other.kind
       )
     })
   )
@@ -354,12 +406,19 @@ export function replaceLinksInHtml(
   replacement: LinkReplacement,
 ): string {
   const wanted = new Set(indexes)
-  const tags = findAnchorOpenTags(html)
+  const tags = findLinkTags(html)
   const href = buildReplacementHref(replacement.href, replacement.tracking)
   let out = html
   for (let i = tags.length - 1; i >= 0; i -= 1) {
     const tag = tags[i]
     if (tag === undefined || !wanted.has(i)) continue
+    if (tag.kind !== 'text') {
+      // 画像・動画: 行き先と開き方だけ書き換える（ほかの属性はそのまま）
+      let media = setAttribute(parseAttributes(tag.attrs), 'data-link-url', href)
+      media = setAttribute(media, 'data-link-target', replacement.newTab ? '_blank' : '_self')
+      out = `${out.slice(0, tag.start)}<${tag.name}${serializeAttributes(media)}>${out.slice(tag.end)}`
+      continue
+    }
     let attrs = setAttribute(parseAttributes(tag.attrs), 'href', href)
     attrs =
       isTelHref(href) && replacement.tracking
@@ -399,7 +458,7 @@ export function unwrapLinksInHtml(html: string, which: 'all' | 'tracking'): stri
 
 /** 実際に置き換わる出現順だけを返す（範囲外の値は数えない） */
 export function replaceableIndexes(html: string, indexes: readonly number[]): number[] {
-  const count = findAnchorOpenTags(html).length
+  const count = findLinkTags(html).length
   const unique = new Set(indexes.filter((i) => Number.isInteger(i) && i >= 0 && i < count))
   return [...unique].sort((a, b) => a - b)
 }

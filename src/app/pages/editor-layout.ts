@@ -14,7 +14,7 @@ import { api } from '../api.ts'
 import { toast } from '../ui.ts'
 import { mountVersionSettings, openVersionSettings } from '../panels/version-settings.ts'
 import { mountTagSettings, openTagSettings } from '../panels/tag-settings.ts'
-import { followEditorContent, mountLinkReplace, reloadLinkReplace } from '../panels/link-replace.ts'
+import { followEditorContent, LINK_REPLACE_TOGGLE_ATTR, mountLinkReplace, reloadLinkReplace } from '../panels/link-replace.ts'
 import { mountHistory, refreshHistory, recordArticleHistory } from '../panels/history.ts'
 import { mountEditorToolbar } from '../panels/editor-toolbar.ts'
 import { mountUrlBar } from '../panels/url-bar.ts'
@@ -454,6 +454,8 @@ export function wireSideToolbar(ctx: EditorContext): void {
     // リンク置換パネル（開閉はpanels.toggleに一本化）
     if (index === 3) {
       let linkRegistered = false
+      // 外を押したら閉じる（指示㉓）の「外」から、このアイコンは外す（押すと開け閉めするので）
+      icon.setAttribute(LINK_REPLACE_TOGGLE_ATTR, '')
       icon.addEventListener('click', () => {
         const panel = mountLinkReplace(
           ctx.root,

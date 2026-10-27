@@ -7,6 +7,7 @@
  */
 import { ANIM_PRESETS, ANIM_SPEEDS } from '../anim/anim-presets.ts'
 import { group, row } from './properties-parts.ts'
+import { isTelHref, isTrackingLink, withTrackingParam } from '../../shared/link-html.ts'
 
 export interface MediaExtrasDeps {
   /** いま選んでいる画像・動画 */
@@ -21,21 +22,53 @@ export interface MediaSection {
   readonly sync: (el: HTMLElement) => void
 }
 
-/** リンク設定（行き先・開き方） */
+/** 計測の目印を付けられる行き先か（電話・ページ内の移動には付けない＝文字のリンクと同じ） */
+const canTrack = (url: string): boolean => url !== '' && !isTelHref(url) && !url.startsWith('#')
+
+/** 欄の URL とチェックから、画像・動画に付ける行き先 */
+const mediaHref = (url: string, tracking: boolean): string => (canTrack(url) ? withTrackingParam(url, tracking) : url)
+
+/**
+ * リンク設定（行き先・計測リンクにする・開き方）。
+ * 「計測リンクにする」（2026-10-27 指示⑳ 本人「計測のチェックを追加して・デフォルトはチェックなし」「一見、計測を変更できるかわからないので、
+ * わかりやすいデザイン」）: 行全体を枠付きの押せる行にし、説明も添える。URL の欄には計測の目印を外したURLを出す
+ */
 export function buildMediaLinkGroup(deps: MediaExtrasDeps): MediaSection {
   const linkGroup = group('リンク設定')
   const linkUrlRow = row('URL')
   const linkUrlInput = document.createElement('input')
   linkUrlInput.className = 'sb-pr-input'
   linkUrlInput.placeholder = 'https://'
-  linkUrlInput.addEventListener('change', () => {
+  const track = document.createElement('input')
+  track.type = 'checkbox'
+  track.setAttribute('data-media-link-track', '')
+  const writeHref = (): void => {
     const url = linkUrlInput.value.trim()
+    const tracking = track.checked
     deps.apply((el) => {
-      if (url !== '') el.setAttribute('data-link-url', url)
+      if (url !== '') el.setAttribute('data-link-url', mediaHref(url, tracking))
       else el.removeAttribute('data-link-url')
     })
-  })
+  }
+  linkUrlInput.addEventListener('change', writeHref)
   linkUrlRow.append(linkUrlInput)
+
+  // 計測リンクにする（行全体が押せる・枠と淡い地で「切り替えられる物」と分かるように）
+  const trackRow = document.createElement('label')
+  trackRow.style.cssText =
+    'display:flex;align-items:flex-start;gap:8px;margin:2px 0 4px;padding:8px 10px;border:1px solid var(--sb-c-dddddd, #DDDDDD);' +
+    'border-radius:6px;background:var(--sb-c-f5f6f8, #F5F6F8);cursor:pointer'
+  track.style.cssText = 'width:16px;height:16px;margin:1px 0 0;flex-shrink:0;cursor:pointer;accent-color:var(--sb-accent, #0091FF)'
+  const trackText = document.createElement('span')
+  const trackTitle = document.createElement('span')
+  trackTitle.textContent = '計測リンクにする'
+  trackTitle.style.cssText = 'display:block;font-size:12px;font-weight:700;color:var(--sb-c-333333, #333333)'
+  const trackNote = document.createElement('span')
+  trackNote.textContent = '申し込みボタンなどは入れておきます。押された数が CLICK に入り、そのあとの申し込みが CV に結びつきます。'
+  trackNote.style.cssText = 'display:block;margin-top:2px;font-size:10px;line-height:1.6;color:var(--sb-c-666666, #666666)'
+  trackText.append(trackTitle, trackNote)
+  trackRow.append(track, trackText)
+  track.addEventListener('change', writeHref)
 
   const linkTargetRow = row('ターゲット')
   const linkTargetSelect = document.createElement('select')
@@ -54,12 +87,15 @@ export function buildMediaLinkGroup(deps: MediaExtrasDeps): MediaSection {
     deps.apply((el) => el.setAttribute('data-link-target', target))
   })
   linkTargetRow.append(linkTargetSelect)
-  linkGroup.append(linkUrlRow, linkTargetRow)
+  linkGroup.append(linkUrlRow, trackRow, linkTargetRow)
 
   return {
     el: linkGroup,
     sync: (el) => {
-      linkUrlInput.value = el.getAttribute('data-link-url') ?? ''
+      const href = el.getAttribute('data-link-url') ?? ''
+      // 新しいリンク（まだ行き先が無い）はチェックなしから
+      track.checked = href !== '' && isTrackingLink(href, null)
+      linkUrlInput.value = canTrack(href) ? withTrackingParam(href, false) : href
       linkTargetSelect.value = el.getAttribute('data-link-target') ?? '_blank'
     },
   }

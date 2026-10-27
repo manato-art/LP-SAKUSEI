@@ -12,11 +12,11 @@ export interface Sent {
 
 export const settle = (ms = 10): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
 
-export async function setupLinkReplacePanel(initialHtml: string) {
+export async function setupLinkReplacePanel(initialHtml: string, onClose?: () => void) {
   vi.resetModules()
   const { window } = parseHTML('<!doctype html><html><head></head><body><div id="root"><div class="ql-editor"></div></div></body></html>')
   const g = globalThis as unknown as Record<string, unknown>
-  for (const key of ['document', 'window', 'Event', 'CustomEvent', 'HTMLElement', 'HTMLInputElement', 'Node']) {
+  for (const key of ['document', 'window', 'Event', 'CustomEvent', 'Element', 'HTMLElement', 'HTMLInputElement', 'Node']) {
     g[key] = (window as unknown as Record<string, unknown>)[key]
   }
   // linkedom の input には checked が無い。属性で読み書きできるようにする
@@ -53,7 +53,7 @@ export async function setupLinkReplacePanel(initialHtml: string) {
     return new Response(JSON.stringify({ version_uid: version.current, links: [], redirect_pages: [], exit_popups: [] }), { status: 200 })
   }
   const mod = await import('../../src/app/panels/link-replace.ts')
-  const panel = mod.mountLinkReplace(root, 'ARTICLE_X', () => version.current)
+  const panel = mod.mountLinkReplace(root, 'ARTICLE_X', () => version.current, onClose)
   if (panel === null) throw new Error('パネルが出ない')
   panel.classList.add('_open_x4j8w_84')
   mod.reloadLinkReplace(root, panel)

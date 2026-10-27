@@ -30,6 +30,8 @@ import { renderLinkRows, renderPopupRows, renderRedirectPicker } from './link-re
 import { ensureWhiteBase, stripDarkThemeClasses } from '../white-base.ts'
 import { cleanupDropdownHost, findLpBody } from './history.ts'
 import { EDITOR_CONTENT_SHOWN_EVENT } from './editor-change.ts'
+import { ensureLinkReplaceStyle, LR_ICONS } from './link-replace-style.ts'
+import { pageLife } from '../page-life.ts'
 import {
   buildLinkReplaceRequest,
   EMPTY_LINKS_MESSAGE,
@@ -93,6 +95,7 @@ interface LinkRow {
   is_tracking: boolean
   is_new_tab: boolean
   in_widget?: boolean
+  kind?: 'text' | 'image' | 'video'
 }
 
 export interface RedirectPageRow {
@@ -145,6 +148,7 @@ function toLpLink(row: LinkRow): LpLink {
     isTracking: row.is_tracking,
     isNewTab: row.is_new_tab,
     inWidget: row.in_widget ?? false,
+    kind: row.kind ?? 'text',
   }
 }
 
@@ -235,6 +239,8 @@ export function mountLinkReplace(
   onClose?: () => void,
 ): HTMLElement | null {
   ensureWhiteBase()
+  // 見た目（2026-10-27 指示㉒・本人の見本どおり）
+  ensureLinkReplaceStyle()
   const panel = resolvePanel(root)
   if (panel === null) {
     toast('リンク置換パネルの土台が見つかりませんでした', 'error')
@@ -255,6 +261,7 @@ export function mountLinkReplace(
     wire(root, panel)
     // 指示116: 戻るボタンを追加
     wireBackButton(panel, onClose)
+    wireOutsideClose(panel, onClose)
   }
 
   if (panel.getAttribute('style') === null) panel.setAttribute('style', OPEN_STYLE)
@@ -322,6 +329,8 @@ function wire(root: HTMLElement, panel: HTMLElement): void {
 
   for (const button of panel.querySelectorAll<HTMLElement>(`.${CLS.selectTypeBtn}`)) {
     const isSelectAll = (button.textContent ?? '').trim() === SELECT_ALL_LABEL
+    // 見本のアイコン（全て選択＝チェック・選択解除＝ゴミ箱・指示㉒）
+    button.insertAdjacentHTML('afterbegin', isSelectAll ? LR_ICONS.check : LR_ICONS.trash)
     button.addEventListener('click', () => {
       const current = stateOf(panel)
       patchState(panel, {
@@ -332,6 +341,13 @@ function wire(root: HTMLElement, panel: HTMLElement): void {
   }
 
   const typeSelect = panel.querySelector<HTMLSelectElement>('select')
+  // 「新しいリンク」の前の＋のしるし（指示㉒）
+  if (typeSelect !== null) {
+    const plus = document.createElement('span')
+    plus.className = 'lr-select-icon'
+    plus.innerHTML = LR_ICONS.plus
+    typeSelect.before(plus)
+  }
   typeSelect?.addEventListener('change', () => {
     const value: ReplaceTargetType = typeSelect.value === 'redirectPage' ? 'redirectPage' : 'free'
     patchState(panel, { targetType: value })
@@ -367,6 +383,28 @@ function wire(root: HTMLElement, panel: HTMLElement): void {
   panel.querySelector<HTMLElement>(`.${CLS.btnReplace}`)?.addEventListener('click', () => {
     void applyReplacement(root, panel)
   })
+}
+
+/** 右のアイコン（パネルを開け閉めするボタン）の目印。外を押したときの「閉じる」から外す（二重に開け閉めしない） */
+export const LINK_REPLACE_TOGGLE_ATTR = 'data-link-replace-toggle'
+
+/**
+ * パネルの外を押したら閉じる（2026-10-27 指示㉓ 本人「範囲外を押したら自動で閉じるようにして。←を押さないでも閉じれるイメージ」）。
+ * 見張りは画面の寿命で外す（page-life.ts・前の編集画面をつかみ続けない）
+ */
+function wireOutsideClose(panel: HTMLElement, onClose?: () => void): void {
+  if (onClose === undefined) return
+  document.addEventListener(
+    'pointerdown',
+    (event) => {
+      if (!panel.classList.contains(CLS.open)) return
+      const target = event.target
+      if (!(target instanceof Node) || panel.contains(target)) return
+      if (target instanceof Element && target.closest(`[${LINK_REPLACE_TOGGLE_ATTR}]`) !== null) return
+      onClose()
+    },
+    { capture: true, signal: pageLife() },
+  )
 }
 
 /**

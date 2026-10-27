@@ -10,6 +10,7 @@
  *   （ポップアップの中身は下書きと本番に分かれているので、中身の編集画面で直す）
  */
 import { isInPageHref, type LpLink } from '../../shared/link-html.ts'
+import { LR_ICONS } from './link-replace-style.ts'
 
 export interface RowsDeps {
   readonly selected: ReadonlySet<number>
@@ -18,7 +19,21 @@ export interface RowsDeps {
   readonly onTrackingToggle?: (link: LpLink) => void
 }
 
-const PILL = 'flex-shrink:0;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:700;line-height:1.6'
+/** 文字の無いリンクの行に出す言葉 */
+const EMPTY_TEXT: Readonly<Record<LpLink['kind'], string>> = {
+  text: '（文字のないリンク）',
+  image: '画像のリンク',
+  video: '動画のリンク',
+}
+
+/** 文字の前に付ける小さな印（Widget・画像・動画）。見た目は link-replace-style.ts の .lr-tag */
+function tag(label: string, attr: string, value = ''): HTMLElement {
+  const el = document.createElement('span')
+  el.className = 'lr-tag'
+  el.setAttribute(attr, value)
+  el.textContent = label
+  return el
+}
 
 /**
  * 計測あり／計測なしの札。押すとその1本だけ切り替える（指示⑭ 本人「ここで計測ありなしを変更したい」）。
@@ -27,12 +42,10 @@ const PILL = 'flex-shrink:0;padding:1px 8px;border-radius:999px;font-size:11px;f
 function trackingToggle(link: LpLink, onToggle: (link: LpLink) => void): HTMLButtonElement {
   const button = document.createElement('button')
   button.type = 'button'
+  button.className = `lr-pill ${link.isTracking ? 'lr-pill--on' : 'lr-pill--off'}`
   button.setAttribute('data-link-tracking-toggle', link.isTracking ? 'on' : 'off')
   button.textContent = link.isTracking ? '計測あり' : '計測なし'
   button.title = link.isTracking ? '押すと計測なしにします' : '押すと計測ありにします'
-  button.style.cssText = link.isTracking
-    ? `${PILL};border:1px solid transparent;background:#E8F4FF;color:var(--sb-accent, #0091FF);cursor:pointer`
-    : `${PILL};border:1px solid var(--sb-c-cccccc, #CCCCCC);background:#FFFFFF;color:var(--sb-c-666666, #666666);cursor:pointer`
   button.addEventListener('click', (event) => {
     event.preventDefault()
     event.stopPropagation()
@@ -41,35 +54,36 @@ function trackingToggle(link: LpLink, onToggle: (link: LpLink) => void): HTMLBut
   return button
 }
 
+/**
+ * 一覧の行（2026-10-27 指示㉒ 本人の見本どおり）: 白いカードに チェック・題名（Widget・画像・動画の印）・
+ * リンクのアイコン付きのURL・右に計測の札。「⋮」は付けない（本人「計測の右の：はいらない」）
+ */
 export function renderLinkRows(host: HTMLElement, links: readonly LpLink[], deps: RowsDeps): void {
   host.replaceChildren(
     ...links.map((link) => {
       const row = document.createElement('label')
+      row.className = 'lr-row'
       row.setAttribute('data-link-row', String(link.index))
-      row.style.cssText =
-        'display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border-bottom:1px solid var(--sb-c-eeeeee, #EEEEEE);cursor:pointer;font-size:12px;line-height:1.5'
       const box = document.createElement('input')
       box.type = 'checkbox'
+      box.className = 'lr-row__check'
       box.checked = deps.selected.has(link.index)
-      box.style.marginTop = '2px'
       box.addEventListener('change', () => deps.onToggle(link.index))
       const body = document.createElement('div')
-      body.style.cssText = 'min-width:0;flex:1'
+      body.className = 'lr-row__body'
       const text = document.createElement('div')
-      text.textContent = link.text === '' ? '（文字のないリンク・画像など）' : link.text
-      text.style.cssText = 'font-weight:700;overflow-wrap:anywhere'
+      text.className = 'lr-row__title'
+      text.textContent = link.text === '' ? EMPTY_TEXT[link.kind] : link.text
+      // 画像・動画に付けたリンクは分かるように（2026-10-27 指示⑲）
+      if (link.kind !== 'text') text.prepend(tag(link.kind === 'image' ? '画像' : '動画', 'data-link-kind', link.kind))
       // Widget の中のリンクは分かるように印を付ける（2026-10-27 指示⑬）
-      if (link.inWidget) {
-        const tag = document.createElement('span')
-        tag.setAttribute('data-link-widget', '')
-        tag.textContent = 'Widget'
-        tag.style.cssText =
-          'display:inline-block;margin-right:6px;padding:0 6px;border-radius:4px;background:var(--sb-c-eeeeee, #EEEEEE);color:var(--sb-c-555555, #555555);font-size:10px;font-weight:700;line-height:1.7;vertical-align:1px'
-        text.prepend(tag)
-      }
+      if (link.inWidget) text.prepend(tag('Widget', 'data-link-widget'))
       const href = document.createElement('div')
-      href.textContent = link.href === '' ? '（行き先なし）' : link.href
-      href.style.cssText = 'color:var(--sb-c-8a8a8e, #8A8A8E);overflow-wrap:anywhere'
+      href.className = 'lr-row__url'
+      href.innerHTML = LR_ICONS.link
+      const hrefText = document.createElement('span')
+      hrefText.textContent = link.href === '' ? '（行き先なし）' : link.href
+      href.append(hrefText)
       body.append(text, href)
       row.append(box, body)
       // ページ内の移動（#faq）は計測の印を付けられないので札を出さない
@@ -77,8 +91,8 @@ export function renderLinkRows(host: HTMLElement, links: readonly LpLink[], deps
         row.append(trackingToggle(link, deps.onTrackingToggle))
       } else if (link.isTracking) {
         const pill = document.createElement('span')
+        pill.className = 'lr-pill lr-pill--on'
         pill.textContent = '計測あり'
-        pill.style.cssText = `${PILL};background:#E8F4FF;color:var(--sb-accent, #0091FF)`
         row.append(pill)
       }
       return row
