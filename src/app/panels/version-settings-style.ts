@@ -2,7 +2,8 @@
  * LP設定（記事設定）の見た目（2026-10-27 本人「LP設定なんだけど、デザインの修正をしたい」＋見本の画像「この画像の見た目にしてほしい」）。
  * 見本: 灰色の丸の×・太い題名・青い保存／薄い青の帯の見出し（横に小さく注意書き）／白地＋細い枠の入力欄（px は欄の中の右）／
  * 3つ・4つずつそろえた並び／テキスト揃えは選んだ物だけ青い枠／LP内背景と外枠背景は横に並べて、それぞれ枠で囲む／青いラジオ。
- * 見出しの青い縦線は付けない（本人「縦線なし・帯の色だけ」＝角丸の箱＋色付きの左線は使わない決まり）。
+ * 見出しの左に青いバー（本人「横の青いバーもつけて」・2026-10-27。はじめは「縦線なし・帯の色だけ」を選んでいた）。
+ * 枠の左線（border-left）ではなく、見出しの文字の前に置く小さなバー（::before）。
  *
  * 白基調の段（white-base.ts の `.ReactModal__Content._modal_11n4w_1 input:not()…` 等）の上から当てるので、頭に html と印を付けて強くする。
  * 色は見本の画像から測った値。文字の黒・灰色は青みを付けない（暗い表示の仕組みは、青みのある暗い文字を「色付きの文字」と見て明るくしない＝shared/dark-color.ts）。青と淡い青は、アプリのテーマの色（--sb-accent・--sb-accent-tint）に合わせて変わる（見本の青は無いときの値）。
@@ -46,6 +47,8 @@ ${M} ._modalWrapper_11n4w_20 ._modalContent_11n4w_79{padding:20px 24px 24px !imp
 /* 見出しの帯（薄い青・太い字・横に小さく注意書き） */
 ${M} ._title_qyxur_126{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 14px;box-sizing:border-box;margin:0 0 14px !important;padding:9px 16px;border-radius:8px;background:${TINT};font-size:17px !important;font-weight:700;color:${INK} !important}
 ${M} ._title_qyxur_126 span{font-size:12px !important;font-weight:400;color:#555555}
+/* 見出しの左の青いバー（見本の画像・本人「横の青いバーもつけて」） */
+${M} ._title_qyxur_126::before{content:"";flex:none;align-self:center;width:4px;height:18px;margin-right:-4px;border-radius:2px;background:${BLUE}}
 /* 並び: 12 の目に、3つずつ（4目）・4つずつ（3目）そろえる */
 ${M} ._masterCssFormWrapper_qyxur_22{display:grid !important;grid-template-columns:repeat(12,minmax(0,1fr));gap:14px 24px}
 ${M} ._masterCssFormWrapper_qyxur_22 > *{grid-column:span 4;min-width:0}

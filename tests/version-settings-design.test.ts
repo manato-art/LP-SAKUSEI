@@ -1,7 +1,7 @@
 /**
  * LP設定（記事設定）の見た目の作り直し（2026-10-27 本人「LP設定なんだけど、デザインの修正をしたい」＋見本の画像・「この画像の見た目にしてほしい」）。
  * 見本: 白地＋細い枠の入力欄・薄い青の帯の見出し・LP内背景と外枠背景を横に並べて枠で囲む・青い保存・灰色の丸の×。
- * 見出しの青い縦線は付けない（本人「縦線なし・帯の色だけ」＝角丸の箱＋色付きの左線は使わない決まり）。
+ * 見出しの左に青いバー（本人「横の青いバーもつけて」・はじめは「縦線なし・帯の色だけ」を選んでいた）。枠の左線ではなく、文字の前の小さなバー。
  */
 import { beforeAll, describe, expect, it } from 'vitest'
 import { parseHTML } from 'linkedom'
@@ -59,12 +59,13 @@ describe('LP設定の見た目（見本の画像どおり）', () => {
     expect(buttons.every((btn) => btn.style.background === '')).toBe(true)
   })
 
-  it('見本の色（青い保存・薄い青の帯・白い入力欄）を当て、見出しに色付きの縦線を付けない', () => {
+  it('見本の色（青い保存・薄い青の帯・白い入力欄・見出しの左の青いバー）を当てる。枠の左線は使わない', () => {
     const css = window.document.getElementById('lp-settings-style')?.textContent ?? ''
     // 青・淡い青はアプリのテーマの色に合わせる（無いときは見本の色）
     expect(css).toContain('var(--sb-accent, #1178F3)')
     expect(css).toContain('var(--sb-accent-tint, #EBF5FD)')
     expect(css).toMatch(/input[^{]*\{[^}]*background-color:#FFFFFF !important/)
+    expect(css).toMatch(/_title_qyxur_126::before\{content:"";[^}]*background:var\(--sb-accent, #1178F3\)/)
     expect(css).not.toMatch(/border-left\s*:/)
   })
 
