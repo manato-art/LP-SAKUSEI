@@ -70,7 +70,7 @@ export const CTA_TEMPLATE: NocodeTemplate = {
     { kind: 'text', key: 'label', label: 'ボタンの文字', placeholder: '今すぐ申し込む', maxLength: 40 },
     { kind: 'text', key: 'sub', label: 'ボタンの下の小さな文字', placeholder: '1分で完了・解約はいつでも', note: '空にすると出しません' },
     { kind: 'url', key: 'url', label: '押したときに開くページ', placeholder: 'https://', note: 'ページ内の場所へ移るときは #申し込み のように書きます' },
-    { kind: 'toggle', key: 'track', label: 'クリック数をレポートで数える' },
+    { kind: 'toggle', key: 'track', label: '計測リンクにする' },
     { kind: 'toggle', key: 'newTab', label: '新しいタブで開く' },
     { kind: 'color', key: 'color', label: 'ボタンの色', presets: ACCENT_PRESETS },
     {

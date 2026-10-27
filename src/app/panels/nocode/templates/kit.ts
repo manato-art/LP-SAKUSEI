@@ -32,7 +32,7 @@ export function textHtml(text: string): string {
 
 /**
  * リンクの属性（先頭に空白つき）。
- * 使えないURL・空は `#`。「クリック数をレポートで数える」は今のリンク設定と同じ目印を付ける
+ * 使えないURL・空は `#`。「計測リンクにする」（2026-10-27 本人の指定で名前をそろえた）は今のリンク設定と同じ目印を付ける
  * （http(s) は URL に sb_tracking=true、電話は data-sb-tracking 属性）。ページ内の # には付けない。
  */
 export function linkAttrs(url: string, options: { track: boolean; newTab: boolean }): string {

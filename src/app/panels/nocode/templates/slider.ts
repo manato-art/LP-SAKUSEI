@@ -120,7 +120,7 @@ export const SLIDER_TEMPLATE: NocodeTemplate = {
         { value: '8', label: '8秒ごと', icon: AUTOPLAY_ICONS['8'] },
       ],
     },
-    { kind: 'toggle', key: 'track', label: 'リンクのクリック数をレポートで数える' },
+    { kind: 'toggle', key: 'track', label: '計測リンクにする' },
     { kind: 'color', key: 'color', label: '点の色', presets: ACCENT_PRESETS },
   ],
   defaults: () => ({

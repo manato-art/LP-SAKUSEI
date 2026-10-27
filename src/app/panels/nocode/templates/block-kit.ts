@@ -119,7 +119,7 @@ export function actionFields(): readonly Field[] {
     {
       kind: 'toggle',
       key: 'track',
-      label: 'クリック数をレポートで数える',
+      label: '計測リンクにする',
       showIfItem: (item) => str(item, 'action') === 'link' || str(item, 'action') === 'tel',
       section: 'press',
     },

@@ -76,7 +76,7 @@ export const EXTRA_BLOCK_TYPES: readonly BlockType[] = [
       // 終わったら: 画面②③…（＋新しい画面）かリンク。LP上のアクションは出さない（template-form.ts の pressFieldEl）
       { kind: 'goto', key: 'action', label: '終わったら', section: 'press' },
       { kind: 'url', key: 'url', label: '開くページ', placeholder: 'https://', showIfItem: (item) => str(item, 'action') === 'link', section: 'press' },
-      { kind: 'toggle', key: 'track', label: 'クリック数をレポートで数える', showIfItem: (item) => str(item, 'action') === 'link', section: 'press' },
+      { kind: 'toggle', key: 'track', label: '計測リンクにする', showIfItem: (item) => str(item, 'action') === 'link', section: 'press' },
     ],
     newItem: () => ({ type: 'loading', look: 'spinner', text: 'あなたに合う内容を診断しています…', seconds: 3, color: '#E5573F', ...NO_ACTION }),
   },
@@ -202,7 +202,7 @@ export const EXTRA_BLOCK_TYPES: readonly BlockType[] = [
       { kind: 'text', key: 'label', label: '上の文字（任意）', placeholder: 'お電話でのお問い合わせ', maxLength: 30 },
       { kind: 'text', key: 'hours', label: '受付時間（任意）', placeholder: '受付 9:00〜18:00（土日祝を除く）', maxLength: 60 },
       { kind: 'color', key: 'color', label: 'ボタンの色', presets: ACCENT_PRESETS },
-      { kind: 'toggle', key: 'track', label: '押された数をレポートで数える' },
+      { kind: 'toggle', key: 'track', label: '計測リンクにする' },
     ],
     newItem: () => ({ type: 'tel', number: '', label: 'お電話でのお問い合わせ', hours: '', color: '#0B7A3E', track: true }),
   },
