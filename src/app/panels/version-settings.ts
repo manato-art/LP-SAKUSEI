@@ -23,6 +23,7 @@ import { bgLookField } from './bg-look-field.ts'
 import { isVideoBackground } from '../master-style.ts'
 import { convertImageToWebP } from './webp-convert.ts'
 import { ensureWhiteBase, stripDarkThemeClasses } from '../white-base.ts'
+import { ensureVersionSettingsStyle, LP_SETTINGS_ATTR } from './version-settings-style.ts'
 
 /**
  * 背景ラジオで「画像」「色」を選んだときに実物が差し込む入力欄は、React の条件描画なので
@@ -138,7 +139,10 @@ const BACKGROUND_GROUPS: readonly {
   },
 ]
 
-/** 背景の見出しを BACKGROUND_GROUPS の名前にし、その並びに置き直す（見出し＋すぐ下の選択肢をひと組で動かす） */
+/**
+ * 背景の見出しを BACKGROUND_GROUPS の名前にし、その並びに置き直す（見出し＋すぐ下の選択肢をひと組で動かす）。
+ * ひと組ずつ枠（.lp-bg-box）に入れ、2つの枠を横に並べる（.lp-bg-row・2026-10-27 LP設定の作り直し＝見本の画像）
+ */
 function arrangeBackgroundSections(wrapper: HTMLElement): void {
   const sections = BACKGROUND_GROUPS.flatMap((group) => {
     const groupWrap = wrapper
@@ -157,7 +161,15 @@ function arrangeBackgroundSections(wrapper: HTMLElement): void {
   }
   // 背景の組のすぐ後ろ（動かさない所）を目印に、決めた並びで入れ直す
   const after = wraps[wraps.length - 1]?.nextSibling ?? null
-  for (const node of sections.flat()) parent.insertBefore(node, after)
+  const row = document.createElement('div')
+  row.className = 'lp-bg-row'
+  for (const [title, groupWrap] of sections) {
+    const box = document.createElement('div')
+    box.className = 'lp-bg-box'
+    box.append(title, groupWrap)
+    row.append(box)
+  }
+  parent.insertBefore(row, after)
 }
 
 /** モックAPI（localhost固定・本番ドメインは登場させない・§3-2） */
@@ -221,8 +233,10 @@ async function openPanel(articleUid: string): Promise<void> {
 
   // ReactModal と同じく body 直下のポータルに出す（採取DOMの構造に合わせる）
   ensureWhiteBase()
+  ensureVersionSettingsStyle()
   const portal = document.createElement('div')
   portal.className = 'ReactModalPortal'
+  portal.setAttribute(LP_SETTINGS_ATTR, '')
   portal.innerHTML = modalHtml
   // 指示116: 採取物のダークテーマクラスを除去し白基調にする
   stripDarkThemeClasses(portal)
@@ -517,52 +531,38 @@ function mountTextAlignButtons(wrapper: HTMLElement, currentValue: string): void
   const anchorParent = insertAfter?.parentElement ?? wrapper
   const anchor = insertAfter ?? null
 
+  // 見た目は version-settings-style.ts（2026-10-27 LP設定の作り直し＝選んだ物だけ青い枠）
   const row = document.createElement('div')
   row.setAttribute('data-clone-text-align-row', 'true')
-  row.style.cssText =
-    'display:flex;align-items:center;gap:4px;padding:8px 16px;font-size:12px;color:var(--sb-c-666666, #666666)'
+  row.className = 'lp-align-row'
   const label = document.createElement('span')
+  label.className = 'lp-align-label'
   label.textContent = 'テキスト揃え'
-  label.style.cssText = 'min-width:100px;flex-shrink:0'
   row.append(label)
 
   const group = document.createElement('div')
-  group.style.cssText = 'display:flex;gap:2px'
+  group.className = 'lp-align-group'
 
   const active = currentValue || 'left'
   for (const opt of ALIGN_OPTIONS) {
     const btn = document.createElement('button')
     btn.type = 'button'
     btn.title = opt.label
-    btn.style.cssText =
-      'width:30px;height:28px;display:flex;align-items:center;justify-content:center;' +
-      'border:1px solid var(--sb-c-cccccc, #CCCCCC);border-radius:4px;cursor:pointer;background:var(--sb-c-ffffff, #FFFFFF);padding:0'
+    btn.className = 'lp-align-btn'
+    btn.setAttribute('aria-pressed', String(opt.value === active))
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
     svg.setAttribute('viewBox', '0 0 24 24')
-    svg.setAttribute('width', '16')
-    svg.setAttribute('height', '16')
+    svg.setAttribute('width', '18')
+    svg.setAttribute('height', '18')
     svg.setAttribute('fill', 'currentColor')
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path')
     path.setAttribute('d', opt.icon)
     svg.append(path)
     btn.append(svg)
 
-    if (opt.value === active) {
-      btn.style.background = '#e3f2fd'
-      btn.style.borderColor = '#2196f3'
-      btn.style.color = '#1976d2'
-    }
     btn.addEventListener('click', () => {
       row.dataset[ALIGN_DATA_KEY] = opt.value
-      // 全ボタンのスタイルをリセットし、押されたものだけアクティブにする
-      for (const sibling of group.children) {
-        ;(sibling as HTMLElement).style.background = 'var(--sb-c-ffffff, #FFFFFF)'
-        ;(sibling as HTMLElement).style.borderColor = 'var(--sb-c-cccccc, #CCCCCC)'
-        ;(sibling as HTMLElement).style.color = 'var(--sb-c-333333, #333333)'
-      }
-      btn.style.background = '#e3f2fd'
-      btn.style.borderColor = '#2196f3'
-      btn.style.color = '#1976d2'
+      for (const sibling of group.children) sibling.setAttribute('aria-pressed', String(sibling === btn))
     })
     group.append(btn)
   }
