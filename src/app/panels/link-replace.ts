@@ -31,10 +31,12 @@ import { ensureWhiteBase, stripDarkThemeClasses } from '../white-base.ts'
 import { cleanupDropdownHost, findLpBody } from './history.ts'
 import { EDITOR_CONTENT_SHOWN_EVENT } from './editor-change.ts'
 import { ensureLinkReplaceStyle, LR_ICONS } from './link-replace-style.ts'
+import { mediaElementsByIndex, mediaThumb } from './link-replace-thumb.ts'
 import { pageLife } from '../page-life.ts'
 import {
   buildLinkReplaceRequest,
   EMPTY_LINKS_MESSAGE,
+  extractLinksFromHtml,
   filterLinks,
   isAllowedLinkUrl,
   isTelHref,
@@ -558,7 +560,15 @@ function renderList(panel: HTMLElement): void {
   } else {
     // 実物の行は採取できていないので、このシステムの行として並べる（以前は真っ白だった・点検37）
     lists.setAttribute('data-clone-row-markup', 'own')
+    // 画像・動画の行のサムネは、編集画面にもう出ている要素から描き写す（新しく読み込まない・指示㉗）
+    const root = PANEL_ROOT.get(panel)
+    const body = root === undefined ? null : findLpBody(root)
+    const media = body === null ? new Map<number, HTMLImageElement | HTMLVideoElement>() : mediaElementsByIndex(body, extractLinksFromHtml(body.innerHTML))
     renderLinkRows(lists, visible, {
+      thumbnail: (link) => {
+        const el = media.get(link.index)
+        return el === undefined ? null : mediaThumb(el)
+      },
       selected: state.selected,
       onToggle: (index) => {
         const next = new Set(stateOf(panel).selected)

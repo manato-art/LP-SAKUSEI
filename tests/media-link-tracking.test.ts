@@ -53,6 +53,15 @@ async function setup(attrs = '') {
   return { section, img, url, track, type, toggle }
 }
 
+describe('画像・動画のリンクの開き方（2026-10-27 指示㉖ 本人「ターゲット→開き方にして」）', () => {
+  it('欄の名前は「開き方」', async () => {
+    const t = await setup()
+    const labels = [...t.section.el.querySelectorAll('.sb-pr-label')].map((l) => l.textContent)
+    expect(labels).toContain('開き方')
+    expect(labels).not.toContain('ターゲット')
+  })
+})
+
 describe('画像・動画のリンクの「計測リンクにする」', () => {
   it('名前は「計測リンクにする」で、最初はチェックなし。そのままURLを入れると計測なしのリンク', async () => {
     const t = await setup()

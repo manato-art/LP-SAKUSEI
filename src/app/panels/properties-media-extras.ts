@@ -70,7 +70,8 @@ export function buildMediaLinkGroup(deps: MediaExtrasDeps): MediaSection {
   trackRow.append(track, trackText)
   track.addEventListener('change', writeHref)
 
-  const linkTargetRow = row('ターゲット')
+  // 名前は「開き方」（2026-10-27 指示㉖ 本人「ターゲット→開き方にして」）
+  const linkTargetRow = row('開き方')
   const linkTargetSelect = document.createElement('select')
   linkTargetSelect.className = 'sb-pr-select sb-link-target-select'
   for (const opt of [

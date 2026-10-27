@@ -53,6 +53,7 @@ ${S} .lr-row{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1
 ${S} .lr-row:hover{border-color:#D1D5DB}
 ${S} .lr-row__check{width:18px;height:18px;flex-shrink:0;margin:0;cursor:pointer;accent-color:${ORANGE}}
 ${S} .lr-row__body{flex:1;min-width:0}
+${S} .lr-thumb{width:44px;height:44px;flex-shrink:0;border-radius:8px;border:1px solid #E8EAED;background:#F1F2F4}
 ${S} .lr-row__title{font-size:14px;font-weight:700;line-height:1.5;color:#1F2937;overflow-wrap:anywhere}
 ${S} .lr-row__url{display:flex;align-items:flex-start;gap:5px;margin-top:2px;font-size:12px;line-height:1.5;color:#6B7280;overflow-wrap:anywhere}
 ${S} .lr-row__url svg{width:13px;height:13px;flex-shrink:0;margin-top:2px;color:#9CA3AF}

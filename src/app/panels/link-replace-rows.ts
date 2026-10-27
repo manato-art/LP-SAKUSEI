@@ -17,6 +17,8 @@ export interface RowsDeps {
   readonly onToggle: (index: number) => void
   /** 行の「計測あり／計測なし」を押した（その1本だけ切り替える・2026-10-27 指示⑭） */
   readonly onTrackingToggle?: (link: LpLink) => void
+  /** 画像・動画の行の小さなサムネ（無ければ出さない・2026-10-27 指示㉗・link-replace-thumb.ts） */
+  readonly thumbnail?: (link: LpLink) => HTMLElement | null
 }
 
 /** 文字の無いリンクの行に出す言葉 */
@@ -85,7 +87,10 @@ export function renderLinkRows(host: HTMLElement, links: readonly LpLink[], deps
       hrefText.textContent = link.href === '' ? '（行き先なし）' : link.href
       href.append(hrefText)
       body.append(text, href)
-      row.append(box, body)
+      row.append(box)
+      const thumb = link.kind === 'text' ? null : (deps.thumbnail?.(link) ?? null)
+      if (thumb !== null) row.append(thumb)
+      row.append(body)
       // ページ内の移動（#faq）は計測の印を付けられないので札を出さない
       if (deps.onTrackingToggle !== undefined && !isInPageHref(link.href)) {
         row.append(trackingToggle(link, deps.onTrackingToggle))
