@@ -38,6 +38,10 @@ describe('送るのは一覧だけ（2026-10-27 本人「全体をスクロー�
     expect(panel).toContain('max-height:calc(100vh - 140px)')
     expect(panel).toContain('overflow:hidden')
     expect(panel).not.toContain('overflow-y:auto')
+    // 並べ方（display:flex）は「開いている」印があるときだけ。印が無いときにも当てると、採取物の display:none に勝って
+    // 閉じても消えなかった（2026-10-27 本人「外を押したら閉じる、これができなくなってしまった」）
+    expect(panel).not.toContain('display:')
+    expect(rule('[data-clone-panel="link-replace"]._open_x4j8w_84')).toContain('display:flex')
     const list = rule('._targetLinkLists_id5w4_134')
     expect(list).toContain('overflow-y:auto')
     expect(list).toContain('min-height:0')

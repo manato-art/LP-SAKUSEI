@@ -18,7 +18,10 @@ const CHEVRON =
   "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23374151' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E\")"
 
 const CSS = `
-${S} [data-clone-panel="link-replace"]{border-radius:16px !important;border:1px solid #E5E7EB !important;box-shadow:0 12px 32px rgba(17,24,39,.14) !important;width:480px !important;max-width:calc(100vw - 32px);max-height:calc(100vh - 140px);overflow:hidden !important;display:flex !important;flex-direction:column}
+${S} [data-clone-panel="link-replace"]{border-radius:16px !important;border:1px solid #E5E7EB !important;box-shadow:0 12px 32px rgba(17,24,39,.14) !important;width:480px !important;max-width:calc(100vw - 32px);max-height:calc(100vh - 140px);overflow:hidden !important}
+/* 縦に並べるのは開いているときだけ。いつも display を当てると、採取物の「閉じている＝display:none」に勝って、
+   閉じても（外を押す・←）消えなかった（2026-10-27 本人「外を押したら閉じる、これができなくなってしまった」） */
+${S} [data-clone-panel="link-replace"]._open_x4j8w_84{display:flex !important;flex-direction:column}
 /* 送るのは一覧だけ（2026-10-27 本人「全体をスクロールするのではなく、2枚目のところのみをスクロール」）:
    パネルを画面の高さに収め、見出し・絞り込み・下の段はそのまま、一覧が残りの高さを使って中で送る */
 ${S} ._body_x4j8w_8{padding:0 !important;flex:1 1 auto;min-height:0;display:flex !important;flex-direction:column}
