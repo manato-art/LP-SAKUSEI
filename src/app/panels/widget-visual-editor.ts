@@ -614,7 +614,7 @@ export function buildVisualEditor(
   }
   markImages()
   contentDiv.addEventListener('input', markImages)
-  // ほかから貼った文字は、コピー元の書体・行間を外して入れる（2026-10-27 本人の指示⑩・editor-paste.ts）。
+  // ほかから貼った文字は、コピー元の見た目（書体・大きさ・行間・色・背景など）を外して入れる（2026-10-27 本人の指示⑩・editor-paste.ts）。
   // 同じ編集画面の中でコピーした物（印あり）・文字だけの貼り付けは、ブラウザに任せる
   markInternalCopy(contentDiv)
   contentDiv.addEventListener('paste', (e) => {
