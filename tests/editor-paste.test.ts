@@ -15,7 +15,7 @@ const parse = (html: string): Element => {
 }
 
 describe('貼り付け（指示⑩）', () => {
-  it('Versionの編集画面: 貼った文字の書体だけ外す（大きさ・色・太字はそのまま）', () => {
+  it('Versionの編集画面: 貼った文字の書体・大きさを外す（色・太字はそのまま・大きさも＝2026-10-27 本人選択）', () => {
     expect(
       withoutSourceFonts([
         { insert: 'よそから', attributes: { font: 'Georgia', size: '22px', color: '#333333' } },
@@ -24,24 +24,24 @@ describe('貼り付け（指示⑩）', () => {
         { insert: 'ふつう' },
       ]),
     ).toEqual([
-      { insert: 'よそから', attributes: { size: '22px', color: '#333333' } },
+      { insert: 'よそから', attributes: { color: '#333333' } },
       { insert: '太字', attributes: { bold: true } },
       { insert: '書体だけ' },
       { insert: 'ふつう' },
     ])
   })
 
-  it('style から書体と行間だけ外す', () => {
+  it('style から書体・大きさ・行間を外す（色などは残す）', () => {
     expect(withoutSourceTypeStyle('font-family: "Times New Roman", serif; font-size: 24px; line-height: 3; color: rgb(51, 51, 51)')).toBe(
-      'font-size: 24px; color: rgb(51, 51, 51)',
+      'color: rgb(51, 51, 51)',
     )
     expect(withoutSourceTypeStyle('font-family: Georgia; line-height:2')).toBe('')
   })
 
-  it('Widget編集に貼る HTML: 書体・行間・<font face> を外し、文字でない物（script・style・meta）は入れない', () => {
+  it('Widget編集に貼る HTML: 書体・大きさ・行間・<font face size> を外し、文字でない物（script・style・meta）は入れない', () => {
     const html =
       '<meta charset="utf-8"><style>p{color:red}</style>' +
-      '<p style="font-family: Times; line-height: 3; text-align: center"><span style="font-family: Georgia">よそから</span><font face="Arial" color="#f00">赤</font></p><script>alert(1)</script>'
+      '<p style="font-family: Times; line-height: 3; text-align: center"><span style="font-family: Georgia; font-size: 22px">よそから</span><font face="Arial" size="5" color="#f00">赤</font></p><script>alert(1)</script>'
     expect(cleanPastedHtml(html, parse)).toBe('<p style="text-align: center"><span>よそから</span><font color="#f00">赤</font></p>')
   })
 })
