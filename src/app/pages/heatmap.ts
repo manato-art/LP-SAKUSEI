@@ -159,6 +159,8 @@ export async function renderHeatmap(
         param: key.param,
         html: lpSources?.versions.get(key.versionUid)?.html ?? '',
         css: lpSources?.versions.get(key.versionUid)?.css ?? '',
+        styleCss: lpSources?.versions.get(key.versionUid)?.styleCss,
+        styleHtml: lpSources?.versions.get(key.versionUid)?.styleHtml,
         pv: row.pv,
         ctr: row.ctr,
         cv: row.cv,

@@ -180,6 +180,15 @@ interface ActiveModal {
   onKeydown: (event: KeyboardEvent) => void
 }
 
+/**
+ * LP設定を読み書きする Version（2026-10-27 本人「LP設定なんだけど、各バージョンごとに分けたい」）。
+ * 渡さなければページ（ステップ）共通の設定を読み書きする（自分の設定を持たない Version が使う物）
+ */
+export interface SettingsVersion {
+  readonly uid: string
+  readonly name: string
+}
+
 let activeModal: ActiveModal | null = null
 /**
  * 設定を読み込んでいる間か。右の「LP設定」のアイコンには開く処理が2つ付いている（採取した歯車の目印と、右のアイコンの並び）ので、
@@ -192,11 +201,12 @@ let onSavedCallback: (() => void) | null = null
 /**
  * 右レールの歯車に Version設定モーダルを配線する。
  * 採取した土台に起動ボタンが居ることが前提（居なければ何も配線しない）。
+ * `target` は押したときの「今のステップと Version」を返す（ステップ・Version を切り替えても、その時の物を開く）。
  * `onSaved` を渡すと、保存成功のたびに呼ぶ（編集画面の本文へ即反映するのに使う）。
  */
 export function mountVersionSettings(
   root: HTMLElement,
-  articleUid: string,
+  target: () => { articleUid: string; version?: SettingsVersion },
   onSaved?: () => void,
 ): void {
   const opener = root.querySelector<HTMLElement>(HOOK.open)
@@ -209,21 +219,22 @@ export function mountVersionSettings(
   opener.dataset['versionSettingsWired'] = 'true'
   opener.style.cursor = 'pointer'
   opener.addEventListener('click', () => {
-    void openPanel(articleUid)
+    const now = target()
+    void openPanel(now.articleUid, now.version)
   })
 }
 
-/** アイコンクリックから直接呼べるエントリポイント */
-export async function openVersionSettings(articleUid: string): Promise<void> {
-  return openPanel(articleUid)
+/** アイコンクリックから直接呼べるエントリポイント（version を渡すと、その Version の設定） */
+export async function openVersionSettings(articleUid: string, version?: SettingsVersion): Promise<void> {
+  return openPanel(articleUid, version)
 }
 
-async function openPanel(articleUid: string): Promise<void> {
+async function openPanel(articleUid: string, version: SettingsVersion | undefined): Promise<void> {
   if (activeModal !== null || opening) return
   opening = true
   let sheet: MasterStyleSheet
   try {
-    sheet = await fetchSheet(articleUid)
+    sheet = await fetchSheet(articleUid, version)
   } catch (error) {
     toast((error as Error).message, 'error')
     return
@@ -257,6 +268,7 @@ async function openPanel(articleUid: string): Promise<void> {
   arrangeBackgroundSections(wrapper)
   mountPaletteFields(wrapper)
   mountTextAlignButtons(wrapper, sheet.text_align ?? '')
+  if (version !== undefined) mountVersionScope(wrapper, version)
 
   const onKeydown = (event: KeyboardEvent): void => {
     if (event.key === 'Escape') close()
@@ -278,9 +290,50 @@ async function openPanel(articleUid: string): Promise<void> {
     return
   }
   saveButton.addEventListener('click', () => {
-    void save(articleUid, wrapper, sheet)
+    void save(articleUid, version, wrapper, sheet)
   })
 }
+
+/** 「他のバージョンにも適用する」のチェックの印 */
+const APPLY_OTHERS_ATTR = 'data-apply-other-versions'
+
+/**
+ * Version ごとの LP設定（2026-10-27）。題名の下にどの Version の設定かを出し、いちばん下に「他のバージョンにも適用する」を置く。
+ * チェックは最初は外れている（本人の決定）。入れて保存すると、このページのほかの Version（アーカイブ済みを除く）にも同じ設定が入る
+ */
+function mountVersionScope(wrapper: HTMLElement, version: SettingsVersion): void {
+  const title = wrapper.querySelector<HTMLElement>('[class*="_title_11n4w_70"]')
+  if (title !== null) {
+    const name = document.createElement('div')
+    name.setAttribute('data-lp-settings-version', '')
+    name.className = 'lp-settings-version'
+    name.textContent = `${version.name} の設定`
+    title.after(name)
+  }
+  const content = wrapper.querySelector<HTMLElement>('[class*="_modalContent_11n4w_79"]')
+  if (content === null) return
+  const row = document.createElement('label')
+  row.setAttribute(APPLY_OTHERS_ATTR, '')
+  row.className = 'lp-apply-others'
+  const box = document.createElement('input')
+  box.type = 'checkbox'
+  box.checked = false
+  const text = document.createElement('span')
+  text.className = 'lp-apply-others__text'
+  const main = document.createElement('span')
+  main.className = 'lp-apply-others__label'
+  main.textContent = '他のバージョンにも適用する'
+  const note = document.createElement('span')
+  note.className = 'lp-apply-others__note'
+  note.textContent = 'チェックを入れて保存すると、このページのほかのVersionにも同じ設定が入ります（アーカイブ済みのVersionには入れません）'
+  text.append(main, note)
+  row.append(box, text)
+  content.append(row)
+}
+
+/** 「他のバージョンにも適用する」にチェックが入っているか */
+const isApplyToOthers = (wrapper: HTMLElement): boolean =>
+  wrapper.querySelector<HTMLInputElement>(`[${APPLY_OTHERS_ATTR}] input[type="checkbox"]`)?.checked ?? false
 
 function close(): void {
   if (activeModal === null) return
@@ -605,8 +658,21 @@ function collectPayload(wrapper: HTMLElement, sheet: MasterStyleSheet): Record<s
   return payload
 }
 
+/** LP設定の住所（Version を渡すと、その Version の設定） */
+const sheetPath = (articleUid: string, version: SettingsVersion | undefined): string =>
+  `/articles/${articleUid}/master_style_sheet${version === undefined ? '' : `?version_uid=${encodeURIComponent(version.uid)}`}`
+
+/** 保存できたことの知らせ（ほかの Version にも入れたときは、その数も） */
+function savedMessage(toOthers: boolean, appliedVersions: number): string {
+  if (!toOthers) return 'LP設定を保存しました'
+  return appliedVersions > 0
+    ? `LP設定を保存しました（ほかのVersion ${appliedVersions}つにも入れました）`
+    : 'LP設定を保存しました（ほかに入れるVersionはありませんでした）'
+}
+
 async function save(
   articleUid: string,
+  version: SettingsVersion | undefined,
   wrapper: HTMLElement,
   sheet: MasterStyleSheet,
 ): Promise<void> {
@@ -615,13 +681,14 @@ async function save(
   if (saveButton.dataset['busy'] === 'true') return
   saveButton.dataset['busy'] = 'true'
   saveButton.style.opacity = '0.6'
+  const toOthers = version !== undefined && isApplyToOthers(wrapper)
   try {
-    await requestJson<{ master_style_sheet: MasterStyleSheet }>(
+    const body = await requestJson<{ master_style_sheet: MasterStyleSheet; applied_versions?: number }>(
       'PUT',
-      `/articles/${articleUid}/master_style_sheet`,
-      collectPayload(wrapper, sheet),
+      sheetPath(articleUid, version),
+      version === undefined ? collectPayload(wrapper, sheet) : { ...collectPayload(wrapper, sheet), apply_to_other_versions: toOthers },
     )
-    toast('Version設定を保存しました')
+    toast(savedMessage(toOthers, body.applied_versions ?? 0))
     onSavedCallback?.() // 編集画面の本文へ即反映
     close()
   } catch (error) {
@@ -631,11 +698,8 @@ async function save(
   }
 }
 
-async function fetchSheet(articleUid: string): Promise<MasterStyleSheet> {
-  const body = await requestJson<{ master_style_sheet: MasterStyleSheet }>(
-    'GET',
-    `/articles/${articleUid}/master_style_sheet`,
-  )
+async function fetchSheet(articleUid: string, version: SettingsVersion | undefined): Promise<MasterStyleSheet> {
+  const body = await requestJson<{ master_style_sheet: MasterStyleSheet }>('GET', sheetPath(articleUid, version))
   return body.master_style_sheet
 }
 

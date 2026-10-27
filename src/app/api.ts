@@ -669,10 +669,11 @@ export const api = {
   /** 流入元別/OS別/キャリア別/時間別/日付別 の版ごと設定を保存（渡した項目だけ更新） */
   setVersionTargeting: (uid: string, patch: Record<string, unknown>) =>
     request<{ version: Version }>('PATCH', `/versions/${uid}/targeting`, patch),
-  masterStyleSheet: (articleUid: string) =>
+  /** LP設定。versionUid を渡すと、その Version の設定（LP設定は Version ごと・2026-10-27） */
+  masterStyleSheet: (articleUid: string, versionUid?: string) =>
     request<{ master_style_sheet: MasterStyleSheet }>(
       'GET',
-      `/articles/${articleUid}/master_style_sheet`,
+      `/articles/${articleUid}/master_style_sheet${versionUid === undefined ? '' : `?version_uid=${encodeURIComponent(versionUid)}`}`,
     ),
 
   /** Meta広告の紐付け（媒体実績の取り込み元）。トークンは扱わない＝サーバーの環境変数のみ。 */

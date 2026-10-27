@@ -13,7 +13,10 @@ import type { State } from './types.ts'
 
 declare module './types.ts' {
   interface State {
-    /** 記事uid → Version設定。未保存の記事は既定値として扱う（entry を持たない） */
+    /**
+     * 記事uid（＋Version uid）→ Version設定。未保存の記事は既定値として扱う（entry を持たない）。
+     * version_uid の無い entry はページ（ステップ）共通の設定＝自分の設定を持たない Version が使う（2026-10-27 Versionごとに分けた）
+     */
     readonly masterStyleSheets?: readonly MasterStyleSheetEntry[]
   }
 }
@@ -56,6 +59,11 @@ export interface MasterStyleSheet {
 
 export interface MasterStyleSheetEntry {
   readonly article_uid: string
+  /**
+   * その Version だけの設定（2026-10-27 本人「LP設定なんだけど、各バージョンごとに分けたい」）。
+   * 無ければページ（ステップ）共通の設定（それまでの設定・あとから足した Version もこれで始まる）
+   */
+  readonly version_uid?: string
   readonly sheet: MasterStyleSheet
 }
 
@@ -115,25 +123,68 @@ const NUMBER_MAX = 9999
 
 const HEX6 = /^[0-9a-fA-F]{6}$/
 
-export function getMasterStyleSheet(state: State, articleUid: string): MasterStyleSheet {
-  const entry = (state.masterStyleSheets ?? []).find((e) => e.article_uid === articleUid)
-  return entry?.sheet ?? DEFAULT_MASTER_STYLE_SHEET
+/** その entry が「この記事の、この Version（無ければ共通）」の物か */
+const isEntryOf = (entry: MasterStyleSheetEntry, articleUid: string, versionUid: string | undefined): boolean =>
+  entry.article_uid === articleUid && entry.version_uid === versionUid
+
+/** その Version の設定（自分の設定が無ければページ共通の設定・それも無ければ既定値）。versionUid を省くとページ共通の設定 */
+export function getMasterStyleSheet(state: State, articleUid: string, versionUid?: string): MasterStyleSheet {
+  const entries = state.masterStyleSheets ?? []
+  const own = versionUid === undefined ? undefined : entries.find((e) => isEntryOf(e, articleUid, versionUid))
+  return own?.sheet ?? entries.find((e) => isEntryOf(e, articleUid, undefined))?.sheet ?? DEFAULT_MASTER_STYLE_SHEET
 }
 
-/** 既存Stateを破壊せず、新しいStateを返す（§12） */
+/** 既存Stateを破壊せず、新しいStateを返す（§12）。versionUid を省くとページ共通の設定を入れる */
 export function putMasterStyleSheet(
   state: State,
   articleUid: string,
   sheet: MasterStyleSheet,
+  versionUid?: string,
 ): State {
   const entries = state.masterStyleSheets ?? []
-  const next: MasterStyleSheetEntry = { article_uid: articleUid, sheet }
+  const next: MasterStyleSheetEntry =
+    versionUid === undefined ? { article_uid: articleUid, sheet } : { article_uid: articleUid, version_uid: versionUid, sheet }
   return {
     ...state,
-    masterStyleSheets: entries.some((e) => e.article_uid === articleUid)
-      ? entries.map((e) => (e.article_uid === articleUid ? next : e))
+    masterStyleSheets: entries.some((e) => isEntryOf(e, articleUid, versionUid))
+      ? entries.map((e) => (isEntryOf(e, articleUid, versionUid) ? next : e))
       : [...entries, next],
   }
+}
+
+/**
+ * 「他のバージョンにも適用する」で保存（2026-10-27 本人の決定: アーカイブ済みの Version には入れない）。
+ * このページのアーカイブしていない Version 全部と、ページ共通の設定（あとから足す Version 用）に入れる。
+ * 自分の設定を持たないアーカイブ済みの Version は、共通の設定が変わっても見た目が変わらないよう、今の共通の設定を自分の物にしておく。
+ * 入れた「ほかの」Version の数も返す。
+ */
+export function applyMasterStyleSheetToVersions(
+  state: State,
+  articleUid: string,
+  sheet: MasterStyleSheet,
+  versionUid: string,
+): { state: State; appliedVersions: number } {
+  const article = state.articles.find((a) => a.uid === articleUid)
+  if (article === undefined) return { state, appliedVersions: 0 }
+  const versions = state.versions.filter((v) => v.article_id === article.id)
+  const entries = state.masterStyleSheets ?? []
+  const hasOwn = (uid: string): boolean => entries.some((e) => isEntryOf(e, articleUid, uid))
+  const common = getMasterStyleSheet(state, articleUid)
+  const keptArchived = versions
+    .filter((v) => v.archived && !hasOwn(v.uid))
+    .reduce((acc, v) => putMasterStyleSheet(acc, articleUid, common, v.uid), state)
+  const active = versions.filter((v) => !v.archived || v.uid === versionUid)
+  const applied = active.reduce((acc, v) => putMasterStyleSheet(acc, articleUid, sheet, v.uid), keptArchived)
+  return {
+    state: putMasterStyleSheet(applied, articleUid, sheet),
+    appliedVersions: active.filter((v) => v.uid !== versionUid).length,
+  }
+}
+
+/** Version を複製したとき、元の Version だけの設定があれば複製にも写す（無ければ共通の設定のまま） */
+export function copyMasterStyleSheetToVersion(state: State, fromVersionUid: string, toArticleUid: string, toVersionUid: string): State {
+  const own = (state.masterStyleSheets ?? []).find((e) => e.version_uid === fromVersionUid)
+  return own === undefined ? state : putMasterStyleSheet(state, toArticleUid, own.sheet, toVersionUid)
 }
 
 function readRaw(body: unknown, field: string): unknown {

@@ -277,7 +277,8 @@ deliveryRouter.get('/lp/:uid', (req, res) => {
   }
 
   // 記事設定（Version設定）をLPへ反映する（背景が動画なら、本文の先頭に動画の層・2026-10-27）
-  const sheet = getMasterStyleSheet(state, article.uid)
+  // LP設定は Version ごと（自分の設定が無ければページ共通・2026-10-27）
+  const sheet = getMasterStyleSheet(state, article.uid, version.uid)
   const styleCss = masterStyleIframeCss(sheet)
   const styleHtml = masterStyleBackgroundHtml(sheet)
   // タグ設定（noindex・head/bodyへの差し込みタグ）＝ 個別タグ(Article) ＋ 一括タグ(範囲一致)

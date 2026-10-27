@@ -214,6 +214,9 @@ export interface ColumnSpec {
   html: string
   /** Version の CSS（公開LPと同じ見た目で敷くため） */
   css: string
+  /** その Version の LP設定の CSS・動画の層（LP設定は Version ごと・2026-10-27）。無ければ deps のページ共通の物 */
+  styleCss?: string
+  styleHtml?: string
   /** レポートの指標（ヘッダーに出す） */
   pv: number
   ctr: number | null
@@ -496,7 +499,7 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
   lp.setAttribute('sandbox', 'allow-same-origin')
   lp.setAttribute('referrerpolicy', 'no-referrer')
   lp.srcdoc =
-    deps.externalHtml ?? buildHeatmapLpDocument({ html: spec.html, css: spec.css, styleCss: deps.styleCss, styleHtml: deps.styleHtml })
+    deps.externalHtml ?? buildHeatmapLpDocument({ html: spec.html, css: spec.css, styleCss: spec.styleCss ?? deps.styleCss, styleHtml: spec.styleHtml ?? deps.styleHtml })
   const overlay = document.createElement('div')
   overlay.className = 'hm-overlay'
   canvas.append(lp)

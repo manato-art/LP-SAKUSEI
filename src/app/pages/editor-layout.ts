@@ -12,7 +12,7 @@
 
 import { api } from '../api.ts'
 import { toast } from '../ui.ts'
-import { mountVersionSettings, openVersionSettings } from '../panels/version-settings.ts'
+import { mountVersionSettings, openVersionSettings, type SettingsVersion } from '../panels/version-settings.ts'
 import { mountTagSettings, openTagSettings } from '../panels/tag-settings.ts'
 import { followEditorContent, LINK_REPLACE_TOGGLE_ATTR, mountLinkReplace, reloadLinkReplace } from '../panels/link-replace.ts'
 import { mountHistory, refreshHistory, recordArticleHistory } from '../panels/history.ts'
@@ -39,7 +39,7 @@ import { HOOK } from './editor-hooks.ts'
 import { buildFullHtml, showVersionContent } from './editor-html.ts'
 import { askAgainAboutConflict, saveHtml } from './editor-save.ts'
 import { createSaveStatus } from './editor-save-status.ts'
-import { EDITOR_CHANGE_EVENT } from '../panels/editor-change.ts'
+import { EDITOR_CHANGE_EVENT, EDITOR_CONTENT_SHOWN_EVENT } from '../panels/editor-change.ts'
 import {
   injectCardSeamStyles,
   injectHeaderExtrasCss,
@@ -72,8 +72,12 @@ const SIDE_TOOLS: readonly string[] = [
  *   キャンバスの土台        … 全体背景（指示179。配信では html に当たっているもの）
  */
 export async function applyMasterStyleToEditor(ctx: EditorContext): Promise<void> {
+  // LP設定は Version ごと（2026-10-27）。開いている Version の設定を当てる
+  const versionUid = ctx.currentUid
   try {
-    const { master_style_sheet } = await api.masterStyleSheet(ctx.articleUid)
+    const { master_style_sheet } = await api.masterStyleSheet(ctx.articleUid, versionUid === '' ? undefined : versionUid)
+    // 読んでいる間に別の Version へ切り替えたら当てない（あとから届いた古い Version の見た目で上書きしない）
+    if (ctx.currentUid !== versionUid) return
     const decls = masterStyleEditorDecls(master_style_sheet)
     if (decls !== '') ctx.quill.root.setAttribute('style', decls)
     applyCanvasBackground(
@@ -281,13 +285,21 @@ const RAIL_ICON_SVGS: readonly string[] = [
   /* 7: 進む */     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:18px;height:18px"><path d="M21 7h-8a4 4 0 0 0 0 8h4"/><polyline points="18 4 21 7 18 10"/></svg>',
   /* 8: 画像 */     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:18px;height:18px"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>',
 ]
+/** LP設定を開く Version（今開いている Version。まだ無ければページ共通の設定） */
+function settingsVersionOf(ctx: EditorContext): SettingsVersion | undefined {
+  const version = ctx.versions.find((v) => v.uid === ctx.currentUid)
+  return version === undefined ? undefined : { uid: version.uid, name: version.name }
+}
+
 export function wireSideToolbar(ctx: EditorContext): void {
   // カード接続部分の隙間を埋める
   injectCardSeamStyles()
   // 右レールアイコンのスタイルを実物に合わせる（丸い背景付き）
   injectSideToolbarStyles()
   // ── 各パネルを配線（実装は src/app/panels/ に分かれている）──
-  mountVersionSettings(ctx.root, ctx.articleUid, () => void applyMasterStyleToEditor(ctx))
+  mountVersionSettings(ctx.root, () => ({ articleUid: ctx.articleUid, version: settingsVersionOf(ctx) }), () => void applyMasterStyleToEditor(ctx))
+  // Version を切り替えたら、その Version の LP設定を当て直す（LP設定は Version ごと・2026-10-27）
+  ctx.root.addEventListener(EDITOR_CONTENT_SHOWN_EVENT, () => void applyMasterStyleToEditor(ctx))
   mountTagSettings(ctx.root, ctx.articleUid)
   // 置換の対象は「いま開いているVersion」。パネルは押されるたびに読み直す
   // サイドパネルは**押したときに開く**。実物は同時に1枚しか開かない
@@ -479,7 +491,7 @@ export function wireSideToolbar(ctx: EditorContext): void {
     // LP設定（モーダル直接呼び出し）
     if (index === 4) {
       icon.addEventListener('click', () => {
-        void openVersionSettings(ctx.articleUid)
+        void openVersionSettings(ctx.articleUid, settingsVersionOf(ctx))
       })
       continue
     }

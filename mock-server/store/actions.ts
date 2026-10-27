@@ -20,6 +20,7 @@ export {
 } from './actions-metrics.ts'
 import { makeAbTestUid, makeUid } from './ids.ts'
 import { DEFAULT_LP_CSS, DEFAULT_LP_HTML } from './lp-template.ts'
+import { copyMasterStyleSheetToVersion } from './master-style-sheet.ts'
 import type {
   AbTest,
   Article,
@@ -339,7 +340,10 @@ export function duplicateVersion(
     copy,
     ...state.versions.slice(index + 1),
   ]
-  return { state: { ...state, versions, nextId: id + 1 }, version: copy }
+  // LP設定は Version ごと（2026-10-27）。元の Version だけの設定があれば複製にも写す
+  const articleUid = state.articles.find((a) => a.id === source.article_id)?.uid ?? ''
+  const next = copyMasterStyleSheetToVersion({ ...state, versions, nextId: id + 1 }, source.uid, articleUid, copy.uid)
+  return { state: next, version: copy }
 }
 
 /** デバイス別出し分け（Versionのデバイスごとの配信ON/OFF）を更新する。 */
@@ -618,10 +622,9 @@ export function duplicateVersionToArticle(
     created_at: nowTs(),
     updated_at: nowTs(),
   }
-  return {
-    state: { ...state, versions: [...state.versions, copy], nextId: state.nextId + 1 },
-    version: copy,
-  }
+  // LP設定は Version ごと（2026-10-27）。元の Version だけの設定があれば複製にも写す（無ければ写した先のページ共通の設定）
+  const next = { ...state, versions: [...state.versions, copy], nextId: state.nextId + 1 }
+  return { state: copyMasterStyleSheetToVersion(next, source.uid, targetArticle.uid, copy.uid), version: copy }
 }
 
 export function archiveVersion(

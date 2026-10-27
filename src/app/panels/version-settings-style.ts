@@ -31,7 +31,9 @@ ${M}{border-radius:14px !important;box-shadow:0 20px 48px rgba(17,24,39,.18)}
 /* 見出し: 灰色の丸の×・真ん中の太い題名・右の青い保存 */
 ${M} ._modalWrapper_11n4w_20 ._modalHeader_11n4w_20{align-items:center;padding:14px 24px !important;border-bottom:1px solid #E9EEF6 !important;border-radius:14px 14px 0 0}
 ${M} ._modalWrapper_11n4w_20 ._modalHeader_11n4w_20 > div{display:flex;align-items:center;height:auto !important;line-height:normal !important}
-${M} ._modalWrapper_11n4w_20 ._modalHeader_11n4w_20 ._center_11n4w_56{justify-content:center}
+${M} ._modalWrapper_11n4w_20 ._modalHeader_11n4w_20 ._center_11n4w_56{flex-direction:column;justify-content:center}
+/* 題名の下に、どの Version の設定か（LP設定は Version ごと・2026-10-27） */
+${M} .lp-settings-version{margin-top:2px;font-size:12px;font-weight:500;color:#555555}
 ${M} ._modalWrapper_11n4w_20 ._modalHeader_11n4w_20 ._right_11n4w_57{justify-content:flex-end}
 ${M} ._modalWrapper_11n4w_20 ._modalHeader_11n4w_20 ._center_11n4w_56 ._title_11n4w_70{font-size:22px !important;font-weight:700;letter-spacing:.04em;color:${INK} !important}
 ${M} ._btnCnacel_1bcs1_140{width:40px !important;height:40px !important;border-radius:50% !important;border:none !important;background:#F2F4F5 !important;color:#222222;filter:none !important}
@@ -80,6 +82,12 @@ ${M} .lp-bg-box [data-clone-bg-extra] > *{margin-top:12px !important}
 /* 画像・動画を選ぶ所（採取物は黒い点線・上下 80px の余白） */
 ${M} ._imageDropUploadForm_qyxur_91{box-sizing:border-box;padding:28px 16px !important;border:1.5px dashed #C5CBD3 !important;border-radius:8px;background:#F8FAFC;color:#555555;font-size:13px !important;line-height:1.6;text-align:center;cursor:pointer}
 ${M} ._imageDropUploadForm_qyxur_91:hover{border-color:${BLUE} !important;background:${TINT}}
+/* いちばん下の「他のバージョンにも適用する」（チェックを入れて保存すると、ほかの Version にも入れる・2026-10-27） */
+${M} .lp-apply-others{display:flex;align-items:flex-start;gap:12px;margin-top:20px;padding:14px 18px;border-radius:10px;background:${TINT};cursor:pointer}
+${M} .lp-apply-others input[type="checkbox"]{width:20px;height:20px;margin:1px 0 0;flex:none;accent-color:${BLUE};cursor:pointer}
+${M} .lp-apply-others__text{display:flex;flex-direction:column;gap:2px}
+${M} .lp-apply-others__label{font-size:15px;font-weight:700;color:#1A1A1A}
+${M} .lp-apply-others__note{font-size:12px;line-height:1.6;color:#555555}
 /* ラジオ: 青 */
 ${M} ._radioControl_10frc_1 input + label{margin-left:28px !important;font-size:14px;color:#222222;cursor:pointer}
 ${M} ._radioControl_10frc_1 input + label::before{left:0 !important;width:20px !important;height:20px !important;box-sizing:border-box;border:1.5px solid #B8BEC8 !important;background:#FFFFFF !important}

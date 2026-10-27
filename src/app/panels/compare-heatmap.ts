@@ -83,6 +83,8 @@ export async function renderCompareHeatmap(
     metric: 'exit',
     html: deps.getCurrentHtml(),
     css: lpSources.versions.get(deps.versionUid)?.css ?? '',
+    styleCss: lpSources.versions.get(deps.versionUid)?.styleCss,
+    styleHtml: lpSources.versions.get(deps.versionUid)?.styleHtml,
     pv: row?.pv ?? 0,
     ctr: row?.ctr ?? null,
     cv: row?.cv ?? 0,
