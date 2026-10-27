@@ -61,6 +61,33 @@ describe('公開LPのヘッダー画像', () => {
     expect(lp).toContain('<body><p>本文だけ</p>')
   })
 
+  it('ヘッダーに動画を置いたら、公開LPとプレビューで動画（自動で再生・音なし・くり返し）を出す（2026-10-27）', async () => {
+    const page = await pageWithHtml('<!--header-image:https://example.com/header.mp4--><p>本文</p>')
+    const lp = await textOf(`${server.baseUrl}/lp/${page.abTestUid}`)
+    expect(lp).toMatch(/<body><video src="https:\/\/example\.com\/header\.mp4" [^>]*autoplay muted loop playsinline aria-label="ヘッダー動画"><\/video><p>本文<\/p>/)
+    const preview = await textOf(`${server.baseUrl}/preview/${page.versionUid}`)
+    expect(preview).toContain('<video src="https://example.com/header.mp4"')
+  })
+
+  it('記事設定の背景が動画なら、公開LPとプレビューの本文の先頭に動画の層を入れる（2026-10-27）', async () => {
+    const page = await pageWithHtml('<p>本文</p>')
+    const article = getState().articles.at(-1)
+    if (article === undefined) throw new Error('記事がありません')
+    const saved = await sendJson('PUT', `${server.api}/articles/${article.uid}/master_style_sheet`, {
+      outer_background_image: 'https://example.com/outer.mp4',
+      inner_background_image: 'https://example.com/inner.webm',
+    })
+    expect(saved.status).toBe(200)
+    const lp = await textOf(`${server.baseUrl}/lp/${page.abTestUid}`)
+    expect(lp).toContain(
+      '<body><video class="lp-bgv lp-bgv--outer" src="https://example.com/outer.mp4" autoplay muted loop playsinline preload="auto" aria-hidden="true"></video>' +
+        '<video class="lp-bgv lp-bgv--inner" src="https://example.com/inner.webm" autoplay muted loop playsinline preload="auto" aria-hidden="true"></video><p>本文</p>',
+    )
+    expect(lp).not.toContain('url("https://example.com/outer.mp4")')
+    const preview = await textOf(`${server.baseUrl}/preview/${page.versionUid}`)
+    expect(preview).toContain('<video class="lp-bgv lp-bgv--outer"')
+  })
+
   it('画像のURLに記号が入っていても、タグを壊さない（HTMLとして解釈させない）', async () => {
     const page = await pageWithHtml('<!--header-image:https://example.com/a.png?x="><b>ng</b>--><p>本文</p>')
     const lp = await textOf(`${server.baseUrl}/lp/${page.abTestUid}`)

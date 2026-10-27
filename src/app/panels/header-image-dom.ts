@@ -8,13 +8,15 @@
  *
  * 画像を置く・外すは Quill の外の変更なので、Quill の text-change では自動保存が動かない。
  * 利用者の操作で変えたときは `notifyEditorChanged` で自動保存を起こす（点検11）。
+ * 動画も置ける（2026-10-27 本人「ヘッダー画像も動画OKにする」）。動画は自動で再生・音なし・くり返し。
  */
 import { toast } from '../ui.ts'
 import { notifyEditorChanged } from './editor-change.ts'
+import { isHeaderVideo } from '../../shared/header-image.ts'
 
 /** 採取物の枠（クラスは匿名化され得るので前方一致で探す） */
 const HEADER_BOX = '[class*="_articleHeaderPhoto_"]'
-const HEADER_IMG = 'img[data-clone-header="true"]'
+const HEADER_IMG = '[data-clone-header="true"]'
 const REMOVE_BUTTON = '[data-clone-header-remove]'
 const PROMPT_TEXT = 'ヘッダー画像を追加する'
 
@@ -22,9 +24,9 @@ export function findHeaderBox(root: ParentNode): HTMLElement | null {
   return root.querySelector<HTMLElement>(HEADER_BOX)
 }
 
-/** いま枠に出ているヘッダー画像の src（無ければ null） */
+/** いま枠に出ているヘッダー画像（か動画）の src（無ければ null） */
 export function headerImageSrc(root: ParentNode): string | null {
-  return root.querySelector<HTMLImageElement>(HEADER_IMG)?.src ?? null
+  return root.querySelector<HTMLImageElement | HTMLVideoElement>(HEADER_IMG)?.src ?? null
 }
 
 function promptSpans(headerBox: HTMLElement): HTMLElement[] {
@@ -42,15 +44,29 @@ export function showHeaderImage(headerBox: HTMLElement, src: string): void {
   headerBox.style.margin = '0'
   headerBox.style.outline = 'none'
   headerBox.style.background = 'var(--sb-c-ffffff, #FFFFFF)'
-  let img = headerBox.querySelector<HTMLImageElement>(HEADER_IMG)
-  if (img === null) {
-    img = document.createElement('img')
-    img.dataset['cloneHeader'] = 'true'
+  // 画像と動画は別の要素。種類が変わったら作り直す
+  const tag = isHeaderVideo(src) ? 'VIDEO' : 'IMG'
+  const current = headerBox.querySelector<HTMLImageElement | HTMLVideoElement>(HEADER_IMG)
+  if (current !== null && current.tagName !== tag) current.remove()
+  let media = current !== null && current.tagName === tag ? current : null
+  if (media === null) {
+    if (tag === 'VIDEO') {
+      const video = document.createElement('video')
+      // 作ったあとに付けた属性では音なしにならないので、値もそろえる（音ありの自動再生はブラウザが止める）
+      video.muted = true
+      video.loop = true
+      video.autoplay = true
+      video.playsInline = true
+      media = video
+    } else {
+      media = document.createElement('img')
+    }
+    media.dataset['cloneHeader'] = 'true'
     // 高さ制限でキャンバスを圧迫しない + 枠なし
-    img.style.cssText = 'display:block;width:100%;max-height:200px;object-fit:cover;border-radius:0'
-    headerBox.prepend(img)
+    media.style.cssText = 'display:block;width:100%;max-height:200px;object-fit:cover;border-radius:0'
+    headerBox.prepend(media)
   }
-  img.src = src
+  if (media.getAttribute('src') !== src) media.setAttribute('src', src)
   // 青い点線枠の内側要素(sample_token)と案内文を隠す
   for (const el of headerBox.querySelectorAll<HTMLElement>('[class*="sample_token"]')) el.style.display = 'none'
   for (const span of promptSpans(headerBox)) span.style.display = 'none'

@@ -249,6 +249,8 @@ export interface ColumnDeps {
   externalHtml: string | null
   /** 記事設定（Version設定）の CSS（自前配信のLPを公開LPと同じ見た目で敷くため） */
   styleCss: string
+  /** 記事設定の背景が動画のときの動画の層（2026-10-27） */
+  styleHtml?: string
   range: { startDate: string; endDate: string }
   /** 全ページ表示（true）か スクロール表示（false） */
   fullPage: boolean
@@ -494,7 +496,7 @@ function buildColumn(spec: ColumnSpec, deps: ColumnDeps): HTMLElement {
   lp.setAttribute('sandbox', 'allow-same-origin')
   lp.setAttribute('referrerpolicy', 'no-referrer')
   lp.srcdoc =
-    deps.externalHtml ?? buildHeatmapLpDocument({ html: spec.html, css: spec.css, styleCss: deps.styleCss })
+    deps.externalHtml ?? buildHeatmapLpDocument({ html: spec.html, css: spec.css, styleCss: deps.styleCss, styleHtml: deps.styleHtml })
   const overlay = document.createElement('div')
   overlay.className = 'hm-overlay'
   canvas.append(lp)

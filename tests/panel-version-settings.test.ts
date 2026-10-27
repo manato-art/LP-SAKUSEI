@@ -5,10 +5,12 @@
  * そのためテスト側で express に単体で載せて、実際にHTTPで叩いて検証する。
  * 併せて、モーダルの土台（採取マークアップ）に必要な目印が全部揃っていることも確認する。
  */
-import { readFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { createServer, type Server } from 'node:http'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import express from 'express'
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { versionSettingsRouter } from '../mock-server/routes/panel-version-settings.ts'
 import { createAbTest } from '../mock-server/store/actions.ts'
 import { DEFAULT_MASTER_STYLE_SHEET } from '../mock-server/store/master-style-sheet.ts'
@@ -130,6 +132,31 @@ describe('PUT /articles/:uid/master_style_sheet', () => {
     const body = await getJson<SheetResponse>(`${api}/articles/${uid}/master_style_sheet`)
     expect(body.master_style_sheet.outer_background_color).toBe('')
     expect(body.master_style_sheet.inner_background_color).toBe('CCCCCC')
+  })
+
+  it('背景に選んだ画像・動画は別ファイルにして、短い住所で保存する（2026-10-27・それまで小さな画像でも「500文字以内」で保存できなかった）', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'lp-bg-uploads-'))
+    vi.stubEnv('UPLOADS_DIR', dir)
+    try {
+      const uid = seedArticle()
+      // 400バイトほどの小さな画像でも、data URL は 500文字を超える
+      const png = `data:image/png;base64,${Buffer.alloc(420, 7).toString('base64')}`
+      const mp4 = `data:video/mp4;base64,${Buffer.alloc(3000, 9).toString('base64')}`
+      expect(png.length).toBeGreaterThan(500)
+      const res = await sendJson<SheetResponse>('PUT', `${api}/articles/${uid}/master_style_sheet`, {
+        outer_background_image: png,
+        inner_background_image: mp4,
+      })
+      expect(res.status).toBe(200)
+      const saved = (await getJson<SheetResponse>(`${api}/articles/${uid}/master_style_sheet`)).master_style_sheet
+      expect(saved.outer_background_image).toMatch(/^\/uploads\/[0-9a-f]{64}\.png$/)
+      expect(saved.inner_background_image).toMatch(/^\/uploads\/[0-9a-f]{64}\.mp4$/)
+      expect(existsSync(join(dir, saved.outer_background_image.replace('/uploads/', '')))).toBe(true)
+      expect(existsSync(join(dir, saved.inner_background_image.replace('/uploads/', '')))).toBe(true)
+    } finally {
+      vi.unstubAllEnvs()
+      rmSync(dir, { recursive: true, force: true })
+    }
   })
 
   it('記事ごとに独立して保存される', async () => {

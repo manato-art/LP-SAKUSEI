@@ -27,6 +27,8 @@ export interface HeatmapLpSource {
   readonly css: string
   /** 記事設定（Version設定）から作った CSS */
   readonly styleCss: string
+  /** 記事設定の背景が動画のときの動画の層（公開LPと同じく本文の先頭に入れる） */
+  readonly styleHtml?: string
 }
 
 export function buildHeatmapLpDocument(source: HeatmapLpSource): string {
@@ -41,6 +43,6 @@ export function buildHeatmapLpDocument(source: HeatmapLpSource): string {
     `<style>body{margin:0 auto;max-width:${LP_WIDTH}px;font-family:"Hiragino Sans",sans-serif;background:var(--sb-c-ffffff, #FFFFFF)}` +
     `${LP_BASE_CSS}${source.css}${source.styleCss}${lp.hasWidget ? WIDGET_BASE_CSS : ''}</style>` +
     externalWidgetStylesheets(lp.html) +
-    `</head><body>${headerHtml}${withAutoplayVideos(lp.html)}</body></html>`
+    `</head><body>${source.styleHtml ?? ''}${headerHtml}${withAutoplayVideos(lp.html)}</body></html>`
   )
 }

@@ -31,6 +31,19 @@ function setup(): { root: HTMLElement; editor: HTMLElement; calls: string[]; qui
 describe('Versionを開いたときの中身の入れ替え', () => {
   beforeEach(() => vi.resetModules())
 
+  it('ヘッダーに動画を置いたVersionは動画で出し、画像のVersionへ切り替えたら画像に戻す（2026-10-27 本人「ヘッダー画像も動画OK」）', async () => {
+    const { root, quill } = setup()
+    const { showVersionContent } = await import('../src/app/pages/editor-html.ts')
+    showVersionContent({ root, quill }, '<!--header-image:data:video/mp4;base64,AAA--><p>Version1</p>')
+    const video = root.querySelector('[data-clone-header="true"]')
+    expect(video?.tagName).toBe('VIDEO')
+    expect(video?.getAttribute('src')).toBe('data:video/mp4;base64,AAA')
+
+    showVersionContent({ root, quill }, '<!--header-image:data:image/png;base64,BBB--><p>Version2</p>')
+    expect(root.querySelectorAll('[data-clone-header="true"]')).toHaveLength(1)
+    expect(root.querySelector('[data-clone-header="true"]')?.tagName).toBe('IMG')
+  })
+
   it('ヘッダー画像の無いVersionを開くと、前のVersionの画像を外す（外さないと別のVersionへ保存されていた）', async () => {
     const { root, quill } = setup()
     const { showVersionContent } = await import('../src/app/pages/editor-html.ts')

@@ -17,6 +17,8 @@ import modalHtml from '../fragments/ab_tests__UID__articles__article-settings-mo
 import bgImageHtml from '../fragments/ab_tests__UID__articles__article-settings-bg-image.portals.html?raw'
 import bgColorHtml from '../fragments/ab_tests__UID__articles__article-settings-bg-color.portals.html?raw'
 import { toast } from '../ui.ts'
+import { readLpVideo } from './nocode/lp-video.ts'
+import { convertImageToWebP } from './webp-convert.ts'
 import { ensureWhiteBase, stripDarkThemeClasses } from '../white-base.ts'
 
 /**
@@ -330,19 +332,37 @@ function wireExtraControls(
     if (input !== null) input.value = String(sheet[group.colorField] ?? '')
     return
   }
-  // 画像: 実物の file 入力。本番へ上げず、選んだ画像をその場で dataURL にして控える。
+  // 画像: 実物の file 入力。選んだファイルをその場で dataURL にして控える（保存のときサーバーが別ファイルにする・2026-10-27）。
+  // 動画も選べる（2026-10-27 本人「記事設定の背景も動画OKにする」・自動で再生・音なし・くり返し＝master-style.ts）
   const stored = String(sheet[group.imageField] ?? '')
   if (stored !== '') holder.dataset['imageValue'] = stored
   const file = holder.querySelector<HTMLInputElement>(`input[type="file"][name="${group.imageField}"]`)
-  file?.addEventListener('change', () => {
+  if (file === null) return
+  file.accept = 'image/*,video/mp4,video/webm'
+  const hint = file.parentElement?.querySelector(':scope > div')
+  if (hint !== null && hint !== undefined) {
+    hint.textContent = 'クリックして画像か動画を選択するかファイルをドラッグ&ドロップしてください（動画は自動で再生・音なし・くり返し）'
+  }
+  file.addEventListener('change', () => {
     const chosen = file.files?.[0]
     if (chosen === undefined) return
-    const reader = new FileReader()
-    reader.addEventListener('load', () => {
-      holder.dataset['imageValue'] = String(reader.result ?? '')
+    if (chosen.type.startsWith('video/')) {
+      void readLpVideo(chosen).then((url) => {
+        if (url === null) return
+        holder.dataset['imageValue'] = url
+        toast(`${group.label}の動画を読み込みました`)
+      })
+      return
+    }
+    // 本文に入れる画像と同じく WebP にしてから（保存で別ファイルにできる形にそろえる）
+    void convertImageToWebP(chosen).then((url) => {
+      if (url === '') {
+        toast('画像を読み込めませんでした', 'error')
+        return
+      }
+      holder.dataset['imageValue'] = url
       toast(`${group.label}の画像を読み込みました`)
     })
-    reader.readAsDataURL(chosen)
   })
 }
 

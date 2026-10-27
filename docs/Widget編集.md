@@ -415,6 +415,13 @@ LPの中の場所へ移動＋ほかにも色々（文字をコピー・動画を
   本文の画像・動画は Quill の部品なので Quill の変更で入れ替える（画像だけの行は行ごと動画に＝下に空の行を増やさない）。位置（左・中央・右）と幅は引き継ぐ。
   Widget の中の画像・動画は DOM で入れ替える。本文の動画にはリンク・計測URL・アニメーションを付けられないので、画像に付いていたら外れたと知らせる
 
+- **ヘッダー画像・記事設定の背景も動画OK**（2026-10-27 本人選択）: ヘッダーの枠は画像でも動画でも（header-image-modal.ts・header-image-dom.ts。保存は今までどおり本文の先頭の `<!--header-image:…-->`、
+  配信は shared/header-image.ts が動画なら `<video autoplay muted loop playsinline>`）。記事設定の「全体背景設定」「Version背景設定」の「画像」でも動画を選べる（version-settings.ts）。
+  動画は CSS の背景にできないので、配信・プレビュー・ヒートマップは本文の先頭に動画の層（master-style.ts `masterStyleVideoHtml`・全体背景＝画面に張り付け、Version背景＝本文の大きさで本文の白い地を外す）、
+  編集画面は pages/editor-bg-video.ts がキャンバスに敷く。
+  **あわせて直した不具合**: 記事設定の背景の画像は data URL のまま送っていて、欄の「500文字以内」の決まりで400バイトほどの画像でも保存できなかった（422）。
+  保存のときにサーバーが別ファイル（/uploads/…）にして短い住所で持つ（panel-version-settings.ts `withUploadedBackgrounds`・小さくてもファイルにする）
+
 ## 取り込んだ見本（SquadBeyond の Widget 一覧・2026-10-26）
 
 本人「SquadBeyondのウィジェットを以前コピーしたが表面だけ。ボタンを押した後の動きなどがコピーされていない。徹底的にコピーして」。

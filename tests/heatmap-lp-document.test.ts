@@ -56,7 +56,8 @@ describe('ヒートマップの列は、自前配信のLPも iframe（枠の幅�
   it('LP の HTML をヒートマップの画面に直接置かず、スクリプトを動かさない iframe に入れる', () => {
     const source = readFileSync('src/app/pages/heatmap-columns.ts', 'utf8')
     expect(source).not.toMatch(/\.innerHTML = spec\.html/)
-    expect(source).toContain('buildHeatmapLpDocument({ html: spec.html, css: spec.css, styleCss: deps.styleCss })')
+    // 記事設定の背景が動画のときの動画の層も公開LPと同じく渡す（2026-10-27）
+    expect(source).toContain('buildHeatmapLpDocument({ html: spec.html, css: spec.css, styleCss: deps.styleCss, styleHtml: deps.styleHtml })')
     expect(source).toContain("setAttribute('sandbox', 'allow-same-origin')")
     expect(source).not.toMatch(/sandbox['"],\s*['"][^'"]*allow-scripts/)
   })

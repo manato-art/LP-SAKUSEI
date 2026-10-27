@@ -3,19 +3,21 @@
  * レポート画面のヒートマップと比較モードのヒートマップで同じものを使う（公開LPと同じ見た目で敷くため）。
  */
 import { api } from '../api.ts'
-import { masterStyleIframeCss } from '../master-style.ts'
+import { masterStyleIframeCss, masterStyleVideoHtml } from '../master-style.ts'
 
 export interface HeatmapLpSources {
   /** Version ごとの本文と CSS（キーは Version の uid） */
   readonly versions: ReadonlyMap<string, { readonly html: string; readonly css: string }>
   /** 記事設定（Version設定）から作った CSS */
   readonly styleCss: string
+  /** 記事設定の背景が動画のときの動画の層（2026-10-27・無ければ ''） */
+  readonly styleHtml: string
 }
 
 export async function fetchHeatmapLpSources(abTestUid: string): Promise<HeatmapLpSources> {
   const { articles } = await api.articles(abTestUid)
   const first = articles[0]
-  if (first === undefined) return { versions: new Map(), styleCss: '' }
+  if (first === undefined) return { versions: new Map(), styleCss: '', styleHtml: '' }
   const [{ versions }, { master_style_sheet }] = await Promise.all([
     api.versions(first.uid),
     api.masterStyleSheet(first.uid),
@@ -23,5 +25,6 @@ export async function fetchHeatmapLpSources(abTestUid: string): Promise<HeatmapL
   return {
     versions: new Map(versions.map((v) => [v.uid, { html: v.html, css: v.css }])),
     styleCss: masterStyleIframeCss(master_style_sheet),
+    styleHtml: masterStyleVideoHtml(master_style_sheet),
   }
 }

@@ -32,6 +32,17 @@ export interface MasterStyleSheet {
   readonly inner_background_image: string
 }
 
+/**
+ * 背景が動画か（2026-10-27 本人「画像を入れられる所は動画も」→「記事設定の背景も動画OK」）。
+ * 選んだ動画は保存で /uploads/…mp4 になる（panel-version-settings.ts）。data:video/… のままでも動画として扱う
+ */
+export function isVideoBackground(url: string): boolean {
+  return /^data:video\//i.test(url) || /\.(?:mp4|webm|ogv|mov|m4v)(?:[?#]|$)/i.test(url)
+}
+
+/** CSS の背景にできる画像だけ（動画は CSS の背景にできないので、動画の層＝masterStyleVideoHtml で敷く） */
+const imageOnly = (url: string): string => (isVideoBackground(url) ? '' : url)
+
 function hex(value: string): string | null {
   return value !== '' && /^[0-9a-fA-F]{3,8}$/.test(value) ? `#${value}` : null
 }
@@ -56,8 +67,9 @@ function containerDecls(s: MasterStyleSheet): string[] {
   }
   const ibc = hex(s.inner_background_color)
   if (ibc !== null) d.push(`background-color:${ibc}`)
-  if (s.inner_background_image !== '') {
-    d.push(`background-image:url("${s.inner_background_image}")`, 'background-size:cover')
+  const innerImage = imageOnly(s.inner_background_image)
+  if (innerImage !== '') {
+    d.push(`background-image:url("${innerImage}")`, 'background-size:cover')
   }
   return d
 }
@@ -75,10 +87,43 @@ function outerDecls(s: MasterStyleSheet): string[] {
   const d: string[] = []
   const obc = hex(s.outer_background_color)
   if (obc !== null) d.push(`background-color:${obc}`)
-  if (s.outer_background_image !== '') {
-    d.push(`background-image:url("${s.outer_background_image}")`, 'background-size:cover')
+  const outerImage = imageOnly(s.outer_background_image)
+  if (outerImage !== '') {
+    d.push(`background-image:url("${outerImage}")`, 'background-size:cover')
   }
   return d
+}
+
+/** 背景の動画の層の共通の見た目（いちばん後ろ・押せない・枠いっぱいに覆う） */
+const VIDEO_LAYER = 'width:100%;height:100%;max-width:none;margin:0;object-fit:cover;z-index:-1;pointer-events:none'
+
+/**
+ * 背景の動画の層の CSS。全体背景＝画面に張り付けて敷く（html の背景と同じく、本文の外に見える）。
+ * Version背景＝本文（body）の大きさに敷き、本文の白い地を外す（画像のときの body の背景と同じ範囲）
+ */
+function videoLayerCss(s: MasterStyleSheet): string {
+  const outer = isVideoBackground(s.outer_background_image) ? `.lp-bgv--outer{position:fixed;inset:0;${VIDEO_LAYER}}` : ''
+  const inner = isVideoBackground(s.inner_background_image)
+    ? `body{position:relative;background-color:transparent}.lp-bgv--inner{position:absolute;inset:0;${VIDEO_LAYER}}`
+    : ''
+  return outer + inner
+}
+
+function escapeAttribute(value: string): string {
+  return value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
+/**
+ * 記事設定の背景が動画のとき、本文の先頭に入れる動画の層（自動で再生・音なし・くり返し）。動画でなければ ''。
+ * 配信・プレビュー・ヒートマップの LP で、masterStyleIframeCss と一緒に使う
+ */
+export function masterStyleVideoHtml(s: MasterStyleSheet): string {
+  const layer = (kind: 'outer' | 'inner', src: string): string =>
+    `<video class="lp-bgv lp-bgv--${kind}" src="${escapeAttribute(src)}" autoplay muted loop playsinline preload="auto" aria-hidden="true"></video>`
+  return (
+    (isVideoBackground(s.outer_background_image) ? layer('outer', s.outer_background_image) : '') +
+    (isVideoBackground(s.inner_background_image) ? layer('inner', s.inner_background_image) : '')
+  )
 }
 
 /**
@@ -100,6 +145,7 @@ export function masterStyleIframeCss(s: MasterStyleSheet): string {
     outer.length > 0 ? `html{${outer.join(';')}}` : '',
     body.length > 0 ? `body{${body.join(';')}}` : '',
     img.length > 0 ? `img{${img.join(';')}}` : '',
+    videoLayerCss(s),
   ].join('')
 }
 
@@ -127,7 +173,8 @@ function backgroundValue(color: string, image: string): string {
   const c = hex(color)
   const parts: string[] = []
   if (c !== null) parts.push(c)
-  if (image !== '') parts.push(`url("${image}") center/cover no-repeat`)
+  // 動画は CSS の背景にできない（編集画面では editor-bg-video.ts が動画を敷く）
+  if (imageOnly(image) !== '') parts.push(`url("${image}") center/cover no-repeat`)
   return parts.join(' ')
 }
 

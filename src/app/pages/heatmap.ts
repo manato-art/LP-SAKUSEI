@@ -173,6 +173,7 @@ export async function renderHeatmap(
       totals: { pv: report.totals.pv, ctr: report.totals.ctr, cv: report.totals.cv },
       externalHtml: externalPage?.html ?? null,
       styleCss: lpSources?.styleCss ?? '',
+      styleHtml: lpSources?.styleHtml ?? '',
       range: { startDate: range.startDate, endDate: range.endDate },
       fullPage: isFullPageSelected(root),
       loadDevice,

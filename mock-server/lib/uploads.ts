@@ -64,13 +64,15 @@ function saveUpload(content: Buffer, extension: string): string {
 /**
  * 文字列（HTML・CSS・URL）の中の data URL を、別ファイルのURLに置き換える。
  * 保存できなかった画像は埋め込みのまま残す（画像を失わない）。失敗はログに残す。
+ * minBase64Length: これより短い埋め込みは残す（既定は小さなアイコンまでファイルにしない長さ。
+ * 記事設定の背景のように、長さの決まりがある欄では 0＝どんなに小さくてもファイルにする）
  */
-export function externalizeDataUrls(text: string): { text: string; converted: number } {
+export function externalizeDataUrls(text: string, minBase64Length = MIN_EXTERNALIZE_BASE64_LENGTH): { text: string; converted: number } {
   if (!text.includes('data:')) return { text, converted: 0 }
   let converted = 0
   const next = text.replace(new RegExp(DATA_URL_SOURCE, 'g'), (whole, mime: string, _params: string, payload: string) => {
     const extension = EXTENSIONS[mime.toLowerCase()]
-    if (extension === undefined || payload.length < MIN_EXTERNALIZE_BASE64_LENGTH) return whole
+    if (extension === undefined || payload.length < minBase64Length) return whole
     try {
       const url = saveUpload(Buffer.from(payload, 'base64'), extension)
       converted += 1

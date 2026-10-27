@@ -69,13 +69,13 @@ export function injectCardSeamStyles(): void {
     [class*="_articleHeaderPhoto_"] {
       border-radius: 0 !important;
     }
-    /* ヘッダー画像が入った時の青い点線枠(内側のsample_token)を消す */
-    [class*="_articleHeaderPhoto_"]:has(img[data-clone-header]) {
+    /* ヘッダー画像（動画も・2026-10-27）が入った時の青い点線枠(内側のsample_token)を消す */
+    [class*="_articleHeaderPhoto_"]:has([data-clone-header]) {
       border: none !important;
       padding: 0 !important;
       outline: none !important;
     }
-    [class*="_articleHeaderPhoto_"]:has(img[data-clone-header]) [class*="sample_token"] {
+    [class*="_articleHeaderPhoto_"]:has([data-clone-header]) [class*="sample_token"] {
       display: none !important;
     }
     /* Versionパネルの角丸を外す + 右に区切り線 + 幅260px（モック準拠） */

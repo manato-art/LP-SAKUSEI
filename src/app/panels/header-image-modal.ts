@@ -16,6 +16,7 @@
 import { toast } from '../ui.ts'
 import { convertImageToWebP } from './webp-convert.ts'
 import { placeHeaderImage } from './header-image-dom.ts'
+import { readLpVideo } from './nocode/lp-video.ts'
 
 /** アップロードしたヘッダー画像（dataURL・セッション内。実サーバーへは上げない） */
 const uploadedImages: string[] = []
@@ -91,16 +92,32 @@ export function mountHeaderImageModal(root: HTMLElement): void {
     trigger.style.outline = ''
     trigger.style.outlineOffset = ''
     const file = e.dataTransfer?.files[0]
-    if (file === undefined || !file.type.startsWith('image/')) {
-      toast('画像ファイルをドロップしてください', 'error')
+    if (file === undefined || !(file.type.startsWith('image/') || file.type.startsWith('video/'))) {
+      toast('画像か動画のファイルをドロップしてください', 'error')
       return
     }
-    void convertImageToWebP(file).then((dataUrl) => {
-      if (dataUrl === '') return
-      if (!uploadedImages.includes(dataUrl)) uploadedImages.push(dataUrl)
-      placeHeaderImage(trigger, dataUrl)
-      toast('ヘッダー画像を設定しました')
+    placeHeaderFile(trigger, file)
+  })
+}
+
+/**
+ * 選んだ・落とした画像か動画をヘッダーに置く（2026-10-27 本人「ヘッダー画像も動画OKにする」）。
+ * 画像は WebP に、動画は部品と同じ決まり（mp4・webm・30MBまで＝lp-video.ts）。動画は自動で再生・音なし・くり返し
+ */
+function placeHeaderFile(headerBox: HTMLElement, file: File): void {
+  if (file.type.startsWith('video/')) {
+    void readLpVideo(file).then((dataUrl) => {
+      if (dataUrl === null) return
+      placeHeaderImage(headerBox, dataUrl)
+      toast('ヘッダーに動画を設定しました')
     })
+    return
+  }
+  void convertImageToWebP(file).then((dataUrl) => {
+    if (dataUrl === '') return
+    if (!uploadedImages.includes(dataUrl)) uploadedImages.push(dataUrl)
+    placeHeaderImage(headerBox, dataUrl)
+    toast('ヘッダー画像を設定しました')
   })
 }
 
@@ -108,19 +125,14 @@ export function mountHeaderImageModal(root: HTMLElement): void {
 function pickImageDirect(headerBox: HTMLElement): void {
   const input = document.createElement('input')
   input.type = 'file'
-  input.accept = 'image/*'
+  input.accept = 'image/*,video/mp4,video/webm'
   input.style.display = 'none'
   document.body.append(input)
   input.addEventListener('change', () => {
     const file = input.files?.[0]
     input.remove()
     if (file === undefined) return
-    void convertImageToWebP(file).then((dataUrl) => {
-      if (dataUrl === '') return
-      if (!uploadedImages.includes(dataUrl)) uploadedImages.push(dataUrl)
-      placeHeaderImage(headerBox, dataUrl)
-      toast('ヘッダー画像を設定しました')
-    })
+    placeHeaderFile(headerBox, file)
   })
   input.click()
 }
