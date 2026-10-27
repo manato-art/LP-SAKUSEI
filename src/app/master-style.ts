@@ -40,8 +40,6 @@ export function isVideoBackground(url: string): boolean {
   return /^data:video\//i.test(url) || /\.(?:mp4|webm|ogv|mov|m4v)(?:[?#]|$)/i.test(url)
 }
 
-/** CSS の背景にできる画像だけ（動画は CSS の背景にできないので、動画の層＝masterStyleVideoHtml で敷く） */
-const imageOnly = (url: string): string => (isVideoBackground(url) ? '' : url)
 
 function hex(value: string): string | null {
   return value !== '' && /^[0-9a-fA-F]{3,8}$/.test(value) ? `#${value}` : null
@@ -67,10 +65,7 @@ function containerDecls(s: MasterStyleSheet): string[] {
   }
   const ibc = hex(s.inner_background_color)
   if (ibc !== null) d.push(`background-color:${ibc}`)
-  const innerImage = imageOnly(s.inner_background_image)
-  if (innerImage !== '') {
-    d.push(`background-image:url("${innerImage}")`, 'background-size:cover')
-  }
+  // 画像・動画は CSS の背景にしない（いちばん後ろの層で敷く＝masterStyleBackgroundHtml）
   return d
 }
 
@@ -87,43 +82,53 @@ function outerDecls(s: MasterStyleSheet): string[] {
   const d: string[] = []
   const obc = hex(s.outer_background_color)
   if (obc !== null) d.push(`background-color:${obc}`)
-  const outerImage = imageOnly(s.outer_background_image)
-  if (outerImage !== '') {
-    d.push(`background-image:url("${outerImage}")`, 'background-size:cover')
-  }
   return d
 }
 
-/** 背景の動画の層の共通の見た目（いちばん後ろ・押せない・枠いっぱいに覆う） */
-const VIDEO_LAYER = 'width:100%;height:100%;max-width:none;margin:0;object-fit:cover;z-index:-1;pointer-events:none'
-
 /**
- * 背景の動画の層の CSS。全体背景＝画面に張り付けて敷く（html の背景と同じく、本文の外に見える）。
- * Version背景＝本文（body）の大きさに敷き、本文の白い地を外す（画像のときの body の背景と同じ範囲）
+ * 記事設定の背景の画像・動画の層の CSS（2026-10-27 本人選択「画面に固定した壁紙にする」）。
+ * どちらも画面に固定していちばん後ろに敷き、文字や画像だけが上を流れる（長いLPでも画像を引き伸ばさない）。
+ *   全体背景      … 画面いっぱい（本文の外に見える。本文の白い地の後ろ）
+ *   Version背景   … 本文と同じ幅（本文の max-width を継ぐ）。本文の白い地を外して見せる
+ * 層は本文（body）の先頭に入る（masterStyleBackgroundHtml）。iOS の Safari は背景の「固定」（background-attachment）が
+ * 効かないので、固定した層で敷く
  */
-function videoLayerCss(s: MasterStyleSheet): string {
-  const outer = isVideoBackground(s.outer_background_image) ? `.lp-bgv--outer{position:fixed;inset:0;${VIDEO_LAYER}}` : ''
-  const inner = isVideoBackground(s.inner_background_image)
-    ? `body{position:relative;background-color:transparent}.lp-bgv--inner{position:absolute;inset:0;${VIDEO_LAYER}}`
-    : ''
-  return outer + inner
+function backgroundLayerCss(s: MasterStyleSheet): string {
+  const hasOuter = s.outer_background_image !== ''
+  const hasInner = s.inner_background_image !== ''
+  if (!hasOuter && !hasInner) return ''
+  return (
+    '.lp-bg{position:fixed;top:0;right:0;bottom:0;left:0;width:100%;height:100%;margin:0 auto;padding:0;border:0;' +
+    'box-sizing:border-box;z-index:-1;pointer-events:none;object-fit:cover;' +
+    'background-position:center;background-size:cover;background-repeat:no-repeat}' +
+    (hasOuter ? '.lp-bg--outer{max-width:none}' : '') +
+    // ページ（html）に背景が無いと、本文（body）の地が画面全体に塗られる（CSS の決まり）＝本文の白い地が
+    // 全体背景の層より下になり、本文の幅に出なくなる。ページに色を置いて、本文の地を本文の幅にとどめる（層の下で見えない）
+    (hasOuter && hex(s.outer_background_color) === null ? 'html{background-color:#fff}' : '') +
+    (hasInner ? 'body{background-color:transparent}.lp-bg--inner{max-width:inherit}' : '')
+  )
 }
 
 function escapeAttribute(value: string): string {
   return value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
+/** CSS の url("…") の中に入れられる住所（「"」「\」・改行で CSS が壊れないように） */
+export const cssUrl = (url: string): string => url.replace(/["\\\n]/g, (c) => encodeURIComponent(c))
+
 /**
- * 記事設定の背景が動画のとき、本文の先頭に入れる動画の層（自動で再生・音なし・くり返し）。動画でなければ ''。
- * 配信・プレビュー・ヒートマップの LP で、masterStyleIframeCss と一緒に使う
+ * 記事設定の背景が画像・動画のとき、本文の先頭に入れる層（画面に固定した壁紙・動画は自動で再生・音なし・くり返し）。
+ * 無ければ ''。配信・プレビュー・ヒートマップの LP で、masterStyleIframeCss と一緒に使う
  */
-export function masterStyleVideoHtml(s: MasterStyleSheet): string {
-  const layer = (kind: 'outer' | 'inner', src: string): string =>
-    `<video class="lp-bgv lp-bgv--${kind}" src="${escapeAttribute(src)}" autoplay muted loop playsinline preload="auto" aria-hidden="true"></video>`
-  return (
-    (isVideoBackground(s.outer_background_image) ? layer('outer', s.outer_background_image) : '') +
-    (isVideoBackground(s.inner_background_image) ? layer('inner', s.inner_background_image) : '')
-  )
+export function masterStyleBackgroundHtml(s: MasterStyleSheet): string {
+  const layer = (kind: 'outer' | 'inner', src: string): string => {
+    if (src === '') return ''
+    const cls = `lp-bg lp-bg--${kind}`
+    return isVideoBackground(src)
+      ? `<video class="${cls}" src="${escapeAttribute(src)}" autoplay muted loop playsinline preload="auto" aria-hidden="true"></video>`
+      : `<div class="${cls}" style="${escapeAttribute(`background-image:url("${cssUrl(src)}")`)}" aria-hidden="true"></div>`
+  }
+  return layer('outer', s.outer_background_image) + layer('inner', s.inner_background_image)
 }
 
 /**
@@ -145,7 +150,7 @@ export function masterStyleIframeCss(s: MasterStyleSheet): string {
     outer.length > 0 ? `html{${outer.join(';')}}` : '',
     body.length > 0 ? `body{${body.join(';')}}` : '',
     img.length > 0 ? `img{${img.join(';')}}` : '',
-    videoLayerCss(s),
+    backgroundLayerCss(s),
   ].join('')
 }
 
@@ -166,24 +171,18 @@ export function masterStyleEditorDecls(s: MasterStyleSheet): string {
  * CSS変数を1つ挟んで、そこにこの値を入れることで効かせる。
  * 未設定なら空文字＝変数を置かない＝既定色のまま。
  *
- * 色と画像を1つの値にまとめるのは、`background` ショートハンドが
- * 画像側を打ち消すため（片方だけ変数に入れると、もう片方が消える）。
+ * 色だけ。画像・動画は、配信と同じく画面に固定したいちばん後ろの層で敷く（editor-bg-layers.ts・2026-10-27）
  */
-function backgroundValue(color: string, image: string): string {
-  const c = hex(color)
-  const parts: string[] = []
-  if (c !== null) parts.push(c)
-  // 動画は CSS の背景にできない（編集画面では editor-bg-video.ts が動画を敷く）
-  if (imageOnly(image) !== '') parts.push(`url("${image}") center/cover no-repeat`)
-  return parts.join(' ')
+function backgroundValue(color: string): string {
+  return hex(color) ?? ''
 }
 
 /** 土台（LPの外側）＝記事設定の「全体背景設定」。 */
 export function masterStyleCanvasBackground(s: MasterStyleSheet): string {
-  return backgroundValue(s.outer_background_color, s.outer_background_image)
+  return backgroundValue(s.outer_background_color)
 }
 
 /** LP本体＝記事設定の「Version背景設定」。 */
 export function masterStylePageBackground(s: MasterStyleSheet): string {
-  return backgroundValue(s.inner_background_color, s.inner_background_image)
+  return backgroundValue(s.inner_background_color)
 }

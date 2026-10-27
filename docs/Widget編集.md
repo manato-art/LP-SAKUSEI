@@ -417,8 +417,15 @@ LPの中の場所へ移動＋ほかにも色々（文字をコピー・動画を
 
 - **ヘッダー画像・記事設定の背景も動画OK**（2026-10-27 本人選択）: ヘッダーの枠は画像でも動画でも（header-image-modal.ts・header-image-dom.ts。保存は今までどおり本文の先頭の `<!--header-image:…-->`、
   配信は shared/header-image.ts が動画なら `<video autoplay muted loop playsinline>`）。記事設定の「全体背景設定」「Version背景設定」の「画像」でも動画を選べる（version-settings.ts）。
-  動画は CSS の背景にできないので、配信・プレビュー・ヒートマップは本文の先頭に動画の層（master-style.ts `masterStyleVideoHtml`・全体背景＝画面に張り付け、Version背景＝本文の大きさで本文の白い地を外す）、
-  編集画面は pages/editor-bg-video.ts がキャンバスに敷く。
+  背景の画像・動画は、どちらも**画面に固定した壁紙**としていちばん後ろに敷く（2026-10-27 本人選択「画面に固定した壁紙にする」＝「最背面に」。
+  それまで画像は CSS の背景で、本文の長さに合わせて縦に引き伸ばされ、本文と一緒に流れていた）。
+  配信・プレビュー・ヒートマップは本文の先頭に層（master-style.ts `masterStyleBackgroundHtml`・画像は div・動画は video・`position:fixed;z-index:-1`。
+  全体背景＝画面いっぱい、Version背景＝本文の幅（max-width を継ぐ）で本文の白い地を外す。全体背景が画像で色なしのときは html に白を置く＝本文の地が画面全体に塗られないように）、
+  編集画面は pages/editor-bg-layers.ts がキャンバスの土台（スクロールしない）に敷く（Version背景は本文の幅・見えている所の上から下まで）。
+  iOS の Safari は背景の「固定」（background-attachment:fixed）が効かないので、固定した層で敷いている。
+- **LP設定の色はパレットで選ぶ**（2026-10-27 本人「カラーコードではなくパレットで」）: 全体背景・Version背景の色、文字色、Version枠線の色は「色見本＋コード」の欄で、
+  押すとブラウザの色選びが開く（panels/palette-field.ts）。元の欄は隠すだけで保存は元の欄から（# なし6桁）。ほかの色の欄はどれも前からパレット付き（全部見て確認）。
+  あわせて、LP設定の画面が2枚重なって開くことがあったのを直した（右のアイコンに開く処理が2つ・読み込みの間は2回目を通さない）
   **あわせて直した不具合**: 記事設定の背景の画像は data URL のまま送っていて、欄の「500文字以内」の決まりで400バイトほどの画像でも保存できなかった（422）。
   保存のときにサーバーが別ファイル（/uploads/…）にして短い住所で持つ（panel-version-settings.ts `withUploadedBackgrounds`・小さくてもファイルにする）
 

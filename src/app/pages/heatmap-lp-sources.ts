@@ -3,7 +3,7 @@
  * レポート画面のヒートマップと比較モードのヒートマップで同じものを使う（公開LPと同じ見た目で敷くため）。
  */
 import { api } from '../api.ts'
-import { masterStyleIframeCss, masterStyleVideoHtml } from '../master-style.ts'
+import { masterStyleIframeCss, masterStyleBackgroundHtml } from '../master-style.ts'
 
 export interface HeatmapLpSources {
   /** Version ごとの本文と CSS（キーは Version の uid） */
@@ -25,6 +25,6 @@ export async function fetchHeatmapLpSources(abTestUid: string): Promise<HeatmapL
   return {
     versions: new Map(versions.map((v) => [v.uid, { html: v.html, css: v.css }])),
     styleCss: masterStyleIframeCss(master_style_sheet),
-    styleHtml: masterStyleVideoHtml(master_style_sheet),
+    styleHtml: masterStyleBackgroundHtml(master_style_sheet),
   }
 }

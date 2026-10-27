@@ -31,7 +31,7 @@ import {
   masterStylePageBackground,
 } from '../master-style.ts'
 import { createAutosave, type Autosave } from './autosave.ts'
-import { applyEditorBgVideos } from './editor-bg-video.ts'
+import { applyEditorBgLayers } from './editor-bg-layers.ts'
 import { deliveryUrlFor } from './basic-info-form.ts'
 import { isMobileViewport } from '../mobile/viewport.ts'
 import type { EditorContext } from './editor-context.ts'
@@ -81,8 +81,8 @@ export async function applyMasterStyleToEditor(ctx: EditorContext): Promise<void
       masterStyleCanvasBackground(master_style_sheet),
       masterStylePageBackground(master_style_sheet),
     )
-    // 背景が動画なら、キャンバスに動画を敷く（CSS の背景にできないため・2026-10-27）
-    applyEditorBgVideos(ctx.quill.root, master_style_sheet)
+    // 背景の画像・動画は、キャンバスのいちばん後ろに画面に固定して敷く（配信と同じ・2026-10-27）
+    applyEditorBgLayers(ctx.quill.root, master_style_sheet)
   } catch {
     // 取得に失敗しても編集は続けられる（既定の見た目のまま）
   }

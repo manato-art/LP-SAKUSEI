@@ -29,7 +29,7 @@ import { WIDGET_BASE_CSS } from '../../src/shared/sb-part-css.ts'
 import { LP_FONTS_URL, externalWidgetLibs } from '../../src/shared/lp-page-assets.ts'
 import { buildLpLinkParamsScript } from './lp-link-params-script.ts'
 import { splitHeaderImage } from '../../src/shared/header-image.ts'
-import { masterStyleIframeCss, masterStyleVideoHtml } from '../../src/app/master-style.ts'
+import { masterStyleIframeCss, masterStyleBackgroundHtml } from '../../src/app/master-style.ts'
 import { withAutoplayVideos } from '../../src/app/lp-video.ts'
 import { buildAnimCss, buildAnimRuntimeScript } from '../../src/app/anim/anim-presets.ts'
 import { buildCvScriptBody, buildKeepUidScriptBody, buildTrackingScriptBody } from '../../src/shared/tracking-tag.ts'
@@ -279,7 +279,7 @@ deliveryRouter.get('/lp/:uid', (req, res) => {
   // 記事設定（Version設定）をLPへ反映する（背景が動画なら、本文の先頭に動画の層・2026-10-27）
   const sheet = getMasterStyleSheet(state, article.uid)
   const styleCss = masterStyleIframeCss(sheet)
-  const styleHtml = masterStyleVideoHtml(sheet)
+  const styleHtml = masterStyleBackgroundHtml(sheet)
   // タグ設定（noindex・head/bodyへの差し込みタグ）＝ 個別タグ(Article) ＋ 一括タグ(範囲一致)
   const htmlSetting = getHtmlSetting(state, article.uid)
   const bulkTags = bulkTagsForFolder(state, abTest.team_id, abTest.folder_id)

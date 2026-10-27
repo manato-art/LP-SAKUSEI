@@ -17,7 +17,7 @@ import { neutralizeWidgetStyles } from '../../src/shared/sb-preview-css.ts'
 import { WIDGET_BASE_CSS } from '../../src/shared/sb-part-css.ts'
 import { LP_FONTS_URL, externalWidgetLibs } from '../../src/shared/lp-page-assets.ts'
 import { splitHeaderImage } from '../../src/shared/header-image.ts'
-import { masterStyleIframeCss, masterStyleVideoHtml } from '../../src/app/master-style.ts'
+import { masterStyleIframeCss, masterStyleBackgroundHtml } from '../../src/app/master-style.ts'
 import { withAutoplayVideos } from '../../src/app/lp-video.ts'
 import { buildAnimCss, buildAnimRuntimeScript } from '../../src/app/anim/anim-presets.ts'
 import { buildVisitorContext } from './delivery-targeting.ts'
@@ -48,7 +48,7 @@ export function renderPreviewDocument(state: State, version: Version, options: P
   // 記事設定（Version設定）をLPへ反映する（背景が動画なら、本文の先頭に動画の層・2026-10-27）
   const sheet = getMasterStyleSheet(state, article.uid)
   const styleCss = masterStyleIframeCss(sheet)
-  const styleHtml = masterStyleVideoHtml(sheet)
+  const styleHtml = masterStyleBackgroundHtml(sheet)
 
   // ヘッダー画像をHTMLコメントから復元（公開LPと同じタグ）
   const { headerHtml, body: bodyHtml } = splitHeaderImage(options.html ?? version.html)

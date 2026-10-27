@@ -8,8 +8,7 @@
  * 未設定のときに空文字を返すことが要（呼び出し側はそのとき変数を置かず、既定色を保つ）。
  * 空文字でなくなると、中身の無い background 指定で地が透明になってしまう。
  *
- * 色と画像が1つの値にまとまることも見る。`background` ショートハンドなので、
- * 別々に入れると後勝ちで片方が消える。
+ * 画像・動画は変数に入れない（2026-10-27 本人「背景の画像は画面に固定した壁紙に」→ いちばん後ろの層で敷く）。
  */
 import { describe, expect, it } from 'vitest'
 import {
@@ -56,19 +55,11 @@ describe('編集画面のキャンバスに渡す背景の値', () => {
     expect(masterStylePageBackground({ ...EMPTY, inner_background_color: 'FFFDF5' })).toBe('#FFFDF5')
   })
 
-  it('画像だけなら画像だけ（色を勝手に足さない）', () => {
-    expect(masterStyleCanvasBackground({ ...EMPTY, outer_background_image: 'https://example.com/a.png' })).toBe(
-      'url("https://example.com/a.png") center/cover no-repeat',
-    )
-  })
-
-  it('色と画像は1つの値にまとまる（別々だとショートハンドで片方が消える）', () => {
-    const value = masterStyleCanvasBackground({
-      ...EMPTY,
-      outer_background_color: '2b3a55',
-      outer_background_image: 'https://example.com/a.png',
-    })
-    expect(value).toBe('#2b3a55 url("https://example.com/a.png") center/cover no-repeat')
+  it('画像は変数に入れない（いちばん後ろの壁紙の層で敷く・editor-bg-layers.ts）。色はそのまま', () => {
+    expect(masterStyleCanvasBackground({ ...EMPTY, outer_background_image: 'https://example.com/a.png' })).toBe('')
+    expect(
+      masterStyleCanvasBackground({ ...EMPTY, outer_background_color: '2b3a55', outer_background_image: 'https://example.com/a.png' }),
+    ).toBe('#2b3a55')
   })
 
   it('壊れた色は無視する（#が付かない値を作らない）', () => {

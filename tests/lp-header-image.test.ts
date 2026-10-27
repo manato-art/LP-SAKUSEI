@@ -80,12 +80,12 @@ describe('公開LPのヘッダー画像', () => {
     expect(saved.status).toBe(200)
     const lp = await textOf(`${server.baseUrl}/lp/${page.abTestUid}`)
     expect(lp).toContain(
-      '<body><video class="lp-bgv lp-bgv--outer" src="https://example.com/outer.mp4" autoplay muted loop playsinline preload="auto" aria-hidden="true"></video>' +
-        '<video class="lp-bgv lp-bgv--inner" src="https://example.com/inner.webm" autoplay muted loop playsinline preload="auto" aria-hidden="true"></video><p>本文</p>',
+      '<body><video class="lp-bg lp-bg--outer" src="https://example.com/outer.mp4" autoplay muted loop playsinline preload="auto" aria-hidden="true"></video>' +
+        '<video class="lp-bg lp-bg--inner" src="https://example.com/inner.webm" autoplay muted loop playsinline preload="auto" aria-hidden="true"></video><p>本文</p>',
     )
     expect(lp).not.toContain('url("https://example.com/outer.mp4")')
     const preview = await textOf(`${server.baseUrl}/preview/${page.versionUid}`)
-    expect(preview).toContain('<video class="lp-bgv lp-bgv--outer"')
+    expect(preview).toContain('<video class="lp-bg lp-bg--outer"')
   })
 
   it('画像のURLに記号が入っていても、タグを壊さない（HTMLとして解釈させない）', async () => {

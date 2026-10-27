@@ -3,7 +3,7 @@
  * 動画は CSS の背景にできないので、本文の先頭に動画の層を入れる（自動で再生・音なし・くり返し）。
  */
 import { describe, expect, it } from 'vitest'
-import { isVideoBackground, masterStyleCanvasBackground, masterStyleIframeCss, masterStylePageBackground, masterStyleVideoHtml, type MasterStyleSheet } from '../src/app/master-style.ts'
+import { isVideoBackground, masterStyleBackgroundHtml, masterStyleCanvasBackground, masterStyleIframeCss, masterStylePageBackground, type MasterStyleSheet } from '../src/app/master-style.ts'
 import { splitHeaderImage } from '../src/shared/header-image.ts'
 
 const EMPTY: MasterStyleSheet = {
@@ -42,29 +42,23 @@ describe('記事設定の背景の動画', () => {
     expect(isVideoBackground('')).toBe(false)
   })
 
-  it('全体背景の動画は画面に張り付けて後ろに敷く（CSS の背景の画像にはしない）', () => {
+  it('全体背景の動画は、画面に固定していちばん後ろに敷く（CSS の背景の画像にはしない）', () => {
     const sheet = { ...EMPTY, outer_background_image: MP4 }
     const css = masterStyleIframeCss(sheet)
     expect(css).not.toContain('url(')
-    expect(css).toContain('.lp-bgv--outer{position:fixed;inset:0;')
-    expect(masterStyleVideoHtml(sheet)).toBe(`<video class="lp-bgv lp-bgv--outer" src="${MP4}" autoplay muted loop playsinline preload="auto" aria-hidden="true"></video>`)
-    // 編集画面の土台の背景（CSS の変数）にも入れない（動画は editor-bg-video.ts が敷く）
+    expect(css).toContain('.lp-bg{position:fixed;')
+    expect(masterStyleBackgroundHtml(sheet)).toBe(`<video class="lp-bg lp-bg--outer" src="${MP4}" autoplay muted loop playsinline preload="auto" aria-hidden="true"></video>`)
+    // 編集画面の土台の背景（CSS の変数）にも入れない（動画は editor-bg-layers.ts が敷く）
     expect(masterStyleCanvasBackground(sheet)).toBe('')
   })
 
-  it('Version背景の動画は本文の大きさに敷き、本文の白い地を外す', () => {
+  it('Version背景の動画は本文の幅で画面に固定して敷き、本文の白い地を外す', () => {
     const sheet = { ...EMPTY, inner_background_image: MP4 }
     const css = masterStyleIframeCss(sheet)
-    expect(css).toContain('body{position:relative;background-color:transparent}')
-    expect(css).toContain('.lp-bgv--inner{position:absolute;inset:0;')
-    expect(masterStyleVideoHtml(sheet)).toContain('class="lp-bgv lp-bgv--inner"')
+    expect(css).toContain('body{background-color:transparent}')
+    expect(css).toContain('.lp-bg--inner{max-width:inherit}')
+    expect(masterStyleBackgroundHtml(sheet)).toContain('class="lp-bg lp-bg--inner"')
     expect(masterStylePageBackground(sheet)).toBe('')
-  })
-
-  it('画像の背景は今までどおり CSS の背景（動画の層は入れない）', () => {
-    const sheet = { ...EMPTY, outer_background_image: PNG, inner_background_image: PNG }
-    expect(masterStyleIframeCss(sheet)).toContain(`background-image:url("${PNG}")`)
-    expect(masterStyleVideoHtml(sheet)).toBe('')
   })
 })
 
