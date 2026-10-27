@@ -26,6 +26,25 @@ describe('リンク置換の見た目（㉒）', () => {
   })
 })
 
+describe('送るのは一覧だけ（2026-10-27 本人「全体をスクロールするのではなく、2枚目のところのみをスクロール」）', () => {
+  it('パネルは画面の高さに収めて送らない。一覧（_targetLinkLists）だけが残りの高さで送る。一覧の下に灰色の間をあける', async () => {
+    const t = await setupLinkReplacePanel(HTML)
+    const css = t.window.document.getElementById('link-replace-style')?.textContent ?? ''
+    const rule = (selector: string): string => {
+      const at = css.indexOf(`${selector}{`)
+      return at < 0 ? '' : css.slice(at, css.indexOf('}', at))
+    }
+    const panel = rule('[data-clone-panel="link-replace"]')
+    expect(panel).toContain('max-height:calc(100vh - 140px)')
+    expect(panel).toContain('overflow:hidden')
+    expect(panel).not.toContain('overflow-y:auto')
+    const list = rule('._targetLinkLists_id5w4_134')
+    expect(list).toContain('overflow-y:auto')
+    expect(list).toContain('min-height:0')
+    expect(list).toContain('margin-bottom:12px')
+  })
+})
+
 describe('下のチェックの ⓘ（2026-10-27 本人「消して」）', () => {
   it('「計測機能付きリンクに変更」「リンクを別タブで開く」の横の ⓘ と、開かない説明の箱を出さない。チェックと文字は残す', async () => {
     const t = await setupLinkReplacePanel(HTML)

@@ -18,22 +18,22 @@ const CHEVRON =
   "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23374151' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E\")"
 
 const CSS = `
-${S} [data-clone-panel="link-replace"]{border-radius:16px !important;border:1px solid #E5E7EB !important;box-shadow:0 12px 32px rgba(17,24,39,.14) !important;width:480px !important;max-width:calc(100vw - 32px);
-  /* 一覧が長いときはパネルごと送る（画面の高さに収める）。一覧だけを箱の中で送ると、最後の行が下の段にかぶさって見えた（本人の指摘） */
-  max-height:calc(100vh - 140px);overflow-x:hidden !important;overflow-y:auto !important}
-${S} ._body_x4j8w_8{padding:0 !important}
+${S} [data-clone-panel="link-replace"]{border-radius:16px !important;border:1px solid #E5E7EB !important;box-shadow:0 12px 32px rgba(17,24,39,.14) !important;width:480px !important;max-width:calc(100vw - 32px);max-height:calc(100vh - 140px);overflow:hidden !important;display:flex !important;flex-direction:column}
+/* 送るのは一覧だけ（2026-10-27 本人「全体をスクロールするのではなく、2枚目のところのみをスクロール」）:
+   パネルを画面の高さに収め、見出し・絞り込み・下の段はそのまま、一覧が残りの高さを使って中で送る */
+${S} ._body_x4j8w_8{padding:0 !important;flex:1 1 auto;min-height:0;display:flex !important;flex-direction:column}
 /* 中身の幅を採取物の 430px 固定からパネルいっぱいに（右に白い余白が出ていた・本人の指摘） */
-${S} .sample_token_ce149280{width:100% !important}
+${S} .sample_token_ce149280{width:100% !important;flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
 /* 見出し: 戻る・題名・タブ */
-${S} .sample_token_2431ba36{display:flex !important;align-items:center;gap:12px;padding:12px 16px 0 !important;background:#FFFFFF;border-bottom:1px solid #EEF0F3}
+${S} .sample_token_2431ba36{flex:none;display:flex !important;align-items:center;gap:12px;padding:12px 16px 0 !important;background:#FFFFFF;border-bottom:1px solid #EEF0F3}
 ${S} .sb-clone-back-btn{width:36px;height:36px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;border-radius:10px;border:1px solid #E5E7EB;background:#F3F4F6;color:#374151;cursor:pointer;margin-bottom:10px}
 ${S} ._headerTitle_id5w4_24{font-size:15px !important;font-weight:700 !important;color:#1F2937 !important;white-space:nowrap;margin-bottom:10px}
 ${S} ._tabWrapper_id5w4_28{display:flex !important;align-self:flex-end;gap:2px;margin-left:4px}
 ${S} ._tab_id5w4_28{padding:10px 10px !important;font-size:13px !important;font-weight:600;white-space:nowrap;color:#6B7280 !important;background:transparent !important;border-bottom:2px solid transparent !important;border-radius:8px 8px 0 0}
 ${S} ._tab_id5w4_28._active_id5w4_48{color:${ORANGE} !important;background:#FFF7ED !important;border-bottom:2px solid ${ORANGE} !important}
 /* 淡い灰色の地 */
-${S} ._replaceLinkContent_id5w4_76{background:#F6F7F9 !important;padding:14px 16px 0 !important}
-${S} ._contentHeader_id5w4_87{display:flex !important;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px !important}
+${S} ._replaceLinkContent_id5w4_76{background:#F6F7F9 !important;padding:14px 16px 0 !important;margin:0 !important;flex:1 1 auto;min-height:0;display:flex !important;flex-direction:column}
+${S} ._contentHeader_id5w4_87{flex:none;display:flex !important;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px !important}
 /* 絞り込み（丸いピル） */
 ${S} ._sortTabWrapper_id5w4_93{display:inline-flex !important;align-items:center;padding:3px;border-radius:999px;background:#ECEEF1}
 ${S} ._sortTab_id5w4_93{padding:5px 12px !important;border-radius:999px;font-size:12px !important;font-weight:600;color:#4B5563 !important;background:transparent !important;cursor:pointer}
@@ -43,12 +43,14 @@ ${S} ._selectTypeBtnWrapper_id5w4_112{display:flex !important;gap:6px}
 ${S} ._btn_id5w4_117{display:inline-flex !important;align-items:center;gap:5px;padding:6px 10px !important;border-radius:8px !important;border:1px solid #E5E7EB !important;background:#FFFFFF !important;color:#374151 !important;font-size:12px !important;font-weight:600;cursor:pointer}
 ${S} ._btn_id5w4_117 svg{width:14px;height:14px;flex-shrink:0}
 /* 新しいリンク（＋のしるし・下向きの矢印） */
-${S} .sample_token_04cc4929{position:relative;margin-bottom:12px !important}
+${S} .sample_token_04cc4929{flex:none;position:relative;margin-bottom:12px !important}
 ${S} .sample_token_04cc4929 > select{appearance:none;-webkit-appearance:none;width:100%;height:46px !important;padding:0 40px 0 48px !important;border-radius:12px !important;border:1px solid #E5E7EB !important;font-size:15px !important;font-weight:700 !important;color:#1F2937 !important;background:${CHEVRON} right 14px center / 18px no-repeat #FFFFFF !important;cursor:pointer}
 ${S} .lr-select-icon{position:absolute;left:14px;top:23px;transform:translateY(-50%);width:24px;height:24px;border-radius:50%;background:${ORANGE};color:#FFFFFF;display:flex;align-items:center;justify-content:center;pointer-events:none}
 ${S} .lr-select-icon svg{width:14px;height:14px}
 /* 一覧: 白いカードの行 */
-${S} ._targetLinkLists_id5w4_134{display:flex !important;flex-direction:column;gap:8px;max-height:none !important;overflow:visible !important;margin-bottom:0 !important;padding-bottom:14px}
+${S} ._targetLinkLists_id5w4_134{flex:1 1 auto;min-height:0;display:flex !important;flex-direction:column;gap:8px;max-height:none !important;overflow-x:hidden !important;overflow-y:auto !important;margin-bottom:12px !important;padding:0 2px 2px 0}
+/* 一覧の下に灰色の間をとる（送っている途中の行が、下の段にかぶさって見えないように） */
+${S} ._targetLinkLists_id5w4_134 > .lr-row{flex:none}
 ${S} .lr-row{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid #E8EAED;border-radius:12px;background:#FFFFFF;cursor:pointer}
 ${S} .lr-row:hover{border-color:#D1D5DB}
 ${S} .lr-row__check{width:18px;height:18px;flex-shrink:0;margin:0;cursor:pointer;accent-color:${ORANGE}}
@@ -66,7 +68,7 @@ ${S} button.lr-pill--on:hover{background:#D6ECFF}
 ${S} button.lr-pill--off:hover{background:#E5E7EB}
 ${S} ._noLinksDescription_id5w4_411{padding:24px 0 !important;text-align:center}
 /* 下の段（白）: リンクのアイコン付きの入力欄・オレンジの置換 */
-${S} ._formWrapper_id5w4_228{margin:0 -16px !important;padding:14px 16px 16px !important;background:#FFFFFF;border-top:1px solid #EEF0F3}
+${S} ._formWrapper_id5w4_228{flex:none;margin:0 -16px !important;padding:14px 16px 16px !important;background:#FFFFFF;border-top:1px solid #EEF0F3}
 ${S} ._linkInputWrapper_id5w4_237{display:flex !important;align-items:stretch;gap:10px}
 ${S} ._replaceLinkInput_id5w4_246{flex:1;min-width:0}
 ${S} ._replaceLinkInput_id5w4_246 input${FIELD}{width:100%;height:46px !important;padding:0 12px 0 42px !important;border-radius:12px !important;border:1px solid #E5E7EB !important;font-size:14px !important;background:${LINK_ICON} left 14px center / 18px no-repeat #FFFFFF !important}
