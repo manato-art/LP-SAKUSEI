@@ -18,8 +18,12 @@ const CHEVRON =
   "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23374151' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E\")"
 
 const CSS = `
-${S} ._bodyWrapper_x4j8w_8{border-radius:16px !important;border:1px solid #E5E7EB !important;box-shadow:0 12px 32px rgba(17,24,39,.14) !important;overflow:hidden;width:480px !important;max-width:calc(100vw - 32px)}
+${S} [data-clone-panel="link-replace"]{border-radius:16px !important;border:1px solid #E5E7EB !important;box-shadow:0 12px 32px rgba(17,24,39,.14) !important;width:480px !important;max-width:calc(100vw - 32px);
+  /* 一覧が長いときはパネルごと送る（画面の高さに収める）。一覧だけを箱の中で送ると、最後の行が下の段にかぶさって見えた（本人の指摘） */
+  max-height:calc(100vh - 140px);overflow-x:hidden !important;overflow-y:auto !important}
 ${S} ._body_x4j8w_8{padding:0 !important}
+/* 中身の幅を採取物の 430px 固定からパネルいっぱいに（右に白い余白が出ていた・本人の指摘） */
+${S} .sample_token_ce149280{width:100% !important}
 /* 見出し: 戻る・題名・タブ */
 ${S} .sample_token_2431ba36{display:flex !important;align-items:center;gap:12px;padding:12px 16px 0 !important;background:#FFFFFF;border-bottom:1px solid #EEF0F3}
 ${S} .sb-clone-back-btn{width:36px;height:36px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;border-radius:10px;border:1px solid #E5E7EB;background:#F3F4F6;color:#374151;cursor:pointer;margin-bottom:10px}
@@ -44,7 +48,7 @@ ${S} .sample_token_04cc4929 > select{appearance:none;-webkit-appearance:none;wid
 ${S} .lr-select-icon{position:absolute;left:14px;top:23px;transform:translateY(-50%);width:24px;height:24px;border-radius:50%;background:${ORANGE};color:#FFFFFF;display:flex;align-items:center;justify-content:center;pointer-events:none}
 ${S} .lr-select-icon svg{width:14px;height:14px}
 /* 一覧: 白いカードの行 */
-${S} ._targetLinkLists_id5w4_134{display:flex !important;flex-direction:column;gap:8px;max-height:300px;overflow-y:auto;padding-bottom:14px}
+${S} ._targetLinkLists_id5w4_134{display:flex !important;flex-direction:column;gap:8px;max-height:none !important;overflow:visible !important;margin-bottom:0 !important;padding-bottom:14px}
 ${S} .lr-row{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid #E8EAED;border-radius:12px;background:#FFFFFF;cursor:pointer}
 ${S} .lr-row:hover{border-color:#D1D5DB}
 ${S} .lr-row__check{width:18px;height:18px;flex-shrink:0;margin:0;cursor:pointer;accent-color:${ORANGE}}
