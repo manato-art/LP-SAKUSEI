@@ -466,6 +466,28 @@ const OVERRIDES = /* css */ `
 [data-clone-panel-host="history"] ._radioControl_10frc_1 input[type="radio"] {
   accent-color: rgb(255, 164, 0);
 }
+/* 閉じるボタン（○の中の×）。採取物は ::before の文字「×」で、書体の高さの都合で○の真ん中より下にずれる
+ * → 文字をやめ、2本の線を○の真ん中に描く（2026-10-27 指示⑰ 本人「×が◯の中心に来てない」） */
+._btnCnacel_1bcs1_140 {
+  position: relative;
+}
+._btnCnacel_1bcs1_140::before,
+._btnCnacel_1bcs1_140::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 10px;
+  height: 2px;
+  border-radius: 1px;
+  background: currentColor;
+}
+._btnCnacel_1bcs1_140::before {
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+._btnCnacel_1bcs1_140::after {
+  transform: translate(-50%, -50%) rotate(-45deg);
+}
 /* 選んでいないラジオの丸（採取物は暗い画面用で「白い丸・枠なし」。白い画面に溶けて見えなかった・2026-10-27 指示⑮） */
 ._radioControl_10frc_1 input:not(:checked) + label::before {
   border: 1px solid #b0b0b0;
