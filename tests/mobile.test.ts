@@ -928,12 +928,8 @@ describe('スマホのLP設定（詰め方と色の選び方）', () => {
     expect(css).toContain('[class*="_fontColorForm_qyxur_"]{width:100% !important}')
   })
 
-  it('色見本は指で押せる大きさにして、押せると分かる形にする', () => {
-    expect(css).toContain('input[type="color"]')
-    const rule = css.slice(css.indexOf('input[type="color"]'))
-    const body = rule.slice(0, rule.indexOf('}'))
-    expect(body).toContain('height:38px')
-    expect(body).toContain('border-radius')
+  it('色の欄（押すとパレットが開く）は指で押せる高さにする', () => {
+    expect(css).toContain('[class*="_formGroup_qyxur_"] .lp-palette-field{min-height:38px !important}')
   })
 })
 

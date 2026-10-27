@@ -18,6 +18,7 @@ import bgImageHtml from '../fragments/ab_tests__UID__articles__article-settings-
 import bgColorHtml from '../fragments/ab_tests__UID__articles__article-settings-bg-color.portals.html?raw'
 import { toast } from '../ui.ts'
 import { readLpVideo } from './nocode/lp-video.ts'
+import { paletteField } from './palette-field.ts'
 import { convertImageToWebP } from './webp-convert.ts'
 import { ensureWhiteBase, stripDarkThemeClasses } from '../white-base.ts'
 
@@ -133,6 +134,11 @@ interface ActiveModal {
 }
 
 let activeModal: ActiveModal | null = null
+/**
+ * 設定を読み込んでいる間か。右の「LP設定」のアイコンには開く処理が2つ付いている（採取した歯車の目印と、右のアイコンの並び）ので、
+ * 読み込みの間に2回目が通ると同じ画面が2枚重なり、保存しても古い値の1枚が残っていた（2026-10-27）
+ */
+let opening = false
 /** 保存成功時に呼ぶ（編集画面へ即反映するため）。 */
 let onSavedCallback: (() => void) | null = null
 
@@ -166,13 +172,16 @@ export async function openVersionSettings(articleUid: string): Promise<void> {
 }
 
 async function openPanel(articleUid: string): Promise<void> {
-  if (activeModal !== null) return
+  if (activeModal !== null || opening) return
+  opening = true
   let sheet: MasterStyleSheet
   try {
     sheet = await fetchSheet(articleUid)
   } catch (error) {
     toast((error as Error).message, 'error')
     return
+  } finally {
+    opening = false
   }
 
   // ReactModal と同じく body 直下のポータルに出す（採取DOMの構造に合わせる）
@@ -196,7 +205,7 @@ async function openPanel(articleUid: string): Promise<void> {
   }
 
   applySheet(wrapper, sheet)
-  enhanceColorFields(wrapper)
+  mountPaletteFields(wrapper)
   mountTextAlignButtons(wrapper, sheet.text_align ?? '')
 
   const onKeydown = (event: KeyboardEvent): void => {
@@ -280,7 +289,7 @@ function readBackgroundMode(wrapper: HTMLElement, radioName: string): Background
 /**
  * 背景ラジオ。「画像」「色」を選ぶと、実物と同じ入力欄（採取物から切り出したマークアップ）を
  * ラジオ行の直後へ差し込み、「設定しない」で取り除く。
- * - 色: カラーコードのテキスト入力。保存時にそのまま送る。
+ * - 色: パレット（押すと色選びが開く欄・palette-field.ts）。選んだ色のコードを保存時にそのまま送る。
  * - 画像: 実物のドロップゾーン。本番サーバーへは上げず（§3-2）、選んだ画像をその場で
  *   dataURL に読み、`data-image-value` に控えてプレビューする＝クローン内で完結する。
  */
@@ -329,7 +338,9 @@ function wireExtraControls(
 ): void {
   if (mode === 'color') {
     const input = holder.querySelector<HTMLInputElement>(`input[name="${group.colorField}"]`)
-    if (input !== null) input.value = String(sheet[group.colorField] ?? '')
+    if (input === null) return
+    input.value = String(sheet[group.colorField] ?? '')
+    paletteField(input, { withHash: false, fallback: 'ffffff' })
     return
   }
   // 画像: 実物の file 入力。選んだファイルをその場で dataURL にして控える（保存のときサーバーが別ファイルにする・2026-10-27）。
@@ -366,46 +377,15 @@ function wireExtraControls(
   })
 }
 
-// ── カラーピッカー ──
-// `color` と `border_color` のテキスト入力の横にネイティブ `<input type="color">` を付ける。
-// 値はテキスト入力と双方向同期する。
+// ── 色（文字色・枠線の色）──
+// カラーコードの欄を、押すとパレットが開く欄にする（2026-10-27 本人「カラーコードではなくパレットで」・palette-field.ts）
 const COLOR_FIELDS: readonly (keyof MasterStyleSheet)[] = ['color', 'border_color']
 
-function enhanceColorFields(wrapper: HTMLElement): void {
+function mountPaletteFields(wrapper: HTMLElement): void {
   for (const name of COLOR_FIELDS) {
-    const textInput = findControl(wrapper, name) as HTMLInputElement | null
-    if (textInput === null) continue
-    const picker = document.createElement('input')
-    picker.type = 'color'
-    picker.value = normalizeHex(textInput.value)
-    picker.style.cssText =
-      'width:28px;height:28px;padding:0;border:1px solid var(--sb-c-cccccc, #CCCCCC);border-radius:4px;' +
-      'cursor:pointer;vertical-align:middle;margin-left:6px;flex-shrink:0'
-    picker.addEventListener('input', () => {
-      textInput.value = picker.value
-    })
-    textInput.addEventListener('input', () => {
-      const hex = normalizeHex(textInput.value)
-      if (hex !== '') picker.value = hex
-    })
-    // テキスト入力の直後に差し込む
-    textInput.parentElement?.insertBefore(picker, textInput.nextSibling)
-    // 親がflexなら横並びにする
-    if (textInput.parentElement !== null) {
-      textInput.parentElement.style.display = 'flex'
-      textInput.parentElement.style.alignItems = 'center'
-    }
+    const input = findControl(wrapper, name)
+    if (input instanceof HTMLInputElement) paletteField(input, { withHash: false, fallback: '000000' })
   }
-}
-
-/** #000000 形式に正規化（3桁 #abc → #aabbcc 対応、不正な値は空文字） */
-function normalizeHex(raw: string): string {
-  const s = raw.trim().replace(/^#/, '')
-  if (/^[0-9a-fA-F]{6}$/.test(s)) return `#${s}`
-  if (/^[0-9a-fA-F]{3}$/.test(s)) {
-    return `#${s[0]}${s[0]}${s[1]}${s[1]}${s[2]}${s[2]}`
-  }
-  return '#000000'
 }
 
 // ── テキスト揃え ──

@@ -337,11 +337,8 @@ export function mobileCss(): string {
     `html body [class*="_fontColorForm_qyxur_"]{width:100% !important}`,
     `html body [class*="_fontColorForm_qyxur_"] input[type="text"]{flex:1 1 auto !important;`,
     `min-width:0 !important;padding-right:12px !important}`,
-    // 色見本（input type=color）は28pxで、押せるものだと分かりにくく指でも狙いにくい
-    `html body [class*="_formGroup_qyxur_"] input[type="color"]{width:48px !important;`,
-    `height:38px !important;margin-left:8px !important;padding:0 !important;`,
-    `border:1px solid var(--sb-line) !important;border-radius:6px !important;`,
-    `box-shadow:0 1px 2px rgba(0,0,0,.12)}`,
+    // 色の欄（押すとパレットが開く・palette-field.ts）は指で押しやすい高さにする
+    `html body [class*="_formGroup_qyxur_"] .lp-palette-field{min-height:38px !important}`,
 
     // ── ツール画面（2026-09-14・全画面の実測で見つけた「文字が入りきらない」箇所）──
     // マジック置換: 操作列は5つ横並び（合計745px）で折り返さないため、タブと2つ目の検索欄と
