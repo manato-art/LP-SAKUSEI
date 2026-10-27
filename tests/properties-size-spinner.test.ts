@@ -30,3 +30,10 @@ describe('文字のサイズの欄の ↑↓（2026-10-27 本人「十字キー�
     expect(src).toContain("wireStepKeys(sizeInput, 1, (v) => applyInline('size', `${v}px`))")
   })
 })
+
+describe('文字のサイズの欄の数字の位置（2026-10-27 本人「数字を⬜︎の中央に」）', () => {
+  it('数字は枠の真ん中', () => {
+    const src = readFileSync('src/app/panels/properties-panel.ts', 'utf8')
+    expect(src).toContain("sizeInput.style.cssText = 'width:52px;flex:none;font-variant-numeric:tabular-nums;text-align:center'")
+  })
+})

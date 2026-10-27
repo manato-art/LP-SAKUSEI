@@ -184,7 +184,8 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
   sizeInput.className = 'sb-pr-input sb-pr-no-spin'
   sizeInput.type = 'number'
   sizeInput.min = '1'
-  sizeInput.style.cssText = 'width:52px;flex:none;font-variant-numeric:tabular-nums'
+  // 数字は枠の真ん中（2026-10-27 本人「数字を⬜︎の中央に」）
+  sizeInput.style.cssText = 'width:52px;flex:none;font-variant-numeric:tabular-nums;text-align:center'
   sizeInput.addEventListener('change', () => {
     const v = parseInt(sizeInput.value, 10)
     if (Number.isNaN(v) || v < 1) return
