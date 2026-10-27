@@ -6,6 +6,8 @@
  *
  * 色は実機仕様で `#` なしの6桁（例 `000000`）なので、CSSにするとき `#` を補う。
  */
+import { formatPageBgLook, pageBgImageDecls, parsePageBgLook } from '../shared/page-bg-look.ts'
+
 export interface MasterStyleSheet {
   readonly font_size: number | null
   readonly font_family: string
@@ -30,6 +32,9 @@ export interface MasterStyleSheet {
   readonly outer_background_image: string
   readonly inner_background_color: string
   readonly inner_background_image: string
+  /** 背景の画像の位置と大きさ（'' ＝全体を覆う・真ん中・src/shared/page-bg-look.ts・2026-10-27 指示⑱） */
+  readonly outer_background_look?: string
+  readonly inner_background_look?: string
 }
 
 /**
@@ -121,14 +126,18 @@ export const cssUrl = (url: string): string => url.replace(/["\\\n]/g, (c) => en
  * 無ければ ''。配信・プレビュー・ヒートマップの LP で、masterStyleIframeCss と一緒に使う
  */
 export function masterStyleBackgroundHtml(s: MasterStyleSheet): string {
-  const layer = (kind: 'outer' | 'inner', src: string): string => {
+  const layer = (kind: 'outer' | 'inner', src: string, lookText: string | undefined): string => {
     if (src === '') return ''
     const cls = `lp-bg lp-bg--${kind}`
-    return isVideoBackground(src)
-      ? `<video class="${cls}" src="${escapeAttribute(src)}" autoplay muted loop playsinline preload="auto" aria-hidden="true"></video>`
-      : `<div class="${cls}" style="${escapeAttribute(`background-image:url("${cssUrl(src)}")`)}" aria-hidden="true"></div>`
+    if (isVideoBackground(src)) {
+      return `<video class="${cls}" src="${escapeAttribute(src)}" autoplay muted loop playsinline preload="auto" aria-hidden="true"></video>`
+    }
+    // 位置と大きさを決めていれば層に当てる（決めていなければ層のCSSの「全体を覆う・真ん中」のまま）
+    const parsed = parsePageBgLook(lookText)
+    const look = formatPageBgLook(parsed) === '' ? '' : `;${pageBgImageDecls(parsed)}`
+    return `<div class="${cls}" style="${escapeAttribute(`background-image:url("${cssUrl(src)}")${look}`)}" aria-hidden="true"></div>`
   }
-  return layer('outer', s.outer_background_image) + layer('inner', s.inner_background_image)
+  return layer('outer', s.outer_background_image, s.outer_background_look) + layer('inner', s.inner_background_image, s.inner_background_look)
 }
 
 /**

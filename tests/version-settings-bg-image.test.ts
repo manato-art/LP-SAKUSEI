@@ -22,6 +22,11 @@ async function open(sheet: Partial<typeof SHEET>): Promise<Win> {
   for (const key of ['document', 'window', 'DOMParser', 'Event', 'HTMLElement', 'HTMLInputElement', 'HTMLVideoElement', 'Node']) {
     g[key] = (window as unknown as Record<string, unknown>)[key]
   }
+  // 位置と大きさの見本が画像の縦横を測る（読み込みは起きない）
+  g['Image'] = class {
+    addEventListener(): void {}
+    set src(_value: string) {}
+  }
   const selectProto = (window as unknown as { HTMLSelectElement: { prototype: object } }).HTMLSelectElement.prototype
   Object.defineProperty(selectProto, 'value', {
     configurable: true,

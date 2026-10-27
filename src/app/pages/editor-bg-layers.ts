@@ -9,6 +9,7 @@
  * 色は今までどおり CSS の変数（editor-layout.ts の applyCanvasBackground）。設定が画像・動画でなくなったら層を外す。
  */
 import { cssUrl, isVideoBackground, type MasterStyleSheet } from '../master-style.ts'
+import { pageBgImageDecls, parsePageBgLook } from '../../shared/page-bg-look.ts'
 import { pageLife } from '../page-life.ts'
 
 const MARK = 'data-lp-bg'
@@ -18,8 +19,8 @@ const LAYER =
 
 type Kind = 'outer' | 'inner'
 
-/** Version背景の層の場所を、本文・スクロールする所の大きさに合わせ続ける見張り */
-let innerObserver: ResizeObserver | null = null
+/** 層の場所・大きさを、本文・スクロールする所・土台の大きさに合わせ続ける見張り */
+let layerObserver: ResizeObserver | null = null
 
 /** 土台の直下に、kind の層を置く（画像なら div・動画なら video。今の物が合っていればそれを使う） */
 function ensureLayer(base: HTMLElement, kind: Kind, src: string): HTMLElement {
@@ -48,9 +49,16 @@ function createLayer(base: HTMLElement, kind: Kind, isVideo: boolean, old: HTMLE
   return layer
 }
 
-/** 層の場所・大きさ（box）。画像なら背景の画像も */
-function place(layer: HTMLElement, src: string, box: string): void {
-  layer.setAttribute('style', `${LAYER};${box}${layer.tagName === 'DIV' ? `;background-image:url("${cssUrl(src)}")` : ''}`)
+/**
+ * 層の場所・大きさ（box）。画像なら背景の画像と、その位置と大きさ（配信と同じ計算・2026-10-27 指示⑱）。
+ * 大きさを自分で決めたときは層の高さを使うので、層の高さ（px）を --lp-bg-h で渡す（配信は画面の高さ＝100vh）
+ */
+function place(layer: HTMLElement, src: string, box: string, lookText: string | undefined, height: number): void {
+  const image =
+    layer.tagName === 'DIV'
+      ? `;background-image:url("${cssUrl(src)}");${pageBgImageDecls(parsePageBgLook(lookText))};--lp-bg-h:${String(Math.round(height || 0))}px`
+      : ''
+  layer.setAttribute('style', `${LAYER};${box}${image}`)
 }
 
 function removeLayer(base: HTMLElement, kind: Kind): void {
@@ -64,43 +72,48 @@ export function applyEditorBgLayers(quillRoot: HTMLElement, sheet: MasterStyleSh
   if (base === null || scroller === null) return
   // 土台の重なりを閉じ、層を土台の色の上・中身の下に置く
   base.style.isolation = 'isolate'
+  layerObserver?.disconnect()
+  layerObserver = null
 
-  if (sheet.outer_background_image !== '') {
-    place(ensureLayer(base, 'outer', sheet.outer_background_image), sheet.outer_background_image, 'inset:0;width:100%;height:100%')
-  } else {
-    removeLayer(base, 'outer')
-  }
+  const outerSrc = sheet.outer_background_image
+  const outer = outerSrc === '' ? null : ensureLayer(base, 'outer', outerSrc)
+  if (outer === null) removeLayer(base, 'outer')
 
-  innerObserver?.disconnect()
-  innerObserver = null
-  if (sheet.inner_background_image === '') {
+  const innerSrc = sheet.inner_background_image
+  const inner = innerSrc === '' ? null : ensureLayer(base, 'inner', innerSrc)
+  if (inner === null) {
     removeLayer(base, 'inner')
     base.style.removeProperty('--lp-page-frame')
     base.style.removeProperty('--lp-page-shadow')
-    return
+  } else {
+    // 本文の白い地（--lp-page-bg）を外して、後ろの層が見えるように
+    base.style.setProperty('--lp-page-bg', 'transparent')
+    // 本文の箱の枠線と影も消す。画像は本文の幅で画面いっぱいに敷くので、箱の上下の線が画像の上に
+    // 白い線として浮いていた（2026-10-27 指示⑯）
+    base.style.setProperty('--lp-page-frame', 'transparent')
+    base.style.setProperty('--lp-page-shadow', 'none')
   }
-  // 本文の白い地（--lp-page-bg）を外して、後ろの層が見えるように
-  base.style.setProperty('--lp-page-bg', 'transparent')
-  // 本文の箱の枠線と影も消す。画像は本文の幅で画面いっぱいに敷くので、箱の上下の線が画像の上に
-  // 白い線として浮いていた（2026-10-27 指示⑯）
-  base.style.setProperty('--lp-page-frame', 'transparent')
-  base.style.setProperty('--lp-page-shadow', 'none')
-  const src = sheet.inner_background_image
-  const layer = ensureLayer(base, 'inner', src)
+  if (outer === null && inner === null) return
+
+  // 全体背景は土台いっぱい、Version背景は本文の幅でスクロールする所の見えている上から下まで
   const fit = (): void => {
+    if (outer !== null) place(outer, outerSrc, 'inset:0;width:100%;height:100%', sheet.outer_background_look, base.clientHeight)
+    if (inner === null) return
     const baseBox = base.getBoundingClientRect()
     const pageBox = quillRoot.getBoundingClientRect()
     const viewBox = scroller.getBoundingClientRect()
     place(
-      layer,
-      src,
+      inner,
+      innerSrc,
       `left:${pageBox.left - baseBox.left}px;top:${viewBox.top - baseBox.top}px;width:${pageBox.width}px;height:${scroller.clientHeight}px`,
+      sheet.inner_background_look,
+      scroller.clientHeight,
     )
   }
   fit()
   const observer = new ResizeObserver(fit)
   for (const el of [quillRoot, scroller, base]) observer.observe(el)
-  innerObserver = observer
+  layerObserver = observer
   // 画面を移ったら見張りを外す（前の編集画面をつかみ続けないように・page-life.ts）
   pageLife().addEventListener('abort', () => observer.disconnect(), { once: true })
 }

@@ -8,6 +8,7 @@
  * 値の更新は常に新しいオブジェクトを返す（§12 イミュータブル）。
  */
 import type { ValidationResult } from '../lib/validate.ts'
+import { formatPageBgLook, parsePageBgLook } from '../../src/shared/page-bg-look.ts'
 import type { State } from './types.ts'
 
 declare module './types.ts' {
@@ -48,6 +49,9 @@ export interface MasterStyleSheet {
   readonly outer_background_image: string
   readonly inner_background_color: string
   readonly inner_background_image: string
+  /** 背景の画像の位置と大きさ（クローンが足した項目。'' ＝全体を覆う・真ん中・src/shared/page-bg-look.ts・2026-10-27 指示⑱） */
+  readonly outer_background_look?: string
+  readonly inner_background_look?: string
 }
 
 export interface MasterStyleSheetEntry {
@@ -84,6 +88,8 @@ export const DEFAULT_MASTER_STYLE_SHEET: MasterStyleSheet = {
   outer_background_image: '',
   inner_background_color: '',
   inner_background_image: '',
+  outer_background_look: '',
+  inner_background_look: '',
 }
 
 /** 数値項目 → 実物のラベル（エラーメッセージに実物の言葉を出す） */
@@ -290,6 +296,11 @@ export function parseMasterStyleSheet(
     500,
   )
   if (!innerImage.ok) return innerImage
+  // 位置と大きさは決まった形に読み直して持つ（範囲の外は収める・知らない形は '' ＝今までどおり）
+  const outerLook = parseTextField(body, 'outer_background_look', base.outer_background_look ?? '', '外枠背景の位置と大きさ', 60)
+  if (!outerLook.ok) return outerLook
+  const innerLook = parseTextField(body, 'inner_background_look', base.inner_background_look ?? '', 'LP内背景の位置と大きさ', 60)
+  if (!innerLook.ok) return innerLook
 
   return {
     ok: true,
@@ -317,6 +328,8 @@ export function parseMasterStyleSheet(
       outer_background_image: outerImage.value,
       inner_background_color: innerColor.value,
       inner_background_image: innerImage.value,
+      outer_background_look: formatPageBgLook(parsePageBgLook(outerLook.value)),
+      inner_background_look: formatPageBgLook(parsePageBgLook(innerLook.value)),
     },
   }
 }

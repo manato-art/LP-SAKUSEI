@@ -19,6 +19,7 @@ import bgColorHtml from '../fragments/ab_tests__UID__articles__article-settings-
 import { toast } from '../ui.ts'
 import { readLpVideo } from './nocode/lp-video.ts'
 import { paletteField } from './palette-field.ts'
+import { bgLookField } from './bg-look-field.ts'
 import { isVideoBackground } from '../master-style.ts'
 import { convertImageToWebP } from './webp-convert.ts'
 import { ensureWhiteBase, stripDarkThemeClasses } from '../white-base.ts'
@@ -75,6 +76,9 @@ export interface MasterStyleSheet {
   outer_background_image: string
   inner_background_color: string
   inner_background_image: string
+  /** 背景の画像の位置と大きさ（クローンが足した項目・bg-look-field.ts・2026-10-27 指示⑱） */
+  outer_background_look?: string
+  inner_background_look?: string
 }
 
 /** 採取DOMに実在する input/select の name（＝そのままAPIのキー） */
@@ -111,6 +115,8 @@ const BACKGROUND_GROUPS: readonly {
   label: string
   colorField: keyof MasterStyleSheet
   imageField: keyof MasterStyleSheet
+  lookField: 'inner_background_look' | 'outer_background_look'
+  kind: 'inner' | 'outer'
 }[] = [
   // 見出しの名前と並び（2026-10-27 本人「Version背景設定→LP内背景・全体背景設定→外枠背景」「順番も逆にしてね」）。
   // 採取した実物は「全体背景設定」「Version背景設定」の順。画面ではこの並び・この名前にする（arrangeBackgroundSections）
@@ -119,12 +125,16 @@ const BACKGROUND_GROUPS: readonly {
     label: 'LP内背景',
     colorField: 'inner_background_color',
     imageField: 'inner_background_image',
+    lookField: 'inner_background_look',
+    kind: 'inner',
   },
   {
     radioName: 'outerBackgroundRadio',
     label: '外枠背景',
     colorField: 'outer_background_color',
     imageField: 'outer_background_image',
+    lookField: 'outer_background_look',
+    kind: 'outer',
   },
 ]
 
@@ -373,6 +383,7 @@ function wireExtraControls(
   // 動画も選べる（2026-10-27 本人「記事設定の背景も動画OKにする」・自動で再生・音なし・くり返し＝master-style.ts）
   const stored = String(sheet[group.imageField] ?? '')
   if (stored !== '') holder.dataset['imageValue'] = stored
+  holder.dataset['bgLook'] = sheet[group.lookField] ?? ''
   const file = holder.querySelector<HTMLInputElement>(`input[type="file"][name="${group.imageField}"]`)
   const zone = file?.parentElement
   if (file === null || zone === null || zone === undefined) return
@@ -388,6 +399,20 @@ function wireExtraControls(
           ? 'クリックして画像か動画を選択するかファイルをドラッグ&ドロップしてください（動画は自動で再生・音なし・くり返し）'
           : 'クリックかドラッグ&ドロップで、別の画像か動画に変えられます（動画は自動で再生・音なし・くり返し）'
     }
+    // 画像なら、その下に「位置と大きさ」（2026-10-27 指示⑱・動画は今までどおり全体を覆う）
+    holder.querySelector('[data-bg-look-field]')?.remove()
+    if (value === '' || isVideoBackground(value)) return
+    // 枠の入れ物は横並び（flex）なので、入れ物の下に置く
+    ;(zone.parentElement ?? zone).after(
+      bgLookField({
+        src: value,
+        look: holder.dataset['bgLook'] ?? '',
+        kind: group.kind,
+        onChange: (look) => {
+          holder.dataset['bgLook'] = look
+        },
+      }),
+    )
   }
   show()
 
@@ -396,6 +421,7 @@ function wireExtraControls(
       void readLpVideo(chosen).then((url) => {
         if (url === null) return
         holder.dataset['imageValue'] = url
+        holder.dataset['bgLook'] = ''
         show()
         toast(`${group.label}の動画を読み込みました`)
       })
@@ -408,6 +434,8 @@ function wireExtraControls(
         return
       }
       holder.dataset['imageValue'] = url
+      // 別の画像に変えたら、位置と大きさは最初（全体を覆う・真ん中）から
+      holder.dataset['bgLook'] = ''
       show()
       toast(`${group.label}の画像を読み込みました`)
     })
@@ -572,6 +600,7 @@ function collectPayload(wrapper: HTMLElement, sheet: MasterStyleSheet): Record<s
     const imageValue = holder?.dataset['imageValue'] ?? String(sheet[group.imageField] ?? '')
     payload[group.colorField] = mode === 'color' ? colorValue.trim() : ''
     payload[group.imageField] = mode === 'image' ? imageValue : ''
+    payload[group.lookField] = mode === 'image' ? (holder?.dataset['bgLook'] ?? String(sheet[group.lookField] ?? '')) : ''
   }
   return payload
 }

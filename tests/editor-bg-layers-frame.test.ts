@@ -48,6 +48,14 @@ describe('LP内背景の画像と、本文の箱の枠線', () => {
     expect(base.style.getPropertyValue('--lp-page-shadow')).toBe('')
   })
 
+  it('編集画面の背景の層にも、位置と大きさを当てる（層の高さを --lp-bg-h で渡す・2026-10-27 指示⑱）', async () => {
+    const { quillRoot, base, applyEditorBgLayers } = await setup()
+    applyEditorBgLayers(quillRoot, { ...EMPTY, inner_background_image: PNG, inner_background_look: 'contain 100 50 0' })
+    const layer = base.querySelector('[data-lp-bg="inner"]')?.getAttribute('style') ?? ''
+    expect(layer).toContain('background-size:contain;background-position:50% 0%')
+    expect(layer).toMatch(/--lp-bg-h:\d+px/)
+  })
+
   it('外枠背景の画像だけのときは、本文の箱の枠線はそのまま（白い本文の箱の縁）', async () => {
     const { quillRoot, base, applyEditorBgLayers } = await setup()
     applyEditorBgLayers(quillRoot, { ...EMPTY, outer_background_image: PNG })

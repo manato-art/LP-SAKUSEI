@@ -134,6 +134,21 @@ describe('PUT /articles/:uid/master_style_sheet', () => {
     expect(body.master_style_sheet.inner_background_color).toBe('CCCCCC')
   })
 
+  it('背景の画像の位置と大きさを保存する（範囲の外は収める・知らない形は今までどおり・送らなければ前のまま）（2026-10-27 指示⑱）', async () => {
+    const uid = seedArticle()
+    await sendJson('PUT', `${api}/articles/${uid}/master_style_sheet`, {
+      inner_background_look: 'free 9999 50 30 1.5',
+      outer_background_look: 'stretch 1 2 3',
+    })
+    const saved = (await getJson<SheetResponse>(`${api}/articles/${uid}/master_style_sheet`)).master_style_sheet
+    expect(saved.inner_background_look).toBe('free 400 50 30 1.5')
+    expect(saved.outer_background_look).toBe('')
+    await sendJson('PUT', `${api}/articles/${uid}/master_style_sheet`, { font_size: '18' })
+    expect((await getJson<SheetResponse>(`${api}/articles/${uid}/master_style_sheet`)).master_style_sheet.inner_background_look).toBe(
+      'free 400 50 30 1.5',
+    )
+  })
+
   it('背景に選んだ画像・動画は別ファイルにして、短い住所で保存する（2026-10-27・それまで小さな画像でも「500文字以内」で保存できなかった）', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'lp-bg-uploads-'))
     vi.stubEnv('UPLOADS_DIR', dir)
