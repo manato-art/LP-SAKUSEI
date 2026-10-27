@@ -47,7 +47,7 @@ import { BUILDER_TEMPLATE, blankBuilderData } from './nocode/templates/builder.t
 import { openWidgetStudio } from './widget-studio.ts'
 import { newUid, rekeyUid } from './nocode/templates/kit.ts'
 import { placeholderLinkCount } from './link-placeholder.ts'
-import { loadSbCategories, loadSbParts, matchingSbParts, visibleSbParts, type SbPart } from './widget-library-sb.ts'
+import { loadSbCategories, loadSbParts, matchingSbParts, searchSbParts, visibleSbParts, type SbPart, type SbSearch } from './widget-library-sb.ts'
 import { sbCategoriesFor, sbOnlyCategories } from './widget-library-merge.ts'
 import { newSbToken, sbInsertMarkup } from './sb-widget-scope.ts'
 
@@ -78,7 +78,6 @@ const CREATED_EMPTY_MSG = '作成したWidgetはまだありません。「＋ W
  * 「新しい見本」カテゴリーのセンチネル値（2026-09-23・本人の依頼で作り直している自作の見本）。
  * SB由来の見本（cat0〜）はそのまま残し、ここに作った分を並べていく。
  */
-const NEW_SAMPLES_CAT = -3
 
 
 
@@ -170,15 +169,12 @@ function open(quill: Quill | null, extra: { onClose?: () => void } = {}): void {
   patchPortalLayout(portal.root, quill, portal.close)
 
   wireCategories(portal.root, quill, portal.close)
-  wireSearch(portal.root)
-  // 開いた直後は「見本」（自作の見本）を出す
-  renderNewSamples(portal.root, quill, portal.close)
-  // 作成したWidget・お気に入りはサーバーから読む（2026-10-24。以前はブラウザの中だけ＝ほかのアカウントから見えなかった）。
-  // 読めたら見本のカードの★を塗り直す
-  void refreshWidgetLibrary().then(
-    () => repaintFavoriteStars(portal.root),
-    () => toast('作成したWidget・お気に入りを読み込めませんでした。開き直してください', 'error'),
-  )
+  wireSearch(portal.root, quill, portal.close)
+  // 開いた直後は「お気に入り」（2026-10-27 指示㉕ 本人「見本ってところ消してOK」→ 選択「お気に入りを開く」）。
+  // 作成したWidget・お気に入りはサーバーから読む（2026-10-24。以前はブラウザの中だけ＝ほかのアカウントから見えなかった）
+  const favorite = portal.root.querySelector<HTMLElement>(`[data-cat-index="${String(FAVORITE_CAT)}"]`)
+  if (favorite !== null) activateCategory([...portal.root.querySelectorAll<HTMLElement>(HOOK.category)], favorite)
+  showFromServer(portal.root, () => renderFavoriteWidgets(portal.root, quill, portal.close))
 }
 
 /* ================================================================
@@ -234,26 +230,13 @@ function patchPortalLayout(root: HTMLElement, quill: Quill | null, close: () => 
   const titleEl = root.querySelector<HTMLElement>('.css-kzzyvh')
   if (titleEl !== null) titleEl.textContent = 'Widget'
 
-  /* ---- 2. 最初のカテゴリー名を「見本」に変更（2026-09-23: SB由来の見本を外し、自作の見本だけにした） ---- */
+  /* ---- 2〜3. data-cat-index を付与（1＝お気に入り）。最初の「見本」（全部の見本）は消す ----
+   * 2026-10-27 指示㉕ 本人「見本ってところ消してOK。でも、種類で絞った際にあるのか。消えるのはダメ」:
+   * 自作の見本はどれも「種類でしぼる」のどれかに入っている（kit.ts の SampleCategory）ので、消しても見本は消えない。
+   * 全部から探すのは検索が受け持つ（wireSearch） */
   const categories = [...root.querySelectorAll<HTMLElement>(HOOK.category)]
-  if (categories.length > 0) {
-    const firstBtn = categories[0]!
-    // テキストノードだけ差し替え（MuiTouchRipple は残す）
-    const span = firstBtn.querySelector<HTMLElement>('.MuiTouchRipple-root')
-    if (span !== null) {
-      firstBtn.childNodes.forEach((n) => {
-        if (n !== span && n.nodeType === Node.TEXT_NODE) n.textContent = ''
-      })
-      firstBtn.insertBefore(document.createTextNode('見本'), span)
-    } else {
-      firstBtn.textContent = '見本'
-    }
-  }
-
-  /* ---- 3. data-cat-index を付与（0＝見本＝自作の見本、1＝お気に入り） ---- */
-  for (const [i, cat] of categories.entries()) {
-    cat.dataset['catIndex'] = String(i === 0 ? NEW_SAMPLES_CAT : i)
-  }
+  for (const [i, cat] of categories.entries()) cat.dataset['catIndex'] = String(i)
+  categories[0]?.remove()
 
   /* ---- 4. 「作成したWidget」カテゴリーを お気に入り(index=1) の後ろに挿入 ----
    * 指示147: 「最近利用 / チームで追加・作成 / 最近追加」は削除し「作成したWidget」を追加。 */
@@ -332,22 +315,21 @@ function wireCategories(root: HTMLElement, quill: Quill | null, close: () => voi
     cat.addEventListener('click', () => {
       activateCategory([...root.querySelectorAll<HTMLElement>(HOOK.category)], cat)
       clearSbList(root)
+      // 分類を選んだら、検索の言葉は外してその分類を全部見せる
+      clearSearch(root)
       const sampleCategory = cat.dataset['sampleCategory']
       if (sampleCategory !== undefined) {
         // 見本を種類でしぼる（まとめた取り込んだ見本が上・自作が下）
         renderSampleCategory(root, quill, close, sampleCategory as SampleCategory)
         return
       }
-      const catIndex = Number(cat.dataset['catIndex'] ?? String(NEW_SAMPLES_CAT))
+      const catIndex = Number(cat.dataset['catIndex'] ?? '')
       if (catIndex === CREATED_CAT) {
         // 作成したWidget: 全員の分をサーバーから読み直してカードで表示（ほかの人が作った分も出る）
         showFromServer(root, () => renderCreatedWidgets(root, quill, close))
       } else if (catIndex === FAVORITE_CAT) {
         // お気に入り: 自分の分をサーバーから読み直してカードで表示
         showFromServer(root, () => renderFavoriteWidgets(root, quill, close))
-      } else {
-        // 見本: 自作の見本（samples/）をカードで表示
-        renderNewSamples(root, quill, close)
       }
     })
   }
@@ -454,6 +436,7 @@ function addSbCategories(
         btn.dataset['sbCategory'] = String(category.id)
         btn.addEventListener('click', () => {
           activateCategory([...root.querySelectorAll<HTMLElement>(HOOK.category)], btn)
+          clearSearch(root)
           renderSbList(root, quill, close, `sb:${category.id}`, () => loadSbParts(category.id))
         })
         last.after(btn)
@@ -845,20 +828,60 @@ function renderFavoriteWidgets(root: HTMLElement, quill: Quill | null, close: ()
  *  検索
  * ================================================================ */
 
-function wireSearch(root: HTMLElement): void {
+/**
+ * 検索は全部の見本（取り込んだ見本・自作）から探す（2026-10-27 指示㉕ 本人の選択「全部の見本から探す」）。
+ * 言葉を消したら、選んでいた分類に戻る。打ち終わってから探す
+ */
+function wireSearch(root: HTMLElement, quill: Quill | null, close: () => void): void {
   const input = root.querySelector<HTMLInputElement>(HOOK.search)
   if (input === null) return
   let timer = 0
   input.addEventListener('input', () => {
-    const again = sbListRenderers.get(root)
-    if (again === undefined) {
-      applySearchFilter(root)
+    window.clearTimeout(timer)
+    timer = window.setTimeout(() => {
+      if (input.value.trim() === '') {
+        root.querySelector<HTMLElement>(`${HOOK.category}.css-148uesp`)?.click()
+        return
+      }
+      renderSearchAll(root, quill, close, input.value)
+    }, 200)
+  })
+}
+
+/** 検索の言葉を外す（分類を選んだとき） */
+function clearSearch(root: HTMLElement): void {
+  const input = root.querySelector<HTMLInputElement>(HOOK.search)
+  if (input !== null) input.value = ''
+}
+
+/** 全部の見本から探した結果（取り込んだ見本はサーバーが探す・先頭60件まで） */
+function renderSearchAll(root: HTMLElement, quill: Quill | null, close: () => void, raw: string): void {
+  const grid = root.querySelector<HTMLElement>(HOOK.grid)
+  if (grid === null) return
+  const query = raw.trim()
+  const key = `search:${query}`
+  root.dataset['sbList'] = key
+  sbListRenderers.delete(root)
+  grid.replaceChildren(gridMessage('探しています…'))
+  const lower = query.toLowerCase()
+  const own = LIBRARY_SAMPLES.filter((sample) => sample.name.toLowerCase().includes(lower))
+  const draw = (found: SbSearch | null): void => {
+    if (root.dataset['sbList'] !== key) return
+    grid.replaceChildren()
+    const sbCards = (found?.parts ?? []).map(sbWidgetCard)
+    const ownCards = own.map((sample) => newSampleCard(sample))
+    if (found === null) grid.append(gridMessage('取り込んだ見本を探せませんでした。もう一度打ってください。'))
+    if (sbCards.length === 0 && ownCards.length === 0) {
+      if (found !== null) grid.append(gridMessage(`「${query}」に合う見本はありません。`))
       return
     }
-    // 取り込んだ見本は、まだ出していないカードも探す（打ち終わってから出し直す）
-    window.clearTimeout(timer)
-    timer = window.setTimeout(again, 200)
-  })
+    if (sbCards.length > 0) grid.append(gridLabel(`取り込んだ見本（${String(found?.total ?? sbCards.length)}件）`), ...sbCards)
+    const rest = (found?.total ?? 0) - sbCards.length
+    if (rest > 0) grid.append(gridMessage(`ほかにも ${String(rest)}件あります。言葉を足してしぼってください。`))
+    if (ownCards.length > 0) grid.append(gridLabel(`オリジナル（${String(ownCards.length)}件）`), ...ownCards)
+    wireCards(root, quill, close, [...sbCards, ...ownCards])
+  }
+  void searchSbParts(query).then(draw, () => draw(null))
 }
 
 function applySearchFilter(root: HTMLElement): void {
@@ -1024,11 +1047,6 @@ function paintStar(svg: SVGElement, key: string): void {
   const on = isFavorite(key)
   svg.style.setProperty('opacity', on ? '1' : '0.3')
   svg.setAttribute('aria-label', on ? 'お気に入り解除' : 'お気に入りに登録')
-}
-
-/** 開いている一覧の★を、最後に読み直したお気に入りで塗り直す（開いた直後はサーバーの読み直しより先に描くため） */
-function repaintFavoriteStars(root: HTMLElement): void {
-  for (const svg of root.querySelectorAll<SVGElement>('svg[data-favorite-key]')) paintStar(svg, svg.dataset['favoriteKey'] ?? '')
 }
 
 /** カードのブックマークSVGをお気に入りトグルにする。登録状態で色/不透明度を切り替える。 */

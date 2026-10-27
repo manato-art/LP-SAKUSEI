@@ -64,3 +64,14 @@ export function loadSbParts(id: number): Promise<readonly SbPart[]> {
   partsById.set(id, loading)
   return loading
 }
+
+/** 全部の分類から名前で探した結果（合う物の先頭60件と、合う数） */
+export interface SbSearch {
+  readonly parts: readonly SbPart[]
+  readonly total: number
+}
+
+/** 取り込んだ見本を全部の分類から名前で探す（2026-10-27 指示㉕・サーバーが探す＝全部を読まない） */
+export function searchSbParts(query: string): Promise<SbSearch> {
+  return request<SbSearch>('GET', `/sb_widgets/search?q=${encodeURIComponent(query.trim())}`)
+}
