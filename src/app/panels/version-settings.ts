@@ -82,7 +82,10 @@ export interface MasterStyleSheet {
   inner_background_look?: string
 }
 
-/** 採取DOMに実在する input/select の name（＝そのままAPIのキー） */
+/**
+ * 採取DOMに実在する input/select の name（＝そのままAPIのキー）。
+ * iframe_height・iframe_height_unit（Iframe設定）は画面から外したので読まない・送らない（removeIframeSection・保存してある値はサーバーにそのまま残る）
+ */
 const FIELD_NAMES: readonly (keyof MasterStyleSheet)[] = [
   'font_size',
   'font_family',
@@ -95,8 +98,6 @@ const FIELD_NAMES: readonly (keyof MasterStyleSheet)[] = [
   'padding_bottom',
   'padding_right',
   'padding_left',
-  'iframe_height',
-  'iframe_height_unit',
   'delivery_version_width',
   'delivery_version_width_unit',
   'border_size',
@@ -264,6 +265,7 @@ async function openPanel(articleUid: string, version: SettingsVersion | undefine
     return
   }
 
+  removeIframeSection(wrapper)
   applySheet(wrapper, sheet)
   arrangeBackgroundSections(wrapper)
   mountPaletteFields(wrapper)
@@ -292,6 +294,19 @@ async function openPanel(articleUid: string, version: SettingsVersion | undefine
   saveButton.addEventListener('click', () => {
     void save(articleUid, version, wrapper, sheet)
   })
+}
+
+/**
+ * 「Iframe設定」（見出し・高さ・単位）を外す（2026-10-27 本人「Iframe設定って何？わかりずらいので修正」→「項目ごと消す」）。
+ * 高さ・単位は保存していたが、編集画面・プレビュー・配信のどこにも効いていなかった。保存してある値は送らないのでサーバーに残る
+ */
+function removeIframeSection(wrapper: HTMLElement): void {
+  const groups = ['iframe_height', 'iframe_height_unit'].map((name) =>
+    wrapper.querySelector(`[name="${name}"]`)?.closest<HTMLElement>('[class*="_formGroup_1n7ll_1"]'),
+  )
+  const title = groups[0]?.previousElementSibling
+  if (title instanceof HTMLElement && (title.textContent ?? '').includes('Iframe')) title.remove()
+  for (const group of groups) group?.remove()
 }
 
 /** 「他のバージョンにも適用する」のチェックの印 */
