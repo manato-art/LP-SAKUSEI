@@ -16,6 +16,7 @@ import { defaultRange, toRangeQuery, type DateRange } from './report-period.ts'
 import { formatPeriodLabel } from '../panels/period-picker.ts'
 import { EMPTY_CELL, formatCell, type ReportColumn } from './report-columns.ts'
 import { isCreator } from '../session.ts'
+import { renderSpark, sparkPoints, sparkRange } from './folders-list-spark.ts'
 
 /** 一覧KPIの集計期間。既定は「今日1日」＝レポート画面の既定と同じ数え方に揃える。 */
 let listRange: DateRange = defaultRange()
@@ -98,16 +99,34 @@ export async function applyListMetrics(area: HTMLElement): Promise<Map<string, {
     return loaded
   }
   const failures: string[] = []
+  // 数字の下の小さい棒グラフは直近7日の日ごと（集計期間の最後の日まで・2026-10-27 本人の決定）
+  const spark = sparkRange(listRange)
+  const sameAsList = spark.startDate === listRange.startDate && spark.endDate === listRange.endDate
   await Promise.all(
     rows.map(async (row) => {
       const uid = row.dataset['abTestUid'] ?? ''
       if (uid === '') return
       try {
-        const { totals } = await api.report(uid, toRangeQuery(listRange))
+        const [{ totals, daily }, sparkReport] = await Promise.all([
+          api.report(uid, toRangeQuery(listRange)),
+          // 棒グラフが読めなくても数字は出す（棒を出さないだけ）
+          sameAsList
+            ? Promise.resolve(null)
+            : api.report(uid, toRangeQuery(spark)).catch((error: unknown) => {
+                console.warn('[folders] 直近7日の数字を取得できませんでした', uid, error)
+                return null
+              }),
+        ])
+        const sparkDaily = sameAsList ? daily : sparkReport?.daily
         const cells = row.querySelectorAll<HTMLElement>(ROW_CELL)
         for (const { index, column } of LIST_METRIC_CELLS) {
           const cell = cells[index]
-          if (cell !== undefined) cell.textContent = formatListCell(totals, column)
+          if (cell === undefined) continue
+          const value = document.createElement('span')
+          value.className = 'pl-value'
+          value.textContent = formatListCell(totals, column)
+          if (sparkDaily === undefined) cell.replaceChildren(value)
+          else cell.replaceChildren(value, renderSpark(sparkPoints(sparkDaily, spark, column), column.metric ?? ''))
         }
         loaded.set(uid, { pv: totals.pv, cv: totals.cv })
       } catch (error) {

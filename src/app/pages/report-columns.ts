@@ -83,7 +83,7 @@ export const UNDEFINED_METRIC_LABELS: readonly string[] = REPORT_COLUMNS.filter(
   (column) => column.metric === null,
 ).map((column) => column.label)
 
-function readMetric(kpi: ReportKpi, key: KpiKey): number | null {
+export function readMetric(kpi: ReportKpi, key: KpiKey): number | null {
   switch (key) {
     case 'ad_cost':
       return kpi.ad_cost

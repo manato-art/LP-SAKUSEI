@@ -18,11 +18,13 @@ import {
   updateDetailPanelForAbTest,
   wireRealDetailPanel,
 } from './folders-detail-panel.ts'
-import { applyRowCounts } from './folders-row-icons.ts'
+import { applyRowCounts, applyRowThumbnail } from './folders-row-icons.ts'
 import { pageRowRoutes } from './folders-list-view.ts'
 import { openPageMoreMenu } from './folders-page-menu.ts'
 import { refreshListView, reloadListMetrics, wireListControls } from './folders-list-controls.ts'
 import { isCreator } from '../session.ts'
+import { pageLife } from '../page-life.ts'
+import { syncKpiScroll } from './folders-list-scroll-sync.ts'
 
 /**
  * 採取した実一覧（KPI列つきの行＋右の詳細パネル）を土台に、モックのbeyondページへ配線する。
@@ -39,6 +41,8 @@ export function renderRealList(body: HTMLElement, context: PageContext): void {
     return
   }
   wireRealPageRows(area, context, body)
+  // 数字の列を横に送ったら、見出し・合計・ほかの行もそろえて送る（2026-10-27 一覧の作り直し）
+  syncKpiScroll(area, pageLife())
   wireRealDetailPanel(body, context)
   wireListControls(main, context)
   refreshListView(main, context)
@@ -72,7 +76,15 @@ function wireRealPageRows(area: HTMLElement, context: PageContext, body: HTMLEle
 
   // フォルダ見出しを選んでいるフォルダ名に合わせる（フォルダなしはその名前）
   const groupName = area.querySelector<HTMLElement>(FOLDERS_HOOK.groupName)
-  if (groupName !== null) groupName.textContent = context.folder?.name ?? 'フォルダなし'
+  if (groupName !== null) {
+    groupName.textContent = context.folder?.name ?? 'フォルダなし'
+    // フォルダ名の横にページの数（2026-10-27 一覧の作り直し・見本の「2ページ」）
+    groupName.parentElement?.querySelector('.pl-count')?.remove()
+    const count = document.createElement('span')
+    count.className = 'pl-count'
+    count.textContent = `${context.abTests.length}ページ`
+    groupName.after(count)
+  }
 
   const fragment = document.createDocumentFragment()
   for (const abTest of context.abTests) {
@@ -104,7 +116,7 @@ function buildPageRow(
   // 並び替え・絞り込み・KPI列の読み込みが、行と beyondページを対応づける目印。
   row.dataset['abTestUid'] = abTest.uid
   // 指示㉞: 行同士の境界が薄くて分かりづらいので、はっきりした仕切り線を足す。
-  row.style.borderBottom = '1px solid #E3E6EA'
+  // 線は見た目の決まりの側（folders-redesign-style.ts）。行に直接書くと暗い表示で白く光っていた（2026-10-27）
   const status = AD_STATUS_LABELS[abTest.ad_status] ?? abTest.ad_status
 
   const title = row.querySelector<HTMLElement>(FOLDERS_HOOK.pageTitle)
@@ -117,9 +129,12 @@ function buildPageRow(
   )) {
     node.textContent = status
   }
+  // 状態の札の色を決める印（準備中・配信中…・folders-redesign-style.ts）
+  row.querySelector<HTMLElement>(FOLDERS_HOOK.pageStatusKpi)?.setAttribute('data-ad-status', abTest.ad_status)
   const media = row.querySelector<HTMLElement>(FOLDERS_HOOK.pageMedia)
   if (media !== null) media.textContent = abTest.media?.name ?? '媒体未設定'
   applyRowCounts(row, counts)
+  applyRowThumbnail(row, counts?.thumbnail_url ?? null)
   clearRowMetrics(row)
 
   const item = row.querySelector<HTMLElement>('[data-testid="list-menu-item"]')

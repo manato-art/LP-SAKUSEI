@@ -591,6 +591,10 @@ export function updateDetailPanelForAbTest(body: HTMLElement, abTest: AbTest, co
   panel.dataset['abTestUid'] = abTest.uid
   panel.dataset['abTestTitle'] = abTest.title
   lastShownAbTestUid = abTest.uid
+  // 右に出しているページの行を淡い青にする（2026-10-27 一覧の作り直し・folders-redesign-style.ts）
+  for (const row of body.querySelectorAll<HTMLElement>(`${FOLDERS_HOOK.pageRowList} > [data-ab-test-uid]`)) {
+    row.toggleAttribute('data-pl-shown', row.dataset['abTestUid'] === abTest.uid)
+  }
 
   // ── ヘッダーのページ名（パネル外の見出し） ──
   const headerTitle = body.querySelector<HTMLElement>('.efy50tl4 .efy50tl3')

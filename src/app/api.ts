@@ -85,6 +85,8 @@ export interface RelationCounts {
   /** CVタグから成果が届いたことがあるか */
   has_conversion: boolean
   ab_test_uid: string | null
+  /** 行の左に出す画像（最初のステップの主な Version の最初の画像・無ければ null・古いサーバーは返さない） */
+  thumbnail_url?: string | null
 }
 
 export interface BulkTag {

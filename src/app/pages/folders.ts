@@ -39,6 +39,7 @@ import { openCreateFolder, openCreatePage } from './folders-create.ts'
 import { openFolderMenu } from '../panels/folder-menu.ts'
 import type { PageContext } from './folders-shared.ts'
 import { renderRealList } from './folders-page-list.ts'
+import { ensurePageListStyle, PAGE_LIST_ATTR } from './folders-redesign-style.ts'
 import { wireListControls } from './folders-list-controls.ts'
 import { folderHistoryUids, recordHistory, renderHistoryList } from './folders-history.ts'
 import { updateStarAppearance } from './folders-detail-panel.ts'
@@ -102,6 +103,9 @@ export async function renderFolders(
   // シェルが同じサイドバーを既に描いているため、空白の帯になってしまう。
   // エディタ（キャンバス）で同様の修正を行ったのと同じ手法で除去する。
   body.style.paddingLeft = '0'
+  // ページ一覧の見た目（2026-10-27 本人「こんな感じにリデザインしたい」・folders-redesign-style.ts）
+  ensurePageListStyle()
+  body.setAttribute(PAGE_LIST_ATTR, '')
   root.replaceChildren(body)
   container.append(root)
 
@@ -195,14 +199,19 @@ function renderTree(body: HTMLElement, context: PageContext): void {
   }
 
   const rerender = (): void => renderTree(body, context)
+  // 開いているフォルダの行を淡い青にする印（2026-10-27 一覧の作り直し・folders-redesign-style.ts）
+  const markCurrent = (row: HTMLElement, uid: string): HTMLElement => {
+    if (uid === context.folderUid) row.setAttribute('data-pl-current', '')
+    return row
+  }
   for (const folder of filtered) {
     const wrapper = document.createElement('div')
-    wrapper.append(folderRow(prototypeRow, folder, rerender))
+    wrapper.append(markCurrent(folderRow(prototypeRow, folder, rerender), folder.uid))
     rows.append(wrapper)
   }
   if (showUnfiled) {
     const wrapper = document.createElement('div')
-    wrapper.append(unfiledRow(prototypeRow))
+    wrapper.append(markCurrent(unfiledRow(prototypeRow), UNFILED_FOLDER_UID))
     rows.append(wrapper)
   }
 }

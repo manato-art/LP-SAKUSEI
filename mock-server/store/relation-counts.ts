@@ -10,6 +10,8 @@
  *   exit_popups_count / follow_popups_count / popups_count … 離脱防止・追従型・その合計
  *   redirect_pages_count  … そのページの中間ページ
  *   has_conversion        … CVタグから成果が届いたことがあるか（タグを貼ったかどうかは、このシステムからは分からない）
+ *   thumbnail_url         … 行の左に出す画像（2026-10-27 一覧の作り直し）。最初のステップの、いちばん配信割合の大きい Version の
+ *                           最初の画像（ヘッダー画像があればそれ）。無い・アドレスでない（data:）なら null
  */
 import type { State } from './types.ts'
 
@@ -23,6 +25,24 @@ export interface RelationCounts {
   redirect_pages_count: number
   has_conversion: boolean
   ab_test_uid: string | null
+  thumbnail_url: string | null
+}
+
+const HEADER_IMAGE = /<!--header-image:([^>]*?)-->/
+const IMG_SRC = /<img\b[^>]*?\bsrc="([^"]+)"/i
+
+/** 行の左に出す画像（無ければ null） */
+function pageThumbnail(state: State, abTestId: number): string | null {
+  const firstStep = state.articles
+    .filter((a) => a.ab_test_id === abTestId && !a.archived)
+    .reduce<State['articles'][number] | undefined>((first, a) => (first === undefined || a.id < first.id ? a : first), undefined)
+  if (firstStep === undefined) return null
+  const main = state.versions
+    .filter((v) => v.article_id === firstStep.id && !v.archived)
+    .reduce<State['versions'][number] | undefined>((best, v) => (best === undefined || v.distribution_ratio > best.distribution_ratio ? v : best), undefined)
+  if (main === undefined) return null
+  const src = (main.html.match(HEADER_IMAGE)?.[1] ?? main.html.match(IMG_SRC)?.[1] ?? '').trim().replace(/&amp;/g, '&')
+  return /^(\/|https?:\/\/)/.test(src) ? src : null
 }
 
 export function relationCountsFor(state: State, id: number): RelationCounts {
@@ -41,5 +61,6 @@ export function relationCountsFor(state: State, id: number): RelationCounts {
     redirect_pages_count: state.redirectPages.filter((p) => p.ab_test_id === id).length,
     has_conversion: abTest !== undefined && state.conversions.some((c) => c.ab_test_uid === abTest.uid),
     ab_test_uid: abTest?.uid ?? null,
+    thumbnail_url: pageThumbnail(state, id),
   }
 }

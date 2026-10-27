@@ -50,3 +50,24 @@ export function applyRowCounts(row: HTMLElement, counts: RelationCounts | null):
     )
   }
 }
+
+/** 行の左のしるし（ページのアイコン）の入れ物 */
+const ROW_ICON_BOX = '.ec7ecxf1'
+
+/**
+ * 行の左に、そのページの画像を小さく出す（2026-10-27 本人「こんな感じにリデザインしたい」・見本の画像）。
+ * 画像が無いページ・読めなかった画像は、今までのページのしるしのまま
+ */
+export function applyRowThumbnail(row: HTMLElement, url: string | null): void {
+  const box = row.querySelector<HTMLElement>(ROW_ICON_BOX)
+  if (box === null || url === null || url === '') return
+  const icon = [...box.children]
+  const img = document.createElement('img')
+  img.className = 'pl-thumb'
+  img.alt = ''
+  img.loading = 'lazy'
+  img.decoding = 'async'
+  img.src = url
+  img.addEventListener('error', () => box.replaceChildren(...icon), { once: true })
+  box.replaceChildren(img)
+}
