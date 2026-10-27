@@ -19,6 +19,7 @@ import bgColorHtml from '../fragments/ab_tests__UID__articles__article-settings-
 import { toast } from '../ui.ts'
 import { readLpVideo } from './nocode/lp-video.ts'
 import { paletteField } from './palette-field.ts'
+import { isVideoBackground } from '../master-style.ts'
 import { convertImageToWebP } from './webp-convert.ts'
 import { ensureWhiteBase, stripDarkThemeClasses } from '../white-base.ts'
 
@@ -348,19 +349,29 @@ function wireExtraControls(
   const stored = String(sheet[group.imageField] ?? '')
   if (stored !== '') holder.dataset['imageValue'] = stored
   const file = holder.querySelector<HTMLInputElement>(`input[type="file"][name="${group.imageField}"]`)
-  if (file === null) return
+  const zone = file?.parentElement
+  if (file === null || zone === null || zone === undefined) return
   file.accept = 'image/*,video/mp4,video/webm'
-  const hint = file.parentElement?.querySelector(':scope > div')
-  if (hint !== null && hint !== undefined) {
-    hint.textContent = 'クリックして画像か動画を選択するかファイルをドラッグ&ドロップしてください（動画は自動で再生・音なし・くり返し）'
+  const hint = zone.querySelector<HTMLElement>(':scope > div')
+  // 今入っている画像・動画を枠の中に小さく見せる（2026-10-27 本人「はい」＝今どれが入っているか画面に出なかった）
+  const show = (): void => {
+    const value = holder.dataset['imageValue'] ?? ''
+    showBackgroundPreview(zone, value)
+    if (hint !== null) {
+      hint.textContent =
+        value === ''
+          ? 'クリックして画像か動画を選択するかファイルをドラッグ&ドロップしてください（動画は自動で再生・音なし・くり返し）'
+          : 'クリックかドラッグ&ドロップで、別の画像か動画に変えられます（動画は自動で再生・音なし・くり返し）'
+    }
   }
-  file.addEventListener('change', () => {
-    const chosen = file.files?.[0]
-    if (chosen === undefined) return
+  show()
+
+  const use = (chosen: File): void => {
     if (chosen.type.startsWith('video/')) {
       void readLpVideo(chosen).then((url) => {
         if (url === null) return
         holder.dataset['imageValue'] = url
+        show()
         toast(`${group.label}の動画を読み込みました`)
       })
       return
@@ -372,9 +383,58 @@ function wireExtraControls(
         return
       }
       holder.dataset['imageValue'] = url
+      show()
       toast(`${group.label}の画像を読み込みました`)
     })
+  }
+  file.addEventListener('change', () => {
+    const chosen = file.files?.[0]
+    if (chosen !== undefined) use(chosen)
   })
+  // 採取した枠は見た目だけ（file 入力は画面の外）で、押しても落としても何も起きなかった。押す＝ファイルを選ぶ・落とす＝そのファイル
+  zone.style.cursor = 'pointer'
+  zone.addEventListener('click', (event) => {
+    if (event.target !== file) file.click()
+  })
+  zone.addEventListener('dragover', (event) => {
+    event.preventDefault()
+    zone.style.background = 'var(--sb-c-f5f5f5, #F5F5F5)'
+  })
+  zone.addEventListener('dragleave', () => {
+    zone.style.background = ''
+  })
+  zone.addEventListener('drop', (event) => {
+    event.preventDefault()
+    zone.style.background = ''
+    const chosen = event.dataTransfer?.files[0]
+    if (chosen !== undefined) use(chosen)
+  })
+}
+
+const PREVIEW_MARK = 'data-bg-preview'
+
+/** 背景の「画像」の枠の中に、今の画像・動画を小さく見せる（無ければ外す）。押す・落とすの邪魔をしない */
+function showBackgroundPreview(zone: HTMLElement, value: string): void {
+  zone.querySelector(`[${PREVIEW_MARK}]`)?.remove()
+  // 採取した枠は上下80pxの余白で文字を1行出す形。見本があるときは縦に並べ、余白を詰める
+  for (const [name, withPreview] of [['flex-direction', 'column'], ['gap', '8px'], ['padding', '16px 0']] as const) {
+    if (value === '') zone.style.removeProperty(name)
+    else zone.style.setProperty(name, withPreview)
+  }
+  if (value === '') return
+  const preview = document.createElement(isVideoBackground(value) ? 'video' : 'img')
+  preview.setAttribute(PREVIEW_MARK, '')
+  preview.setAttribute('src', value)
+  preview.setAttribute('alt', '今の背景')
+  if (preview.tagName === 'VIDEO') {
+    for (const name of ['muted', 'autoplay', 'loop', 'playsinline']) preview.setAttribute(name, '')
+    // 後から作った動画は、muted の属性だけでは音なしにならない（自動で再生されない）
+    ;(preview as HTMLVideoElement).muted = true
+  }
+  preview.style.cssText =
+    'display:block;max-width:240px;max-height:140px;object-fit:contain;border:1px solid var(--sb-c-dddddd, #DDDDDD);' +
+    'border-radius:4px;background:var(--sb-c-ffffff, #FFFFFF);pointer-events:none'
+  zone.prepend(preview)
 }
 
 // ── 色（文字色・枠線の色）──
