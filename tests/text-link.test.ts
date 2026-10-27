@@ -47,8 +47,17 @@ function fakeQuill(html: string) {
 }
 
 describe('リンクを設定を開いたときの状態', () => {
-  it('新しいリンクは「数える」から始まる', () => {
-    expect(textLinkState('', null)).toEqual({ url: '', tracking: true })
+  it('新しいリンクはチェックなし（数えない）から始まる（2026-10-27 本人「デフォルトではチェック外して」）', () => {
+    expect(textLinkState('', null)).toEqual({ url: '', tracking: false })
+  })
+
+  it('チェックの名前は「計測リンクにする」で、新しいリンクを開くとチェックは外れている', async () => {
+    const { openTextLinkDialog } = await import('../src/app/panels/text-link.ts')
+    void openTextLinkDialog(textLinkState('', null))
+    const track = document.querySelector<HTMLInputElement>('[data-text-link-track]')
+    expect(track?.checked).toBe(false)
+    expect(track?.closest('label')?.textContent).toContain('計測リンクにする')
+    expect(document.body.textContent).not.toContain('クリック数をレポートで数える')
   })
 
   it('数えるリンクを開くと、欄には目印を外したURLを出し、チェックは入っている', () => {

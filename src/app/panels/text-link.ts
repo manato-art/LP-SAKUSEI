@@ -2,10 +2,10 @@
  * 文字のリンク（右のプロパティ「書式」→ リンク）の「リンクを設定」（2026-09-25）。
  *
  * 以前は URL の欄だけで、付けたリンクには計測の目印が付かなかった（CLICK にも CV にも入らない）。
- * 目印を付けられる浮かぶツールバーは非表示なので、ここに「クリック数をレポートで数える」を置く。
+ * 目印を付けられる浮かぶツールバーは非表示なので、ここに「計測リンクにする」を置く。
  * 目印の付け方は他の入口と同じ（src/shared/link-html.ts・nocode/templates/kit.ts の linkAttrs）:
  *   http(s) などは URL に sb_tracking=true、電話は <a> の data-sb-tracking 属性、ページ内の # には付けない。
- * 新しいリンクは「数える」から始める（Widget の部品・リンク置換と同じ）。
+ * 新しいリンクはチェックなし（数えない）から始める（2026-10-27 本人。リンク置換と同じ）。
  */
 import { formCard } from '../dialog.ts'
 import { TRACKING_ATTRIBUTE, isTelHref, isTrackingLink, withTrackingParam } from '../../shared/link-html.ts'
@@ -28,7 +28,8 @@ export interface LinkQuill {
 
 /** いまのリンク（無ければ空）から、欄に出す URL とチェックの状態を作る */
 export function textLinkState(href: string, trackingAttribute: string | null): TextLinkState {
-  if (href === '') return { url: '', tracking: true }
+  // 新しいリンクはチェックなし（2026-10-27 本人「デフォルトではチェック外して」）
+  if (href === '') return { url: '', tracking: false }
   const url = isTelHref(href) || href.startsWith('#') ? href : withTrackingParam(href, false)
   return { url, tracking: isTrackingLink(href, trackingAttribute) }
 }
@@ -98,7 +99,8 @@ export async function openTextLinkDialog(initial: TextLinkState): Promise<TextLi
   trackRow.style.cssText = 'display:flex;gap:8px;align-items:flex-start;cursor:pointer'
   const trackText = document.createElement('span')
   const trackTitle = document.createElement('span')
-  trackTitle.textContent = 'クリック数をレポートで数える'
+  // 名前は本人指定（2026-10-27「クリック数をレポートで数える→計測リンクにする」）。下の説明はそのまま
+  trackTitle.textContent = '計測リンクにする'
   trackTitle.style.cssText = 'font-size:13px;color:var(--sb-c-1f2937, #1F2937)'
   const trackNote = document.createElement('span')
   trackNote.textContent = '申し込みボタンなどは入れておきます。押された数が CLICK に入り、そのあとの申し込みが CV に結びつきます。'

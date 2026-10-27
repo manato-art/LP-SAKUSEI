@@ -406,7 +406,7 @@ export function mountPropertiesPanel(quill: Quill): HTMLElement {
     if (r === null || r.length === 0) return
     const fmt = quill.getFormat(r.index, r.length)
     const current = readTextLink(quill, r, typeof fmt['link'] === 'string' ? fmt['link'] : '')
-    // 「クリック数をレポートで数える」つき（text-link.ts）。以前は URL だけで計測の目印が付かなかった
+    // 「計測リンクにする」つき（text-link.ts）。以前は URL だけで計測の目印が付かなかった
     void openTextLinkDialog(textLinkState(current.href, current.trackingAttribute)).then((state) => {
       if (state === null) return
       applyTextLink(quill, r, state)
