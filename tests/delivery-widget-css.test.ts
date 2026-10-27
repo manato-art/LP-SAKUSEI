@@ -70,7 +70,8 @@ async function createPage(html: string): Promise<{ abTestUid: string; articleUid
 function expectPageIsNotBroken(html: string): void {
   const headEnd = html.indexOf('</head>')
   // 配信の土台（白・中央寄せ・620px）はそのまま
-  expect(html).toContain('body{margin:0 auto;max-width:620px;')
+  // 幅は記事設定の余白込み（SBと同じ・2026-10-27）
+  expect(html).toContain('body{box-sizing:border-box;margin:0 auto;max-width:620px;')
   // SquadBeyond のプレビュー用CSS（背景グレー・編集画面用・記事設定の既定値）は出さない
   expect(html).not.toContain('background-color:#ececec')
   expect(html).not.toContain('.CodeMirror{')

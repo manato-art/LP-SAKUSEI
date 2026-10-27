@@ -200,6 +200,8 @@ export function mountStudio(host: StudioHost): void {
     ...(host.previewFrame === undefined ? {} : { previewFrame: host.previewFrame }),
     // 取り込んだ見本の行間は、LPの記事設定の行間（編集画面の本文に当たっている値・editor-layout.ts）
     articleLineHeight: host.libraryQuill?.root.style.lineHeight ?? '',
+    // LPの記事設定の左右の余白（公開LPは余白込みで620px＝見たまま画面の白い紙にも同じ余白・2026-10-27）
+    articlePadding: { left: host.libraryQuill?.root.style.paddingLeft ?? '', right: host.libraryQuill?.root.style.paddingRight ?? '' },
     ...(host.underlay === undefined ? {} : { underlay: host.underlay }),
     ...(host.underlayStyle === undefined ? {} : { underlayStyle: host.underlayStyle }),
   })

@@ -72,7 +72,8 @@ export function renderPreviewDocument(state: State, version: Version, options: P
     `<meta name="robots" content="noindex,nofollow">` +
     `<title>${title}</title>` +
     `<link rel="stylesheet" href="${LP_FONTS_URL}">` +
-    `<style>body{margin:0 auto;max-width:${DELIVERY_WIDTH}px;font-family:"Hiragino Sans",sans-serif;background:#fff}` +
+    // 幅は記事設定の余白込み（公開LP・SBと同じ・2026-10-27）
+    `<style>body{box-sizing:border-box;margin:0 auto;max-width:${DELIVERY_WIDTH}px;font-family:"Hiragino Sans",sans-serif;background:#fff}` +
     `${LP_BASE_CSS}${version.css}${styleCss}` +
     `.preview-banner{position:sticky;top:0;z-index:99999;background:#D32F2F;` +
     `padding:14px 20px;margin:0;display:flex;align-items:center;gap:10px;` +

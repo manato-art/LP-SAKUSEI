@@ -320,7 +320,8 @@ deliveryRouter.get('/lp/:uid', (req, res) => {
     robotsMeta +
     `<title>${escapeHtml(abTest.page_title || abTest.title)}</title>` +
     `<link rel="stylesheet" href="${LP_FONTS_URL}">` +
-    `<style>body{margin:0 auto;max-width:${DELIVERY_WIDTH}px;font-family:"Hiragino Sans",sans-serif;background:#fff}` +
+    // 幅は記事設定の余白込み（SBと同じ・2026-10-27 本人選択。以前は中身が620pxで、余白のぶんSBより40px広かった）
+    `<style>body{box-sizing:border-box;margin:0 auto;max-width:${DELIVERY_WIDTH}px;font-family:"Hiragino Sans",sans-serif;background:#fff}` +
     `${LP_BASE_CSS}${version.css}${styleCss}${buildAnimCss()}${lp.hasWidget ? WIDGET_BASE_CSS : ''}</style>` +
     externalWidgetLibs(lp.html) +
     headTags +

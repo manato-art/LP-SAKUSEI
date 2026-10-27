@@ -87,6 +87,8 @@ export interface VisualEditorOptions {
   readonly underlayStyle?: UnderlayStyle
   /** LPの記事設定の行間（取り込んだ見本の見たまま画面に使う・widget-preview-line-height.ts）。無ければ空文字 */
   readonly articleLineHeight?: string
+  /** LPの記事設定の左右の余白（LPの枠の白い紙の内側に同じ余白を取る＝公開LPと同じ中身の幅）。無ければ余白なし */
+  readonly articlePadding?: { readonly left: string; readonly right: string }
 }
 
 /** 見たまま画面の白い紙の影（灰色の地から浮いて見える） */
@@ -97,6 +99,16 @@ const PAPER_SHADOW = 'box-shadow:0 1px 2px rgba(16,24,40,.06),0 10px 28px rgba(1
  * LPの枠は、620pxの箱を白い紙にして地は透かす（地はWidget編集の地の色＝ダークでは暗い。ライトはどちらも白で今までと同じ）。
  * ポップアップの枠の地は配信の見え方そのもの（離脱防止＝LPにかぶせる暗い地・追従型＝後ろのLPの白）なので、ダークでも変えない。
  */
+/**
+ * LPの枠の白い紙の左右の余白（2026-10-27 本人選択「LP全体をSBと同じ幅に」）。公開LPは記事設定の余白込みで620px なので、
+ * 620px の紙の内側に同じ余白を取ると、中身の幅が公開LPと同じになる（以前は余白なし＝中身620px）。ポップアップの枠は取らない
+ */
+function sidePadding(frame: PreviewFrame, padding: VisualEditorOptions['articlePadding']): string {
+  if (frame !== 'lp' || padding === undefined) return ''
+  const px = (value: string): string => (/^\d+(?:\.\d+)?px$/.test(value) ? value : '0px')
+  return `;padding-left:${px(padding.left)};padding-right:${px(padding.right)}`
+}
+
 function frameStyle(frame: PreviewFrame): { backdrop: string; box: string } {
   if (frame === 'overlay') return { backdrop: '#999999', box: 'width:fit-content;max-width:500px;margin:24px auto' }
   if (frame === 'corner') return { backdrop: '#fff', box: 'width:fit-content;max-width:100%;margin:24px auto' }
@@ -560,7 +572,8 @@ export function buildVisualEditor(
   // ポップアップの中身は、配信と同じく中身の幅の箱（frameStyle）。
   // 文字は配信と同じ黒（ダークの html は color-scheme:dark なので、何もしないと継いだ文字が白くなり白い紙に消える）
   contentDiv.style.cssText =
-    `outline:none;min-height:100px;${frame.box};box-sizing:border-box;line-height:${previewLineHeight(target.html, options.articleLineHeight ?? '')};color:#000;color-scheme:light`
+    `outline:none;min-height:100px;${frame.box};box-sizing:border-box;line-height:${previewLineHeight(target.html, options.articleLineHeight ?? '')};color:#000;color-scheme:light` +
+    sidePadding(options.previewFrame ?? 'lp', options.articlePadding)
   contentDiv.innerHTML = target.html
   editorBody.append(contentDiv)
   const underlay =

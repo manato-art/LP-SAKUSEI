@@ -20,7 +20,8 @@ describe('ヒートマップに敷く自前配信のLP', () => {
   it('公開LPと同じ土台（配信幅620px・LPの共通CSS・Version の CSS・記事設定の CSS・フォント）で組む', () => {
     const doc = buildHeatmapLpDocument({ html: '<p>本文</p>', css: '.v{color:red}', styleCss: '.s{color:blue}' })
     expect(doc).toContain('<meta name="viewport" content="width=device-width, initial-scale=1">')
-    expect(doc).toContain('body{margin:0 auto;max-width:620px;')
+    // 幅は記事設定の余白込み（SBと同じ・2026-10-27）
+    expect(doc).toContain('body{box-sizing:border-box;margin:0 auto;max-width:620px;')
     expect(doc).toContain(`${LP_BASE_CSS}.v{color:red}.s{color:blue}`)
     expect(doc).toContain(`href="${LP_FONTS_URL}"`)
     expect(doc).toContain('<body><p>本文</p></body>')
