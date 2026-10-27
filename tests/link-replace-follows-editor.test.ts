@@ -5,77 +5,13 @@
  * 前のVersionの中身が消えていた。
  * あわせて指示⑪: 「計測機能付きリンクに変更」は最初はチェックなし（本人「入れる際に計測するかどうかを選ぶ。デフォルトは計測なし」）。
  */
-import { parseHTML } from 'linkedom'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
+import { settle, setupLinkReplacePanel } from './helpers/link-replace-panel.ts'
 
 const V1 = '<p><a href="https://example.test/a">一つ目</a></p><p><a href="https://example.test/b">二つ目</a></p>'
 const V2 = '<p><a href="https://example.test/v2">Version2のリンク</a></p>'
 
-interface Sent {
-  readonly method: string
-  readonly body: Record<string, unknown> | null
-}
-
-const settle = (ms = 10): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
-
-async function setup() {
-  vi.resetModules()
-  const { window } = parseHTML('<!doctype html><html><head></head><body><div id="root"><div class="ql-editor"></div></div></body></html>')
-  const g = globalThis as unknown as Record<string, unknown>
-  for (const key of ['document', 'window', 'Event', 'CustomEvent', 'HTMLElement', 'HTMLInputElement', 'Node']) {
-    g[key] = (window as unknown as Record<string, unknown>)[key]
-  }
-  // linkedom の input には checked が無い。属性で読み書きできるようにする
-  const inputProto = (window as unknown as { HTMLInputElement: { prototype: object } }).HTMLInputElement.prototype
-  Object.defineProperty(inputProto, 'checked', {
-    configurable: true,
-    get(this: Element) {
-      return this.hasAttribute('checked')
-    },
-    set(this: Element, on: boolean) {
-      if (on) this.setAttribute('checked', '')
-      else this.removeAttribute('checked')
-    },
-  })
-  const root = window.document.getElementById('root') as unknown as HTMLElement
-  const body = root.querySelector('.ql-editor') as HTMLElement
-  body.innerHTML = V1
-  const version = { current: 'V1' }
-  const sent: Sent[] = []
-  g['fetch'] = async (_url: string, init?: RequestInit) => {
-    const method = init?.method ?? 'GET'
-    const parsed = typeof init?.body === 'string' ? (JSON.parse(init.body) as Record<string, unknown>) : null
-    sent.push({ method, body: parsed })
-    if (method === 'POST') {
-      const indexes = parsed?.['indexes'] as number[]
-      return new Response(JSON.stringify({ html: parsed?.['html'], replaced_count: indexes.length, links: [] }), { status: 200 })
-    }
-    return new Response(JSON.stringify({ version_uid: version.current, links: [], redirect_pages: [], exit_popups: [] }), { status: 200 })
-  }
-  const mod = await import('../src/app/panels/link-replace.ts')
-  const panel = mod.mountLinkReplace(root, 'ARTICLE_X', () => version.current)
-  if (panel === null) throw new Error('パネルが出ない')
-  panel.classList.add('_open_x4j8w_84')
-  mod.reloadLinkReplace(root, panel)
-  await settle()
-
-  const rows = (): string[] => [...panel.querySelectorAll('[data-link-row]')].map((row) => row.textContent ?? '')
-  const pick = (index: number): void => {
-    panel.querySelector(`[data-link-row="${String(index)}"] input`)?.dispatchEvent(new window.Event('change'))
-  }
-  const typeUrl = (url: string): void => {
-    const input = panel.querySelector<HTMLInputElement>('._replaceLinkInput_id5w4_246 input')
-    if (input === null) throw new Error('入力欄が無い')
-    input.value = url
-    input.dispatchEvent(new window.Event('input'))
-  }
-  const replace = async (): Promise<void> => {
-    panel.querySelector('._btnReplace_id5w4_297')?.dispatchEvent(new window.Event('click'))
-    await settle()
-  }
-  const posts = (): Sent[] => sent.filter((s) => s.method === 'POST')
-  return { mod, root, body, panel, version, rows, pick, typeUrl, replace, posts }
-}
+const setup = () => setupLinkReplacePanel(V1)
 
 describe('リンク置換の一覧は、いまの本文とVersionに合わせる', () => {
   it('開いたままVersionを切り替えて置換を押しても、前のVersionへは書き込まない（一覧を今の本文に合わせ、選び直してもらう）', async () => {

@@ -33,9 +33,10 @@ import { EDITOR_CONTENT_SHOWN_EVENT } from './editor-change.ts'
 import {
   buildLinkReplaceRequest,
   EMPTY_LINKS_MESSAGE,
-  extractLinksFromHtml,
   filterLinks,
   isAllowedLinkUrl,
+  isTelHref,
+  listedLinks,
   sameLinks,
   selectableLinkIndexes,
   type LinkReplaceRequest,
@@ -43,6 +44,7 @@ import {
   type LinkTab,
   type LpLink,
   type ReplaceTargetType,
+  withTrackingParam,
 } from '../../shared/link-html.ts'
 
 /**
@@ -90,6 +92,7 @@ interface LinkRow {
   text: string
   is_tracking: boolean
   is_new_tab: boolean
+  in_widget?: boolean
 }
 
 export interface RedirectPageRow {
@@ -141,6 +144,7 @@ function toLpLink(row: LinkRow): LpLink {
     text: row.text,
     isTracking: row.is_tracking,
     isNewTab: row.is_new_tab,
+    inWidget: row.in_widget ?? false,
   }
 }
 
@@ -206,6 +210,8 @@ const INITIAL_STATE: PanelState = {
 const PANEL_STATE = new WeakMap<HTMLElement, PanelState>()
 /** どのVersionを対象にするか（editor.ts の現在Versionを都度読む） */
 const PANEL_VERSION_SOURCE = new WeakMap<HTMLElement, () => string>()
+/** パネルが見ているエディタ（行の「計測あり／なし」から本文を書き換えるのに使う） */
+const PANEL_ROOT = new WeakMap<HTMLElement, HTMLElement>()
 
 function stateOf(panel: HTMLElement): PanelState {
   return PANEL_STATE.get(panel) ?? INITIAL_STATE
@@ -241,6 +247,7 @@ export function mountLinkReplace(
 
   panel.setAttribute('data-clone-article-uid', articleUid)
   if (currentVersionUid !== undefined) PANEL_VERSION_SOURCE.set(panel, currentVersionUid)
+  PANEL_ROOT.set(panel, root)
 
   if (panel.getAttribute('data-clone-panel') !== 'link-replace') {
     panel.setAttribute('data-clone-panel', 'link-replace')
@@ -421,7 +428,7 @@ async function reload(root: HTMLElement, panel: HTMLElement): Promise<void> {
           ? []
           : body === null
             ? saved
-            : extractLinksFromHtml(body.innerHTML),
+            : listedLinks(body.innerHTML),
       selected: new Set(),
       versionUid: snapshot.version_uid,
       redirectPages: snapshot.redirect_pages,
@@ -448,7 +455,7 @@ function syncWithEditor(root: HTMLElement, panel: HTMLElement): boolean {
   if (state.tab !== 'version') return false
   const body = findLpBody(root)
   if (body === null) return false
-  const links = extractLinksFromHtml(body.innerHTML)
+  const links = listedLinks(body.innerHTML)
   const versionUid = PANEL_VERSION_SOURCE.get(panel)?.() ?? state.versionUid
   if (versionUid === state.versionUid && sameLinks(links, state.links)) return false
   patchState(panel, { links, versionUid, selected: new Set() })
@@ -522,6 +529,10 @@ function renderList(panel: HTMLElement): void {
         patchState(panel, { selected: next })
         renderList(panel)
       },
+      onTrackingToggle: (link) => {
+        const root = PANEL_ROOT.get(panel)
+        if (root !== undefined) void toggleTracking(root, panel, link)
+      },
     })
   }
   updateReplaceButton(panel)
@@ -584,6 +595,42 @@ async function applyReplacement(root: HTMLElement, panel: HTMLElement): Promise<
     toast((error as Error).message, 'error')
   }
   await reload(root, panel)
+}
+
+/**
+ * 行の「計測あり／計測なし」を押したとき、その1本だけ切り替える（行き先・別タブはそのまま・2026-10-27 指示⑭）。
+ * 置換と同じ道（POST link_replace）で、行き先は計測の印を外したURL・計測だけ反対にして送る。
+ * 置換の選択（行のチェック）は残す
+ */
+async function toggleTracking(root: HTMLElement, panel: HTMLElement, link: LpLink): Promise<void> {
+  const articleUid = panel.getAttribute('data-clone-article-uid') ?? ''
+  if (articleUid === '') return
+  // 一覧が今の本文とずれていたら送らない（別のリンクを書き換える）
+  if (syncWithEditor(root, panel)) {
+    toast('一覧を今のVersionの本文に合わせました。もう一度押してください', 'error')
+    return
+  }
+  const selected = stateOf(panel).selected
+  const body = findLpBody(root)
+  try {
+    const result = await send(articleUid, {
+      version_uid: stateOf(panel).versionUid,
+      indexes: [link.index],
+      target_type: 'free',
+      url: isTelHref(link.href) ? link.href.trim() : withTrackingParam(link.href.trim(), false),
+      redirect_page_uid: '',
+      tracking: !link.isTracking,
+      new_tab: link.isNewTab,
+      ...(body === null ? {} : { html: body.innerHTML }),
+    })
+    if (body !== null) body.innerHTML = result.html
+    toast(link.isTracking ? '計測なしにしました' : '計測ありにしました')
+  } catch (error) {
+    toast((error as Error).message, 'error')
+  }
+  await reload(root, panel)
+  patchState(panel, { selected: new Set([...selected].filter((index) => stateOf(panel).links.some((l) => l.index === index))) })
+  renderList(panel)
 }
 
 function send(articleUid: string, request: LinkReplacePayload): Promise<LinkReplaceResult> {

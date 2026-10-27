@@ -59,11 +59,12 @@ export function injectCardSeamStyles(): void {
       max-width: 640px !important;
       /* 記事設定の「Version背景設定」があれば --lp-page-bg に入る（指示179） */
       background: var(--lp-page-bg, #fff) !important;
-      border: 1px solid #e5e5ea !important;
+      /* LP内背景に画像・動画を敷いているあいだは枠線と影を消す（editor-bg-layers.ts・指示⑯） */
+      border: 1px solid var(--lp-page-frame, #e5e5ea) !important;
       border-radius: 4px !important;
       min-height: 400px !important;
       padding: 24px !important;
-      box-shadow: 0 1px 4px rgba(0,0,0,.04) !important;
+      box-shadow: var(--lp-page-shadow, 0 1px 4px rgba(0,0,0,.04)) !important;
     }
     /* ヘッダ画像の角丸も上部を外す */
     [class*="_articleHeaderPhoto_"] {

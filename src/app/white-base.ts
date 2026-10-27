@@ -466,6 +466,11 @@ const OVERRIDES = /* css */ `
 [data-clone-panel-host="history"] ._radioControl_10frc_1 input[type="radio"] {
   accent-color: rgb(255, 164, 0);
 }
+/* 選んでいないラジオの丸（採取物は暗い画面用で「白い丸・枠なし」。白い画面に溶けて見えなかった・2026-10-27 指示⑮） */
+._radioControl_10frc_1 input:not(:checked) + label::before {
+  border: 1px solid #b0b0b0;
+  box-sizing: border-box;
+}
 
 /* ---- MUI Select の白文字（レポートの絞り込み） ----
  * 採取元がダークテーマなので Select の文字色が white のまま残っており、

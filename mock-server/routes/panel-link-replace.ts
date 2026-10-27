@@ -22,8 +22,8 @@ import { appendArticleHistory, articleKey, setArticleHistoryState } from '../sto
 import { getState, setState } from '../store/store.ts'
 import type { Article, ExitPopup, RedirectPage, State, Version } from '../store/types.ts'
 import {
-  extractLinksFromHtml,
   isAllowedLinkUrl,
+  listedLinks,
   pickReplacementUrl,
   replaceLinksInHtml,
   replaceableIndexes,
@@ -56,6 +56,7 @@ function serializeLink(link: LpLink): Record<string, unknown> {
     text: link.text,
     is_tracking: link.isTracking,
     is_new_tab: link.isNewTab,
+    in_widget: link.inWidget,
   }
 }
 
@@ -95,7 +96,8 @@ linkReplaceRouter.get('/articles/:uid/link_replace', (req, res) => {
   const abTestId = found.article.ab_test_id
   res.json({
     version_uid: found.version?.uid ?? '',
-    links: found.version === undefined ? [] : extractLinksFromHtml(found.version.html).map(serializeLink),
+    // 行き先の無いリンク（# だけ等）は出さない・番号は本文の出現順のまま（2026-10-27 指示⑫）
+    links: found.version === undefined ? [] : listedLinks(found.version.html).map(serializeLink),
     redirect_pages: state.redirectPages
       .filter((p) => p.ab_test_id === abTestId)
       .map(serializeRedirectPage),
@@ -175,7 +177,7 @@ linkReplaceRouter.post('/articles/:uid/link_replace', (req, res) => {
     version: serializeVersion(updated),
     html: after,
     replaced_count: indexes.length,
-    links: extractLinksFromHtml(after).map(serializeLink),
+    links: listedLinks(after).map(serializeLink),
   })
 })
 

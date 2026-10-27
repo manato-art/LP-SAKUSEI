@@ -39,6 +39,8 @@ export interface LpLink {
   text: string
   isTracking: boolean
   isNewTab: boolean
+  /** Widget（section.sb-widget-block）の中のリンクか（一覧で「Widget」と出す・2026-10-27 指示⑬） */
+  inWidget: boolean
 }
 
 export interface LinkReplacement {
@@ -225,8 +227,55 @@ function innerTextAfter(html: string, from: number): string {
     .trim()
 }
 
+const WIDGET_CLASS = 'sb-widget-block'
+
+/**
+ * Widget の枠（エディタの `<section class="sb-widget-block">`〜対の `</section>`）の範囲。
+ * 枠の中にも section があるので、入れ子を数えて対を探す。
+ */
+function widgetRanges(html: string): Array<readonly [number, number]> {
+  const lower = html.toLowerCase()
+  const nextSection = (from: number): number => {
+    let i = lower.indexOf('<section', from)
+    while (i >= 0 && !isTagBoundary(lower.charAt(i + 8))) i = lower.indexOf('<section', i + 8)
+    return i
+  }
+  const out: Array<readonly [number, number]> = []
+  let start = nextSection(0)
+  while (start >= 0) {
+    const end = findTagEnd(html, start + 8)
+    if (end < 0) break
+    const classes = (attributeValue(parseAttributes(html.slice(start + 8, end - 1)), 'class') ?? '').split(/\s+/)
+    if (!classes.includes(WIDGET_CLASS)) {
+      start = nextSection(end)
+      continue
+    }
+    let depth = 1
+    let at = end
+    while (depth > 0) {
+      const open = nextSection(at)
+      const close = lower.indexOf('</section', at)
+      if (close < 0) {
+        at = html.length
+        break
+      }
+      if (open >= 0 && open < close) {
+        depth += 1
+        at = open + 8
+      } else {
+        depth -= 1
+        at = close + 9
+      }
+    }
+    out.push([start, at])
+    start = nextSection(at)
+  }
+  return out
+}
+
 /** 本文HTMLからリンクを出現順に抽出する */
 export function extractLinksFromHtml(html: string): LpLink[] {
+  const widgets = widgetRanges(html)
   return findAnchorOpenTags(html).map((tag, index) => {
     const attrs = parseAttributes(tag.attrs)
     const href = attributeValue(attrs, 'href') ?? ''
@@ -236,8 +285,29 @@ export function extractLinksFromHtml(html: string): LpLink[] {
       text: innerTextAfter(html, tag.end),
       isTracking: isTrackingLink(href, attributeValue(attrs, TRACKING_ATTRIBUTE)),
       isNewTab: (attributeValue(attrs, 'target') ?? '').toLowerCase() === '_blank',
+      inWidget: widgets.some(([from, to]) => tag.start > from && tag.start < to),
     }
   })
+}
+
+/**
+ * 行き先のあるリンクか。`#` だけ・空・`javascript:` は、Widget のボタンなどが押す目印に使う物で、
+ * 置き換え先にならない（2026-10-27 指示⑫ 本人「リンクが入っていないものも含まれてしまっている」）。
+ * ページ内の移動（`#faq` など）は行き先があるので残す。
+ */
+export function hasLinkTarget(link: Pick<LpLink, 'href'>): boolean {
+  const href = link.href.trim()
+  return href !== '' && href !== '#' && !/^javascript:/i.test(href)
+}
+
+/** リンク置換の一覧に出すリンク（行き先のある物だけ。番号は本文の出現順のまま） */
+export function listedLinks(html: string): LpLink[] {
+  return extractLinksFromHtml(html).filter(hasLinkTarget)
+}
+
+/** ページ内の移動（`#faq` など）か。計測の印は付けられない */
+export function isInPageHref(href: string): boolean {
+  return href.trim().startsWith('#')
 }
 
 /** 2つの一覧が同じリンクを同じ順に持つか（一覧が本文とずれていないかを見る） */
@@ -246,12 +316,15 @@ export function sameLinks(a: readonly LpLink[], b: readonly LpLink[]): boolean {
     a.length === b.length &&
     a.every((link, i) => {
       const other = b[i]
+      // 番号も見る（一覧に出さないリンクが前に増えると、同じリンクでも番号がずれる）
       return (
         other !== undefined &&
+        link.index === other.index &&
         link.href === other.href &&
         link.text === other.text &&
         link.isTracking === other.isTracking &&
-        link.isNewTab === other.isNewTab
+        link.isNewTab === other.isNewTab &&
+        link.inWidget === other.inWidget
       )
     })
   )

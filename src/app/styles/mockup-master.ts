@@ -282,11 +282,12 @@ const MOCKUP_CSS = `
        既定は白で固定する＝LPそのものはユーザーが作った見た目なので、
        ダークモードでも色を変えない（2026-09-13）。 */
     background: var(--lp-page-bg, #ffffff) !important;
-    border: 1px solid var(--border) !important;
+    /* LP内背景に画像・動画を敷いているあいだは枠線と影を消す（editor-bg-layers.ts・指示⑯） */
+    border: 1px solid var(--lp-page-frame, var(--border)) !important;
     border-radius: 4px !important;
     min-height: 400px !important;
     padding: 24px !important;
-    box-shadow: 0 1px 4px rgba(0,0,0,.04) !important;
+    box-shadow: var(--lp-page-shadow, 0 1px 4px rgba(0,0,0,.04)) !important;
   }
 
   /* 指示172: ヘッダー画像エリアを右のアイコンレール(68px)上の空白まで右へ広げる。

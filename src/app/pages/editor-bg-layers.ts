@@ -75,10 +75,16 @@ export function applyEditorBgLayers(quillRoot: HTMLElement, sheet: MasterStyleSh
   innerObserver = null
   if (sheet.inner_background_image === '') {
     removeLayer(base, 'inner')
+    base.style.removeProperty('--lp-page-frame')
+    base.style.removeProperty('--lp-page-shadow')
     return
   }
   // 本文の白い地（--lp-page-bg）を外して、後ろの層が見えるように
   base.style.setProperty('--lp-page-bg', 'transparent')
+  // 本文の箱の枠線と影も消す。画像は本文の幅で画面いっぱいに敷くので、箱の上下の線が画像の上に
+  // 白い線として浮いていた（2026-10-27 指示⑯）
+  base.style.setProperty('--lp-page-frame', 'transparent')
+  base.style.setProperty('--lp-page-shadow', 'none')
   const src = sheet.inner_background_image
   const layer = ensureLayer(base, 'inner', src)
   const fit = (): void => {

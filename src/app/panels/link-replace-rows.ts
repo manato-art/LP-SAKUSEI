@@ -9,11 +9,36 @@
  * - 「離脱防止ポップアップリンク」タブは、ポップアップの一覧と「開いて直す」を出す
  *   （ポップアップの中身は下書きと本番に分かれているので、中身の編集画面で直す）
  */
-import type { LpLink } from '../../shared/link-html.ts'
+import { isInPageHref, type LpLink } from '../../shared/link-html.ts'
 
 export interface RowsDeps {
   readonly selected: ReadonlySet<number>
   readonly onToggle: (index: number) => void
+  /** 行の「計測あり／計測なし」を押した（その1本だけ切り替える・2026-10-27 指示⑭） */
+  readonly onTrackingToggle?: (link: LpLink) => void
+}
+
+const PILL = 'flex-shrink:0;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:700;line-height:1.6'
+
+/**
+ * 計測あり／計測なしの札。押すとその1本だけ切り替える（指示⑭ 本人「ここで計測ありなしを変更したい」）。
+ * 行は label なので、押しても行のチェック（置換の選択）が動かないよう既定の動きを止める
+ */
+function trackingToggle(link: LpLink, onToggle: (link: LpLink) => void): HTMLButtonElement {
+  const button = document.createElement('button')
+  button.type = 'button'
+  button.setAttribute('data-link-tracking-toggle', link.isTracking ? 'on' : 'off')
+  button.textContent = link.isTracking ? '計測あり' : '計測なし'
+  button.title = link.isTracking ? '押すと計測なしにします' : '押すと計測ありにします'
+  button.style.cssText = link.isTracking
+    ? `${PILL};border:1px solid transparent;background:#E8F4FF;color:var(--sb-accent, #0091FF);cursor:pointer`
+    : `${PILL};border:1px solid var(--sb-c-cccccc, #CCCCCC);background:#FFFFFF;color:var(--sb-c-666666, #666666);cursor:pointer`
+  button.addEventListener('click', (event) => {
+    event.preventDefault()
+    event.stopPropagation()
+    onToggle(link)
+  })
+  return button
 }
 
 export function renderLinkRows(host: HTMLElement, links: readonly LpLink[], deps: RowsDeps): void {
@@ -33,16 +58,27 @@ export function renderLinkRows(host: HTMLElement, links: readonly LpLink[], deps
       const text = document.createElement('div')
       text.textContent = link.text === '' ? '（文字のないリンク・画像など）' : link.text
       text.style.cssText = 'font-weight:700;overflow-wrap:anywhere'
+      // Widget の中のリンクは分かるように印を付ける（2026-10-27 指示⑬）
+      if (link.inWidget) {
+        const tag = document.createElement('span')
+        tag.setAttribute('data-link-widget', '')
+        tag.textContent = 'Widget'
+        tag.style.cssText =
+          'display:inline-block;margin-right:6px;padding:0 6px;border-radius:4px;background:var(--sb-c-eeeeee, #EEEEEE);color:var(--sb-c-555555, #555555);font-size:10px;font-weight:700;line-height:1.7;vertical-align:1px'
+        text.prepend(tag)
+      }
       const href = document.createElement('div')
       href.textContent = link.href === '' ? '（行き先なし）' : link.href
       href.style.cssText = 'color:var(--sb-c-8a8a8e, #8A8A8E);overflow-wrap:anywhere'
       body.append(text, href)
       row.append(box, body)
-      if (link.isTracking) {
+      // ページ内の移動（#faq）は計測の印を付けられないので札を出さない
+      if (deps.onTrackingToggle !== undefined && !isInPageHref(link.href)) {
+        row.append(trackingToggle(link, deps.onTrackingToggle))
+      } else if (link.isTracking) {
         const pill = document.createElement('span')
         pill.textContent = '計測あり'
-        pill.style.cssText =
-          'flex-shrink:0;padding:1px 8px;border-radius:999px;background:#E8F4FF;color:var(--sb-accent, #0091FF);font-size:11px;font-weight:700'
+        pill.style.cssText = `${PILL};background:#E8F4FF;color:var(--sb-accent, #0091FF)`
         row.append(pill)
       }
       return row
