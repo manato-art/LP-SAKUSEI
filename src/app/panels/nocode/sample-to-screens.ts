@@ -28,6 +28,9 @@ function removeScreensScript(holder: Element): void {
   if (next !== null && next.tagName.toUpperCase() === 'SCRIPT' && (next.textContent ?? '').includes('data-nc-screens')) next.remove()
 }
 
+/** 画面の枠に見本自身の class がある（画面の枠だけの .nc-screen ではない） */
+const ownsLook = (screen: Element): boolean => Array.from(screen.classList).some((name) => name !== 'nc-screen')
+
 function screensIn(holder: Element): Element[] {
   return Array.from(holder.children).filter((child) => child.getAttribute('data-nc-screen') !== null)
 }
@@ -55,7 +58,19 @@ export function splitSampleScreens(html: string, parse: (html: string) => Elemen
     // 以前は入れ物ごと外していて、分けた画面のCSSが何も効かなかった（2026-09-24 本人「バグってるよ」）
     box.removeAttribute('data-nc-screens')
     box.removeAttribute('data-nc-transition')
-    box.replaceChildren(...Array.from(keep.childNodes))
+    for (const child of Array.from(box.children)) {
+      if (child.getAttribute('data-nc-screen') === null) continue
+      if (child !== keep) {
+        child.remove()
+      } else if (ownsLook(child)) {
+        // 画面が見本の要素そのもの（取り込んだSBの見本を分けたもの・tools/sb-widgets/screens/js-steps.ts）は、
+        // 要素ごと残す（見本のCSSはその要素の class に効く）。画面の印だけ外す
+        child.classList.remove('nc-screen')
+        for (const name of ['data-nc-screen', 'data-nc-name', 'hidden']) child.removeAttribute(name)
+      } else {
+        child.replaceWith(...Array.from(child.childNodes))
+      }
+    }
     for (const el of Array.from(copy.querySelectorAll('[data-nc-go]'))) {
       const to = ids.indexOf(el.getAttribute('data-nc-go') ?? '')
       if (to < 0) el.removeAttribute('data-nc-go')

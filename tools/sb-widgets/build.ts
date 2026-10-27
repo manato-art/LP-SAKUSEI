@@ -19,12 +19,14 @@
  * （SBの見本がもともと使う仮の書き方と同じ扱い＝Widget編集で「リンク先が仮」と知らせる・link-placeholder.ts）。
  * 他の会社・個人の置き場を直接読む見本（4571・2549・2470）は、その読み込みを外す（2026-10-27 本人選択・下の THIRD_PARTY_*）。
  * 1問ずつ別ページへ移る前提の見本（8本）は、画面①②③に分けた形にする（2026-10-27 本人「今まで通り分けるのが理想」・screens/・9月と同じ作り変え）。
+ * スクリプトで1問ずつ出していく見本のうち、答えて進むだけの15本も画面①②③に分ける（2026-10-27 本人選択・screens/js-steps.ts）。
  */
 import { createHash } from 'node:crypto'
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { convertAccordionLink } from './screens/accordion-link.ts'
+import { convertJsSteps } from './screens/js-steps.ts'
 import { convertMultiQuestions } from './screens/multi-questions.ts'
 import { convertOnePerWidget } from './screens/one-per-widget.ts'
 import { convertQuestionLink } from './screens/question-link.ts'
@@ -130,7 +132,7 @@ const withoutThirdParty = (text: string): string =>
 const SCREEN_CONVERTERS = [convertQuestionLink, convertOnePerWidget, convertAccordionLink, convertQuizBox, convertMultiQuestions] as const
 const screened: number[] = []
 const intoScreens = (id: number, html: string): string => {
-  const out = SCREEN_CONVERTERS.reduce((text, convert) => convert(text), html)
+  const out = convertJsSteps(id, SCREEN_CONVERTERS.reduce((text, convert) => convert(text), html))
   if (out !== html) screened.push(id)
   return out
 }

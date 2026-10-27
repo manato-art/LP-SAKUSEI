@@ -14,6 +14,7 @@ import { seedSbWidgetMedia, SB_WIDGET_MEDIA_DIR } from '../mock-server/lib/sb-wi
 import { checkCreatorAccess } from '../mock-server/lib/creator-access.ts'
 import { getState } from '../mock-server/store/store.ts'
 import { startTestServer, type TestServer } from './helpers/server.ts'
+import { JS_STEP_IDS } from '../tools/sb-widgets/screens/js-steps.ts'
 
 const uploads = mkdtempSync(join(tmpdir(), 'lp-sakusei-sb-widgets-'))
 let server: TestServer
@@ -94,8 +95,10 @@ describe('分類と中身を配る', () => {
     const all: Part[] = []
     for (const category of json.categories) all.push(...(await get<{ parts: Part[] }>(`/sb_widgets/${category.id}`)).json.parts)
     const screened = all.filter((part) => part.html.includes('data-nc-screens')).map((part) => part.id).sort((a, b) => a - b)
-    expect(screened).toEqual([8690, 9575, 9577, 10150, 15296, 19424, 20020, 20021])
-    for (const id of screened) {
+    // 9月と同じ作り変えの8本＋スクリプトで1問ずつ出す見本のうち答えて進むだけの15本（2026-10-27 本人選択・tests/sb-widgets-js-steps.test.ts）
+    const septEight = [8690, 9575, 9577, 10150, 15296, 19424, 20020, 20021]
+    expect(screened).toEqual([...septEight, ...JS_STEP_IDS].sort((a, b) => a - b))
+    for (const id of septEight) {
       const part = all.find((p) => p.id === id)
       // 画面は2つ以上。最初の画面だけが見え、ほかは隠れている
       const screens = [...(part?.html ?? '').matchAll(/<div class="nc-screen" data-nc-screen="s\d+"[^>]*>/g)].map((m) => m[0])

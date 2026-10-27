@@ -215,8 +215,11 @@ export function wrapWidget(parts: {
   )
 }
 
-/** 型で作ったWidgetの外側（型の名前・このWidgetの名前） */
-const ROOT_UID = /<div class="nc nc-[a-z]+ (nc-[a-z0-9]{8})" data-nocode="/
+/**
+ * 型で作ったWidgetの外側（型の名前・このWidgetの名前）。名前のあとに元の class が続くこともある
+ * （取り込んだSBの見本を画面①②③に分けたとき、問いを並べていた親をそのまま入れ物にする・tools/sb-widgets/screens/js-steps.ts）
+ */
+const ROOT_UID = /<div class="nc nc-[a-z]+ (nc-[a-z0-9]{8})(?: [^"]*)?" data-nocode="/
 
 /**
  * 型で作ったWidgetの名前（CSSのクラス）を付け直す。型で作っていないWidgetはそのまま返す。

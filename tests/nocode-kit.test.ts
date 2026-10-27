@@ -151,6 +151,15 @@ describe('作成したWidgetから入れるときの名前の付け直し', () =
     expect(next).toContain('class="nc nc-cta nc-zzzz9999"')
   })
 
+  it('名前のあとに元の class が続く入れ物（画面に分けた取り込んだ見本）も付け直す（2026-10-27）', () => {
+    const html =
+      '<style>.nc-abcd1234>[data-nc-screen][hidden]{display:none!important}</style>' +
+      '<div class="widget-container"><div class="nc nc-sample nc-abcd1234 widget-wrapper" data-nocode="sample" data-nc-screens="">x</div></div>'
+    const next = rekeyUid(html, 'nc-zzzz9999')
+    expect(next).not.toContain('nc-abcd1234')
+    expect(next).toContain('class="nc nc-sample nc-zzzz9999 widget-wrapper"')
+  })
+
   it('型で作っていないWidgetはそのまま', () => {
     const html = '<div class="faq nc-abcd1234">x</div>'
     expect(rekeyUid(html, 'nc-zzzz9999')).toBe(html)

@@ -176,7 +176,8 @@ export function wrapHtmlAsBuilder(
 
 /** 見本の画面の入れ物の開きタグと、その切り替わり方（builder の transition と同じ3つ・属性の順番は問わない） */
 const SCREENS_HOLDER_TAG = /<[a-z][a-z0-9]*\b[^>]*\bdata-nc-screens\b[^>]*>/i
-const SAMPLE_TRANSITION = /\bdata-nc-transition="(none|fade|slide)"/
+// 下に積み重ねる（stack）も引き継ぐ（2026-10-27・取り込んだSBの見本を画面に分けたもの＝前の問いが残る出方）
+const SAMPLE_TRANSITION = /\bdata-nc-transition="(none|fade|slide|stack)"/
 
 const STYLE_BLOCK = /<style\b[^>]*>[\s\S]*?<\/style\s*>/gi
 
