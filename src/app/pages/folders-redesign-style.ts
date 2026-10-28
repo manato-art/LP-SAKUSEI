@@ -131,7 +131,7 @@ ${R} .en4zj403 button{height:34px !important;border:1px solid ${LINE} !important
 /* 「更新順」の右の ←→（採取物のまま・押しても何も起きない・本人「機能していないなら消して」2026-10-28） */
 ${R} .en4zj403 > .css-2f4ijs{display:none !important}
 /* フォルダの合計（列の数字の合計） */
-${R} .en4zj401{font-size:13px !important;font-weight:700;color:${SUB} !important;text-align:center}
+${R} .en4zj401{font-size:13px !important;font-weight:700;color:${SUB} !important;text-align:center;white-space:nowrap;font-variant-numeric:tabular-nums}
 /* 表の見出し */
 ${R} .efy50tl8, ${R} .efy50tl8 > div, ${R} .el51yfs3{background:#F7F8FA !important}
 ${R} .efy50tl8{height:40px !important;padding-left:${KPI_LEFT}px !important;border-bottom:1px solid ${LINE} !important;align-items:center}

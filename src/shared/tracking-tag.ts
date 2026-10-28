@@ -7,7 +7,7 @@
  *
  * 収集するもの:
  *   pv      : 表示ごとに1（着地URLの広告パラメータ params を添える）
- *   click   : 「計測機能付きリンク」(`sb_tracking=true`)のクリック（同上）
+ *   click   : 「計測機能付きリンク」(`sb_tracking=true`)のクリック（同上）。1回の表示につき1回まで（2026-10-28）
  *   heatmap : ページを100バンドに割った 到達 / 滞在(ms) / 離脱位置 / クリック座標 /
  *             画面1枚ぶんの幅(fv) / 最初の計測リンクの位置(offer) /
  *             着地URLの広告パラメータ(params・utm_* のみ)
@@ -77,6 +77,10 @@ export function buildTrackingScriptBody(endpoint: string, versionUid?: string): 
      背景に使うのは見た目だけなので origin+pathname で足りる。 */
   post(withVid({event:'pv',u:location.origin+location.pathname,params:PRM},VID));
 
+  /* 計測リンクのクリックは1回の表示につき1回まで（何度押しても、別の計測リンクを押しても1回）。
+     CTR（Click÷PV）は見た人のうち押した割合なので、Click が PV を超えないように（2026-10-28 本人
+     「3人がクリックして、8人が購入するってことになってる」＝PV 3・Click 8 だった） */
+  var CLICKED=false;
   document.addEventListener('click',function(e){
     var a=e.target&&e.target.closest&&e.target.closest('a');
     if(!a)return;
@@ -84,7 +88,7 @@ export function buildTrackingScriptBody(endpoint: string, versionUid?: string): 
     var t=/^tel:/i.test(h)?(a.getAttribute('data-sb-'+'tracking')==='true')
                           :/[?&]sb_tracking=true(?:[&#]|$)/.test(h);
     /* 押したリンクに付いた目印（遷移先に届くのと同じ値）を優先する */
-    if(t){var q=/[?&]squadbeyond_uid=([^&#]+)/.exec(h);post(withVid({event:'click',params:PRM},q?decodeURIComponent(q[1]):VID));}
+    if(t&&!CLICKED){CLICKED=true;var q=/[?&]squadbeyond_uid=([^&#]+)/.exec(h);post(withVid({event:'click',params:PRM},q?decodeURIComponent(q[1]):VID));}
   },true);
 
   var reach=new Array(B).fill(0),dwell=new Array(B).fill(0),clicks=[];
