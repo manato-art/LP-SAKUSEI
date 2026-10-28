@@ -32,6 +32,7 @@ import { cleanupDropdownHost, findLpBody } from './history.ts'
 import { EDITOR_CONTENT_SHOWN_EVENT } from './editor-change.ts'
 import { ensureLinkReplaceStyle, LR_ICONS } from './link-replace-style.ts'
 import { mediaElementsByIndex, mediaThumb } from './link-replace-thumb.ts'
+import { jumpToLink, linkElementsByIndex } from './link-replace-jump.ts'
 import { wireOutsideClose } from './panel-outside-close.ts'
 import {
   buildLinkReplaceRequest,
@@ -569,6 +570,15 @@ function renderList(panel: HTMLElement): void {
       onTrackingToggle: (link) => {
         const root = PANEL_ROOT.get(panel)
         if (root !== undefined) void toggleTracking(root, panel, link)
+      },
+      // 行を押すと本文のその場所へ移る（2026-10-28 指示36・link-replace-jump.ts）
+      onJump: (link) => {
+        const target = body === null ? undefined : linkElementsByIndex(body, extractLinksFromHtml(body.innerHTML)).get(link.index)
+        if (target === undefined) {
+          toast('本文の中でこのリンクが見つかりませんでした', 'error')
+          return
+        }
+        jumpToLink(target)
       },
     })
   }

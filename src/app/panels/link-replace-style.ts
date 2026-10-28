@@ -57,6 +57,8 @@ ${S} ._targetLinkLists_id5w4_134 > .lr-row{flex:none}
 ${S} .lr-row{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid #E8EAED;border-radius:12px;background:#FFFFFF;cursor:pointer}
 ${S} .lr-row:hover{border-color:#D1D5DB}
 ${S} .lr-row__check{width:18px;height:18px;flex-shrink:0;margin:0;cursor:pointer;accent-color:${ORANGE}}
+${S} .lr-row__pick{display:flex;align-items:center;justify-content:center;flex-shrink:0;align-self:stretch;margin:-12px 0 -12px -14px;padding:0 4px 0 14px;cursor:pointer}
+${S} .lr-row:focus-visible{outline:2px solid ${ORANGE};outline-offset:2px}
 ${S} .lr-row__body{flex:1;min-width:0}
 ${S} .lr-thumb{width:44px;height:44px;flex-shrink:0;border-radius:8px;border:1px solid #E8EAED;background:#F1F2F4}
 ${S} .lr-row__title{font-size:14px;font-weight:700;line-height:1.5;color:#1F2937;overflow-wrap:anywhere}

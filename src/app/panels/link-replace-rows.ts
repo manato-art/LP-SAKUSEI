@@ -19,6 +19,8 @@ export interface RowsDeps {
   readonly onTrackingToggle?: (link: LpLink) => void
   /** 画像・動画の行の小さなサムネ（無ければ出さない・2026-10-27 指示㉗・link-replace-thumb.ts） */
   readonly thumbnail?: (link: LpLink) => HTMLElement | null
+  /** 行（チェックと計測の札の外）を押した＝本文のそのリンクの場所へ移る（2026-10-28 指示36・link-replace-jump.ts） */
+  readonly onJump?: (link: LpLink) => void
 }
 
 /** 文字の無いリンクの行に出す言葉 */
@@ -39,7 +41,7 @@ function tag(label: string, attr: string, value = ''): HTMLElement {
 
 /**
  * 計測あり／計測なしの札。押すとその1本だけ切り替える（指示⑭ 本人「ここで計測ありなしを変更したい」）。
- * 行は label なので、押しても行のチェック（置換の選択）が動かないよう既定の動きを止める
+ * 押しても行の「その場所へ移る」が動かないよう、行へ伝えない
  */
 function trackingToggle(link: LpLink, onToggle: (link: LpLink) => void): HTMLButtonElement {
   const button = document.createElement('button')
@@ -56,21 +58,44 @@ function trackingToggle(link: LpLink, onToggle: (link: LpLink) => void): HTMLBut
   return button
 }
 
+/** 置換に選ぶチェック。押しやすいよう小さな label で包み、押しても行の「その場所へ移る」へ伝えない */
+function pickBox(link: LpLink, deps: RowsDeps): HTMLLabelElement {
+  const pick = document.createElement('label')
+  pick.className = 'lr-row__pick'
+  pick.title = '置換するリンクに選ぶ'
+  pick.addEventListener('click', (event) => event.stopPropagation())
+  const box = document.createElement('input')
+  box.type = 'checkbox'
+  box.className = 'lr-row__check'
+  box.checked = deps.selected.has(link.index)
+  box.addEventListener('change', () => deps.onToggle(link.index))
+  pick.append(box)
+  return pick
+}
+
 /**
  * 一覧の行（2026-10-27 指示㉒ 本人の見本どおり）: 白いカードに チェック・題名（Widget・画像・動画の印）・
- * リンクのアイコン付きのURL・右に計測の札。「⋮」は付けない（本人「計測の右の：はいらない」）
+ * リンクのアイコン付きのURL・右に計測の札。「⋮」は付けない（本人「計測の右の：はいらない」）。
+ * 行のチェックと計測の札の外を押すと、本文のそのリンクの場所へ移る（2026-10-28 指示36 本人「余白を押したらその場所に飛ぶように」）。
+ * 前は行全体が label で、どこを押してもチェックが付け外しされた → チェックはチェックの所だけ
  */
 export function renderLinkRows(host: HTMLElement, links: readonly LpLink[], deps: RowsDeps): void {
   host.replaceChildren(
     ...links.map((link) => {
-      const row = document.createElement('label')
+      const row = document.createElement('div')
       row.className = 'lr-row'
       row.setAttribute('data-link-row', String(link.index))
-      const box = document.createElement('input')
-      box.type = 'checkbox'
-      box.className = 'lr-row__check'
-      box.checked = deps.selected.has(link.index)
-      box.addEventListener('change', () => deps.onToggle(link.index))
+      const onJump = deps.onJump
+      if (onJump !== undefined) {
+        row.title = '押すと本文のこのリンクの場所へ移ります'
+        row.tabIndex = 0
+        row.addEventListener('click', () => onJump(link))
+        row.addEventListener('keydown', (event) => {
+          if (event.key !== 'Enter' || event.target !== row) return
+          event.preventDefault()
+          onJump(link)
+        })
+      }
       const body = document.createElement('div')
       body.className = 'lr-row__body'
       const text = document.createElement('div')
@@ -100,7 +125,7 @@ export function renderLinkRows(host: HTMLElement, links: readonly LpLink[], deps
         line.append(label, value)
         body.append(line)
       }
-      row.append(box)
+      row.append(pickBox(link, deps))
       const thumb = link.kind === 'text' ? null : (deps.thumbnail?.(link) ?? null)
       if (thumb !== null) row.append(thumb)
       row.append(body)
