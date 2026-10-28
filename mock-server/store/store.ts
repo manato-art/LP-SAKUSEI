@@ -18,6 +18,7 @@ import { repairDuplicateUids } from './uid-repair.ts'
 import { normalizeAllSteps } from './ratio-balance.ts'
 import { externalizeStateImages } from './externalize-images.ts'
 import { migrateFolderDomains } from './folder-domain.ts'
+import { repairOverCountedClicks } from './click-repair.ts'
 
 /** シード（保存済みが無いときの初期状態）。SEED_DEMO=1 なら架空デモ1式、なければ空。 */
 function seedState(): State {
@@ -46,6 +47,7 @@ function initialState(): State {
  *   3. ドメインの項目が無い古いフォルダを「このシステムのドメイン」にする（2026-09-13）
  *   4. 配信割合の合計が100%でないステップを、今の比のまま100%にそろえる（2026-09-24 本人承認「100%に直す」）。
  *      配信はもともと「割合÷合計」で配っているので、実際の出方はほぼ変わらない（画面の数字と実際を合わせるだけ）
+ *   5. 計測リンクを押すたびに数えていた頃の、クリックが PV を超えた日を直す（2026-10-28 本人「過去も直して」・click-repair.ts）
  * 何か直したときは、直す前の内容を退避へ強制保存し、何をしたかをログに残してから、直した内容を保存し直す。
  */
 function repairOnLoad(persisted: State): State {
@@ -54,11 +56,13 @@ function repairOnLoad(persisted: State): State {
   // ドメインの項目が無い古いフォルダは、今まで配信URLに使ってきた「このシステムのドメイン」にする
   const folderDomains = migrateFolderDomains(externalized.state)
   const ratios = normalizeAllSteps(folderDomains.state)
+  const clicks = repairOverCountedClicks(ratios.state)
   if (
     repaired.changes.length === 0 &&
     externalized.converted === 0 &&
     folderDomains.changed === 0 &&
-    ratios.changed.length === 0
+    ratios.changed.length === 0 &&
+    clicks.changed.length === 0
   ) {
     return persisted
   }
@@ -75,8 +79,11 @@ function repairOnLoad(persisted: State): State {
   for (const version of ratios.changed) {
     console.log(`[store] 配信割合を合計100%にそろえました: ${version.uid} → ${String(version.distribution_ratio)}%`)
   }
-  schedulePersist(ratios.state)
-  return ratios.state
+  for (const c of clicks.changed) {
+    console.log(`[store] クリックを1回の表示につき1回までに直しました: ${c.scope} ${c.entity_uid} ${c.date}${c.device === null ? '' : ` ${c.device}`} ${String(c.from)} → ${String(c.to)}`)
+  }
+  schedulePersist(clicks.state)
+  return clicks.state
 }
 
 let current: State = initialState()
