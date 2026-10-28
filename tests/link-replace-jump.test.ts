@@ -92,7 +92,7 @@ describe('一覧の番号と本文の要素を結ぶ', () => {
 })
 
 describe('その場所へ移る', () => {
-  it('真ん中へ送り、少しのあいだ枠で示す（本文の要素には何も書き込まない）', () => {
+  it('真ん中へ送る（本文の要素には何も書き込まない）', () => {
     const doc = dom('<p><a id="t" href="https://a.example.test/">買う</a></p>')
     const target = doc.getElementById('t') as unknown as HTMLElement
     const calls: unknown[] = []
@@ -100,8 +100,26 @@ describe('その場所へ移る', () => {
     const before = doc.getElementById('body')?.innerHTML
     jumpToLink(target)
     expect(calls).toEqual([{ block: 'center' }])
-    expect(doc.querySelector('[data-link-jump-flash]')).not.toBeNull()
     // 保存される本文の HTML は変えない（印やクラスを付けると、そのまま保存されてしまう）
     expect(doc.getElementById('body')?.innerHTML).toBe(before)
+  })
+
+  it('枠は編集画面の中（本文の外）に置き、右のパネルにかぶさらない・塗らずに線だけ（2026-10-28 本人「かぶさってしまうのが見ずらい」）', () => {
+    const { document: doc } = parseHTML(
+      '<!doctype html><html><body><div class="ql-container"><div class="ql-editor" id="body"><p><a id="t" href="https://a.example.test/">買う</a></p></div></div></body></html>',
+    )
+    ;(globalThis as unknown as Record<string, unknown>)['document'] = doc
+    const target = doc.getElementById('t') as unknown as HTMLElement
+    ;(target as unknown as { scrollIntoView: () => void }).scrollIntoView = () => undefined
+    const before = doc.getElementById('body')?.innerHTML
+    jumpToLink(target)
+    const flash = doc.querySelector('[data-link-jump-flash]')
+    // 編集画面の箱（.ql-container）の中＝本文と一緒に動き、画面の上に重なる右のパネル（z-index 9600）より下
+    expect(flash?.parentElement?.className).toBe('ql-container')
+    expect(doc.getElementById('body')?.innerHTML).toBe(before)
+    const style = flash?.getAttribute('style') ?? ''
+    expect(style).toContain('position:absolute')
+    expect(style).not.toContain('position:fixed')
+    expect(style).not.toMatch(/background:rgba/)
   })
 })
