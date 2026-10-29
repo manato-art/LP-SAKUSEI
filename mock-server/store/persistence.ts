@@ -25,9 +25,12 @@
  *
  * `DATA_DIR` が無いローカル／テストではノーオペ（従来どおりメモリのみ＝テストの前提を変えない）。
  */
-import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { createEmptyState } from './seed-empty.ts'
+import type { MeasureDb } from './measure-db.ts'
+import { withoutMeasurements } from './measure-rows.ts'
+import { createMeasureSync, type MeasureSync, type MeasureSyncResult } from './measure-sync.ts'
 import { completeTasks } from './task-shape.ts'
 import type { State } from './types.ts'
 
@@ -134,12 +137,24 @@ function archiveState(state: State, force: boolean): void {
   try {
     mkdirSync(ARCHIVE_DIR, { recursive: true })
     const stamp = new Date(now).toISOString().replace(/[:.]/g, '-')
-    writeFileSync(join(ARCHIVE_DIR, `state-${stamp}.json`), JSON.stringify(state))
+    writeFileSync(join(ARCHIVE_DIR, `state-${stamp}.json`), JSON.stringify(fileContentOf(state)))
     rotateArchives()
   } catch (error) {
     // アーカイブはベストエフォート（失敗しても本保存・アプリは止めない）。ただし黙らない
     console.error('[store] 退避（アーカイブ）を書けませんでした:', (error as Error).message)
   }
+}
+
+/**
+ * 今の state.json の写しを残す（数字をデータベースへ移す直前など・2026-10-29）。残した場所を返す（無ければ null）
+ */
+export function backupStateFile(label: string): string | null {
+  if (FILE === null || DATA_DIR === undefined || !existsSync(FILE)) return null
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-')
+  const to = join(DATA_DIR, `state-${label}-${stamp}.json`)
+  copyFileSync(FILE, to)
+  console.log(`[store] state.json の写しを残しました: ${to}`)
+  return to
 }
 
 /**
@@ -186,8 +201,84 @@ export const PERSIST_RETRY_MS = 30_000
 let health: PersistHealth = { lastOkAt: null, failures: 0, lastError: '', bytes: 0, durationMs: 0 }
 const listeners: Array<(event: PersistEvent) => void> = []
 
+/**
+ * 数字の記録をしまうデータベース（2026-10-29・measure-startup.ts が起動時に付ける）。付いていなければ今までどおり state.json だけ。
+ *   json … 試しの期間。state.json が正（全部を書く）で、データベースへも変わった分を写す。データベースの失敗はログだけ
+ *   db   … 数字はデータベースが正。state.json には数字を書かない。データベースの失敗は赤い帯・知らせになる
+ */
+export type MeasureSource = 'json' | 'db'
+let measure: { sync: MeasureSync; source: MeasureSource } | null = null
+/** 数字をデータベースが正にしたのに、起動時につながらなかった（数字は state.json へ書いて守る） */
+let measureDbUnavailable = false
+
+interface DbHealth {
+  lastOkAt: number | null
+  failures: number
+  lastError: string
+}
+let dbHealth: DbHealth = { lastOkAt: null, failures: 0, lastError: '' }
+
+/** 数字がデータベースにあり、その書き込みの成否が「保存できているか」に入るか */
+function dbCounts(): boolean {
+  return measure?.source === 'db' || measureDbUnavailable
+}
+
 export function persistHealth(): PersistHealth {
-  return health
+  if (!dbCounts()) return health
+  const lastOkAt = health.lastOkAt === null || dbHealth.lastOkAt === null ? null : Math.min(health.lastOkAt, dbHealth.lastOkAt)
+  return {
+    ...health,
+    lastOkAt,
+    failures: health.failures + dbHealth.failures,
+    lastError: dbHealth.failures > 0 ? `データベース: ${dbHealth.lastError}` : health.lastError,
+  }
+}
+
+/** 管理画面・確かめ用: データベースの様子 */
+export function measureDbStatus(): { attached: boolean; source: MeasureSource | null; unavailable: boolean } & DbHealth {
+  return { attached: measure !== null, source: measure?.source ?? null, unavailable: measureDbUnavailable, ...dbHealth }
+}
+
+function onMeasureSyncResult(result: MeasureSyncResult): void {
+  if (result.ok) {
+    const wasFailing = dbHealth.failures > 0
+    dbHealth = { lastOkAt: Date.now(), failures: 0, lastError: '' }
+    if (!wasFailing) return
+    console.log('[db] データベースへの書き込みが元に戻りました')
+    if (dbCounts() && persistHealth().failures === 0) emit({ kind: 'recovered', health: persistHealth() })
+    return
+  }
+  dbHealth = { ...dbHealth, failures: dbHealth.failures + 1, lastError: result.error }
+  console.error(`[db] データベースへ書けませんでした（${String(dbHealth.failures)}回続けて）:`, result.error)
+  if (dbCounts()) emit({ kind: 'failed', health: persistHealth() })
+}
+
+/** 数字の記録をデータベースへも書くようにする（measure-startup.ts） */
+export function attachMeasureDb(db: MeasureDb, source: MeasureSource): void {
+  measure = { sync: createMeasureSync(db, onMeasureSyncResult, PERSIST_RETRY_MS), source }
+  measureDbUnavailable = false
+}
+
+/** この state まではデータベースに入っている（読み戻した直後・写した直後） */
+export function markMeasurementsSynced(state: State): void {
+  measure?.sync.markSynced(state)
+}
+
+/**
+ * 数字をデータベースが正にしたのに、起動時につながらなかった。
+ * 数字は state.json へも書いて守り（データベースに付けない）、赤い帯で知らせる。
+ */
+export function markMeasureDbUnavailable(error: string): void {
+  measure = null
+  measureDbUnavailable = true
+  dbHealth = { ...dbHealth, failures: dbHealth.failures + 1, lastError: `つながりません（${error}）` }
+  console.error('[db] 数字のデータベースにつながりません。数字は state.json へ書いて守ります:', error)
+  emit({ kind: 'failed', health: persistHealth() })
+}
+
+/** state.json（と退避）に書く中身。数字をデータベースが正にしたら、数字は抜く */
+function fileContentOf(state: State): Partial<State> {
+  return measure?.source === 'db' ? withoutMeasurements(state) : state
 }
 
 export function isHeavySave(save: Pick<PersistHealth, 'bytes' | 'durationMs'>): boolean {
@@ -224,10 +315,14 @@ export function schedulePersist(state: State): void {
   timer = setTimeout(flush, 400)
 }
 
-/** 保存待ちの内容を待たずに書く（サーバーを止める前・index.ts の SIGTERM） */
-export function flushPersistNow(): void {
+/**
+ * 保存待ちの内容を待たずに書く（サーバーを止める前・index.ts の SIGTERM）。
+ * state.json はその場で書き、データベースへの書き込みは終わるまで待つ（返す Promise）
+ */
+export function flushPersistNow(): Promise<void> {
   if (timer !== null) clearTimeout(timer)
   flush()
+  return measure?.sync.drain() ?? Promise.resolve()
 }
 
 function flush(): void {
@@ -236,6 +331,8 @@ function flush(): void {
   const state = pending
   pending = null
   if (state === null || FILE === null) return
+  // 数字の記録は、変わった分だけデータベースへ（state.json が書けなくても、こちらは書く）
+  measure?.sync.request(state)
   const started = Date.now()
   try {
     if (DATA_DIR !== undefined && DATA_DIR !== '' && !existsSync(DATA_DIR)) {
@@ -244,7 +341,7 @@ function flush(): void {
     // 通常保存は state.json を書くだけ（毎回のフルコピーはしない＝軽い）。
     // 書きかけで止まっても前のファイルが壊れないよう、別名に書いてから置き換える
     const tmp = `${FILE}.tmp`
-    writeFileSync(tmp, JSON.stringify(state))
+    writeFileSync(tmp, JSON.stringify(fileContentOf(state)))
     renameSync(tmp, FILE)
     const wasFailing = health.failures > 0
     health = { lastOkAt: Date.now(), failures: 0, lastError: '', bytes: statSync(FILE).size, durationMs: Date.now() - started }
