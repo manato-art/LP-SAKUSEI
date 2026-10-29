@@ -50,3 +50,12 @@ describe('土台ドメインが設定済みのときの案内', () => {
     expect(steps).toContain('プロキシ済み')
   })
 })
+
+describe('ドメインが未設定のときの案内（配信URLの欄など）', () => {
+  it('ドメイン変更の場所は「左のフォルダ一覧の歯車」と書く（「…」はページのメニューで、そこには無い・2026-10-30 本人「なくない？」）', async () => {
+    const { DELIVERY_DOMAIN_UNSET_NOTE } = await import('../src/app/pages/basic-info-form.ts')
+    expect(DELIVERY_DOMAIN_UNSET_NOTE).toContain('歯車')
+    expect(DELIVERY_DOMAIN_UNSET_NOTE).toContain('ドメイン変更')
+    expect(DELIVERY_DOMAIN_UNSET_NOTE).not.toContain('「…」')
+  })
+})
