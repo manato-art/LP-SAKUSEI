@@ -13,7 +13,10 @@ export const QUICK_DOMAIN_NEED_DOMAIN_NOTE =
 export const QUICK_DOMAIN_EXISTING_DOMAIN_WARNING =
   '会社サイトやメールで使っているドメインは使わないでください。広告LPの評判が混ざるうえ、ネームサーバーを切り替えると既存サイトが止まります。'
 
-/** DNS側でやること。土台が未設定のうちは「まずドメインを取る」ところから案内する */
+/**
+ * DNS側でやること。土台が未設定のうちは「まずドメインを取る」ところから案内する。
+ * Cloudflare の順番は 2026-10-30 に c1page.com で確かめた（確認の前にプロキシにすると Railway の確認が通らないことがある）
+ */
 export function quickDomainSteps(base: string): readonly string[] {
   if (base === '') {
     return [
@@ -25,7 +28,8 @@ export function quickDomainSteps(base: string): readonly string[] {
   return [
     `Railway のこのサービスに、カスタムドメインとして *.${base} を登録する`,
     'Railway が出す CNAME 2本（ワイルドカード用と _acme-challenge 用）と TXT 1本 を、ドメインのDNSに登録する',
-    'CDNのプロキシ機能は使わない（Cloudflare ならオレンジの雲をOFF＝DNSのみ）。証明書は Railway 側が発行する',
+    'はじめは3本とも「DNSのみ」（Cloudflare ならオレンジの雲をOFF）で登録し、Railway の確認と証明書が済むまで待つ（証明書は Railway 側が発行する）',
+    'Cloudflare を盾として使うなら、確認が済んだあとで: 暗号（SSL/TLS）を「フル（厳密）」にし、* の行だけ「プロキシ済み」（オレンジの雲）にする。_acme-challenge の行はずっと「DNSのみ」（証明書の更新に使う）',
     'DNSの反映まで数時間〜24時間かかることがある（反映後、発行済みのドメインがそのまま開けるようになる）',
   ]
 }

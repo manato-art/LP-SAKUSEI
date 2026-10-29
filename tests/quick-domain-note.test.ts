@@ -34,12 +34,19 @@ describe('土台ドメインが未設定のときの案内', () => {
 })
 
 describe('土台ドメインが設定済みのときの案内', () => {
-  it('登録するレコード（CNAME2本・TXT1本）と、プロキシを使わないことを書く', () => {
+  it('登録するレコード（CNAME2本・TXT1本）を書く', () => {
     const steps = quickDomainSteps('lp-example.test').join('\n')
     expect(steps).toContain('*.lp-example.test')
     expect(steps).toContain('CNAME 2本')
     expect(steps).toContain('TXT 1本')
     expect(steps).toContain('_acme-challenge')
-    expect(steps).toContain('プロキシ')
+  })
+
+  it('Cloudflare は「確認が済むまで DNSのみ → 済んだら * だけプロキシ・暗号はフル（厳密）」（2026-10-30 c1page.com で確かめた順番）', () => {
+    const steps = quickDomainSteps('lp-example.test').join('\n')
+    expect(steps).not.toContain('プロキシ機能は使わない')
+    expect(steps).toContain('_acme-challenge の行はずっと「DNSのみ」')
+    expect(steps).toContain('フル（厳密）')
+    expect(steps).toContain('プロキシ済み')
   })
 })
