@@ -45,6 +45,8 @@ export function duplicateAbTest(
     meta_object_id: _metaObjectId,
     external_url: _externalUrl,
     created_by: _createdBy,
+    // 今までのURLも残すのは元のページだけ（写しは新しいLP）
+    legacy_url_kept: _legacyUrlKept,
     ...settings
   } = source
   const abTest: AbTest = {

@@ -70,6 +70,34 @@ export function buildAddressEditor(label: string, base: string, uid: string): HT
   return wrap
 }
 
+/**
+ * 今までのURLも残しているページ（「金谷味噌汁のコピー」だけ・2026-10-30 本人「今までのURLと c1page.com の２個」）に出す行。
+ * 今までのURLはこのシステムのドメイン（どのページも出す）なので、住所を足したあとも開ける。
+ */
+export function buildKeptUrlRow(url: string, onCopy: () => void): HTMLElement {
+  injectAddressStyles()
+  const wrap = document.createElement('div')
+  wrap.className = 'bi-addr-kept'
+  const title = document.createElement('div')
+  title.className = 'bi-hint'
+  title.textContent = '今までのURL（こちらでも開けます）'
+  const row = document.createElement('div')
+  row.className = 'bi-url-row'
+  const input = document.createElement('input')
+  input.type = 'text'
+  input.className = 'bi-input'
+  input.readOnly = true
+  input.value = url
+  const copyBtn = document.createElement('button')
+  copyBtn.type = 'button'
+  copyBtn.className = 'bi-url-copy'
+  copyBtn.textContent = 'URLをコピー'
+  copyBtn.addEventListener('click', onCopy)
+  row.append(input, copyBtn)
+  wrap.append(title, row)
+  return wrap
+}
+
 function injectAddressStyles(): void {
   if (document.getElementById('bi-addr-css') !== null) return
   const style = document.createElement('style')
@@ -79,6 +107,7 @@ function injectAddressStyles(): void {
     .bi-addr-row { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
     .bi-addr-fix { font-size:13.5px; color:#48526b; white-space:nowrap; font-variant-numeric:tabular-nums; }
     .bi-addr-row .bi-addr-input { width:180px; flex:none; }
+    .bi-addr-kept { display:flex; flex-direction:column; gap:6px; margin-top:10px; }
     .bi-addr-note { font-size:12px; line-height:1.6; color:#9a5b00; background:#fff6e6; border-radius:8px; padding:8px 10px; }
   `
   document.head.append(style)

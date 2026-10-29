@@ -28,6 +28,8 @@ export interface AbTestForEdit {
   folder: { uid: string; name: string; domain?: string } | null
   /** このページ自身の住所（2026-10-30〜作るLP・'' ＝前からあるLP＝フォルダのドメインで出す） */
   delivery_domain?: string
+  /** 今までのURL（このシステムのドメイン）も残しているページか（「金谷味噌汁のコピー」だけ・2026-10-30） */
+  legacy_url_kept?: boolean
   /**
    * 以下は**記録するだけ**の項目（配信には使わない・2026-09-24）。
    * 古いサーバーの応答には無いことがあるので省略可。

@@ -21,7 +21,7 @@ import { basicInfoApi, type MediaOption } from './basic-info-api.ts'
 import { setupHorizTabs, setupBreadcrumb } from './tab-nav.ts'
 import { recordHistory } from './folders-history.ts'
 import { CONVERSION_CONDITION_LABELS, DELIVERY_TYPE_LABELS, EDITOR_VERSION_LABELS, buildUpdatePayload, toRecordFormValues, validateBasicInfo, type AbTestForEdit, type BasicInfoValues, DELIVERY_DOMAIN_UNSET_NOTE, deliveryUrlFor } from './basic-info-form.ts'
-import { ADDRESS_LABEL_INPUT_ID, buildAddressEditor, editableAddressLabel } from './basic-info-address.ts'
+import { ADDRESS_LABEL_INPUT_ID, buildAddressEditor, buildKeptUrlRow, editableAddressLabel } from './basic-info-address.ts'
 import { effectiveDeliveryDomain, pageDomainFromLabel } from '../../shared/page-delivery-domain.ts'
 
 /** 開始・締切・終了などが配信を変えないことの注記（配信は Version の配信割合と配信の切り替え予約で決まる） */
@@ -143,6 +143,11 @@ function buildPage(
       },
     ),
   )
+  // 今までのURLも残しているページ（「金谷味噌汁のコピー」だけ）は、2つとも出す
+  if (abTest.legacy_url_kept === true) {
+    const keptUrl = `${location.origin}/lp/${abTestUid}`
+    fUrl.append(buildKeptUrlRow(keptUrl, () => copy(keptUrl)))
+  }
   secBasic.body.append(fUrl)
 
   const fDelivery = field('配信タイプ', true)
