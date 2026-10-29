@@ -534,9 +534,9 @@ export const api = {
   /** フォルダのドメインを変える（'' ＝未設定 / 'system' ＝このシステムのドメイン / ホスト名） */
   setFolderDomain: (uid: string, domain: string) =>
     request<{ folder: Folder }>('PUT', `/folders/${uid}`, { domain }),
-  /** クイックドメインを発行してフォルダに割り当てる（土台ドメインが未設定なら422） */
-  issueQuickDomain: (uid: string) =>
-    request<{ folder: Folder }>('POST', `/folders/${uid}/quick_domain`),
+  /** クイックドメインを発行してフォルダに割り当てる（土台ドメインが未設定なら422・頭の名前が使われていたら409） */
+  issueQuickDomain: (uid: string, label: string) =>
+    request<{ folder: Folder }>('POST', `/folders/${uid}/quick_domain`, { label }),
   folderDetail: (uid: string) =>
     request<{ folder: Folder; ab_tests: AbTest[] }>('GET', `/folders/${uid}`),
   toggleFavorite: (uid: string, isFavorite: boolean) =>

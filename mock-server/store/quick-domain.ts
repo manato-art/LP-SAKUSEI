@@ -4,6 +4,8 @@
  * 本体は、購入もDNS設定も要らずに使えるドメインをその場で配る。同じことをするには
  * **土台ドメインを1本だけ**このシステムへワイルドカード（`*.土台`）で向けておけばよい。
  * そのあとは `<ランダム>.<土台>` を作るだけで、フォルダごとのドメインがすぐ使える。
+ * 2026-10-29 から頭の名前を選べる（`meguri.<土台>`・決まりは src/shared/domain-input.ts の quickDomainLabelError）。
+ * 選ばなかったときだけランダム（issueQuickDomainHost）。
  */
 import { randomInt } from 'node:crypto'
 import { isHostName } from './folder-domain.ts'

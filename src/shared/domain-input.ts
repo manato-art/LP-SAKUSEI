@@ -30,3 +30,22 @@ export function validateDomainInput(raw: string): DomainInputResult {
   }
   return { ok: true, host: value }
 }
+
+/**
+ * クイックドメインの頭の名前（`meguri.<土台>` の meguri）に使えない名前（2026-10-29）。
+ * よく決まった使い方をされる名前は、あとで困るので使わない。
+ */
+const RESERVED_LABELS: ReadonlySet<string> = new Set(['www', 'mail', 'smtp', 'ftp', 'api', 'admin', 'app', 'ns1', 'ns2'])
+
+/**
+ * クイックドメインの頭の名前の決まり（2026-10-29 本人「LPごとに分けることってできる？」・画面とサーバーで同じ）。
+ * よければ null、だめなら理由（日本語）を返す。大文字は呼ぶ側で小文字にそろえてから渡す。
+ */
+export function quickDomainLabelError(label: string): string | null {
+  if (label === '') return '頭の名前を入れてください（例: meguri）。'
+  if (label.length > 63) return '頭の名前は63文字までです。'
+  if (!/^[a-z0-9-]+$/.test(label)) return '頭の名前に使えるのは、英字（小文字）・数字・ハイフン（-）だけです（日本語は使えません）。'
+  if (label.startsWith('-') || label.endsWith('-')) return '頭の名前の最初と最後にハイフン（-）は使えません。'
+  if (RESERVED_LABELS.has(label)) return `「${label}」は決まった使い方をされる名前なので使えません。ほかの名前にしてください。`
+  return null
+}

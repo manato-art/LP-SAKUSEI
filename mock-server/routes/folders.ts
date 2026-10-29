@@ -13,6 +13,7 @@ import { serializeAbTest } from '../lib/serialize.ts'
 import { makeUid } from '../store/ids.ts'
 import { normalizeFolderDomain } from '../store/folder-domain.ts'
 import { issueQuickDomainHost } from '../store/quick-domain.ts'
+import { quickDomainLabelError } from '../../src/shared/domain-input.ts'
 import { creatorOf } from '../lib/creator-access.ts'
 
 export const foldersRouter: Router = Router()
@@ -138,6 +139,7 @@ foldersRouter.put('/folders/:uid', (req, res) => {
 /**
  * クイックドメインを発行してフォルダに割り当てる（本体のフリードメインにあたる・2026-09-13）。
  * 土台ドメイン（`*.<土台>` をこのシステムへ向けたもの）が設定されているときだけ使える。
+ * 頭の名前（label）を選べる（2026-10-29・例 meguri → meguri.<土台>）。無ければランダム。
  */
 foldersRouter.post('/folders/:uid/quick_domain', (req, res) => {
   const state = getState()
@@ -159,7 +161,21 @@ foldersRouter.post('/folders/:uid/quick_domain', (req, res) => {
     return
   }
   const taken = [...state.domains.map((d) => d.host), ...state.folders.map((f) => f.domain ?? '')]
-  const host = issueQuickDomainHost(base, taken)
+  // 頭の名前を選べる（2026-10-29・例 meguri.<土台>）。入れなければ今までどおりランダム
+  const rawLabel = (req.body as Record<string, unknown> | undefined)?.['label']
+  const label = typeof rawLabel === 'string' ? rawLabel.trim().toLowerCase() : ''
+  if (label !== '') {
+    const labelError = quickDomainLabelError(label)
+    if (labelError !== null) {
+      res.status(422).json(errorEnvelope('validation_failed', labelError))
+      return
+    }
+    if (taken.some((h) => h.toLowerCase() === `${label}.${base}`)) {
+      res.status(409).json(errorEnvelope('conflict', `${label}.${base} はもう使われています。ほかの名前にしてください。`))
+      return
+    }
+  }
+  const host = label === '' ? issueQuickDomainHost(base, taken) : `${label}.${base}`
   let updated = null
   setState((current) => {
     const out = updateFolder(current, req.params.uid, { domain: host })

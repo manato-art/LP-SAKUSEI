@@ -5,7 +5,8 @@
 import { api, type DomainEntry, type Folder } from '../api.ts'
 import { T, el, toast } from '../ui.ts'
 import { openCreateFolder } from '../pages/folders-create.ts'
-import { chooseCard, confirmCard } from '../dialog.ts'
+import { chooseCard, confirmCard, promptCard } from '../dialog.ts'
+import { quickDomainLabelError } from '../../shared/domain-input.ts'
 import { UNFILED_FOLDER_NAME, UNFILED_FOLDER_UID } from '../../shared/unfiled-folder.ts'
 
 let currentMenu: HTMLElement | null = null
@@ -174,7 +175,7 @@ async function openDomainDialog(folder: Folder): Promise<void> {
         hint:
           base === ''
             ? 'まだ使えません。先に配信用のドメインを取得し、ドメイン画面で土台ドメインを設定してください'
-            : `<ランダム>.${base} をこのフォルダ専用に作ります`,
+            : `<好きな名前>.${base} をこのフォルダ専用に作ります（例: meguri.${base}）`,
       },
       {
         value: 'system',
@@ -191,7 +192,11 @@ async function openDomainDialog(folder: Folder): Promise<void> {
   })
   if (picked === null) return
   if (picked === ISSUE_QUICK_DOMAIN) {
-    await issueQuickDomain(folder)
+    if (base === '') {
+      toast('先に配信用のドメインを取得し、ドメイン画面で土台ドメインを設定してください', 'error')
+      return
+    }
+    await issueQuickDomain(folder, base)
     return
   }
   if (picked === current) return
@@ -205,10 +210,21 @@ async function openDomainDialog(folder: Folder): Promise<void> {
   }
 }
 
-/** クイックドメインを1本作って、このフォルダの配信ドメインにする */
-async function issueQuickDomain(folder: Folder): Promise<void> {
+/**
+ * クイックドメインを1本作って、このフォルダの配信ドメインにする。
+ * 頭の名前を選ぶ（2026-10-29 本人「LPごとに分けることってできる？」・例 meguri → meguri.<土台>）
+ */
+async function issueQuickDomain(folder: Folder, base: string): Promise<void> {
+  const label = await promptCard({
+    title: 'クイックドメインを発行',
+    label: `頭の名前（英字の小文字・数字・ハイフン）。「<名前>.${base}」になります`,
+    placeholder: 'meguri',
+    submitLabel: '発行する',
+    validate: (value) => quickDomainLabelError(value.toLowerCase()),
+  })
+  if (label === null) return
   try {
-    const issued = await api.issueQuickDomain(folder.uid)
+    const issued = await api.issueQuickDomain(folder.uid, label.toLowerCase())
     toast(`クイックドメイン ${issued.folder.domain ?? ''} を発行しました`)
     dispatchEvent(new HashChangeEvent('hashchange'))
   } catch (error) {
