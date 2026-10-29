@@ -8,7 +8,7 @@
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { quickDomainLabelError } from '../src/shared/domain-input.ts'
-import { postJson, resetStore, sendJson, startTestServer, type TestServer } from './helpers/server.ts'
+import { postJson, requestWithHost, resetStore, sendJson, startTestServer, type TestServer } from './helpers/server.ts'
 
 let server: TestServer
 
@@ -76,5 +76,30 @@ describe('頭の名前を選んで発行する', () => {
     const res = await issue(await folderUid('めぐり'))
     expect(res.status).toBe(201)
     expect(res.json.folder.domain).toMatch(/^[a-z0-9]{8}\.c1-news\.test$/)
+  })
+})
+
+describe('土台の下の、どのフォルダにも割り当てていない名前', () => {
+  it('どのLPも出さない（頭は何でも受け付ける設定なので、そのままだと全部のLPが開けてしまう）', async () => {
+    await sendJson('PUT', `${server.api}/teams/quick_domain`, { base: 'c1-news.test' })
+    const folder = await postJson<{ folder: { id: number; uid: string } }>(`${server.api}/folders`, { name: 'めぐり' })
+    const page = await postJson<{ ab_test: { uid: string } }>(`${server.api}/ab_tests`, {
+      title: 'めぐりのページ',
+      media_id: 1,
+      folder_id: folder.json.folder.id,
+    })
+    await issue(folder.json.folder.uid, 'meguri')
+    const uid = page.json.ab_test.uid
+    expect((await requestWithHost('GET', `${server.baseUrl}/lp/${uid}`, { host: 'meguri.c1-news.test' })).status).toBe(200)
+    expect((await requestWithHost('GET', `${server.baseUrl}/lp/${uid}`, { host: 'test.c1-news.test' })).status).toBe(404)
+    expect((await requestWithHost('GET', `${server.baseUrl}/lp/${uid}`, { host: 'c1-news.test' })).status).toBe(404)
+    const beacon = await requestWithHost('POST', `${server.baseUrl}/lp/${uid}/__track`, {
+      host: 'test.c1-news.test',
+      contentType: 'text/plain',
+      body: JSON.stringify({ event: 'pv' }),
+    })
+    expect(beacon.status).toBe(404)
+    // 今までの住所（このシステムのドメイン）では今までどおり開ける＝配信中の広告は止まらない
+    expect((await requestWithHost('GET', `${server.baseUrl}/lp/${uid}`, { host: 'lp-sakusei.example.test' })).status).toBe(200)
   })
 })

@@ -34,9 +34,23 @@ export function folderForHost(state: State, host: string): Folder | null {
   )
 }
 
+/**
+ * クイックドメインの土台の下（`<名前>.<土台>`・土台そのもの）か。
+ * 土台は `*.土台` をまるごとこのシステムへ向けるので、どのフォルダにも割り当てていない名前でも届く（2026-10-29）。
+ */
+function isUnderQuickDomainBase(state: State, host: string): boolean {
+  const base = state.quickDomainBase
+  return base !== '' && (host === base || host.endsWith(`.${base}`))
+}
+
 /** そのホストで、この beyondページ を配信してよいか */
 export function isServableOnHost(state: State, abTest: AbTest, host: string): boolean {
   const folder = folderForHost(state, host)
-  if (folder === null) return true // このシステムのドメイン（管理・検証用）は今までどおり
+  if (folder === null) {
+    // 土台の下で、どのフォルダにも割り当てていない名前（test.<土台> など）では何も出さない。
+    // 通すと、どの商材のLPも好きな名前で開けてしまい、ドメインを分ける意味が無くなる
+    if (isUnderQuickDomainBase(state, host)) return false
+    return true // このシステムのドメイン（管理・検証用・今までの配信URL）は今までどおり全部出す
+  }
   return typeof abTest.folder_id === 'number' && abTest.folder_id === folder.id
 }
