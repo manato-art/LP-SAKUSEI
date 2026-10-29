@@ -26,6 +26,7 @@ import { miscRouter } from './routes/misc.ts'
 import { reportRouter } from './routes/report.ts'
 import { sbAiRouter } from './routes/sb-ai.ts'
 import { settingsRouter } from './routes/settings.ts'
+import { systemStatusRouter } from './routes/system-status.ts'
 import { slackOauthRouter, slackRouter } from './routes/slack.ts'
 import { tasksRouter } from './routes/tasks.ts'
 import { teamsRouter } from './routes/teams.ts'
@@ -185,6 +186,8 @@ export function createApp(): Express {
     creatorAccountsRouter,
     widgetLibraryRouter,
     sbWidgetsRouter,
+    // 数字の保存の様子（管理画面の赤い帯・2026-10-29）
+    systemStatusRouter,
   ]
 
   // [A] メインREST API（実物は v1 / v2 が混在するため両方に同じルーターを載せる）

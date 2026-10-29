@@ -9,9 +9,11 @@ import { createApp } from './app.ts'
 import { MOCK_PORT, PREFIX } from './config.ts'
 import { attachCable } from './ws/cable.ts'
 import { startTaskRunner } from './task-runner.ts'
-import { startArticleHistoryPersistence } from './store/article-history-file.ts'
+import { flushArticleHistoryNow, startArticleHistoryPersistence } from './store/article-history-file.ts'
 import { getState } from './store/store.ts'
 import { seedSbWidgetMedia } from './lib/sb-widget-media.ts'
+import { flushPersistNow } from './store/persistence.ts'
+import { startPersistAlerts } from './persist-alert.ts'
 
 // 変更・復元履歴を読み戻し、以後はファイルにも書く（DATA_DIR があるときだけ。デプロイで消えていた）
 startArticleHistoryPersistence(getState())
@@ -27,6 +29,20 @@ attachCable(server)
 // 定期タスクの見張り。サーバーが動いている間だけ回る。
 // テスト（app を直に使う）では回らないので、実行時刻に左右されない。
 startTaskRunner()
+
+// 数字の保存に失敗した・直った・重くなってきたを、異常のお知らせと同じ送り先へ知らせる（2026-10-29）
+startPersistAlerts()
+
+// Railway は更新（デプロイ）のたびに SIGTERM で止める。保存待ちの数字（0.4秒ぶん）と変更履歴（1.5秒ぶん）を
+// 書いてから終わる（以前は待たずに終わっていて、止める直前の分が消えることがあった・2026-10-29）
+for (const signal of ['SIGTERM', 'SIGINT'] as const) {
+  process.once(signal, () => {
+    console.log(`[mock] ${signal} を受けたので、保存待ちを書いてから終わります`)
+    flushPersistNow()
+    flushArticleHistoryNow()
+    process.exit(0)
+  })
+}
 
 server.listen(MOCK_PORT, () => {
   console.log(`[mock] http://localhost:${MOCK_PORT}`)

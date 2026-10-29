@@ -68,6 +68,12 @@ function flush(): void {
   }
 }
 
+/** 書き待ちの履歴を待たずに書く（サーバーを止める前・index.ts の SIGTERM） */
+export function flushArticleHistoryNow(): void {
+  if (timer !== null) clearTimeout(timer)
+  flush()
+}
+
 /** 起動時に1回呼ぶ: ファイルがあれば読み戻し、以後の変更を（まとめて）書く */
 export function startArticleHistoryPersistence(state: State): void {
   if (FILE === null) return

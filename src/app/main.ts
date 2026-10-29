@@ -39,6 +39,7 @@ import { isSplitTestTab } from './pages/beyond-nav.ts'
 import { T, button, el, emptyState } from './ui.ts'
 import { api } from './api.ts'
 import { isCreator, loadSession } from './session.ts'
+import { startSaveStatusWatch } from './save-status-banner.ts'
 import { isCreatorRoute } from './creator-ui.ts'
 import { startPageLife } from './page-life.ts'
 
@@ -324,4 +325,6 @@ initThemeMode(async () => {
 void loadSession().then(() => {
   addEventListener('hashchange', () => void route())
   void route()
+  // 数字の保存に失敗していたら、いちばん上に赤い帯を出す（2026-10-29・LP作成者は保存の窓口を使えないので管理者だけ）
+  if (!isCreator()) startSaveStatusWatch()
 })
