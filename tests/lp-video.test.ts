@@ -5,7 +5,7 @@ import { withAutoplayVideos } from '../src/app/lp-video.ts'
 describe('withAutoplayVideos', () => {
   it('<video> に autoplay/muted/loop/playsinline を補う', () => {
     const out = withAutoplayVideos('<video src="x" controls></video>')
-    for (const attr of ['autoplay', 'muted', 'loop', 'playsinline', 'controls']) {
+    for (const attr of ['autoplay', 'muted', 'loop', 'playsinline']) {
       expect(out).toContain(attr)
     }
   })
@@ -83,5 +83,38 @@ describe('取り込んだ見本の中の動画は変えない', () => {
     const out = withAutoplayVideos(`${sbPart('<video src="in"></video>')}<video src="out"></video>`)
     expect(out).toContain('<video src="in"></video>')
     expect(out).toContain('<video src="out" autoplay muted loop playsinline>')
+  })
+})
+
+/**
+ * 自動で再生する動画には、操作ボタン（再生・停止・10秒戻る/進む・全画面）を出さない
+ * （2026-10-30 本人「スマホで見るとこんな感じになってしまう。止めるとかなしでOK」）。
+ * 編集画面は controls 付きで保存する（media-blots.ts）ので、配信で外す。押さないと再生できない動画には残す。
+ */
+describe('動画の操作ボタン', () => {
+  it('自動で再生する動画には出さない（編集画面が保存した controls="controls" も外す）', () => {
+    const saved =
+      '<video src="x" controls="controls" playsinline="playsinline" preload="metadata" loop="" autoplay="" muted="muted" style="max-width: 100%;">'
+    const out = withAutoplayVideos(saved)
+    expect(out).not.toMatch(/(^|\s)controls(\s|=|>)/)
+    expect(out).toContain('autoplay')
+    expect(out).toContain('style="max-width: 100%;"')
+  })
+
+  it('自動再生を切った動画には残す（押さないと再生できない）', () => {
+    const out = withAutoplayVideos('<video src="x" controls="controls" muted loop playsinline data-sb-autoplay="off">')
+    expect(out).toContain('controls')
+    expect(out).not.toMatch(/(^|\s)autoplay(\s|=|>)/)
+  })
+
+  it('音ありの動画には残す（ブラウザが自動再生を止めるので、押して再生する）', () => {
+    const out = withAutoplayVideos('<video src="x" controls="controls" autoplay loop playsinline data-sb-muted="off">')
+    expect(out).toContain('controls')
+  })
+
+  it('名前に controls を含むほかの属性は外さない', () => {
+    const out = withAutoplayVideos('<video src="x" controls data-nc-controls="1">')
+    expect(out).toContain('data-nc-controls="1"')
+    expect(out).not.toMatch(/(^|\s)controls(\s|=|>)/)
   })
 })
