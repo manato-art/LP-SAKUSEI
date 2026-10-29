@@ -7,7 +7,7 @@
  *   - それより前のLPは今までどおり（フォルダのドメイン）＝配信中の広告のURLを変えない
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
-import { addressChangeNote, editableAddressLabel } from '../src/app/pages/basic-info-address.ts'
+import { addressChangeNote, canRegisterAddress, editableAddressLabel } from '../src/app/pages/basic-info-address.ts'
 import { buildUpdatePayload, deliveryUrlFor, validateBasicInfo, type AbTestForEdit } from '../src/app/pages/basic-info-form.ts'
 import {
   effectiveDeliveryDomain,
@@ -196,6 +196,14 @@ describe('基本情報の画面', () => {
     expect(note).toContain('開けなくなる')
     expect(addressChangeNote(`meguri.${BASE}`, 'Meguri', BASE, 'P1')).toBeNull()
     expect(addressChangeNote(BASE, 'めぐり', BASE, 'P1')).toContain('英字')
+  })
+
+  it('配信URLの横の「登録する」は、住所が変わる正しい名前のときだけ押せる（2026-10-30 本人「配信URLの横にも登録ボタン」）', () => {
+    expect(canRegisterAddress(BASE, 'meguri', BASE)).toBe(true)
+    expect(canRegisterAddress(`meguri.${BASE}`, '', BASE)).toBe(true)
+    expect(canRegisterAddress(`meguri.${BASE}`, ' Meguri ', BASE)).toBe(false)
+    expect(canRegisterAddress(BASE, '', BASE)).toBe(false)
+    expect(canRegisterAddress(BASE, 'めぐり', BASE)).toBe(false)
   })
 
   const page: AbTestForEdit = {

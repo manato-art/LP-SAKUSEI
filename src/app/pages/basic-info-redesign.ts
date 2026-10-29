@@ -129,7 +129,7 @@ function buildPage(
   const fUrl = field('配信URL', true)
   // 2026-10-30 からあとのLPだけ: https:// [頭の名前] .c1page.com を決める欄（basic-info-address.ts）
   const label = editableAddressLabel(abTest.delivery_domain, deliveryBase)
-  if (label !== null) fUrl.append(buildAddressEditor(label, deliveryBase, abTestUid))
+  if (label !== null) fUrl.append(buildAddressEditor(label, deliveryBase, abTestUid, (next) => registerAddress(ctx, next)))
   fUrl.append(
     urlRow(
       savedUrl() ?? DELIVERY_DOMAIN_UNSET_NOTE,
@@ -431,12 +431,26 @@ async function save(ctx: WireCtx, submit: HTMLButtonElement): Promise<void> {
   }
 }
 
+/** 配信URLの横の「登録する」: 住所だけをすぐ登録する（ほかの欄はいつもの「登録する」で） */
+async function registerAddress(ctx: WireCtx, label: string): Promise<boolean> {
+  try {
+    const { ab_test } = await basicInfoApi.update(ctx.abTestUid, { delivery_label: label.trim().toLowerCase() })
+    ctx.abTest = ab_test
+    refreshAddress(ctx)
+    toast(`配信URLを ${ctx.savedUrl() ?? ''} にしました`)
+    return true
+  } catch (error) {
+    toast((error as Error).message, 'error')
+    return false
+  }
+}
+
 /** 住所を変えて登録したあと、欄（変わる前提の案内）と配信URLの欄を新しい住所に描き直す */
 function refreshAddress(ctx: WireCtx): void {
   const label = editableAddressLabel(ctx.abTest.delivery_domain, ctx.deliveryBase)
   const editor = addressInput(ctx)?.closest<HTMLElement>('.bi-addr') ?? null
   if (editor !== null && label !== null) {
-    const next = buildAddressEditor(label, ctx.deliveryBase, ctx.abTestUid)
+    const next = buildAddressEditor(label, ctx.deliveryBase, ctx.abTestUid, (value) => registerAddress(ctx, value))
     editor.replaceWith(next)
     const input = addressInput(ctx)
     input?.addEventListener('input', () => renderSummary(ctx))

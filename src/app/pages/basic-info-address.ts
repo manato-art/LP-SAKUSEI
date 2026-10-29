@@ -5,6 +5,7 @@
  * 出すのは 2026-10-30 からあとに作った・複製したLPだけ（ページ自身が住所を持つ）。
  * 前からあるLPはフォルダのドメインのまま＝この欄は出さない（配信中の広告のURLを変えない）。
  * 保存は基本情報の「登録する」で、ほかの項目といっしょに送る（delivery_label）。
+ * 欄の横の「登録する」は住所だけをすぐ登録する（2026-10-30 本人「配信URLの横にも登録ボタンを作成して」）。
  */
 import { labelOfPageDomain, pageDomainFromLabel, pageDomainLabelError } from '../../shared/page-delivery-domain.ts'
 
@@ -27,8 +28,22 @@ export function addressChangeNote(savedDomain: string, label: string, base: stri
   return `「登録する」を押すと、配信URLが https://${next}/lp/${uid} に変わります。今の https://${savedDomain}/lp/${uid} では開けなくなるので、広告に入れていたら差し替えてください。`
 }
 
-/** 欄の見た目: https:// [名前] .c1page.com/lp/<uid> */
-export function buildAddressEditor(label: string, base: string, uid: string): HTMLElement {
+/** 欄の横の「登録する」を押せるか: 正しい名前で、住所が今と変わるときだけ */
+export function canRegisterAddress(savedDomain: string, label: string, base: string): boolean {
+  const name = label.trim().toLowerCase()
+  return pageDomainLabelError(name) === null && pageDomainFromLabel(name, base) !== savedDomain
+}
+
+/**
+ * 欄の見た目: https:// [名前] .c1page.com/lp/<uid> [登録する]
+ * onRegister は住所だけを登録する（できたら true）。できたら呼び出し側が欄を描き直す。
+ */
+export function buildAddressEditor(
+  label: string,
+  base: string,
+  uid: string,
+  onRegister: (label: string) => Promise<boolean>,
+): HTMLElement {
   injectAddressStyles()
   const wrap = document.createElement('div')
   wrap.className = 'bi-addr'
@@ -49,7 +64,12 @@ export function buildAddressEditor(label: string, base: string, uid: string): HT
   const tail = document.createElement('span')
   tail.className = 'bi-addr-fix'
   tail.textContent = `.${base}/lp/${uid}`
-  row.append(head, input, tail)
+  const register = document.createElement('button')
+  register.type = 'button'
+  register.className = 'bi-url-copy bi-addr-save'
+  register.textContent = '登録する'
+  register.disabled = true
+  row.append(head, input, tail, register)
 
   const hint = document.createElement('div')
   hint.className = 'bi-hint'
@@ -64,6 +84,14 @@ export function buildAddressEditor(label: string, base: string, uid: string): HT
     const text = addressChangeNote(savedDomain, input.value, base, uid)
     note.hidden = text === null
     note.textContent = text ?? ''
+    register.disabled = !canRegisterAddress(savedDomain, input.value, base)
+  })
+  register.addEventListener('click', () => {
+    if (register.disabled) return
+    register.disabled = true
+    void onRegister(input.value).then((ok) => {
+      if (!ok) register.disabled = !canRegisterAddress(savedDomain, input.value, base)
+    })
   })
 
   wrap.append(row, hint, note)
@@ -107,6 +135,8 @@ function injectAddressStyles(): void {
     .bi-addr-row { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
     .bi-addr-fix { font-size:13.5px; color:#48526b; white-space:nowrap; font-variant-numeric:tabular-nums; }
     .bi-addr-row .bi-addr-input { width:180px; flex:none; }
+    .bi-addr-row .bi-addr-save { height:38px; margin-left:4px; }
+    .bi-addr-save:disabled { opacity:.45; cursor:default; }
     .bi-addr-kept { display:flex; flex-direction:column; gap:6px; margin-top:10px; }
     .bi-addr-note { font-size:12px; line-height:1.6; color:#9a5b00; background:#fff6e6; border-radius:8px; padding:8px 10px; }
   `
