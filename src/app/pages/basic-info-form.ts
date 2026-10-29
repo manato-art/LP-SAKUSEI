@@ -4,6 +4,7 @@
  * 共通指示 §5: テスト環境は node なのでDOMは触れない。
  * 「この入力から何のリクエストを作るか」をここに閉じ込めてテストする。
  */
+import { pageDomainLabelError } from '../../shared/page-delivery-domain.ts'
 
 /** `GET /ab_tests/:uid/edit` が返す、基本情報タブが使う部分だけ */
 export interface AbTestForEdit {
@@ -25,6 +26,8 @@ export interface AbTestForEdit {
   media: { id: number; name: string } | null
   /** domain＝配信URLに使うドメイン（'' ＝未設定 / 'system' ＝このシステムのドメイン / ホスト名） */
   folder: { uid: string; name: string; domain?: string } | null
+  /** このページ自身の住所（2026-10-30〜作るLP・'' ＝前からあるLP＝フォルダのドメインで出す） */
+  delivery_domain?: string
   /**
    * 以下は**記録するだけ**の項目（配信には使わない・2026-09-24）。
    * 古いサーバーの応答には無いことがあるので省略可。
@@ -77,6 +80,8 @@ export interface BasicInfoValues {
   super_reload_count?: string
   media_listing?: boolean
   measurement_method?: string
+  /** 住所の頭の名前（2026-10-30〜作るLPだけ・'' ＝なし＝c1page.com）。欄が無いページは undefined＝送らない */
+  delivery_label?: string
 }
 
 export type BasicInfoValidation = { ok: true } | { ok: false; message: string }
@@ -185,6 +190,7 @@ export function buildUpdatePayload(
     age_to: numOrNull(input.age_to, abTest.age_to),
     // 動作タイプ（editor_version）は作成後に変えられないので送らない
     ...recordOnlyPayload(input),
+    ...(input.delivery_label === undefined ? {} : { delivery_label: input.delivery_label.trim().toLowerCase() }),
   }
 }
 
@@ -211,6 +217,10 @@ export function validateBasicInfo(input: BasicInfoValues): BasicInfoValidation {
   }
   if (!isEmptyOrCount(input.super_reload_count)) {
     return { ok: false, message: 'スーパーリロード回数は0以上の整数で入力してください。' }
+  }
+  if (input.delivery_label !== undefined) {
+    const labelError = pageDomainLabelError(input.delivery_label.trim().toLowerCase())
+    if (labelError !== null) return { ok: false, message: labelError }
   }
   return { ok: true }
 }

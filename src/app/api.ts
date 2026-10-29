@@ -66,6 +66,8 @@ export interface AbTest {
   updated_at?: number
   /** domain＝配信URLに使うドメイン（'' ＝未設定 / 'system' ＝このシステムのドメイン / ホスト名） */
   folder?: { uid: string; name: string; domain?: string } | null
+  /** このページ自身の住所（2026-10-30〜作るLP・'' ＝前からあるLP＝フォルダのドメインで出す） */
+  delivery_domain?: string
   /** Meta広告連携の紐付け（未設定は null）。トークンは含まない＝サーバーの環境変数のみ。 */
   meta_level?: string | null
   meta_object_id?: string | null

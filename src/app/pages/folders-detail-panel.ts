@@ -16,6 +16,7 @@ import { openMetaLinkModal } from '../panels/meta-link-modal.ts'
 import { AD_STATUS_LABELS, type PageContext } from './folders-shared.ts'
 import { jstParts } from '../jst.ts'
 import { DELIVERY_DOMAIN_UNSET_NOTE, DELIVERY_TYPE_LABELS, deliveryUrlFor, folderDomainLabel } from './basic-info-form.ts'
+import { effectiveDeliveryDomain } from '../../shared/page-delivery-domain.ts'
 
 /**
  * パネルに最後に出したページ（2026-09-24）。保存のあと一覧を描き直しても、同じページを出し続ける。
@@ -533,18 +534,24 @@ function buildPatchBody(key: string, value: string): Record<string, unknown> {
 function currentPanelAbTest(
   panel: HTMLElement,
   context: PageContext,
-): { uid: string; title: string } | null {
+): { uid: string; title: string; delivery_domain?: string } | null {
   const uid = panel.dataset['abTestUid'] ?? ''
   if (uid !== '') {
     const found = context.abTests.find((t) => t.uid === uid)
-    return { uid, title: found?.title ?? panel.dataset['abTestTitle'] ?? '' }
+    return {
+      uid,
+      title: found?.title ?? panel.dataset['abTestTitle'] ?? '',
+      ...(found?.delivery_domain === undefined ? {} : { delivery_domain: found.delivery_domain }),
+    }
   }
   const first = context.abTests[0]
-  return first === undefined ? null : { uid: first.uid, title: first.title }
+  return first === undefined
+    ? null
+    : { uid: first.uid, title: first.title, ...(first.delivery_domain === undefined ? {} : { delivery_domain: first.delivery_domain }) }
 }
 /**
  * いまパネルに出ているページの配信URL。
- * 実物と同じく、配信URLはフォルダのドメインで決まる（未設定なら出さずに案内する・2026-09-13）。
+ * 前からあるLPは実物と同じくフォルダのドメイン、2026-10-30 からあとのLPはページ自身の住所（未設定なら出さずに案内する）。
  */
 function currentDeliveryUrl(panel: HTMLElement, context: PageContext): string | null {
   const current = currentPanelAbTest(panel, context)
@@ -552,7 +559,7 @@ function currentDeliveryUrl(panel: HTMLElement, context: PageContext): string | 
     toast('ページを選んでから押してください', 'error')
     return null
   }
-  const url = deliveryUrlFor(context.folder?.domain, location.origin, current.uid)
+  const url = deliveryUrlFor(effectiveDeliveryDomain(current.delivery_domain, context.folder?.domain), location.origin, current.uid)
   if (url === null) toast(DELIVERY_DOMAIN_UNSET_NOTE, 'error')
   return url
 }
@@ -612,8 +619,12 @@ export function updateDetailPanelForAbTest(body: HTMLElement, abTest: AbTest, co
 
   // ── パネル内の値を更新 ──
   // 配信URL
-  // 実物と同じく、配信URLはフォルダのドメインで決まる。未設定なら出さずに案内する（2026-09-13）
-  const deliveryUrlText = deliveryUrlFor(context.folder?.domain, location.origin, abTest.uid)
+  // 前からあるLPはフォルダのドメイン、2026-10-30 からあとのLPはページ自身の住所。未設定なら出さずに案内する
+  const deliveryUrlText = deliveryUrlFor(
+    effectiveDeliveryDomain(abTest.delivery_domain, context.folder?.domain),
+    location.origin,
+    abTest.uid,
+  )
   for (const link of panel.querySelectorAll<HTMLAnchorElement>('a')) {
     const href = link.getAttribute('href') ?? ''
     if (!/\/(?:ab|lp)\//.test(href)) continue

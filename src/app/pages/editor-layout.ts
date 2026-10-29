@@ -265,7 +265,7 @@ function mountUrlBarInEditor(ctx: EditorContext): HTMLElement | null {
   const testUrl = `${location.origin}/preview/${ctx.currentUid}`
   // 実物と同じく、配信URLはフォルダのドメインで決まる。未設定なら空にし、URLバーが案内を出してコピーを止める
   // （案内文をURLとして渡していて、「配信URLをコピーしました」で案内文がコピーされていた・2026-09-24 点検39）
-  const prodUrl = deliveryUrlFor(ctx.folderDomain, location.origin, ctx.abTestUid) ?? ''
+  const prodUrl = deliveryUrlFor(ctx.deliveryDomain, location.origin, ctx.abTestUid) ?? ''
 
   const bar = mountUrlBar({ testUrl, prodUrl })
 

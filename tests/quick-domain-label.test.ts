@@ -81,13 +81,14 @@ describe('頭の名前を選んで発行する', () => {
 
 describe('土台の下の、どのフォルダにも割り当てていない名前', () => {
   it('どのLPも出さない（頭は何でも受け付ける設定なので、そのままだと全部のLPが開けてしまう）', async () => {
-    await sendJson('PUT', `${server.api}/teams/quick_domain`, { base: 'c1-news.test' })
+    // ページは土台を決める前に作る＝前からあるLP（住所はフォルダで決まる・2026-10-30 からあとのLPは page-delivery-domain.test.ts）
     const folder = await postJson<{ folder: { id: number; uid: string } }>(`${server.api}/folders`, { name: 'めぐり' })
     const page = await postJson<{ ab_test: { uid: string } }>(`${server.api}/ab_tests`, {
       title: 'めぐりのページ',
       media_id: 1,
       folder_id: folder.json.folder.id,
     })
+    await sendJson('PUT', `${server.api}/teams/quick_domain`, { base: 'c1-news.test' })
     await issue(folder.json.folder.uid, 'meguri')
     const uid = page.json.ab_test.uid
     expect((await requestWithHost('GET', `${server.baseUrl}/lp/${uid}`, { host: 'meguri.c1-news.test' })).status).toBe(200)

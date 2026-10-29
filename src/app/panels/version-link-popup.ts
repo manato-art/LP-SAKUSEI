@@ -37,7 +37,7 @@ export const VERSION_LINK_HOOK = {
  * 実物の「Versionリンク」は配信URLにステップを添えた `…?step_uid=<ステップ>` の形。
  * LPの中のボタンにこのリンクを置くと、そのステップへ進む（どのVersionを出すかは配信割合で決まる）。
  * 以前は `?version=` を付けていて、配信はそれを読まずに1つ目のステップを出していた（2026-09-24 点検25）。
- * 配信URL（フォルダのドメイン）は呼び出し側が basic-info-form.ts の deliveryUrlFor で作る。
+ * 配信URL（ページの住所・前からあるLPはフォルダのドメイン）は呼び出し側が basic-info-form.ts の deliveryUrlFor で作る。
  */
 export function buildVersionLinkUrl(deliveryUrl: string, stepUid: string): string {
   if (deliveryUrl.trim() === '') throw new Error('配信URLがありません（フォルダのドメインが未設定）')
@@ -51,14 +51,14 @@ export interface VersionLinkDeps {
   getStepUid: () => string
 }
 
-/** エディタから渡すもの: 配信URLはフォルダのドメインで決まり、ステップは今開いているもの（点検25） */
+/** エディタから渡すもの: 配信URLはページの住所（前からあるLPはフォルダのドメイン）で決まり、ステップは今開いているもの（点検25） */
 export function editorVersionLinkDeps(ctx: {
-  readonly folderDomain?: string
+  readonly deliveryDomain?: string
   readonly abTestUid: string
   readonly articleUid: string
 }): VersionLinkDeps {
   return {
-    getDeliveryUrl: () => deliveryUrlFor(ctx.folderDomain, location.origin, ctx.abTestUid),
+    getDeliveryUrl: () => deliveryUrlFor(ctx.deliveryDomain, location.origin, ctx.abTestUid),
     getStepUid: () => ctx.articleUid,
   }
 }

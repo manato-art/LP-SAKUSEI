@@ -79,6 +79,8 @@ export function serializeAbTest(state: State, abTest: AbTest): Record<string, un
     external_url: abTest.external_url ?? null,
     // タブ表示名。返していなかったため、基本情報を開き直して保存すると空で上書きしていた（2026-09-24）
     page_title: abTest.page_title ?? '',
+    // このページ自身の住所（'' ＝持たない前からあるLP＝フォルダのドメインで出す・2026-10-30）
+    delivery_domain: abTest.delivery_domain ?? '',
     // 基本情報の「記録するだけ」の項目（配信には使わない・項目が無い古いデータは未設定）
     start_date: abTest.start_date ?? null,
     deadline_date: abTest.deadline_date ?? null,

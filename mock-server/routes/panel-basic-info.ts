@@ -19,6 +19,7 @@ import { applyEmptyState } from '../lib/mock-state.ts'
 import { serializeAbTest } from '../lib/serialize.ts'
 import { mergeConversionSetting, parseAbTestPatch } from '../store/ab-test-patch.ts'
 import { updateAbTest } from '../store/actions.ts'
+import { resolveDeliveryLabel } from '../store/page-delivery-label.ts'
 import { getState, setState } from '../store/store.ts'
 import { isKnownFolderId } from '../store/unfiled.ts'
 import type { AbTest } from '../store/types.ts'
@@ -34,7 +35,8 @@ basicInfoRouter.get('/ab_tests/:uid/edit', (req, res) => {
     res.status(404).json(NOT_FOUND)
     return
   }
-  res.json({ ab_test: serializeAbTest(state, abTest) })
+  // delivery_base＝住所の土台（c1page.com）。基本情報で頭の名前を決める欄に使う（2026-10-30・LP作成者もこの画面を開くので、ここで返す）
+  res.json({ ab_test: serializeAbTest(state, abTest), delivery_base: state.quickDomainBase })
 })
 
 /** 媒体ロスター。実機のパスは `/medias`（`/teams/media` とは別物） */
@@ -67,8 +69,20 @@ basicInfoRouter.put('/ab_tests/:uid', (req, res) => {
     res.status(422).json(errorEnvelope('validation_failed', '移動先のフォルダが見つかりません。'))
     return
   }
+  // 住所の頭の名前（2026-10-30〜作るLPだけ・空なら c1page.com）
+  const body = req.body as Record<string, unknown>
+  let deliveryDomain: string | undefined
+  if (Object.prototype.hasOwnProperty.call(body, 'delivery_label')) {
+    const resolved = resolveDeliveryLabel(getState(), current, body['delivery_label'])
+    if (!resolved.ok) {
+      res.status(422).json(errorEnvelope('validation_failed', resolved.message))
+      return
+    }
+    deliveryDomain = resolved.value
+  }
   // 実機の「編集タイプ」は disabled で「後から変更できません」。ここでも受け付けない。
-  const patch = mergeConversionSetting(current, parsed.value)
+  const merged = mergeConversionSetting(current, parsed.value)
+  const patch = deliveryDomain === undefined ? merged : { ...merged, delivery_domain: deliveryDomain }
 
   let updated: AbTest | null = null
   setState((state) => {

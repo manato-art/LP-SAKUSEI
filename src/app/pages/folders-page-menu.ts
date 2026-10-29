@@ -19,6 +19,7 @@ import { T, el, toast } from '../ui.ts'
 import { UNFILED_FOLDER_NAME } from '../../shared/unfiled-folder.ts'
 import type { PageContext } from './folders-shared.ts'
 import { deliveryUrlFor } from './basic-info-form.ts'
+import { effectiveDeliveryDomain } from '../../shared/page-delivery-domain.ts'
 import { isCreator } from '../session.ts'
 
 /** 保存したあと、一覧をサーバーの値で描き直す（絞り込み・並び・検索はそのまま残る） */
@@ -106,7 +107,9 @@ async function finishStatus(abTest: AbTest): Promise<void> {
 }
 
 async function removePage(abTest: AbTest, context: PageContext): Promise<void> {
-  const url = deliveryUrlFor(context.folder?.domain, location.origin, abTest.uid) ?? `${location.origin}/lp/${abTest.uid}`
+  const url =
+    deliveryUrlFor(effectiveDeliveryDomain(abTest.delivery_domain, context.folder?.domain), location.origin, abTest.uid) ??
+    `${location.origin}/lp/${abTest.uid}`
   const ok = await confirmCard({
     title: 'ページを削除',
     message: `「${abTest.title}」を削除します。`,

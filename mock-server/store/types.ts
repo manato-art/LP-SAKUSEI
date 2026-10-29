@@ -138,6 +138,12 @@ export interface AbTest {
    */
   external_url?: string
   /**
+   * このページ自身の住所（2026-10-30〜作る・複製するLP）。土台そのもの（c1page.com）か `<名前>.<土台>`。
+   * 無いページ（それより前に作ったLP）は、今までどおりフォルダのドメインで出す（配信中の広告のURLを変えない）。
+   * 決まりは src/shared/page-delivery-domain.ts、配信の判定は lib/delivery-host.ts。
+   */
+  delivery_domain?: string
+  /**
    * 基本情報「その他の項目」「トラッキング項目」「メディア」の、**記録するだけ**の項目（2026-09-24）。
    * どれも配信（出す・止める・出し分け）には使っていない。項目が無い古いデータは未設定として読む。
    */

@@ -166,7 +166,11 @@ async function openDomainDialog(folder: Folder): Promise<void> {
   const selectable = registered.domains.filter((entry) => entry.kind !== 'quick' || entry.host === current)
   const picked = await chooseCard({
     title: 'ドメイン変更',
-    message: '配信URLに使うドメインを選びます。',
+    // 2026-10-30 からあとに作る・複製するLPは、ページの基本情報で住所を決める（フォルダでは決めない・本人指示）
+    message:
+      base === ''
+        ? '配信URLに使うドメインを選びます。'
+        : `このフォルダの前からあるLPの配信URLに使うドメインを選びます。これから作るLPは、ページの基本情報で住所（https://〇〇.${base}）を決めます。`,
     value: current,
     options: [
       {

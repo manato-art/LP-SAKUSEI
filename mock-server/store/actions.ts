@@ -139,6 +139,8 @@ export function createAbTest(
     age_from: null,
     age_to: null,
     page_title: '',
+    // これから作るLPは、何もしなければ土台そのもの（c1page.com）で出す（2026-10-30・フォルダでは決めない）
+    ...(state.quickDomainBase === '' ? {} : { delivery_domain: state.quickDomainBase }),
     created_at: nowTs(),
     updated_at: nowTs(),
     creator_member_id: owner?.id ?? 1,
@@ -216,6 +218,7 @@ export type AbTestUpdatePatch = Partial<
     | 'super_reload_count'
     | 'media_listing'
     | 'measurement_method'
+    | 'delivery_domain'
   >
 >
 

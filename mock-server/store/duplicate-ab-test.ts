@@ -7,6 +7,7 @@
  *           Meta広告の紐付け（同じ広告の実績が2ページに入るため）・計測タグが知らせた外部LPの所在・
  *           配信の切り替え予約・ポップアップ・中間ページ（今回の依頼の範囲外）。
  * 配信ステータスは「準備中」、Versionの状態は「準備中」から始める（新しく作ったページと同じ）。
+ * 住所（delivery_domain）は元と同じ。元が住所を持たない前からあるLPなら、写しは c1page.com（2026-10-30）。
  */
 import { freshUid, nowTs } from './actions-shared.ts'
 import { makeAbTestUid, makeUid } from './ids.ts'
@@ -55,6 +56,10 @@ export function duplicateAbTest(
     folder_id: folderId,
     ad_status: 'prepared',
     conversion_setting: { ...source.conversion_setting, id: abTestId },
+    // 住所は元のLPと同じ。元が前からあるLP（住所なし）なら、写しは土台そのもの（c1page.com）で出す（2026-10-30）
+    ...((source.delivery_domain ?? '') === '' && state.quickDomainBase !== ''
+      ? { delivery_domain: state.quickDomainBase }
+      : {}),
     created_at: nowTs(),
     updated_at: nowTs(),
   }

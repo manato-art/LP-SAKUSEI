@@ -9,8 +9,11 @@ import type { Version } from '../api.ts'
 import type { SaveStatus } from './editor-save-status.ts'
 
 export interface EditorContext {
-  /** フォルダのドメイン（配信URLに使う。'' ＝未設定 / 'system' ＝このシステムのドメイン / ホスト名） */
-  folderDomain?: string
+  /**
+   * 配信URLに使うドメイン（'' ＝未設定 / 'system' ＝このシステムのドメイン / ホスト名）。
+   * 2026-10-30 からあとのLPはページ自身の住所、前からあるLPはフォルダのドメイン（shared/page-delivery-domain.ts）
+   */
+  deliveryDomain?: string
   root: HTMLElement
   quill: Quill
   abTestUid: string

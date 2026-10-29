@@ -9,6 +9,7 @@
 import { api, type AbTest, type Folder, type ReportKpi } from '../api.ts'
 import { T, el, emptyState, toast } from '../ui.ts'
 import { AD_STATUS_LABELS, DELIVERY_DOMAIN_UNSET_NOTE, deliveryUrlFor } from '../pages/basic-info-form.ts'
+import { effectiveDeliveryDomain } from '../../shared/page-delivery-domain.ts'
 import { defaultRange, toRangeQuery } from '../pages/report-period.ts'
 import { cardDetailMetrics, cardMetrics } from './page-card.ts'
 import { openCreateFolder, openCreatePage } from '../pages/folders-create.ts'
@@ -293,7 +294,7 @@ function pageActions(abTest: AbTest, folder: Folder | null): HTMLElement {
 }
 
 async function copyDeliveryUrl(abTest: AbTest, folder: Folder | null): Promise<void> {
-  const url = deliveryUrlFor(folder?.domain, location.origin, abTest.uid)
+  const url = deliveryUrlFor(effectiveDeliveryDomain(abTest.delivery_domain, folder?.domain), location.origin, abTest.uid)
   if (url === null) {
     toast(DELIVERY_DOMAIN_UNSET_NOTE, 'error')
     return

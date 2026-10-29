@@ -122,15 +122,19 @@ describe('クイックドメインの発行', () => {
 })
 
 describe('来たドメインでLPを絞る', () => {
-  /** 2フォルダを作り、片方にクイックドメインを発行した状態 */
+  /**
+   * 2フォルダを作り、片方にクイックドメインを発行した状態。
+   * ページは土台を決める前に作る＝前からあるLP（住所はフォルダで決まる）。
+   * 2026-10-30 からあとに作るLPはページ自身が住所を持つ（tests/page-delivery-domain.test.ts）
+   */
   async function setup(): Promise<{
     owned: { folderUid: string; abTestUid: string }
     other: { folderUid: string; abTestUid: string }
     host: string
   }> {
-    await setBase('lp-example.test')
     const owned = await createFolderWithPage('自分の')
     const other = await createFolderWithPage('よその')
+    await setBase('lp-example.test')
     const issued = await postJson<{ folder: { domain: string } }>(
       `${server.api}/folders/${owned.folderUid}/quick_domain`,
     )

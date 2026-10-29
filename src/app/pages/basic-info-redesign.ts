@@ -21,6 +21,8 @@ import { basicInfoApi, type MediaOption } from './basic-info-api.ts'
 import { setupHorizTabs, setupBreadcrumb } from './tab-nav.ts'
 import { recordHistory } from './folders-history.ts'
 import { CONVERSION_CONDITION_LABELS, DELIVERY_TYPE_LABELS, EDITOR_VERSION_LABELS, buildUpdatePayload, toRecordFormValues, validateBasicInfo, type AbTestForEdit, type BasicInfoValues, DELIVERY_DOMAIN_UNSET_NOTE, deliveryUrlFor } from './basic-info-form.ts'
+import { ADDRESS_LABEL_INPUT_ID, buildAddressEditor, editableAddressLabel } from './basic-info-address.ts'
+import { effectiveDeliveryDomain, pageDomainFromLabel } from '../../shared/page-delivery-domain.ts'
 
 /** 開始・締切・終了などが配信を変えないことの注記（配信は Version の配信割合と配信の切り替え予約で決まる） */
 const RECORD_ONLY_NOTE = '記録のみ（配信の開始・停止には使いません）'
@@ -52,7 +54,7 @@ export async function renderBasicInfoRedesign(
   container.innerHTML = ''
   container.style.cssText = 'flex:1;min-width:0'
 
-  const [{ ab_test }, { medias }] = await Promise.all([
+  const [{ ab_test, delivery_base: deliveryBase = '' }, { medias }] = await Promise.all([
     basicInfoApi.abTestForEdit(target.abTestUid),
     basicInfoApi.medias(),
   ])
@@ -70,7 +72,7 @@ export async function renderBasicInfoRedesign(
 
   injectStyles()
   // buildPage が内部で page を root へ append し、配線まで行う
-  buildPage(root, ab_test, medias, target.abTestUid)
+  buildPage(root, ab_test, medias, target.abTestUid, deliveryBase)
 }
 
 // ── 画面の組み立て ───────────────────────────────────────
@@ -80,12 +82,22 @@ function buildPage(
   abTest: AbTestForEdit,
   medias: readonly MediaOption[],
   abTestUid: string,
+  deliveryBase: string,
 ): HTMLElement {
-  // 実物と同じく、配信URLはフォルダのドメインで決まる。未設定なら出さずに案内する（2026-09-13）
-  const url = deliveryUrlFor(abTest.folder?.domain, location.origin, abTestUid)
-  const urlText = url ?? DELIVERY_DOMAIN_UNSET_NOTE
+  // 前からあるLPは実物と同じくフォルダのドメイン、2026-10-30 からあとのLPはページ自身の住所。未設定なら出さずに案内する。
+  // 保存で ab_test が差し替わるので、配信URLはいつも ctx の今の値から作る
+  const ctx: WireCtx = {
+    root,
+    abTest,
+    abTestUid,
+    medias,
+    deliveryBase,
+    savedUrl: () =>
+      deliveryUrlFor(effectiveDeliveryDomain(ctx.abTest.delivery_domain, ctx.abTest.folder?.domain), location.origin, abTestUid),
+  }
+  const savedUrl = ctx.savedUrl
   const needsDomain = (): boolean => {
-    if (url !== null) return false
+    if (savedUrl() !== null) return false
     toast(DELIVERY_DOMAIN_UNSET_NOTE, 'error')
     return true
   }
@@ -115,13 +127,18 @@ function buildPage(
   gBasic.append(fTitle, fEditor)
 
   const fUrl = field('配信URL', true)
+  // 2026-10-30 からあとのLPだけ: https:// [頭の名前] .c1page.com を決める欄（basic-info-address.ts）
+  const label = editableAddressLabel(abTest.delivery_domain, deliveryBase)
+  if (label !== null) fUrl.append(buildAddressEditor(label, deliveryBase, abTestUid))
   fUrl.append(
     urlRow(
-      urlText,
+      savedUrl() ?? DELIVERY_DOMAIN_UNSET_NOTE,
       () => {
+        const url = savedUrl()
         if (!needsDomain() && url !== null) copy(url)
       },
       () => {
+        const url = savedUrl()
         if (!needsDomain() && url !== null) openParamUrlModal(url)
       },
     ),
@@ -217,7 +234,6 @@ function buildPage(
   root.append(page)
 
   // ── 配線（入力→要約の追従・保存） ──
-  const ctx = { root, abTest, abTestUid, url: urlText, medias }
   wire(ctx, submit)
 
   return page
@@ -241,8 +257,11 @@ interface WireCtx {
   root: HTMLElement
   abTest: AbTestForEdit
   abTestUid: string
-  url: string
   medias: readonly MediaOption[]
+  /** 住所の土台（c1page.com・未設定は ''） */
+  deliveryBase: string
+  /** 保存済みの配信URL（未設定は null） */
+  savedUrl: () => string | null
 }
 
 function wire(ctx: WireCtx, submit: HTMLButtonElement): void {
@@ -281,7 +300,21 @@ function collect(ctx: WireCtx): BasicInfoValues {
     super_reload_count: val('bi-reload'),
     media_listing: ctx.root.querySelector<HTMLInputElement>('#bi-media-on')?.checked ?? false,
     measurement_method: val('bi-method'),
+    // 住所の頭の名前は、欄があるページ（2026-10-30 からあとのLP）だけ送る
+    ...(addressInput(ctx) === null ? {} : { delivery_label: addressInput(ctx)?.value ?? '' }),
   }
+}
+
+function addressInput(ctx: WireCtx): HTMLInputElement | null {
+  return ctx.root.querySelector<HTMLInputElement>(`#${ADDRESS_LABEL_INPUT_ID}`)
+}
+
+/** 右の確認に出す配信URL。頭の名前を打っている途中なら、登録したあとの住所を出す */
+function summaryUrl(ctx: WireCtx, label: string | undefined): string {
+  if (label !== undefined && ctx.deliveryBase !== '') {
+    return `https://${pageDomainFromLabel(label, ctx.deliveryBase)}/lp/${ctx.abTestUid}`
+  }
+  return ctx.savedUrl() ?? DELIVERY_DOMAIN_UNSET_NOTE
 }
 
 function renderSummary(ctx: WireCtx): void {
@@ -300,7 +333,7 @@ function renderSummary(ctx: WireCtx): void {
       rows: [
         ['キャンペーン名', or(v.title)],
         ['動作タイプ', selText('bi-editor')],
-        ['配信URL', ctx.url],
+        ['配信URL', summaryUrl(ctx, v.delivery_label)],
         ['配信タイプ', selText('bi-delivery')],
       ],
     },
@@ -381,14 +414,31 @@ async function save(ctx: WireCtx, submit: HTMLButtonElement): Promise<void> {
   submit.style.opacity = '0.6'
   try {
     const { ab_test } = await basicInfoApi.update(ctx.abTestUid, buildUpdatePayload(ctx.abTest, values))
+    const addressChanged = ab_test.delivery_domain !== ctx.abTest.delivery_domain
     ctx.abTest = ab_test
-    toast('更新しました')
+    if (addressChanged) refreshAddress(ctx)
+    toast(addressChanged ? `更新しました。配信URLは ${ctx.savedUrl() ?? ''} です` : '更新しました')
   } catch (error) {
     toast((error as Error).message, 'error')
   } finally {
     submit.dataset['busy'] = 'false'
     submit.style.opacity = '1'
   }
+}
+
+/** 住所を変えて登録したあと、欄（変わる前提の案内）と配信URLの欄を新しい住所に描き直す */
+function refreshAddress(ctx: WireCtx): void {
+  const label = editableAddressLabel(ctx.abTest.delivery_domain, ctx.deliveryBase)
+  const editor = addressInput(ctx)?.closest<HTMLElement>('.bi-addr') ?? null
+  if (editor !== null && label !== null) {
+    const next = buildAddressEditor(label, ctx.deliveryBase, ctx.abTestUid)
+    editor.replaceWith(next)
+    const input = addressInput(ctx)
+    input?.addEventListener('input', () => renderSummary(ctx))
+  }
+  const urlBox = ctx.root.querySelector<HTMLInputElement>('.bi-url-row .bi-input')
+  if (urlBox !== null) urlBox.value = ctx.savedUrl() ?? DELIVERY_DOMAIN_UNSET_NOTE
+  renderSummary(ctx)
 }
 
 // ── 小さなDOMヘルパー ────────────────────────────────────

@@ -31,7 +31,8 @@ async function requestJson<T>(method: 'GET' | 'PUT', path: string, body?: unknow
 
 export const basicInfoApi = {
   abTestForEdit: (uid: string) =>
-    requestJson<{ ab_test: AbTestForEdit }>('GET', `/ab_tests/${uid}/edit`),
+    // delivery_base＝住所の土台（c1page.com・未設定は ''）。古いサーバーの応答には無い
+    requestJson<{ ab_test: AbTestForEdit; delivery_base?: string }>('GET', `/ab_tests/${uid}/edit`),
   medias: () => requestJson<{ medias: MediaOption[] }>('GET', '/medias'),
   affiliateServiceProviders: () =>
     requestJson<{ affiliate_service_providers: string[] }>('GET', '/affiliate_service_providers'),

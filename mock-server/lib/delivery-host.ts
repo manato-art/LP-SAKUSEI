@@ -45,6 +45,13 @@ function isUnderQuickDomainBase(state: State, host: string): boolean {
 
 /** そのホストで、この beyondページ を配信してよいか */
 export function isServableOnHost(state: State, abTest: AbTest, host: string): boolean {
+  const own = abTest.delivery_domain ?? ''
+  if (own !== '') {
+    // このページ自身の住所（2026-10-30〜作る・複製するLP）。住所はフォルダでは決めない。
+    // 出すのは自分の住所と、このシステムのドメイン（管理・確認用）だけ。フォルダのドメイン・土台の下の別の名前では出さない
+    if (host === own) return true
+    return folderForHost(state, host) === null && !isUnderQuickDomainBase(state, host)
+  }
   const folder = folderForHost(state, host)
   if (folder === null) {
     // 土台の下で、どのフォルダにも割り当てていない名前（test.<土台> など）では何も出さない。
