@@ -6,6 +6,7 @@
  */
 
 import type { ExitPopup, FollowPopup } from '../store/types.ts'
+import { freeKindOf, freePlaceCss } from '../../src/shared/follow-free-place.ts'
 
 export type PopupDevice = 'sp' | 'tablet' | 'pc'
 
@@ -239,7 +240,11 @@ export function buildFollowPopupSnippet(fp: FollowPopup, device: PopupDevice): s
     'bottom-right': 'bottom:16px;right:16px',
     'bottom-left': 'bottom:16px;left:16px',
   }
-  const posStyle = positionStyles[fp.position] ?? positionStyles.bottom
+  // つまんで置いた場所があれば、端ではなくそこ（画面の中で動ける幅の何％か・スマホとPCで同じ割合）
+  const posStyle =
+    fp.free_position === undefined
+      ? (positionStyles[fp.position] ?? positionStyles.bottom)
+      : freePlaceCss(freeKindOf(fp.position), fp.free_position)
 
   // アニメーション
   const animMap: Record<string, string> = {

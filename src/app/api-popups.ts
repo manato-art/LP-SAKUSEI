@@ -10,6 +10,7 @@ import type {
   FollowPopupContentKey,
   PopupPublishStatus,
 } from '../shared/popup-content.ts'
+import type { FreePosition } from '../shared/follow-free-place.ts'
 
 export type { PopupPublishStatus }
 
@@ -71,6 +72,8 @@ export interface FollowPopup {
   enabled: boolean
   preset_id: string | null
   position: 'top' | 'bottom' | 'bottom-right' | 'bottom-left'
+  /** つまんで置いた場所（画面の中で動ける幅の何％か）。null＝選んだ表示位置のまま（2026-10-30・follow-free-place.ts） */
+  free_position: FreePosition | null
   show_after_scroll: number
   show_close_button: boolean
   animation: string

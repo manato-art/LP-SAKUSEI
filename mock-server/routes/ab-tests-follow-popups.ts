@@ -16,6 +16,7 @@ import { externalizeDataUrls } from '../lib/uploads.ts'
 import { freshUid } from '../store/actions-shared.ts'
 import { makeUid } from '../store/ids.ts'
 import { copyName, publishFollowPopup, serializeFollowPopup, withFollowLive } from '../store/popups.ts'
+import { parseFreePosition } from '../../src/shared/follow-free-place.ts'
 import type { FollowPopup, State } from '../store/types.ts'
 
 export const followPopupsRouter: Router = Router()
@@ -81,11 +82,20 @@ followPopupsRouter.put('/ab_tests/:uid/follow_popups/:popup_uid', (req, res) => 
     res.status(404).json(errorEnvelope('not_found', '追尾ポップアップが見つかりません。'))
     return
   }
-  // 古いポップアップ（本番の項目が無い）は、書き換える前の中身を本番として残す（配信は変わらない）
-  const existing = withFollowLive(state.followPopups[idx]!)
   const body = req.body as Record<string, unknown>
+  // つまんで置いた場所（null＝消して選んだ表示位置に戻す・follow-free-place.ts）
+  const free = 'free_position' in body ? parseFreePosition(body.free_position) : null
+  if (free !== null && !free.ok) {
+    res.status(422).json(errorEnvelope('validation_failed', free.message))
+    return
+  }
+  // 古いポップアップ（本番の項目が無い）は、書き換える前の中身を本番として残す（配信は変わらない）
+  const { free_position: kept, ...existing } = withFollowLive(state.followPopups[idx]!)
+  const freePosition = free === null ? kept : (free.value ?? undefined)
   const updated: FollowPopup = {
     ...existing,
+    // 消したときは項目ごと外す（本番の「項目なし」と同じ形にして、下書きありと誤って出さない）
+    ...(freePosition === undefined ? {} : { free_position: freePosition }),
     ...(typeof body.name === 'string' ? { name: body.name } : {}),
     ...(typeof body.enabled === 'boolean' ? { enabled: body.enabled } : {}),
     ...(isPosition(body.position) ? { position: body.position } : {}),

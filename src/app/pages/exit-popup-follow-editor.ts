@@ -19,6 +19,7 @@ import { runWidgetScripts } from '../panels/widget-run-scripts.ts'
 import { buildPopupEditorHeader } from './popup-editor-header.ts'
 import { followDraftPatch, isFollowDraftDirty } from './popup-draft.ts'
 import { openDraftCheck } from './exit-popup-editor.ts'
+import { freeKindOf, freePlaceCss } from '../../shared/follow-free-place.ts'
 
 type FollowEditorTab = 'settings' | 'device' | 'code'
 const FOLLOW_EDITOR_TABS: readonly { id: FollowEditorTab; label: string }[] = [
@@ -27,6 +28,9 @@ const FOLLOW_EDITOR_TABS: readonly { id: FollowEditorTab; label: string }[] = [
   // 中身の HTML は「中身を編集」＝Widget編集と同じ画面で直す（2026-09-24）。ここは CSS と動きの JavaScript
   { id: 'code', label: 'コード' },
 ]
+
+/** 表示位置の「つまんで置いた場所」（保存する値ではない。選んでいる間は position も置いた場所もそのまま） */
+const FREE_OPTION = 'free'
 
 /** 画面の上端・下端の帯は画面の幅いっぱい（見たまま画面はLPと同じ620px）、角は中身の幅 */
 export const isCornerPosition = (position: string): boolean => position === 'bottom-right' || position === 'bottom-left'
@@ -116,27 +120,42 @@ export function openFollowEditor(state: PopupPageState, fp: FollowPopup): void {
     read: () => ({ html: draft.html, css: draft.css }),
     renderWidth: isCornerPosition(draft.position) ? 360 : 620,
     ...(presetDef === undefined ? {} : { emptyArt: presetDef.thumbnailSvg }),
-    onEdit: () =>
+    onEdit: () => {
+      // つまんで置いた場所（「ポップアップに反映」で下書きへ入れる。反映せずに戻れば捨てる）
+      let freePlace = draft.free_position
       openPopupStudio({
         html: draft.html,
         css: draft.css,
         name: draft.name,
         badge: '追従型',
         frame: isCornerPosition(draft.position) ? 'corner' : 'lp',
-        // 「LPの上に重ねて見る」: 追従型は暗い幕なし・配信で出る所（上の帯・下の帯・右下・左下）に置く
+        // 「LPの上に重ねて見る」: 追従型は暗い幕なし・配信で出る所（上の帯・下の帯・右下・左下）に置く。
+        // つまんで好きな場所へも動かせる（2026-10-30 本人「つまんで好きな場所へ」「スマホとPCで同じ位置」）
         underlay: lpPreviewUrl(state.abTestUid).catch(() => null),
-        underlayStyle: { dim: false, place: followPlace(draft.position) },
+        underlayStyle: {
+          dim: false,
+          place: followPlace(draft.position),
+          free: {
+            kind: freeKindOf(draft.position),
+            get: () => freePlace,
+            set: (place) => {
+              freePlace = place
+            },
+          },
+        },
         onSave: async (html) => {
           // CSS は中身の <style> に入った（見本の部品の中）。二重に効かないように CSS の欄は空にする
           draft.html = html
           draft.css = ''
+          draft.free_position = freePlace
           content.refresh()
           renderFollowEditorTab(body, draft)
           const ok = await saveDraft()
           header.refreshStatus()
           return ok
         },
-      }),
+      })
+    },
   })
   formTop.append(content.el)
 
@@ -220,11 +239,21 @@ function renderFollowSettingsTab(body: HTMLElement, draft: FollowPopup): void {
     const o = document.createElement('option')
     o.value = opt.value
     o.textContent = opt.label
-    if (opt.value === draft.position) o.selected = true
+    if (opt.value === draft.position && draft.free_position === null) o.selected = true
+    posSelect.append(o)
+  }
+  // つまんで置いた場所（「中身を編集」の「LPの上に重ねて見る」で動かす）。ほかを選ぶと置いた場所を消して、その端に戻す
+  if (draft.free_position !== null) {
+    const o = document.createElement('option')
+    o.value = FREE_OPTION
+    o.textContent = 'つまんで置いた場所（「中身を編集」の画面で動かせます）'
+    o.selected = true
     posSelect.append(o)
   }
   posSelect.addEventListener('change', () => {
+    if (posSelect.value === FREE_OPTION) return
     draft.position = posSelect.value as typeof draft.position
+    draft.free_position = null
   })
   posField.append(posSelect)
   body.append(posField)
@@ -359,11 +388,14 @@ export function previewFollowPopup(fp: FollowPopup | Partial<FollowPopup>): void
   })
   overlay.id = 'fp-preview-overlay'
 
-  // 追従型は位置に合わせて表示
+  // 追従型は位置に合わせて表示（つまんで置いた場所があれば、配信と同じ割合の所）
   const pos = fp.position ?? 'bottom'
   const frame = el('div', { style: 'position:absolute;left:0;right:0' })
+  const free = fp.free_position ?? null
 
-  if (pos === 'top') {
+  if (free !== null) {
+    frame.style.cssText = `position:absolute;${freePlaceCss(freeKindOf(pos), free)}`
+  } else if (pos === 'top') {
     frame.style.top = '0'
   } else if (pos === 'bottom') {
     frame.style.bottom = '0'

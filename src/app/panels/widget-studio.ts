@@ -204,6 +204,7 @@ export function mountStudio(host: StudioHost): void {
     articlePadding: { left: host.libraryQuill?.root.style.paddingLeft ?? '', right: host.libraryQuill?.root.style.paddingRight ?? '' },
     ...(host.underlay === undefined ? {} : { underlay: host.underlay }),
     ...(host.underlayStyle === undefined ? {} : { underlayStyle: host.underlayStyle }),
+    life: life.signal,
   })
   leftPane.dataset['widgetPane'] = 'visual'
   // まん中の地: 灰色に細かい点（白い紙＝見たまま画面が浮いて見える。ダークではアプリの暗い地）

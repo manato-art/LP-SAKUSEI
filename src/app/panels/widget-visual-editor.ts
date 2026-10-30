@@ -87,6 +87,8 @@ export interface VisualEditorOptions {
   readonly underlay?: Promise<string | null>
   /** 後ろにLPを敷いたときの見せ方（暗い幕・出る所）。既定は離脱防止（暗い幕・まん中） */
   readonly underlayStyle?: UnderlayStyle
+  /** Widget編集を開いている間の寿命（画面全体への見張りを閉じたら外す・page-life.ts と同じ考え） */
+  readonly life?: AbortSignal
   /** LPの記事設定の行間（取り込んだ見本の見たまま画面に使う・widget-preview-line-height.ts）。無ければ空文字 */
   readonly articleLineHeight?: string
   /** LPの記事設定の左右の余白（LPの枠の白い紙の内側に同じ余白を取る＝公開LPと同じ中身の幅）。無ければ余白なし */
@@ -581,7 +583,13 @@ export function buildVisualEditor(
   const underlay =
     options.underlay === undefined
       ? null
-      : attachPopupUnderlay(editorBody, contentDiv, options.underlay, options.underlayStyle ?? { dim: true, place: 'center' })
+      : attachPopupUnderlay(
+          editorBody,
+          contentDiv,
+          options.underlay,
+          options.underlayStyle ?? { dim: true, place: 'center' },
+          options.life ?? new AbortController().signal,
+        )
   /** PC／スマホ（2026-09-24）: 見たまま画面の幅と @media を判定する幅を変えて、CSSを当て直す */
   const setPreviewDevice = (device: PreviewDevice): void => {
     previewWidth = device === 'sp' ? SP_WIDTH : LP_WIDTH

@@ -44,7 +44,7 @@ export function renderFollowCard(state: PopupPageState, fp: FollowPopup): HTMLEl
 
   const posLabels: Record<string, string> = { top: '上部', bottom: '下部', 'bottom-right': '右下', 'bottom-left': '左下' }
   const ratioWrap = el('div', { class: 'ep-card-ratio' })
-  ratioWrap.append(el('span', { text: posLabels[fp.position] ?? fp.position }))
+  ratioWrap.append(el('span', { text: fp.free_position === null ? (posLabels[fp.position] ?? fp.position) : '置いた場所' }))
   footer.append(ratioWrap)
 
   // 配信トグル

@@ -144,7 +144,9 @@ describe('追従型も「LPの上に重ねて見る」（2026-09-24 本人「続
   it('追従型は暗い幕なしで、配信で出る所（上の帯・下の帯・右下・左下）に置く', () => {
     const follow = src('src/app/pages/exit-popup-follow-editor.ts')
     expect(follow).toContain('underlay: lpPreviewUrl(state.abTestUid)')
-    expect(follow).toContain('underlayStyle: { dim: false, place: followPlace(draft.position) }')
+    expect(follow).toMatch(/underlayStyle: \{\s*dim: false,\s*place: followPlace\(draft\.position\),/)
+    // つまんで好きな場所へも動かせる（2026-10-30・popup-free-drag.ts）
+    expect(follow).toMatch(/free: \{\s*kind: freeKindOf\(draft\.position\),/)
     const underlay = src('src/app/panels/popup-underlay.ts')
     for (const place of ["top: '0 auto auto'", "bottom: 'auto auto 0'", "'bottom-right': 'auto 0 0 auto'", "'bottom-left': 'auto auto 0 0'"]) {
       expect(underlay).toContain(place)

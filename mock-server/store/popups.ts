@@ -107,7 +107,13 @@ export function deliveredFollowPopup(popup: FollowPopup): FollowPopup | null {
 }
 
 export function serializeFollowPopup(popup: FollowPopup): Record<string, unknown> {
-  return { ...popup, live: followLiveOf(popup), publish_status: followPublishStatus(popup) }
+  // 置いた場所が無いときも null で返す（画面の「保存していない変更があるか」が、項目の有る無しで食い違わないように）
+  return {
+    ...popup,
+    free_position: popup.free_position ?? null,
+    live: followLiveOf(popup),
+    publish_status: followPublishStatus(popup),
+  }
 }
 
 /** 複製の名前（元の名前＋「のコピー」） */

@@ -9,6 +9,8 @@
  * 読み込み自体を止める（2026-09-24 実測: ERR_BLOCKED_BY_CLIENT）。中身は自分のLP（Widgetのスクリプトは編集画面でも動かしている）。
  */
 
+import { attachFreeDrag, type FreePlaceControl } from './popup-free-drag.ts'
+
 /** 配信の暗い幕（delivery-popup-html.ts の .ep-overlay と同じ濃さ） */
 const DIM = 'rgba(0,0,0,.4)'
 
@@ -20,6 +22,8 @@ export interface UnderlayStyle {
   /** 暗い幕（離脱防止だけ。追従型はLPにそのまま重なる） */
   readonly dim: boolean
   readonly place: UnderlayPlace
+  /** つまんで好きな場所へ動かす（追従型だけ・popup-free-drag.ts）。置いた場所があれば place の端ではなくそこ */
+  readonly free?: FreePlaceControl
 }
 
 /** 出る所ごとの、見たまま画面の中での中身の置き方（縦に並べた箱の中の余白） */
@@ -41,6 +45,7 @@ export function attachPopupUnderlay(
   contentDiv: HTMLElement,
   lpUrl: Promise<string | null>,
   look: UnderlayStyle,
+  life: AbortSignal,
 ): PopupUnderlay {
   const body = editorBody // eslint-safe alias（no-param-reassign 回避）
   const content = contentDiv
@@ -94,6 +99,12 @@ export function attachPopupUnderlay(
   const only = option('中身だけ', false)
   toggle.append(over, only)
 
+  // つまんで置いた場所が無い（元の位置に戻した）ときは、出る所の余白で寄せる
+  const free =
+    look.free === undefined
+      ? null
+      : attachFreeDrag(body, content, look.free, () => { content.style.margin = PLACE_MARGIN[look.place] }, life)
+
   /** LPを敷くときは、配信で出る所へ中身を置く（見たまま画面を縦の箱にして余白で寄せる） */
   const setMode = (showLp: boolean): void => {
     layer.style.display = showLp ? 'block' : 'none'
@@ -107,6 +118,7 @@ export function attachPopupUnderlay(
     content.style.boxShadow = showLp ? 'none' : original.boxShadow
     body.style.paddingTop = showLp && look.place === 'top' ? '0' : original.paddingTop
     body.style.paddingBottom = showLp && look.place.startsWith('bottom') ? '0' : original.paddingBottom
+    free?.setShown(showLp)
     paint(over, showLp)
     paint(only, !showLp)
     // 選択枠・つまみを新しい位置へ合わせ直す（大きさは変わらないので、ResizeObserver では気づかない）
@@ -133,6 +145,7 @@ export function attachPopupUnderlay(
       frame.style.width = width === null ? '100%' : `${width}px`
       frame.style.left = width === null ? '0' : '50%'
       frame.style.transform = width === null ? '' : 'translateX(-50%)'
+      free?.setStageWidth(width)
     },
   }
 }

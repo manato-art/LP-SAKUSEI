@@ -5,6 +5,7 @@
 
 import type { MediaField } from './media-templates.ts'
 import type { ExitPopupContentKey, FollowPopupContentKey } from '../../src/shared/popup-content.ts'
+import type { FreePosition } from '../../src/shared/follow-free-place.ts'
 
 export type MediaIconName = string
 
@@ -382,6 +383,11 @@ export interface FollowPopup {
 
   // 表示設定
   position: 'top' | 'bottom' | 'bottom-right' | 'bottom-left'
+  /**
+   * つまんで置いた場所（画面の中で動ける幅の何％か・src/shared/follow-free-place.ts）。あれば position の端ではなくここに出す。
+   * 帯か小さい物かは position で決まる。無い＝選んだ表示位置のまま（null は保存しない）
+   */
+  free_position?: FreePosition
   show_after_scroll: number  // スクロール%で表示（0=即時）
   show_close_button: boolean
   animation: string
