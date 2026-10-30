@@ -26,6 +26,7 @@ import { ensureWidgetToolbarCss } from './widget-toolbar-css.ts'
 import { attachPopupUnderlay, type UnderlayStyle } from './popup-underlay.ts'
 import { LP_WIDTH, SP_WIDTH } from './lp-width-media.ts'
 import { previewLineHeight } from './widget-preview-line-height.ts'
+import { testLinkUrl } from './widget-test-link.ts'
 import {
   svgToolAlign,
   svgToolBgColor,
@@ -660,6 +661,9 @@ export function buildVisualEditor(
         e.preventDefault()
         const a = interactive
         const orig = a.getAttribute('href')
+        // 外のページへのリンクは、新しいタブで開いて移る先を確かめられるようにする（この画面からは離れない・widget-test-link.ts）
+        const url = testLinkUrl(a)
+        if (url !== null) window.open(url, '_blank', 'noopener')
         a.setAttribute('href', 'javascript:void(0)')
         setTimeout(() => {
           if (orig === null) a.removeAttribute('href')
