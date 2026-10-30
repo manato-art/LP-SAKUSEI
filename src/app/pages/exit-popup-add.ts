@@ -2,7 +2,7 @@
  * 離脱防止・表示直後ポップアップの「追加」画面（exit-popup.ts から分離・2026-09-24）。
  *
  * タブ: プリセット／複製（このLPのポップアップを写す）。「+ 新規ポップアップ作成」も。
- * 作ったポップアップは本番反映するまで配信しない（下書きと本番を分けた）。
+ * 作ったポップアップは、すぐ配信に出る（配信ONのとき・2026-10-31 下書きと本番をやめた）。
  */
 import { popupApi } from '../api-popups.ts'
 import { el, toast } from '../ui.ts'
@@ -64,8 +64,8 @@ export function openPresetModal(state: PopupPageState): void {
     }
   })
 
-  // 複製タブ: このLPの離脱防止・表示直後を並べ、選んだ物の下書きを写した別のポップアップを
-  // いま開いているタブの種類で作る（本番反映するまで配信しない）
+  // 複製タブ: このLPの離脱防止・表示直後を並べ、選んだ物の保存した中身を写した別のポップアップを
+  // いま開いているタブの種類で作る（作ったらすぐ配信に出る）
   tabCopy.addEventListener('click', () => {
     tabPreset.classList.remove('active')
     tabCopy.classList.add('active')
@@ -81,7 +81,7 @@ export function openPresetModal(state: PopupPageState): void {
           state.popups = [...state.popups, exit_popup]
           overlay.remove()
           state.rerender()
-          toast(`「${exit_popup.name}」を作りました（本番反映するまで配信しません）`)
+          toast(`「${exit_popup.name}」を作りました（配信ONならすぐ出ます。出したくないときは配信をOFFに）`)
         },
         (err: unknown) => toast((err as Error).message, 'error'),
       )
@@ -155,7 +155,7 @@ function renderPresetItem(
         state.popups = [...state.popups, exit_popup]
         overlay.remove()
         state.rerender()
-        toast(`「${preset.name}」を追加しました（本番反映するまで配信しません）`)
+        toast(`「${preset.name}」を追加しました（配信ONならすぐ出ます。出したくないときは配信をOFFに）`)
       },
       (err: unknown) => {
         adding = false
@@ -188,7 +188,7 @@ function createBlankPopup(state: PopupPageState): void {
   }).then(
     ({ exit_popup }) => {
       state.popups = [...state.popups, exit_popup]
-      toast('新規ポップアップを作成しました（本番反映するまで配信しません）')
+      toast('新規ポップアップを作成しました（配信ONならすぐ出ます。出したくないときは配信をOFFに）')
       openEditor(state, exit_popup)
     },
     (err: unknown) => toast((err as Error).message, 'error'),

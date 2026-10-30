@@ -17,7 +17,7 @@ import {
 } from '../src/shared/follow-free-place.ts'
 import { buildFollowPopupSnippet } from '../mock-server/routes/delivery-popup-html.ts'
 import type { FollowPopup } from '../mock-server/store/types.ts'
-import { getJson, postJson, resetStore, sendJson, startTestServer, type TestServer } from './helpers/server.ts'
+import { getJson, issueCreatedPage, postJson, resetStore, sendJson, startTestServer, type TestServer } from './helpers/server.ts'
 
 const stage = { w: 400, h: 800 }
 
@@ -124,7 +124,7 @@ describe('配信のバナー', () => {
   })
 })
 
-describe('保存（下書き）と本番反映', () => {
+describe('保存（保存したらすぐ配信・2026-10-31）', () => {
   let server: TestServer
   beforeAll(async () => {
     server = await startTestServer()
@@ -137,16 +137,17 @@ describe('保存（下書き）と本番反映', () => {
   })
 
   interface PopupJson {
-    follow_popup: { uid: string; free_position: { x: number; y: number } | null; publish_status: string }
+    follow_popup: { uid: string; free_position: { x: number; y: number } | null }
   }
 
   const setup = async () => {
     const page = await postJson<{ ab_test: { uid: string } }>(`${server.api}/ab_tests`, { title: '置き場所', media_id: 1 })
+    await issueCreatedPage(server.api, page.json)
     const uid = page.json.ab_test.uid
     const created = await postJson<PopupJson>(`${server.api}/ab_tests/${uid}/follow_popups`, { name: 'バナー' })
     const popupUid = created.json.follow_popup.uid
-    await postJson(`${server.api}/ab_tests/${uid}/follow_popups/${popupUid}/publish`)
-    return { url: `${server.api}/ab_tests/${uid}/follow_popups/${popupUid}`, created: created.json }
+    const lp = async (): Promise<string> => (await fetch(`${server.baseUrl}/lp/${uid}`)).text()
+    return { url: `${server.api}/ab_tests/${uid}/follow_popups/${popupUid}`, created: created.json, lp }
   }
 
   it('作ったばかりは置いた場所なし', async () => {
@@ -154,22 +155,22 @@ describe('保存（下書き）と本番反映', () => {
     expect(created.follow_popup.free_position).toBeNull()
   })
 
-  it('置いた場所を下書きに保存すると、本番反映するまで「下書きあり」', async () => {
-    const { url } = await setup()
+  it('置いた場所を保存すると、すぐ配信のバナーがその場所に出る', async () => {
+    const { url, lp } = await setup()
     const res = await sendJson<PopupJson>('PUT', url, { free_position: { x: 50, y: 35.04 } })
     expect(res.status).toBe(200)
     expect(res.json.follow_popup.free_position).toEqual({ x: 50, y: 35 })
-    expect(res.json.follow_popup.publish_status).toBe('changed')
-    const published = await postJson<PopupJson>(`${url}/publish`)
-    expect(published.json.follow_popup.publish_status).toBe('published')
+    expect(await lp()).toContain('top:35%;left:0;right:0;translate:0 -35%')
   })
 
-  it('null を送ると置いた場所を消す（選んだ表示位置に戻る）・本番と同じなら「公開中」のまま', async () => {
-    const { url } = await setup()
+  it('null を送ると置いた場所を消す（選んだ表示位置に戻る）', async () => {
+    const { url, lp } = await setup()
     await sendJson('PUT', url, { free_position: { x: 50, y: 35 } })
     const cleared = await sendJson<PopupJson>('PUT', url, { free_position: null })
     expect(cleared.json.follow_popup.free_position).toBeNull()
-    expect(cleared.json.follow_popup.publish_status).toBe('published')
+    const html = await lp()
+    expect(html).not.toContain('translate:0 -35%')
+    expect(html).toContain('bottom:0;left:0;right:0')
   })
 
   it('おかしな値は断り、保存してある場所は変えない', async () => {

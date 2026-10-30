@@ -14,7 +14,7 @@ import { FOLLOW_PRESETS, type FollowPreset } from './follow-popup-presets.ts'
 import type { PopupPageState } from './exit-popup-state.ts'
 import { drawPopupThumb } from './popup-content-card.ts'
 import { isCornerPosition, openFollowEditor, previewFollowPopup } from './exit-popup-follow-editor.ts'
-import { copyTabList, publishStatusPill } from './popup-list-parts.ts'
+import { copyTabList } from './popup-list-parts.ts'
 import { isCreator } from '../session.ts'
 
 export function renderFollowCard(state: PopupPageState, fp: FollowPopup): HTMLElement {
@@ -38,7 +38,6 @@ export function renderFollowCard(state: PopupPageState, fp: FollowPopup): HTMLEl
   // カード下部
   const body = el('div', { class: 'ep-card-body' })
   body.append(el('p', { class: 'ep-card-name', text: fp.name }))
-  body.append(publishStatusPill(fp.publish_status))
 
   const footer = el('div', { class: 'ep-card-footer' })
 
@@ -178,7 +177,7 @@ export function openFollowPresetModal(state: PopupPageState): void {
     }
   })
 
-  // 複製タブ: このLPの追従型を並べ、選んだ物の下書きを写した別の追従型を作る（本番反映するまで配信しない）
+  // 複製タブ: このLPの追従型を並べ、選んだ物の保存した中身を写した別の追従型を作る（作ったらすぐ配信に出る）
   tabCopy.addEventListener('click', () => {
     tabPreset.classList.remove('active')
     tabCopy.classList.add('active')
@@ -189,7 +188,7 @@ export function openFollowPresetModal(state: PopupPageState): void {
           state.followPopups = [...state.followPopups, follow_popup]
           overlay.remove()
           state.rerender()
-          toast(`「${follow_popup.name}」を作りました（本番反映するまで配信しません）`)
+          toast(`「${follow_popup.name}」を作りました（配信ONならすぐ出ます。出したくないときは配信をOFFに）`)
         },
         (err: unknown) => toast((err as Error).message, 'error'),
       )
@@ -254,7 +253,7 @@ function renderFollowPresetItem(
         state.followPopups = [...state.followPopups, follow_popup]
         overlay.remove()
         state.rerender()
-        toast(`「${preset.name}」を追加しました（本番反映するまで配信しません）`)
+        toast(`「${preset.name}」を追加しました（配信ONならすぐ出ます。出したくないときは配信をOFFに）`)
       },
       (err: unknown) => {
         adding = false
@@ -277,7 +276,7 @@ function createBlankFollowPopup(state: PopupPageState): void {
     ({ follow_popup }) => {
       state.followPopups = [...state.followPopups, follow_popup]
       state.rerender()
-      toast('新規追従型ポップアップを作成しました（本番反映するまで配信しません）')
+      toast('新規追従型ポップアップを作成しました（配信ONならすぐ出ます。出したくないときは配信をOFFに）')
       openFollowEditor(state, follow_popup)
     },
     (err: unknown) => toast((err as Error).message, 'error'),

@@ -1,16 +1,12 @@
 /**
- * ポップアップの編集画面・一覧で使う「下書きと本番」の小さな道具（2026-09-24・本人の決定「下書きと本番を分ける」）。
+ * ポップアップの編集画面・一覧で使う小さな道具。編集画面では直している途中の形を draft と呼ぶ。
  *
- * DOM に触らない（テストで確かめられるように）。どの項目を下書きとして送るかは src/shared/popup-content.ts。
- * 名前は本番に分けない項目だが、編集画面では「下書き反映」でいっしょに保存する（保存していない変更に数える）。
- * 配信のON/OFFと割合は、編集画面でも変えたその場で保存する（下書きに入れない）。
+ * DOM に触らない（テストで確かめられるように）。「保存」で送る項目は src/shared/popup-content.ts＋名前。
+ * 保存したら、すぐ配信に出る（配信ONのとき・2026-10-31 本人「下書き反映・本番反映の操作はだるい」で下書きと本番をやめた）。
+ * 配信のON/OFFと割合は、編集画面でも変えたその場で保存する。
  */
 import type { ExitPopup, FollowPopup, PopupDeliveryVersion } from '../api-popups.ts'
-import {
-  EXIT_POPUP_CONTENT_KEYS,
-  FOLLOW_POPUP_CONTENT_KEYS,
-  type PopupPublishStatus,
-} from '../../shared/popup-content.ts'
+import { EXIT_POPUP_CONTENT_KEYS, FOLLOW_POPUP_CONTENT_KEYS } from '../../shared/popup-content.ts'
 
 const EXIT_DRAFT_KEYS = [...EXIT_POPUP_CONTENT_KEYS, 'name'] as const
 const FOLLOW_DRAFT_KEYS = [...FOLLOW_POPUP_CONTENT_KEYS, 'name'] as const
@@ -26,7 +22,7 @@ function differs<T extends object>(a: T, b: T, keys: readonly (keyof T)[]): bool
   return keys.some((k) => JSON.stringify(a[k]) !== JSON.stringify(b[k]))
 }
 
-/** 「下書き反映」で送る項目（中身・表示のきっかけ・位置・出し分け・リンク・名前） */
+/** 「保存」で送る項目（中身・表示のきっかけ・位置・出し分け・リンク・名前） */
 export function exitDraftPatch(draft: ExitPopup): Pick<ExitPopup, ExitDraftKey> {
   return pick(draft, EXIT_DRAFT_KEYS)
 }
@@ -44,17 +40,6 @@ export function isFollowDraftDirty(draft: FollowPopup, saved: FollowPopup): bool
   return differs(draft, saved, FOLLOW_DRAFT_KEYS)
 }
 
-/** 本番との違いの表示（一覧のカード・編集画面の上）。色は小さな丸（ドット）1つで表す */
-export function publishStatusView(status: PopupPublishStatus): { label: string; color: string; hint: string } {
-  if (status === 'unpublished') {
-    return { label: '未公開', color: '#9AA0A6', hint: 'まだ本番反映していません。配信には出ません' }
-  }
-  if (status === 'changed') {
-    return { label: '下書きあり', color: '#E08A00', hint: '本番反映していない変更があります。配信は前に本番反映した中身のままです' }
-  }
-  return { label: '公開中', color: '#2FA84F', hint: '本番反映した中身を配信しています（配信ONのとき）' }
-}
-
 /** 割合の説明（一覧・編集画面で同じ文） */
 export const RATIO_HELP =
   '1回の表示で出すのは、この種類から1つだけ。割合が大きいほど出やすくなります。0%は出しません（全部0%なら、どれも出ません）'
@@ -69,7 +54,7 @@ export function mainVersionUid(versions: readonly PopupDeliveryVersion[]): strin
   return main?.uid ?? null
 }
 
-/** 「下書きを確かめる」URL（検証用のプレビューに、そのポップアップの下書きだけを出す） */
+/** 「LPの上で確認」のURL（検証用のプレビューに、そのポップアップだけを出す・配信OFFでも） */
 export function draftCheckUrl(versionUid: string, popupUid: string): string {
   return `/preview/${encodeURIComponent(versionUid)}?popup_draft=${encodeURIComponent(popupUid)}`
 }

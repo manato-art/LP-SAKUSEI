@@ -2,10 +2,10 @@
  * 追従型ポップアップの編集画面（exit-popup-follow.ts から分離・2026-09-24）。
  *
  * 中身（HTML）は「中身を編集」＝Widget編集と同じ画面で直す。タブは 表示設定 / 出し分け / コード（CSS・JavaScript）。
- * 上の操作（戻る・プレビュー・下書きを確認・下書き反映・本番反映・⋯）は離脱防止と同じ popup-editor-header.ts。
+ * 上の操作（戻る・プレビュー・LPの上で確認・保存・⋯）は離脱防止と同じ popup-editor-header.ts。
  *
- * 下書きと本番を分ける（2026-09-24・本人の決定）: 「下書き反映」は下書きだけ、「本番反映」で配信に出す。
- * 配信のON/OFFは変えたその場で保存する（一覧のカードと同じ・下書きに入れない）。
+ * 「保存」したら、すぐ配信に出る（配信ONのとき・2026-10-31 下書きと本番をやめた）。
+ * 配信のON/OFFは変えたその場で保存する（一覧のカードと同じ）。
  */
 import { popupApi, type FollowPopup } from '../api-popups.ts'
 import { T, el, toast } from '../ui.ts'
@@ -42,7 +42,7 @@ const followPlace = (position: string): 'top' | 'bottom' | 'bottom-right' | 'bot
 export function openFollowEditor(state: PopupPageState, fp: FollowPopup): void {
   for (const p of state.root.querySelectorAll('.ep-panel, .ep-closed, .ep-editor')) p.remove()
 
-  // saved＝最後にサーバーへ保存した形。draft＝この画面で直している下書き
+  // saved＝最後にサーバーへ保存した形。draft＝この画面で直している途中の形
   let saved: FollowPopup = fp
   const draft: FollowPopup = { ...fp }
   const replaceInState = (next: FollowPopup): void => {
@@ -52,24 +52,12 @@ export function openFollowEditor(state: PopupPageState, fp: FollowPopup): void {
 
   const editor = el('div', { class: 'ep-editor' })
 
-  /** 下書き反映（中身の「ポップアップに反映」も同じ）。保存できたら true */
-  const saveDraft = async (): Promise<boolean> => {
+  /** 保存（中身の「ポップアップに反映」も同じ・すぐ配信に出る）。保存できたら true */
+  const save = async (): Promise<boolean> => {
     try {
       const { follow_popup } = await popupApi.updateFollowPopup(state.abTestUid, fp.uid, followDraftPatch(draft))
       replaceInState(follow_popup)
-      toast('下書きに保存しました（配信にはまだ出ません）')
-      return true
-    } catch (err: unknown) {
-      toast((err as Error).message, 'error')
-      return false
-    }
-  }
-  const publish = async (): Promise<boolean> => {
-    try {
-      await popupApi.updateFollowPopup(state.abTestUid, fp.uid, followDraftPatch(draft))
-      const { follow_popup } = await popupApi.publishFollowPopup(state.abTestUid, fp.uid)
-      replaceInState(follow_popup)
-      toast(follow_popup.enabled ? '本番に反映しました' : '本番に反映しました（配信がOFFなので、まだ出ません）')
+      toast(follow_popup.enabled ? '保存しました（配信に出ています）' : '保存しました（配信がOFFなので、まだ出ません）')
       return true
     } catch (err: unknown) {
       toast((err as Error).message, 'error')
@@ -79,21 +67,19 @@ export function openFollowEditor(state: PopupPageState, fp: FollowPopup): void {
   const isDirty = (): boolean => isFollowDraftDirty(draft, saved)
 
   const header = buildPopupEditorHeader({
-    status: () => saved.publish_status,
     isDirty,
     onBack: () => {
       editor.remove()
       state.rerender()
     },
     onPreview: () => previewFollowPopup(draft),
-    onCheckDraft: () => openDraftCheck(state.abTestUid, fp.uid, async () => (isDirty() ? saveDraft() : true)),
-    onSaveDraft: saveDraft,
-    onPublish: publish,
+    onCheckDraft: () => openDraftCheck(state.abTestUid, fp.uid, async () => (isDirty() ? save() : true)),
+    onSave: save,
     onDuplicate: async () => {
       try {
         const { follow_popup } = await popupApi.duplicateFollowPopup(state.abTestUid, fp.uid)
         state.followPopups = [...state.followPopups, follow_popup]
-        toast(`「${follow_popup.name}」を作りました（本番反映するまで配信しません）`)
+        toast(`「${follow_popup.name}」を作りました（配信ONならすぐ出ます。出したくないときは配信をOFFに）`)
         openFollowEditor(state, follow_popup)
       } catch (err: unknown) {
         toast((err as Error).message, 'error')
@@ -121,7 +107,7 @@ export function openFollowEditor(state: PopupPageState, fp: FollowPopup): void {
     renderWidth: isCornerPosition(draft.position) ? 360 : 620,
     ...(presetDef === undefined ? {} : { emptyArt: presetDef.thumbnailSvg }),
     onEdit: () => {
-      // つまんで置いた場所（「ポップアップに反映」で下書きへ入れる。反映せずに戻れば捨てる）
+      // つまんで置いた場所（「ポップアップに反映」で保存する。反映せずに戻れば捨てる）
       let freePlace = draft.free_position
       openPopupStudio({
         html: draft.html,
@@ -150,9 +136,7 @@ export function openFollowEditor(state: PopupPageState, fp: FollowPopup): void {
           draft.free_position = freePlace
           content.refresh()
           renderFollowEditorTab(body, draft)
-          const ok = await saveDraft()
-          header.refreshStatus()
-          return ok
+          return save()
         },
       })
     },

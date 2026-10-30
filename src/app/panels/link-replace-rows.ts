@@ -7,7 +7,7 @@
  *
  * - 「中間ページリンク」を選んだら、置き換え先の中間ページを選ぶプルダウンを出す（以前は「未採取」のエラーだけ）
  * - 「離脱防止ポップアップリンク」タブは、ポップアップの一覧と「開いて直す」を出す
- *   （ポップアップの中身は下書きと本番に分かれているので、中身の編集画面で直す）
+ *   （ポップアップの中身は、ポップアップの編集画面で直す）
  */
 import { isInPageHref, type LpLink } from '../../shared/link-html.ts'
 import { LR_ICONS } from './link-replace-style.ts'
@@ -202,7 +202,7 @@ export function renderPopupRows(host: HTMLElement, popups: readonly PopupChoice[
     return
   }
   const note = document.createElement('div')
-  note.textContent = 'ポップアップの中のリンクは、ポップアップの編集画面で直します（下書き→本番反映で公開）。'
+  note.textContent = 'ポップアップの中のリンクは、ポップアップの編集画面で直します（保存したらすぐ配信に出ます）。'
   note.style.cssText = 'padding:8px 10px;font-size:12px;line-height:1.6;color:var(--sb-c-666666, #666666)'
   host.replaceChildren(
     note,

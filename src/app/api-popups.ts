@@ -1,18 +1,12 @@
 /**
  * ポップアップ（離脱防止・表示直後・追従型）のAPIと型（api.ts から分離・2026-09-24）。
  *
- * 下書きと本番を分けた（本人の決定）: 更新（PUT）は下書き、publish で本番に写す。配信は本番だけを使う。
- * 名前・割合・配信ON/OFF は下書きと本番に分けない（変えたらすぐ効く）。分ける項目は src/shared/popup-content.ts。
+ * 作った・保存した（PUT）中身が、そのまま配信に出る（配信ONのとき・2026-10-31 下書きと本番に分けるのをやめた）。
+ * 編集画面の「保存」で送る項目は src/shared/popup-content.ts。
  */
 import { request } from './api.ts'
-import type {
-  ExitPopupContentKey,
-  FollowPopupContentKey,
-  PopupPublishStatus,
-} from '../shared/popup-content.ts'
+import type { ExitPopupContentKey, FollowPopupContentKey } from '../shared/popup-content.ts'
 import type { FreePosition } from '../shared/follow-free-place.ts'
-
-export type { PopupPublishStatus }
 
 /** 離脱ポップアップ（指示80） */
 export interface ExitPopup {
@@ -54,13 +48,9 @@ export interface ExitPopup {
   /** 指示172: ポップを触ったときの動作。'link'=遷移先URLへ移動（既定）/
    *  'close'=LPに戻る（ポップを閉じて元の位置へ・×と同じ）/ 'tel'=電話をかける（phone_number）。未設定は 'link' 扱い。 */
   link_action?: 'link' | 'close' | 'tel'
-  /** 本番（配信に使う中身）。null＝まだ本番反映していない。上の項目は下書き（2026-09-24） */
-  live: ExitPopupContent | null
-  /** 本番との違い（まだ本番反映していない／下書きに変更がある／本番と同じ） */
-  publish_status: PopupPublishStatus
 }
 
-/** 離脱防止ポップアップの、下書きと本番に分ける項目 */
+/** 離脱防止ポップアップの、編集画面の「保存」で送る項目 */
 export type ExitPopupContent = Pick<ExitPopup, ExitPopupContentKey>
 
 /** 追尾型ポップアップ（指示85） */
@@ -83,12 +73,9 @@ export interface FollowPopup {
   html: string
   javascript: string
   css: string
-  /** 本番（配信に使う中身）。null＝まだ本番反映していない。上の項目は下書き（2026-09-24） */
-  live: FollowPopupContent | null
-  publish_status: PopupPublishStatus
 }
 
-/** 追従型ポップアップの、下書きと本番に分ける項目 */
+/** 追従型ポップアップの、編集画面の「保存」で送る項目 */
 export type FollowPopupContent = Pick<FollowPopup, FollowPopupContentKey>
 
 /** ポップアップ画面の「このVersionで配信」の1行（Versionごと） */
@@ -117,10 +104,7 @@ export const popupApi = {
   /** 離脱ポップアップ削除 */
   deleteExitPopup: (abTestUid: string, popupUid: string) =>
     request<void>('DELETE', `/ab_tests/${abTestUid}/exit_popups/${popupUid}`),
-  /** 離脱ポップアップの本番反映（今の下書きを本番に写す） */
-  publishExitPopup: (abTestUid: string, popupUid: string) =>
-    request<{ exit_popup: ExitPopup }>('POST', `/ab_tests/${abTestUid}/exit_popups/${popupUid}/publish`),
-  /** 離脱ポップアップの複製（下書きを写した別のポップアップ・本番反映するまで配信しない） */
+  /** 離脱ポップアップの複製（保存した中身を写した別のポップアップ） */
   duplicateExitPopup: (abTestUid: string, popupUid: string, popupKind: 'exit' | 'instant') =>
     request<{ exit_popup: ExitPopup }>('POST', `/ab_tests/${abTestUid}/exit_popups/${popupUid}/duplicate`, {
       popup_kind: popupKind,
@@ -145,10 +129,7 @@ export const popupApi = {
   /** 追尾型ポップアップ削除 */
   deleteFollowPopup: (abTestUid: string, popupUid: string) =>
     request<void>('DELETE', `/ab_tests/${abTestUid}/follow_popups/${popupUid}`),
-  /** 追尾型ポップアップの本番反映 */
-  publishFollowPopup: (abTestUid: string, popupUid: string) =>
-    request<{ follow_popup: FollowPopup }>('POST', `/ab_tests/${abTestUid}/follow_popups/${popupUid}/publish`),
-  /** 追尾型ポップアップの複製（本番反映するまで配信しない） */
+  /** 追尾型ポップアップの複製 */
   duplicateFollowPopup: (abTestUid: string, popupUid: string) =>
     request<{ follow_popup: FollowPopup }>('POST', `/ab_tests/${abTestUid}/follow_popups/${popupUid}/duplicate`),
 }

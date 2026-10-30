@@ -1,32 +1,29 @@
 /**
  * ポップアップの編集画面の上（離脱防止・表示直後・追従型で共通・2026-09-24 監査 15・26）。
  *
- *   上段: 戻る｜ポップアップ｜本番との違い（未公開／下書きあり／公開中）
- *   下段: プレビュー・下書きを確認｜下書き反映・本番反映・⋯（複製／削除）
+ *   上段: 戻る｜ポップアップ
+ *   下段: プレビュー・LPの上で確認｜保存・⋯（複製／削除）
  *
+ * 「保存」したら、すぐ配信に出る（配信ONのとき）。2026-10-31 本人「わざわざ 下書き反映 本番反映 これ操作するのだるいから、
+ * オンオフのボタンはあるし、追加したら反映でいいよ」で、下書き反映・本番反映の2つを「保存」1つにした。
  * 「戻る」は保存していない変更があるときだけ赤い確認カードで確かめる（以前は黙って捨てていた）。
- * 「⋯ → 複製」は保存した下書きを写すので、保存していない変更があれば先に下書き反映する（断れば何もしない）。
+ * 「⋯ → 複製」は保存した中身を写すので、保存していない変更があれば先に保存する（断れば何もしない）。
  * 実際の保存・複製・削除は呼び出し側（exit-popup-editor.ts / exit-popup-follow-editor.ts）が渡す。
  */
 import { confirmCard, type ConfirmOptions } from '../dialog.ts'
 import { el } from '../ui.ts'
-import type { PopupPublishStatus } from '../../shared/popup-content.ts'
-import { publishStatusPill } from './popup-list-parts.ts'
 import { isCreator } from '../session.ts'
 
 export interface PopupEditorHeaderOptions {
-  readonly status: () => PopupPublishStatus
   readonly isDirty: () => boolean
   /** 一覧へ戻る（確かめたあと） */
   readonly onBack: () => void
   /** その場のプレビュー（保存前の中身） */
   readonly onPreview: () => void
-  /** 下書きを確認（保存した下書きをLPの上で見る） */
+  /** LPの上で確認（保存した中身をLPの上に出して見る） */
   readonly onCheckDraft: () => Promise<void>
-  /** 下書き反映。保存できたら true */
-  readonly onSaveDraft: () => Promise<boolean>
-  /** 本番反映。反映できたら true */
-  readonly onPublish: () => Promise<boolean>
+  /** 保存（すぐ配信に出る）。保存できたら true */
+  readonly onSave: () => Promise<boolean>
   readonly onDuplicate: () => Promise<void>
   /** 削除（確認カードで「削除する」を押したあと） */
   readonly onDelete: () => Promise<void>
@@ -54,7 +51,6 @@ function busy(btn: HTMLButtonElement, label: string, run: () => Promise<unknown>
 export function buildPopupEditorHeader(options: PopupEditorHeaderOptions): {
   top: HTMLElement
   bar: HTMLElement
-  refreshStatus: () => void
 } {
   const ask = options.confirm ?? confirmCard
 
@@ -71,7 +67,7 @@ export function buildPopupEditorHeader(options: PopupEditorHeaderOptions): {
     void ask({
       title: '保存していない変更があります',
       message: '戻ると、この画面で直した内容は消えます。',
-      detail: '残すときは「編集を続ける」を押し、「下書き反映」してから戻ってください。',
+      detail: '残すときは「編集を続ける」を押し、「保存」してから戻ってください。',
       submitLabel: '保存せずに戻る',
       cancelLabel: '編集を続ける',
       danger: true,
@@ -82,14 +78,7 @@ export function buildPopupEditorHeader(options: PopupEditorHeaderOptions): {
   left.append(backBtn)
   const center = el('div', { class: 'ep-editor-head-top-center', text: 'ポップアップ' })
   const right = el('div', { class: 'ep-editor-head-top-right' })
-  right.style.display = 'flex'
-  right.style.justifyContent = 'flex-end'
   top.append(left, center, right)
-
-  const refreshStatus = (): void => {
-    right.replaceChildren(publishStatusPill(options.status()))
-  }
-  refreshStatus()
 
   // ── 下段 ──
   const bar = el('div', { class: 'ep-editor-btn-bar' })
@@ -98,31 +87,17 @@ export function buildPopupEditorHeader(options: PopupEditorHeaderOptions): {
   previewBtn.type = 'button'
   previewBtn.title = '保存する前の中身を、この画面の上で見ます'
   previewBtn.addEventListener('click', () => options.onPreview())
-  const checkDraftBtn = el('button', { class: 'ep-editor-btn-draft', html: `下書きを確認 ${OPEN_ICON}` })
+  const checkDraftBtn = el('button', { class: 'ep-editor-btn-draft', html: `LPの上で確認 ${OPEN_ICON}` })
   checkDraftBtn.type = 'button'
-  checkDraftBtn.title = '下書きを、LPの上に出して新しいタブで確かめます（配信はされません）'
+  checkDraftBtn.title = '保存した中身を、LPの上に出して新しいタブで確かめます（配信OFFでも出ます）'
   checkDraftBtn.addEventListener('click', () => busy(checkDraftBtn, '開いています…', options.onCheckDraft))
   btnLeft.append(previewBtn, checkDraftBtn)
 
   const btnRight = el('div', { class: 'ep-editor-btn-group' })
-  const saveDraftBtn = el('button', { class: 'ep-editor-btn-draft', text: '下書き反映' })
-  saveDraftBtn.type = 'button'
-  saveDraftBtn.title = '下書きとして保存します。配信にはまだ出ません'
-  saveDraftBtn.addEventListener('click', () =>
-    busy(saveDraftBtn, '保存中…', async () => {
-      await options.onSaveDraft()
-      refreshStatus()
-    }),
-  )
-  const publishBtn = el('button', { class: 'ep-editor-btn-prod', text: '本番反映' })
-  publishBtn.type = 'button'
-  publishBtn.title = '下書きを本番にして配信します（配信がONのとき）'
-  publishBtn.addEventListener('click', () =>
-    busy(publishBtn, '反映中…', async () => {
-      await options.onPublish()
-      refreshStatus()
-    }),
-  )
+  const saveBtn = el('button', { class: 'ep-editor-btn-prod', text: '保存' })
+  saveBtn.type = 'button'
+  saveBtn.title = '保存すると、すぐ配信に出ます（配信がONのとき）'
+  saveBtn.addEventListener('click', () => busy(saveBtn, '保存中…', options.onSave))
 
   const moreWrap = el('span', { style: 'position:relative;display:inline-flex' })
   const moreBtn = el('button', { class: 'ep-editor-btn-more', text: '⋯' })
@@ -133,10 +108,10 @@ export function buildPopupEditorHeader(options: PopupEditorHeaderOptions): {
     toggleMenu(moreWrap, options, ask)
   })
   moreWrap.append(moreBtn)
-  btnRight.append(saveDraftBtn, publishBtn, moreWrap)
+  btnRight.append(saveBtn, moreWrap)
   bar.append(btnLeft, btnRight)
 
-  return { top, bar, refreshStatus }
+  return { top, bar }
 }
 
 /** ⋯ のメニュー（複製・削除） */
@@ -170,12 +145,12 @@ function toggleMenu(
     }
     void ask({
       title: '保存していない変更があります',
-      message: '複製には保存した下書きが写ります。いまの変更を下書き反映してから複製しますか？',
-      submitLabel: '下書き反映して複製',
+      message: '複製には保存した中身が写ります。いまの変更を保存してから複製しますか？',
+      submitLabel: '保存して複製',
       cancelLabel: 'やめる',
     }).then(async (ok) => {
       if (!ok) return
-      if (await options.onSaveDraft()) await options.onDuplicate()
+      if (await options.onSave()) await options.onDuplicate()
     })
   })
 

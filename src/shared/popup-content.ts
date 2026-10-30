@@ -1,8 +1,7 @@
 /**
- * ポップアップの「下書き」と「本番」に分ける項目（2026-09-24・本人の決定「下書きと本番を分ける」）。
- *
- * サーバー（mock-server/store/popups.ts＝本番へ写す・配信に使う）と画面（下書き反映で送る・保存していない変更があるか）で
- * 同じ並びを使う。ここに無い項目（名前・割合・配信ON/OFF・種類）は下書きと本番に分けず、変えたらすぐ効く。
+ * ポップアップの編集画面で直して「保存」で送る項目（保存していない変更があるかもこの並びで見る）。
+ * ここに無い項目（名前・割合・配信ON/OFF・種類）は、変えたらすぐ効く。
+ * 2026-09-24〜10-31 は下書きと本番に分けていた（本人「下書き反映・本番反映の操作はだるい」でやめた・mock-server/store/popups.ts）。
  */
 
 /** 離脱防止・表示直後 */
@@ -49,6 +48,3 @@ export const FOLLOW_POPUP_CONTENT_KEYS = [
 
 export type ExitPopupContentKey = (typeof EXIT_POPUP_CONTENT_KEYS)[number]
 export type FollowPopupContentKey = (typeof FOLLOW_POPUP_CONTENT_KEYS)[number]
-
-/** 一覧・編集画面に出す「本番との違い」: まだ本番反映していない／下書きに本番へ出していない変更がある／本番と同じ */
-export type PopupPublishStatus = 'unpublished' | 'changed' | 'published'

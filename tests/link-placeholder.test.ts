@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isPlaceholderHref, placeholderLinkCount, replacedHref } from '../src/app/panels/link-placeholder.ts'
+import { isPlaceholderHref, linkFieldValue, placeholderLinkCount, replacedHref } from '../src/app/panels/link-placeholder.ts'
 
 /**
  * 見本のボタンのリンク先が「仮」のままか（2026-09-22・本人の決定「単独のボタンはリンクのまま、リンク先を入れやすく」）。
@@ -46,5 +46,17 @@ describe('リンク先を入れ替える', () => {
   it('開けない形（javascript: など）や空は入れない', () => {
     expect(replacedHref('ooooo', null, 'javascript:alert(1)')).toBeNull()
     expect(replacedHref('ooooo', null, '   ')).toBeNull()
+  })
+})
+
+describe('入力欄に出すリンク先（2026-10-31 本人「リンク先の記入欄に＃が入っているけど、なんで？いらない。消して」）', () => {
+  it('仮のリンク（#・ooooo・○○○ など）は空で出す', () => {
+    for (const href of ['#', '##', 'ooooo', '○○○○', 'リンクURL', '', null]) expect(linkFieldValue(href), String(href)).toBe('')
+  })
+
+  it('本物のリンク先・ページの中の場所（#form）はそのまま出す', () => {
+    expect(linkFieldValue('https://shop.example.test/buy')).toBe('https://shop.example.test/buy')
+    expect(linkFieldValue('#form')).toBe('#form')
+    expect(linkFieldValue('tel:0120000000')).toBe('tel:0120000000')
   })
 })

@@ -35,7 +35,7 @@ export interface PreviewOptions {
   readonly bare: boolean
   /** ポップアップの出し分けに使う端末 */
   readonly device: ReturnType<typeof buildVisitorContext>['device']
-  /** ?popup_draft={uid}: そのポップアップの下書きだけを出す（ポップアップ編集の「下書きを確認」） */
+  /** ?popup_draft={uid}: そのポップアップだけを出す（ポップアップ編集の「LPの上で確認」） */
   readonly draftUid?: string
 }
 
@@ -60,8 +60,8 @@ export function renderPreviewDocument(state: State, version: Version, options: P
     ? `${escapeHtml(abTest.title)} - ${escapeHtml(version.name)} プレビュー`
     : `${escapeHtml(version.name)} プレビュー`
 
-  // 指示174: プレビューでも離脱防止/表示直後/追尾ポップを発動させる（配信と同じ・本番反映した物）。
-  // draftUid: 編集画面の「下書きを確認」＝そのポップアップの下書きだけ（delivery-popups.ts・2026-09-24）
+  // 指示174: プレビューでも離脱防止/表示直後/追尾ポップを発動させる（配信と同じ）。
+  // draftUid: 編集画面の「LPの上で確認」＝そのポップアップだけ（delivery-popups.ts）
   const previewPopupHtml = renderPreviewPopups(
     abTest === undefined ? null : { state, abTest, version, device: options.device },
     { bare: options.bare, draftUid: options.draftUid ?? '' },

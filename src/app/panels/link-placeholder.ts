@@ -11,6 +11,16 @@ import { isAllowedLinkUrl, isTelHref, isTrackingLink, withTrackingParam } from '
 const PLACEHOLDER_HREF =
   /^(?:o{2,}|[○◯〇]{2,}|#{1,3}|(?:%E2%97%(?:8B|AF))+|(?:%E3%80%87)+|リンクURL|サイトのURLを入力してください)$/i
 
+/**
+ * 入力欄（「ボタンのリンク先」）に出すリンク先。仮のリンク（#・ooooo・○○○ など）は空で出す
+ * （2026-10-31 本人「リンク先の記入欄に＃が入っているけど、なんで？いらない。消して」）。
+ * 架空の行き先（example.test）は空にしない（入れたリンク先が消えたように見えるため）。空の欄のまま保存すると中身は # のまま
+ */
+export function linkFieldValue(href: string | null): string {
+  const value = (href ?? '').trim()
+  return PLACEHOLDER_HREF.test(value) ? '' : value
+}
+
 export function isPlaceholderHref(href: string | null): boolean {
   const value = (href ?? '').trim()
   if (value === '') return true

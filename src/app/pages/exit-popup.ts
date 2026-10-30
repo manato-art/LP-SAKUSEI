@@ -9,8 +9,8 @@
  *   - ポップアップ編集（5タブ: 基本/表示/位置/出し分け/コード。中身は「中身を編集」＝Widget編集と同じ画面）
  *   - LP上での離脱防止ポップアップ表示
  *
- * 下書きと本番を分ける（2026-09-24・本人の決定）: カードに本番との違い（未公開／下書きあり／公開中）を出す。
- * カードの配信ON/OFFと割合は、変えたその場で保存する（下書き・本番に分けない）。
+ * 作った・保存した中身が、そのまま配信に出る（2026-10-31 本人「下書き反映・本番反映の操作はだるい」で下書きと本番をやめた）。
+ * カードの配信ON/OFFと割合は、変えたその場で保存する。
  */
 import { api } from '../api.ts'
 import { popupApi, type ExitPopup } from '../api-popups.ts'
@@ -25,7 +25,7 @@ import { openEditor, previewPopup } from './exit-popup-editor.ts'
 import { openPresetModal } from './exit-popup-add.ts'
 import { injectPopupCss } from './exit-popup-styles.ts'
 import { drawPopupThumb } from './popup-content-card.ts'
-import { closedPanelNotice, publishStatusPill } from './popup-list-parts.ts'
+import { closedPanelNotice } from './popup-list-parts.ts'
 import { popupDeliveryControl } from './popup-delivery-control.ts'
 import { RATIO_HELP, mainVersionUid } from './popup-draft.ts'
 import { isCreator } from '../session.ts'
@@ -219,7 +219,6 @@ function renderPopupCard(state: PopupPageState, popup: ExitPopup): HTMLElement {
   // カード下部
   const body = el('div', { class: 'ep-card-body' })
   body.append(el('p', { class: 'ep-card-name', text: popup.name }))
-  body.append(publishStatusPill(popup.publish_status))
 
   const footer = el('div', { class: 'ep-card-footer' })
   footer.append(ratioStepper(state, popup))
@@ -339,7 +338,7 @@ function toggleDropdown(cardEl: HTMLElement, state: PopupPageState, uid: string)
       ({ exit_popup }) => {
         state.popups = [...state.popups, exit_popup]
         renderPanel(state)
-        toast(`「${exit_popup.name}」を作りました（本番反映するまで配信しません）`)
+        toast(`「${exit_popup.name}」を作りました（配信ONならすぐ出ます。出したくないときは配信をOFFに）`)
       },
       (err: unknown) => toast((err as Error).message, 'error'),
     )

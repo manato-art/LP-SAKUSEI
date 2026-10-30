@@ -1,8 +1,8 @@
 /**
  * 離脱防止・表示直後ポップアップの編集画面のタブ（exit-popup-editor.ts から分離・2026-09-24）。
  *
- * 5つのタブ（基本 / 表示 / 位置 / 出し分け / コード）。どのタブも下書き（draft）を書き換えるだけで、
- * 保存は編集画面の「下書き反映」「本番反映」が受け持つ。中身（見た目）は「中身を編集」＝Widget編集と同じ画面。
+ * 5つのタブ（基本 / 表示 / 位置 / 出し分け / コード）。どのタブも直している途中の形（draft）を書き換えるだけで、
+ * 保存は編集画面の「保存」が受け持つ（保存したらすぐ配信に出る）。中身（見た目）は「中身を編集」＝Widget編集と同じ画面。
  */
 import { codeCopyButton } from '../panels/code-copy.ts'
 import type { ExitPopup } from '../api-popups.ts'
@@ -141,7 +141,7 @@ function makePopupLinkField(draft: ExitPopup): HTMLElement {
   rLink.addEventListener('change', applyAction)
   rClose.addEventListener('change', applyAction)
   rTel.addEventListener('change', applyAction)
-  // 開いただけでは下書きを書き換えない（未設定の古いデータを「保存していない変更」にしない）
+  // 開いただけでは draft を書き換えない（未設定の古いデータを「保存していない変更」にしない）
   showFor(draft.link_action ?? 'link')
 
   return field

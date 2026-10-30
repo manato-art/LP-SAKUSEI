@@ -3,7 +3,8 @@
  *
  * - 「戻る」: 保存していない変更があるときだけ確かめる（以前は黙って捨てていた）
  * - 「⋯」: 複製・削除（削除は赤い確認カード）。以前は押しても何も起きなかった
- * - 「下書きを確認」: 以前は押しても何も起きなかった
+ * - 「LPの上で確認」（旧「下書きを確認」）: 以前は押しても何も起きなかった
+ * - 「保存」1つ（2026-10-31 本人「下書き反映・本番反映の操作はだるい」・保存したらすぐ配信）
  * - 「閉じる」: 以前はパネルを消して真っ白な画面のままだった → 開き直せる案内を出す
  * - 追加画面の「複製」タブ: 以前はいつも「複製可能なポップアップはありません。」→ このLPのポップアップを並べる
  * DOM は linkedom で作る（vitest の環境は node）。
@@ -18,7 +19,6 @@ import {
   isExitDraftDirty,
   mainVersionUid,
   popupDeliveryOptionLabel,
-  publishStatusView,
 } from '../src/app/pages/popup-draft.ts'
 import { buildPopupEditorHeader, type PopupEditorHeaderOptions } from '../src/app/pages/popup-editor-header.ts'
 import { closedPanelNotice, copyTabList } from '../src/app/pages/popup-list-parts.ts'
@@ -40,16 +40,15 @@ function popup(over: Partial<ExitPopup> = {}): ExitPopup {
     countdown_trigger: false, countdown_seconds: 0, back_button_trigger: false, exit_trigger: true,
     position_x: 50, position_y: 50, device_sp: true, device_tablet: true, device_pc: true,
     html: '<p>x</p>', javascript: '', head_tag: '', body_tag: '', popup_kind: 'exit', link_action: 'link',
-    live: null, publish_status: 'unpublished',
     ...over,
   }
 }
 
-describe('下書きの道具（純粋関数）', () => {
-  it('下書き反映で送るのは中身と名前だけ（配信ON/OFF・割合・本番・uid は送らない）', () => {
+describe('編集画面の道具（純粋関数）', () => {
+  it('「保存」で送るのは中身と名前だけ（配信ON/OFF・割合・uid は送らない）', () => {
     const patch = exitDraftPatch(popup({ name: 'N', html: '<p>h</p>' }))
     expect(patch).toMatchObject({ name: 'N', html: '<p>h</p>' })
-    for (const key of ['enabled', 'ratio', 'live', 'publish_status', 'uid', 'id', 'ab_test_id', 'popup_kind']) {
+    for (const key of ['enabled', 'ratio', 'uid', 'id', 'ab_test_id', 'popup_kind']) {
       expect(key in patch, key).toBe(false)
     }
   })
@@ -63,13 +62,7 @@ describe('下書きの道具（純粋関数）', () => {
     expect(isExitDraftDirty({ ...saved, enabled: false, ratio: 40 }, saved)).toBe(false)
   })
 
-  it('本番との違いの表示', () => {
-    expect(publishStatusView('unpublished').label).toBe('未公開')
-    expect(publishStatusView('changed').label).toBe('下書きあり')
-    expect(publishStatusView('published').label).toBe('公開中')
-  })
-
-  it('下書きを確かめるURLと、重ねるVersion（最初のステップで割合がいちばん大きい物）', () => {
+  it('LPの上で確認するURLと、重ねるVersion（最初のステップで割合がいちばん大きい物）', () => {
     const versions: PopupDeliveryVersion[] = [
       { uid: 'V1', name: 'A', step: 1, distribution_ratio: 30, popup_delivery: true },
       { uid: 'V2', name: 'B', step: 1, distribution_ratio: 70, popup_delivery: true },
@@ -85,8 +78,7 @@ describe('下書きの道具（純粋関数）', () => {
 
 interface Calls {
   back: number
-  saveDraft: number
-  publish: number
+  save: number
   duplicate: number
   remove: number
   checkDraft: number
@@ -94,15 +86,13 @@ interface Calls {
 }
 
 function header(dirty: boolean, confirmAnswer: boolean): { calls: Calls; root: HTMLElement } {
-  const calls: Calls = { back: 0, saveDraft: 0, publish: 0, duplicate: 0, remove: 0, checkDraft: 0, confirms: [] }
+  const calls: Calls = { back: 0, save: 0, duplicate: 0, remove: 0, checkDraft: 0, confirms: [] }
   const options: PopupEditorHeaderOptions = {
-    status: () => 'changed',
     isDirty: () => dirty,
     onBack: () => { calls.back += 1 },
     onPreview: () => undefined,
     onCheckDraft: async () => { calls.checkDraft += 1 },
-    onSaveDraft: async () => { calls.saveDraft += 1; return true },
-    onPublish: async () => { calls.publish += 1; return true },
+    onSave: async () => { calls.save += 1; return true },
     onDuplicate: async () => { calls.duplicate += 1 },
     onDelete: async () => { calls.remove += 1 },
     confirm: async (o) => { calls.confirms.push(o); return confirmAnswer },
@@ -145,15 +135,16 @@ describe('編集画面の上の操作', () => {
     expect(calls.back).toBe(1)
   })
 
-  it('下書き反映・本番反映・下書きを確認がそれぞれ動く', async () => {
+  it('「保存」1つと「LPの上で確認」が動く。「下書き反映」「本番反映」は出さない', async () => {
     const { calls, root } = header(false, true)
-    byText(root, '下書き反映').click()
-    byText(root, '本番反映').click()
-    byText(root, '下書きを確認').click()
+    byText(root, '保存').click()
+    byText(root, 'LPの上で確認').click()
     await flush()
-    expect(calls.saveDraft).toBe(1)
-    expect(calls.publish).toBe(1)
+    expect(calls.save).toBe(1)
     expect(calls.checkDraft).toBe(1)
+    expect(root.textContent).not.toContain('下書き反映')
+    expect(root.textContent).not.toContain('本番反映')
+    expect(root.textContent).not.toContain('下書きあり')
   })
 
   it('⋯: 複製と削除が出る。削除は赤い確認カードで確かめてから', async () => {
@@ -171,26 +162,22 @@ describe('編集画面の上の操作', () => {
     expect(calls.duplicate).toBe(1)
   })
 
-  it('⋯ 複製: 保存していない変更があれば、下書き反映してから複製する（断れば何もしない）', async () => {
+  it('⋯ 複製: 保存していない変更があれば、保存してから複製する（断れば何もしない）', async () => {
     const yes = header(true, true)
     byText(yes.root, '⋯').click()
     byText(yes.root, '複製').click()
     await flush()
-    expect(yes.calls.saveDraft).toBe(1)
+    expect(yes.calls.save).toBe(1)
     expect(yes.calls.duplicate).toBe(1)
 
     const no = header(true, false)
     byText(no.root, '⋯').click()
     byText(no.root, '複製').click()
     await flush()
-    expect(no.calls.saveDraft).toBe(0)
+    expect(no.calls.save).toBe(0)
     expect(no.calls.duplicate).toBe(0)
   })
 
-  it('本番との違いを表示する', () => {
-    const { root } = header(false, true)
-    expect(root.textContent).toContain('下書きあり')
-  })
 })
 
 describe('一覧の部品', () => {

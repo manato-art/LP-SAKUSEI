@@ -364,8 +364,8 @@ export function mobileCss(): string {
     `html body .ins-entry{flex-wrap:wrap !important}`,
     `html body .ins-entry-main{flex:1 0 100% !important;min-width:0 !important}`,
     // 離脱防止ポップの編集タブ6つ（基本/デザイン/表示/位置/出し分け/HTML）は横に流す
-    // 上のボタン列（プレビュー/下書きを確認/下書き反映/本番反映）は4つで幅が足りず、
-    // 「下書き反/映」と1文字だけ落ちていた。折り返しは列ごとにして、文字は割らない
+    // 上のボタン列（プレビュー/LPの上で確認/保存）は幅が足りないと1文字だけ落ちていた（以前は4つ）。
+    // 折り返しは列ごとにして、文字は割らない
     `html body .ep-editor-btn-bar{flex-wrap:wrap !important;gap:8px;padding:10px 12px !important}`,
     `html body .ep-editor-btn-bar button{white-space:nowrap !important}`,
     `html body .ep-editor-tabs{overflow-x:auto;scrollbar-width:none}`,

@@ -21,6 +21,7 @@ import { migrateFolderDomains } from './folder-domain.ts'
 import { repairOverCountedClicks } from './click-repair.ts'
 import { keepTwoUrlsForSpecialPage } from './two-url-page.ts'
 import { backfillLastVisitDates } from './page-visit.ts'
+import { settlePopupDrafts } from './popups.ts'
 
 /** シード（保存済みが無いときの初期状態）。SEED_DEMO=1 なら架空デモ1式、なければ空。 */
 function seedState(): State {
@@ -62,6 +63,8 @@ function repairOnLoad(persisted: State): State {
   const twoUrls = keepTwoUrlsForSpecialPage(clicks.state)
   // 前からあるページの「最後に本物の人が来た日」を、残っている日ごとの数字から埋める（90日閲覧なしの印・2026-10-30）
   const visits = backfillLastVisitDates(twoUrls.state)
+  // ポップアップの下書きと本番に分けていた頃のデータを片づける（2026-10-31 保存したらすぐ配信へ）
+  const popups = settlePopupDrafts(visits.state)
   if (
     repaired.changes.length === 0 &&
     externalized.converted === 0 &&
@@ -69,7 +72,8 @@ function repairOnLoad(persisted: State): State {
     ratios.changed.length === 0 &&
     clicks.changed.length === 0 &&
     twoUrls.changed.length === 0 &&
-    visits.changed === 0
+    visits.changed === 0 &&
+    popups.changed === 0
   ) {
     return persisted
   }
@@ -95,8 +99,14 @@ function repairOnLoad(persisted: State): State {
   if (visits.changed > 0) {
     console.log(`[store] ${String(visits.changed)} ページの最後に人が来た日を、日ごとの数字から埋めました`)
   }
-  schedulePersist(visits.state)
-  return visits.state
+  if (popups.changed > 0) {
+    console.log(`[store] ポップアップ ${String(popups.changed)} 件の本番の控えを外しました（保存した中身がそのまま配信）`)
+  }
+  for (const uid of popups.turnedOff) {
+    console.log(`[store] ${uid} は一度も本番反映していなかった（配信に出ていなかった）ので、配信OFFにしました`)
+  }
+  schedulePersist(popups.state)
+  return popups.state
 }
 
 let current: State = initialState()

@@ -1,7 +1,7 @@
 /**
  * 配信・プレビューで、どのポップアップを出すかを決める（delivery.ts から分離・2026-09-24 監査 26）。
  *
- * 出す候補: このLPのポップアップのうち、配信ON・本番反映済み（store/popups.ts）・出し分けがこの端末。
+ * 出す候補: このLPのポップアップのうち、配信ON・出し分けがこの端末（保存した中身がそのまま出る・store/popups.ts）。
  * 配信するVersionの「このVersionで配信」が OFF なら、ポップアップ（離脱防止・表示直後・追従型）は1つも出さない。
  *
  * 離脱防止・表示直後は、1回の表示で種類ごとに1つだけ出す（以前は全部を入れていて、先にきっかけが来た物が出ていた）:
@@ -16,7 +16,6 @@
  */
 import type { Request, Response } from 'express'
 import type { AbTest, ExitPopup, State, Version } from '../store/types.ts'
-import { deliveredExitPopup, deliveredFollowPopup } from '../store/popups.ts'
 import { buildFollowPopupSnippet, buildPopupSnippet, matchesDevice, type PopupDevice } from './delivery-popup-html.ts'
 
 /** 訪問回数の設定（編集画面の「訪問回数」）に、何回目の訪問かが合うか。'all' は全員 */
@@ -95,23 +94,20 @@ export function renderPopupsForView(target: ViewTarget, visitCount: number | nul
   const { state, abTest, version, device } = target
   if (version.popup_delivery === false) return ''
   const exitCandidates = state.exitPopups
-    .filter((p) => p.ab_test_id === abTest.id && p.enabled)
-    .map(deliveredExitPopup)
-    .filter((p): p is ExitPopup => p !== null && matchesDevice(p, device))
+    .filter((p): p is ExitPopup => p.ab_test_id === abTest.id && p.enabled && matchesDevice(p, device))
   const exitHtml = pickPopupsForView(exitCandidates, visitCount)
     .map((p) => buildPopupSnippet(p, device))
     .join('')
   const followHtml = state.followPopups
     .filter((p) => p.ab_test_id === abTest.id && p.enabled)
-    .map(deliveredFollowPopup)
-    .map((p) => (p === null ? '' : buildFollowPopupSnippet(p, device)))
+    .map((p) => buildFollowPopupSnippet(p, device))
     .join('')
   return exitHtml + followHtml
 }
 
 /**
- * 「下書きを確認」（プレビューURLに ?popup_draft={ポップアップのuid}）: そのポップアップの下書きだけを出す。
- * 未公開・配信OFF・「このVersionで配信」OFF・割合・訪問回数・出し分けに関係なく出す（確かめるための画面）。
+ * 「LPの上で確認」（プレビューURLに ?popup_draft={ポップアップのuid}）: そのポップアップだけを出す。
+ * 配信OFF・「このVersionで配信」OFF・割合・訪問回数・出し分けに関係なく出す（確かめるための画面）。
  * 離脱防止・表示直後は右下の「ポップアップを表示」で何度でも出し直せる。
  */
 export function renderDraftPopup(target: ViewTarget, popupUid: string): string {
@@ -127,8 +123,8 @@ export function renderDraftPopup(target: ViewTarget, popupUid: string): string {
 /**
  * プレビュー（/preview/:versionUid）に入れるポップアップのHTML。/preview の処理からはこれ1つだけを呼ぶ。
  *   bare（?bare=1・中身を直す画面の後ろに敷くLP）… 出さない
- *   draftUid（?popup_draft=・「下書きを確認」）… そのポップアップの下書きだけ（renderDraftPopup）
- *   それ以外 … 配信と同じ選び方（本番反映した物・このVersionで配信・割合）。訪問回数では外さない（数えない）
+ *   draftUid（?popup_draft=・「LPの上で確認」）… そのポップアップだけ（renderDraftPopup）
+ *   それ以外 … 配信と同じ選び方（配信ON・このVersionで配信・割合）。訪問回数では外さない（数えない）
  */
 export function renderPreviewPopups(
   target: ViewTarget | null,

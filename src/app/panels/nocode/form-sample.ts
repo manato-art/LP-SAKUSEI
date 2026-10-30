@@ -16,6 +16,7 @@
  * 左の見たまま画面で見本の中の要素を押すと、カードの段が開いてその要素のカードだけが出る（selectInner）。
  */
 import { isAllowedLinkUrl } from '../../../shared/link-html.ts'
+import { linkFieldValue } from '../link-placeholder.ts'
 import { toast } from '../../ui.ts'
 import { replaceSampleCss, splitStyles } from './builder-data.ts'
 import { node } from './form-controls.ts'
@@ -480,7 +481,9 @@ function slotEl(
       if (slot.tag === 'A' && !movesInside) {
         const href = node('input', 'ncf-input')
         href.type = 'url'
-        href.value = slot.href ?? ''
+        // 仮のリンク（# など）は空で出す（2026-10-31 本人「＃が入っているけど、いらない」）
+        href.value = linkFieldValue(slot.href)
+        href.placeholder = 'https://'
         const warn = node('span', 'ncf-warn')
         warn.hidden = true
         href.addEventListener('input', () => {

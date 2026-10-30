@@ -4,10 +4,11 @@
  * 中身（見た目）は「中身を編集」から Widget編集と同じ画面で直す（2026-09-24・本人の決定「中身だけWidget編集で」）。
  * タブ（基本 / 表示 / 位置 / 出し分け / コード）は exit-popup-editor-tabs.ts、上の操作は popup-editor-header.ts。
  *
- * 下書きと本番を分ける（2026-09-24・本人の決定）:
- *   - 「下書き反映」は下書きだけを保存（配信には出ない）。「本番反映」で下書きを本番にする
- *   - 「下書きを確認」は保存した下書きを、LPの上に出して新しいタブで見る（保存していない変更は先に下書き反映する）
- *   - 配信のON/OFFと割合は、変えたその場で保存する（一覧のカードと同じ・下書きに入れない）
+ * 保存したら、すぐ配信に出る（2026-10-31 本人「わざわざ 下書き反映 本番反映 これ操作するのだるいから、
+ * オンオフのボタンはあるし、追加したら反映でいいよ」で下書きと本番をやめた）:
+ *   - 「保存」で配信に出る（配信ONのとき）。出したくないときは配信OFF
+ *   - 「LPの上で確認」は保存した中身を、LPの上に出して新しいタブで見る（保存していない変更は先に保存する）
+ *   - 配信のON/OFFと割合は、変えたその場で保存する（一覧のカードと同じ）
  *
  * 依存は一方向にしてある: このファイルは exit-popup.ts を import しない。
  * 一覧の描き直しは `state.rerender()` を通す。
@@ -24,7 +25,7 @@ import { buildPopupEditorHeader } from './popup-editor-header.ts'
 import { RATIO_HELP, draftCheckUrl, exitDraftPatch, isExitDraftDirty, mainVersionUid } from './popup-draft.ts'
 
 /**
- * 「下書きを確認」: 新しいタブに、保存した下書きをLPの上に出す。
+ * 「LPの上で確認」: 新しいタブに、保存した中身をLPの上に出す（配信OFFでも出す）。
  * タブは押した直後に開く（保存や読み込みを待ってから開くと、ブラウザにポップアップとして止められる）。
  * saveFirst が false を返したら（保存できなかったら）タブを閉じる。
  */
@@ -61,7 +62,7 @@ export function openEditor(state: PopupPageState, popup: ExitPopup): void {
   // 一覧・閉じた案内・前の編集画面を外してから描く
   for (const p of state.root.querySelectorAll('.ep-panel, .ep-closed, .ep-editor')) p.remove()
 
-  // saved＝最後にサーバーへ保存した形。draft＝この画面で直している下書き（保存まで一覧のデータを壊さない）
+  // saved＝最後にサーバーへ保存した形。draft＝この画面で直している途中の形（保存まで一覧のデータを壊さない）
   let saved: ExitPopup = popup
   const draft: ExitPopup = { ...popup, tracking_urls: [...(popup.tracking_urls ?? [])] }
   const replaceInState = (next: ExitPopup): void => {
@@ -71,25 +72,12 @@ export function openEditor(state: PopupPageState, popup: ExitPopup): void {
 
   const editor = el('div', { class: 'ep-editor' })
 
-  /** 下書き反映（中身の「ポップアップに反映」も同じ）。保存できたら true */
-  const saveDraft = async (): Promise<boolean> => {
+  /** 保存（中身の「ポップアップに反映」も同じ・すぐ配信に出る）。保存できたら true */
+  const save = async (): Promise<boolean> => {
     try {
       const { exit_popup } = await popupApi.updateExitPopup(state.abTestUid, popup.uid, exitDraftPatch(draft))
       replaceInState(exit_popup)
-      toast('下書きに保存しました（配信にはまだ出ません）')
-      return true
-    } catch (err: unknown) {
-      toast((err as Error).message, 'error')
-      return false
-    }
-  }
-  /** 本番反映: 下書きを保存してから本番にする */
-  const publish = async (): Promise<boolean> => {
-    try {
-      await popupApi.updateExitPopup(state.abTestUid, popup.uid, exitDraftPatch(draft))
-      const { exit_popup } = await popupApi.publishExitPopup(state.abTestUid, popup.uid)
-      replaceInState(exit_popup)
-      toast(exit_popup.enabled ? '本番に反映しました' : '本番に反映しました（配信がOFFなので、まだ出ません）')
+      toast(exit_popup.enabled ? '保存しました（配信に出ています）' : '保存しました（配信がOFFなので、まだ出ません）')
       return true
     } catch (err: unknown) {
       toast((err as Error).message, 'error')
@@ -99,21 +87,19 @@ export function openEditor(state: PopupPageState, popup: ExitPopup): void {
   const isDirty = (): boolean => isExitDraftDirty(draft, saved)
 
   const header = buildPopupEditorHeader({
-    status: () => saved.publish_status,
     isDirty,
     onBack: () => {
       editor.remove()
       state.rerender()
     },
     onPreview: () => previewPopup(draft),
-    onCheckDraft: () => openDraftCheck(state.abTestUid, popup.uid, async () => (isDirty() ? saveDraft() : true)),
-    onSaveDraft: saveDraft,
-    onPublish: publish,
+    onCheckDraft: () => openDraftCheck(state.abTestUid, popup.uid, async () => (isDirty() ? save() : true)),
+    onSave: save,
     onDuplicate: async () => {
       try {
         const { exit_popup } = await popupApi.duplicateExitPopup(state.abTestUid, popup.uid, popupKindOf(popup))
         state.popups = [...state.popups, exit_popup]
-        toast(`「${exit_popup.name}」を作りました（本番反映するまで配信しません）`)
+        toast(`「${exit_popup.name}」を作りました（配信ONならすぐ出ます。出したくないときは配信をOFFに）`)
         openEditor(state, exit_popup)
       } catch (err: unknown) {
         toast((err as Error).message, 'error')
@@ -154,9 +140,7 @@ export function openEditor(state: PopupPageState, popup: ExitPopup): void {
         onSave: async (html) => {
           draft.html = html
           content.refresh()
-          const ok = await saveDraft()
-          header.refreshStatus()
-          return ok
+          return save()
         },
       }),
   })
@@ -165,7 +149,7 @@ export function openEditor(state: PopupPageState, popup: ExitPopup): void {
   const fields = el('div', { class: 'ep-form-fields' })
   fields.append(buildLiveControls(state, popup.uid, () => saved, replaceInState))
 
-  // 名前（下書き反映で保存）
+  // 名前（「保存」で保存）
   const nameField = el('div', { class: 'ep-field', style: 'margin-bottom:0' })
   nameField.append(el('label', { text: '名前' }))
   const nameInput = document.createElement('input')
@@ -202,7 +186,7 @@ export function openEditor(state: PopupPageState, popup: ExitPopup): void {
 }
 
 /**
- * 配信のON/OFFと割合（変えたその場で保存する＝一覧のカードと同じ。下書き・本番に分けない）。
+ * 配信のON/OFFと割合（変えたその場で保存する＝一覧のカードと同じ）。
  * 割合がちょうど2つのときは、もう片方が 100−新しい値 に合う（サーバーで計算）。
  */
 function buildLiveControls(

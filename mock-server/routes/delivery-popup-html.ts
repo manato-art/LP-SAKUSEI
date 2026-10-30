@@ -33,7 +33,7 @@ function telDigits(phone: string): string {
 }
 
 export interface PopupSnippetOptions {
-  /** 「下書きを確認」: 画面の右下に「ポップアップを表示」ボタンを出す（何度でも出し直せる） */
+  /** 「LPの上で確認」: 画面の右下に「ポップアップを表示」ボタンを出す（何度でも出し直せる） */
   readonly previewButton?: boolean
 }
 
@@ -204,7 +204,7 @@ export function buildPopupSnippet(popup: ExitPopup, device: PopupDevice, options
     });
   })()`
 
-  // 「下書きを確認」: 右下のボタンで何度でも出し直せる（離脱の気配などを待たずに中身を確かめる）
+  // 「LPの上で確認」: 右下のボタンで何度でも出し直せる（離脱の気配などを待たずに中身を確かめる）
   const previewButton = options.previewButton === true
     ? `<button type="button" class="ep-preview-show" id="${popupId}-show">ポップアップを表示</button>` +
       `<script>(function(){var b=document.getElementById('${popupId}-show');var o=document.getElementById('${popupId}');` +

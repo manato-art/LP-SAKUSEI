@@ -308,7 +308,7 @@ deliveryRouter.get('/lp/:uid', (req, res) => {
   // Widget の外枠に保存された編集画面だけの属性（data-widget-name・contenteditable 等）も、ここで外す。
   const lp = neutralizeWidgetStyles(versionHtml)
 
-  // ポップアップ（離脱防止・表示直後・追従型）: 本番反映した物から、この表示に出す物を選んでLP末尾に入れる
+  // ポップアップ（離脱防止・表示直後・追従型）: 配信ONの物から、この表示に出す物を選んでLP末尾に入れる
   // （割合・訪問回数・このVersionで配信・出し分け＝delivery-popups.ts）
   const popupHtml = renderPopupsForView({ state, abTest, version, device }, countPopupVisit(req, res, abTest.uid))
 

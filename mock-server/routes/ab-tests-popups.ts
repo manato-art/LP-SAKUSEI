@@ -5,10 +5,9 @@
  * ab-tests.ts が `use()` でこのルーターを同じパス空間へ合流させる。
  * 追従型は ab-tests-follow-popups.ts、「このVersionで配信」は ab-tests-popup-delivery.ts（どちらもここから合流）。
  *
- * 下書きと本番を分ける（2026-09-24・本人の決定）。詳しくは store/popups.ts:
- *   PUT  …/exit_popups/:popup_uid           下書き反映（配信には出ない）。名前・割合・配信ON/OFF はすぐ効く
- *   POST …/exit_popups/:popup_uid/publish   本番反映（今の下書きを本番に写す）
- *   POST …/exit_popups/:popup_uid/duplicate 複製（下書きを写した別のポップアップ・本番反映するまで配信しない）
+ * 作った・保存した中身が、そのまま配信に出る（配信ONのとき・2026-10-31 下書きと本番に分けるのをやめた・store/popups.ts）:
+ *   PUT  …/exit_popups/:popup_uid           保存（すぐ配信に出る）
+ *   POST …/exit_popups/:popup_uid/duplicate 複製（保存した中身を写した別のポップアップ）
  */
 import { Router } from 'express'
 import { getState, setState } from '../store/store.ts'
@@ -19,7 +18,7 @@ import { findAbTest, notFound } from './ab-tests-shared.ts'
 import { externalizeDataUrls } from '../lib/uploads.ts'
 import { freshUid } from '../store/actions-shared.ts'
 import { makeUid } from '../store/ids.ts'
-import { copyName, publishExitPopup, serializeExitPopup, withExitLive } from '../store/popups.ts'
+import { copyName } from '../store/popups.ts'
 import type { ExitPopup, State } from '../store/types.ts'
 import { followPopupsRouter } from './ab-tests-follow-popups.ts'
 import { popupDeliveryRouter } from './ab-tests-popup-delivery.ts'
@@ -51,7 +50,7 @@ abTestsPopupsRouter.get('/ab_tests/:uid/exit_popups', (req, res) => {
   const state = getState()
   const abTest = findAbTest(state, req.params.uid)
   if (abTest === undefined) return notFound(res, 'ページが見つかりません。')
-  const popups = state.exitPopups.filter((p) => p.ab_test_id === abTest.id).map(serializeExitPopup)
+  const popups = state.exitPopups.filter((p) => p.ab_test_id === abTest.id)
   res.json({ exit_popups: applyEmptyState(req, popups) })
 })
 
@@ -102,14 +101,12 @@ abTestsPopupsRouter.post('/ab_tests/:uid/exit_popups', (req, res) => {
     // 指示176/172: 種別と触ったときの動作
     popup_kind: popupKind,
     link_action: isLinkAction(body.link_action) ? body.link_action : 'link',
-    // 本番反映するまで配信しない（2026-09-24）
-    live: null,
   }
   setState((s) => ({ ...s, exitPopups: [...s.exitPopups, created], nextId: s.nextId + 1 }))
-  res.status(201).json({ exit_popup: serializeExitPopup(created) })
+  res.status(201).json({ exit_popup: created })
 })
 
-/** 下書き反映（と、すぐ効く名前・割合・配信ON/OFF） */
+/** 保存（すぐ配信に出る） */
 abTestsPopupsRouter.put('/ab_tests/:uid/exit_popups/:popup_uid', (req, res) => {
   const state = getState()
   const abTest = findAbTest(state, req.params.uid)
@@ -119,8 +116,7 @@ abTestsPopupsRouter.put('/ab_tests/:uid/exit_popups/:popup_uid', (req, res) => {
     res.status(404).json(errorEnvelope('not_found', 'ポップアップが見つかりません。'))
     return
   }
-  // 古いポップアップ（本番の項目が無い）は、書き換える前の中身を本番として残す（配信は変わらない）
-  const existing = withExitLive(state.exitPopups[idx]!)
+  const existing = state.exitPopups[idx]!
   const body = req.body as Record<string, unknown>
   const updated: ExitPopup = {
     ...existing,
@@ -178,29 +174,14 @@ abTestsPopupsRouter.put('/ab_tests/:uid/exit_popups/:popup_uid', (req, res) => {
     ),
   }))
   res.json({
-    exit_popup: serializeExitPopup(updated),
+    exit_popup: updated,
     adjusted_siblings: adjustedOther === null ? [] : [{ uid: adjustedOther.uid, ratio: adjustedOther.ratio }],
   })
 })
 
-/** 本番反映: 今の下書きを本番に写す（配信はこの本番だけを使う） */
-abTestsPopupsRouter.post('/ab_tests/:uid/exit_popups/:popup_uid/publish', (req, res) => {
-  const state = getState()
-  const abTest = findAbTest(state, req.params.uid)
-  if (abTest === undefined) return notFound(res, 'ページが見つかりません。')
-  const idx = findPopupIndex(state, abTest.id, req.params.popup_uid)
-  if (idx === -1) {
-    res.status(404).json(errorEnvelope('not_found', 'ポップアップが見つかりません。'))
-    return
-  }
-  const published = publishExitPopup(state.exitPopups[idx]!)
-  setState((s) => ({ ...s, exitPopups: s.exitPopups.map((p, i) => (i === idx ? published : p)) }))
-  res.json({ exit_popup: serializeExitPopup(published) })
-})
-
 /**
- * 複製: 下書きの中身を写した別のポップアップを作る（名前は「〜のコピー」）。
- * 本番反映するまで配信しない。種類は body.popup_kind（追加画面のタブ）、無ければ元と同じ。
+ * 複製: 保存した中身を写した別のポップアップを作る（名前は「〜のコピー」・作ったらすぐ配信に出る）。
+ * 種類は body.popup_kind（追加画面のタブ）、無ければ元と同じ。
  */
 abTestsPopupsRouter.post('/ab_tests/:uid/exit_popups/:popup_uid/duplicate', (req, res) => {
   const state = getState()
@@ -223,10 +204,9 @@ abTestsPopupsRouter.post('/ab_tests/:uid/exit_popups/:popup_uid/duplicate', (req
     ratio: defaultRatio(state, abTest.id, popupKind),
     tracking_urls: [...(source.tracking_urls ?? [])],
     popup_kind: popupKind,
-    live: null,
   }
   setState((s) => ({ ...s, exitPopups: [...s.exitPopups, created], nextId: s.nextId + 1 }))
-  res.status(201).json({ exit_popup: serializeExitPopup(created) })
+  res.status(201).json({ exit_popup: created })
 })
 
 abTestsPopupsRouter.delete('/ab_tests/:uid/exit_popups/:popup_uid', (req, res) => {
