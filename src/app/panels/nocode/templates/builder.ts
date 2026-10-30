@@ -44,6 +44,7 @@ const svg = (body: string): string =>
 
 // 画面の切り替えのスクリプトは screens-script.ts（2026-10-24 に「下に積み重ねる」を足すときに分けた）
 import { SCREENS_SCRIPT } from './screens-script.ts'
+import { usesWholeLink, wholeLinkCss } from '../whole-link.ts'
 import { BG_FIT_SCRIPT } from './bg-fit-script.ts'
 import { bgCss, bgFields, bgFreeReset, bgVideoLayer, usesFreeBg } from './bg-image.ts'
 export { SCREENS_SCRIPT }
@@ -370,7 +371,9 @@ export const BUILDER_TEMPLATE: NocodeTemplate = {
       moreBaseCss(usedTypes, s) +
       blockCss.join('') +
       // LP上のアクションの小窓（使っているWidgetだけ）
-      (press.flags.has('act') ? popsCss(s) + press.css.join('') : '')
+      (press.flags.has('act') ? popsCss(s) + press.css.join('') : '') +
+      // 見本の中の要素全体のリンク（使っているWidgetだけ・whole-link.ts）
+      (usesWholeLink(data) ? wholeLinkCss(s) : '')
 
     const pops = press.pops.join('') + (press.flags.has('modal') ? MODAL_LAYER : '')
     // 画面の切り替え（2画面以上か、「ロード中」で移るとき）と、LP上のアクション

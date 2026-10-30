@@ -29,6 +29,7 @@ import { createCodeEditor } from '../widget-code-panel.ts'
 import { buildDesignPanel } from '../widget-design-panel.ts'
 import type { SelectionHandle } from '../selection-layer.ts'
 import { sampleBgSection, type SampleBgDeps } from './sample-bg-field.ts'
+import { sampleLinkSection, type SampleLinkDeps } from './sample-link-field.ts'
 
 export interface SampleEditorOptions {
   read: () => { title: string; html: string }
@@ -58,6 +59,10 @@ export interface SampleEditorOptions {
   background?: Omit<SampleBgDeps, 'readHtml'>
   /** 組み立て直す前に背景の画像を直していた要素の印（あれば、組み立て直したあとにその要素を選ぶ） */
   rememberedBg?: string | null
+  /** 中の要素全体のリンク（2026-10-31・sample-link-field.ts）。いまの中身は read から読む */
+  wholeLink?: Omit<SampleLinkDeps, 'readHtml'>
+  /** 組み立て直す前に全体のリンクを直していた要素の印（あれば、組み立て直したあとにその要素を選ぶ） */
+  rememberedLink?: string | null
 }
 
 export interface SampleEditor {
@@ -123,6 +128,10 @@ export function sampleEditor(options: SampleEditorOptions): SampleEditor {
       if (pendingInner !== null) {
         api.selectInner(pendingInner)
         pendingInner = null
+      } else if (options.rememberedLink !== undefined && options.rememberedLink !== null) {
+        // 全体のリンクを付けると中身が読み直されて組み立て直される。そのあとも同じ要素を選んだままにする
+        const marked = options.getElement?.()?.querySelector<HTMLElement>(`[data-nc-link-box="${options.rememberedLink}"]`) ?? null
+        if (marked !== null) api.selectInner(marked)
       } else if (options.rememberedBg !== undefined && options.rememberedBg !== null) {
         // 背景の画像の印を付けると中身が読み直されて組み立て直される。そのあとも同じ要素を選んだままにする
         const marked = options.getElement?.()?.querySelector<HTMLElement>(`[data-nc-bg="${options.rememberedBg}"]`) ?? null
@@ -150,6 +159,10 @@ function fold(title: string, open = false): { details: HTMLDetailsElement; body:
  */
 function appendFineTuning(wrap: HTMLElement, options: SampleEditorOptions): { selectInner: (target: HTMLElement) => void } {
   const current = (): string => options.read().html
+
+  // ── 選んだ要素全体のリンク先（2026-10-31 本人「ポップ全体に対して反映したい」）。左で帯・カードなどを押すと出る ──
+  const link = options.wholeLink === undefined ? null : sampleLinkSection({ ...options.wholeLink, readHtml: current })
+  if (link !== null) wrap.append(link.element)
 
   // ── 選んだ要素の背景の画像（2026-10-24 本人の選択「見本の中の箱も」）。左で要素を押すと出る ──
   const background = options.background === undefined ? null : sampleBgSection({ ...options.background, readHtml: current })
@@ -202,6 +215,7 @@ function appendFineTuning(wrap: HTMLElement, options: SampleEditorOptions): { se
     selectInner: (target) => {
       cards.details.open = true
       const picked = design.select(target)
+      link?.select(picked?.node ?? target)
       background?.select(picked?.node ?? target)
       if (picked === null) return
       options.onInnerSelected?.(picked.node, picked.label, design.handlesFor(picked.node))
@@ -475,7 +489,8 @@ function slotEl(
           warn.hidden = warn.textContent === ''
           if (warn.hidden) apply(slot.id, { kind: 'href', value: url })
         })
-        hrefField = labeled('リンク先', href)
+        // 要素全体のリンク先（sample-link-field.ts）と見分けられるように「ボタンのリンク先」（2026-10-31）
+        hrefField = labeled(`${noun}のリンク先`, href)
         hrefField.append(warn)
         // 画面へ移るあいだは、押してもリンク先へは行かない（欄を隠す）
         hrefField.hidden = !slot.internal && slot.go !== null

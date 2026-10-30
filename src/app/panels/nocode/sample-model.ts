@@ -101,6 +101,8 @@ export function sampleSlots(root: SlotNode, steps: readonly SlotNode[]): Slot[] 
       }
       const tag = tagOf(child)
       if (SKIP_TAGS.has(tag)) return
+      // 要素全体に付けた見えないリンク（whole-link.ts）はボタンではない。リンク先は「この要素全体のリンク先」で直す
+      if (tag === 'A' && (child.getAttribute?.('data-nc-cover') ?? null) !== null) return
       const i = index.get(child) ?? -1
       const at = steps.indexOf(child)
       const childStep = at >= 0 ? at : step

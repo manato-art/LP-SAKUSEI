@@ -27,6 +27,7 @@ import { attachPopupUnderlay, type UnderlayStyle } from './popup-underlay.ts'
 import { LP_WIDTH, SP_WIDTH } from './lp-width-media.ts'
 import { previewLineHeight } from './widget-preview-line-height.ts'
 import { testLinkUrl } from './widget-test-link.ts'
+import { COVER_ATTR, wholeLinkCover } from './nocode/whole-link.ts'
 import {
   svgToolAlign,
   svgToolBgColor,
@@ -112,6 +113,12 @@ function sidePadding(frame: PreviewFrame, padding: VisualEditorOptions['articleP
   const px = (value: string): string => (/^\d+(?:\.\d+)?px$/.test(value) ? value : '0px')
   return `;padding-left:${px(padding.left)};padding-right:${px(padding.right)}`
 }
+
+/**
+ * 見たまま画面だけのCSS。要素全体に付けた見えないリンク（whole-link.ts）は押せないようにする
+ * （押すと、その下の帯・文字を選べる＝いつもどおり選んで直せる。リンク先は動作確認の Ctrl/⌘＋クリックで開く）
+ */
+const editorOnlyCss = (scope: string): string => `${scope} [${COVER_ATTR}]{pointer-events:none!important}`
 
 function frameStyle(frame: PreviewFrame): { backdrop: string; box: string } {
   if (frame === 'overlay') return { backdrop: '#999999', box: 'width:fit-content;max-width:500px;margin:24px auto' }
@@ -561,7 +568,7 @@ export function buildVisualEditor(
   let lastCss = target.css
   const setPreviewCss = (css: string): void => {
     lastCss = css
-    styleTag.textContent = widgetPreviewCss(PREVIEW_LEAK_RESET + css, previewScope, previewWidth)
+    styleTag.textContent = widgetPreviewCss(PREVIEW_LEAK_RESET + css, previewScope, previewWidth) + editorOnlyCss(previewScope)
   }
   setPreviewCss(target.css)
   contentDiv.setAttribute('contenteditable', 'true')
@@ -652,7 +659,13 @@ export function buildVisualEditor(
       const interactive = (e.target as HTMLElement).closest(
         'button, a, [role="button"], input[type="button"], input[type="submit"]',
       )
-      if (interactive === null) return
+      if (interactive === null) {
+        // 要素全体にリンクを付けた所（帯・カードなど）を動作確認で押したら、そのリンク先を新しいタブで開く（whole-link.ts）
+        const cover = mod ? wholeLinkCover(e.target as Element) : null
+        const url = cover === null ? null : testLinkUrl(cover)
+        if (url !== null) window.open(url, '_blank', 'noopener')
+        return
+      }
       if (!mod) {
         // 編集モード: ウィジェットのクリック動作（次へ遷移など）を止める
         e.preventDefault()

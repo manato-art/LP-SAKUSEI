@@ -13,6 +13,7 @@ import { addScreenFor, goChoices } from './screens-state.ts'
 import { items, str, type ItemData, type ScreensField } from './templates/types.ts'
 import type { TemplateFormOptions } from './template-form.ts'
 import { notifyCanvasEdit } from '../widget-canvas-events.ts'
+import { setWholeLink } from './whole-link.ts'
 
 export interface SampleFieldDeps extends FormCore {
   /** 1つの値を書いて知らせる（組み立て直さない） */
@@ -43,6 +44,8 @@ export function createSampleFields(deps: SampleFieldDeps): SampleFields {
   let pendingInner: { key: string; target: HTMLElement } | null = null
   /** 見本の部品ごとの、背景の画像を直している要素の印（組み立て直しても同じ要素を選んだままにする） */
   const rememberedBgs = new Map<string, string | null>()
+  /** 見本の部品ごとの、全体のリンクを直している要素の印（同じく） */
+  const rememberedLinks = new Map<string, string | null>()
 
   const el = (field: ScreensField, screenIndex: number, blockIndex: number, itemPath: Path): HTMLElement => {
     const key = JSON.stringify(itemPath)
@@ -69,6 +72,16 @@ export function createSampleFields(deps: SampleFieldDeps): SampleFields {
       onInnerSelected: options.onInnerSelected,
       initialInner,
       rememberedBg: rememberedBgs.get(key) ?? null,
+      rememberedLink: rememberedLinks.get(key) ?? null,
+      // 中の要素全体のリンク: 見えないリンクは見たまま画面の要素に足して、いつもの読み戻し（canvas-sync）で中身へ入る
+      wholeLink: {
+        change: (element, url, id) => {
+          if (!setWholeLink(element, url, id)) return false
+          notifyCanvasEdit(element, element)
+          return true
+        },
+        remember: (id) => rememberedLinks.set(key, id),
+      },
       rebuild: deps.rebuild,
       // 中の箱の背景の画像: 印は見たまま画面の要素に付けて、いつもの読み戻し（canvas-sync）で中身へ入る
       background: {
