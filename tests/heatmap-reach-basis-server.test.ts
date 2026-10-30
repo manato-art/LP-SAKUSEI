@@ -6,7 +6,7 @@
  * 画面が「この期間には古い数え方の記録が混ざっている」と言えるよう、古いぶんの PV を返す。
  */
 import { afterAll, beforeEach, describe, expect, it } from 'vitest'
-import { getJson, postJson, resetStore, startTestServer, type TestServer } from './helpers/server.ts'
+import { getJson, postJson, resetStore, startTestServer, type TestServer, issueCreatedPage } from './helpers/server.ts'
 
 let server: TestServer
 
@@ -34,6 +34,7 @@ describe('到達の物差しの新旧', () => {
       title: '物差し確認用',
       media_id: 1,
     })
+    await issueCreatedPage(server.api, created.json)
     const uid = created.json.ab_test.uid
     await track(uid, { event: 'heatmap', bands: 4, reach: [1, 0, 0, 0] })
     await track(uid, { event: 'heatmap', bands: 4, reach: [1, 1, 0, 0], rb: 1 })

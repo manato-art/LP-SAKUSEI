@@ -8,8 +8,9 @@
  */
 import { api, type AbTest, type Folder, type ReportKpi } from '../api.ts'
 import { T, el, emptyState, toast } from '../ui.ts'
-import { AD_STATUS_LABELS, DELIVERY_DOMAIN_UNSET_NOTE, deliveryUrlFor } from '../pages/basic-info-form.ts'
-import { effectiveDeliveryDomain } from '../../shared/page-delivery-domain.ts'
+import { AD_STATUS_LABELS } from '../pages/basic-info-form.ts'
+import { pageDeliveryNote, pageDeliveryUrl } from '../pages/page-delivery-url.ts'
+import { NO_VISIT_LABEL } from '../../shared/page-issue.ts'
 import { defaultRange, toRangeQuery } from '../pages/report-period.ts'
 import { cardDetailMetrics, cardMetrics } from './page-card.ts'
 import { openCreateFolder, openCreatePage } from '../pages/folders-create.ts'
@@ -236,6 +237,15 @@ function pageCard(abTest: AbTest, folder: Folder | null): HTMLElement {
     }),
   )
   box.append(head)
+  // 90日以上、本物の人が見に来ていない（2026-10-30・src/shared/page-issue.ts）
+  if (abTest.no_visit_long === true) {
+    box.append(
+      el('div', {
+        text: NO_VISIT_LABEL,
+        style: `align-self:flex-start;width:fit-content;font-size:11px;font-weight:700;color:${T.sub};border:1px solid ${T.line};border-radius:999px;padding:2px 8px`,
+      }),
+    )
+  }
 
   const kpis = el('div', { style: 'display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px' })
   box.append(kpis)
@@ -294,9 +304,9 @@ function pageActions(abTest: AbTest, folder: Folder | null): HTMLElement {
 }
 
 async function copyDeliveryUrl(abTest: AbTest, folder: Folder | null): Promise<void> {
-  const url = deliveryUrlFor(effectiveDeliveryDomain(abTest.delivery_domain, folder?.domain), location.origin, abTest.uid)
+  const url = pageDeliveryUrl(abTest, folder?.domain, location.origin)
   if (url === null) {
-    toast(DELIVERY_DOMAIN_UNSET_NOTE, 'error')
+    toast(pageDeliveryNote(abTest), 'error')
     return
   }
   try {

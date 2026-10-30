@@ -14,6 +14,8 @@ export interface EditorContext {
    * 2026-10-30 からあとのLPはページ自身の住所、前からあるLPはフォルダのドメイン（shared/page-delivery-domain.ts）
    */
   deliveryDomain?: string
+  /** 本番URLを発行したか（false＝発行前・本番URLは開かない・2026-10-30）。前からあるページは true */
+  issued?: boolean
   root: HTMLElement
   quill: Quill
   abTestUid: string

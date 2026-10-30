@@ -15,8 +15,8 @@ import { openTrackingTagModal } from '../panels/tracking-tag-modal.ts'
 import { openMetaLinkModal } from '../panels/meta-link-modal.ts'
 import { AD_STATUS_LABELS, type PageContext } from './folders-shared.ts'
 import { jstParts } from '../jst.ts'
-import { DELIVERY_DOMAIN_UNSET_NOTE, DELIVERY_TYPE_LABELS, deliveryUrlFor, folderDomainLabel } from './basic-info-form.ts'
-import { effectiveDeliveryDomain } from '../../shared/page-delivery-domain.ts'
+import { DELIVERY_TYPE_LABELS, folderDomainLabel } from './basic-info-form.ts'
+import { pageDeliveryNote, pageDeliveryUrl } from './page-delivery-url.ts'
 
 /**
  * パネルに最後に出したページ（2026-09-24）。保存のあと一覧を描き直しても、同じページを出し続ける。
@@ -534,20 +534,13 @@ function buildPatchBody(key: string, value: string): Record<string, unknown> {
 function currentPanelAbTest(
   panel: HTMLElement,
   context: PageContext,
-): { uid: string; title: string; delivery_domain?: string } | null {
+): Pick<AbTest, 'uid' | 'title' | 'delivery_domain' | 'issued'> | null {
   const uid = panel.dataset['abTestUid'] ?? ''
   if (uid !== '') {
     const found = context.abTests.find((t) => t.uid === uid)
-    return {
-      uid,
-      title: found?.title ?? panel.dataset['abTestTitle'] ?? '',
-      ...(found?.delivery_domain === undefined ? {} : { delivery_domain: found.delivery_domain }),
-    }
+    return found ?? { uid, title: panel.dataset['abTestTitle'] ?? '' }
   }
-  const first = context.abTests[0]
-  return first === undefined
-    ? null
-    : { uid: first.uid, title: first.title, ...(first.delivery_domain === undefined ? {} : { delivery_domain: first.delivery_domain }) }
+  return context.abTests[0] ?? null
 }
 /**
  * いまパネルに出ているページの配信URL。
@@ -559,8 +552,8 @@ function currentDeliveryUrl(panel: HTMLElement, context: PageContext): string | 
     toast('ページを選んでから押してください', 'error')
     return null
   }
-  const url = deliveryUrlFor(effectiveDeliveryDomain(current.delivery_domain, context.folder?.domain), location.origin, current.uid)
-  if (url === null) toast(DELIVERY_DOMAIN_UNSET_NOTE, 'error')
+  const url = pageDeliveryUrl(current, context.folder?.domain, location.origin)
+  if (url === null) toast(pageDeliveryNote(current), 'error')
   return url
 }
 /** 子孫から、指定文字列と完全一致するテキストだけを持つ最小要素を探す（アイコン等を巻き込まない）。 */
@@ -619,18 +612,14 @@ export function updateDetailPanelForAbTest(body: HTMLElement, abTest: AbTest, co
 
   // ── パネル内の値を更新 ──
   // 配信URL
-  // 前からあるLPはフォルダのドメイン、2026-10-30 からあとのLPはページ自身の住所。未設定なら出さずに案内する
-  const deliveryUrlText = deliveryUrlFor(
-    effectiveDeliveryDomain(abTest.delivery_domain, context.folder?.domain),
-    location.origin,
-    abTest.uid,
-  )
+  // 前からあるLPはフォルダのドメイン、2026-10-30 からあとのLPはページ自身の住所。発行前・未設定なら出さずに案内する
+  const deliveryUrlText = pageDeliveryUrl(abTest, context.folder?.domain, location.origin)
   for (const link of panel.querySelectorAll<HTMLAnchorElement>('a')) {
     const href = link.getAttribute('href') ?? ''
     if (!/\/(?:ab|lp)\//.test(href)) continue
     if (deliveryUrlText === null) {
       link.removeAttribute('href')
-      link.textContent = DELIVERY_DOMAIN_UNSET_NOTE
+      link.textContent = pageDeliveryNote(abTest)
       link.style.color = '#8b93a1'
     } else {
       link.setAttribute('href', deliveryUrlText)

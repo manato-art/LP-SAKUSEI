@@ -11,7 +11,7 @@ import type {
   ReportExclusion,
   RequestLogEntry,
 } from '../mock-server/store/types.ts'
-import { getJson, postJson, resetStore, startTestServer, type TestServer } from './helpers/server.ts'
+import { getJson, postJson, resetStore, startTestServer, type TestServer, issueCreatedPage } from './helpers/server.ts'
 
 /**
  * レポート除外（実物の同名画面）。
@@ -196,6 +196,7 @@ describe('レポート除外API', () => {
       title: '除外テスト',
       media_id: 1,
     })
+    await issueCreatedPage(server.api, created.json)
     const uid = created.json.ab_test.uid
     const track = async (payload: Record<string, unknown>): Promise<unknown> => {
       const res = await fetch(`${server.baseUrl}/lp/${uid}/__track`, {
@@ -224,6 +225,7 @@ describe('レポート除外API', () => {
       title: '通常テスト',
       media_id: 1,
     })
+    await issueCreatedPage(server.api, created.json)
     const uid = created.json.ab_test.uid
     await fetch(`${server.baseUrl}/lp/${uid}/__track`, {
       method: 'POST',
@@ -246,6 +248,7 @@ describe('レポート除外API', () => {
       title: 'メール除外テスト',
       media_id: 1,
     })
+    await issueCreatedPage(server.api, page.json)
     const uid = page.json.ab_test.uid
 
     // 目印を持たないブラウザは普通に数える

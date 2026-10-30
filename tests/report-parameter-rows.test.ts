@@ -7,7 +7,7 @@
  * レポート設定で Branch Operation をOFFにしたパラメータは出ない。
  */
 import { afterAll, beforeEach, describe, expect, it } from 'vitest'
-import { getJson, postJson, resetStore, sendJson, startTestServer, type TestServer } from './helpers/server.ts'
+import { getJson, postJson, resetStore, sendJson, startTestServer, type TestServer, issueCreatedPage } from './helpers/server.ts'
 
 let server: TestServer
 
@@ -28,6 +28,7 @@ async function setup(): Promise<{ uid: string; version: string }> {
     title: 'パラメータ行の確認用',
     media_id: 1,
   })
+  await issueCreatedPage(server.api, created.json)
   const uid = created.json.ab_test.uid
   const report = await getJson<{ rows: Row[] }>(`${server.api}/ab_tests/${uid}/reports?${RANGE}`)
   return { uid, version: report.rows[0]?.entity_uid ?? '' }

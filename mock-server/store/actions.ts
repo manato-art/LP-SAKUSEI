@@ -139,6 +139,8 @@ export function createAbTest(
     age_from: null,
     age_to: null,
     page_title: '',
+    // 本番URLは編集ページの「本番URLを発行」を押すまで開かない（2026-10-30・store/page-visit.ts）
+    issued: false,
     // これから作るLPは、何もしなければ土台そのもの（c1page.com）で出す（2026-10-30・フォルダでは決めない）
     ...(state.quickDomainBase === '' ? {} : { delivery_domain: state.quickDomainBase }),
     created_at: nowTs(),

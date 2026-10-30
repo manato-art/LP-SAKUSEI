@@ -7,7 +7,7 @@
  *  - クリエイティブの「配信中 / 停止中」でグラフを絞れるよう、Version ごとの日別（LP側）も返す
  */
 import { afterAll, beforeEach, describe, expect, it } from 'vitest'
-import { getJson, postJson, resetStore, sendJson, startTestServer, type TestServer } from './helpers/server.ts'
+import { getJson, postJson, resetStore, sendJson, startTestServer, type TestServer, issueCreatedPage } from './helpers/server.ts'
 
 let server: TestServer
 const RANGE = 'start_date=2026-01-01&end_date=2026-12-31'
@@ -37,6 +37,7 @@ async function setup(): Promise<{ uid: string; version: string }> {
     title: '日別と一覧の確認用',
     media_id: 1,
   })
+  await issueCreatedPage(server.api, created.json)
   const uid = created.json.ab_test.uid
   const report = await getJson<Report>(`${server.api}/ab_tests/${uid}/reports?${RANGE}`)
   return { uid, version: report.rows[0]?.entity_uid ?? '' }

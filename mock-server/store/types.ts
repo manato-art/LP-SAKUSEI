@@ -149,6 +149,15 @@ export interface AbTest {
    */
   legacy_url_kept?: boolean
   /**
+   * 本番URLを発行したか（2026-10-30・src/shared/page-issue.ts）。false＝発行前（本番URLは開かない・計測も受けない）。
+   * 項目が無いページ（それより前に作ったLP）は発行済みとして扱う。
+   */
+  issued?: boolean
+  /** 本番URLを発行した時刻（UNIX秒） */
+  issued_at?: number
+  /** 最後に本物の人（ボット・レポート除外を除く）が見に来た日（YYYY-MM-DD・日本時間）。「90日閲覧なし」に使う */
+  last_visit_date?: string
+  /**
    * 基本情報「その他の項目」「トラッキング項目」「メディア」の、**記録するだけ**の項目（2026-09-24）。
    * どれも配信（出す・止める・出し分け）には使っていない。項目が無い古いデータは未設定として読む。
    */

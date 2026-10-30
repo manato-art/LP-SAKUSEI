@@ -28,6 +28,7 @@ import { abTestsReportsRouter } from './ab-tests-reports.ts'
 import { relationCountsFor } from '../store/relation-counts.ts'
 import { folderIdForUid, isKnownFolderId } from '../store/unfiled.ts'
 import { duplicateAbTest } from '../store/duplicate-ab-test.ts'
+import { issueAbTest } from '../store/page-visit.ts'
 import { abTestsMediaRouter } from './ab-tests-media.ts'
 import { creatorOf } from '../lib/creator-access.ts'
 import type { AbTest } from '../store/types.ts'
@@ -192,6 +193,18 @@ abTestsRouter.post('/ab_tests/:uid/duplicate', (req, res) => {
   if (out === null) return notFound(res, 'ページが見つかりません。')
   setState(() => out.state)
   res.status(201).json({ ab_test: serializeAbTest(out.state, out.abTest) })
+})
+
+/**
+ * 本番URLの発行（2026-10-30 本人「本番URLは発行ボタンを押さない限り表示しない」・編集ページの「本番URLを発行」）。
+ * 発行するまで本番URLは開かない。LP作成者には通さない（lib/creator-access.ts に足していない＝管理者だけ）。
+ * 札は変えない（本物の人が初めて見に来たら配信中・store/page-visit.ts）。もう発行済みなら何もしない。
+ */
+abTestsRouter.post('/ab_tests/:uid/issue', (req, res) => {
+  const out = issueAbTest(getState(), req.params.uid)
+  if (out.abTest === null) return notFound(res, 'ページが見つかりません。')
+  setState(() => out.state)
+  res.json({ ab_test: serializeAbTest(out.state, out.abTest) })
 })
 
 abTestsRouter.delete('/ab_tests/:uid', (req, res) => {

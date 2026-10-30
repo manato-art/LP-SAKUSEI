@@ -17,6 +17,7 @@ import {
   sendJson,
   startTestServer,
   type TestServer,
+  issueCreatedPage,
 } from './helpers/server.ts'
 
 let server: TestServer
@@ -41,6 +42,7 @@ async function createFolderWithPage(name: string): Promise<{ folderUid: string; 
     media_id: 1,
     folder_id: folder.json.folder.id,
   })
+  await issueCreatedPage(server.api, page.json)
   return { folderUid: folder.json.folder.uid, abTestUid: page.json.ab_test.uid }
 }
 

@@ -8,7 +8,7 @@ import { WebSocket } from 'ws'
 import { createApp } from '../mock-server/app.ts'
 import { attachCable } from '../mock-server/ws/cable.ts'
 import { resetState } from '../mock-server/store/store.ts'
-import { postJson } from './helpers/server.ts'
+import { postJson, issueCreatedPage } from './helpers/server.ts'
 
 const CONVERSIONS_CHANNEL = JSON.stringify({ channel: 'ConversionsChannel' })
 
@@ -130,6 +130,7 @@ describe('CV速報の発火条件（実測CVのみ・合成CVは廃止）', () =
       title: 'サンプル施策001',
       media_id: 1,
     })
+    await issueCreatedPage(baseUrl, created.json)
     await postJson(`${baseUrl}/versions/${created.json.version.uid}/publish`)
 
     const client = await connect()
@@ -153,6 +154,7 @@ describe('CV速報の発火条件（実測CVのみ・合成CVは廃止）', () =
       `${baseUrl}/ab_tests`,
       { title: 'サンプル施策002', media_id: 1 },
     )
+    await issueCreatedPage(baseUrl, created.json)
     const abTestUid = created.json.ab_test.uid
 
     const client = await connect()

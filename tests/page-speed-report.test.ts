@@ -5,7 +5,7 @@
  * レポートのVersionの行ごとに「3秒以上かかった人の割合」と人数を返す。
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
-import { getJson, postJson, resetStore, startTestServer, type TestServer } from './helpers/server.ts'
+import { getJson, postJson, resetStore, startTestServer, type TestServer, issueCreatedPage } from './helpers/server.ts'
 import { getState } from '../mock-server/store/store.ts'
 import { toDateKey } from '../mock-server/store/metrics.ts'
 
@@ -28,6 +28,7 @@ async function createPage(): Promise<{ abTestUid: string; versionUid: string }> 
     title: '表示速度の確認',
     media_id: 1,
   })
+  await issueCreatedPage(server.api, created.json)
   const version = getState().versions.at(-1)
   if (version === undefined) throw new Error('Versionを作れませんでした')
   return { abTestUid: created.json.ab_test.uid, versionUid: version.uid }

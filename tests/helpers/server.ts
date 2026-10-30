@@ -69,7 +69,7 @@ export async function sendJson<T = unknown>(
 export function requestWithHost(
   method: 'GET' | 'POST',
   url: string,
-  options: { host: string; body?: string; contentType?: string },
+  options: { host: string; body?: string; contentType?: string; userAgent?: string },
 ): Promise<{ status: number; text: string }> {
   const target = new URL(url)
   return new Promise((resolve, reject) => {
@@ -82,6 +82,7 @@ export function requestWithHost(
         headers: {
           Host: options.host,
           ...(options.contentType === undefined ? {} : { 'Content-Type': options.contentType }),
+          ...(options.userAgent === undefined ? {} : { 'User-Agent': options.userAgent }),
           ...(options.body === undefined ? {} : { 'Content-Length': Buffer.byteLength(options.body) }),
         },
       },
@@ -96,4 +97,15 @@ export function requestWithHost(
     if (options.body !== undefined) req.write(options.body)
     req.end()
   })
+}
+
+/**
+ * 作ったページの本番URLを発行する（2026-10-30〜新しいページは発行するまで本番URLで開かず、計測も受けない）。
+ * 配信・計測を確かめるテストは、ページを作った直後にこれを呼ぶ。json は POST /ab_tests の応答。
+ */
+export async function issueCreatedPage(api: string, json: unknown): Promise<void> {
+  const uid = (json as { ab_test?: { uid?: string } } | null)?.ab_test?.uid
+  if (typeof uid !== 'string') throw new Error('作ったページの uid がありません')
+  const res = await fetch(`${api}/ab_tests/${uid}/issue`, { method: 'POST' })
+  if (res.status !== 200) throw new Error(`本番URLを発行できませんでした (${String(res.status)})`)
 }

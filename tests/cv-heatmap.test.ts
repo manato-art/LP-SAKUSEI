@@ -7,7 +7,7 @@
  * 以前のCVの列は「画面のどこで起きたかを記録していない」ので、色も線も出なかった。
  */
 import { afterAll, beforeEach, describe, expect, it } from 'vitest'
-import { getJson, postJson, resetStore, startTestServer, type TestServer } from './helpers/server.ts'
+import { getJson, postJson, resetStore, startTestServer, type TestServer, issueCreatedPage } from './helpers/server.ts'
 
 let server: TestServer
 
@@ -23,6 +23,7 @@ interface Stat {
 
 async function setup(): Promise<{ uid: string; version: string }> {
   const created = await postJson<{ ab_test: { uid: string } }>(`${server.api}/ab_tests`, { title: 'CVのヒートマップ', media_id: 1 })
+  await issueCreatedPage(server.api, created.json)
   const uid = created.json.ab_test.uid
   const report = await getJson<{ rows: { entity_uid: string }[] }>(`${server.api}/ab_tests/${uid}/reports?${RANGE}`)
   return { uid, version: report.rows[0]?.entity_uid ?? '' }

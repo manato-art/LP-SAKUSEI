@@ -20,9 +20,10 @@ import { openParamUrlModal } from '../panels/param-url-modal.ts'
 import { basicInfoApi, type MediaOption } from './basic-info-api.ts'
 import { setupHorizTabs, setupBreadcrumb } from './tab-nav.ts'
 import { recordHistory } from './folders-history.ts'
-import { CONVERSION_CONDITION_LABELS, DELIVERY_TYPE_LABELS, EDITOR_VERSION_LABELS, buildUpdatePayload, toRecordFormValues, validateBasicInfo, type AbTestForEdit, type BasicInfoValues, DELIVERY_DOMAIN_UNSET_NOTE, deliveryUrlFor } from './basic-info-form.ts'
+import { CONVERSION_CONDITION_LABELS, DELIVERY_TYPE_LABELS, EDITOR_VERSION_LABELS, buildUpdatePayload, toRecordFormValues, validateBasicInfo, type AbTestForEdit, type BasicInfoValues } from './basic-info-form.ts'
+import { pageDeliveryNote, pageDeliveryUrl } from './page-delivery-url.ts'
 import { ADDRESS_LABEL_INPUT_ID, buildAddressEditor, buildKeptUrlRow, editableAddressLabel } from './basic-info-address.ts'
-import { effectiveDeliveryDomain, pageDomainFromLabel } from '../../shared/page-delivery-domain.ts'
+import { pageDomainFromLabel } from '../../shared/page-delivery-domain.ts'
 
 /** 開始・締切・終了などが配信を変えないことの注記（配信は Version の配信割合と配信の切り替え予約で決まる） */
 const RECORD_ONLY_NOTE = '記録のみ（配信の開始・停止には使いません）'
@@ -92,13 +93,12 @@ function buildPage(
     abTestUid,
     medias,
     deliveryBase,
-    savedUrl: () =>
-      deliveryUrlFor(effectiveDeliveryDomain(ctx.abTest.delivery_domain, ctx.abTest.folder?.domain), location.origin, abTestUid),
+    savedUrl: () => pageDeliveryUrl(ctx.abTest, ctx.abTest.folder?.domain, location.origin),
   }
   const savedUrl = ctx.savedUrl
   const needsDomain = (): boolean => {
     if (savedUrl() !== null) return false
-    toast(DELIVERY_DOMAIN_UNSET_NOTE, 'error')
+    toast(pageDeliveryNote(ctx.abTest), 'error')
     return true
   }
 
@@ -132,7 +132,7 @@ function buildPage(
   if (label !== null) fUrl.append(buildAddressEditor(label, deliveryBase, abTestUid, (next) => registerAddress(ctx, next)))
   fUrl.append(
     urlRow(
-      savedUrl() ?? DELIVERY_DOMAIN_UNSET_NOTE,
+      savedUrl() ?? pageDeliveryNote(ctx.abTest),
       () => {
         const url = savedUrl()
         if (!needsDomain() && url !== null) copy(url)
@@ -316,10 +316,10 @@ function addressInput(ctx: WireCtx): HTMLInputElement | null {
 
 /** 右の確認に出す配信URL。頭の名前を打っている途中なら、登録したあとの住所を出す */
 function summaryUrl(ctx: WireCtx, label: string | undefined): string {
-  if (label !== undefined && ctx.deliveryBase !== '') {
+  if (label !== undefined && ctx.deliveryBase !== '' && ctx.savedUrl() !== null) {
     return `https://${pageDomainFromLabel(label, ctx.deliveryBase)}/lp/${ctx.abTestUid}`
   }
-  return ctx.savedUrl() ?? DELIVERY_DOMAIN_UNSET_NOTE
+  return ctx.savedUrl() ?? pageDeliveryNote(ctx.abTest)
 }
 
 function renderSummary(ctx: WireCtx): void {
@@ -456,7 +456,7 @@ function refreshAddress(ctx: WireCtx): void {
     input?.addEventListener('input', () => renderSummary(ctx))
   }
   const urlBox = ctx.root.querySelector<HTMLInputElement>('.bi-url-row .bi-input')
-  if (urlBox !== null) urlBox.value = ctx.savedUrl() ?? DELIVERY_DOMAIN_UNSET_NOTE
+  if (urlBox !== null) urlBox.value = ctx.savedUrl() ?? pageDeliveryNote(ctx.abTest)
   renderSummary(ctx)
 }
 

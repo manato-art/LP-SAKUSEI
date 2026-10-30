@@ -5,7 +5,7 @@
  * 除いた件数は表示（pv）のときだけ数えて、画面の「ボットは含めていません（◯件）」に使う。
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
-import { postJson, resetStore, startTestServer, type TestServer } from './helpers/server.ts'
+import { postJson, resetStore, startTestServer, type TestServer, issueCreatedPage } from './helpers/server.ts'
 import { getState } from '../mock-server/store/store.ts'
 
 let server: TestServer
@@ -31,6 +31,7 @@ async function createPage(): Promise<{ abTestUid: string; versionUid: string }> 
     title: 'ボット除外の確認',
     media_id: 1,
   })
+  await issueCreatedPage(server.api, created.json)
   const version = getState().versions.at(-1)
   if (version === undefined) throw new Error('Versionを作れませんでした')
   return { abTestUid: created.json.ab_test.uid, versionUid: version.uid }

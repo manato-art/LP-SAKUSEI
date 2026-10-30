@@ -8,7 +8,7 @@
  * があるが、クローンは全件を出すだけだった。
  */
 import { afterAll, beforeEach, describe, expect, it } from 'vitest'
-import { getJson, postJson, resetStore, startTestServer, type TestServer } from './helpers/server.ts'
+import { getJson, postJson, resetStore, startTestServer, type TestServer, issueCreatedPage } from './helpers/server.ts'
 
 let server: TestServer
 
@@ -37,6 +37,7 @@ async function setup(): Promise<{ uid: string }> {
     title: 'CV速報の確認用',
     media_id: 1,
   })
+  await issueCreatedPage(server.api, created.json)
   const uid = created.json.ab_test.uid
   const track = async (payload: Record<string, unknown>): Promise<void> => {
     const res = await fetch(`${server.baseUrl}/lp/${uid}/__track`, {

@@ -13,7 +13,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { createApp } from '../mock-server/app.ts'
 import { resetState } from '../mock-server/store/store.ts'
 import { LP_BASE_CSS } from '../src/app/lp-base-css.ts'
-import { postJson } from './helpers/server.ts'
+import { postJson, issueCreatedPage } from './helpers/server.ts'
 
 const PARAGRAPH_RULE = 'body>p,body>.article-body>p{margin:0}'
 
@@ -49,6 +49,7 @@ async function createPage(html: string): Promise<{ abTestUid: string; versionUid
     `${baseUrl}/ab_tests`,
     { title: '段落の空き', media_id: 1 },
   )
+  await issueCreatedPage(baseUrl, created.json)
   await fetch(`${baseUrl}/versions/${created.json.version.uid}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },

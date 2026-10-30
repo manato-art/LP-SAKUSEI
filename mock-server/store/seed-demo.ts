@@ -83,5 +83,6 @@ export function createDemoState(): State {
     distribution_ratio: 100,
   }).state
 
-  return state
+  // 見本は「配信しているLP」の見本なので、本番URLは発行済みにしておく（新しく作るページは発行前から・2026-10-30）
+  return { ...state, abTests: state.abTests.map((t) => ({ ...t, issued: true })) }
 }

@@ -11,7 +11,7 @@ import { parseHTML } from 'linkedom'
 import { buildTrackingScriptBody } from '../src/shared/tracking-tag.ts'
 import { paintLpLayer } from '../src/app/pages/heatmap-lp-layer.ts'
 import { installDom } from './helpers/dom.ts'
-import { getJson, postJson, resetStore, startTestServer, type TestServer } from './helpers/server.ts'
+import { getJson, postJson, resetStore, startTestServer, type TestServer, issueCreatedPage } from './helpers/server.ts'
 
 type Listener = (event: unknown) => void
 
@@ -75,6 +75,7 @@ describe('サーバー', () => {
 
   it('送られてきた cx を残す（古いタグの送信には無い）', async () => {
     const created = await postJson<{ ab_test: { uid: string } }>(`${server.api}/ab_tests`, { title: 'cx', media_id: 1 })
+    await issueCreatedPage(server.api, created.json)
     const uid = created.json.ab_test.uid
     for (const clicks of [[{ x: 0.486, y: 0.5, cx: -20 }], [{ x: 0.3, y: 0.2 }]]) {
       const res = await fetch(`${server.baseUrl}/lp/${uid}/__track`, {

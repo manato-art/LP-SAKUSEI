@@ -168,6 +168,8 @@ describe('LP作成者には使えないもの（サーバーでも断る）', ()
     ['GET', () => '/creator_accounts'],
     ['GET', () => '/tasks'],
     ['POST', () => '/articles/bulk_replaces'],
+    // 本番URLの発行は管理者だけ（2026-10-30 本人「管理者だけ」）。自分のページでも断る
+    ['POST', () => `/ab_tests/${mine.abTest}/issue`],
   ])('%s %s は 403', async (method, path) => {
     const out = await call(method, path(), creator, method === 'GET' ? undefined : {})
     expect(out.status).toBe(403)

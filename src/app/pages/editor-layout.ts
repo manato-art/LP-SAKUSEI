@@ -12,6 +12,8 @@
 
 import { api } from '../api.ts'
 import { toast } from '../ui.ts'
+import { confirmCard } from '../dialog.ts'
+import { isCreator } from '../session.ts'
 import { mountVersionSettings, openVersionSettings, type SettingsVersion } from '../panels/version-settings.ts'
 import { mountTagSettings, openTagSettings } from '../panels/tag-settings.ts'
 import { followEditorContent, LINK_REPLACE_TOGGLE_ATTR, mountLinkReplace, reloadLinkReplace } from '../panels/link-replace.ts'
@@ -267,11 +269,38 @@ function mountUrlBarInEditor(ctx: EditorContext): HTMLElement | null {
   // （案内文をURLとして渡していて、「配信URLをコピーしました」で案内文がコピーされていた・2026-09-24 点検39）
   const prodUrl = deliveryUrlFor(ctx.deliveryDomain, location.origin, ctx.abTestUid) ?? ''
 
-  const bar = mountUrlBar({ testUrl, prodUrl })
+  // 本番URLは「本番URLを発行」を押すまで出さない・押せるのは管理者だけ（2026-10-30）
+  const bar = mountUrlBar({
+    testUrl,
+    prodUrl,
+    issue: { issued: ctx.issued !== false, canIssue: !isCreator(), onIssue: () => issueProdUrl(ctx, prodUrl) },
+  })
 
   // URLバーはヘッダー画像の上（コンテンツ領域の最上部）に配置
   contentWrapper.prepend(bar)
   return bar
+}
+/** 確かめてから本番URLを発行する。発行できたら本番URL（ドメイン未設定なら ''）、やめた・できなかったら null */
+async function issueProdUrl(ctx: EditorContext, prodUrl: string): Promise<string | null> {
+  const ok = await confirmCard({
+    title: '本番URLを発行',
+    message:
+      prodUrl === ''
+        ? '本番URLを発行します。発行すると、本番URLで誰でも開けるようになります。'
+        : `本番URLを発行します。発行すると、${prodUrl} を誰でも開けるようになります。`,
+    detail: '札は、本物の人が初めて見に来たときに「配信中」に変わります。',
+    submitLabel: '発行する',
+  })
+  if (!ok) return null
+  try {
+    await api.issueAbTest(ctx.abTestUid)
+    ctx.issued = true
+    toast('本番URLを発行しました')
+    return prodUrl
+  } catch (error) {
+    toast(`本番URLを発行できませんでした: ${(error as Error).message}`, 'error')
+    return null
+  }
 }
 /** モック準拠: 右レールアイコンの SVG（指示92） */
 const RAIL_ICON_SVGS: readonly string[] = [

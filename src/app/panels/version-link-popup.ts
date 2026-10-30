@@ -15,6 +15,7 @@
  */
 import { toast } from '../ui.ts'
 import { DELIVERY_DOMAIN_UNSET_NOTE, deliveryUrlFor } from '../pages/basic-info-form.ts'
+import { NOT_ISSUED_NOTE } from '../pages/page-delivery-url.ts'
 import { pageLife } from '../page-life.ts'
 
 /** 採取物の目印（実物のクラス／属性。書き換えていない） */
@@ -45,8 +46,10 @@ export function buildVersionLinkUrl(deliveryUrl: string, stepUid: string): strin
 }
 
 export interface VersionLinkDeps {
-  /** 配信URL（フォルダのドメイン未設定なら null） */
+  /** 配信URL（本番URLの発行前・フォルダのドメイン未設定なら null） */
   getDeliveryUrl: () => string | null
+  /** 配信URLが無いときの案内（省略時はドメイン未設定の案内） */
+  getUnavailableNote?: () => string
   /** いま開いているステップの uid（切替に追従するため getter） */
   getStepUid: () => string
 }
@@ -54,11 +57,14 @@ export interface VersionLinkDeps {
 /** エディタから渡すもの: 配信URLはページの住所（前からあるLPはフォルダのドメイン）で決まり、ステップは今開いているもの（点検25） */
 export function editorVersionLinkDeps(ctx: {
   readonly deliveryDomain?: string
+  readonly issued?: boolean
   readonly abTestUid: string
   readonly articleUid: string
 }): VersionLinkDeps {
   return {
-    getDeliveryUrl: () => deliveryUrlFor(ctx.deliveryDomain, location.origin, ctx.abTestUid),
+    // 本番URLを発行する前は出さない（2026-10-30・発行は編集ページの上の「本番URLを発行」）
+    getDeliveryUrl: () => (ctx.issued === false ? null : deliveryUrlFor(ctx.deliveryDomain, location.origin, ctx.abTestUid)),
+    getUnavailableNote: () => (ctx.issued === false ? NOT_ISSUED_NOTE : DELIVERY_DOMAIN_UNSET_NOTE),
     getStepUid: () => ctx.articleUid,
   }
 }
@@ -66,7 +72,7 @@ export function editorVersionLinkDeps(ctx: {
 /** 吹き出しの入力欄に入れる文字（ドメイン未設定なら、URLの代わりに案内を出してコピーさせない） */
 function linkText(deps: VersionLinkDeps): { value: string; canCopy: boolean } {
   const base = deps.getDeliveryUrl()
-  if (base === null) return { value: DELIVERY_DOMAIN_UNSET_NOTE, canCopy: false }
+  if (base === null) return { value: deps.getUnavailableNote?.() ?? DELIVERY_DOMAIN_UNSET_NOTE, canCopy: false }
   return { value: buildVersionLinkUrl(base, deps.getStepUid()), canCopy: true }
 }
 
@@ -127,7 +133,7 @@ export function mountVersionLinkPopup(root: HTMLElement, deps: VersionLinkDeps):
   copyLabel?.addEventListener('click', (event) => {
     event.stopPropagation()
     if (!canCopy) {
-      toast(DELIVERY_DOMAIN_UNSET_NOTE, 'error')
+      toast(deps.getUnavailableNote?.() ?? DELIVERY_DOMAIN_UNSET_NOTE, 'error')
       return
     }
     void copyToClipboard(input?.value ?? '')

@@ -12,6 +12,7 @@ import 'quill/dist/quill.core.css'
 import substrate from '../fragments/ab_tests__UID__articles__editor-target.html?raw'
 import { api } from '../api.ts'
 import { effectiveDeliveryDomain } from '../../shared/page-delivery-domain.ts'
+import { isIssued } from '../../shared/page-issue.ts'
 import type { EditorContext } from './editor-context.ts'
 import { HOOK } from './editor-hooks.ts'
 import { loadVersion, renderVersionList } from './editor-version-list.ts'
@@ -298,6 +299,7 @@ export async function renderEditor(
     abTestUid,
     folderUid: folder?.uid ?? '',
     deliveryDomain: effectiveDeliveryDomain(ab_test.delivery_domain, folder?.domain) ?? '',
+    issued: isIssued(ab_test),
     articleUid,
     articles: [...articles],
     stepIndex: Math.max(0, articles.findIndex((a) => a.uid === articleUid)),

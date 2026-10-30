@@ -6,7 +6,7 @@
  * 本人指定の直し方: 保存データは書き換えず、画面の外へ出すときに外す。
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
-import { postJson, resetStore, sendJson, startTestServer, type TestServer } from './helpers/server.ts'
+import { postJson, resetStore, sendJson, startTestServer, type TestServer, issueCreatedPage } from './helpers/server.ts'
 import { buildVersionHtmlDocument } from '../src/app/panels/version-dots-menu.ts'
 import { buildHeatmapLpDocument } from '../src/app/pages/heatmap-lp-document.ts'
 
@@ -49,6 +49,7 @@ async function createPage(html: string): Promise<{ abTestUid: string; articleUid
     `${server.api}/ab_tests`,
     { title: 'Widget入りLP', media_id: 1 },
   )
+  await issueCreatedPage(server.api, created.json)
   await sendJson('PUT', `${server.api}/versions/${created.json.version.uid}`, { html })
   return {
     abTestUid: created.json.ab_test.uid,

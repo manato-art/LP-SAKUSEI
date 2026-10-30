@@ -68,6 +68,10 @@ export interface AbTest {
   folder?: { uid: string; name: string; domain?: string } | null
   /** このページ自身の住所（2026-10-30〜作るLP・'' ＝前からあるLP＝フォルダのドメインで出す） */
   delivery_domain?: string
+  /** 本番URLを発行したか（false＝発行前・本番URLは開かない・2026-10-30）。前からあるページは true */
+  issued?: boolean
+  /** 最後に本物の人が見に来た日から90日以上たったか（一覧の「90日閲覧なし」・src/shared/page-issue.ts） */
+  no_visit_long?: boolean
   /** Meta広告連携の紐付け（未設定は null）。トークンは含まない＝サーバーの環境変数のみ。 */
   meta_level?: string | null
   meta_object_id?: string | null
@@ -581,6 +585,8 @@ export const api = {
       input,
     ),
   abTest: (uid: string) => request<{ ab_test: AbTest }>('GET', `/ab_tests/${uid}`),
+  /** 本番URLを発行する（管理者だけ・編集ページの「本番URLを発行」・2026-10-30） */
+  issueAbTest: (uid: string) => request<{ ab_test: AbTest }>('POST', `/ab_tests/${uid}/issue`),
   /** Version数/ポップアップ数/中間ページ数。`ids` は ab_test.id のカンマ区切り */
   relationCounts: (folderUid: string, ids: readonly number[]) =>
     request<{ relation_counts: RelationCounts[] }>(

@@ -7,7 +7,7 @@
  * 記録を始める前のデータには端末が無いので、端末で絞ったときは「いつから記録しているか」を返す。
  */
 import { afterAll, beforeEach, describe, expect, it } from 'vitest'
-import { getJson, postJson, resetStore, startTestServer, type TestServer } from './helpers/server.ts'
+import { getJson, postJson, resetStore, startTestServer, type TestServer, issueCreatedPage } from './helpers/server.ts'
 import { deviceOfUserAgent } from '../mock-server/lib/device.ts'
 
 let server: TestServer
@@ -49,6 +49,7 @@ async function createPage(): Promise<{ uid: string; version: string }> {
     title: '端末の確認用',
     media_id: 1,
   })
+  await issueCreatedPage(server.api, created.json)
   const uid = created.json.ab_test.uid
   const report = await getJson<Report>(`${server.api}/ab_tests/${uid}/reports?${RANGE}`)
   return { uid, version: report.rows[0]?.entity_uid ?? '' }

@@ -2,6 +2,7 @@
  * レスポンス整形（企画書 §10-2 のネスト形状に合わせる）。
  * 例: AbTest は media{attributes{...}} / folder{...} / creator{...} を内包する。
  */
+import { isIssued, isNoVisitForLong, jstDateKeyOf } from '../../src/shared/page-issue.ts'
 import type { AbTest, Article, State, Version } from '../store/types.ts'
 
 /**
@@ -83,6 +84,12 @@ export function serializeAbTest(state: State, abTest: AbTest): Record<string, un
     delivery_domain: abTest.delivery_domain ?? '',
     // 今までのURL（このシステムのドメイン）も残しているか（「金谷味噌汁のコピー」だけ・基本情報に2つとも出す）
     legacy_url_kept: abTest.legacy_url_kept === true,
+    // 本番URLの発行（前からあるページは発行済み）と、最後に本物の人が来た日・90日閲覧なし（src/shared/page-issue.ts）
+    issued: isIssued(abTest),
+    issued_at: abTest.issued_at ?? null,
+    last_visit_date: abTest.last_visit_date ?? null,
+    // 今日（日本時間）は軽い作り方で（toDateKey は1件ごとだと一覧1000件で約24ms・こちらは約0.7ms・結果は同じ）
+    no_visit_long: isNoVisitForLong(abTest, jstDateKeyOf(Date.now() / 1000)),
     // 基本情報の「記録するだけ」の項目（配信には使わない・項目が無い古いデータは未設定）
     start_date: abTest.start_date ?? null,
     deadline_date: abTest.deadline_date ?? null,

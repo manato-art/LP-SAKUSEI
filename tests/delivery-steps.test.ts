@@ -6,7 +6,7 @@
  * クローンは常に先頭のステップを出していたので、2つ目以降には誰も来られなかった。
  */
 import { afterAll, beforeEach, describe, expect, it } from 'vitest'
-import { getJson, postJson, resetStore, startTestServer, type TestServer } from './helpers/server.ts'
+import { getJson, postJson, resetStore, startTestServer, type TestServer, issueCreatedPage } from './helpers/server.ts'
 
 let server: TestServer
 
@@ -23,6 +23,7 @@ async function setup(): Promise<{ uid: string; first: string; second: string }> 
     title: 'ステップ配信の確認用',
     media_id: 1,
   })
+  await issueCreatedPage(server.api, created.json)
   const uid = created.json.ab_test.uid
   const before = await getJson<{ articles: { uid: string }[] }>(`${server.api}/ab_tests/${uid}/articles`)
   const first = before.articles[0]?.uid ?? ''

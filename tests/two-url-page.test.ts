@@ -25,7 +25,8 @@ function stateWithOldPage(folderDomain = 'system'): State {
   return {
     ...other.state,
     quickDomainBase: BASE,
-    abTests: other.state.abTests.map((t) => (t.id === made.abTest.id ? { ...t, uid: TWO_URL_PAGE_UID } : t)),
+    // 前からあるLP＝本番URLの発行の項目が無い（発行済みとして扱う・2026-10-30）
+    abTests: other.state.abTests.map(({ issued: _issued, ...t }) => (t.id === made.abTest.id ? { ...t, uid: TWO_URL_PAGE_UID } : t)),
   }
 }
 

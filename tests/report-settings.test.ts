@@ -6,7 +6,7 @@
  *   保存ボタンは**無い**ので、触った時点で保存される作り（採取物にボタンが1つも無いことで確認）。
  */
 import { afterAll, beforeEach, describe, expect, it } from 'vitest'
-import { getJson, postJson, resetStore, sendJson, startTestServer, type TestServer } from './helpers/server.ts'
+import { getJson, postJson, resetStore, sendJson, startTestServer, type TestServer, issueCreatedPage } from './helpers/server.ts'
 
 let server: TestServer
 
@@ -23,6 +23,7 @@ async function createAbTest(): Promise<string> {
     title: 'レポート設定の確認用',
     media_id: 1,
   })
+  await issueCreatedPage(server.api, created.json)
   return created.json.ab_test.uid
 }
 

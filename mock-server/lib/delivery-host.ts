@@ -7,6 +7,7 @@
  * 判定は必ず fail-closed（分からないときに通さない）。読み取り（LP表示）だけでなく
  * 書き込み（計測ビーコン）にも同じ判定を通す ＝ 過去の「ガードが読み取り限定で書込側が越境」の再発防止。
  */
+import { isIssued } from '../../src/shared/page-issue.ts'
 import type { AbTest, Folder, State } from '../store/types.ts'
 
 /** ホストの正準キー（小文字・ポートと末尾の . を外す）。名前の揺れで判定しない。 */
@@ -45,6 +46,8 @@ function isUnderQuickDomainBase(state: State, host: string): boolean {
 
 /** そのホストで、この beyondページ を配信してよいか */
 export function isServableOnHost(state: State, abTest: AbTest, host: string): boolean {
+  // 本番URLを発行する前のページは、どのドメインでも出さない（計測も受けない・2026-10-30・確かめはプレビューで）
+  if (!isIssued(abTest)) return false
   const own = abTest.delivery_domain ?? ''
   if (own !== '') {
     // このページ自身の住所（2026-10-30〜作る・複製するLP）。住所はフォルダでは決めない。

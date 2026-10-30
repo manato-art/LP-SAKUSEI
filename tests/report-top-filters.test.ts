@@ -7,7 +7,7 @@
  * 絞ると 行・合計・日別 のすべてがその範囲になる。
  */
 import { afterAll, beforeEach, describe, expect, it } from 'vitest'
-import { getJson, postJson, resetStore, sendJson, startTestServer, type TestServer } from './helpers/server.ts'
+import { getJson, postJson, resetStore, sendJson, startTestServer, type TestServer, issueCreatedPage } from './helpers/server.ts'
 
 let server: TestServer
 
@@ -41,6 +41,7 @@ async function setup(): Promise<{ uid: string; first: string; second: string }> 
     title: '絞り込み確認用',
     media_id: 1,
   })
+  await issueCreatedPage(server.api, created.json)
   const uid = created.json.ab_test.uid
   const before = await getJson<Report>(`${server.api}/ab_tests/${uid}/reports?${RANGE}`)
   const first = before.rows[0]?.entity_uid ?? ''

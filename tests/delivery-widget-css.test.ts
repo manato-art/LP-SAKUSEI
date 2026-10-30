@@ -12,7 +12,7 @@ import { createApp } from '../mock-server/app.ts'
 import { resetState } from '../mock-server/store/store.ts'
 import { WIDGET_RESET_CSS } from '../src/shared/sb-preview-css.ts'
 import { WIDGET_BASE_CSS } from '../src/shared/sb-part-css.ts'
-import { postJson } from './helpers/server.ts'
+import { postJson, issueCreatedPage } from './helpers/server.ts'
 
 let server: Server
 let origin: string
@@ -55,6 +55,7 @@ async function createPage(html: string): Promise<{ abTestUid: string; articleUid
     `${baseUrl}/ab_tests`,
     { title: 'Widget入りLP', media_id: 1 },
   )
+  await issueCreatedPage(baseUrl, created.json)
   await fetch(`${baseUrl}/versions/${created.json.version.uid}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },

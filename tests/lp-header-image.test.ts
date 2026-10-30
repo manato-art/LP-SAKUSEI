@@ -6,7 +6,7 @@
  * 公開LPを見た人にはヘッダー画像が表示されていなかった。
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
-import { postJson, resetStore, sendJson, startTestServer, type TestServer } from './helpers/server.ts'
+import { postJson, resetStore, sendJson, startTestServer, type TestServer, issueCreatedPage } from './helpers/server.ts'
 import { getState } from '../mock-server/store/store.ts'
 
 let server: TestServer
@@ -28,6 +28,7 @@ const HEADER_IMG = /<img [^>]*alt="ヘッダー画像">/
 /** beyondページを作り、その Version の本文を html にする */
 async function pageWithHtml(html: string): Promise<{ abTestUid: string; versionUid: string }> {
   const created = await postJson<{ ab_test: { uid: string } }>(`${server.api}/ab_tests`, { title: 'ヘッダー画像', media_id: 1 })
+  await issueCreatedPage(server.api, created.json)
   const version = getState().versions.at(-1)
   if (version === undefined) throw new Error('Versionを作れませんでした')
   expect((await sendJson('PUT', `${server.api}/versions/${version.uid}`, { html })).status).toBe(200)

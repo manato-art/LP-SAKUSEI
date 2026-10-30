@@ -6,7 +6,7 @@
  * 段ごとの数字は、そのステップに属するVersionの実測を足したもの。
  */
 import { afterAll, beforeEach, describe, expect, it } from 'vitest'
-import { getJson, postJson, resetStore, startTestServer, type TestServer } from './helpers/server.ts'
+import { getJson, postJson, resetStore, startTestServer, type TestServer, issueCreatedPage } from './helpers/server.ts'
 
 let server: TestServer
 const RANGE = 'start_date=2026-01-01&end_date=2026-12-31'
@@ -27,6 +27,7 @@ async function setup(): Promise<{ uid: string; first: string; second: string }> 
     title: 'ファネルの確認用',
     media_id: 1,
   })
+  await issueCreatedPage(server.api, created.json)
   const uid = created.json.ab_test.uid
   const before = await getJson<{ articles: { uid: string }[] }>(`${server.api}/ab_tests/${uid}/articles`)
   const first = before.articles[0]?.uid ?? ''

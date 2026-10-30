@@ -19,7 +19,7 @@
  */
 import { runInNewContext } from 'node:vm'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
-import { getJson, postJson, resetStore, sendJson, startTestServer, type TestServer } from './helpers/server.ts'
+import { getJson, postJson, resetStore, sendJson, startTestServer, type TestServer, issueCreatedPage } from './helpers/server.ts'
 import { getState, setState } from '../mock-server/store/store.ts'
 import { createBulkTag, updateBulkTag } from '../mock-server/store/bulk-tags.ts'
 
@@ -42,6 +42,7 @@ async function createRedirectPage(): Promise<{ abTestUid: string; uid: string }>
     title: '中間ページ確認',
     media_id: 1,
   })
+  await issueCreatedPage(server.api, created.json)
   const abTestUid = created.json.ab_test.uid
   const added = await postJson<{ redirect_page: { uid: string } }>(
     `${server.api}/ab_tests/${abTestUid}/redirect_pages/create`,

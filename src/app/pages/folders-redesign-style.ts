@@ -180,6 +180,9 @@ ${R} .ejtacxq0[data-ad-status="delivered"]{background:#DDF5E8 !important;color:#
 /* 暗い表示の札（色付きの文字は暗い表示の仕組みが明るくしないので、ここで決める。印を2つ重ねて仕組みの写しより強くする） */
 html[data-theme="dark"] body [${PAGE_LIST_ATTR}][${PAGE_LIST_ATTR}] .ejtacxq0[data-ad-status="prepared"]{background:rgba(245,158,11,.18) !important;color:#F5B94A !important}
 html[data-theme="dark"] body [${PAGE_LIST_ATTR}][${PAGE_LIST_ATTR}] .ejtacxq0[data-ad-status="delivered"]{background:rgba(22,163,74,.2) !important;color:#5BD08A !important}
+/* 90日閲覧なし（状態の札の下・薄い灰色の札・2026-10-30） */
+${R} .pl-no-visit{display:inline-flex;align-items:center;height:20px;padding:0 8px;margin-top:4px;border-radius:999px;font-size:11px;font-weight:700;white-space:nowrap;background:#EEF0F3;color:${SUB}}
+html[data-theme="dark"] body [${PAGE_LIST_ATTR}][${PAGE_LIST_ATTR}] .pl-no-visit{background:rgba(255,255,255,.08);color:#A7B0BE}
 /* 数字と、その下の直近7日の棒グラフ */
 ${R} .e14sgd470{display:flex !important;flex-direction:column;align-items:center;justify-content:center;gap:6px}
 ${R} .pl-value{font-size:14px;font-weight:700;color:${INK};font-variant-numeric:tabular-nums;white-space:nowrap}

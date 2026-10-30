@@ -8,7 +8,7 @@
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { quickDomainLabelError } from '../src/shared/domain-input.ts'
-import { postJson, requestWithHost, resetStore, sendJson, startTestServer, type TestServer } from './helpers/server.ts'
+import { postJson, requestWithHost, resetStore, sendJson, startTestServer, type TestServer, issueCreatedPage } from './helpers/server.ts'
 
 let server: TestServer
 
@@ -88,6 +88,7 @@ describe('土台の下の、どのフォルダにも割り当てていない名�
       media_id: 1,
       folder_id: folder.json.folder.id,
     })
+    await issueCreatedPage(server.api, page.json)
     await sendJson('PUT', `${server.api}/teams/quick_domain`, { base: 'c1-news.test' })
     await issue(folder.json.folder.uid, 'meguri')
     const uid = page.json.ab_test.uid

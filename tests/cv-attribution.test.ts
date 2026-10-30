@@ -11,7 +11,7 @@
  */
 import { randomUUID } from 'node:crypto'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
-import { postJson, resetStore, startTestServer, type TestServer } from './helpers/server.ts'
+import { postJson, resetStore, startTestServer, type TestServer, issueCreatedPage } from './helpers/server.ts'
 import { getState, setState } from '../mock-server/store/store.ts'
 
 let server: TestServer
@@ -33,6 +33,7 @@ const DAY_MS = 24 * 60 * 60 * 1000
 /** beyondページを作り、その uid と最初の Version の uid を返す（CV条件を指定できる） */
 async function createPage(condition: 'click' | 'access' = 'click'): Promise<{ abTestUid: string; versionUid: string }> {
   const created = await postJson<{ ab_test: { uid: string } }>(`${server.api}/ab_tests`, { title: 'CVの確認', media_id: 1 })
+  await issueCreatedPage(server.api, created.json)
   const abTestUid = created.json.ab_test.uid
   setState((s) => ({
     ...s,

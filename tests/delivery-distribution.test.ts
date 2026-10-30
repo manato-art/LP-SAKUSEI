@@ -11,7 +11,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { createServer, type Server } from 'node:http'
 import { createApp } from '../mock-server/app.ts'
 import { resetState, setState } from '../mock-server/store/store.ts'
-import { postJson } from './helpers/server.ts'
+import { postJson, issueCreatedPage } from './helpers/server.ts'
 
 let server: Server
 let origin: string
@@ -50,6 +50,7 @@ async function setupTwoVersions(): Promise<{
     title: '配信割合テスト',
     media_id: 1,
   })
+  await issueCreatedPage(baseUrl, created.json)
   const added = await postJson<{ version: { uid: string } }>(
     `${baseUrl}/articles/${created.json.article.uid}/versions`,
   )
@@ -99,6 +100,7 @@ describe('配信割合どおりに配信する（指示173）', () => {
       title: '割合0%のみ',
       media_id: 1,
     })
+    await issueCreatedPage(baseUrl, created.json)
     setState((state) => ({
       ...state,
       versions: state.versions.map((v) => (v.uid === created.json.version.uid ? { ...v, distribution_ratio: 0 } : v)),

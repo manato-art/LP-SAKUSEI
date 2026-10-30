@@ -10,7 +10,7 @@
 import { runInNewContext } from 'node:vm'
 import { parseHTML } from 'linkedom'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
-import { getJson, postJson, resetStore, sendJson, startTestServer, type TestServer } from './helpers/server.ts'
+import { getJson, postJson, resetStore, sendJson, startTestServer, type TestServer, issueCreatedPage } from './helpers/server.ts'
 import { matchesVisitCount, pickPopupsForView } from '../mock-server/routes/delivery-popups.ts'
 import { buildPopupSnippet } from '../mock-server/routes/delivery-popup-html.ts'
 import type { ExitPopup } from '../mock-server/store/types.ts'
@@ -89,6 +89,7 @@ interface Page {
 
 async function newPage(): Promise<Page> {
   const created = await postJson<{ ab_test: { uid: string }; version: { uid: string } }>(`${server.api}/ab_tests`, { title: 'P', media_id: 1 })
+  await issueCreatedPage(server.api, created.json)
   return { abTestUid: created.json.ab_test.uid, versionUid: created.json.version.uid }
 }
 

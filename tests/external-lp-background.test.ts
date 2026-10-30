@@ -10,7 +10,7 @@
  *   2. 保存するURLはクエリ・ハッシュを落とし、自前配信は「外部LP」にしない
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
-import { getJson, postJson, resetStore, startTestServer, type TestServer } from './helpers/server.ts'
+import { getJson, postJson, resetStore, startTestServer, type TestServer, issueCreatedPage } from './helpers/server.ts'
 
 let server: TestServer
 
@@ -29,6 +29,7 @@ async function createAbTest(): Promise<string> {
     title: '外部LP背景テスト',
     media_id: 1,
   })
+  await issueCreatedPage(server.api, created.json)
   return created.json.ab_test.uid
 }
 

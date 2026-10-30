@@ -20,6 +20,7 @@ import { externalizeStateImages } from './externalize-images.ts'
 import { migrateFolderDomains } from './folder-domain.ts'
 import { repairOverCountedClicks } from './click-repair.ts'
 import { keepTwoUrlsForSpecialPage } from './two-url-page.ts'
+import { backfillLastVisitDates } from './page-visit.ts'
 
 /** シード（保存済みが無いときの初期状態）。SEED_DEMO=1 なら架空デモ1式、なければ空。 */
 function seedState(): State {
@@ -59,13 +60,16 @@ function repairOnLoad(persisted: State): State {
   const ratios = normalizeAllSteps(folderDomains.state)
   const clicks = repairOverCountedClicks(ratios.state)
   const twoUrls = keepTwoUrlsForSpecialPage(clicks.state)
+  // 前からあるページの「最後に本物の人が来た日」を、残っている日ごとの数字から埋める（90日閲覧なしの印・2026-10-30）
+  const visits = backfillLastVisitDates(twoUrls.state)
   if (
     repaired.changes.length === 0 &&
     externalized.converted === 0 &&
     folderDomains.changed === 0 &&
     ratios.changed.length === 0 &&
     clicks.changed.length === 0 &&
-    twoUrls.changed.length === 0
+    twoUrls.changed.length === 0 &&
+    visits.changed === 0
   ) {
     return persisted
   }
@@ -88,8 +92,11 @@ function repairOnLoad(persisted: State): State {
   for (const uid of twoUrls.changed) {
     console.log(`[store] ${uid} に c1page.com の住所を足しました（今までのURLもそのまま開ける）`)
   }
-  schedulePersist(twoUrls.state)
-  return twoUrls.state
+  if (visits.changed > 0) {
+    console.log(`[store] ${String(visits.changed)} ページの最後に人が来た日を、日ごとの数字から埋めました`)
+  }
+  schedulePersist(visits.state)
+  return visits.state
 }
 
 let current: State = initialState()

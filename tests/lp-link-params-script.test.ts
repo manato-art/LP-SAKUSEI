@@ -10,7 +10,7 @@
 import { runInNewContext } from 'node:vm'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { buildLpLinkParamsScript } from '../mock-server/routes/lp-link-params-script.ts'
-import { postJson, resetStore, startTestServer, type TestServer } from './helpers/server.ts'
+import { postJson, resetStore, startTestServer, type TestServer, issueCreatedPage } from './helpers/server.ts'
 
 interface OpenedLp {
   readonly links: { href: string }[]
@@ -104,6 +104,7 @@ describe('配信LPを開くと、本体と同じ Cookie を置き、リンクの
       `${server.api}/ab_tests`,
       { title: 'リンク確認LP', media_id: 1 },
     )
+    await issueCreatedPage(server.api, created.json)
     await fetch(`${server.api}/versions/${created.json.version.uid}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },

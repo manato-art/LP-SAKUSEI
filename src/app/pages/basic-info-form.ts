@@ -30,6 +30,8 @@ export interface AbTestForEdit {
   delivery_domain?: string
   /** 今までのURL（このシステムのドメイン）も残しているページか（「金谷味噌汁のコピー」だけ・2026-10-30） */
   legacy_url_kept?: boolean
+  /** 本番URLを発行したか（false＝発行前・2026-10-30）。前からあるページは true */
+  issued?: boolean
   /**
    * 以下は**記録するだけ**の項目（配信には使わない・2026-09-24）。
    * 古いサーバーの応答には無いことがあるので省略可。

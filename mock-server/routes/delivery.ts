@@ -41,6 +41,7 @@ import { countPvOrClick } from './track-counts.ts'
 import { attributeConversion, recordTouch, toVisitorId } from '../store/visitor-touches.ts'
 import { buildVisitorContext, pickDeliveryVersion } from './delivery-targeting.ts'
 import { canonicalHost, isServableOnHost } from '../lib/delivery-host.ts'
+import { noteRealVisit } from '../store/page-visit.ts'
 import { imageLinkScript } from './delivery-image-links.ts'
 import { countPopupVisit, renderPopupsForView } from './delivery-popups.ts'
 import {
@@ -617,6 +618,8 @@ deliveryRouter.post('/lp/:uid/__track', (req, res) => {
   setState((s) => {
     // ページ全体・Version・Version×広告に数え、端末ごとにも同じだけ数える（track-counts.ts）
     let next: State = countPvOrClick(s, { abTestUid: abTest.uid, versionUid, adParams, date, device, delta })
+    // 本物の人が見に来た日を残し、札が準備中なら配信中にする（ボット・レポート除外はここまで来ない・store/page-visit.ts）
+    if (event === 'pv') next = noteRealVisit(next, abTest.uid, date)
     // 目印があれば「見た・押した」記録を残す（CVタグから成果が届いたとき、どのVersionの成果かを照らし合わせる）
     if (vid !== null) {
       next = {

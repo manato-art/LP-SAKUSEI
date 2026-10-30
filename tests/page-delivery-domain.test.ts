@@ -15,7 +15,7 @@ import {
   pageDomainFromLabel,
   pageDomainLabelError,
 } from '../src/shared/page-delivery-domain.ts'
-import { postJson, requestWithHost, resetStore, sendJson, startTestServer, type TestServer } from './helpers/server.ts'
+import { postJson, requestWithHost, resetStore, sendJson, startTestServer, type TestServer, issueCreatedPage } from './helpers/server.ts'
 
 const BASE = 'c1-news.test'
 
@@ -42,6 +42,7 @@ async function createFolder(name: string): Promise<{ id: number; uid: string }> 
 
 async function createPage(folderId: number | null): Promise<PageJson['ab_test']> {
   const res = await postJson<PageJson>(`${server.api}/ab_tests`, { title: 'めぐりのページ', media_id: 1, folder_id: folderId })
+  await issueCreatedPage(server.api, res.json)
   return res.json.ab_test
 }
 

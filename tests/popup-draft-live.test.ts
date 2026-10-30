@@ -8,7 +8,7 @@
  *   最初に下書きを保存したときに、保存前の中身を本番として残す（配信は変わらない）。
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
-import { getJson, postJson, resetStore, sendJson, startTestServer, type TestServer } from './helpers/server.ts'
+import { getJson, postJson, resetStore, sendJson, startTestServer, type TestServer, issueCreatedPage } from './helpers/server.ts'
 import { getState, setState } from '../mock-server/store/store.ts'
 
 let server: TestServer
@@ -35,6 +35,7 @@ interface PopupJson {
 
 async function newPage(): Promise<string> {
   const created = await postJson<{ ab_test: { uid: string } }>(`${server.api}/ab_tests`, { title: 'ポップ', media_id: 1 })
+  await issueCreatedPage(server.api, created.json)
   return created.json.ab_test.uid
 }
 
@@ -125,6 +126,7 @@ describe('離脱防止・表示直後: 下書きと本番', () => {
 
   it('本番反映のあと、プレビュー（検証用URL）も本番の中身を出す', async () => {
     const created = await postJson<{ ab_test: { uid: string }; version: { uid: string } }>(`${server.api}/ab_tests`, { title: 'P', media_id: 1 })
+    await issueCreatedPage(server.api, created.json)
     const page = created.json.ab_test.uid
     const popup = await addExit(page, '<p>MARK-PV1</p>')
     const preview = async (): Promise<string> => (await fetch(`${server.baseUrl}/preview/${created.json.version.uid}`)).text()
@@ -138,6 +140,7 @@ describe('離脱防止・表示直後: 下書きと本番', () => {
 
   it('下書きを確認（?popup_draft=）は、そのポップアップの下書きを出す（未公開・配信OFFでも）', async () => {
     const created = await postJson<{ ab_test: { uid: string }; version: { uid: string } }>(`${server.api}/ab_tests`, { title: 'P', media_id: 1 })
+    await issueCreatedPage(server.api, created.json)
     const page = created.json.ab_test.uid
     const popup = await addExit(page, '<p>MARK-DRAFT</p>')
     await sendJson('PUT', exitUrl(page, popup.uid), { enabled: false })

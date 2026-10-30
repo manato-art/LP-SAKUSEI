@@ -7,7 +7,7 @@
  * （本番と同じLPで、スマホだけ・PCだけなら合うのに、全端末だとずれるのを実測で確認）。
  */
 import { afterAll, beforeEach, describe, expect, it } from 'vitest'
-import { getJson, postJson, resetStore, startTestServer, type TestServer } from './helpers/server.ts'
+import { getJson, postJson, resetStore, startTestServer, type TestServer, issueCreatedPage } from './helpers/server.ts'
 
 let server: TestServer
 
@@ -27,6 +27,7 @@ async function setup(): Promise<{ uid: string; version: string }> {
     title: '1人ずつ数える確認用',
     media_id: 1,
   })
+  await issueCreatedPage(server.api, created.json)
   const uid = created.json.ab_test.uid
   const report = await getJson<{ rows: Kpi[] }>(`${server.api}/ab_tests/${uid}/reports?${RANGE}`)
   return { uid, version: report.rows[0]?.entity_uid ?? '' }

@@ -8,6 +8,7 @@
  *           配信の切り替え予約・ポップアップ・中間ページ（今回の依頼の範囲外）。
  * 配信ステータスは「準備中」、Versionの状態は「準備中」から始める（新しく作ったページと同じ）。
  * 住所（delivery_domain）は元と同じ。元が住所を持たない前からあるLPなら、写しは c1page.com（2026-10-30）。
+ * 写しは本番URLの発行前から（元が発行済みでも・2026-10-30）。
  */
 import { freshUid, nowTs } from './actions-shared.ts'
 import { makeAbTestUid, makeUid } from './ids.ts'
@@ -47,6 +48,9 @@ export function duplicateAbTest(
     created_by: _createdBy,
     // 今までのURLも残すのは元のページだけ（写しは新しいLP）
     legacy_url_kept: _legacyUrlKept,
+    // 写しは発行前から・まだ誰も見に来ていない（2026-10-30）
+    issued_at: _issuedAt,
+    last_visit_date: _lastVisitDate,
     ...settings
   } = source
   const abTest: AbTest = {
@@ -57,6 +61,7 @@ export function duplicateAbTest(
     title: copyTitle(source.title),
     folder_id: folderId,
     ad_status: 'prepared',
+    issued: false,
     conversion_setting: { ...source.conversion_setting, id: abTestId },
     // 住所は元のLPと同じ。元が前からあるLP（住所なし）なら、写しは土台そのもの（c1page.com）で出す（2026-10-30）
     ...((source.delivery_domain ?? '') === '' && state.quickDomainBase !== ''

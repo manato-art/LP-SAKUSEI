@@ -10,6 +10,7 @@
 import { api, type AbTest } from '../api.ts'
 import { T, el, toast } from '../ui.ts'
 import { AD_STATUS_LABELS, type PageContext } from './folders-shared.ts'
+import { NO_VISIT_LABEL } from '../../shared/page-issue.ts'
 import { clearRowMetrics } from './folders-list-metrics.ts'
 import { FOLDERS_HOOK } from './folders-substrate.ts'
 import {
@@ -105,6 +106,13 @@ function wireRealPageRows(area: HTMLElement, context: PageContext, body: HTMLEle
     ;(wrapper ?? spinner).style.display = 'none'
   }
 }
+/** 「90日閲覧なし」の印（状態の札の下） */
+function noVisitMark(): HTMLElement {
+  const mark = document.createElement('span')
+  mark.className = 'pl-no-visit'
+  mark.textContent = NO_VISIT_LABEL
+  return mark
+}
 /** 雛形の行を複製し、名前・ステータス・媒体・アイコンの件数をモック値へ差し替えてクリックを配線する。 */
 function buildPageRow(
   template: HTMLElement,
@@ -130,7 +138,10 @@ function buildPageRow(
     node.textContent = status
   }
   // 状態の札の色を決める印（準備中・配信中…・folders-redesign-style.ts）
-  row.querySelector<HTMLElement>(FOLDERS_HOOK.pageStatusKpi)?.setAttribute('data-ad-status', abTest.ad_status)
+  const statusPill = row.querySelector<HTMLElement>(FOLDERS_HOOK.pageStatusKpi)
+  statusPill?.setAttribute('data-ad-status', abTest.ad_status)
+  // 90日以上、本物の人が見に来ていない（2026-10-30 本人「90日閲覧なし っていうマーク」・src/shared/page-issue.ts）
+  if (abTest.no_visit_long === true) statusPill?.after(noVisitMark())
   const media = row.querySelector<HTMLElement>(FOLDERS_HOOK.pageMedia)
   if (media !== null) media.textContent = abTest.media?.name ?? '媒体未設定'
   applyRowCounts(row, counts)

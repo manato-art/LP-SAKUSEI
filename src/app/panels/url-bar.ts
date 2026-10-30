@@ -3,6 +3,9 @@
  *
  * 検証用URLと本番用URLをワンクリックでコピーできるバーを
  * キャンバス上部に表示する。旧コンテンツツールバーの位置に挿入する。
+ *
+ * 本番URLは「本番URLを発行」を押すまで出さない（2026-10-30 本人「本番URLは発行ボタンを押さない限り表示しない」
+ * 「発行するのは、LP編集するページで」）。発行できるのは管理者だけ。発行したら「本番発行済み」と出す。
  */
 import { DELIVERY_DOMAIN_UNSET_NOTE } from '../pages/basic-info-form.ts'
 import { toast } from '../ui.ts'
@@ -56,6 +59,16 @@ function injectStyles(): void {
     .sb-url-copy-btn:hover {
       background:rgba(0,145,255,.08); border-color:var(--sb-accent, #0091FF); color:var(--sb-accent, #0091FF);
     }
+    .sb-url-issue-btn {
+      height:28px; padding:0 12px; border:none; border-radius:4px; flex-shrink:0;
+      background:var(--sb-accent, #0091FF); color:#fff; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;
+    }
+    .sb-url-issue-btn:disabled { opacity:.6; cursor:default; }
+    .sb-url-issued {
+      font-size:10px; font-weight:700; white-space:nowrap; flex-shrink:0; color:#0B6B36;
+      background:#DDF5E8; border-radius:999px; padding:2px 8px;
+    }
+    html[data-theme="dark"] .sb-url-issued { color:#5BD08A; background:rgba(22,163,74,.2); }
     .sb-url-sep {
       width:1px; height:20px; background:var(--sb-c-e5e5ea, #E5E5EA); flex-shrink:0;
     }
@@ -68,7 +81,16 @@ function injectStyles(): void {
 export interface UrlBarConfig {
   testUrl: string
   prodUrl: string
+  /**
+   * 本番URLの発行。issued=false なら、URLの代わりに「未発行」と「本番URLを発行」ボタン（canIssue=false なら案内だけ）。
+   * onIssue は発行できたら新しい本番URL（ドメイン未設定なら ''）、やめた・できなかったら null を返す
+   */
+  issue?: { issued: boolean; canIssue: boolean; onIssue: () => Promise<string | null> }
 }
+
+/** 発行前の欄の文字 */
+const NOT_ISSUED_TEXT_ADMIN = '未発行（右の「本番URLを発行」を押すと、本番URLが出て開けるようになります）'
+const NOT_ISSUED_TEXT_CREATOR = '未発行（本番URLは管理者が発行します）'
 
 export function mountUrlBar(config: UrlBarConfig): HTMLElement {
   injectStyles()
@@ -82,13 +104,57 @@ export function mountUrlBar(config: UrlBarConfig): HTMLElement {
     if ((e.target as HTMLElement).tagName !== 'INPUT') e.preventDefault()
   })
 
-  bar.append(
-    createUrlGroup('プレビュー', 'test', config.testUrl),
-    createSep(),
-    createUrlGroup('配信', 'prod', config.prodUrl),
-  )
+  const prodGroup = createUrlGroup('配信', 'prod', config.prodUrl)
+  bar.append(createUrlGroup('プレビュー', 'test', config.testUrl), createSep(), prodGroup)
+  if (config.issue !== undefined) wireIssue(bar, prodGroup, config.issue)
 
   return bar
+}
+
+/** 発行済みの印を、配信のラベルの右に出す */
+function markIssued(prodGroup: HTMLElement): void {
+  if (prodGroup.querySelector('.sb-url-issued') !== null) return
+  const mark = document.createElement('span')
+  mark.className = 'sb-url-issued'
+  mark.textContent = '本番発行済み'
+  prodGroup.querySelector('.sb-url-label')?.after(mark)
+}
+
+function wireIssue(bar: HTMLElement, prodGroup: HTMLElement, issue: NonNullable<UrlBarConfig['issue']>): void {
+  if (issue.issued) {
+    markIssued(prodGroup)
+    return
+  }
+  const field = prodGroup.querySelector<HTMLElement>('.sb-url-field')
+  const copyBtn = prodGroup.querySelector<HTMLElement>('.sb-url-copy-btn')
+  const text = issue.canIssue ? NOT_ISSUED_TEXT_ADMIN : NOT_ISSUED_TEXT_CREATOR
+  if (field !== null) {
+    field.textContent = text
+    field.title = text
+    field.style.color = '#999'
+  }
+  // 発行前はコピーさせない（コピーのボタンごと隠す）
+  if (copyBtn !== null) copyBtn.style.display = 'none'
+  if (!issue.canIssue) return
+  const btn = document.createElement('button')
+  btn.type = 'button'
+  btn.className = 'sb-url-issue-btn'
+  btn.textContent = '本番URLを発行'
+  btn.addEventListener('click', () => {
+    btn.disabled = true
+    void issue.onIssue().then((url) => {
+      if (url === null) {
+        btn.disabled = false
+        return
+      }
+      btn.remove()
+      if (field !== null) field.style.color = ''
+      if (copyBtn !== null) copyBtn.style.display = ''
+      updateUrlBar(bar, { prodUrl: url })
+      markIssued(prodGroup)
+    })
+  })
+  prodGroup.append(btn)
 }
 
 /** URL を外から更新する（Version 切替時に呼ぶ） */
