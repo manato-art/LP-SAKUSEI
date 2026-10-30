@@ -61,6 +61,13 @@ function saveUpload(content: Buffer, extension: string): string {
   return `${UPLOADS_PATH}/${name}`
 }
 
+/** 画像の中身をファイルに保存して公開URLを返す（ほかのサイトから写した画像・routes/remote-images.ts）。画像でない種類は投げる */
+export function saveImageUpload(content: Buffer, mime: string): string {
+  const extension = EXTENSIONS[mime.toLowerCase()]
+  if (extension === undefined || !mime.toLowerCase().startsWith('image/')) throw new Error(`保存できない種類です: ${mime}`)
+  return saveUpload(content, extension)
+}
+
 /**
  * 文字列（HTML・CSS・URL）の中の data URL を、別ファイルのURLに置き換える。
  * 保存できなかった画像は埋め込みのまま残す（画像を失わない）。失敗はログに残す。

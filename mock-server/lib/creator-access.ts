@@ -93,6 +93,8 @@ export const CREATOR_RULES: readonly Rule[] = [
   rule('POST', '/versions/:id/duplicate_to', 'version'),
   rule('POST', '/versions/:id/publish', 'version'),
   rule('POST', '/versions/:id/preview_document', 'version'),
+  // 貼り付けた中身の画像を EBIyon に写す（routes/remote-images.ts・2026-10-31）
+  rule('POST', '/versions/:id/remote_images', 'version'),
   rule('PATCH', '/versions/:id/device_targets', 'version'),
   rule('PATCH', '/versions/:id/distribution', 'version'),
   rule('PATCH', '/versions/:id/targeting', 'version'),
@@ -102,12 +104,10 @@ export const CREATOR_RULES: readonly Rule[] = [
   rule('POST', '/ab_tests/:id/exit_popups', 'abTest'),
   rule('PUT', '/ab_tests/:id/exit_popups/:id', 'abTest'),
   rule('POST', '/ab_tests/:id/exit_popups/:id/duplicate', 'abTest'),
-  rule('POST', '/ab_tests/:id/exit_popups/:id/publish', 'abTest'),
   rule('GET', '/ab_tests/:id/follow_popups', 'abTest'),
   rule('POST', '/ab_tests/:id/follow_popups', 'abTest'),
   rule('PUT', '/ab_tests/:id/follow_popups/:id', 'abTest'),
   rule('POST', '/ab_tests/:id/follow_popups/:id/duplicate', 'abTest'),
-  rule('POST', '/ab_tests/:id/follow_popups/:id/publish', 'abTest'),
   rule('GET', '/ab_tests/:id/popup_delivery', 'abTest'),
   rule('PUT', '/ab_tests/:id/popup_delivery/:id', 'abTest'),
 

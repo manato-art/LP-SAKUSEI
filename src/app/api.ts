@@ -459,6 +459,9 @@ export interface InspectionEntry {
 }
 
 export const api = {
+  /** 貼り付けた中身の画像（ほかのサイトの住所）を EBIyon に写す（2026-10-31・routes/remote-images.ts） */
+  copyRemoteImage: (versionUid: string, url: string) =>
+    request<{ url: string }>('POST', `/versions/${encodeURIComponent(versionUid)}/remote_images`, { url }),
   // 全ページを取る（1回200件で打ち切ると、201件目からが黙って消える）
   folders: () =>
     fetchAllPages(

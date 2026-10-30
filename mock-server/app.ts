@@ -15,6 +15,7 @@ import { versionSettingsRouter } from './routes/panel-version-settings.ts'
 import { tagSettingsRouter } from './routes/panel-tag-settings.ts'
 import { historyRouter } from './routes/panel-history.ts'
 import { linkReplaceRouter } from './routes/panel-link-replace.ts'
+import { remoteImagesRouter } from './routes/remote-images.ts'
 import { basicInfoRouter } from './routes/panel-basic-info.ts'
 import { resetArticleHistories } from './store/article-history.ts'
 import { abTestsRouter } from './routes/ab-tests.ts'
@@ -163,6 +164,8 @@ export function createApp(): Express {
     tagSettingsRouter,
     historyRouter,
     linkReplaceRouter,
+    // 貼り付けた中身の画像を EBIyon に写す（2026-10-31）
+    remoteImagesRouter,
     basicInfoRouter,
     // アクセス管理（許可メールアドレスCRUD）
     allowedEmailsRouter,

@@ -252,8 +252,6 @@ export async function renderEditor(
   // 指示⑧（2026-10-27）: 本文のリンク・URLの文字を青い文字＋青い下線で見せる（editor-links.ts）
   injectEditorLinkCss()
   mountUrlTextHighlight(quill)
-  // 指示⑩（2026-10-27）: ほかから貼った文字は書式を持ち込まず文字だけを貼る（editor-paste.ts・本人「書式はコピーしないで」）
-  wireEditorPaste(quill)
 
   // ── 指示㊿②: キャンバスのみスクロール ──
   // スクロールは Quill ホスト（#quillIframe 跡地）の overflow:auto が担当。
@@ -309,6 +307,10 @@ export async function renderEditor(
     listMode: 'active',
     selectionMode: false,
   }
+
+  // 指示⑩（2026-10-27）: ほかから貼った文字は書式を持ち込まず文字だけを貼る（editor-paste.ts・本人「書式はコピーしないで」）。
+  // 画像の入った中身は画像も入れる（いま直しているVersionに写す・2026-10-31）
+  wireEditorPaste(quill, () => ctx.currentUid)
 
   // Versionパネルは ctx.versions から**1枚ずつカードを描く**（複製/追加した分も下に増える）。
   renderVersionList(ctx)

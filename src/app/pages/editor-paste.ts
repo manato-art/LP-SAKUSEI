@@ -8,9 +8,14 @@
  *
  * - 同じ編集画面の中でコピー・切り取りした物は、書式ごとそのまま貼る（コピーのときに印を一緒に入れて見分ける）
  * - 文字の無い貼り付け（画像だけ等）は横取りしない（今までどおりの入れ方に任せる）
+ * - 画像の入った中身（SB のLPを全部選んで貼る等）は、画像も入れる（EBIyon に写して置く・リンクは付けない・paste-images.ts）。
+ *   2026-10-31 本人「文字はコピーできるけど、画像がそのままコピーできない」。Versionの編集画面だけ
  * - Versionの編集画面（Quill）と、Widget編集の見たまま画面（widget-visual-editor.ts）の両方で使う
  */
 import type Quill from 'quill'
+import { api } from '../api.ts'
+import { toast } from '../ui.ts'
+import { pasteParts, pasteWithImages, type ImagePasteQuill, type PastePart } from './paste-images.ts'
 
 /** 同じ編集画面からコピーした印（クリップボードに一緒に入れる） */
 export const INTERNAL_COPY_TYPE = 'application/x-lp-sakusei-copy'
@@ -76,8 +81,30 @@ export function markInternalCopy(el: HTMLElement): void {
 /** ほかからの貼り付けか（同じ編集画面からコピーした印が無い） */
 export const isExternalPaste = (e: ClipboardEvent): boolean => !(e.clipboardData?.types.includes(INTERNAL_COPY_TYPE) ?? false)
 
-/** Versionの編集画面の貼り付けを配線する（Quill を作ったあとに呼ぶ＝Quill のコピーの後に印を足す） */
-export function wireEditorPaste(quill: Quill): void {
+/** 貼った中身に画像があれば、文字と画像に分けたもの。画像が無ければ null（文字だけの貼り付けにする） */
+function partsWithImages(data: DataTransfer | null): PastePart[] | null {
+  const html = data?.getData('text/html') ?? ''
+  if (!/<img\b/i.test(html)) return null
+  const parts = pasteParts(new DOMParser().parseFromString(html, 'text/html').body)
+  return parts.some((part) => part.kind === 'image') ? parts : null
+}
+
+/** 画像を EBIyon に写してから、元の並びのまま入れる。何枚入ったか・写せなかったかを知らせる */
+async function pasteImagesIntoEditor(quill: Quill, parts: readonly PastePart[], versionUid: string): Promise<void> {
+  const count = parts.filter((part) => part.kind === 'image').length
+  toast(`画像${String(count)}枚をEBIyonに写しています…（少し時間がかかります）`)
+  const copy = (src: string): Promise<string | null> =>
+    versionUid === '' ? Promise.resolve(null) : api.copyRemoteImage(versionUid, src).then((res) => res.url, () => null)
+  const { images, failed } = await pasteWithImages(quill as unknown as ImagePasteQuill, parts, copy)
+  if (failed === 0) toast(`画像${String(images)}枚を入れました`)
+  else toast(`画像${String(images)}枚を入れました。${String(failed)}枚は写せませんでした（元のページで画像を保存して、入れ直してください）`, 'error')
+}
+
+/**
+ * Versionの編集画面の貼り付けを配線する（Quill を作ったあとに呼ぶ＝Quill のコピーの後に印を足す）。
+ * versionUid: いま直しているVersion（画像を写すときに使う）
+ */
+export function wireEditorPaste(quill: Quill, versionUid: () => string): void {
   const root = quill.root
   markInternalCopy(root)
   // Quill の貼り付け（中身を書式ごと取り込む）より先に受ける（capture）。ほかからの文字は、ここで文字だけにして入れる
@@ -85,6 +112,13 @@ export function wireEditorPaste(quill: Quill): void {
     'paste',
     (e) => {
       if (!isExternalPaste(e)) return
+      const parts = partsWithImages(e.clipboardData)
+      if (parts !== null) {
+        e.preventDefault()
+        e.stopPropagation()
+        void pasteImagesIntoEditor(quill, parts, versionUid())
+        return
+      }
       const text = plainPasteText(e.clipboardData)
       if (text === null) return
       e.preventDefault()
