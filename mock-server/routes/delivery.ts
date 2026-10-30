@@ -41,6 +41,7 @@ import { countPvOrClick } from './track-counts.ts'
 import { attributeConversion, recordTouch, toVisitorId } from '../store/visitor-touches.ts'
 import { buildVisitorContext, pickDeliveryVersion } from './delivery-targeting.ts'
 import { canonicalHost, isServableOnHost } from '../lib/delivery-host.ts'
+import { visitorIp } from '../lib/visitor-ip.ts'
 import { noteRealVisit } from '../store/page-visit.ts'
 import { imageLinkScript } from './delivery-image-links.ts'
 import { countPopupVisit, renderPopupsForView } from './delivery-popups.ts'
@@ -122,14 +123,9 @@ function knownGlobalId(cookie: string | undefined): string | null {
   return null
 }
 
-/** 送信元IP。Railway等のプロキシ経由では X-Forwarded-For の先頭が実体。 */
+/** 送信元IP。Cloudflare（c1page.com）を通って来たら、Cloudflare が付けた本当の訪問者の住所（lib/visitor-ip.ts） */
 function clientIp(req: ExpressRequest): string {
-  const forwarded = req.get('x-forwarded-for')
-  if (forwarded !== undefined && forwarded !== '') {
-    const first = forwarded.split(',')[0]?.trim()
-    if (first !== undefined && first !== '') return first
-  }
-  return req.ip ?? ''
+  return visitorIp((name) => req.get(name), req.ip ?? '')
 }
 
 /**

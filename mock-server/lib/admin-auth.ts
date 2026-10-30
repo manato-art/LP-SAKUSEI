@@ -21,6 +21,7 @@ import type { Request, Response } from 'express'
 import { ADMIN_PASSWORD, ADMIN_PATH, SERVE_DIST } from '../config.ts'
 import { hasAllowedEmail, isEmailGateEnabled } from '../store/allowed-emails.ts'
 import { isCreatorEmail, verifyCreatorPassword, type CreatorAccount } from '../store/creator-accounts.ts'
+import { visitorIp } from './visitor-ip.ts'
 import {
   CREATOR_SESSION_COOKIE,
   CREATOR_SESSION_MAX_AGE_SECONDS,
@@ -147,10 +148,9 @@ setInterval(() => {
   }
 }, LOCKOUT_MS * 2)
 
+/** 回数制限に使う住所。Cloudflare を通って来たら本当の訪問者の住所（全員が同じ Cloudflare の住所で数えられないように・lib/visitor-ip.ts） */
 function getClientIp(req: Request): string {
-  const xff = req.headers['x-forwarded-for']
-  if (typeof xff === 'string') return xff.split(',')[0]?.trim() ?? 'unknown'
-  return req.ip ?? 'unknown'
+  return visitorIp((name) => req.get(name), req.ip ?? 'unknown')
 }
 
 function isRateLimited(ip: string): { limited: boolean; retryAfterSeconds: number } {
