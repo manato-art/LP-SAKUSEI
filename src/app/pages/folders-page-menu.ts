@@ -18,8 +18,8 @@ import { chooseCard, confirmCard } from '../dialog.ts'
 import { T, el, toast } from '../ui.ts'
 import { UNFILED_FOLDER_NAME } from '../../shared/unfiled-folder.ts'
 import type { PageContext } from './folders-shared.ts'
-import { deliveryUrlFor } from './basic-info-form.ts'
-import { effectiveDeliveryDomain } from '../../shared/page-delivery-domain.ts'
+import { pageDeliveryUrl } from './page-delivery-url.ts'
+import { issuedDeleteWarning } from './page-delete-warning.ts'
 import { isCreator } from '../session.ts'
 
 /** 保存したあと、一覧をサーバーの値で描き直す（絞り込み・並び・検索はそのまま残る） */
@@ -107,9 +107,7 @@ async function finishStatus(abTest: AbTest): Promise<void> {
 }
 
 async function removePage(abTest: AbTest, context: PageContext): Promise<void> {
-  const url =
-    deliveryUrlFor(effectiveDeliveryDomain(abTest.delivery_domain, context.folder?.domain), location.origin, abTest.uid) ??
-    `${location.origin}/lp/${abTest.uid}`
+  const url = pageDeliveryUrl(abTest, context.folder?.domain, location.origin) ?? `${location.origin}/lp/${abTest.uid}`
   const ok = await confirmCard({
     title: 'ページを削除',
     message: `「${abTest.title}」を削除します。`,
@@ -120,6 +118,9 @@ async function removePage(abTest: AbTest, context: PageContext): Promise<void> {
     danger: true,
   })
   if (!ok) return
+  // 本番URLを発行済みのページは、もう1回「本当に削除しますか？」と聞く（2026-10-30 本人・page-delete-warning.ts）
+  const warning = issuedDeleteWarning(abTest, url)
+  if (warning !== null && !(await confirmCard(warning))) return
   try {
     await pageListApi.remove(abTest.uid)
     toast(`「${abTest.title}」を削除しました`)

@@ -70,6 +70,8 @@ export interface AbTest {
   delivery_domain?: string
   /** 本番URLを発行したか（false＝発行前・本番URLは開かない・2026-10-30）。前からあるページは true */
   issued?: boolean
+  /** 最後に本物の人が見に来た日（YYYY-MM-DD・日本時間・来ていなければ null） */
+  last_visit_date?: string | null
   /** 最後に本物の人が見に来た日から90日以上たったか（一覧の「90日閲覧なし」・src/shared/page-issue.ts） */
   no_visit_long?: boolean
   /** Meta広告連携の紐付け（未設定は null）。トークンは含まない＝サーバーの環境変数のみ。 */
