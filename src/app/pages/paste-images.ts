@@ -8,9 +8,26 @@
  *  - 画像を全部写してから、元の並びのまま入れる（pasteWithImages）。写している間は編集を止める（入れる場所がずれないように）。
  *    入れる前に止めるのをやめる（Quill は止めている間の 'user' の書き換えを捨てる＝止めたまま入れると何も入らなかった）
  *  - 写せなかった画像は入れずに数えて知らせる
+ *
+ * SB の Widget（外枠 div.sb-custom）は、見た目のまま EBIyon の Widget として入れる（2026-10-31 本人「Widgetもコピーできる？
+ * できないならコピーしたい」→ 本人の選択「両方」の①）。全選択のコピーには Widget の動き（スクリプト）と CSS が入らない
+ * （実際の Chrome で確かめた）。Chrome は見た目を部品ごとの style に書き込むので、見た目（その瞬間の形）は持って来られる。
+ * 動き（カウントダウン・スライダー等）ごと持って来るのは、LPのURLから取り込む方（②）。
+ *  - 外枠に書き込まれたページ全体の文字の設定は外す（LPの文字の設定を受け継ぐ）
+ *  - 押したときの命令（on…）は外し、リンク先は空（#）にする（リンクは付けない＝本人の選択）
+ *  - 中の画像・背景の画像も写す（写す印 nc-paste-img-N に置き換え、写せたら写した住所・写せなければ外す）
  */
 
-export type PastePart = { readonly kind: 'text'; readonly text: string } | { readonly kind: 'image'; readonly src: string }
+export type PastePart =
+  | { readonly kind: 'text'; readonly text: string }
+  | { readonly kind: 'image'; readonly src: string }
+  /** SB の Widget（見た目のまま）。html の中の画像は写す印 nc-paste-img-N（N は images の番号） */
+  | { readonly kind: 'widget'; readonly html: string; readonly images: readonly string[] }
+
+/** Widget の中の画像を写す印 */
+const IMAGE_MARK = 'nc-paste-img-'
+/** SB の Widget の外枠 */
+const WIDGET_CLASS = 'sb-custom'
 
 /** 段落の区切りになる要素（前後で行を変える） */
 const BLOCK_TAGS: ReadonlySet<string> = new Set([
@@ -50,7 +67,45 @@ function isPixel(img: Element): boolean {
   return size('width') <= 1 || size('height') <= 1
 }
 
-/** 貼った中身を上から順に文字と画像に分ける（文字は書式なし・画像のリンクは付けない） */
+/** style の中の背景の画像の住所（url("…")）。http(s) だけ */
+const STYLE_URL = /url\((?:&quot;|["'])?(https?:\/\/[^"')&]+(?:&amp;[^"')&]+)*)(?:&quot;|["'])?\)/gi
+
+/** SB の Widget を、見た目のまま入れる形にする（外枠の文字の設定・命令・リンク先を外し、画像は写す印に） */
+function widgetPart(wrapper: Element): PastePart {
+  const copy = wrapper.cloneNode(true) as Element
+  const images: string[] = []
+  const mark = (src: string): string => {
+    const at = images.indexOf(src)
+    if (at >= 0) return `${IMAGE_MARK}${String(at)}`
+    images.push(src)
+    return `${IMAGE_MARK}${String(images.length - 1)}`
+  }
+  for (const el of [copy, ...Array.from(copy.querySelectorAll('*'))]) {
+    for (const attr of Array.from(el.attributes)) if (/^on/i.test(attr.name)) el.removeAttribute(attr.name)
+    const tag = el.tagName.toUpperCase()
+    if (tag === 'SCRIPT') {
+      el.remove()
+      continue
+    }
+    if (tag === 'A' && el.hasAttribute('href')) {
+      el.setAttribute('href', '#')
+      el.removeAttribute('target')
+    }
+    if (tag === 'IMG') {
+      const src = imageSourceOf(el)
+      for (const name of ['srcset', 'data-srcset', 'loading', ...LAZY_ATTRS]) el.removeAttribute(name)
+      if (src === null) el.remove()
+      else el.setAttribute('src', src.startsWith('data:') ? src : mark(src))
+    }
+    const style = el.getAttribute('style')
+    if (style !== null && el !== copy) el.setAttribute('style', style.replace(STYLE_URL, (_whole, url: string) => `url("${mark(url.replace(/&amp;/g, '&'))}")`))
+  }
+  // 外枠に書き込まれたのは、コピー元のページ全体の文字の設定（LPの文字の設定を受け継ぐ）
+  copy.removeAttribute('style')
+  return { kind: 'widget', html: copy.innerHTML, images }
+}
+
+/** 貼った中身を上から順に文字と画像に分ける（文字は書式なし・画像のリンクは付けない・SB の Widget は見た目のまま） */
 export function pasteParts(root: Node): PastePart[] {
   const parts: PastePart[] = []
   let text = ''
@@ -77,6 +132,12 @@ export function pasteParts(root: Node): PastePart[] {
       if (SKIP_TAGS.has(tag) || isHidden(el)) continue
       if (tag === 'BR') {
         text += '\n'
+        continue
+      }
+      if (el.classList.contains(WIDGET_CLASS)) {
+        breakLine()
+        flushText()
+        parts.push(widgetPart(el))
         continue
       }
       if (tag === 'IMG') {
@@ -134,21 +195,21 @@ async function copyAll(sources: readonly string[], copy: (src: string) => Promis
 
 /**
  * 画像を全部写してから、カーソルの所へ元の並びのまま入れる（選んでいた文字は置き換える）。
- * 文字は貼った所の文字と同じ見た目。画像は1行に1枚。写している間は編集を止める。
+ * 文字は貼った所の文字と同じ見た目。画像は1行に1枚。Widget はひとかたまり。写している間は編集を止める。
  */
 export async function pasteWithImages(
   quill: ImagePasteQuill,
   parts: readonly PastePart[],
   copy: (src: string) => Promise<string | null>,
-): Promise<{ images: number; failed: number }> {
+): Promise<{ images: number; widgets: number; failed: number }> {
   const range = quill.getSelection(true)
-  if (range === null) return { images: 0, failed: 0 }
+  if (range === null) return { images: 0, widgets: 0, failed: 0 }
   const here = Object.fromEntries(Object.entries(quill.getFormat(range.index, 0)).filter(([name]) => !LINE_FORMATS.has(name)))
   quill.enable(false)
   let copied: Map<string, string | null>
   try {
     copied = await copyAll(
-      parts.flatMap((part) => (part.kind === 'image' ? [part.src] : [])),
+      parts.flatMap((part) => (part.kind === 'image' ? [part.src] : part.kind === 'widget' ? part.images : [])),
       copy,
     )
   } finally {
@@ -157,23 +218,39 @@ export async function pasteWithImages(
   if (range.length > 0) quill.deleteText(range.index, range.length, 'user')
   let index = range.index
   let images = 0
+  let widgets = 0
   let failed = 0
   const ready = parts.filter((part) => {
-    if (part.kind === 'text') return true
+    if (part.kind !== 'image') return true
     if ((copied.get(part.src) ?? null) === null) failed += 1
     return (copied.get(part.src) ?? null) !== null
   })
+  /** 行の頭にする（前の文字と同じ行にしない） */
+  const startLine = (): void => {
+    if (index > 0 && quill.getText(index - 1, 1) !== '\n') {
+      quill.insertText(index, '\n', {}, 'user')
+      index += 1
+    }
+  }
   ready.forEach((part, at) => {
     if (part.kind === 'text') {
       quill.insertText(index, part.text, here, 'user')
       index += part.text.length
       return
     }
-    // 画像は1行に1枚（前の文字と同じ行にしない・あとの文字も次の行から）
-    if (index > 0 && quill.getText(index - 1, 1) !== '\n') {
-      quill.insertText(index, '\n', {}, 'user')
+    if (part.kind === 'widget') {
+      const html = part.images.reduce((acc, src, n) => fillImageMark(acc, n, copied.get(src) ?? null), part.html)
+      const copiedCount = part.images.filter((src) => (copied.get(src) ?? null) !== null).length
+      images += copiedCount
+      failed += part.images.length - copiedCount
+      startLine()
+      quill.insertEmbed(index, 'sbwidget', html, 'user')
       index += 1
+      widgets += 1
+      return
     }
+    // 画像は1行に1枚（前の文字と同じ行にしない・あとの文字も次の行から）
+    startLine()
     quill.insertEmbed(index, 'image', copied.get(part.src) ?? '', 'user')
     index += 1
     images += 1
@@ -185,5 +262,14 @@ export async function pasteWithImages(
     }
   })
   quill.setSelection(index, 0, 'user')
-  return { images, failed }
+  return { images, widgets, failed }
+}
+
+/** Widget の中の写す印 N を、写した住所に置き換える（写せなかった画像は外す・背景の画像は無しにする） */
+function fillImageMark(html: string, n: number, url: string | null): string {
+  const token = `${IMAGE_MARK}${String(n)}`
+  if (url !== null) return html.split(`"${token}"`).join(`"${url}"`).split(`&quot;${token}&quot;`).join(`&quot;${url}&quot;`)
+  return html
+    .replace(new RegExp(`<img\\b[^>]*\\bsrc="${token}"[^>]*>`, 'g'), '')
+    .replace(new RegExp(`url\\((?:&quot;|")?${token}(?:&quot;|")?\\)`, 'g'), 'none')
 }

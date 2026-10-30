@@ -114,7 +114,7 @@ describe('写してから、元の並びのまま入れる', () => {
       'text:"\\n":{}',
       'text:"本文":{"bold":true}',
     ])
-    expect(result).toEqual({ images: 1, failed: 0 })
+    expect(result).toEqual({ images: 1, widgets: 0, failed: 0 })
   })
 
   it('写せなかった画像は入れずに数える。写している間は編集を止め、終わったら戻す', async () => {
@@ -122,7 +122,7 @@ describe('写してから、元の並びのまま入れる', () => {
     const result = await pasteWithImages(quill, [{ kind: 'image', src: IMG_A }, { kind: 'image', src: IMG_B }], async (src) =>
       src === IMG_A ? '/uploads/aaa.jpg' : null,
     )
-    expect(result).toEqual({ images: 1, failed: 1 })
+    expect(result).toEqual({ images: 1, widgets: 0, failed: 1 })
     expect(quill.doc.filter((line) => line.startsWith('image:'))).toEqual(['image:/uploads/aaa.jpg'])
     expect(quill.enabled).toEqual([false, true])
   })
@@ -135,5 +135,58 @@ describe('写してから、元の並びのまま入れる', () => {
       return '/uploads/aaa.jpg'
     })
     expect(calls).toBe(1)
+  })
+})
+
+/**
+ * SB の Widget も入れる（2026-10-31 本人「Widgetもコピーできる？できないならコピーしたい」→ 本人の選択「両方」の①）。
+ * 全選択のコピーには Widget の動き（スクリプト）と CSS が入らない（実際の Chrome で確かめた）。Chrome は見た目を
+ * 部品ごとの style に書き込むので、見た目（その瞬間の形）は持って来られる。SB の Widget の外枠は div.sb-custom。
+ * 外枠に書き込まれたページ全体の文字の設定は外す（LPの文字の設定を受け継ぐ）。リンクは付けない（本人の選択）。
+ */
+describe('SB の Widget（div.sb-custom）は、見た目のまま EBIyon の Widget として入れる', () => {
+  const COPIED_WIDGET =
+    '<p>前の文</p>' +
+    '<div class="sb-custom" style="color: rgb(0, 0, 0); font-family: sans-serif; font-size: medium;">' +
+    '<div class="cd-box" style="background: rgb(238, 51, 51); padding: 12px;" onclick="alert(1)">' +
+    '<p>残り時間</p><div class="cd-num" style="font-size: 28px;">00:09:56</div>' +
+    `<a class="cd-btn" href="https://sb.example.test/go" target="_blank">今すぐ申し込む</a>` +
+    `<img data-src="${IMG_A}" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=">` +
+    `<div style="background-image: url(&quot;${IMG_B}&quot;); height: 40px;"></div>` +
+    '</div></div><p>後の文</p>'
+
+  it('文・Widget・文の順。Widget の中の画像（背景の画像も）は写す印に置き換え、写す住所を持つ', () => {
+    const parts = pasteParts(body(COPIED_WIDGET))
+    expect(parts.map((part) => part.kind)).toEqual(['text', 'widget', 'text'])
+    const widget = parts[1]
+    if (widget?.kind !== 'widget') throw new Error('Widget がありません')
+    expect(widget.images).toEqual([IMG_A, IMG_B])
+    expect(widget.html).toContain('src="nc-paste-img-0"')
+    expect(widget.html).toContain('nc-paste-img-1')
+    expect(widget.html).not.toContain(IMG_A)
+    expect(widget.html).not.toContain('data-src')
+  })
+
+  it('見た目（部品ごとの style）は残し、外枠のページ全体の文字の設定・押したときの命令・リンク先は外す', () => {
+    const widget = pasteParts(body(COPIED_WIDGET))[1]
+    if (widget?.kind !== 'widget') throw new Error('Widget がありません')
+    expect(widget.html).toContain('background: rgb(238, 51, 51)')
+    expect(widget.html).toContain('font-size: 28px')
+    expect(widget.html).toContain('今すぐ申し込む')
+    expect(widget.html).not.toContain('font-family: sans-serif')
+    expect(widget.html).not.toContain('onclick')
+    expect(widget.html).not.toContain('sb.example.test')
+    expect(widget.html).toContain('href="#"')
+  })
+
+  it('写した住所に置き換えて Widget として入れる。写せなかった画像は外して数える', async () => {
+    const quill = fakeQuill()
+    const parts = pasteParts(body(COPIED_WIDGET))
+    const result = await pasteWithImages(quill, parts, async (src) => (src === IMG_A ? '/uploads/aaa.jpg' : null))
+    const widgetLine = quill.doc.find((line) => line.startsWith('sbwidget:')) ?? ''
+    expect(widgetLine).toContain('src="/uploads/aaa.jpg"')
+    expect(widgetLine).not.toContain('nc-paste-img')
+    expect(widgetLine).toContain('background-image: none')
+    expect(result).toEqual({ images: 1, widgets: 1, failed: 1 })
   })
 })

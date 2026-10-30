@@ -10,6 +10,7 @@
  * - 文字の無い貼り付け（画像だけ等）は横取りしない（今までどおりの入れ方に任せる）
  * - 画像の入った中身（SB のLPを全部選んで貼る等）は、画像も入れる（EBIyon に写して置く・リンクは付けない・paste-images.ts）。
  *   2026-10-31 本人「文字はコピーできるけど、画像がそのままコピーできない」。Versionの編集画面だけ
+ * - SB の Widget（div.sb-custom）は、見た目のまま EBIyon の Widget として入れる（動きはコピーに入らない・paste-images.ts）
  * - Versionの編集画面（Quill）と、Widget編集の見たまま画面（widget-visual-editor.ts）の両方で使う
  */
 import type Quill from 'quill'
@@ -81,23 +82,24 @@ export function markInternalCopy(el: HTMLElement): void {
 /** ほかからの貼り付けか（同じ編集画面からコピーした印が無い） */
 export const isExternalPaste = (e: ClipboardEvent): boolean => !(e.clipboardData?.types.includes(INTERNAL_COPY_TYPE) ?? false)
 
-/** 貼った中身に画像があれば、文字と画像に分けたもの。画像が無ければ null（文字だけの貼り付けにする） */
+/** 貼った中身に画像か SB の Widget があれば、文字・画像・Widget に分けたもの。無ければ null（文字だけの貼り付けにする） */
 function partsWithImages(data: DataTransfer | null): PastePart[] | null {
   const html = data?.getData('text/html') ?? ''
-  if (!/<img\b/i.test(html)) return null
+  if (!/<img\b|sb-custom/i.test(html)) return null
   const parts = pasteParts(new DOMParser().parseFromString(html, 'text/html').body)
-  return parts.some((part) => part.kind === 'image') ? parts : null
+  return parts.some((part) => part.kind !== 'text') ? parts : null
 }
 
 /** 画像を EBIyon に写してから、元の並びのまま入れる。何枚入ったか・写せなかったかを知らせる */
 async function pasteImagesIntoEditor(quill: Quill, parts: readonly PastePart[], versionUid: string): Promise<void> {
-  const count = parts.filter((part) => part.kind === 'image').length
-  toast(`画像${String(count)}枚をEBIyonに写しています…（少し時間がかかります）`)
+  const count = parts.reduce((n, part) => n + (part.kind === 'image' ? 1 : part.kind === 'widget' ? part.images.length : 0), 0)
+  toast(count === 0 ? '貼り付けています…' : `画像${String(count)}枚をEBIyonに写しています…（少し時間がかかります）`)
   const copy = (src: string): Promise<string | null> =>
     versionUid === '' ? Promise.resolve(null) : api.copyRemoteImage(versionUid, src).then((res) => res.url, () => null)
-  const { images, failed } = await pasteWithImages(quill as unknown as ImagePasteQuill, parts, copy)
-  if (failed === 0) toast(`画像${String(images)}枚を入れました`)
-  else toast(`画像${String(images)}枚を入れました。${String(failed)}枚は写せませんでした（元のページで画像を保存して、入れ直してください）`, 'error')
+  const { images, widgets, failed } = await pasteWithImages(quill as unknown as ImagePasteQuill, parts, copy)
+  const done = `画像${String(images)}枚${widgets > 0 ? `・Widget${String(widgets)}個（見た目だけ・動きは入りません）` : ''}を入れました`
+  if (failed === 0) toast(done)
+  else toast(`${done}。画像${String(failed)}枚は写せませんでした（元のページで画像を保存して、入れ直してください）`, 'error')
 }
 
 /**
