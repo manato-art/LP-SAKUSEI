@@ -19,11 +19,17 @@ import { externalizeDataUrls } from '../lib/uploads.ts'
 import { freshUid } from '../store/actions-shared.ts'
 import { makeUid } from '../store/ids.ts'
 import { copyName } from '../store/popups.ts'
+import { parseFreePosition } from '../../src/shared/follow-free-place.ts'
 import type { ExitPopup, State } from '../store/types.ts'
 import { followPopupsRouter } from './ab-tests-follow-popups.ts'
 import { popupDeliveryRouter } from './ab-tests-popup-delivery.ts'
 
 export const abTestsPopupsRouter: Router = Router()
+
+/** 返す形（置いた場所が無いときも null で返す＝画面の「保存していない変更があるか」が、項目の有る無しで食い違わないように） */
+function serializeExitPopup(popup: ExitPopup): Omit<ExitPopup, 'free_position'> & { free_position: ExitPopup['free_position'] | null } {
+  return { ...popup, free_position: popup.free_position ?? null }
+}
 abTestsPopupsRouter.use(followPopupsRouter)
 abTestsPopupsRouter.use(popupDeliveryRouter)
 
@@ -50,7 +56,7 @@ abTestsPopupsRouter.get('/ab_tests/:uid/exit_popups', (req, res) => {
   const state = getState()
   const abTest = findAbTest(state, req.params.uid)
   if (abTest === undefined) return notFound(res, 'ページが見つかりません。')
-  const popups = state.exitPopups.filter((p) => p.ab_test_id === abTest.id)
+  const popups = state.exitPopups.filter((p) => p.ab_test_id === abTest.id).map(serializeExitPopup)
   res.json({ exit_popups: applyEmptyState(req, popups) })
 })
 
@@ -103,7 +109,7 @@ abTestsPopupsRouter.post('/ab_tests/:uid/exit_popups', (req, res) => {
     link_action: isLinkAction(body.link_action) ? body.link_action : 'link',
   }
   setState((s) => ({ ...s, exitPopups: [...s.exitPopups, created], nextId: s.nextId + 1 }))
-  res.status(201).json({ exit_popup: created })
+  res.status(201).json({ exit_popup: serializeExitPopup(created) })
 })
 
 /** 保存（すぐ配信に出る） */
@@ -116,10 +122,18 @@ abTestsPopupsRouter.put('/ab_tests/:uid/exit_popups/:popup_uid', (req, res) => {
     res.status(404).json(errorEnvelope('not_found', 'ポップアップが見つかりません。'))
     return
   }
-  const existing = state.exitPopups[idx]!
   const body = req.body as Record<string, unknown>
+  // つまんで置いた場所（null＝消して9か所に戻す・指示39）
+  const free = 'free_position' in body ? parseFreePosition(body.free_position) : null
+  if (free !== null && !free.ok) {
+    res.status(422).json(errorEnvelope('validation_failed', free.message))
+    return
+  }
+  const { free_position: kept, ...existing } = state.exitPopups[idx]!
+  const freePosition = free === null ? kept : (free.value ?? undefined)
   const updated: ExitPopup = {
     ...existing,
+    ...(freePosition === undefined ? {} : { free_position: freePosition }),
     ...(typeof body.name === 'string' ? { name: body.name } : {}),
     ...(typeof body.ratio === 'number' ? { ratio: Math.max(0, Math.min(100, Math.round(body.ratio))) } : {}),
     ...(typeof body.enabled === 'boolean' ? { enabled: body.enabled } : {}),
@@ -174,7 +188,7 @@ abTestsPopupsRouter.put('/ab_tests/:uid/exit_popups/:popup_uid', (req, res) => {
     ),
   }))
   res.json({
-    exit_popup: updated,
+    exit_popup: serializeExitPopup(updated),
     adjusted_siblings: adjustedOther === null ? [] : [{ uid: adjustedOther.uid, ratio: adjustedOther.ratio }],
   })
 })
@@ -206,7 +220,7 @@ abTestsPopupsRouter.post('/ab_tests/:uid/exit_popups/:popup_uid/duplicate', (req
     popup_kind: popupKind,
   }
   setState((s) => ({ ...s, exitPopups: [...s.exitPopups, created], nextId: s.nextId + 1 }))
-  res.status(201).json({ exit_popup: created })
+  res.status(201).json({ exit_popup: serializeExitPopup(created) })
 })
 
 abTestsPopupsRouter.delete('/ab_tests/:uid/exit_popups/:popup_uid', (req, res) => {

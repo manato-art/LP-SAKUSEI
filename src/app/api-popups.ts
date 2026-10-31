@@ -35,6 +35,8 @@ export interface ExitPopup {
   exit_trigger: boolean
   position_x: number
   position_y: number
+  /** つまんで置いた場所（指示39）。null＝9か所（position_x/y）のまま */
+  free_position: FreePosition | null
   device_sp: boolean
   device_tablet: boolean
   device_pc: boolean

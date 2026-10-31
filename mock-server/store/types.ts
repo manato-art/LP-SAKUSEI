@@ -340,6 +340,11 @@ export interface ExitPopup {
   // 位置タブ
   position_x: number
   position_y: number
+  /**
+   * つまんで置いた場所（指示39・追従型と同じ形・src/shared/follow-free-place.ts の 'corner'）。あれば position_x/y の
+   * 9か所ではなくここに出す。無い＝9か所のまま（null は保存しない）
+   */
+  free_position?: FreePosition
 
   // 出し分けタブ
   device_sp: boolean

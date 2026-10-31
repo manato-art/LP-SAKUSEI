@@ -20,6 +20,7 @@ import { buildPopupEditorHeader } from './popup-editor-header.ts'
 import { followDraftPatch, isFollowDraftDirty } from './popup-draft.ts'
 import { openDraftCheck } from './exit-popup-editor.ts'
 import { freeKindOf, freePlaceCss } from '../../shared/follow-free-place.ts'
+import { gridPlaceOfFollow, openLpPlacer } from './popup-lp-placer.ts'
 
 type FollowEditorTab = 'settings' | 'device' | 'code'
 const FOLLOW_EDITOR_TABS: readonly { id: FollowEditorTab; label: string }[] = [
@@ -177,6 +178,26 @@ export function openFollowEditor(state: PopupPageState, fp: FollowPopup): void {
   formTop.append(fields)
   editor.append(formTop)
 
+  /** 「LPの上で決める」（ここまで読んだら出す・出す場所・指示39）。決めたら編集中の形に入れてタブを描き直す（保存は「保存」） */
+  const openPlacer = (): void =>
+    openLpPlacer({
+      title: 'LPの上で決める',
+      lpUrl: lpPreviewUrl(state.abTestUid).catch(() => null),
+      html: draft.html,
+      css: draft.css,
+      kind: freeKindOf(draft.position),
+      box: false,
+      free: draft.free_position,
+      grid: gridPlaceOfFollow(draft.position),
+      scroll: { pct: draft.show_after_scroll > 0 ? draft.show_after_scroll : null },
+      onApply: ({ place, scrollPct }) => {
+        if (place !== undefined) draft.free_position = place
+        if (scrollPct !== undefined) draft.show_after_scroll = scrollPct
+        renderFollowEditorTab(body, draft)
+        toast('決めました。「保存」を押すと配信に出ます')
+      },
+    })
+
   // ── タブ ──
   const tabBar = el('div', { class: 'ep-editor-tabs' })
   const body = el('div', { class: 'ep-editor-body' })
@@ -202,13 +223,24 @@ export function openFollowEditor(state: PopupPageState, fp: FollowPopup): void {
   function renderFollowEditorTab(container: HTMLElement, d: FollowPopup): void {
     container.innerHTML = ''
     switch (activeTab) {
-      case 'settings': renderFollowSettingsTab(container, d); break
+      case 'settings': renderFollowSettingsTab(container, d, openPlacer); break
       case 'device': renderFollowDeviceTab(container, d); break
       case 'code': renderFollowCodeTab(container, d); break
     }
   }
 }
-function renderFollowSettingsTab(body: HTMLElement, draft: FollowPopup): void {
+function renderFollowSettingsTab(body: HTMLElement, draft: FollowPopup, openPlacer: () => void): void {
+  // LP を実際にスクロールして「ここまで読んだら出す」と出す場所を決める（指示39・popup-lp-placer.ts）
+  const placer = el('div', { style: 'margin-bottom:16px' })
+  const placerBtn = el('button', { class: 'ep-editor-btn-draft', text: 'LPの上で決める' })
+  placerBtn.type = 'button'
+  placerBtn.addEventListener('click', openPlacer)
+  placer.append(
+    placerBtn,
+    el('p', { style: `margin:6px 0 0;font-size:12px;color:${T.sub}`, text: 'LP を実際にスクロールして「ここまで読んだら出す」と、出す場所（つまんで動かす）を決めます' }),
+  )
+  body.append(placer)
+
   // 表示位置
   const posField = el('div', { class: 'ep-field' })
   posField.append(el('label', { text: '表示位置' }))

@@ -21,6 +21,7 @@ export const EXIT_POPUP_CONTENT_KEYS = [
   'exit_trigger',
   'position_x',
   'position_y',
+  'free_position',
   'device_sp',
   'device_tablet',
   'device_pc',

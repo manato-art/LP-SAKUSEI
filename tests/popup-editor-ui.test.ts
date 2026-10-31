@@ -38,7 +38,7 @@ function popup(over: Partial<ExitPopup> = {}): ExitPopup {
     visit_count: 'all', phone_number: '', link_url: '', link_target: '_blank', tracking_urls: [],
     animation: 'fade', delay_seconds: 0, scroll_trigger: false, scroll_position: 50,
     countdown_trigger: false, countdown_seconds: 0, back_button_trigger: false, exit_trigger: true,
-    position_x: 50, position_y: 50, device_sp: true, device_tablet: true, device_pc: true,
+    position_x: 50, position_y: 50, free_position: null, device_sp: true, device_tablet: true, device_pc: true,
     html: '<p>x</p>', javascript: '', head_tag: '', body_tag: '', popup_kind: 'exit', link_action: 'link',
     ...over,
   }

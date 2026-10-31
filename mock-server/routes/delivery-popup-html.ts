@@ -49,6 +49,9 @@ export function buildPopupSnippet(popup: ExitPopup, device: PopupDevice, options
   const popupId = `exit-popup-${popup.uid}`
   const animClass = popup.animation !== 'none' ? popup.animation : ''
   const place = `justify-content:${flexPlace(popup.position_x ?? 50)};align-items:${flexPlace(popup.position_y ?? 50)}`
+  // つまんで置いた場所があれば、暗い幕の中のその場所に箱を置く（指示39・端から16px＝幕の内側の余白と同じ・follow-free-place.ts）
+  const contentPlace =
+    popup.free_position === undefined ? '' : ` style="position:absolute;${freePlaceCss('corner', popup.free_position)}"`
 
   // リンク設定（キャンバス画像と同じ規約）: 遷移先 link_url / 新タブ link_target / 計測URL tracking_urls。
   // 旧データはこれらを持たない場合があるので既定値で守る。
@@ -214,7 +217,7 @@ export function buildPopupSnippet(popup: ExitPopup, device: PopupDevice, options
 
   return `<style>${animCss}</style>` +
     `<div id="${popupId}" class="ep-overlay" style="${place}">` +
-    `<div class="ep-content ${animClass}">` +
+    `<div class="ep-content ${animClass}"${contentPlace}>` +
     `<button class="ep-close">✕</button>` +
     popup.html +
     `</div></div>` +

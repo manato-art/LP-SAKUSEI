@@ -23,6 +23,8 @@ import { popupContentCard } from './popup-content-card.ts'
 import { runWidgetScripts } from '../panels/widget-run-scripts.ts'
 import { buildPopupEditorHeader } from './popup-editor-header.ts'
 import { RATIO_HELP, draftCheckUrl, exitDraftPatch, isExitDraftDirty, mainVersionUid } from './popup-draft.ts'
+import { freePlaceCss } from '../../shared/follow-free-place.ts'
+import { gridPlaceOfExit, openLpPlacer } from './popup-lp-placer.ts'
 
 /**
  * 「LPの上で確認」: 新しいタブに、保存した中身をLPの上に出す（配信OFFでも出す）。
@@ -119,6 +121,30 @@ export function openEditor(state: PopupPageState, popup: ExitPopup): void {
   })
   editor.append(header.top, header.bar)
 
+  /** 「LPの上で決める」（いつ・どこに出すか・指示39）。決めたら編集中の形に入れてタブを描き直す（保存は「保存」） */
+  const openPlacer = (): void =>
+    openLpPlacer({
+      title: 'LPの上で決める',
+      lpUrl: lpPreviewUrl(state.abTestUid).catch(() => null),
+      html: draft.html,
+      css: '',
+      kind: 'corner',
+      box: true,
+      free: draft.free_position,
+      grid: gridPlaceOfExit(draft.position_x, draft.position_y),
+      // 表示直後は開いてすぐ出すので「ここまで読んだら」は使わない（本人の選択）
+      scroll: popupKindOf(draft) === 'instant' ? null : { pct: draft.scroll_trigger ? draft.scroll_position : null },
+      onApply: ({ place, scrollPct }) => {
+        if (place !== undefined) draft.free_position = place
+        if (scrollPct !== undefined) {
+          draft.scroll_trigger = true
+          draft.scroll_position = scrollPct
+        }
+        renderEditorTab(body, draft, activeTab, openPlacer)
+        toast('決めました。「保存」を押すと配信に出ます')
+      },
+    })
+
   // ── フォーム上部: サムネイル + 配信/名前/割合 ──
   const formTop = el('div', { class: 'ep-form-top' })
 
@@ -128,21 +154,37 @@ export function openEditor(state: PopupPageState, popup: ExitPopup): void {
     read: () => ({ html: draft.html, css: '' }),
     renderWidth: 500,
     ...(presetDef === undefined ? {} : { emptyArt: presetDef.thumbnailSvg }),
-    onEdit: () =>
+    onEdit: () => {
+      // つまんで置いた場所（「ポップアップに反映」で保存する。反映せずに戻れば捨てる・指示39）
+      let freePlace = draft.free_position
       openPopupStudio({
         html: draft.html,
         css: '',
         name: draft.name,
         badge: popupKindOf(popup) === 'instant' ? '表示直後' : '離脱防止',
         frame: 'overlay',
-        // 「LPの上に重ねて見る」: このABテストのLPを後ろに敷く（読めなければ中身だけ）
+        // 「LPの上に重ねて見る」: このABテストのLPを後ろに敷く（読めなければ中身だけ）。
+        // つまんで好きな場所へも動かせる（指示39・本人の選択「追従型と同じやり方」）
         underlay: lpPreviewUrl(state.abTestUid).catch(() => null),
+        underlayStyle: {
+          dim: true,
+          place: 'center',
+          free: {
+            kind: 'corner',
+            get: () => freePlace,
+            set: (place) => {
+              freePlace = place
+            },
+          },
+        },
         onSave: async (html) => {
           draft.html = html
+          draft.free_position = freePlace
           content.refresh()
           return save()
         },
-      }),
+      })
+    },
   })
   formTop.append(content.el)
 
@@ -174,13 +216,13 @@ export function openEditor(state: PopupPageState, popup: ExitPopup): void {
       activeTab = tab.id
       for (const b of tabBar.querySelectorAll('.ep-editor-tab')) b.classList.remove('active')
       btn.classList.add('active')
-      renderEditorTab(body, draft, activeTab)
+      renderEditorTab(body, draft, activeTab, openPlacer)
     })
     tabBar.append(btn)
   }
   editor.append(tabBar)
   editor.append(body)
-  renderEditorTab(body, draft, activeTab)
+  renderEditorTab(body, draft, activeTab, openPlacer)
 
   state.root.append(editor)
 }
@@ -269,6 +311,9 @@ export function previewPopup(popup: ExitPopup | Partial<ExitPopup>): void {
   overlay.id = 'ep-preview-overlay'
 
   const frame = el('div', { style: 'max-width:500px;max-height:80vh;overflow:auto;position:relative' })
+  // つまんで置いた場所があれば、配信と同じくその場所に置く（指示39）
+  const free = popup.free_position ?? null
+  if (free !== null) frame.style.cssText += `;position:absolute;${freePlaceCss('corner', free)}`
   frame.innerHTML = popup.html ?? '<p>プレビューできるHTMLがありません</p>'
   overlay.append(frame)
 

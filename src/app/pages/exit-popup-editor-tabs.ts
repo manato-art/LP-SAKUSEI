@@ -22,12 +22,25 @@ export const EDITOR_TABS: readonly { id: EditorTab; label: string }[] = [
   { id: 'code', label: 'コード' },
 ]
 
-export function renderEditorTab(body: HTMLElement, draft: ExitPopup, tab: EditorTab): void {
+/** 「LPの上で決める」を開く（いつ・どこに出すか・指示39・popup-lp-placer.ts）。決めたらタブを描き直す */
+export type OpenPlacer = () => void
+
+/** 「LPの上で決める」のボタン（表示・位置のタブの上） */
+function placerButton(openPlacer: OpenPlacer, text: string): HTMLElement {
+  const wrap = el('div', { style: 'margin-bottom:16px' })
+  const btn = el('button', { class: 'ep-editor-btn-draft', text: 'LPの上で決める' })
+  btn.type = 'button'
+  btn.addEventListener('click', openPlacer)
+  wrap.append(btn, hint(text))
+  return wrap
+}
+
+export function renderEditorTab(body: HTMLElement, draft: ExitPopup, tab: EditorTab, openPlacer?: OpenPlacer): void {
   body.innerHTML = ''
   switch (tab) {
     case 'basic': renderBasicTab(body, draft); break
-    case 'display': renderDisplayTab(body, draft); break
-    case 'position': renderPositionTab(body, draft); break
+    case 'display': renderDisplayTab(body, draft, openPlacer); break
+    case 'position': renderPositionTab(body, draft, openPlacer); break
     case 'device': renderDeviceTab(body, draft); break
     case 'code': renderCodeTab(body, draft); break
   }
@@ -203,9 +216,13 @@ const ANIMATION_OPTIONS: { value: string; label: string }[] = [
   { value: 'flipIn', label: 'フリップイン' },
   { value: 'none', label: 'なし' },
 ]
-function renderDisplayTab(body: HTMLElement, draft: ExitPopup): void {
+function renderDisplayTab(body: HTMLElement, draft: ExitPopup, openPlacer?: OpenPlacer): void {
   // セクションヘッダ
   body.append(el('div', { style: 'font-size:14px;font-weight:600;margin-bottom:16px', text: '表示設定' }))
+  // 離脱防止は「ここまで読んだら出す」を LP をスクロールして決められる（指示39・表示直後は開いてすぐ出すので無し）
+  if (openPlacer !== undefined && draft.popup_kind !== 'instant') {
+    body.append(placerButton(openPlacer, 'LP を実際にスクロールして「ここまで読んだら出す」と、出す場所（つまんで動かす）を決めます'))
+  }
 
   // 表示アニメーション
   const animField = el('div', { class: 'ep-field' })
@@ -315,9 +332,16 @@ function snapPos(v: number): number {
   if (v > 75) return 100
   return 50
 }
-function renderPositionTab(body: HTMLElement, draft: ExitPopup): void {
+function renderPositionTab(body: HTMLElement, draft: ExitPopup, openPlacer?: OpenPlacer): void {
   injectPositionGridCss()
   body.append(el('div', { class: 'ep-section-title', text: '表示位置' }))
+  if (openPlacer !== undefined) {
+    body.append(placerButton(openPlacer, 'LP の上でポップアップをつまんで、出す場所を決めます（スマホと PC で同じ割合の場所に出ます）'))
+  }
+  // つまんで置いた場所があるときは、9か所は選んでいない（9か所を押すと置いた場所を消してそこへ・指示39）
+  const freeNote = hint('いまは「つまんで置いた場所」に出します。下の9か所を押すと、そこに戻します。')
+  freeNote.hidden = draft.free_position === null
+  body.append(freeNote)
 
   const layout = el('div', { class: 'ep-pos-layout' })
   const grid = el('div', { class: 'ep-pos-grid' })
@@ -325,8 +349,8 @@ function renderPositionTab(body: HTMLElement, draft: ExitPopup): void {
   const bar = el('div', { class: 'ep-pos-preview-bar' })
   preview.append(bar)
 
-  const curX = snapPos(draft.position_x)
-  const curY = snapPos(draft.position_y)
+  const curX = draft.free_position === null ? snapPos(draft.position_x) : -1
+  const curY = draft.free_position === null ? snapPos(draft.position_y) : -1
 
   const updatePreview = (): void => {
     bar.style.left = `${snapPos(draft.position_x)}%`
@@ -344,6 +368,8 @@ function renderPositionTab(body: HTMLElement, draft: ExitPopup): void {
     btn.addEventListener('click', () => {
       draft.position_x = cell.x
       draft.position_y = cell.y
+      draft.free_position = null
+      freeNote.hidden = true
       for (const b of cellButtons) b.classList.remove('active')
       btn.classList.add('active')
       updatePreview()
