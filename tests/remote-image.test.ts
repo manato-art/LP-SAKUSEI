@@ -18,6 +18,10 @@ import { postJson, resetStore, startTestServer, type TestServer } from './helper
 /** PNG（先頭の印＋中身の代わり。種類は先頭の印で見分ける） */
 const PNG = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.from('IHDR-test-image')])
 
+/** MP4（先頭の ftyp と種類 isom）・WebM（先頭の印）の代わり */
+const MP4 = Buffer.concat([Buffer.from([0, 0, 0, 0x18]), Buffer.from('ftypisom0000test-video')])
+const WEBM = Buffer.concat([Buffer.from([0x1a, 0x45, 0xdf, 0xa3]), Buffer.from('test-video')])
+
 let site: Server
 let origin = ''
 beforeAll(async () => {
@@ -25,6 +29,12 @@ beforeAll(async () => {
     if (req.url === '/a.png') {
       res.writeHead(200, { 'Content-Type': 'application/octet-stream' })
       res.end(PNG)
+    } else if (req.url === '/a.mp4') {
+      res.writeHead(200, { 'Content-Type': 'application/octet-stream' })
+      res.end(MP4)
+    } else if (req.url === '/a.webm') {
+      res.writeHead(200, { 'Content-Type': 'video/webm' })
+      res.end(WEBM)
     } else if (req.url === '/page.html') {
       res.writeHead(200, { 'Content-Type': 'image/png' })
       res.end('<html><script>alert(1)</script></html>')
@@ -70,6 +80,11 @@ describe('画像を取ってくる', () => {
     const got = await fetchRemoteImage(`${origin}/a.png`, { isAllowedAddress: allowLoopback })
     expect(got).toMatchObject({ ok: true, mime: 'image/png' })
     expect(got.ok && got.content.equals(PNG)).toBe(true)
+  })
+
+  it('動画（mp4・webm）も中身の先頭で見分けて取ってくる（2026-10-31 本人「動画がコピーできない」）', async () => {
+    expect(await fetchRemoteImage(`${origin}/a.mp4`, { isAllowedAddress: allowLoopback })).toMatchObject({ ok: true, mime: 'video/mp4' })
+    expect(await fetchRemoteImage(`${origin}/a.webm`, { isAllowedAddress: allowLoopback })).toMatchObject({ ok: true, mime: 'video/webm' })
   })
 
   it('リダイレクトの先も取ってくる', async () => {

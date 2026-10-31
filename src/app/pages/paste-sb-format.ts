@@ -12,14 +12,24 @@
  *  - リンクは付けない（本人の選択）。画像・SB の Widget は今までどおり EBIyon に写して、元の並びの所に入れる（paste-images.ts）
  * チェックが無いときは今までどおり文字だけ（editor-paste.ts）。
  */
-import { copyAll, fillImageMark, imageSourceOf, isPixel, widgetPart, WIDGET_CLASS, type WidgetPart } from './paste-images.ts'
+import {
+  copyAll,
+  fillImageMark,
+  imageSourceOf,
+  isPixel,
+  videoSourceOf,
+  widgetPart,
+  WIDGET_CLASS,
+  type PasteResult,
+  type WidgetPart,
+} from './paste-images.ts'
 import { encodeMarker, MARKER_ATTR } from '../panels/marker-look.ts'
 import { colorWithOpacityOf } from '../panels/underline-look.ts'
 
 /** 画像・Widget を置いておく印（私用の文字で囲む。文字の中に出てこない） */
 const MARK = String.fromCharCode(0xe000)
-const TOKEN = new RegExp(`${MARK}([IW])(\\d{1,4})${MARK}`, 'g')
-const token = (kind: 'I' | 'W', n: number): string => `${MARK}${kind}${String(n)}${MARK}`
+const TOKEN = new RegExp(`${MARK}([IVW])(\\d{1,4})${MARK}`, 'g')
+const token = (kind: 'I' | 'V' | 'W', n: number): string => `${MARK}${kind}${String(n)}${MARK}`
 
 /** 入れない要素 */
 const DROP_TAGS = ['script', 'style', 'noscript', 'template', 'iframe', 'object', 'embed']
@@ -113,18 +123,44 @@ export function markSbMarkers(root: Element): void {
 }
 
 /**
- * 画像・SB の Widget を印に置き換え、リンクは文字だけ残す。入れない要素（スクリプトなど）は外す。
- * 返す images は印 I の番号の順、widgets は印 W の番号の順
+ * 画像・動画・SB の Widget を印に置き換え、リンクは文字だけ残す。入れない要素（スクリプトなど）は外す。
+ * 返す images は印 I、videos は印 V、widgets は印 W の番号の順。コピーに中身が入っていなかった動画・Widget は外して数える
  */
-export function tokenizeMedia(root: Element): { images: string[]; widgets: WidgetPart[] } {
+export function tokenizeMedia(root: Element): {
+  images: string[]
+  videos: string[]
+  widgets: WidgetPart[]
+  missingVideos: number
+  missingWidgets: number
+} {
   const doc = root.ownerDocument
-  for (const el of Array.from(root.querySelectorAll(DROP_TAGS.join(',')))) el.remove()
   const widgets: WidgetPart[] = []
+  let missingWidgets = 0
+  // Widget は先に取り出す（中の埋め込み・style は Widget の見た目なので外さない）
   for (const wrapper of Array.from(root.querySelectorAll(`.${WIDGET_CLASS}`))) {
     // Widget の中の Widget は、外の Widget ごと入る
     if ((wrapper.parentElement?.closest(`.${WIDGET_CLASS}`) ?? null) !== null) continue
-    widgets.push(widgetPart(wrapper))
+    const part = widgetPart(wrapper)
+    if (part === null) {
+      missingWidgets += 1
+      wrapper.remove()
+      continue
+    }
+    widgets.push(part)
     wrapper.replaceWith(doc.createTextNode(token('W', widgets.length - 1)))
+  }
+  for (const el of Array.from(root.querySelectorAll(DROP_TAGS.join(',')))) el.remove()
+  const videos: string[] = []
+  let missingVideos = 0
+  for (const video of Array.from(root.querySelectorAll('video'))) {
+    const src = videoSourceOf(video)
+    if (src === null) {
+      missingVideos += 1
+      video.remove()
+      continue
+    }
+    videos.push(src)
+    video.replaceWith(doc.createTextNode(token('V', videos.length - 1)))
   }
   for (const link of Array.from(root.querySelectorAll('a'))) link.replaceWith(...Array.from(link.childNodes))
   const images: string[] = []
@@ -138,14 +174,15 @@ export function tokenizeMedia(root: Element): { images: string[]; widgets: Widge
     const n = at >= 0 ? at : images.push(src) - 1
     img.replaceWith(doc.createTextNode(token('I', n)))
   }
-  return { images, widgets }
+  return { images, videos, widgets, missingVideos, missingWidgets }
 }
 
-/** 印を、写した画像・Widget に置き換える（写せなかった画像は外して数える）。リンクの飾りは付けない */
+/** 印を、写した画像・動画・Widget に置き換える（写せなかった画像・動画は外して数える）。リンクの飾りは付けない */
 export function fillMediaTokens(
   ops: readonly DeltaOp[],
   imageUrls: ReadonlyMap<number, string | null>,
   widgets: ReadonlyArray<{ readonly html: string }>,
+  videoUrls: ReadonlyMap<number, string | null> = new Map(),
 ): { ops: DeltaOp[]; failed: number } {
   const out: DeltaOp[] = []
   let failed = 0
@@ -169,9 +206,9 @@ export function fillMediaTokens(
         if (widget !== undefined) out.push({ insert: { sbwidget: widget.html } })
         continue
       }
-      const url = imageUrls.get(n) ?? null
+      const url = (match[1] === 'V' ? videoUrls : imageUrls).get(n) ?? null
       if (url === null) failed += 1
-      else out.push({ insert: { image: url } })
+      else out.push({ insert: match[1] === 'V' ? { sbvideo: url } : { image: url } })
     }
     text(op.insert.slice(last), op.attributes)
   }
@@ -196,9 +233,9 @@ export async function keepSbFormatOps(
   html: string,
   copy: (src: string) => Promise<string | null>,
   parse: (html: string) => Element,
-): Promise<{ images: number; widgets: number; failed: number }> {
+): Promise<PasteResult> {
   const range = quill.getSelection(true)
-  if (range === null) return { images: 0, widgets: 0, failed: 0 }
+  if (range === null) return { images: 0, videos: 0, widgets: 0, failed: 0, missingVideos: 0, missingWidgets: 0 }
   const root = parse(html)
   stripPageBase(root)
   markSbMarkers(root)
@@ -206,7 +243,7 @@ export async function keepSbFormatOps(
   quill.enable(false)
   let copied: Map<string, string | null>
   try {
-    copied = await copyAll([...media.images, ...media.widgets.flatMap((widget) => widget.images)], copy)
+    copied = await copyAll([...media.images, ...media.videos, ...media.widgets.flatMap((widget) => widget.images)], copy)
   } finally {
     quill.enable(true)
   }
@@ -219,10 +256,18 @@ export async function keepSbFormatOps(
     return { html: widget.images.reduce((acc, src, n) => fillImageMark(acc, n, copied.get(src) ?? null), widget.html) }
   })
   const converted = quill.clipboard.convert({ html: root.innerHTML })
-  const filled = fillMediaTokens(converted.ops, new Map(media.images.map((src, n) => [n, copied.get(src) ?? null])), widgets)
+  const urlsOf = (list: readonly string[]): Map<number, string | null> => new Map(list.map((src, n) => [n, copied.get(src) ?? null]))
+  const filled = fillMediaTokens(converted.ops, urlsOf(media.images), widgets, urlsOf(media.videos))
   quill.updateContents([{ retain: range.index }, ...(range.length > 0 ? [{ delete: range.length }] : []), ...filled.ops], 'user')
   const length = filled.ops.reduce((n, op) => n + (typeof op.insert === 'string' ? op.insert.length : 1), 0)
   quill.setSelection(range.index + length, 0, 'user')
   const embeds = (key: string): number => filled.ops.filter((op) => typeof op.insert === 'object' && key in op.insert).length
-  return { images: embeds('image') + widgetImages, widgets: embeds('sbwidget'), failed: filled.failed + widgetFailed }
+  return {
+    images: embeds('image') + widgetImages,
+    videos: embeds('sbvideo'),
+    widgets: embeds('sbwidget'),
+    failed: filled.failed + widgetFailed,
+    missingVideos: media.missingVideos,
+    missingWidgets: media.missingWidgets,
+  }
 }

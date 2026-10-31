@@ -4,8 +4,9 @@
  * 外から渡された住所をサーバーが開くので、ここで守る:
  *  - http・https だけ。つなぐ直前に住所（IP）を確かめ、内部の住所は開かない（名前の引き直しでもぐり込めないよう、
  *    確かめた住所にそのままつなぐ＝http.request の lookup）。リダイレクトは3回まで、その先も同じく確かめる
- *  - 中身の先頭が本物の画像（png・jpeg・gif・webp・avif）のときだけ返す（SVG・HTML は返さない。見出しの種類は信じない）
- *  - 大きさ（既定 20MB）と時間（既定 20秒）に上限
+ *  - 中身の先頭が本物の画像（png・jpeg・gif・webp・avif）か動画（mp4・webm）のときだけ返す（SVG・HTML は返さない。
+ *    見出しの種類は信じない）。動画は 2026-10-31 本人「動画がコピーできない」で足した
+ *  - 大きさ（既定 100MB＝動画も入る）と時間（既定 60秒）に上限
  */
 import { lookup as dnsLookup, type LookupAddress } from 'node:dns'
 import { request as httpRequest, type IncomingMessage } from 'node:http'
@@ -23,8 +24,8 @@ export interface RemoteImageOptions {
   readonly timeoutMs?: number
 }
 
-const MAX_BYTES = 20 * 1024 * 1024
-const TIMEOUT_MS = 20_000
+const MAX_BYTES = 100 * 1024 * 1024
+const TIMEOUT_MS = 60_000
 const MAX_REDIRECTS = 3
 /** 名乗り（名乗らないと断る画像のサイトがある） */
 const USER_AGENT = 'Mozilla/5.0 (compatible; EBIyon-image-copy/1.0)'
@@ -48,13 +49,17 @@ export function isPublicAddress(address: string): boolean {
   return !inside.check(ip, family === 4 ? 'ipv4' : 'ipv6')
 }
 
-/** 中身の先頭から画像の種類を決める（分からなければ null） */
+/** 中身の先頭から画像・動画の種類を決める（分からなければ null） */
 function sniffImage(head: Buffer): string | null {
   if (head.length >= 8 && head.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return 'image/png'
   if (head.length >= 3 && head[0] === 0xff && head[1] === 0xd8 && head[2] === 0xff) return 'image/jpeg'
   if (head.length >= 6 && /^GIF8[79]a$/.test(head.subarray(0, 6).toString('latin1'))) return 'image/gif'
   if (head.length >= 12 && head.subarray(0, 4).toString('latin1') === 'RIFF' && head.subarray(8, 12).toString('latin1') === 'WEBP') return 'image/webp'
-  if (head.length >= 12 && head.subarray(4, 8).toString('latin1') === 'ftyp' && /^avi[fs]$/.test(head.subarray(8, 12).toString('latin1'))) return 'image/avif'
+  if (head.length >= 12 && head.subarray(4, 8).toString('latin1') === 'ftyp') {
+    // ftyp の箱は AVIF（画像）と MP4・MOV（動画）で同じ。種類の名前で分ける
+    return /^avi[fs]$/.test(head.subarray(8, 12).toString('latin1')) ? 'image/avif' : 'video/mp4'
+  }
+  if (head.length >= 4 && head[0] === 0x1a && head[1] === 0x45 && head[2] === 0xdf && head[3] === 0xa3) return 'video/webm'
   return null
 }
 
@@ -152,7 +157,7 @@ function readImage(res: IncomingMessage, options: Required<RemoteImageOptions>):
     res.on('end', () => {
       const content = Buffer.concat(chunks)
       const mime = sniffImage(content.subarray(0, 16))
-      resolve(mime === null ? { ok: false, message: '画像ではありませんでした' } : { ok: true, content, mime })
+      resolve(mime === null ? { ok: false, message: '画像・動画ではありませんでした' } : { ok: true, content, mime })
     })
   })
 }

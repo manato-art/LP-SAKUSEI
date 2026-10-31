@@ -114,7 +114,7 @@ describe('写してから、元の並びのまま入れる', () => {
       'text:"\\n":{}',
       'text:"本文":{"bold":true}',
     ])
-    expect(result).toEqual({ images: 1, widgets: 0, failed: 0 })
+    expect(result).toEqual({ images: 1, videos: 0, widgets: 0, failed: 0, missingVideos: 0, missingWidgets: 0 })
   })
 
   it('写せなかった画像は入れずに数える。写している間は編集を止め、終わったら戻す', async () => {
@@ -122,7 +122,7 @@ describe('写してから、元の並びのまま入れる', () => {
     const result = await pasteWithImages(quill, [{ kind: 'image', src: IMG_A }, { kind: 'image', src: IMG_B }], async (src) =>
       src === IMG_A ? '/uploads/aaa.jpg' : null,
     )
-    expect(result).toEqual({ images: 1, widgets: 0, failed: 1 })
+    expect(result).toEqual({ images: 1, videos: 0, widgets: 0, failed: 1, missingVideos: 0, missingWidgets: 0 })
     expect(quill.doc.filter((line) => line.startsWith('image:'))).toEqual(['image:/uploads/aaa.jpg'])
     expect(quill.enabled).toEqual([false, true])
   })
@@ -187,6 +187,63 @@ describe('SB の Widget（div.sb-custom）は、見た目のまま EBIyon の Wi
     expect(widgetLine).toContain('src="/uploads/aaa.jpg"')
     expect(widgetLine).not.toContain('nc-paste-img')
     expect(widgetLine).toContain('background-image: none')
-    expect(result).toEqual({ images: 1, widgets: 1, failed: 1 })
+    expect(result).toEqual({ images: 1, videos: 0, widgets: 1, failed: 1, missingVideos: 0, missingWidgets: 0 })
+  })
+})
+
+/**
+ * 動画も入れる・コピーに中身が入っていない物は入れずに知らせる（2026-10-31 本人「動画がコピーできない」
+ * 「Widgetはこんな感じで何も入っていないWidgetになる」）。実際の Chrome で確かめたこと:
+ *  - <video><source src> の <source> はコピーに入らない（住所が無くなる）。<video src>・data-src は残る
+ *  - 文字を選べない作り（user-select:none）の Widget は、中身の無い外枠だけになる
+ *  - スクロールで出る Widget（opacity:0 から出る）は、透明のまま入る
+ */
+describe('動画', () => {
+  const VIDEO_A = 'https://media.example.test/a.mp4'
+
+  it('住所の残っている動画（src・data-src）は動画として入れる。住所の無い動画は入れずに数える', () => {
+    const parts = pasteParts(body(`<p>前</p><video data-src="${VIDEO_A}" autoplay muted></video><video autoplay muted></video><p>後</p>`))
+    expect(parts).toEqual<PastePart[]>([
+      { kind: 'text', text: '前\n' },
+      { kind: 'video', src: VIDEO_A },
+      { kind: 'missing', what: 'video' },
+      { kind: 'text', text: '後\n' },
+    ])
+  })
+
+  it('写した動画を入れ、入れなかった物を数える', async () => {
+    const quill = fakeQuill()
+    const result = await pasteWithImages(
+      quill,
+      [{ kind: 'video', src: VIDEO_A }, { kind: 'missing', what: 'video' }, { kind: 'missing', what: 'widget' }],
+      async () => '/uploads/v.mp4',
+    )
+    expect(quill.doc).toContain('sbvideo:/uploads/v.mp4')
+    expect(result).toEqual({ images: 0, videos: 1, widgets: 0, failed: 0, missingVideos: 1, missingWidgets: 1 })
+  })
+})
+
+describe('中身の入っていない Widget・透明の Widget', () => {
+  it('中身の無い外枠だけの Widget は入れずに数える（空の枠を入れない）', () => {
+    expect(pasteParts(body('<p>前</p><div class="sb-custom" style="color: rgb(0, 0, 0);"></div>'))).toEqual<PastePart[]>([
+      { kind: 'text', text: '前\n' },
+      { kind: 'missing', what: 'widget' },
+    ])
+  })
+
+  it('スクロールで出る前の透明（opacity:0・visibility:hidden）は外して、見えるようにする', () => {
+    const widget = pasteParts(body('<div class="sb-custom"><div class="hid" style="opacity: 0; color: red;">出る前</div><p style="visibility: hidden;">隠れ</p></div>'))[0]
+    if (widget?.kind !== 'widget') throw new Error('Widget がありません')
+    expect(widget.html).not.toContain('opacity: 0')
+    expect(widget.html).not.toContain('visibility: hidden')
+    expect(widget.html).toContain('color: red')
+  })
+
+  it('Widget の中の動画も写す印にする（住所の無い動画は外す）', () => {
+    const widget = pasteParts(body('<div class="sb-custom"><p>見出し</p><video src="https://media.example.test/w.mp4"></video><video></video></div>'))[0]
+    if (widget?.kind !== 'widget') throw new Error('Widget がありません')
+    expect(widget.images).toEqual(['https://media.example.test/w.mp4'])
+    expect(widget.html).toContain('src="nc-paste-img-0"')
+    expect(widget.html.match(/<video/g)).toHaveLength(1)
   })
 })

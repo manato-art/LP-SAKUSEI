@@ -17,7 +17,7 @@
 import type Quill from 'quill'
 import { api } from '../api.ts'
 import { toast } from '../ui.ts'
-import { pasteParts, pasteWithImages, type ImagePasteQuill, type PastePart } from './paste-images.ts'
+import { pasteParts, pasteWithImages, type ImagePasteQuill, type PastePart, type PasteResult } from './paste-images.ts'
 import { keepSbFormatOps, type ConvertQuill } from './paste-sb-format.ts'
 
 /** 同じ編集画面からコピーした印（クリップボードに一緒に入れる） */
@@ -87,15 +87,18 @@ export const isExternalPaste = (e: ClipboardEvent): boolean => !(e.clipboardData
 /** 貼った中身に画像か SB の Widget があれば、文字・画像・Widget に分けたもの。無ければ null（文字だけの貼り付けにする） */
 function partsWithImages(data: DataTransfer | null): PastePart[] | null {
   const html = data?.getData('text/html') ?? ''
-  if (!/<img\b|sb-custom/i.test(html)) return null
+  if (!/<img\b|<video\b|sb-custom/i.test(html)) return null
   const parts = pasteParts(new DOMParser().parseFromString(html, 'text/html').body)
   return parts.some((part) => part.kind !== 'text') ? parts : null
 }
 
 /** 画像を EBIyon に写してから、元の並びのまま入れる。何枚入ったか・写せなかったかを知らせる */
 async function pasteImagesIntoEditor(quill: Quill, parts: readonly PastePart[], versionUid: string): Promise<void> {
-  const count = parts.reduce((n, part) => n + (part.kind === 'image' ? 1 : part.kind === 'widget' ? part.images.length : 0), 0)
-  toast(count === 0 ? '貼り付けています…' : `画像${String(count)}枚をEBIyonに写しています…（少し時間がかかります）`)
+  const count = parts.reduce(
+    (n, part) => n + (part.kind === 'image' || part.kind === 'video' ? 1 : part.kind === 'widget' ? part.images.length : 0),
+    0,
+  )
+  toast(count === 0 ? '貼り付けています…' : `画像・動画${String(count)}つをEBIyonに写しています…（少し時間がかかります）`)
   const result = await pasteWithImages(quill as unknown as ImagePasteQuill, parts, copyInto(versionUid))
   toastPasted(result, '貼りました')
 }
@@ -105,21 +108,33 @@ function copyInto(versionUid: string): (src: string) => Promise<string | null> {
   return (src) => (versionUid === '' ? Promise.resolve(null) : api.copyRemoteImage(versionUid, src).then((res) => res.url, () => null))
 }
 
-/** 入れたものを知らせる（写せなかった画像があれば赤で） */
-function toastPasted(result: { images: number; widgets: number; failed: number }, plainDone: string): void {
-  const { images, widgets, failed } = result
+/**
+ * 入れたものを知らせる。写せなかった画像・動画、コピーに中身が入っていなかった動画・Widget があれば赤で
+ * （ブラウザはコピーに <video> の <source> と、文字を選べない作りの Widget の中身を入れない・実際の Chrome で確かめた）
+ */
+function toastPasted(result: PasteResult, plainDone: string): void {
+  const { images, videos, widgets, failed, missingVideos, missingWidgets } = result
   const parts = [
     ...(images > 0 ? [`画像${String(images)}枚`] : []),
+    ...(videos > 0 ? [`動画${String(videos)}本`] : []),
     ...(widgets > 0 ? [`Widget${String(widgets)}個（見た目だけ・動きは入りません）`] : []),
   ]
   const done = parts.length === 0 ? plainDone : `${parts.join('・')}を入れました`
-  if (failed === 0) toast(done)
-  else toast(`${done}。画像${String(failed)}枚は写せませんでした（元のページで画像を保存して、入れ直してください）`, 'error')
+  const missing = [
+    ...(missingVideos > 0 ? [`動画${String(missingVideos)}本`] : []),
+    ...(missingWidgets > 0 ? [`Widget${String(missingWidgets)}個`] : []),
+  ]
+  const notes = [
+    ...(failed > 0 ? [`画像・動画${String(failed)}つは写せませんでした（元のページで保存して、入れ直してください）`] : []),
+    ...(missing.length > 0 ? [`${missing.join('・')}はコピーに中身が入っていなかったので入れていません（入れ直してください）`] : []),
+  ]
+  if (notes.length === 0) toast(done)
+  else toast(`${done}。${notes.join('。')}`, 'error')
 }
 
 /** 「SBコピー」: SB の飾りを残して貼る（画像・Widget も写して入れる） */
 async function pasteKeepingSbFormat(quill: Quill, html: string, versionUid: string): Promise<void> {
-  if (/<img\b|sb-custom/i.test(html)) toast('SBの書式のまま貼っています…（画像を写すので少し時間がかかります）')
+  if (/<img\b|<video\b|sb-custom/i.test(html)) toast('SBの書式のまま貼っています…（画像を写すので少し時間がかかります）')
   const parse = (text: string): Element => new DOMParser().parseFromString(text, 'text/html').body
   const result = await keepSbFormatOps(quill as unknown as ConvertQuill, html, copyInto(versionUid), parse)
   toastPasted(result, 'SBの書式のまま貼りました')

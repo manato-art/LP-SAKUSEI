@@ -1,18 +1,18 @@
 /**
- * 貼り付けた中身の画像を、EBIyon に写して置く受け口（2026-10-31 本人「スクワットビヨンドで作成したLPを全選択してそのまま
+ * 貼り付けた中身の画像・動画を、EBIyon に写して置く受け口（2026-10-31 本人「スクワットビヨンドで作成したLPを全選択してそのまま
  * エビヨンにはりつけたい…画像がそのままコピーできない」→ 本人の選択「EBIyonに写して置く」）。
  *
  *   POST /versions/:uid/remote_images  { url }  → 201 { url: '/uploads/…' }
  *
  * 編集画面が、貼った中身の画像の住所を1枚ずつ送る。サーバーが取ってきて（lib/remote-image.ts＝内部の住所は開かない・
- * 本物の画像だけ・大きさと時間に上限）/uploads に置き、その住所を返す。LP作成者は自分のVersionだけ（creator-access.ts）。
+ * 本物の画像・動画だけ・大きさと時間に上限）/uploads に置き、その住所を返す。動画は 2026-10-31 本人「動画がコピーできない」で足した。LP作成者は自分のVersionだけ（creator-access.ts）。
  */
 import { Router } from 'express'
 import { getState } from '../store/store.ts'
 import { errorEnvelope } from '../lib/envelope.ts'
 import { optionalString } from '../lib/validate.ts'
 import { fetchRemoteImage } from '../lib/remote-image.ts'
-import { saveImageUpload } from '../lib/uploads.ts'
+import { saveMediaUpload } from '../lib/uploads.ts'
 
 export const remoteImagesRouter: Router = Router()
 
@@ -33,7 +33,7 @@ remoteImagesRouter.post('/versions/:uid/remote_images', async (req, res) => {
     return
   }
   try {
-    res.status(201).json({ url: saveImageUpload(got.content, got.mime) })
+    res.status(201).json({ url: saveMediaUpload(got.content, got.mime) })
   } catch (error) {
     console.error('[remote-images] 取り込んだ画像を保存できませんでした:', (error as Error).message)
     res.status(500).json(errorEnvelope('save_failed', '画像を保存できませんでした。もう一度貼り付けてください'))

@@ -15,14 +15,24 @@
  * 動き（カウントダウン・スライダー等）ごと持って来るのは、LPのURLから取り込む方（②）。
  *  - 外枠に書き込まれたページ全体の文字の設定は外す（LPの文字の設定を受け継ぐ）
  *  - 押したときの命令（on…）は外し、リンク先は空（#）にする（リンクは付けない＝本人の選択）
- *  - 中の画像・背景の画像も写す（写す印 nc-paste-img-N に置き換え、写せたら写した住所・写せなければ外す）
+ *  - 中の画像・背景の画像・動画も写す（写す印 nc-paste-img-N に置き換え、写せたら写した住所・写せなければ外す）
+ *
+ * 動画も入れる・コピーに中身が入っていない物は入れずに知らせる（2026-10-31 本人「動画がコピーできない」「Widgetはこんな感じで
+ * 何も入っていないWidgetになる」）。実際の Chrome で確かめたこと:
+ *  - <video><source src> の <source> はコピーに入らない（住所が無くなる）。<video src>・data-src は残る
+ *  - 文字を選べない作り（user-select:none）の Widget は、中身の無い外枠だけになる
+ *  - スクロールで出る Widget（opacity:0 から出る）は、透明のまま入る → 透明を外して見えるようにする
+ * 住所の無い動画・中身の無い Widget は、黒い四角や空の枠を入れず、数えて知らせる（missing）。
  */
 
 export type PastePart =
   | { readonly kind: 'text'; readonly text: string }
   | { readonly kind: 'image'; readonly src: string }
-  /** SB の Widget（見た目のまま）。html の中の画像は写す印 nc-paste-img-N（N は images の番号） */
+  | { readonly kind: 'video'; readonly src: string }
+  /** SB の Widget（見た目のまま）。html の中の画像・動画は写す印 nc-paste-img-N（N は images の番号） */
   | { readonly kind: 'widget'; readonly html: string; readonly images: readonly string[] }
+  /** コピーに中身が入っていなかった物（住所の無い動画・中身の無い Widget）。入れずに数える */
+  | { readonly kind: 'missing'; readonly what: 'video' | 'widget' }
 
 export type WidgetPart = Extract<PastePart, { kind: 'widget' }>
 
@@ -37,7 +47,7 @@ const BLOCK_TAGS: ReadonlySet<string> = new Set([
   'HEADER', 'FOOTER', 'MAIN', 'ASIDE', 'NAV', 'FIGURE', 'FIGCAPTION', 'BLOCKQUOTE', 'PRE', 'FORM', 'CENTER',
 ])
 /** 中身を入れない要素 */
-const SKIP_TAGS: ReadonlySet<string> = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEMPLATE', 'SVG', 'IFRAME', 'HEAD', 'TITLE', 'META', 'LINK', 'VIDEO', 'AUDIO', 'OBJECT'])
+const SKIP_TAGS: ReadonlySet<string> = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEMPLATE', 'SVG', 'IFRAME', 'HEAD', 'TITLE', 'META', 'LINK', 'AUDIO', 'OBJECT'])
 /** 遅れて読み込む画像が本物の住所を入れておく所 */
 const LAZY_ATTRS = ['data-src', 'data-original', 'data-lazy-src', 'data-lazy']
 
@@ -72,8 +82,34 @@ export function isPixel(img: Element): boolean {
 /** style の中の背景の画像の住所（url("…")）。http(s) だけ */
 const STYLE_URL = /url\((?:&quot;|["'])?(https?:\/\/[^"')&]+(?:&amp;[^"')&]+)*)(?:&quot;|["'])?\)/gi
 
-/** SB の Widget を、見た目のまま入れる形にする（外枠の文字の設定・命令・リンク先を外し、画像は写す印に） */
-export function widgetPart(wrapper: Element): WidgetPart {
+/** 動画の住所（http(s)）。src・遅れて読み込む所・<source> の順に見る。無ければ null（<source> はコピーに入らないことが多い） */
+export function videoSourceOf(video: Element): string | null {
+  for (const name of ['src', ...LAZY_ATTRS]) {
+    const value = (video.getAttribute(name) ?? '').trim()
+    if (isHttp(value)) return value
+  }
+  for (const source of Array.from(video.querySelectorAll('source'))) {
+    for (const name of ['src', 'data-src']) {
+      const value = (source.getAttribute(name) ?? '').trim()
+      if (isHttp(value)) return value
+    }
+  }
+  return null
+}
+
+/** 透明のまま（スクロールで出る前）の指定。Widget の動きは入らないので外して見えるようにする */
+const HIDDEN_STYLE = /(?:^|;)\s*(?:opacity\s*:\s*0(?:\.0+)?|visibility\s*:\s*hidden)\s*(?=;|$)/gi
+
+/** 見えるものがあるか（文字・画像・動画・埋め込み・入力など） */
+function hasContent(el: Element): boolean {
+  return (el.textContent ?? '').trim() !== '' || el.querySelector('img,video,iframe,svg,canvas,input,button,select,textarea,picture') !== null
+}
+
+/**
+ * SB の Widget を、見た目のまま入れる形にする（外枠の文字の設定・命令・リンク先を外し、画像・動画は写す印に）。
+ * コピーに中身が入っていなければ null（文字を選べない作りの Widget は外枠だけになる）
+ */
+export function widgetPart(wrapper: Element): WidgetPart | null {
   const copy = wrapper.cloneNode(true) as Element
   const images: string[] = []
   const mark = (src: string): string => {
@@ -99,12 +135,25 @@ export function widgetPart(wrapper: Element): WidgetPart {
       if (src === null) el.remove()
       else el.setAttribute('src', src.startsWith('data:') ? src : mark(src))
     }
+    if (tag === 'VIDEO') {
+      const src = videoSourceOf(el)
+      for (const source of Array.from(el.querySelectorAll('source'))) source.remove()
+      for (const name of LAZY_ATTRS) el.removeAttribute(name)
+      if (src === null) {
+        el.remove()
+        continue
+      }
+      el.setAttribute('src', mark(src))
+    }
     const style = el.getAttribute('style')
-    if (style !== null && el !== copy) el.setAttribute('style', style.replace(STYLE_URL, (_whole, url: string) => `url("${mark(url.replace(/&amp;/g, '&'))}")`))
+    if (style !== null && el !== copy) {
+      const visible = style.replace(HIDDEN_STYLE, '').replace(/^\s*;\s*/, '')
+      el.setAttribute('style', visible.replace(STYLE_URL, (_whole, url: string) => `url("${mark(url.replace(/&amp;/g, '&'))}")`))
+    }
   }
   // 外枠に書き込まれたのは、コピー元のページ全体の文字の設定（LPの文字の設定を受け継ぐ）
   copy.removeAttribute('style')
-  return { kind: 'widget', html: copy.innerHTML, images }
+  return hasContent(copy) ? { kind: 'widget', html: copy.innerHTML, images } : null
 }
 
 /** 貼った中身を上から順に文字と画像に分ける（文字は書式なし・画像のリンクは付けない・SB の Widget は見た目のまま） */
@@ -139,7 +188,14 @@ export function pasteParts(root: Node): PastePart[] {
       if (el.classList.contains(WIDGET_CLASS)) {
         breakLine()
         flushText()
-        parts.push(widgetPart(el))
+        parts.push(widgetPart(el) ?? { kind: 'missing', what: 'widget' })
+        continue
+      }
+      if (tag === 'VIDEO') {
+        const src = videoSourceOf(el)
+        breakLine()
+        flushText()
+        parts.push(src === null ? { kind: 'missing', what: 'video' } : { kind: 'video', src })
         continue
       }
       if (tag === 'IMG') {
@@ -195,23 +251,37 @@ export async function copyAll(sources: readonly string[], copy: (src: string) =>
   return done
 }
 
+/** 入れた物の数（写せなかった画像・動画、コピーに中身が入っていなかった動画・Widget も） */
+export interface PasteResult {
+  readonly images: number
+  readonly videos: number
+  readonly widgets: number
+  readonly failed: number
+  readonly missingVideos: number
+  readonly missingWidgets: number
+}
+
 /**
  * 画像を全部写してから、カーソルの所へ元の並びのまま入れる（選んでいた文字は置き換える）。
- * 文字は貼った所の文字と同じ見た目。画像は1行に1枚。Widget はひとかたまり。写している間は編集を止める。
+ * 文字は貼った所の文字と同じ見た目。画像は1行に1枚。動画・Widget はひとかたまり。写している間は編集を止める。
  */
 export async function pasteWithImages(
   quill: ImagePasteQuill,
   parts: readonly PastePart[],
   copy: (src: string) => Promise<string | null>,
-): Promise<{ images: number; widgets: number; failed: number }> {
+): Promise<PasteResult> {
+  const missingVideos = parts.filter((part) => part.kind === 'missing' && part.what === 'video').length
+  const missingWidgets = parts.filter((part) => part.kind === 'missing' && part.what === 'widget').length
   const range = quill.getSelection(true)
-  if (range === null) return { images: 0, widgets: 0, failed: 0 }
+  if (range === null) return { images: 0, videos: 0, widgets: 0, failed: 0, missingVideos, missingWidgets }
   const here = Object.fromEntries(Object.entries(quill.getFormat(range.index, 0)).filter(([name]) => !LINE_FORMATS.has(name)))
   quill.enable(false)
   let copied: Map<string, string | null>
   try {
     copied = await copyAll(
-      parts.flatMap((part) => (part.kind === 'image' ? [part.src] : part.kind === 'widget' ? part.images : [])),
+      parts.flatMap((part) =>
+        part.kind === 'image' || part.kind === 'video' ? [part.src] : part.kind === 'widget' ? part.images : [],
+      ),
       copy,
     )
   } finally {
@@ -220,10 +290,12 @@ export async function pasteWithImages(
   if (range.length > 0) quill.deleteText(range.index, range.length, 'user')
   let index = range.index
   let images = 0
+  let videos = 0
   let widgets = 0
   let failed = 0
   const ready = parts.filter((part) => {
-    if (part.kind !== 'image') return true
+    if (part.kind === 'missing') return false
+    if (part.kind !== 'image' && part.kind !== 'video') return true
     if ((copied.get(part.src) ?? null) === null) failed += 1
     return (copied.get(part.src) ?? null) !== null
   })
@@ -251,6 +323,15 @@ export async function pasteWithImages(
       widgets += 1
       return
     }
+    if (part.kind === 'video') {
+      // 動画はひとかたまり（EBIyon の決まりどおり自動再生・音なし・くり返し）
+      startLine()
+      quill.insertEmbed(index, 'sbvideo', copied.get(part.src) ?? '', 'user')
+      index += 1
+      videos += 1
+      return
+    }
+    if (part.kind !== 'image') return
     // 画像は1行に1枚（前の文字と同じ行にしない・あとの文字も次の行から）
     startLine()
     quill.insertEmbed(index, 'image', copied.get(part.src) ?? '', 'user')
@@ -264,7 +345,7 @@ export async function pasteWithImages(
     }
   })
   quill.setSelection(index, 0, 'user')
-  return { images, widgets, failed }
+  return { images, videos, widgets, failed, missingVideos, missingWidgets }
 }
 
 /** Widget の中の写す印 N を、写した住所に置き換える（写せなかった画像は外す・背景の画像は無しにする） */
@@ -273,5 +354,6 @@ export function fillImageMark(html: string, n: number, url: string | null): stri
   if (url !== null) return html.split(`"${token}"`).join(`"${url}"`).split(`&quot;${token}&quot;`).join(`&quot;${url}&quot;`)
   return html
     .replace(new RegExp(`<img\\b[^>]*\\bsrc="${token}"[^>]*>`, 'g'), '')
+    .replace(new RegExp(`<video\\b[^>]*\\bsrc="${token}"[^>]*>[\\s\\S]*?</video>`, 'g'), '')
     .replace(new RegExp(`url\\((?:&quot;|")?${token}(?:&quot;|")?\\)`, 'g'), 'none')
 }

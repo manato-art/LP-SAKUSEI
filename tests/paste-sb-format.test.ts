@@ -97,7 +97,7 @@ describe('貼り付け全体', () => {
     const result = await keepSbFormatOps(quill, COPIED, async () => '/uploads/a.jpg', (html) =>
       parseHTML(`<!doctype html><html><body><div id="r">${html}</div></body></html>`).document.getElementById('r') as unknown as HTMLElement,
     )
-    expect(result).toEqual({ images: 1, widgets: 1, failed: 0 })
+    expect(result).toEqual({ images: 1, videos: 0, widgets: 1, failed: 0, missingVideos: 0, missingWidgets: 0 })
     expect(calls[0]).toBe('enable:false')
     expect(calls[1]).toBe('enable:true')
     const update = JSON.parse((calls[2] ?? '').replace(/^update:/, '')) as unknown[]

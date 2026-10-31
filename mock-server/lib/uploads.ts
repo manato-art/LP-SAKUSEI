@@ -61,10 +61,10 @@ function saveUpload(content: Buffer, extension: string): string {
   return `${UPLOADS_PATH}/${name}`
 }
 
-/** 画像の中身をファイルに保存して公開URLを返す（ほかのサイトから写した画像・routes/remote-images.ts）。画像でない種類は投げる */
-export function saveImageUpload(content: Buffer, mime: string): string {
+/** 画像・動画の中身をファイルに保存して公開URLを返す（ほかのサイトから写した物・routes/remote-images.ts）。ほかの種類は投げる */
+export function saveMediaUpload(content: Buffer, mime: string): string {
   const extension = EXTENSIONS[mime.toLowerCase()]
-  if (extension === undefined || !mime.toLowerCase().startsWith('image/')) throw new Error(`保存できない種類です: ${mime}`)
+  if (extension === undefined) throw new Error(`保存できない種類です: ${mime}`)
   return saveUpload(content, extension)
 }
 
