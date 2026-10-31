@@ -11,12 +11,14 @@
  * - 画像の入った中身（SB のLPを全部選んで貼る等）は、画像も入れる（EBIyon に写して置く・リンクは付けない・paste-images.ts）。
  *   2026-10-31 本人「文字はコピーできるけど、画像がそのままコピーできない」。Versionの編集画面だけ
  * - SB の Widget（div.sb-custom）は、見た目のまま EBIyon の Widget として入れる（動きはコピーに入らない・paste-images.ts）
+ * - 見出しの「SBコピー」にチェックがあるときは、SB の飾り（色・下線・マーカー・太字…）を残して貼る（paste-sb-format.ts・2026-10-31）
  * - Versionの編集画面（Quill）と、Widget編集の見たまま画面（widget-visual-editor.ts）の両方で使う
  */
 import type Quill from 'quill'
 import { api } from '../api.ts'
 import { toast } from '../ui.ts'
 import { pasteParts, pasteWithImages, type ImagePasteQuill, type PastePart } from './paste-images.ts'
+import { keepSbFormatOps, type ConvertQuill } from './paste-sb-format.ts'
 
 /** 同じ編集画面からコピーした印（クリップボードに一緒に入れる） */
 export const INTERNAL_COPY_TYPE = 'application/x-lp-sakusei-copy'
@@ -94,19 +96,40 @@ function partsWithImages(data: DataTransfer | null): PastePart[] | null {
 async function pasteImagesIntoEditor(quill: Quill, parts: readonly PastePart[], versionUid: string): Promise<void> {
   const count = parts.reduce((n, part) => n + (part.kind === 'image' ? 1 : part.kind === 'widget' ? part.images.length : 0), 0)
   toast(count === 0 ? '貼り付けています…' : `画像${String(count)}枚をEBIyonに写しています…（少し時間がかかります）`)
-  const copy = (src: string): Promise<string | null> =>
-    versionUid === '' ? Promise.resolve(null) : api.copyRemoteImage(versionUid, src).then((res) => res.url, () => null)
-  const { images, widgets, failed } = await pasteWithImages(quill as unknown as ImagePasteQuill, parts, copy)
-  const done = `画像${String(images)}枚${widgets > 0 ? `・Widget${String(widgets)}個（見た目だけ・動きは入りません）` : ''}を入れました`
+  const result = await pasteWithImages(quill as unknown as ImagePasteQuill, parts, copyInto(versionUid))
+  toastPasted(result, '貼りました')
+}
+
+/** 画像を、いま直しているVersionへ写す（写せなければ null） */
+function copyInto(versionUid: string): (src: string) => Promise<string | null> {
+  return (src) => (versionUid === '' ? Promise.resolve(null) : api.copyRemoteImage(versionUid, src).then((res) => res.url, () => null))
+}
+
+/** 入れたものを知らせる（写せなかった画像があれば赤で） */
+function toastPasted(result: { images: number; widgets: number; failed: number }, plainDone: string): void {
+  const { images, widgets, failed } = result
+  const parts = [
+    ...(images > 0 ? [`画像${String(images)}枚`] : []),
+    ...(widgets > 0 ? [`Widget${String(widgets)}個（見た目だけ・動きは入りません）`] : []),
+  ]
+  const done = parts.length === 0 ? plainDone : `${parts.join('・')}を入れました`
   if (failed === 0) toast(done)
   else toast(`${done}。画像${String(failed)}枚は写せませんでした（元のページで画像を保存して、入れ直してください）`, 'error')
 }
 
+/** 「SBコピー」: SB の飾りを残して貼る（画像・Widget も写して入れる） */
+async function pasteKeepingSbFormat(quill: Quill, html: string, versionUid: string): Promise<void> {
+  if (/<img\b|sb-custom/i.test(html)) toast('SBの書式のまま貼っています…（画像を写すので少し時間がかかります）')
+  const parse = (text: string): Element => new DOMParser().parseFromString(text, 'text/html').body
+  const result = await keepSbFormatOps(quill as unknown as ConvertQuill, html, copyInto(versionUid), parse)
+  toastPasted(result, 'SBの書式のまま貼りました')
+}
+
 /**
  * Versionの編集画面の貼り付けを配線する（Quill を作ったあとに呼ぶ＝Quill のコピーの後に印を足す）。
- * versionUid: いま直しているVersion（画像を写すときに使う）
+ * versionUid: いま直しているVersion（画像を写すときに使う）。keepSbFormat: 見出しの「SBコピー」にチェックがあるか
  */
-export function wireEditorPaste(quill: Quill, versionUid: () => string): void {
+export function wireEditorPaste(quill: Quill, versionUid: () => string, keepSbFormat: () => boolean): void {
   const root = quill.root
   markInternalCopy(root)
   // Quill の貼り付け（中身を書式ごと取り込む）より先に受ける（capture）。ほかからの文字は、ここで文字だけにして入れる
@@ -114,6 +137,13 @@ export function wireEditorPaste(quill: Quill, versionUid: () => string): void {
     'paste',
     (e) => {
       if (!isExternalPaste(e)) return
+      const html = e.clipboardData?.getData('text/html') ?? ''
+      if (keepSbFormat() && html.trim() !== '') {
+        e.preventDefault()
+        e.stopPropagation()
+        void pasteKeepingSbFormat(quill, html, versionUid())
+        return
+      }
       const parts = partsWithImages(e.clipboardData)
       if (parts !== null) {
         e.preventDefault()

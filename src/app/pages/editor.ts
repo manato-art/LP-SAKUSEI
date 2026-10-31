@@ -310,7 +310,7 @@ export async function renderEditor(
 
   // 指示⑩（2026-10-27）: ほかから貼った文字は書式を持ち込まず文字だけを貼る（editor-paste.ts・本人「書式はコピーしないで」）。
   // 画像の入った中身は画像も入れる（いま直しているVersionに写す・2026-10-31）
-  wireEditorPaste(quill, () => ctx.currentUid)
+  wireEditorPaste(quill, () => ctx.currentUid, () => ctx.sbCopy?.() === true)
 
   // Versionパネルは ctx.versions から**1枚ずつカードを描く**（複製/追加した分も下に増える）。
   renderVersionList(ctx)

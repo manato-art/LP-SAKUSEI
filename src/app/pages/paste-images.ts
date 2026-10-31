@@ -24,10 +24,12 @@ export type PastePart =
   /** SB の Widget（見た目のまま）。html の中の画像は写す印 nc-paste-img-N（N は images の番号） */
   | { readonly kind: 'widget'; readonly html: string; readonly images: readonly string[] }
 
+export type WidgetPart = Extract<PastePart, { kind: 'widget' }>
+
 /** Widget の中の画像を写す印 */
 const IMAGE_MARK = 'nc-paste-img-'
 /** SB の Widget の外枠 */
-const WIDGET_CLASS = 'sb-custom'
+export const WIDGET_CLASS = 'sb-custom'
 
 /** 段落の区切りになる要素（前後で行を変える） */
 const BLOCK_TAGS: ReadonlySet<string> = new Set([
@@ -62,7 +64,7 @@ function isHidden(el: Element): boolean {
 }
 
 /** 計測用の1px の画像 */
-function isPixel(img: Element): boolean {
+export function isPixel(img: Element): boolean {
   const size = (name: string): number => Number(img.getAttribute(name) ?? 'NaN')
   return size('width') <= 1 || size('height') <= 1
 }
@@ -71,7 +73,7 @@ function isPixel(img: Element): boolean {
 const STYLE_URL = /url\((?:&quot;|["'])?(https?:\/\/[^"')&]+(?:&amp;[^"')&]+)*)(?:&quot;|["'])?\)/gi
 
 /** SB の Widget を、見た目のまま入れる形にする（外枠の文字の設定・命令・リンク先を外し、画像は写す印に） */
-function widgetPart(wrapper: Element): PastePart {
+export function widgetPart(wrapper: Element): WidgetPart {
   const copy = wrapper.cloneNode(true) as Element
   const images: string[] = []
   const mark = (src: string): string => {
@@ -178,7 +180,7 @@ const LINE_FORMATS: ReadonlySet<string> = new Set(['header', 'list', 'blockquote
 const PARALLEL = 4
 
 /** 画像を写す（同じ住所は1回だけ・埋め込みの画像は写さずそのまま）。写せなければ null */
-async function copyAll(sources: readonly string[], copy: (src: string) => Promise<string | null>): Promise<Map<string, string | null>> {
+export async function copyAll(sources: readonly string[], copy: (src: string) => Promise<string | null>): Promise<Map<string, string | null>> {
   const unique = [...new Set(sources)]
   const done = new Map<string, string | null>()
   let next = 0
@@ -266,7 +268,7 @@ export async function pasteWithImages(
 }
 
 /** Widget の中の写す印 N を、写した住所に置き換える（写せなかった画像は外す・背景の画像は無しにする） */
-function fillImageMark(html: string, n: number, url: string | null): string {
+export function fillImageMark(html: string, n: number, url: string | null): string {
   const token = `${IMAGE_MARK}${String(n)}`
   if (url !== null) return html.split(`"${token}"`).join(`"${url}"`).split(`&quot;${token}&quot;`).join(`&quot;${url}&quot;`)
   return html

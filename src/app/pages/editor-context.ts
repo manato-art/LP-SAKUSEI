@@ -39,6 +39,8 @@ export interface EditorContext {
   selectionMode: boolean
   /** 見出しの保存状態（未保存・保存中・保存済み・失敗） */
   saveStatus?: SaveStatus
+  /** 見出しの「SBコピー」にチェックが入っているか（貼り付けで SB の飾りを残す・sb-copy-toggle.ts） */
+  sbCopy?: () => boolean
   /** 保存をやり直す（見出しの「保存できませんでした」を押したとき）。自動保存を作ったときに入る */
   retrySave?: () => void
 }

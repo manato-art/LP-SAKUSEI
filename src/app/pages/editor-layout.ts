@@ -41,6 +41,7 @@ import { HOOK } from './editor-hooks.ts'
 import { buildFullHtml, showVersionContent } from './editor-html.ts'
 import { askAgainAboutConflict, saveHtml } from './editor-save.ts'
 import { createSaveStatus } from './editor-save-status.ts'
+import { createSbCopyToggle } from './sb-copy-toggle.ts'
 import { EDITOR_CHANGE_EVENT, EDITOR_CONTENT_SHOWN_EVENT } from '../panels/editor-change.ts'
 import {
   injectCardSeamStyles,
@@ -247,9 +248,13 @@ export function mountHeaderExtras(
     })
   })
 
+  // 「保存済み」の左の「SBコピー」（チェックを入れて貼ると SB の飾りを残す・2026-10-31）
+  const sbCopy = createSbCopyToggle()
+  ctx.sbCopy = sbCopy.checked
+
   // パンくず行に追加（既存の breadcrumb + filter の後ろにスペーサー+ボタン群）
   // 指示96: 右端の4アイコン（⋮ / 編集 / 設定 / モニター）は削除
-  breadcrumbRow.append(spacer, saveStatus.el, sep1, previewBtn, compareBtn)
+  breadcrumbRow.append(spacer, sbCopy.el, saveStatus.el, sep1, previewBtn, compareBtn)
 }
 /**
  * コンテンツ上部にURLコピーバーを挿入する。
