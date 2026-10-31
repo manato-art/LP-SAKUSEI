@@ -290,7 +290,8 @@ function renderFollowSettingsTab(body: HTMLElement, draft: FollowPopup, openPlac
   body.append(animField)
 
   // スクロール%で表示
-  body.append(makeNumberField('スクロール表示位置 (%)', draft.show_after_scroll, (v) => { draft.show_after_scroll = v }))
+  // LP を何%まで読んだら出すか（0＝開いてすぐ）。名前は離脱防止と同じ「↓まで読んだら表示」（指示40）
+  body.append(makeNumberField('↓まで読んだら表示（%・0はすぐ）', draft.show_after_scroll, (v) => { draft.show_after_scroll = v }))
 
   // 閉じるボタン
   const closeRow = el('div', { class: 'ep-toggle-row' })

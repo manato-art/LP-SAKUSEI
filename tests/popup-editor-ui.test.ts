@@ -207,3 +207,14 @@ describe('一覧の部品', () => {
     expect(empty.textContent).toContain('複製できるポップアップはまだありません')
   })
 })
+
+describe('「表示」のタブの名前（指示40）', () => {
+  it('スクロールの割合の欄は「↓まで読んだら表示」（9か所の「表示位置」と見分ける）', async () => {
+    const { renderEditorTab } = await import('../src/app/pages/exit-popup-editor-tabs.ts')
+    const body = document.createElement('div')
+    renderEditorTab(body, popup(), 'display')
+    const labels = [...body.querySelectorAll('label')].map((label) => label.textContent ?? '')
+    expect(labels).toContain('↓まで読んだら表示')
+    expect(labels).not.toContain('表示位置')
+  })
+})

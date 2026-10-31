@@ -13,18 +13,26 @@
  *
  * 開け閉め（2026-10-18 本人指定「開いたり閉まったりできるようにして」）: 閉じると列ごと細い帯にたたみ、
  * その分キャンバスが広がる。帯を押すと開く。開け閉めはブラウザに覚えておく。
+ *
+ * 「離脱ポップ▼」も並べる（指示41・2026-10-31 本人「ここに離脱ポップの項目も設けて確認できるようにしたい。Widget▼ 離脱ポップ▼
+ * って感じで、それぞれプルダウンみたいな感じで開けるようにしたい」）。列の名前は「設置済み」、中は「Widget▼」「離脱ポップ▼」の
+ * 開け閉めできる段（開け閉めはブラウザに覚えておく）。離脱ポップの段は widget-nav-popups.ts。
  */
 import type Quill from 'quill'
 import { guessWidgetName, openWidgetEditorForNode } from './widget-editor.ts'
 import { containWidgetStyles } from './widget-style-scope.ts'
 import { duplicatePlacedWidget } from './widget-duplicate.ts'
 import { toast } from '../ui.ts'
+import { popupApi } from '../api-popups.ts'
+import { navPopupsOf, navSection, popupCards, popupEditHash, type NavPopup } from './widget-nav-popups.ts'
 
 /* ── 定数 ── */
 
 const SIDEBAR_W = 220
 const COLLAPSED_W = 28
 const COLLAPSED_KEY = 'sb-widget-nav-collapsed'
+/** 段ごとの開け閉め（Widget・離脱ポップ） */
+const SECTION_KEY = 'sb-widget-nav-section-'
 const CARD_W = 196
 const CARD_PAD_H = 12
 const CARD_PAD_V = 4
@@ -57,6 +65,11 @@ function svgChevron(direction: 'left' | 'right'): string {
 interface NavState {
   readonly collapsed: boolean
   readonly toggle: () => void
+  readonly widgetsOpen: boolean
+  readonly toggleWidgets: () => void
+  readonly popupCount: number
+  /** 離脱ポップの段（ページが分からない所では null） */
+  readonly popupSection: () => HTMLElement | null
 }
 
 function loadCollapsed(): boolean {
@@ -65,6 +78,23 @@ function loadCollapsed(): boolean {
   } catch {
     // 保存先が使えないブラウザ（シークレット等）では、毎回開いた状態から始める
     return false
+  }
+}
+
+/** 段が開いているか（初めは開いている） */
+function loadSectionOpen(name: string): boolean {
+  try {
+    return localStorage.getItem(`${SECTION_KEY}${name}`) !== '0'
+  } catch {
+    return true
+  }
+}
+
+function saveSectionOpen(name: string, open: boolean): void {
+  try {
+    localStorage.setItem(`${SECTION_KEY}${name}`, open ? '1' : '0')
+  } catch {
+    // 保存先が使えないブラウザでは、その場の開け閉めだけ効く
   }
 }
 
@@ -86,7 +116,13 @@ function saveCollapsed(collapsed: boolean): void {
  * flex 子要素として挿入する。キャンバス（contentWrapper）は flex:1 で
  * 残りスペースを埋めるため、Widget nav が出現しても自然に幅が縮む。
  */
-export function mountWidgetNav(root: HTMLElement, quill: Quill): void {
+/** 離脱ポップの段に要るもの（このページ・いま直している Version） */
+export interface WidgetNavPopupDeps {
+  readonly abTestUid: string
+  readonly versionUid: () => string
+}
+
+export function mountWidgetNav(root: HTMLElement, quill: Quill, popupDeps?: WidgetNavPopupDeps): void {
   const editorWrapper = root.querySelector<HTMLElement>('[class*="_editorWrapper_"]')
   const contentWrapper = root.querySelector<HTMLElement>('.quillEditorContentWrapper')
   if (editorWrapper === null || contentWrapper === null) return
@@ -120,7 +156,46 @@ export function mountWidgetNav(root: HTMLElement, quill: Quill): void {
     saveCollapsed(collapsed)
     refresh()
   }
-  const refresh = (): void => refreshCards(sidebar, editor, quill, { collapsed, toggle })
+  const open = { widgets: loadSectionOpen('widgets'), popups: loadSectionOpen('popups') }
+  const toggleSection = (name: keyof typeof open): void => {
+    open[name] = !open[name]
+    saveSectionOpen(name, open[name])
+    refresh()
+  }
+  let popups: readonly NavPopup[] = []
+  const popupSection = (): HTMLElement | null => {
+    if (popupDeps === undefined) return null
+    const section = navSection('離脱ポップ', popups.length, open.popups, () => toggleSection('popups'))
+    section.body.append(
+      popupCards(popups, {
+        versionUid: popupDeps.versionUid,
+        onCheck: (url) => window.open(url, '_blank', 'noopener'),
+        onEdit: (popupUid) => {
+          location.hash = popupEditHash(popupDeps.abTestUid, popupUid)
+        },
+      }),
+    )
+    return section.el
+  }
+  const refresh = (): void =>
+    refreshCards(sidebar, editor, quill, {
+      collapsed,
+      toggle,
+      widgetsOpen: open.widgets,
+      toggleWidgets: () => toggleSection('widgets'),
+      popupCount: popups.length,
+      popupSection,
+    })
+  // このページのポップアップを読む（読めなくても Widget の段はいつもどおり）
+  if (popupDeps !== undefined) {
+    void Promise.all([popupApi.exitPopups(popupDeps.abTestUid), popupApi.followPopups(popupDeps.abTestUid)]).then(
+      ([{ exit_popups }, { follow_popups }]) => {
+        popups = navPopupsOf(exit_popups, follow_popups)
+        refresh()
+      },
+      () => undefined,
+    )
+  }
   const debouncedRefresh = (): void => {
     if (debounceTimer !== null) clearTimeout(debounceTimer)
     debounceTimer = setTimeout(refresh, 200)
@@ -134,7 +209,7 @@ export function mountWidgetNav(root: HTMLElement, quill: Quill): void {
 
 function refreshCards(sidebar: HTMLElement, editor: HTMLElement, quill: Quill, nav: NavState): void {
   const widgets = editor.querySelectorAll<HTMLElement>('section.sb-widget-block')
-  if (widgets.length === 0) {
+  if (widgets.length === 0 && nav.popupCount === 0) {
     sidebar.style.display = 'none'
     return
   }
@@ -150,10 +225,17 @@ function refreshCards(sidebar: HTMLElement, editor: HTMLElement, quill: Quill, n
   }
 
   sidebar.append(createHeader(nav.toggle))
-  for (const widgetNode of widgets) {
-    const card = createWidgetCard(widgetNode, quill)
-    sidebar.append(card)
+  const widgetSection = navSection('Widget', widgets.length, nav.widgetsOpen, nav.toggleWidgets)
+  if (widgets.length === 0) {
+    const empty = document.createElement('p')
+    empty.textContent = 'このVersionにWidgetはまだありません'
+    empty.style.cssText = `margin:0;padding:0 ${CARD_PAD_H}px;color:#999;font:11px/1.6 ${FONT}`
+    widgetSection.body.append(empty)
   }
+  for (const widgetNode of widgets) widgetSection.body.append(createWidgetCard(widgetNode, quill))
+  sidebar.append(widgetSection.el)
+  const popupSection = nav.popupSection()
+  if (popupSection !== null) sidebar.append(popupSection)
 }
 
 /** 開け閉めのボタンの共通部分（押したら toggle・今の開閉を読み上げに伝える） */
@@ -170,17 +252,17 @@ function toggleButton(label: string, expanded: boolean, toggle: () => void): HTM
   return button
 }
 
-/** 開いているときの見出し（「設置済みWidget」＋閉じるボタン） */
+/** 開いているときの見出し（「設置済み」＋閉じるボタン） */
 function createHeader(toggle: () => void): HTMLElement {
   const header = document.createElement('div')
   header.style.cssText =
     `display:flex;align-items:center;justify-content:space-between;gap:4px;padding:0 4px 0 ${CARD_PAD_H}px`
 
   const label = document.createElement('span')
-  label.textContent = '設置済みWidget'
+  label.textContent = '設置済み'
   label.style.cssText = `font:600 10px/1.4 ${FONT};color:#999;letter-spacing:.5px`
 
-  const close = toggleButton('設置済みWidgetを閉じる', true, toggle)
+  const close = toggleButton('設置済みを閉じる', true, toggle)
   close.innerHTML = svgChevron('left')
   close.style.cssText =
     'display:flex;align-items:center;justify-content:center;width:24px;height:24px;padding:0;' +
@@ -192,13 +274,13 @@ function createHeader(toggle: () => void): HTMLElement {
 
 /** 閉じているときの細い帯（どこを押しても開く） */
 function createCollapsedStrip(toggle: () => void): HTMLElement {
-  const strip = toggleButton('設置済みWidgetを開く', false, toggle)
+  const strip = toggleButton('設置済みを開く', false, toggle)
   strip.style.cssText =
     `display:flex;flex-direction:column;align-items:center;gap:8px;flex:1;width:100%;padding:4px 0;` +
     `border:0;background:transparent;color:#999;cursor:pointer;font:600 10px/1.4 ${FONT};letter-spacing:.5px`
 
   const label = document.createElement('span')
-  label.textContent = '設置済みWidget'
+  label.textContent = '設置済み'
   label.style.cssText = 'writing-mode:vertical-rl'
 
   strip.innerHTML = svgChevron('right')

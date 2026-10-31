@@ -62,9 +62,11 @@ describe('設置済みWidgetの列の開け閉め', () => {
   it('最初は開いていて、Widgetのカードと「閉じる」ボタンが出る', async () => {
     const sidebar = await mountEditor()
     expect(sidebar.style.width).toBe('220px')
-    expect(sidebar.textContent).toContain('設置済みWidget')
+    // 列の名前は「設置済み」（離脱ポップも並べるため・指示41）。中は「Widget（2）▼」の段
+    expect(sidebar.textContent).toContain('設置済み')
+    expect(sidebar.textContent).toContain('Widget（2）')
     expect(cardCount(sidebar)).toBe(2)
-    expect(toggle(sidebar).getAttribute('aria-label')).toBe('設置済みWidgetを閉じる')
+    expect(toggle(sidebar).getAttribute('aria-label')).toBe('設置済みを閉じる')
     expect(toggle(sidebar).getAttribute('aria-expanded')).toBe('true')
   })
 
@@ -73,7 +75,7 @@ describe('設置済みWidgetの列の開け閉め', () => {
     press(toggle(sidebar))
     expect(sidebar.style.width).toBe('28px')
     expect(cardCount(sidebar)).toBe(0)
-    expect(toggle(sidebar).getAttribute('aria-label')).toBe('設置済みWidgetを開く')
+    expect(toggle(sidebar).getAttribute('aria-label')).toBe('設置済みを開く')
     expect(toggle(sidebar).getAttribute('aria-expanded')).toBe('false')
   })
 

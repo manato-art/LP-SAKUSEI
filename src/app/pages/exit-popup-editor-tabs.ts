@@ -263,8 +263,10 @@ function renderDisplayTab(body: HTMLElement, draft: ExitPopup, openPlacer?: Open
   scrollRow.append(scrollToggle, el('span', { class: 'ep-toggle-label', text: 'スクロールで表示' }))
   body.append(scrollRow)
 
-  // 表示位置（number input + % ＋ スライダー: 実SB準拠）
-  const posField = makeSuffixField('表示位置', draft.scroll_position, '%', (v) => {
+  // LP を何%まで読んだら出すか（number input + % ＋ スライダー: 実SB準拠）。
+  // 名前は「↓まで読んだら表示」（指示40・2026-10-31 本人「ここまで読んだら表示って感じなら名前を ↓まで読んだら表示 にして」・
+  // 「位置」のタブの9か所の「表示位置」と見分ける）
+  const posField = makeSuffixField('↓まで読んだら表示', draft.scroll_position, '%', (v) => {
     draft.scroll_position = v
     posSlider.value = String(v)
   })

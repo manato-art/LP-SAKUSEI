@@ -152,7 +152,7 @@ async function route(): Promise<void> {
     // ポップアップタブ（4タブの3つ目）。実物は「離脱防止機能が未契約」のアップセル画面。
     const exitPopupMatch = /^\/ab_tests\/([^/]+)\/articles\/exit_popups$/.exec(path ?? '')
     if (exitPopupMatch !== null) {
-      await renderExitPopup(content, exitPopupMatch[1] as string, generation)
+      await renderExitPopup(content, exitPopupMatch[1] as string, generation, params.get('open') ?? undefined)
       return
     }
     // 基本情報タブ（beyondページの4タブの1つ目）

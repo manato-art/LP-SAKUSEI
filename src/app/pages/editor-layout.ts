@@ -355,7 +355,8 @@ export function wireSideToolbar(ctx: EditorContext): void {
   // Widget ブロットクリックで本番同様の Widget編集オーバーレイを開く
   wireWidgetClick(ctx.root, ctx.quill)
   // Widget ナビカード（バージョンリストとキャンバスの間のカード）
-  mountWidgetNav(ctx.root, ctx.quill)
+  // 「離脱ポップ▼」も並べる（このページのポップアップ・押すといま直している Version の LP の上で確認・指示41）
+  mountWidgetNav(ctx.root, ctx.quill, { abTestUid: ctx.abTestUid, versionUid: () => ctx.currentUid })
 
   // 指示70: スクロール領域が変わったため、右レールの position:fixed は不要になった。
   // 採取CSSのままで問題なく表示される。

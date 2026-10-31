@@ -21,6 +21,7 @@ import { setupHorizTabs, setupBreadcrumb } from './tab-nav.ts'
 import { PRESETS } from './exit-popup-presets.ts'
 import { popupKindOf, type PopupPageState, type SubTab } from './exit-popup-state.ts'
 import { openFollowPresetModal, renderFollowCard } from './exit-popup-follow.ts'
+import { openFollowEditor } from './exit-popup-follow-editor.ts'
 import { openEditor, previewPopup } from './exit-popup-editor.ts'
 import { openPresetModal } from './exit-popup-add.ts'
 import { injectPopupCss } from './exit-popup-styles.ts'
@@ -34,10 +35,14 @@ const ADD_ICON = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" ar
 const TRASH_ICON = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left:auto" aria-hidden="true"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>`
 const EMPTY_TEXT = 'ポップアップがまだ設定されていません。上にある「+追加」ボタンから選択してみましょう。'
 
+/**
+ * openUid: 開いてすぐ編集画面を出すポップアップ（?open=・Versionの編集画面の「設置済み」の「離脱ポップ」の「編集」から・指示41）
+ */
 export async function renderExitPopup(
   container: HTMLElement,
   abTestUid: string,
   generation?: number,
+  openUid?: string,
 ): Promise<void> {
   container.innerHTML = ''
   // 指示: ページを画面高に収め、内容はスクロールバー付きで内部スクロールさせる。
@@ -85,6 +90,25 @@ export async function renderExitPopup(
   }
 
   renderPanel(state)
+  openRequested(state, openUid)
+}
+
+/** ?open= のポップアップを、その種類のタブで開く（見つからなければ一覧のまま） */
+function openRequested(state: PopupPageState, openUid: string | undefined): void {
+  if (openUid === undefined || openUid === '') return
+  const exit = state.popups.find((p) => p.uid === openUid)
+  if (exit !== undefined) {
+    state.activeSubTab = popupKindOf(exit)
+    state.rerender()
+    openEditor(state, exit)
+    return
+  }
+  const follow = state.followPopups.find((p) => p.uid === openUid)
+  if (follow !== undefined) {
+    state.activeSubTab = 'follow'
+    state.rerender()
+    openFollowEditor(state, follow)
+  }
 }
 
 // ─── 管理パネル（一覧画面） ─────────────────────────
