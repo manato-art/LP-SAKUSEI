@@ -15,6 +15,7 @@ import type { PopupPageState } from './exit-popup-state.ts'
 import { drawPopupThumb } from './popup-content-card.ts'
 import { isCornerPosition, openFollowEditor, previewFollowPopup } from './exit-popup-follow-editor.ts'
 import { copyTabList } from './popup-list-parts.ts'
+import { imageTabPanel } from './popup-image-tab.ts'
 import { isCreator } from '../session.ts'
 
 export function renderFollowCard(state: PopupPageState, fp: FollowPopup): HTMLElement {
@@ -151,7 +152,11 @@ export function openFollowPresetModal(state: PopupPageState): void {
   const tabs = el('div', { class: 'ep-modal-tabs' })
   const tabPreset = el('button', { class: 'ep-modal-tab active', text: 'プリセット' })
   const tabCopy = el('button', { class: 'ep-modal-tab', text: '複製' })
-  tabs.append(tabPreset, tabCopy)
+  const tabImage = el('button', { class: 'ep-modal-tab', text: '画像' })
+  tabs.append(tabPreset, tabCopy, tabImage)
+  const activate = (tab: HTMLElement): void => {
+    for (const each of [tabPreset, tabCopy, tabImage]) each.classList.toggle('active', each === tab)
+  }
   toolbar.append(tabs)
   const newBtn = el('button', { class: 'ep-modal-new', text: '+ 新規ポップアップ作成' })
   newBtn.addEventListener('click', () => {
@@ -179,8 +184,7 @@ export function openFollowPresetModal(state: PopupPageState): void {
 
   // 複製タブ: このLPの追従型を並べ、選んだ物の保存した中身を写した別の追従型を作る（作ったらすぐ配信に出る）
   tabCopy.addEventListener('click', () => {
-    tabPreset.classList.remove('active')
-    tabCopy.classList.add('active')
+    activate(tabCopy)
     const sources = state.followPopups.map((p) => ({ uid: p.uid, name: p.name, note: '追従型' }))
     list.replaceChildren(copyTabList(sources, (uid) => {
       void popupApi.duplicateFollowPopup(state.abTestUid, uid).then(
@@ -194,9 +198,29 @@ export function openFollowPresetModal(state: PopupPageState): void {
       )
     }))
   })
+  // 画像タブ: 選んだ画像1枚を中身にした追従型（下の帯）を作る（指示38）。位置はあとで表示設定・つまんで変えられる
+  tabImage.addEventListener('click', () => {
+    activate(tabImage)
+    list.replaceChildren(
+      imageTabPanel('bar', (html, name) =>
+        popupApi.createFollowPopup(state.abTestUid, { name, html, position: 'bottom', show_close_button: true, animation: 'slideUp' }).then(
+          ({ follow_popup }) => {
+            state.followPopups = [...state.followPopups, follow_popup]
+            overlay.remove()
+            state.rerender()
+            toast(`「${follow_popup.name}」を追加しました（配信ONならすぐ出ます。出したくないときは配信をOFFに）`)
+            return true
+          },
+          (err: unknown) => {
+            toast((err as Error).message, 'error')
+            return false
+          },
+        ),
+      ),
+    )
+  })
   tabPreset.addEventListener('click', () => {
-    tabCopy.classList.remove('active')
-    tabPreset.classList.add('active')
+    activate(tabPreset)
     list.innerHTML = ''
     for (const preset of FOLLOW_PRESETS) {
       list.append(renderFollowPresetItem(state, preset, overlay))

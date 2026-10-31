@@ -1,7 +1,8 @@
 /**
  * 離脱防止・表示直後ポップアップの「追加」画面（exit-popup.ts から分離・2026-09-24）。
  *
- * タブ: プリセット／複製（このLPのポップアップを写す）。「+ 新規ポップアップ作成」も。
+ * タブ: プリセット／複製（このLPのポップアップを写す）／画像（画像1枚をポップアップにする・指示38・popup-image-tab.ts）。
+ * 「+ 新規ポップアップ作成」も。
  * 作ったポップアップは、すぐ配信に出る（配信ONのとき・2026-10-31 下書きと本番をやめた）。
  */
 import { popupApi } from '../api-popups.ts'
@@ -10,6 +11,7 @@ import { PRESETS, type PopupPreset } from './exit-popup-presets.ts'
 import { popupKindOf, type PopupPageState } from './exit-popup-state.ts'
 import { openEditor } from './exit-popup-editor.ts'
 import { copyTabList } from './popup-list-parts.ts'
+import { imageTabPanel } from './popup-image-tab.ts'
 
 // ─── プリセット選択モーダル ──────────────────────────
 
@@ -38,7 +40,11 @@ export function openPresetModal(state: PopupPageState): void {
   const tabs = el('div', { class: 'ep-modal-tabs' })
   const tabPreset = el('button', { class: 'ep-modal-tab active', text: 'プリセット' })
   const tabCopy = el('button', { class: 'ep-modal-tab', text: '複製' })
-  tabs.append(tabPreset, tabCopy)
+  const tabImage = el('button', { class: 'ep-modal-tab', text: '画像' })
+  tabs.append(tabPreset, tabCopy, tabImage)
+  const activate = (tab: HTMLElement): void => {
+    for (const each of [tabPreset, tabCopy, tabImage]) each.classList.toggle('active', each === tab)
+  }
   toolbar.append(tabs)
   const newBtn = el('button', { class: 'ep-modal-new', text: '+ 新規ポップアップ作成' })
   newBtn.addEventListener('click', () => {
@@ -67,8 +73,7 @@ export function openPresetModal(state: PopupPageState): void {
   // 複製タブ: このLPの離脱防止・表示直後を並べ、選んだ物の保存した中身を写した別のポップアップを
   // いま開いているタブの種類で作る（作ったらすぐ配信に出る）
   tabCopy.addEventListener('click', () => {
-    tabPreset.classList.remove('active')
-    tabCopy.classList.add('active')
+    activate(tabCopy)
     const kind = state.activeSubTab === 'instant' ? 'instant' : 'exit'
     const sources = state.popups.map((p) => ({
       uid: p.uid,
@@ -88,12 +93,32 @@ export function openPresetModal(state: PopupPageState): void {
     }))
   })
   tabPreset.addEventListener('click', () => {
-    tabCopy.classList.remove('active')
-    tabPreset.classList.add('active')
+    activate(tabPreset)
     list.innerHTML = ''
     for (const preset of PRESETS) {
       list.append(renderPresetItem(state, preset, overlay))
     }
+  })
+  // 画像タブ: 選んだ画像1枚を中身にしたポップアップを、いま開いているタブの種類で作る（指示38）
+  tabImage.addEventListener('click', () => {
+    activate(tabImage)
+    list.replaceChildren(
+      imageTabPanel('box', (html, name) =>
+        popupApi.createExitPopup(state.abTestUid, { name, html, popup_kind: state.activeSubTab === 'instant' ? 'instant' : 'exit' }).then(
+          ({ exit_popup }) => {
+            state.popups = [...state.popups, exit_popup]
+            overlay.remove()
+            state.rerender()
+            toast(`「${exit_popup.name}」を追加しました（配信ONならすぐ出ます。出したくないときは配信をOFFに）`)
+            return true
+          },
+          (err: unknown) => {
+            toast((err as Error).message, 'error')
+            return false
+          },
+        ),
+      ),
+    )
   })
 
   overlay.append(modal)
