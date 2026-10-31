@@ -1,13 +1,14 @@
 /**
  * ポップアップの「移行先URL」の欄（指示44・2026-10-31 本人「表示設定でも移行先URLを設定できるようにしてほしい。
- * これは3種類全部。てか、今後も全部に対して」）。追従型の「表示設定」に置く（離脱防止・表示直後は「基本」のタブの
- * 「ポップアップを触ったときの動作」の同じ作り＝exit-popup-editor-tabs.ts）。
+ * これは3種類全部。てか、今後も全部に対して」）。3種類とも「基本」のタブの同じ場所に、この同じ欄を置く
+ * （2026-10-31 案A「3種類を同じ型に」・並びは popup-editor-layout.ts の表）。
  *
- * 入力欄には計測の目印（sb_tracking）を外したきれいな住所を見せ、計測のあり・なしはチェックで表す（離脱防止と同じ）。
+ * 入力欄には計測の目印（sb_tracking）を外したきれいな住所を見せ、計測のあり・なしはチェックで表す。
  */
 import { el } from '../ui.ts'
 import { isAllowedLinkUrl, isTrackingLink, withTrackingParam } from '../../shared/link-html.ts'
 import { makeCheckboxRow } from './exit-popup-fields.ts'
+import { LINK_LABEL } from './popup-editor-layout.ts'
 
 export interface PopupLink {
   readonly url: string
@@ -16,7 +17,7 @@ export interface PopupLink {
 
 export function popupLinkField(initial: PopupLink, onChange: (link: PopupLink) => void): HTMLElement {
   const field = el('div', { class: 'ep-field' })
-  field.append(el('label', { text: '移行先URL（押したときに移る先）' }))
+  field.append(el('label', { text: LINK_LABEL }))
   const input = document.createElement('input')
   input.type = 'text'
   input.placeholder = 'https://'
@@ -47,7 +48,7 @@ export function popupLinkField(initial: PopupLink, onChange: (link: PopupLink) =
     opts,
     el('p', {
       style: 'margin:6px 0 0;font-size:12px;color:#6B7280',
-      text: 'ポップアップのどこを押しても、このURLへ移ります（中のボタンに別のリンク先があれば、ボタンはそちら）。空にすると移りません。',
+      text: 'ポップアップのどこを押しても、このURLへ移ります（中の画像やボタンに別の移行先URLがあれば、そこを押したときはそちら）。空にすると移りません。',
     }),
   )
   return field

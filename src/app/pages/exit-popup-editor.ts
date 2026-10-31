@@ -2,7 +2,8 @@
  * 離脱防止・表示直後ポップアップの編集画面（exit-popup.ts から分離）。
  *
  * 中身（見た目）は「中身を編集」から Widget編集と同じ画面で直す（2026-09-24・本人の決定「中身だけWidget編集で」）。
- * タブ（基本 / 表示 / 位置 / 出し分け / コード）は exit-popup-editor-tabs.ts、上の操作は popup-editor-header.ts。
+ * タブ（基本 / 表示 / 位置 / 出し分け / コード）は exit-popup-editor-tabs.ts（並びは3種類で同じ表＝popup-editor-layout.ts）、
+ * 上の操作は popup-editor-header.ts。
  *
  * 保存したら、すぐ配信に出る（2026-10-31 本人「わざわざ 下書き反映 本番反映 これ操作するのだるいから、
  * オンオフのボタンはあるし、追加したら反映でいいよ」で下書きと本番をやめた）:
@@ -17,7 +18,8 @@ import { popupApi, type ExitPopup } from '../api-popups.ts'
 import { T, el, toast } from '../ui.ts'
 import { PRESETS } from './exit-popup-presets.ts'
 import { popupKindOf, type PopupPageState } from './exit-popup-state.ts'
-import { EDITOR_TABS, renderEditorTab, type EditorTab } from './exit-popup-editor-tabs.ts'
+import { renderEditorTab } from './exit-popup-editor-tabs.ts'
+import { EDITOR_TABS, type EditorTab } from './popup-editor-layout.ts'
 import { lpPreviewUrl, openPopupStudio } from '../panels/popup-studio.ts'
 import { popupContentCard } from './popup-content-card.ts'
 import { runWidgetScripts } from '../panels/widget-run-scripts.ts'
@@ -74,7 +76,7 @@ export function openEditor(state: PopupPageState, popup: ExitPopup): void {
 
   const editor = el('div', { class: 'ep-editor' })
 
-  /** 保存（中身の「ポップアップに反映」も同じ・すぐ配信に出る）。保存できたら true */
+  /** 保存（「中身を編集」の「保存」も同じ・すぐ配信に出る）。保存できたら true */
   const save = async (): Promise<boolean> => {
     try {
       const { exit_popup } = await popupApi.updateExitPopup(state.abTestUid, popup.uid, exitDraftPatch(draft))
@@ -96,6 +98,7 @@ export function openEditor(state: PopupPageState, popup: ExitPopup): void {
     },
     onPreview: () => previewPopup(draft),
     onCheckDraft: () => openDraftCheck(state.abTestUid, popup.uid, async () => (isDirty() ? save() : true)),
+    onPlace: () => openPlacer(),
     onSave: save,
     onDuplicate: async () => {
       try {
@@ -140,8 +143,8 @@ export function openEditor(state: PopupPageState, popup: ExitPopup): void {
           draft.scroll_trigger = true
           draft.scroll_position = scrollPct
         }
-        renderEditorTab(body, draft, activeTab, openPlacer)
-        toast('決めました。「保存」を押すと配信に出ます')
+        renderEditorTab(body, draft, activeTab)
+        toast('入れました。「保存」を押すと配信に出ます')
       },
     })
 
@@ -155,7 +158,7 @@ export function openEditor(state: PopupPageState, popup: ExitPopup): void {
     renderWidth: 500,
     ...(presetDef === undefined ? {} : { emptyArt: presetDef.thumbnailSvg }),
     onEdit: () => {
-      // つまんで置いた場所（「ポップアップに反映」で保存する。反映せずに戻れば捨てる・指示39）
+      // つまんで置いた場所（「中身を編集」の「保存」で保存する。保存せずに戻れば捨てる・指示39）
       let freePlace = draft.free_position
       openPopupStudio({
         html: draft.html,
@@ -216,13 +219,13 @@ export function openEditor(state: PopupPageState, popup: ExitPopup): void {
       activeTab = tab.id
       for (const b of tabBar.querySelectorAll('.ep-editor-tab')) b.classList.remove('active')
       btn.classList.add('active')
-      renderEditorTab(body, draft, activeTab, openPlacer)
+      renderEditorTab(body, draft, activeTab)
     })
     tabBar.append(btn)
   }
   editor.append(tabBar)
   editor.append(body)
-  renderEditorTab(body, draft, activeTab, openPlacer)
+  renderEditorTab(body, draft, activeTab)
 
   state.root.append(editor)
 }

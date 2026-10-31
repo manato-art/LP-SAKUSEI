@@ -37,7 +37,7 @@ export function sampleLinkSection(deps: SampleLinkDeps): SampleLinkSection {
   const wrap = node('div', 'ncf-sample-link ncf-field')
   wrap.hidden = true
   const controlId = `ncsl-${(idSeq += 1)}`
-  const label = node('label', 'ncf-label', 'この要素全体のリンク先')
+  const label = node('label', 'ncf-label', 'この要素全体の移行先URL')
   label.htmlFor = controlId
   const input = node('input', 'ncf-input')
   input.type = 'url'
@@ -48,9 +48,9 @@ export function sampleLinkSection(deps: SampleLinkDeps): SampleLinkSection {
   const note = node(
     'span',
     'ncf-note',
-    '要素のどこを押しても、このリンク先へ移ります（中のボタンに別のリンク先が入っていれば、ボタンはそちらへ）。' +
+    '要素のどこを押しても、この移行先URLへ移ります（中のボタンに別の移行先URLが入っていれば、ボタンはそちらへ）。' +
       '入れたら Enter か、欄の外を押すと入ります。空にするとリンクを外します。' +
-      'ボタンだけにしたいときは、左でボタンを押して「ボタンのリンク先」に入れてください。',
+      'ボタンだけにしたいときは、左でボタンを押して「ボタンの移行先URL」に入れてください。',
   )
   wrap.append(label, input, warn, note)
 

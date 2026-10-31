@@ -121,6 +121,10 @@ export function injectPopupCss(): void {
     .ep-row > .ep-field { flex:1; }
     .ep-toggle-row { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
     .ep-toggle-label { font-size:13px; }
+    /* その種類で使えない設定・スイッチがオフの欄は薄くする（隠さない・触れなくするのは disabled＝popup-editor-layout.ts の setOff） */
+    .ep-field-off { opacity:.5; }
+    .ep-field-off .ep-toggle, .ep-field-off input, .ep-field-off select { cursor:not-allowed; }
+    .ep-off-note { margin:2px 0 0; font-size:12px; line-height:1.6; color:#374151; }
     .ep-position-picker { width:200px; height:300px; background:#222; border-radius:6px; position:relative; cursor:crosshair; }
     .ep-position-dot { width:16px; height:16px; background:${T.primary}; border:2px solid #fff; border-radius:50%; position:absolute; transform:translate(-50%,-50%); box-shadow:0 1px 4px rgba(0,0,0,.3); pointer-events:none; }
     .ep-device-row { display:flex; align-items:center; gap:16px; padding:8px 0; border-bottom:1px solid #f0f0f0; }
@@ -132,11 +136,14 @@ export function injectPopupCss(): void {
     .ep-html-tab:last-child { border-radius:0; }
     .ep-html-tab:hover { color:#ccc; }
     .ep-html-tab.active { color:#fff; border-bottom-color:#1976d2; }
+    .ep-html-tab.off { color:#5b5b5b; }
     .ep-html-code-wrap { background:#151515; border-radius:0 0 4px 4px; overflow:hidden; }
     .ep-html-code-inner { display:flex; min-height:300px; }
-    .ep-html-gutter { width:40px; background:#151515; border-right:1px solid #333; padding:10px 6px 10px 0; text-align:right; font:12px/1.6 "SF Mono",Menlo,monospace; color:#555; user-select:none; flex-shrink:0; overflow:hidden; }
+    .ep-html-gutter { width:40px; background:#151515; border-right:1px solid #333; padding:10px 6px 10px 0; text-align:right; font:12px/1.6 "SF Mono",Menlo,monospace; color:#555; user-select:none; flex-shrink:0; overflow:hidden; white-space:pre; }
     .ep-html-textarea { position:relative; z-index:1; width:100%; height:100%; border:none; resize:none; padding:10px 12px; font:12px/1.6 "SF Mono",Menlo,monospace; color:transparent; caret-color:#eeffff; background:transparent; outline:none; white-space:pre; tab-size:2; box-sizing:border-box; }
     /* 指示177: 透明テキスト方式なので、選択背景が不透明だと下の色付きコードが隠れる */
+    /* コードの欄は .ep-field の中にある（popup-editor-parts.ts の codeField）。ふつうの入力欄の枠・高さを当てない */
+    .ep-field .ep-html-textarea { min-height:0; border:none; border-radius:0; resize:none; padding:10px 12px; font:12px/1.6 "SF Mono",Menlo,monospace; }
     .ep-html-textarea::selection { background:rgba(88,150,255,.34); color:transparent; }
     .ep-html-textarea::-moz-selection { background:rgba(88,150,255,.34); color:transparent; }
     .ep-html-copy { display:flex; justify-content:flex-end; margin:0 0 8px; }
@@ -182,6 +189,7 @@ export function injectPositionGridCss(): void {
     .ep-pos-cell:nth-child(7){ border-bottom-left-radius:9px; } .ep-pos-cell:last-child{ border-bottom-right-radius:9px; }
     .ep-pos-cell:hover { background:#39414f; color:#fff; }
     .ep-pos-cell.active { background:${T.primary}; color:#fff; }
+    .ep-pos-cell:disabled { background:#2a303c; color:#4b5260; cursor:not-allowed; }
     .ep-pos-preview { position:relative; flex:1; min-width:220px; height:200px; border:1px solid #e5e5ea;
       border-radius:10px; background:#f7f8fa; overflow:hidden; }
     .ep-pos-preview-bar { position:absolute; width:64px; height:22px; border-radius:6px; background:${T.primary};

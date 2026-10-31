@@ -5,7 +5,7 @@
  * 画面の組み立ては widget-studio.ts の mountStudio と同じ（左＝見え方・右＝部品・書式のツールバー・補助線…）。
  * 違うのは2つだけ:
  *   - 見たまま画面の枠: 離脱防止＝暗い地の上に最大500pxの箱／追従型の帯＝LPと同じ620px／追従型の角＝中身の幅
- *   - 右上のボタン: 「ポップアップに反映」＝書き出したHTMLを渡して保存（保存できたら閉じる）
+ *   - 右上のボタン: 「保存」＝書き出したHTMLを渡して保存（保存できたら閉じる・すぐ配信に出るので、編集画面と同じ「保存」の言葉にした・2026-10-31）
  * ライブラリの見本・作成したWidget・お気に入りも部品に入れられる（2026-09-24 本人「やって」）。
  * ポップアップの画面にはLPの編集が無いので、ライブラリは「見本を選ぶだけ」で開く（LPへ入れる入口は出さない）。
  * 名前・配信・表示条件・位置・出し分けは、今までどおりポップアップの編集画面で直す。
@@ -54,8 +54,9 @@ export function openPopupStudio(options: PopupStudioOptions): void {
     title: 'ポップアップの中身',
     subtitle: name,
     badge: options.badge,
-    backLabel: 'ポップアップの設定へ',
-    primaryLabel: 'ポップアップに反映',
+    // 本番に出るボタンは、どの画面でも「保存」（編集画面の「保存」と同じ・2026-10-31 案A「言葉をそろえる」）
+    backLabel: '戻る',
+    primaryLabel: '保存',
     libraryQuill: null,
     previewFrame: options.frame,
     ...(options.underlay === undefined ? {} : { underlay: options.underlay }),

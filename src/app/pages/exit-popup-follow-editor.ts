@@ -1,18 +1,17 @@
 /**
  * 追従型ポップアップの編集画面（exit-popup-follow.ts から分離・2026-09-24）。
  *
- * 中身（HTML）は「中身を編集」＝Widget編集と同じ画面で直す。タブは 表示設定 / 出し分け / コード（CSS・JavaScript）。
- * 上の操作（戻る・プレビュー・LPの上で確認・保存・⋯）は離脱防止と同じ popup-editor-header.ts。
+ * 中身（HTML）は「中身を編集」＝Widget編集と同じ画面で直す。タブは離脱防止・表示直後と同じ5つ（基本 / 表示 / 位置 /
+ * 出し分け / コード）で、中身は exit-popup-follow-tabs.ts（並びは3種類で同じ表＝popup-editor-layout.ts・2026-10-31 案A）。
+ * 上の操作（戻る・プレビュー・LPの上で確認・LPの上で決める・保存・⋯）は離脱防止と同じ popup-editor-header.ts。
  *
  * 「保存」したら、すぐ配信に出る（配信ONのとき・2026-10-31 下書きと本番をやめた）。
  * 配信のON/OFFは変えたその場で保存する（一覧のカードと同じ）。
  */
 import { popupApi, type FollowPopup } from '../api-popups.ts'
 import { T, el, toast } from '../ui.ts'
-import { highlight } from '../panels/syntax-highlight.ts'
 import { FOLLOW_PRESETS } from './follow-popup-presets.ts'
 import type { PopupPageState } from './exit-popup-state.ts'
-import { makeNumberField, updateGutter } from './exit-popup-fields.ts'
 import { lpPreviewUrl, openPopupStudio } from '../panels/popup-studio.ts'
 import { popupContentCard } from './popup-content-card.ts'
 import { runWidgetScripts } from '../panels/widget-run-scripts.ts'
@@ -21,18 +20,8 @@ import { followDraftPatch, isFollowDraftDirty } from './popup-draft.ts'
 import { openDraftCheck } from './exit-popup-editor.ts'
 import { freeKindOf, freePlaceCss } from '../../shared/follow-free-place.ts'
 import { gridPlaceOfFollow, openLpPlacer } from './popup-lp-placer.ts'
-import { popupLinkField } from './popup-link-field.ts'
-
-type FollowEditorTab = 'settings' | 'device' | 'code'
-const FOLLOW_EDITOR_TABS: readonly { id: FollowEditorTab; label: string }[] = [
-  { id: 'settings', label: '表示設定' },
-  { id: 'device', label: '出し分け' },
-  // 中身の HTML は「中身を編集」＝Widget編集と同じ画面で直す（2026-09-24）。ここは CSS と動きの JavaScript
-  { id: 'code', label: 'コード' },
-]
-
-/** 表示位置の「つまんで置いた場所」（保存する値ではない。選んでいる間は position も置いた場所もそのまま） */
-const FREE_OPTION = 'free'
+import { EDITOR_TABS, offNote, type EditorTab } from './popup-editor-layout.ts'
+import { renderFollowTab } from './exit-popup-follow-tabs.ts'
 
 /** 画面の上端・下端の帯は画面の幅いっぱい（見たまま画面はLPと同じ620px）、角は中身の幅 */
 export const isCornerPosition = (position: string): boolean => position === 'bottom-right' || position === 'bottom-left'
@@ -54,7 +43,7 @@ export function openFollowEditor(state: PopupPageState, fp: FollowPopup): void {
 
   const editor = el('div', { class: 'ep-editor' })
 
-  /** 保存（中身の「ポップアップに反映」も同じ・すぐ配信に出る）。保存できたら true */
+  /** 保存（「中身を編集」の「保存」も同じ・すぐ配信に出る）。保存できたら true */
   const save = async (): Promise<boolean> => {
     try {
       const { follow_popup } = await popupApi.updateFollowPopup(state.abTestUid, fp.uid, followDraftPatch(draft))
@@ -76,6 +65,7 @@ export function openFollowEditor(state: PopupPageState, fp: FollowPopup): void {
     },
     onPreview: () => previewFollowPopup(draft),
     onCheckDraft: () => openDraftCheck(state.abTestUid, fp.uid, async () => (isDirty() ? save() : true)),
+    onPlace: () => openPlacer(),
     onSave: save,
     onDuplicate: async () => {
       try {
@@ -109,7 +99,7 @@ export function openFollowEditor(state: PopupPageState, fp: FollowPopup): void {
     renderWidth: isCornerPosition(draft.position) ? 360 : 620,
     ...(presetDef === undefined ? {} : { emptyArt: presetDef.thumbnailSvg }),
     onEdit: () => {
-      // つまんで置いた場所（「ポップアップに反映」で保存する。反映せずに戻れば捨てる）
+      // つまんで置いた場所（「中身を編集」の「保存」で保存する。保存せずに戻れば捨てる）
       let freePlace = draft.free_position
       openPopupStudio({
         html: draft.html,
@@ -137,7 +127,7 @@ export function openFollowEditor(state: PopupPageState, fp: FollowPopup): void {
           draft.css = ''
           draft.free_position = freePlace
           content.refresh()
-          renderFollowEditorTab(body, draft)
+          renderFollowTab(body, draft, activeTab)
           return save()
         },
       })
@@ -164,8 +154,13 @@ export function openFollowEditor(state: PopupPageState, fp: FollowPopup): void {
     )
   })
   deliveryRow.append(el('span', { style: 'font-size:13px', text: '配信' }), editorToggle)
-  deliveryRow.append(el('span', { style: `font-size:11px;color:${T.sub}`, text: '配信のON/OFFは、変えるとすぐ反映されます' }))
+  deliveryRow.append(el('span', { style: `font-size:11px;color:${T.sub}`, text: '配信は、変えるとすぐ反映されます' }))
   fields.append(deliveryRow)
+
+  // 割合は追従型には無い（配信ONの物が全部出る＝delivery-popups.ts）。離脱防止・表示直後と同じ所に薄く出して書く
+  const ratioField = el('div', { class: 'ep-field ep-field-off', style: 'margin-bottom:0' })
+  ratioField.append(el('label', { text: '割合（%）' }), offNote('追従型は、配信ONのものが全部出ます（割合は、離脱防止・表示直後で使えます）'))
+  fields.append(ratioField)
 
   const nameField = el('div', { class: 'ep-field', style: 'margin-bottom:0' })
   nameField.append(el('label', { text: '名前' }))
@@ -194,217 +189,32 @@ export function openFollowEditor(state: PopupPageState, fp: FollowPopup): void {
       onApply: ({ place, scrollPct }) => {
         if (place !== undefined) draft.free_position = place
         if (scrollPct !== undefined) draft.show_after_scroll = scrollPct
-        renderFollowEditorTab(body, draft)
-        toast('決めました。「保存」を押すと配信に出ます')
+        renderFollowTab(body, draft, activeTab)
+        toast('入れました。「保存」を押すと配信に出ます')
       },
     })
 
   // ── タブ ──
   const tabBar = el('div', { class: 'ep-editor-tabs' })
   const body = el('div', { class: 'ep-editor-body' })
-  let activeTab: FollowEditorTab = 'settings'
+  let activeTab: EditorTab = 'basic'
 
-  for (const tab of FOLLOW_EDITOR_TABS) {
+  for (const tab of EDITOR_TABS) {
     const btn = el('button', { class: `ep-editor-tab${tab.id === activeTab ? ' active' : ''}`, text: tab.label })
     btn.dataset['tab'] = tab.id
     btn.addEventListener('click', () => {
       activeTab = tab.id
       for (const b of tabBar.querySelectorAll('.ep-editor-tab')) b.classList.remove('active')
       btn.classList.add('active')
-      renderFollowEditorTab(body, draft)
+      renderFollowTab(body, draft, activeTab)
     })
     tabBar.append(btn)
   }
   editor.append(tabBar)
   editor.append(body)
-  renderFollowEditorTab(body, draft)
+  renderFollowTab(body, draft, activeTab)
 
   state.root.append(editor)
-
-  function renderFollowEditorTab(container: HTMLElement, d: FollowPopup): void {
-    container.innerHTML = ''
-    switch (activeTab) {
-      case 'settings': renderFollowSettingsTab(container, d, openPlacer); break
-      case 'device': renderFollowDeviceTab(container, d); break
-      case 'code': renderFollowCodeTab(container, d); break
-    }
-  }
-}
-function renderFollowSettingsTab(body: HTMLElement, draft: FollowPopup, openPlacer: () => void): void {
-  // LP を実際にスクロールして「ここまで読んだら出す」と出す場所を決める（指示39・popup-lp-placer.ts）
-  const placer = el('div', { style: 'margin-bottom:16px' })
-  const placerBtn = el('button', { class: 'ep-editor-btn-draft', text: 'LPの上で決める' })
-  placerBtn.type = 'button'
-  placerBtn.addEventListener('click', openPlacer)
-  placer.append(
-    placerBtn,
-    el('p', { style: `margin:6px 0 0;font-size:12px;color:${T.sub}`, text: 'LP を実際にスクロールして「ここまで読んだら出す」と、出す場所（つまんで動かす）を決めます' }),
-  )
-  body.append(placer)
-
-  // 移行先URL（帯のどこを押してもそこへ移る・指示44）
-  body.append(
-    popupLinkField({ url: draft.link_url, target: draft.link_target }, (link) => {
-      draft.link_url = link.url
-      draft.link_target = link.target
-    }),
-  )
-
-  // 表示位置
-  const posField = el('div', { class: 'ep-field' })
-  posField.append(el('label', { text: '表示位置' }))
-  const posSelect = document.createElement('select')
-  const posOptions: { value: string; label: string }[] = [
-    { value: 'top', label: '上部（画面上端に固定）' },
-    { value: 'bottom', label: '下部（画面下端に固定）' },
-    { value: 'bottom-right', label: '右下（フローティング）' },
-    { value: 'bottom-left', label: '左下（フローティング）' },
-  ]
-  for (const opt of posOptions) {
-    const o = document.createElement('option')
-    o.value = opt.value
-    o.textContent = opt.label
-    if (opt.value === draft.position && draft.free_position === null) o.selected = true
-    posSelect.append(o)
-  }
-  // つまんで置いた場所（「中身を編集」の「LPの上に重ねて見る」で動かす）。ほかを選ぶと置いた場所を消して、その端に戻す
-  if (draft.free_position !== null) {
-    const o = document.createElement('option')
-    o.value = FREE_OPTION
-    o.textContent = 'つまんで置いた場所（「中身を編集」の画面で動かせます）'
-    o.selected = true
-    posSelect.append(o)
-  }
-  posSelect.addEventListener('change', () => {
-    if (posSelect.value === FREE_OPTION) return
-    draft.position = posSelect.value as typeof draft.position
-    draft.free_position = null
-  })
-  posField.append(posSelect)
-  body.append(posField)
-
-  // 表示アニメーション
-  const animField = el('div', { class: 'ep-field' })
-  animField.append(el('label', { text: '表示アニメーション' }))
-  const animSelect = document.createElement('select')
-  for (const opt of ['slideUp', 'slideDown', 'fade', 'none']) {
-    const o = document.createElement('option')
-    o.value = opt
-    o.textContent = opt
-    if (opt === draft.animation) o.selected = true
-    animSelect.append(o)
-  }
-  animSelect.addEventListener('change', () => { draft.animation = animSelect.value })
-  animField.append(animSelect)
-  body.append(animField)
-
-  // スクロール%で表示
-  // LP を何%まで読んだら出すか（0＝開いてすぐ）。名前は離脱防止と同じ「↓まで読んだら表示」（指示40）
-  body.append(makeNumberField('↓まで読んだら表示（%・0はすぐ）', draft.show_after_scroll, (v) => { draft.show_after_scroll = v }))
-
-  // 閉じるボタン
-  const closeRow = el('div', { class: 'ep-toggle-row' })
-  const closeToggle = el('button', { class: `ep-toggle${draft.show_close_button ? ' on' : ''}` })
-  closeToggle.addEventListener('click', () => {
-    draft.show_close_button = !draft.show_close_button
-    closeToggle.classList.toggle('on', draft.show_close_button)
-  })
-  closeRow.append(closeToggle, el('span', { class: 'ep-toggle-label', text: '閉じるボタンを表示' }))
-  body.append(closeRow)
-}
-function renderFollowDeviceTab(body: HTMLElement, draft: FollowPopup): void {
-  body.append(el('div', { class: 'ep-field' }, [el('label', { text: 'デバイス別の表示制御' })]))
-  const devices: { key: 'device_sp' | 'device_tablet' | 'device_pc'; label: string }[] = [
-    { key: 'device_sp', label: 'スマートフォン (SP)' },
-    { key: 'device_tablet', label: 'タブレット' },
-    { key: 'device_pc', label: 'PC' },
-  ]
-  for (const device of devices) {
-    const row = el('div', { class: 'ep-device-row' })
-    const name = el('div', { class: 'ep-device-name', text: device.label })
-    const toggle = el('button', { class: `ep-toggle${draft[device.key] ? ' on' : ''}` })
-    toggle.addEventListener('click', () => {
-      draft[device.key] = !draft[device.key]
-      toggle.classList.toggle('on', draft[device.key])
-    })
-    row.append(name, toggle)
-    body.append(row)
-  }
-}
-/** コード（中身の HTML は「中身を編集」で直す。ここは CSS と動きの JavaScript） */
-function renderFollowCodeTab(body: HTMLElement, draft: FollowPopup): void {
-  type HtmlSubTab = 'css' | 'javascript'
-  const subTabs: { id: HtmlSubTab; label: string }[] = [
-    { id: 'css', label: 'CSS' },
-    { id: 'javascript', label: 'JavaScript' },
-  ]
-
-  let activeSubTab: HtmlSubTab = 'css'
-  const tabBar = el('div', { class: 'ep-html-tabs' })
-  const editorArea = el('div')
-
-  function renderSubTab(): void {
-    editorArea.innerHTML = ''
-    const wrap = el('div', { class: 'ep-html-code-wrap' })
-    const inner = el('div', { class: 'ep-html-code-inner' })
-
-    const gutter = el('div', { class: 'ep-html-gutter' })
-    const content = draft[activeSubTab]
-    updateGutter(gutter, content)
-
-    // overlay パターン: pre(ハイライト) + textarea(入力)
-    const editorBox = el('div', { class: 'ep-html-editor-box' })
-    const pre = document.createElement('pre')
-    pre.className = 'ep-html-highlight'
-    pre.innerHTML = highlight(content, activeSubTab)
-
-    const textarea = document.createElement('textarea')
-    textarea.className = 'ep-html-textarea'
-    textarea.spellcheck = false
-    textarea.value = content
-
-    const sync = (): void => {
-      if (activeSubTab === 'css') draft.css = textarea.value
-      else if (activeSubTab === 'javascript') draft.javascript = textarea.value
-      pre.innerHTML = highlight(textarea.value, activeSubTab)
-      updateGutter(gutter, textarea.value)
-    }
-    textarea.addEventListener('input', sync)
-    textarea.addEventListener('scroll', () => {
-      pre.style.transform = `translate(-${textarea.scrollLeft}px,-${textarea.scrollTop}px)`
-      gutter.scrollTop = textarea.scrollTop
-    })
-    textarea.addEventListener('keydown', (ev) => {
-      if (ev.key === 'Tab') {
-        ev.preventDefault()
-        const start = textarea.selectionStart
-        const end = textarea.selectionEnd
-        textarea.value = textarea.value.substring(0, start) + '  ' + textarea.value.substring(end)
-        textarea.selectionStart = textarea.selectionEnd = start + 2
-        sync()
-      }
-    })
-
-    editorBox.append(pre, textarea)
-    inner.append(gutter, editorBox)
-    wrap.append(inner)
-    editorArea.append(wrap)
-  }
-
-  for (const sub of subTabs) {
-    const btn = el('button', { class: `ep-html-tab${sub.id === activeSubTab ? ' active' : ''}`, text: sub.label })
-    btn.addEventListener('click', () => {
-      activeSubTab = sub.id
-      for (const b of tabBar.querySelectorAll('.ep-html-tab')) b.classList.remove('active')
-      btn.classList.add('active')
-      renderSubTab()
-    })
-    tabBar.append(btn)
-  }
-
-  body.append(tabBar)
-  body.append(editorArea)
-  renderSubTab()
 }
 export function previewFollowPopup(fp: FollowPopup | Partial<FollowPopup>): void {
   document.getElementById('fp-preview-overlay')?.remove()

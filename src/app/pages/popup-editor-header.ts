@@ -2,7 +2,10 @@
  * ポップアップの編集画面の上（離脱防止・表示直後・追従型で共通・2026-09-24 監査 15・26）。
  *
  *   上段: 戻る｜ポップアップ
- *   下段: プレビュー・LPの上で確認｜保存・⋯（複製／削除）
+ *   下段: プレビュー・LPの上で確認・LPの上で決める｜保存・⋯（複製／削除）
+ *
+ * 「LPの上で決める」（出す場所・ここまで読んだら出す・指示39）は、前はタブの中の2〜3か所にあった。3種類とも
+ * ここ1つにした（2026-10-31 案A「3種類を同じ型に」）。
  *
  * 「保存」したら、すぐ配信に出る（配信ONのとき）。2026-10-31 本人「わざわざ 下書き反映 本番反映 これ操作するのだるいから、
  * オンオフのボタンはあるし、追加したら反映でいいよ」で、下書き反映・本番反映の2つを「保存」1つにした。
@@ -22,6 +25,8 @@ export interface PopupEditorHeaderOptions {
   readonly onPreview: () => void
   /** LPの上で確認（保存した中身をLPの上に出して見る） */
   readonly onCheckDraft: () => Promise<void>
+  /** LPの上で決める（LP をスクロールして、出す場所・ここまで読んだら出すを決める・popup-lp-placer.ts） */
+  readonly onPlace?: () => void
   /** 保存（すぐ配信に出る）。保存できたら true */
   readonly onSave: () => Promise<boolean>
   readonly onDuplicate: () => Promise<void>
@@ -92,6 +97,14 @@ export function buildPopupEditorHeader(options: PopupEditorHeaderOptions): {
   checkDraftBtn.title = '保存した中身を、LPの上に出して新しいタブで確かめます（配信OFFでも出ます）'
   checkDraftBtn.addEventListener('click', () => busy(checkDraftBtn, '開いています…', options.onCheckDraft))
   btnLeft.append(previewBtn, checkDraftBtn)
+  if (options.onPlace !== undefined) {
+    const onPlace = options.onPlace
+    const placeBtn = el('button', { class: 'ep-editor-btn-draft', text: 'LPの上で決める' })
+    placeBtn.type = 'button'
+    placeBtn.title = 'LP を実際にスクロールして、出す場所（つまんで動かす）と「ここまで読んだら出す」を決めます'
+    placeBtn.addEventListener('click', () => onPlace())
+    btnLeft.append(placeBtn)
+  }
 
   const btnRight = el('div', { class: 'ep-editor-btn-group' })
   const saveBtn = el('button', { class: 'ep-editor-btn-prod', text: '保存' })

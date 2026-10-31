@@ -473,7 +473,7 @@ function buildHeader(options: {
     `color:${COLOR.brand};padding:0 12px;font:700 12.5px/1 ${FONT};cursor:pointer`
   registerBtn.addEventListener('click', options.onRegister)
 
-  // 「更新する」「LPに入れる」「ポップアップに反映」
+  // 「更新する」「LPに入れる」「保存」（ポップアップ）
   const primaryBtn = document.createElement('button')
   primaryBtn.type = 'button'
   primaryBtn.textContent = options.primaryLabel

@@ -4,7 +4,8 @@
  * → 本人の選択「つまんで好きな位置（追従型と同じやり方）」「ここまで読んだら表示は離脱防止と追従型」）。
  *
  * スマホの大きさ（375×667）の LP を実際にスクロールし、「ここまで読んだら出す」を押すと、その時の読んだ割合を出すきっかけにする。
- * 同じ画面で、ポップアップをつまんで出す場所へ動かす（popup-free-drag.ts と同じ手）。「決める」で編集中の形に入れる（保存は「保存」）。
+ * 同じ画面で、ポップアップをつまんで出す場所へ動かす（popup-free-drag.ts と同じ手）。「この内容で戻る」で編集中の形に入れる
+ * （まだ配信には出ない。出すのは編集画面の「保存」＝本番に出るボタンは「保存」だけ・2026-10-31 案A）。
  * 読んだ割合は配信と同じ数え方（スクロールした量 ÷ スクロールできる量・delivery-popup-html.ts の scrolledPct）。
  * ポップアップの中身は、まわりと見た目が混ざらないよう shadow root に描く（スクリプトは動かさない＝見た目だけ）。
  */
@@ -61,7 +62,7 @@ export interface LpPlacerOptions {
   /** 「ここまで読んだら出す」を使うか。使うなら、いま決めてある割合（null＝決めていない） */
   readonly scroll: { readonly pct: number | null } | null
   /**
-   * 「決める」を押したとき。place: undefined＝動かしていない／null＝元の位置（9か所）に戻した／値＝置いた場所。
+   * 「この内容で戻る」を押したとき。place: undefined＝動かしていない／null＝元の位置（9か所）に戻した／値＝置いた場所。
    * scrollPct: undefined＝変えていない／値＝この割合まで読んだら出す
    */
   readonly onApply: (result: { readonly place: FreePosition | null | undefined; readonly scrollPct: number | undefined }) => void
@@ -163,7 +164,7 @@ export function openLpPlacer(options: LpPlacerOptions): void {
   const buttons = el('div', { style: 'display:flex;gap:8px;margin-top:auto' })
   const cancel = el('button', { text: 'やめる', class: 'ep-editor-btn-draft' })
   cancel.type = 'button'
-  const apply = el('button', { text: '決める', class: 'ep-editor-btn-prod' })
+  const apply = el('button', { text: 'この内容で戻る', class: 'ep-editor-btn-prod' })
   apply.type = 'button'
   buttons.append(cancel, apply)
   side.append(buttons)

@@ -112,7 +112,8 @@ function mediaLinkField(
   }
   input.addEventListener('input', write)
   tabBox.addEventListener('change', write)
-  const field = labeled('リンク先（押したときに移る先）', input)
+  // 名前はポップアップ・ほかの欄と同じ「移行先URL」（2026-10-31 案A「押したら移る先は全部この名前」）
+  const field = labeled('移行先URL（押したときに移る先）', input)
   field.append(warn, tab)
   wrap.append(field)
   wrap.hidden = slot.go !== null
@@ -538,8 +539,8 @@ function slotEl(
           warn.hidden = warn.textContent === ''
           if (warn.hidden) apply(slot.id, { kind: 'href', value: url })
         })
-        // 要素全体のリンク先（sample-link-field.ts）と見分けられるように「ボタンのリンク先」（2026-10-31）
-        hrefField = labeled(`${noun}のリンク先`, href)
+        // 要素全体の移行先URL（sample-link-field.ts）と見分けられるように「ボタンの移行先URL」（2026-10-31）
+        hrefField = labeled(`${noun}の移行先URL`, href)
         hrefField.append(warn)
         // 画面へ移るあいだは、押してもリンク先へは行かない（欄を隠す）
         hrefField.hidden = !slot.internal && slot.go !== null
