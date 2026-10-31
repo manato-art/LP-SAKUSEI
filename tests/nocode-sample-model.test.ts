@@ -171,7 +171,10 @@ describe('画面①②…に作り変えた見本の中の画面', () => {
 describe('押したら画面へ移せる要素（画像・動画・ボタン・囲み）', () => {
   it('画像は、押したら移る先（data-nc-go）を持つ', () => {
     const root = el('DIV', {}, [el('IMG', { src: 'a.png', alt: '丸', 'data-nc-go': 's3' })])
-    expect(sampleSlots(root, [])).toEqual([{ kind: 'image', id: 'e0', src: 'a.png', alt: '丸', step: null, go: 's3', internal: false, inControl: false }])
+    // リンク先（link・newTab）は画像に書いた data-link-url（無ければ空・新しいタブ・指示44）
+    expect(sampleSlots(root, [])).toEqual([
+      { kind: 'image', id: 'e0', src: 'a.png', alt: '丸', step: null, go: 's3', internal: false, inControl: false, link: '', newTab: true },
+    ])
   })
 
   it('ボタンの中の画像（画像のボタン）は、ボタンの方で押したときを決める（画像の方には出さない）', () => {
@@ -183,7 +186,9 @@ describe('押したら画面へ移せる要素（画像・動画・ボタン・�
 
   it('動画も一覧に出す（押したら移る先を持つ）', () => {
     const root = el('DIV', {}, [el('VIDEO', { src: 'a.mp4', 'data-nc-go': 's2' })])
-    expect(sampleSlots(root, [])).toEqual([{ kind: 'video', id: 'e0', src: 'a.mp4', step: null, go: 's2', internal: false, inControl: false }])
+    expect(sampleSlots(root, [])).toEqual([
+      { kind: 'video', id: 'e0', src: 'a.mp4', step: null, go: 's2', internal: false, inControl: false, link: '', newTab: true },
+    ])
     const withSource = el('DIV', {}, [el('VIDEO', {}, [el('SOURCE', { src: 'b.mp4' })])])
     expect(sampleSlots(withSource, [])[0]).toMatchObject({ kind: 'video', src: 'b.mp4', go: null })
   })

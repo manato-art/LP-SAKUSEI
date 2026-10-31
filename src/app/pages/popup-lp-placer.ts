@@ -145,7 +145,12 @@ export function openLpPlacer(options: LpPlacerOptions): void {
     })
     side.append(now, here, set)
   }
-  side.append(step(`${options.scroll !== null ? '② ' : ''}ポップアップの横の「つまんで動かす」で、出す場所へ動かしてください（スマホと PC で同じ割合の場所に出ます）。`))
+  side.append(
+    step(
+      `${options.scroll !== null ? '② ' : ''}ポップアップの横の「つまんで動かす」で、出す場所へ動かしてください（スマホと PC で同じ割合の場所に出ます）。` +
+        'Ctrl（Mac は ⌘）を押しながら動かすと、真ん中の線が出てぴったり止まります。',
+    ),
+  )
 
   const showPopup = document.createElement('label')
   showPopup.style.cssText = 'display:inline-flex;align-items:center;gap:6px;cursor:pointer;color:#4B5563'

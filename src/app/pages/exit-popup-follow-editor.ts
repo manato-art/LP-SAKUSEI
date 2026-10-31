@@ -21,6 +21,7 @@ import { followDraftPatch, isFollowDraftDirty } from './popup-draft.ts'
 import { openDraftCheck } from './exit-popup-editor.ts'
 import { freeKindOf, freePlaceCss } from '../../shared/follow-free-place.ts'
 import { gridPlaceOfFollow, openLpPlacer } from './popup-lp-placer.ts'
+import { popupLinkField } from './popup-link-field.ts'
 
 type FollowEditorTab = 'settings' | 'device' | 'code'
 const FOLLOW_EDITOR_TABS: readonly { id: FollowEditorTab; label: string }[] = [
@@ -240,6 +241,14 @@ function renderFollowSettingsTab(body: HTMLElement, draft: FollowPopup, openPlac
     el('p', { style: `margin:6px 0 0;font-size:12px;color:${T.sub}`, text: 'LP を実際にスクロールして「ここまで読んだら出す」と、出す場所（つまんで動かす）を決めます' }),
   )
   body.append(placer)
+
+  // 移行先URL（帯のどこを押してもそこへ移る・指示44）
+  body.append(
+    popupLinkField({ url: draft.link_url, target: draft.link_target }, (link) => {
+      draft.link_url = link.url
+      draft.link_target = link.target
+    }),
+  )
 
   // 表示位置
   const posField = el('div', { class: 'ep-field' })

@@ -66,6 +66,10 @@ export interface FollowPopup {
   position: 'top' | 'bottom' | 'bottom-right' | 'bottom-left'
   /** つまんで置いた場所（画面の中で動ける幅の何％か）。null＝選んだ表示位置のまま（2026-10-30・follow-free-place.ts） */
   free_position: FreePosition | null
+  /** 移行先URL（帯のどこを押してもここへ移る・空＝無し・指示44） */
+  link_url: string
+  /** 開き方（新しいタブ／同じタブ） */
+  link_target: '_blank' | '_self'
   show_after_scroll: number
   show_close_button: boolean
   animation: string

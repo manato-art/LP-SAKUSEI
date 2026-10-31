@@ -16,14 +16,32 @@ import { freshUid } from '../store/actions-shared.ts'
 import { makeUid } from '../store/ids.ts'
 import { copyName } from '../store/popups.ts'
 import { parseFreePosition } from '../../src/shared/follow-free-place.ts'
+import { isAllowedLinkUrl } from '../../src/shared/link-html.ts'
 import type { FollowPopup, State } from '../store/types.ts'
 
 export const followPopupsRouter: Router = Router()
 
-/** 返す形（置いた場所が無いときも null で返す＝画面の「保存していない変更があるか」が、項目の有る無しで食い違わないように） */
-function serializeFollowPopup(popup: FollowPopup): Omit<FollowPopup, 'free_position'> & { free_position: FollowPopup['free_position'] | null } {
-  return { ...popup, free_position: popup.free_position ?? null }
+/**
+ * 返す形（置いた場所が無いときも null・移行先URLが無いときも空と新しいタブで返す＝画面の「保存していない変更があるか」が、
+ * 項目の有る無しで食い違わないように）
+ */
+function serializeFollowPopup(popup: FollowPopup): Omit<FollowPopup, 'free_position'> & {
+  free_position: FollowPopup['free_position'] | null
+  link_url: string
+  link_target: '_blank' | '_self'
+} {
+  return { ...popup, free_position: popup.free_position ?? null, link_url: popup.link_url ?? '', link_target: popup.link_target ?? '_blank' }
 }
+
+/** 移行先URL（空＝無し）。開けない住所（javascript: など）は断る */
+function readLinkUrl(body: Record<string, unknown>): { ok: true; value: string | undefined } | { ok: false; message: string } {
+  if (typeof body.link_url !== 'string') return { ok: true, value: undefined }
+  const url = body.link_url.trim()
+  if (url !== '' && !isAllowedLinkUrl(url)) return { ok: false, message: '移行先URLは https:// から始まるURLを入れてください' }
+  return { ok: true, value: url }
+}
+const readLinkTarget = (body: Record<string, unknown>): '_blank' | '_self' | undefined =>
+  body.link_target === '_blank' || body.link_target === '_self' ? body.link_target : undefined
 
 type FollowPosition = FollowPopup['position']
 const POSITIONS: readonly string[] = ['top', 'bottom', 'bottom-right', 'bottom-left']
@@ -91,6 +109,13 @@ followPopupsRouter.put('/ab_tests/:uid/follow_popups/:popup_uid', (req, res) => 
     res.status(422).json(errorEnvelope('validation_failed', free.message))
     return
   }
+  // 移行先URL（指示44）
+  const link = readLinkUrl(body)
+  if (!link.ok) {
+    res.status(422).json(errorEnvelope('validation_failed', link.message))
+    return
+  }
+  const linkTarget = readLinkTarget(body)
   const { free_position: kept, ...existing } = state.followPopups[idx]!
   const freePosition = free === null ? kept : (free.value ?? undefined)
   const updated: FollowPopup = {
@@ -100,6 +125,8 @@ followPopupsRouter.put('/ab_tests/:uid/follow_popups/:popup_uid', (req, res) => 
     ...(typeof body.name === 'string' ? { name: body.name } : {}),
     ...(typeof body.enabled === 'boolean' ? { enabled: body.enabled } : {}),
     ...(isPosition(body.position) ? { position: body.position } : {}),
+    ...(link.value === undefined ? {} : { link_url: link.value }),
+    ...(linkTarget === undefined ? {} : { link_target: linkTarget }),
     ...(typeof body.show_after_scroll === 'number' ? { show_after_scroll: body.show_after_scroll } : {}),
     ...(typeof body.show_close_button === 'boolean' ? { show_close_button: body.show_close_button } : {}),
     ...(typeof body.animation === 'string' ? { animation: body.animation } : {}),

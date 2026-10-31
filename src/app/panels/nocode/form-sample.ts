@@ -81,6 +81,44 @@ const CODE_DELAY_MS = 400
 let idSeq = 0
 const nextId = (): string => `ncs-${(idSeq += 1)}`
 
+/**
+ * 画像・動画の「リンク先」（押したときに移る先・新しいタブで開く）。画像そのものに書く（sample-dom.ts の imageLink）。
+ * 指示44（2026-10-31 本人「画像で入れたポップアップなんだけど、URLを入れることができない」）。ボタンの中の画像はボタンのリンク先で直す（null）。
+ * 「押したとき」で画面へ移るあいだは隠す（ボタンと同じ）
+ */
+function mediaLinkField(
+  slot: Extract<Slot, { kind: 'image' | 'video' }>,
+  apply: (id: string, change: SampleChange) => void,
+): HTMLElement | null {
+  if (slot.inControl) return null
+  const wrap = node('div', 'ncf-sample__media-link')
+  const input = node('input', 'ncf-input')
+  input.type = 'url'
+  input.placeholder = 'https://'
+  input.value = slot.link
+  const warn = node('span', 'ncf-warn')
+  warn.hidden = true
+  const tab = document.createElement('label')
+  tab.style.cssText = 'display:inline-flex;align-items:center;gap:6px;margin-top:6px;font-size:12px;color:#4B5563;cursor:pointer'
+  const tabBox = document.createElement('input')
+  tabBox.type = 'checkbox'
+  tabBox.checked = slot.newTab
+  tab.append(tabBox, document.createTextNode('新しいタブで開く'))
+  const write = (): void => {
+    const url = input.value.trim()
+    warn.textContent = url !== '' && !isAllowedLinkUrl(url) ? 'このリンクは開けません。https:// から始まるURLを書いてください' : ''
+    warn.hidden = warn.textContent === ''
+    if (warn.hidden) apply(slot.id, { kind: 'imageLink', value: url, newTab: tabBox.checked })
+  }
+  input.addEventListener('input', write)
+  tabBox.addEventListener('change', write)
+  const field = labeled('リンク先（押したときに移る先）', input)
+  field.append(warn, tab)
+  wrap.append(field)
+  wrap.hidden = slot.go !== null
+  return wrap
+}
+
 function labeled(label: string, control: HTMLElement): HTMLElement {
   const wrap = node('div', 'ncf-field')
   const id = nextId()
@@ -419,7 +457,11 @@ function slotEl(
       })
       box.append(thumb, change)
       row.append(labeled(slot.alt === '' ? '画像' : `画像（${slot.alt}）`, box))
-      press(slot, 'なし')
+      const link = mediaLinkField(slot, apply)
+      if (link !== null) row.append(link)
+      press(slot, 'なし', (go) => {
+        if (link !== null) link.hidden = go !== null
+      })
       break
     }
     case 'video': {
@@ -458,7 +500,11 @@ function slotEl(
       }
       paint(slot.src)
       row.append(labeled('動画', box))
-      press(slot, 'なし')
+      const link = mediaLinkField(slot, apply)
+      if (link !== null) row.append(link)
+      press(slot, 'なし', (go) => {
+        if (link !== null) link.hidden = go !== null
+      })
       break
     }
     case 'box': {

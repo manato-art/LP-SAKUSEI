@@ -383,6 +383,10 @@ export interface FollowPopup {
    * 帯か小さい物かは position で決まる。無い＝選んだ表示位置のまま（null は保存しない）
    */
   free_position?: FreePosition
+  /** 移行先URL（帯のどこを押してもここへ移る・指示44）。無い・空＝押しても移らない。計測は sb_tracking（離脱防止と同じ） */
+  link_url?: string
+  /** 開き方（無い＝新しいタブ） */
+  link_target?: '_blank' | '_self'
   show_after_scroll: number  // スクロール%で表示（0=即時）
   show_close_button: boolean
   animation: string

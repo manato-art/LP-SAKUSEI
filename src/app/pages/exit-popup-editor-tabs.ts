@@ -102,7 +102,8 @@ function makePopupLinkField(draft: ExitPopup): HTMLElement {
   else rLink.checked = true
   // 指示: ラベルは折り返さず横一列に（white-space:nowrap + flex-shrink:0）
   const lLink = el('label', { style: 'display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;white-space:nowrap;flex-shrink:0' })
-  lLink.append(rLink, el('span', { text: '遷移先URLへ移動' }))
+  // 名前は「移行先URL」（追従型の移行先URLとそろえる・指示44）
+  lLink.append(rLink, el('span', { text: '移行先URLへ移動' }))
   const lClose = el('label', { style: 'display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;white-space:nowrap;flex-shrink:0' })
   lClose.append(rClose, el('span', { text: 'LPに戻る（閉じて元の位置へ）' }))
   const lTel = el('label', { style: 'display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;white-space:nowrap;flex-shrink:0' })

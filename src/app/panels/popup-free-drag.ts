@@ -6,6 +6,10 @@
  * 置いた場所は割合で覚える（src/shared/follow-free-place.ts）。帯は上下だけ、右下・左下の小さい物は上下左右。
  * 画面＝後ろのLPの見えている所（スマホで見るときは 375px の幅）。保存は「ポップアップに反映」のとき（呼ぶ側）。
  * 「元の位置」で、選んだ表示位置（上の帯・下の帯・右下・左下）に戻す。
+ *
+ * Ctrl（Mac は ⌘）を押しながら動かすと、画面の真ん中の補助線を出し、真ん中の近く（SNAP_PX 以内）でカチッと止める
+ * （指示43・2026-10-31 本人「WindowsはCtrlキー、Macはcommandキーを押しながら位置を調整すると補助線を出して。
+ * カチッと真ん中にハマるようにしてほしい。補助の説明も表示して」）。説明は手の下に出す。
  */
 import { freeBoxPlace, freePositionAt, type FreeKind, type FreePosition } from '../../shared/follow-free-place.ts'
 
@@ -26,6 +30,28 @@ export interface FreeDrag {
 const MOVE_ICON =
   '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" ' +
   'stroke-linejoin="round" aria-hidden="true"><path d="M12 2v20M2 12h20M12 2l-3 3M12 2l3 3M12 22l-3-3M12 22l3-3M2 12l3-3M2 12l3 3M22 12l-3-3M22 12l-3 3"/></svg>'
+
+/** 真ん中に止める近さ（px） */
+export const SNAP_PX = 12
+
+/**
+ * 箱の真ん中が画面の真ん中に近ければ、ぴったり真ん中にする（左右・上下それぞれ）。
+ * stage は画面（body の中の x の位置・幅・高さ）、at は箱の左上（body の中）
+ */
+export function snapToCenter(
+  stage: { readonly x: number; readonly w: number; readonly h: number },
+  box: { readonly w: number; readonly h: number },
+  at: { readonly left: number; readonly top: number },
+): { left: number; top: number; snappedX: boolean; snappedY: boolean } {
+  const centerLeft = stage.x + stage.w / 2 - box.w / 2
+  const centerTop = stage.h / 2 - box.h / 2
+  const snappedX = Math.abs(at.left - centerLeft) <= SNAP_PX
+  const snappedY = Math.abs(at.top - centerTop) <= SNAP_PX
+  return { left: snappedX ? centerLeft : at.left, top: snappedY ? centerTop : at.top, snappedX, snappedY }
+}
+
+/** 補助線の色（止まったら濃い実線） */
+const GUIDE_COLOR = '#1A73E8'
 
 /** 矢印キー1回で動かす割合（Shift で10倍） */
 const KEY_STEP = 1
@@ -70,8 +96,25 @@ export function attachFreeDrag(
   reset.style.cssText =
     'height:26px;padding:0 10px;border:1px solid #D5D9E0;border-radius:13px;background:#fff;color:#3F4450;' +
     'font:12px/1 "Hiragino Sans",sans-serif;cursor:pointer;white-space:nowrap'
-  tools.append(grip, reset)
+  // 補助の説明（指示43）
+  const help = document.createElement('span')
+  help.textContent = 'Ctrl（Mac は ⌘）を押しながら動かすと、真ん中の線が出てぴったり止まります'
+  help.style.cssText =
+    'max-width:190px;padding:4px 8px;border-radius:6px;background:rgba(255,255,255,.94);color:#4B5563;' +
+    'font:11px/1.5 "Hiragino Sans",sans-serif;box-shadow:0 1px 4px rgba(16,24,40,.15);white-space:normal'
+  tools.append(grip, reset, help)
   body.append(tools)
+
+  // 真ん中の補助線（Ctrl・⌘ を押しながら動かしている間だけ）
+  const guide = (vertical: boolean): HTMLElement => {
+    const line = document.createElement('div')
+    line.dataset['popupFreeGuide'] = vertical ? 'x' : 'y'
+    line.style.cssText = `position:absolute;z-index:3;pointer-events:none;display:none;${vertical ? 'width:0;top:0' : 'height:0;left:0'}`
+    body.append(line)
+    return line
+  }
+  const guideX = guide(true)
+  const guideY = guide(false)
 
   /** 画面（後ろのLPの見えている所）。左右はスマホのときだけ 375px のまん中 */
   const stage = (): { x: number; w: number; h: number } => {
@@ -88,6 +131,7 @@ export function attachFreeDrag(
     const left = box.offsetLeft
     const top = box.offsetTop
     tools.style.flexDirection = 'column'
+    tools.style.flexWrap = 'nowrap'
     const midTop = Math.max(4, top + (box.offsetHeight - tools.offsetHeight) / 2)
     if (left - tools.offsetWidth - GAP >= 4) {
       tools.style.left = `${left - tools.offsetWidth - GAP}px`
@@ -98,6 +142,8 @@ export function attachFreeDrag(
     } else {
       // 上に置くときは横に並べ、選んだ部品の札（「見本」など・枠の左上の外）より上へ
       tools.style.flexDirection = 'row'
+      tools.style.flexWrap = 'wrap'
+      tools.style.maxWidth = `${Math.max(160, body.clientWidth - 8)}px`
       tools.style.left = `${Math.max(4, left)}px`
       tools.style.top = `${Math.max(4, top - tools.offsetHeight - ABOVE_GAP)}px`
     }
@@ -134,6 +180,21 @@ export function attachFreeDrag(
     })
   }
 
+  /** 補助線を出す（止まった線は濃い実線）・消す */
+  const paintGuides = (on: boolean, snappedX: boolean, snappedY: boolean): void => {
+    const s = stage()
+    guideX.style.display = on && control.kind === 'corner' ? 'block' : 'none'
+    guideY.style.display = on ? 'block' : 'none'
+    if (!on) return
+    guideX.style.left = `${s.x + s.w / 2}px`
+    guideX.style.height = `${s.h}px`
+    guideX.style.borderLeft = `${snappedX ? 2 : 1}px ${snappedX ? 'solid' : 'dashed'} ${GUIDE_COLOR}`
+    guideY.style.top = `${s.h / 2}px`
+    guideY.style.left = `${s.x}px`
+    guideY.style.width = `${s.w}px`
+    guideY.style.borderTop = `${snappedY ? 2 : 1}px ${snappedY ? 'solid' : 'dashed'} ${GUIDE_COLOR}`
+  }
+
   const moveTo = (left: number, top: number): void => {
     const s = stage()
     control.set(freePositionAt(control.kind, s, size(), { left: left - s.x, top }))
@@ -151,12 +212,22 @@ export function attachFreeDrag(
   })
   grip.addEventListener('pointermove', (e) => {
     if (drag === null || e.pointerId !== drag.id) return
-    moveTo(e.clientX - drag.dx, e.clientY - drag.dy)
+    const at = { left: e.clientX - drag.dx, top: e.clientY - drag.dy }
+    // Ctrl（Mac は ⌘）を押しながら＝補助線を出して真ん中に止める
+    if (e.ctrlKey || e.metaKey) {
+      const snapped = snapToCenter(stage(), size(), at)
+      paintGuides(true, snapped.snappedX, snapped.snappedY)
+      moveTo(snapped.left, snapped.top)
+      return
+    }
+    paintGuides(false, false, false)
+    moveTo(at.left, at.top)
   })
   const endDrag = (e: PointerEvent): void => {
     if (drag === null || e.pointerId !== drag.id) return
     drag = null
     grip.style.cursor = 'grab'
+    paintGuides(false, false, false)
   }
   grip.addEventListener('pointerup', endDrag)
   grip.addEventListener('pointercancel', endDrag)

@@ -36,6 +36,8 @@ export const EXIT_POPUP_CONTENT_KEYS = [
 export const FOLLOW_POPUP_CONTENT_KEYS = [
   'position',
   'free_position',
+  'link_url',
+  'link_target',
   'show_after_scroll',
   'show_close_button',
   'animation',

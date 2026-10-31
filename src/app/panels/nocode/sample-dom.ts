@@ -108,6 +108,11 @@ export type SampleChange =
   /** 押したら移る画面（null＝見本のまま） */
   | { readonly kind: 'go'; readonly value: string | null }
   /**
+   * 画像・動画のリンク先（空＝外す）。画像そのものに data-link-url・data-link-target を書く（LP の画像と同じ・配信で
+   * リンクで包む＝delivery-image-links.ts・指示44 本人「画像で入れたポップアップなんだけど、URLを入れることができない」）
+   */
+  | { readonly kind: 'imageLink'; readonly value: string; readonly newTab: boolean }
+  /**
    * 画像を選んだ動画に・動画を選んだ画像に差し替える（2026-10-27 本人「画像を動画に・その逆も」・media-swap.ts）。
    * 要素の数が変わることがある（<picture>・<source>）ので、呼ぶ側は差し替えたあと中身の一覧を作り直す
    */
@@ -180,6 +185,18 @@ export function editSample(html: string, id: string, change: SampleChange): stri
       if (!(node instanceof Element)) return html
       setGoOn(node, change.value)
       break
+    case 'imageLink': {
+      const url = change.value.trim()
+      if (!(node instanceof Element) || !['IMG', 'VIDEO'].includes(node.tagName) || (url !== '' && !isAllowedLinkUrl(url))) return html
+      if (url === '') {
+        node.removeAttribute('data-link-url')
+        node.removeAttribute('data-link-target')
+        break
+      }
+      node.setAttribute('data-link-url', url)
+      node.setAttribute('data-link-target', change.newTab ? '_blank' : '_self')
+      break
+    }
     case 'toVideo': {
       const src = safeVideo(change.value)
       if (!(node instanceof Element) || node.tagName !== 'IMG' || src === '') return html

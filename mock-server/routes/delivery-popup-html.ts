@@ -227,6 +227,32 @@ export function buildPopupSnippet(popup: ExitPopup, device: PopupDevice, options
     `<script>${scriptBody}</script>`
 }
 /**
+ * 追従型の移行先URL（指示44）: 帯のどこを押してもそこへ移る。×・中の本物のリンク・ボタン・画面を切り替えるボタンはそれぞれの動き
+ * （仮のリンク＝# のボタンは帯の移行先URLへ・離脱防止と同じ）。
+ * 計測（sb_tracking）も拾えるよう、離脱防止と同じく本物の <a> を押して移る
+ */
+function followLinkScript(fp: FollowPopup): string {
+  const url = (fp.link_url ?? '').trim()
+  if (url === '') return ''
+  const target = fp.link_target === '_self' ? '_self' : '_blank'
+  return `
+    var fpLink=${JSON.stringify(url).replace(/</g, '\\u003c')};
+    var fpTarget=${JSON.stringify(target)};
+    el.style.cursor='pointer';
+    el.addEventListener('click',function(e){
+      var t=e.target;
+      if(!t||!t.closest)return;
+      var inner=t.closest('a[href]');
+      if(inner){var h=inner.getAttribute('href')||'';if(h&&h!=='#'&&!/^javascript:/i.test(h))return;}
+      if(t.closest('.fp-close,button,[data-nc-go]'))return;
+      e.preventDefault();
+      var a=document.createElement('a');a.href=fpLink;a.target=fpTarget;
+      if(fpTarget==='_blank')a.rel='noopener noreferrer';
+      document.body.appendChild(a);a.click();a.remove();
+    });`
+}
+
+/**
  * 追尾型ポップアップのHTMLスニペットを構築する（指示85）。
  * スクロール追従バナー: 画面の上端/下端/角に固定表示される。
  * オーバーレイ無し、ページ閲覧を妨げない控えめな表示。
@@ -279,7 +305,7 @@ export function buildFollowPopupSnippet(fp: FollowPopup, device: PopupDevice): s
         });`
       : `show();`
     }
-    el.querySelector('.fp-close')?.addEventListener('click',function(){el.remove()});
+    el.querySelector('.fp-close')?.addEventListener('click',function(){el.remove()});${followLinkScript(fp)}
     ${fp.javascript}
   })()`
 

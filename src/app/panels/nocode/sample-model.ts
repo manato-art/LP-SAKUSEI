@@ -38,12 +38,27 @@ export type Slot =
    * 飾り（色・太字の span など）で区切られた同じ行のかけらは、同じ line になる（入力欄で横に並べるのに使う）
    */
   | { readonly kind: 'text'; readonly id: string; readonly text: string; readonly step: number | null; readonly line: number }
-  /** inControl: ボタンの中の画像（画像のボタン）。押したときはボタンの方で決める */
-  | (Pressable & { readonly kind: 'image'; readonly src: string; readonly alt: string; readonly inControl: boolean })
-  | (Pressable & { readonly kind: 'video'; readonly src: string; readonly inControl: boolean })
+  /**
+   * inControl: ボタンの中の画像（画像のボタン）。押したときはボタンの方で決める。
+   * link・newTab: 押したときに移る先（画像そのものに書く data-link-url・data-link-target・指示44）
+   */
+  | (Pressable & {
+      readonly kind: 'image'
+      readonly src: string
+      readonly alt: string
+      readonly inControl: boolean
+      readonly link: string
+      readonly newTab: boolean
+    })
+  | (Pressable & { readonly kind: 'video'; readonly src: string; readonly inControl: boolean; readonly link: string; readonly newTab: boolean })
   | (Pressable & { readonly kind: 'control'; readonly tag: 'A' | 'BUTTON' | 'LABEL'; readonly label: string; readonly href: string | null })
   /** 囲み（同じ形が並んだ商品カードなど）。label は中の最初の文字（無ければ画像の説明） */
   | (Pressable & { readonly kind: 'box'; readonly label: string })
+
+/** 画像・動画に書いてある、押したときに移る先（指示44・LP の画像と同じ data-link-url・既定は新しいタブ） */
+function linkOf(attr: (name: string) => string | null): { link: string; newTab: boolean } {
+  return { link: attr('data-link-url') ?? '', newTab: attr('data-link-target') !== '_self' }
+}
 
 /** 中を見ない要素（見た目の文字ではない） */
 const SKIP_TAGS: ReadonlySet<string> = new Set(['STYLE', 'SCRIPT', 'NOSCRIPT', 'TEMPLATE', 'TEXTAREA', 'SVG', 'IFRAME'])
@@ -111,9 +126,9 @@ export function sampleSlots(root: SlotNode, steps: readonly SlotNode[]): Slot[] 
       const isBox = boxes.has(child)
       if (isBox) slots.push({ kind: 'box', ...pressable, label: boxLabel(child) })
       if (tag === 'IMG' && (attr('src') ?? '') !== '') {
-        slots.push({ kind: 'image', ...pressable, src: attr('src') ?? '', alt: attr('alt') ?? '', inControl })
+        slots.push({ kind: 'image', ...pressable, src: attr('src') ?? '', alt: attr('alt') ?? '', inControl, ...linkOf(attr) })
       }
-      if (tag === 'VIDEO') slots.push({ kind: 'video', ...pressable, src: videoSrc(child), inControl })
+      if (tag === 'VIDEO') slots.push({ kind: 'video', ...pressable, src: videoSrc(child), inControl, ...linkOf(attr) })
       const isControl = CONTROL_TAGS.has(tag) && !inControl
       if (isControl) {
         slots.push({
